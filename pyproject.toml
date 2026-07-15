@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "steamzero"
+version = "0.1.0.dev0"
+description = "SteamZero — plataforma transacional de jogos e emulação para Steam Deck e Linux (núcleo)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+authors = [{ name = "SteamZero contributors" }]
+dependencies = [
+  "jsonschema>=4.21",
+]
+
+[project.scripts]
+steamzero = "steamzero.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/steamzero"]
+
+# ---------------------------------------------------------------------------
+# Ruff — lint + format. Enforces SR-02/SR-03 generically (S = flake8-bandit).
+# Architecture-specific prohibitions live in tools/lint_boundaries.py.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S", "SIM", "RUF"]
+# S603/S607: subprocess use — allowed ONLY in core.proc/adapters, gated by the
+# custom boundary lint. We keep S enabled globally and narrow via per-file-ignores.
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]          # assert is expected in tests
+"tools/**" = ["S603", "S607"]  # lint/CI helpers may invoke tools by design
+"src/steamzero/i18n/messages_*.py" = ["E501"]  # catálogos de tradução: linhas longas ok
+
+[tool.ruff.lint.isort]
+known-first-party = ["steamzero"]
+
+# ---------------------------------------------------------------------------
+# mypy --strict on the core.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+files = ["src/steamzero"]
+
+[[tool.mypy.overrides]]
+module = ["jsonschema.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tools"]
+addopts = "-ra --strict-markers"
+markers = [
+  "unit: fast isolated unit tests",
+  "integration: touch real filesystem/state",
+  "fi: failure-injection tests (FAILURE-INJECTION.md)",
+  "rt: rollback tests (ROLLBACK-TESTS.md)",
+  "golden: contract golden-file tests",
+  "slow: long-running",
+]
+
+[tool.coverage.run]
+source = ["steamzero"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

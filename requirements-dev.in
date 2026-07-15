@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Direct dev + runtime dependencies. Compiled to requirements-dev.lock with
+# pinned versions and hashes (SR-11) via:
+#   pip-compile --generate-hashes requirements-dev.in -o requirements-dev.lock
+jsonschema
+ruff
+mypy
+pytest
+pytest-cov
+hypothesis
+pip-tools
