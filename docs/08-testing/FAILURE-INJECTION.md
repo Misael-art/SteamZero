@@ -24,5 +24,9 @@ Harness: FS de teste dedicado (tmpfs/loopback), rede mockável, processo do núc
 | FI-18 | Archive com 1M entradas/profundidade extrema | fixture gerada | limites de contagem/profundidade; erro claro |
 | FI-19 | Timeout de conversão (ferramenta pendurada) | mock chdman pendurado | timeout do plano; rollback; original intacto |
 | FI-20 | Permissão negada no destino | chmod fixture | preflight detecta; erro com ação; sem estado parcial |
+| FI-21 | Provider Desktop cai no apply/verify | fake effect lança erro ou retorna verify=false | rollback reverso, plano aborted, E-DESKTOP-VERIFY |
+| FI-22 | Crash abrupto depois do snapshot Desktop | BaseException/SIGKILL antes do verify | recoveryRequired=true; restore idempotente no processo seguinte |
+| FI-23 | Ownership concorrente | contexto declara conflito/oscila fingerprint | apply bloqueado; zero efeito chamado |
+| FI-24 | PATH vazio / Qt, KDE, Steam e InputPlumber ausentes | ambiente hermético | status/plan/safe/recovery funcionam em modo degraded |
 
 Regra de suíte: cada FI roda nas variantes {SSD, microSD-lento (throttle I/O)} quando fizer sentido, e sempre termina com verificação de: estado consistente + zero temporários órfãos + journal fechado + erro do catálogo.

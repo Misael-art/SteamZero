@@ -11,13 +11,14 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Callable
 
-from steamzero.core.migrations import m0001_baseline
+from steamzero.core.migrations import m0001_baseline, m0002_desktop_experience
 
 Migration = Callable[[sqlite3.Connection], None]
 
 #: Lista ordenada (versão, função). LATEST = maior versão.
 MIGRATIONS: list[tuple[int, Migration]] = [
     (1, m0001_baseline.up),
+    (2, m0002_desktop_experience.up),
 ]
 
 LATEST = max(v for v, _ in MIGRATIONS)

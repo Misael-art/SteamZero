@@ -6,7 +6,7 @@ RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 PYTEST := $(VENV)/bin/pytest
 
-.PHONY: help venv lint format format-check typecheck boundaries test cov check clean
+.PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean
 
 help:
 	@echo "Alvos: venv lint format-check typecheck boundaries test cov check"
@@ -32,6 +32,9 @@ typecheck:
 boundaries:
 	$(PY) tools/lint_boundaries.py --root src
 
+independence:
+	$(PY) tools/check_independence.py
+
 test:
 	$(PYTEST)
 
@@ -39,7 +42,7 @@ cov:
 	$(PYTEST) --cov=steamzero --cov-report=term-missing
 
 # Gate completo: ordem barata->cara. Nenhum commit sem `make check` verde.
-check: format-check lint boundaries typecheck test
+check: format-check lint boundaries independence typecheck test
 
 clean:
 	rm -rf .mypy_cache .ruff_cache .pytest_cache .hypothesis htmlcov .coverage

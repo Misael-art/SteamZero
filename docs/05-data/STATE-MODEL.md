@@ -25,7 +25,9 @@ save_entry(id, game_id, kind[save|state], timeline_seq, created_at, device_id,
            hash, size, origin[local|cloud|checkpoint], conflict_group)
 media_item(id, game_id, kind[boxart|screenshot|video], provider, license,
            relpath, hash, state[ok|orphaned|quarantined])
-profile(id, scope[game|platform|device|mode], kind[performance|controls|display],
+profile(id, scope[game|platform|device|mode|desktop-experience],
+        kind[performance|controls|display|desktop-plan|desktop-current|
+             desktop-override|desktop-recovery|desktop-observation],
         payload_json, priority)
 job(...ver JOB-LIFECYCLE)  ·  operation(id, journal_path, state, backup_path)
 backup(id, operation_id, manifest_json, size, retained_until)
@@ -43,3 +45,5 @@ event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
 4. **`verified_at` obrigatório para status "ok"** (P10): status sem verificação recente aparece como "não verificado".
 5. **Export/import:** JSON canônico com versão de schema; import valida schema + reconstrói índices; usado também por USER-DATA-PRESERVATION nas migrações.
 6. Multi-usuário (Q9): chave `profile_owner` reservada desde v1, não exposta.
+7. Desktop Experience usa a tabela de perfis na migração v2; planos têm TTL/token,
+   recovery guarda snapshots e observation implementa estabilidade de hotplug.

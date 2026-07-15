@@ -1,6 +1,8 @@
 # STEAM-DECK-HARDWARE-MATRIX — matriz de hardware (§13.4)
 
-Status possível por célula: `verified-hw` / `verified-vm` (não conta como hardware — §20) / `untested`. Preenchimento depende de Q6 (dispositivos disponíveis). Nenhuma célula está verificada nesta fase (G5).
+Status possível por célula: `verified-hw-readonly`, `verified-hw`, `verified-vm` (não conta
+como hardware — §20) ou `untested`. O Deck LCD BigLinux disponível foi usado apenas para
+detecção read-only no M10-H; nenhuma mutação de display/input foi marcada verified-hw.
 
 ## Dispositivos
 
@@ -27,3 +29,14 @@ Status possível por célula: `verified-hw` / `verified-vm` (não conta como har
 ## Registro
 
 Resultados por release em `test-reports/hw/<versão>/<dispositivo>.json` (gerado por `steamzero doctor --json` + checklist assistido) — vira insumo da Compat Matrix (FM-10).
+
+## Evidência M10-H (2026-07-15)
+
+| Dispositivo/cenário | Estado | Evidência | Limite |
+|---|---|---|---|
+| Steam Deck LCD (Valve Jupiter), BigLinux/KDE Wayland | verified-hw-readonly | DMI real, KScreen, painel e capabilities lidos por `desktop status` | apply não executado |
+| Owner externo de modo | verified-hw-readonly | padrão genérico encontrou serviço `*-mode-watcher`; status ficou blocked/observer | serviço não foi chamado nem alterado |
+| Painel interno eDP-1 800×1280 rotacionado, escala 1,35 | verified-hw-readonly | parser KScreen + status | escala não alterada |
+| Maliit/KDE Connect/TTS BigLinux presentes | verified-hw-readonly | capability probe | ativação fim-a-fim pendente |
+| InputPlumber | untested | pacote ausente no host | spike obrigatório antes de virar owner |
+| Dock/monitor externo | untested no gate | lógica coberta por fake | hotplug real ainda precisa checklist assistido |

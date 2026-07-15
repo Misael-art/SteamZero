@@ -12,6 +12,7 @@
 | UI | focus graph, navegação por input sintético, screenshots por escala | UI-TESTS.md | CI todo PR de UI |
 | Segurança | SECURITY-TESTS.md | fuzzing + suíte de vetores | CI diário |
 | Rollback | ROLLBACK-TESTS.md (critério §13.6) | harness transacional | CI todo PR que toque mutação |
+| Independência | imports, entrypoints, dependências e literais perigosos | gate AST + ambiente hermético PATH vazio | CI todo PR |
 
 ## Princípios
 
@@ -20,4 +21,8 @@
 3. **Fixtures sintéticas de conteúdo:** dumps falsos gerados (headers válidos, conteúdo aleatório) — nenhum conteúdo protegido real no repositório ou CI (CONTENT-POLICY).
 4. **Idempotência testada por padrão:** todo teste de operação roda a operação 2× e compara estado (RNF-04).
 5. **Testes de recuperação são de primeira classe:** cada operação nova entrega junto seus casos de kill/rollback (DoD).
-6. Lição dos fontes: PhaseZero mostra o valor de suíte grande (122 arquivos) rodando em CI; EmuDeck mostra o custo da ausência. Meta de cobertura: 90% no núcleo transacional/core.fs; 80% domínio; adapters cobertos por contrato (suíte genérica que todo adapter deve passar).
+6. Meta de cobertura: 90% no núcleo transacional/core.fs; 80% domínio; adapters
+   cobertos por contrato. Projetos pesquisados fornecem evidência histórica, nunca
+   fixtures, executáveis ou serviços obrigatórios da suíte.
+7. O teste hermético remove comandos opcionais do PATH e confirma status/plano/safe.
+   O importador offline usa fixtures próprias e nunca lê um checkout externo.

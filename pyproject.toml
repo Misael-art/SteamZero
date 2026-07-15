@@ -20,6 +20,7 @@ steamzero = "steamzero.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/steamzero"]
+exclude = ["src/steamzero/ports.py"]
 
 # ---------------------------------------------------------------------------
 # Ruff — lint + format. Enforces SR-02/SR-03 generically (S = flake8-bandit).

@@ -6,11 +6,16 @@
 - Sem TCP por padrão. Modo remoto não existe no v1 (nem atrás de flag).
 - Eventos: subscription via mesmo socket (notificações JSON-RPC) — ver EVENTS-AND-PROGRESS.
 
+Exceção transitória M10-H: enquanto o daemon persistente não existe, `desktop ui` cria
+uma bridge HTTP somente em `127.0.0.1`, porta aleatória e token de 256 bits, encerrada
+junto ao processo QML. A bridge expõe apenas status/plan/apply/reset/recover/keyboard,
+mantém `confirmToken` e não aceita conexão remota. Não é API pública nem modo remoto.
+
 ## Superfície (allowlist — dispatch apenas de métodos registrados)
 
 Espelha os domínios da CLI (mesma camada de ações): `system.hello` (negocia `contractVersion`), `system.capabilities`, `<dominio>.<ação>` para queries, `plan.create`, `plan.get`, `job.submit {planId, confirmToken}`, `job.{list,get,pause,resume,cancel}`, `events.subscribe {filters}`, `state.{export}`, `support.{bundlePreview,bundleWrite}`.
 
-Regras herdadas do desenho do PhaseZero (UI nunca importa funções do orchestrator; só contrato):
+Regras próprias do SteamZero (UI nunca importa funções do orquestrador; só contrato):
 
 1. **Nomes de método são enum registrado**; método desconhecido = erro padrão, sem reflexão (P4, SR-19).
 2. **Parâmetros validados por JSON Schema** publicado (JSON-SCHEMAS.md); erro de validação aponta o campo.

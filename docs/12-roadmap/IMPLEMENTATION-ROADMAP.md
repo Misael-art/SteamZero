@@ -8,7 +8,7 @@ Inventário, matriz de capacidades, licenças, PRD, arquitetura, threat model, U
 
 ## Fase 1 — Núcleo mínimo (base de tudo)
 
-Entregas: repositório estruturado (MODULE-BOUNDARIES aplicado por lint), `core.fs` (atomic/staging/containment), núcleo transacional + journal + locks + quarentena, State Store + migração 0001, Job Manager (fila, pausa/resume/cancel, recovery pós-crash), CLI `steamzero` (envelope v2), catálogo de erros inicial, logging estruturado, doctor mínimo, suíte: unit + FI-04/06/15 + RTs do núcleo + golden files de contrato.
+Entregas: repositório estruturado (MODULE-BOUNDARIES aplicado por lint), `core.fs` (atomic/staging/containment), núcleo transacional + journal + locks + quarentena, State Store + migrações numeradas (0001 baseline; 0002 Desktop Experience), Job Manager (fila, pausa/resume/cancel, recovery pós-crash), CLI `steamzero` (envelope v2), catálogo de erros inicial, logging estruturado, doctor mínimo, suíte: unit + FI-04/06/15 + RTs do núcleo + golden files de contrato.
 Critério de saída: AC-TX-01..04 verdes; kill em cada etapa do pipeline recuperável.
 
 ## Fase 2 — Steam Deck Core
@@ -26,9 +26,17 @@ Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
 Critério: instalar/atualizar/verify/rollback de cada adapter em VM; matriz de licenças por componente validada.
 
+### M10-H — Handheld Desktop Foundation
+
+Submarco prioritário dentro da Fase 4: BigLinux/KDE como plataforma de referência sem
+exclusividade de distro; contexto de hardware/capabilities; perfis
+`handheld-desktop`/`docked-desktop`/`safe`; ownership único; teclado em fallback;
+snapshot G-STATE; recovery pós-crash; CLI e central Qt/QML. InputPlumber permanece
+opcional e só vira owner após validação em hardware. Este submarco não renumera M11–M15.
+
 ## Fase 5 — UI
 
-Entregas: Game Mode UI (dashboard, biblioteca, página do jogo, BIOS center, jobs, saves/conflitos, configurações, acessibilidade), Desktop UI (lote, migrações EmuDeck/RetroDECK adoption, logs/journal, manutenção), QAM adapter opcional, testes de UI (focus graph, escalas, erros).
+Entregas: Game Mode UI (dashboard, biblioteca, página do jogo, BIOS center, jobs, saves/conflitos, configurações, acessibilidade), expansão da Desktop UI QML iniciada no M10-H (lote, imports offline, logs/journal, manutenção), QAM adapter opcional, testes de UI (focus graph, escalas, erros).
 Critério: AC-UI-01..03; jornadas J1–J9 automatizadas onde possível.
 
 ## Fase 6 — Distribuição

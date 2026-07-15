@@ -22,7 +22,10 @@
 3. **Sem armadilhas:** modais capturam foco e devolvem ao elemento de origem ao fechar.
 4. **Scroll previsível:** item focado sempre visível (scroll-into-view com margem); sem scroll inercial no foco.
 5. **Glyphs dinâmicos:** rodapé mostra os botões reais do controle ativo (Xbox/PS/Deck) — layout Nintendo respeita swap A/B do sistema.
-6. **Teclado virtual:** campos de texto invocam o teclado (Steam keyboard no Game Mode; Maliit/desktop IME fora — precedente: PhaseZero `pz steamdeck keyboard repair`).
+6. **Teclado virtual:** campos de texto consultam a cadeia por capacidades. No Desktop:
+   Plasma Keyboard quando disponível → KWin/Maliit → Steam → wvkbd/onboard → KDE
+   Connect. No Game Mode, Steam permanece o primeiro provider. Falha avança na cadeia
+   sem manter dois teclados ativos.
 7. **Hold-to-confirm** para ações destrutivas (segurar A 1,5s com anel de progresso) além da frase tipada onde exigido.
 8. **Hot-swap:** troca/queda de controle não perde o foco nem cancela modais; reconexão retoma onde estava (F-CT-03).
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "desktop-status-v1.schema.json",
+  "title": "SteamZero Desktop Experience Status v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "context", "recommendedProfile", "effectiveProfile", "manualOverride",
+    "current", "recoveryRequired", "independentRuntime"
+  ],
+  "properties": {
+    "context": {
+      "type": "object",
+      "required": [
+        "deviceKind", "sessionType", "displays", "physicalDock",
+        "externalKeyboard", "externalMouse", "capabilities", "conflicts"
+      ]
+    },
+    "recommendedProfile": { "enum": ["handheld-desktop", "docked-desktop"] },
+    "effectiveProfile": { "enum": ["handheld-desktop", "docked-desktop", "safe"] },
+    "manualOverride": { "type": ["string", "null"] },
+    "current": { "type": ["object", "null"] },
+    "recoveryRequired": { "type": "boolean" },
+    "independentRuntime": { "const": true }
+  }
+}

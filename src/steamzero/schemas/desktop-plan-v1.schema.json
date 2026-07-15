@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "desktop-plan-v1.schema.json",
+  "title": "SteamZero Desktop Experience Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "planId", "confirmToken", "requestedProfile", "target",
+    "contextFingerprint", "createdAt", "expiresAt", "status", "blockers",
+    "changes", "rollbackGuarantee"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "planId": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "confirmToken": { "type": "string", "minLength": 16 },
+    "requestedProfile": { "enum": ["auto", "handheld", "dock", "safe"] },
+    "target": { "$ref": "#/$defs/profile" },
+    "contextFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["pending", "applied", "aborted"] },
+    "blockers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "changes": { "type": "array", "items": { "type": "string" } },
+    "rollbackGuarantee": { "const": "G-STATE" }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "scale", "touchMode", "maximizeWindows", "panelHeight",
+        "shellActions", "keyboardChain", "preferredInputOwner"
+      ],
+      "properties": {
+        "id": { "enum": ["handheld-desktop", "docked-desktop", "safe"] },
+        "scale": { "type": "number", "minimum": 1, "maximum": 2 },
+        "touchMode": { "type": "boolean" },
+        "maximizeWindows": { "type": "boolean" },
+        "panelHeight": { "type": "integer", "minimum": 40 },
+        "shellActions": { "type": "array", "items": { "type": "string" } },
+        "keyboardChain": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "preferredInputOwner": { "enum": ["none", "kde-shortcuts", "inputplumber"] }
+      }
+    }
+  }
+}

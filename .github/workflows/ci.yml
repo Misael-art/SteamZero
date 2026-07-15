@@ -33,6 +33,8 @@ jobs:
         run: ruff check src tests tools
       - name: Boundary lint (MODULE-BOUNDARIES)
         run: python tools/lint_boundaries.py --root src
+      - name: Runtime independence gate (ADR-0019)
+        run: python tools/check_independence.py
       - name: Type check (mypy --strict)
         run: mypy
       - name: Tests

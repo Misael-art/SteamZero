@@ -21,6 +21,7 @@ Cada célula referencia ACs (01-product/ACCEPTANCE-CRITERIA.md) e classes de fal
 | Frontends (Steam/SRM/ES-DE) | geradores | shortcuts dedupe, vdf backup | FI-14 | RT-13 (vdf restore) | Steam real | — |
 | Session manager | máquina de estados | hooks flush/checkpoint | FI-08..10 | — | suspensão real | — |
 | Modos/dock | máquina + fallback | cadeia de fallback | FI-12 (display) | restore de modo | docks reais (matriz HW) | — |
+| Handheld Desktop | perfis/capabilities/parser KScreen | AC-HD-01..05, bridge tokenizada | FI-21..24 | G-STATE + recovery | Deck LCD read-only; apply pendente | QML lint/foco/alvos 48px |
 | microSD | UUID tracking | FM-06 semântica | FI-07 | — | cartão real | estado volume |
 | Offline | fila | AC-OF-01 | FI-01 | — | modo avião real | pendências |
 | Job manager | fila/prioridade | pause/resume/cancel/reboot | FI-04, FI-15 | recovery | — | cards de job |

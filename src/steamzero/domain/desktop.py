@@ -1,0 +1,626 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Experiência Desktop portátil, independente de providers e tolerante a falhas.
+
+O domínio só conhece capacidades e efeitos injetados. KDE, InputPlumber, Steam e
+qualquer outro provider são opcionais; sua ausência nunca impede status, plano,
+modo seguro ou recuperação do estado já capturado.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import secrets
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from types import TracebackType
+from typing import Any, Protocol
+
+from steamzero.core import ids, lock
+from steamzero.core.errors import SteamZeroError
+from steamzero.core.state import StateStore
+
+PROFILE_HANDHELD = "handheld-desktop"
+PROFILE_DOCKED = "docked-desktop"
+PROFILE_SAFE = "safe"
+PROFILE_IDS = frozenset({PROFILE_HANDHELD, PROFILE_DOCKED, PROFILE_SAFE})
+REQUESTED_PROFILES = frozenset({"auto", "handheld", "dock", "safe"})
+
+_CURRENT_ID = "desktop-current"
+_OVERRIDE_ID = "desktop-override"
+_RECOVERY_ID = "desktop-recovery"
+_OBSERVATION_ID = "desktop-observation"
+_PLAN_PREFIX = "desktop-plan-"
+_PLAN_TTL = timedelta(hours=1)
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+@dataclass(frozen=True)
+class DisplayState:
+    """Estado observável de uma saída gráfica."""
+
+    name: str
+    connected: bool
+    internal: bool
+    width: int | None = None
+    height: int | None = None
+    refresh_hz: float | None = None
+    scale: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "connected": self.connected,
+            "internal": self.internal,
+            "width": self.width,
+            "height": self.height,
+            "refreshHz": self.refresh_hz,
+            "scale": self.scale,
+        }
+
+
+@dataclass(frozen=True)
+class DesktopContext:
+    """Snapshot imutável dos sinais usados para escolher a experiência."""
+
+    device_kind: str
+    session_type: str
+    displays: tuple[DisplayState, ...]
+    physical_dock: bool
+    external_keyboard: bool
+    external_mouse: bool
+    capabilities: frozenset[str]
+    conflicts: tuple[str, ...] = ()
+
+    @property
+    def external_display(self) -> bool:
+        return any(display.connected and not display.internal for display in self.displays)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "deviceKind": self.device_kind,
+            "sessionType": self.session_type,
+            "displays": [display.to_dict() for display in self.displays],
+            "physicalDock": self.physical_dock,
+            "externalKeyboard": self.external_keyboard,
+            "externalMouse": self.external_mouse,
+            "capabilities": sorted(self.capabilities),
+            "conflicts": list(self.conflicts),
+        }
+
+    def fingerprint(self) -> str:
+        encoded = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+
+class DesktopContextPort(Protocol):
+    def snapshot(self) -> DesktopContext:
+        """Obtém um snapshot sem alterar o host."""
+        ...
+
+
+@dataclass(frozen=True)
+class ExperienceProfile:
+    """Política completa para uma sessão Desktop."""
+
+    profile_id: str
+    scale: float
+    touch_mode: bool
+    maximize_windows: bool
+    panel_height: int
+    shell_actions: tuple[str, ...]
+    keyboard_chain: tuple[str, ...]
+    preferred_input_owner: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.profile_id,
+            "scale": self.scale,
+            "touchMode": self.touch_mode,
+            "maximizeWindows": self.maximize_windows,
+            "panelHeight": self.panel_height,
+            "shellActions": list(self.shell_actions),
+            "keyboardChain": list(self.keyboard_chain),
+            "preferredInputOwner": self.preferred_input_owner,
+        }
+
+
+@dataclass(frozen=True)
+class OwnershipLease:
+    """Owner lógico válido somente para o fingerprint de contexto capturado."""
+
+    resource: str
+    provider: str
+    holder: str
+    context_fingerprint: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "resource": self.resource,
+            "provider": self.provider,
+            "holder": self.holder,
+            "contextFingerprint": self.context_fingerprint,
+        }
+
+
+class DesktopEffectPort(Protocol):
+    """Efeito reversível sobre uma parte da sessão Desktop."""
+
+    name: str
+
+    def available(self, context: DesktopContext) -> bool: ...
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]: ...
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None: ...
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool: ...
+
+    def restore(self, snapshot: dict[str, Any]) -> None: ...
+
+
+def _keyboard_chain(capabilities: frozenset[str]) -> tuple[str, ...]:
+    candidates = (
+        ("plasma-keyboard", "plasma-keyboard"),
+        ("kwin-virtual-keyboard", "kwin-maliit"),
+        ("steam-keyboard", "steam"),
+        ("wvkbd", "wvkbd"),
+        ("onboard", "onboard"),
+        ("kde-connect", "kde-connect"),
+    )
+    return tuple(provider for capability, provider in candidates if capability in capabilities)
+
+
+def profile_for(profile_id: str, context: DesktopContext) -> ExperienceProfile:
+    if profile_id not in PROFILE_IDS:
+        raise ValueError(f"perfil Desktop inválido: {profile_id}")
+    keyboard_chain = _keyboard_chain(context.capabilities)
+    preferred_owner = (
+        "inputplumber" if "inputplumber-validated" in context.capabilities else "kde-shortcuts"
+    )
+    if profile_id == PROFILE_HANDHELD:
+        return ExperienceProfile(
+            profile_id=profile_id,
+            scale=1.35,
+            touch_mode=True,
+            maximize_windows=True,
+            panel_height=48,
+            shell_actions=("overview", "application-dashboard"),
+            keyboard_chain=keyboard_chain,
+            preferred_input_owner=preferred_owner,
+        )
+    if profile_id == PROFILE_DOCKED:
+        return ExperienceProfile(
+            profile_id=profile_id,
+            scale=1.0,
+            touch_mode=False,
+            maximize_windows=False,
+            panel_height=40,
+            shell_actions=("overview", "application-dashboard"),
+            keyboard_chain=keyboard_chain,
+            preferred_input_owner=preferred_owner,
+        )
+    return ExperienceProfile(
+        profile_id=profile_id,
+        scale=1.35,
+        touch_mode=True,
+        maximize_windows=False,
+        panel_height=48,
+        shell_actions=("overview",),
+        keyboard_chain=keyboard_chain,
+        preferred_input_owner="none",
+    )
+
+
+def automatic_profile(context: DesktopContext) -> str:
+    """Tela externa ou dock muda o perfil; teclado/mouse isolados não mudam."""
+    if context.external_display or context.physical_dock:
+        return PROFILE_DOCKED
+    if context.device_kind.startswith("deck-"):
+        return PROFILE_HANDHELD
+    return PROFILE_DOCKED
+
+
+@dataclass
+class ExperiencePlan:
+    plan_id: str
+    confirm_token: str
+    requested_profile: str
+    target: ExperienceProfile
+    context_fingerprint: str
+    created_at: str
+    expires_at: str
+    status: str
+    blockers: tuple[str, ...]
+    changes: tuple[str, ...]
+    rollback_guarantee: str = "G-STATE"
+    schema_version: int = 1
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schemaVersion": self.schema_version,
+            "planId": self.plan_id,
+            "confirmToken": self.confirm_token,
+            "requestedProfile": self.requested_profile,
+            "target": self.target.to_dict(),
+            "contextFingerprint": self.context_fingerprint,
+            "createdAt": self.created_at,
+            "expiresAt": self.expires_at,
+            "status": self.status,
+            "blockers": list(self.blockers),
+            "changes": list(self.changes),
+            "rollbackGuarantee": self.rollback_guarantee,
+        }
+
+    @staticmethod
+    def from_dict(value: dict[str, Any]) -> ExperiencePlan:
+        target = value["target"]
+        return ExperiencePlan(
+            plan_id=value["planId"],
+            confirm_token=value["confirmToken"],
+            requested_profile=value["requestedProfile"],
+            target=ExperienceProfile(
+                profile_id=target["id"],
+                scale=float(target["scale"]),
+                touch_mode=bool(target["touchMode"]),
+                maximize_windows=bool(target["maximizeWindows"]),
+                panel_height=int(target["panelHeight"]),
+                shell_actions=tuple(target["shellActions"]),
+                keyboard_chain=tuple(target["keyboardChain"]),
+                preferred_input_owner=target["preferredInputOwner"],
+            ),
+            context_fingerprint=value["contextFingerprint"],
+            created_at=value["createdAt"],
+            expires_at=value["expiresAt"],
+            status=value["status"],
+            blockers=tuple(value.get("blockers", [])),
+            changes=tuple(value.get("changes", [])),
+            rollback_guarantee=value.get("rollbackGuarantee", "G-STATE"),
+            schema_version=int(value.get("schemaVersion", 1)),
+        )
+
+
+@dataclass(frozen=True)
+class ExperienceApplyResult:
+    operation_id: str
+    profile: ExperienceProfile
+    applied_effects: tuple[str, ...]
+    skipped_effects: tuple[str, ...]
+    status: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "operationId": self.operation_id,
+            "profile": self.profile.to_dict(),
+            "appliedEffects": list(self.applied_effects),
+            "skippedEffects": list(self.skipped_effects),
+            "status": self.status,
+        }
+
+
+class ExperienceCoordinator:
+    """Planeja e coordena efeitos com snapshot persistente e rollback."""
+
+    def __init__(
+        self,
+        context: DesktopContextPort,
+        effects: tuple[DesktopEffectPort, ...],
+        store: StateStore,
+    ) -> None:
+        self._context = context
+        self._effects = effects
+        self._store = store
+
+    def close(self) -> None:
+        self._store.close()
+
+    def __enter__(self) -> ExperienceCoordinator:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def status(self) -> dict[str, Any]:
+        context = self._context.snapshot()
+        override = self._load_payload(_OVERRIDE_ID)
+        requested = override.get("requestedProfile") if override else None
+        target_id = self._resolve_profile(requested or "auto", context)
+        current = self._load_payload(_CURRENT_ID)
+        recovery = self._load_payload(_RECOVERY_ID)
+        return {
+            "context": context.to_dict(),
+            "recommendedProfile": automatic_profile(context),
+            "effectiveProfile": target_id,
+            "manualOverride": requested,
+            "current": current,
+            "recoveryRequired": bool(recovery and recovery.get("state") == "applying"),
+            "independentRuntime": True,
+        }
+
+    def plan(self, requested_profile: str = "auto") -> ExperiencePlan:
+        if requested_profile not in REQUESTED_PROFILES:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"perfil solicitado inválido: {requested_profile}"
+            )
+        context = self._context.snapshot()
+        target = profile_for(self._resolve_profile(requested_profile, context), context)
+        now = _now()
+        stability_blockers = self._stability_blockers(requested_profile, target, context, now)
+        plan = ExperiencePlan(
+            plan_id=ids.new_ulid(),
+            confirm_token=secrets.token_urlsafe(24),
+            requested_profile=requested_profile,
+            target=target,
+            context_fingerprint=context.fingerprint(),
+            created_at=now.isoformat(),
+            expires_at=(now + _PLAN_TTL).isoformat(),
+            status="pending",
+            blockers=tuple(dict.fromkeys((*context.conflicts, *stability_blockers))),
+            changes=self._describe_changes(target),
+        )
+        self._save_payload(
+            _PLAN_PREFIX + plan.plan_id, "desktop-plan", plan.to_dict(), owner="steamzero"
+        )
+        return plan
+
+    def apply(self, plan_id: str, confirm_token: str) -> ExperienceApplyResult:
+        plan = self._load_plan(plan_id)
+        try:
+            expired = _now() > datetime.fromisoformat(plan.expires_at)
+        except ValueError as exc:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="expiresAt do plano inválido") from exc
+        if plan.status != "pending" or expired:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano expirado ou já consumido")
+        if not secrets.compare_digest(confirm_token, plan.confirm_token):
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken incorreto")
+
+        context = self._context.snapshot()
+        if context.fingerprint() != plan.context_fingerprint:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="contexto Desktop mudou")
+        blockers = tuple(dict.fromkeys((*plan.blockers, *context.conflicts)))
+        if blockers:
+            raise SteamZeroError("E-DESKTOP-OWNER-CONFLICT", detail="; ".join(blockers))
+
+        operation_id = ids.new_ulid()
+        with lock.ResourceLock("desktop:experience", job_id=operation_id):
+            return self._apply_locked(plan, context, operation_id)
+
+    def recover(self) -> dict[str, Any]:
+        recovery = self._load_payload(_RECOVERY_ID)
+        if not recovery or recovery.get("state") != "applying":
+            return {"status": "noop", "restoredEffects": []}
+        snapshots = recovery.get("snapshots", {})
+        restored, failures = self._restore_snapshots(snapshots, tuple(snapshots))
+        recovery["state"] = "rolled-back" if not failures else "rollback-failed"
+        recovery["restoreFailures"] = failures
+        self._save_payload(_RECOVERY_ID, "desktop-recovery", recovery, owner="steamzero")
+        if failures:
+            raise SteamZeroError("E-DESKTOP-RECOVERY", detail="; ".join(failures))
+        return {"status": "rolled-back", "restoredEffects": restored}
+
+    def reset(self, plan_id: str, confirm_token: str) -> ExperienceApplyResult:
+        """Aplica exclusivamente um plano de modo seguro previamente revisado."""
+        plan = self._load_plan(plan_id)
+        if plan.target.profile_id != PROFILE_SAFE:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="reset exige um plano criado com --profile safe"
+            )
+        return self.apply(plan_id, confirm_token)
+
+    def _apply_locked(
+        self, plan: ExperiencePlan, context: DesktopContext, operation_id: str
+    ) -> ExperienceApplyResult:
+        available = tuple(effect for effect in self._effects if effect.available(context))
+        skipped = tuple(effect.name for effect in self._effects if effect not in available)
+        snapshots = {effect.name: effect.capture(context) for effect in available}
+        recovery: dict[str, Any] = {
+            "operationId": operation_id,
+            "planId": plan.plan_id,
+            "state": "applying",
+            "snapshots": snapshots,
+        }
+        self._save_payload(_RECOVERY_ID, "desktop-recovery", recovery, owner="steamzero")
+
+        applied: list[str] = []
+        try:
+            for effect in available:
+                effect.apply(plan.target, context)
+                applied.append(effect.name)
+                if not effect.verify(plan.target, context):
+                    raise SteamZeroError(
+                        "E-DESKTOP-VERIFY", detail=f"efeito não confirmado: {effect.name}"
+                    )
+        except Exception as exc:
+            _, failures = self._restore_snapshots(snapshots, tuple(applied))
+            recovery["state"] = "rolled-back" if not failures else "rollback-failed"
+            recovery["restoreFailures"] = failures
+            self._save_payload(_RECOVERY_ID, "desktop-recovery", recovery, owner="steamzero")
+            plan.status = "aborted"
+            self._save_payload(
+                _PLAN_PREFIX + plan.plan_id, "desktop-plan", plan.to_dict(), owner="steamzero"
+            )
+            if failures:
+                raise SteamZeroError("E-DESKTOP-RECOVERY", detail="; ".join(failures)) from exc
+            if isinstance(exc, SteamZeroError):
+                raise
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail=str(exc)) from exc
+
+        plan.status = "applied"
+        recovery["state"] = "committed"
+        self._save_payload(_RECOVERY_ID, "desktop-recovery", recovery, owner="steamzero")
+        self._save_payload(
+            _PLAN_PREFIX + plan.plan_id, "desktop-plan", plan.to_dict(), owner="steamzero"
+        )
+        self._save_payload(
+            _CURRENT_ID,
+            "desktop-current",
+            {
+                "operationId": operation_id,
+                "profile": plan.target.to_dict(),
+                "contextFingerprint": context.fingerprint(),
+                "ownership": OwnershipLease(
+                    resource="desktop-input",
+                    provider=plan.target.preferred_input_owner,
+                    holder="steamzero",
+                    context_fingerprint=context.fingerprint(),
+                ).to_dict(),
+            },
+            owner="steamzero",
+        )
+        override = None if plan.requested_profile == "auto" else plan.requested_profile
+        self._save_payload(
+            _OVERRIDE_ID,
+            "desktop-override",
+            {"requestedProfile": override},
+            owner="steamzero",
+        )
+        self._store.append_event(
+            "desktop.profile-applied",
+            entity="desktop:experience",
+            payload={"profile": plan.target.profile_id, "operationId": operation_id},
+        )
+        result_status = "ok" if not skipped else "degraded"
+        return ExperienceApplyResult(
+            operation_id=operation_id,
+            profile=plan.target,
+            applied_effects=tuple(applied),
+            skipped_effects=skipped,
+            status=result_status,
+        )
+
+    def _restore_snapshots(
+        self, snapshots: dict[str, Any], names: tuple[str, ...]
+    ) -> tuple[list[str], list[str]]:
+        effects = {effect.name: effect for effect in self._effects}
+        restored: list[str] = []
+        failures: list[str] = []
+        for name in reversed(names):
+            effect = effects.get(name)
+            if effect is None:
+                failures.append(f"effect ausente na recuperação: {name}")
+                continue
+            snapshot = snapshots.get(name)
+            if not isinstance(snapshot, dict):
+                failures.append(f"snapshot inválido: {name}")
+                continue
+            try:
+                effect.restore(snapshot)
+                restored.append(name)
+            except Exception as exc:  # cada efeito deve ter chance de restaurar
+                failures.append(f"{name}: {exc}")
+        return restored, failures
+
+    def _resolve_profile(self, requested: str, context: DesktopContext) -> str:
+        if requested == "auto":
+            return automatic_profile(context)
+        return {"handheld": PROFILE_HANDHELD, "dock": PROFILE_DOCKED, "safe": PROFILE_SAFE}[
+            requested
+        ]
+
+    def _describe_changes(self, target: ExperienceProfile) -> tuple[str, ...]:
+        return (
+            f"perfil={target.profile_id}",
+            f"escala={target.scale}",
+            f"touch={'on' if target.touch_mode else 'off'}",
+            f"janelas-maximizadas={'on' if target.maximize_windows else 'off'}",
+            f"input-owner={target.preferred_input_owner}",
+        )
+
+    def _stability_blockers(
+        self,
+        requested: str,
+        target: ExperienceProfile,
+        context: DesktopContext,
+        now: datetime,
+    ) -> tuple[str, ...]:
+        """Exige 3 s apenas para uma transição automática já em operação."""
+        if requested != "auto":
+            return ()
+        current = self._load_payload(_CURRENT_ID)
+        current_profile = current.get("profile", {}) if current else {}
+        if current_profile.get("id") in {None, target.profile_id}:
+            return ()
+        observation = self._load_payload(_OBSERVATION_ID)
+        fingerprint = context.fingerprint()
+        if (
+            not observation
+            or observation.get("fingerprint") != fingerprint
+            or observation.get("targetProfile") != target.profile_id
+        ):
+            self._save_payload(
+                _OBSERVATION_ID,
+                "desktop-observation",
+                {
+                    "fingerprint": fingerprint,
+                    "targetProfile": target.profile_id,
+                    "firstSeenAt": now.isoformat(),
+                },
+                owner="steamzero",
+            )
+            return ("contexto automático ainda não estável por 3 segundos",)
+        try:
+            first_seen = datetime.fromisoformat(str(observation["firstSeenAt"]))
+        except (KeyError, ValueError):
+            self._save_payload(
+                _OBSERVATION_ID,
+                "desktop-observation",
+                {
+                    "fingerprint": fingerprint,
+                    "targetProfile": target.profile_id,
+                    "firstSeenAt": now.isoformat(),
+                },
+                owner="steamzero",
+            )
+            return ("contexto automático ainda não estável por 3 segundos",)
+        if (now - first_seen).total_seconds() < 3.0:
+            return ("contexto automático ainda não estável por 3 segundos",)
+        return ()
+
+    def _load_plan(self, plan_id: str) -> ExperiencePlan:
+        payload = self._load_payload(_PLAN_PREFIX + plan_id)
+        if payload is None:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"plano não encontrado: {plan_id}")
+        try:
+            return ExperiencePlan.from_dict(payload)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="payload do plano inválido") from exc
+
+    def _load_payload(self, profile_id: str) -> dict[str, Any] | None:
+        row = self._store.get_profile(profile_id)
+        if row is None or not row.get("payload_json"):
+            return None
+        try:
+            value = json.loads(row["payload_json"])
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"payload inválido no perfil {profile_id}"
+            ) from exc
+        if not isinstance(value, dict):
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"payload não-objeto no perfil {profile_id}"
+            )
+        loaded: dict[str, Any] = value
+        return loaded
+
+    def _save_payload(
+        self, profile_id: str, kind: str, payload: dict[str, Any], *, owner: str
+    ) -> None:
+        self._store.save_profile(
+            {
+                "id": profile_id,
+                "scope": "desktop-experience",
+                "kind": kind,
+                "payload_json": json.dumps(payload, sort_keys=True, ensure_ascii=False),
+                "priority": 0,
+                "profile_owner": owner,
+            }
+        )

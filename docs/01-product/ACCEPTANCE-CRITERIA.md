@@ -7,7 +7,7 @@ Formato Given/When/Then. Cada critério vira caso de teste em 08-testing/TEST-MA
 - AC-TX-01: Dado um plano gerado, quando qualquer arquivo-alvo muda entre plan e apply (hash divergente), então o apply é recusado com `E-TX-STALE-PLAN` e nenhuma mutação ocorre.
 - AC-TX-02: Dado um apply em andamento, quando o processo é morto (SIGKILL) em qualquer ponto, então após reinício `verify` reporta o estado real e `rollback` restaura o estado inicial byte-idêntico (exceto mtimes), sem temporários órfãos.
 - AC-TX-03: Dado `--dry-run`, então zero syscalls de escrita fora do diretório de staging/state (verificado com strace no CI).
-- AC-TX-04: Todo apply exige `confirmToken` emitido pelo plan correspondente (padrão PhaseZero `library/apply.py:76`).
+- AC-TX-04: Todo apply exige `confirmToken` emitido pelo plano correspondente.
 
 ## Instalação de componentes
 
@@ -36,6 +36,19 @@ Formato Given/When/Then. Cada critério vira caso de teste em 08-testing/TEST-MA
 
 - AC-SD-01: Transição handheld↔docked aplica perfil em ≤5s sem reiniciar o jogo; falha de display percorre a cadeia de fallback até imagem válida.
 - AC-SD-02: Remoção de microSD com jogo instalado nele ⇒ estado `unavailable`, zero escrita no mountpoint fantasma, restauração automática ao reinserir (UUID).
+
+## Handheld Desktop
+
+- AC-HD-01: Em instalação limpa sem PhaseZero, KDE, Steam, InputPlumber ou Qt, `desktop
+  status|plan` e o modo seguro funcionam; build/test/runtime não acessam estado legado.
+- AC-HD-02: Tela externa ou dock físico estável seleciona dock; teclado/mouse isolados
+  não trocam o perfil; mudança do contexto invalida plano pendente.
+- AC-HD-03: Todo apply captura snapshots antes do primeiro efeito; verify falho reverte
+  em ordem inversa e crash deixa recovery persistente.
+- AC-HD-04: Conflito de ownership bloqueia apply antes de chamar qualquer efeito; no
+  máximo um provider é elegível, e InputPlumber exige validação explícita no hardware.
+- AC-HD-05: UI portátil tem alvos ≥48 px, nomes acessíveis, grafo de foco e layout de uma
+  coluna na largura lógica do Deck.
 
 ## Offline
 

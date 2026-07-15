@@ -14,6 +14,7 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M8 | BIOS center backend + saves timeline | 3 | M | AC-BI/SV verdes |
 | M9 | Sync não-destrutivo com conflito preservador | 3 | L | J6 automatizada |
 | M10 | Engine de adapters + 3 emuladores núcleo fim-a-fim | 4 | XL | instalar/atualizar/rollback DuckStation/RetroArch/Dolphin em VM |
+| M10-H | Handheld Desktop BigLinux/KDE autônomo e resiliente | 4 | L | status/plan/apply/recovery no Deck; zero dependência legada; UI QML navegável |
 | M11 | Frontends: Steam shortcuts + SRM + ES-DE sem duplicação | 4 | L | idempotência 2× verificada |
 | M12 | Game Mode UI navegável 100% controle (dashboard+biblioteca+jogo) | 5 | XL | suíte focus graph verde |
 | M13 | Adoção EmuDeck/RetroDECK em máquina real de teste | 5 | L | relatório de import sem perda (hashes) |

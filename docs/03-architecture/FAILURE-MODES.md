@@ -24,3 +24,7 @@ Protocolo universal (§5.3): `detect failure → stop safely → collect diagnos
 | FM-18 | Display sem imagem pós-dock | timeout de confirmação de modo | cadeia de fallback (perfil→sem HDR→sem VRR→menos Hz→menos res→tela interna) com confirmação "manter?" 15s estilo Windows | Sempre volta a ter imagem |
 | FM-19 | Bateria crítica durante conversão longa | monitor de energia | pausa em ponto de segurança; retomada ao carregar | Sem estado intermediário |
 | FM-20 | Processo privilegiado indisponível (helper não instalado) | detect na chamada | funcionalidade degrada com explicação e instrução de instalação; nunca fallback silencioso p/ sudo | Sem escalada improvisada |
+| FM-21 | Provider Desktop ausente/crasha (KDE, Steam, InputPlumber, teclado) | capability probe, timeout ou verify | desativa só a capacidade; avança fallback; mantém controle físico e status | Núcleo/recuperação operantes |
+| FM-22 | Dois controladores disputam input/display | fingerprint instável, capture falho ou conflito declarado | bloqueia apply com E-DESKTOP-OWNER-CONFLICT; modo observador | Nenhum segundo remapeador iniciado |
+| FM-23 | Crash durante troca de perfil Desktop | snapshot `desktop-recovery` permanece `applying` | próxima subida oferece/roda restore reverso; falha congela recurso | Último estado capturado ou recovery explícito |
+| FM-24 | Todos os efeitos Desktop indisponíveis | nenhum DesktopEffectPort disponível | aplica apenas estado nativo como `degraded`; modo seguro não captura dispositivos | Acesso físico preservado |

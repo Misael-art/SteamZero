@@ -17,9 +17,10 @@ from typing import Any
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope, status_from_checks
 from steamzero.core import ids, log
-from steamzero.core.errors import build_error
+from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain.desktop import ExperienceCoordinator
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -35,6 +36,13 @@ Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
   jobs list              lista jobs
   state export [--out F] exporta o State Store (JSON)
+  desktop status         contexto e perfil Desktop efetivo
+  desktop plan           planeja perfil auto|handheld|dock|safe
+  desktop apply          aplica plano confirmado
+  desktop reset          aplica apenas um plano safe confirmado
+  desktop recover        restaura snapshot de operação interrompida
+  desktop keyboard       abre o primeiro teclado virtual funcional
+  desktop ui             abre a central Qt/QML opcional
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -88,6 +96,166 @@ def _cmd_state_export(args: list[str], correlation_id: str) -> tuple[dict[str, A
     return env, EXIT_OK
 
 
+def _desktop_coordinator() -> ExperienceCoordinator:
+    # Import local mantém a CLI mínima e permite substituir a composição nos testes.
+    from steamzero.adapters.desktop_kde import build_desktop_coordinator
+
+    store = StateStore()
+    store.migrate()
+    return build_desktop_coordinator(store)
+
+
+def _desktop_blockers(messages: list[str] | tuple[str, ...]) -> list[dict[str, str]]:
+    return [
+        {
+            "code": (
+                "E-TX-STALE-PLAN"
+                if message.startswith("contexto automático")
+                else "E-DESKTOP-OWNER-CONFLICT"
+            ),
+            "message": message,
+        }
+        for message in messages
+    ]
+
+
+def _cmd_desktop_status(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    with _desktop_coordinator() as coordinator:
+        data = coordinator.status()
+    conflicts = data["context"].get("conflicts", [])
+    capabilities = data["context"].get("capabilities", [])
+    if conflicts:
+        status = "blocked"
+        code = EXIT_BLOCKED
+    elif not capabilities:
+        status = "degraded"
+        code = EXIT_OK
+    else:
+        status = "ok"
+        code = EXIT_OK
+    return (
+        build_envelope(
+            "desktop",
+            "status",
+            status=status,
+            data=data,
+            blockers=_desktop_blockers(conflicts),
+            correlation_id=correlation_id,
+        ),
+        code,
+    )
+
+
+def _cmd_desktop_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    requested = _flag_value(args, "--profile") or "auto"
+    with _desktop_coordinator() as coordinator:
+        plan = coordinator.plan(requested)
+    status = "blocked" if plan.blockers else "ok"
+    return (
+        build_envelope(
+            "desktop",
+            "plan",
+            status=status,
+            data={"plan": plan.to_dict()},
+            blockers=_desktop_blockers(plan.blockers),
+            correlation_id=correlation_id,
+        ),
+        EXIT_BLOCKED if plan.blockers else EXIT_OK,
+    )
+
+
+def _required_flag(args: list[str], flag: str) -> str:
+    value = _flag_value(args, flag)
+    if not value:
+        raise SteamZeroError("E-API-SCHEMA", detail=f"flag obrigatória ausente: {flag}")
+    return value
+
+
+def _cmd_desktop_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm = _required_flag(args, "--confirm")
+    with _desktop_coordinator() as coordinator:
+        result = coordinator.apply(plan_id, confirm)
+    return (
+        build_envelope(
+            "desktop",
+            "apply",
+            status=result.status,
+            data=result.to_dict(),
+            operation_id=result.operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_desktop_reset(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm = _required_flag(args, "--confirm")
+    with _desktop_coordinator() as coordinator:
+        result = coordinator.reset(plan_id, confirm)
+    return (
+        build_envelope(
+            "desktop",
+            "reset",
+            status=result.status,
+            data=result.to_dict(),
+            operation_id=result.operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_desktop_recover(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    with _desktop_coordinator() as coordinator:
+        data = coordinator.recover()
+    return (
+        build_envelope(
+            "desktop",
+            "recover",
+            status=data["status"],
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_desktop_ui(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.desktop_ui import launch_desktop_ui
+
+    with _desktop_coordinator() as coordinator:
+        returncode = launch_desktop_ui(coordinator)
+    state = "ok" if returncode == 0 else "failed"
+    return (
+        build_envelope(
+            "desktop",
+            "ui",
+            status=state,
+            data={"returnCode": returncode},
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK if returncode == 0 else EXIT_FAILURE,
+    )
+
+
+def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.desktop_kde import activate_virtual_keyboard
+
+    provider = activate_virtual_keyboard()
+    return (
+        build_envelope(
+            "desktop",
+            "keyboard",
+            status="ok",
+            data={"provider": provider},
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _flag_value(args: list[str], flag: str) -> str | None:
     if flag in args:
         i = args.index(flag)
@@ -101,6 +269,13 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("jobs", "list"): _cmd_jobs_list,
     ("state", "export"): _cmd_state_export,
+    ("desktop", "status"): _cmd_desktop_status,
+    ("desktop", "plan"): _cmd_desktop_plan,
+    ("desktop", "apply"): _cmd_desktop_apply,
+    ("desktop", "reset"): _cmd_desktop_reset,
+    ("desktop", "recover"): _cmd_desktop_recover,
+    ("desktop", "keyboard"): _cmd_desktop_keyboard,
+    ("desktop", "ui"): _cmd_desktop_ui,
 }
 
 
@@ -171,6 +346,23 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         env, code = handler(rest, correlation_id)
+    except SteamZeroError as exc:
+        logger.warning("cli.domain-error", domain=domain, action=action, code=exc.code)
+        blocked = exc.code in {
+            "E-TX-CONFIRM-REQUIRED",
+            "E-TX-LOCKED",
+            "E-DESKTOP-OWNER-CONFLICT",
+        }
+        env = build_envelope(
+            domain,
+            action or "",
+            status="blocked" if blocked else "failed",
+            ok=False,
+            error=exc.to_error_object(),
+            correlation_id=correlation_id,
+        )
+        _emit(env, json_out=json_out)
+        return EXIT_BLOCKED if blocked else EXIT_FAILURE
     except Exception as exc:  # nunca vazar stack para o usuário (P7)
         logger.error("cli.handler-error", domain=domain, action=action, error=str(exc))
         env = build_envelope(

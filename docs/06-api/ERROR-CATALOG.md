@@ -49,6 +49,11 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-SESSION-RESUME-DEGRADED` camada X falhou na retomada; reparo aplicado/pendente.
 - `E-MODE-DISPLAY-FALLBACK` fallback de display acionado (registrando em qual degrau parou).
 
+### DESKTOP
+- `E-DESKTOP-OWNER-CONFLICT` outro processo altera/captura o mesmo recurso; permanece observador.
+- `E-DESKTOP-VERIFY` efeito não confirmou o perfil; snapshots aplicados são revertidos.
+- `E-DESKTOP-RECOVERY` rollback de um ou mais efeitos falhou; novas mudanças são congeladas.
+
 ### PRIV
 - `E-PRIV-DENIED` ação fora da allowlist / polkit negado.
 - `E-PRIV-HELPER-MISSING` helper não instalado (com instrução).

@@ -92,3 +92,61 @@ def test_help(capsys: pytest.CaptureFixture[str]) -> None:
     code = cli.main(["--help"])
     assert code == cli.EXIT_OK
     assert "Domínios" in capsys.readouterr().out
+
+
+def test_desktop_status_works_without_optional_commands(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    code = cli.main(["desktop", "status", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    contracts.validate(env, "envelope-v2.schema.json")
+    contracts.validate(env["data"], "desktop-status-v1.schema.json")
+    assert env["data"]["independentRuntime"] is True
+    assert code == cli.EXIT_OK
+
+
+def test_desktop_plan_and_apply_without_optional_commands(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    assert cli.main(["desktop", "plan", "--profile", "safe", "--json"]) == cli.EXIT_OK
+    planned = json.loads(capsys.readouterr().out)
+    plan = planned["data"]["plan"]
+    contracts.validate(plan, "desktop-plan-v1.schema.json")
+
+    code = cli.main(
+        [
+            "desktop",
+            "reset",
+            "--plan-id",
+            plan["planId"],
+            "--confirm",
+            plan["confirmToken"],
+            "--json",
+        ]
+    )
+    applied = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert applied["status"] == "degraded"
+    assert applied["data"]["profile"]["id"] == "safe"
+
+
+def test_desktop_apply_requires_confirm(capsys: pytest.CaptureFixture[str]) -> None:
+    code = cli.main(["desktop", "apply", "--plan-id", "missing", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_FAILURE
+    assert env["error"]["code"] == "E-API-SCHEMA"
+
+
+def test_desktop_status_surfaces_generic_owner_blocker(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setenv("STEAMZERO_DESKTOP_CONFLICT", "controlador externo em teste")
+    code = cli.main(["desktop", "status", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_BLOCKED
+    assert env["blockers"] == [
+        {"code": "E-DESKTOP-OWNER-CONFLICT", "message": "controlador externo em teste"}
+    ]

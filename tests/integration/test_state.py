@@ -4,12 +4,14 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pytest
 
 from steamzero.core import state
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.migrations import m0001_baseline
 
 
 @pytest.fixture
@@ -20,7 +22,7 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 1
+    assert store.user_version == state.LATEST == 2
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -32,7 +34,34 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 1  # 2ª vez: no-op
+    assert store.migrate() == 2  # 2ª vez: no-op
+    store.close()
+
+
+def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True)
+    connection = sqlite3.connect(db_path)
+    m0001_baseline.up(connection)
+    connection.execute("PRAGMA user_version=1")
+    connection.execute(
+        "INSERT INTO profile (id,scope,kind,payload_json,priority) VALUES (?,?,?,?,?)",
+        ("legacy-profile", "mode", "display", "{}", 0),
+    )
+    connection.commit()
+    connection.close()
+
+    store = state.open_state(db_path)
+    assert store.user_version == 2
+    assert store.get_profile("legacy-profile") is not None
+    store.save_profile(
+        {
+            "id": "desktop-current",
+            "scope": "desktop-experience",
+            "kind": "desktop-current",
+            "payload_json": "{}",
+            "priority": 0,
+        }
+    )
     store.close()
 
 
@@ -86,7 +115,7 @@ def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 1
+    assert export["schemaVersion"] == 2
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -94,7 +123,7 @@ def test_export_json(db_path: Path) -> None:
 
 def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # RT-14 (conceito): migração falha => backup restaurado, versão anterior operante
-    store = state.open_state(db_path)  # v1
+    store = state.open_state(db_path)  # versão atual
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     store.close()
 
@@ -102,14 +131,14 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
         raise RuntimeError("migração v2 quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (2, bad)])
-    monkeypatch.setattr(state, "LATEST", 2)
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (3, bad)])
+    monkeypatch.setattr(state, "LATEST", 3)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 1  # não avançou
+    assert store2.user_version == 2  # não avançou
     tables = {
         r["name"]
         for r in store2._conn.execute(

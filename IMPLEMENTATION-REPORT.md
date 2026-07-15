@@ -1,14 +1,17 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 4 · **Escopo entregue:** Fases 1–3 (M1–M9) + início da Fase 4 (M10 parcial)
+**Data:** 2026-07-15 · **Sessão:** implementação 6 · **Escopo entregue:** Fases 1–3
+(M1–M9) + Fase 4 em andamento (M10 parcial, M10-H foundation)
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
 > Cada afirmação abaixo é verificável com os comandos citados. Nada é marcado
-> "validado" sem teste; nada foi validado em hardware Steam Deck (não disponível).
+> "validado" sem teste. O Steam Deck LCD disponível foi usado somente para status
+> read-only do M10-H; nenhum apply de display/input foi executado no host.
 
-Ambiente de verificação: Linux (Manjaro, kernel 6.18), **Python 3.14.6**, git 2.55.
+Ambiente de verificação: Steam Deck LCD com BigLinux/Manjaro, KDE Wayland, kernel
+6.18.38, **Python 3.14.6**, git 2.55.
 Rótulo global desta entrega: **`verified-dev`** (VM/estação de desenvolvimento) —
-ver §6. Nenhuma célula da matriz de hardware foi exercitada.
+ver §6. Apenas as células explicitamente `verified-hw-readonly` foram exercitadas.
 
 ---
 
@@ -26,6 +29,7 @@ ver §6. Nenhuma célula da matriz de hardware foi exercitada.
 | **M8** BIOS center + saves timeline | 3 | **done** | `pytest tests/integration/test_bios.py tests/integration/test_saves.py` → **15 passed**: BIOS store hash-only, links atômicos com RT-08, saves timeline append-only e restore transacional com RT-09; AC-BI/SV verdes. |
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
 | **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema estrito `adapter-v1`, registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável install/update/verify/rollback G-FULL e checksum SHA-256 em **7 testes**. Os refs Flatpak foram consultados no Flathub, mas o executor Flatpak e a instalação real dos três em VM ainda não foram feitos; DuckStation está EOL no Flathub. |
+| **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + hw-readonly) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada, gate de independência e importador offline. **31 testes novos**; apply real ainda não executado. |
 | M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
 | M13 Adoção EmuDeck/RetroDECK em HW real | 5 | not-started | — |
@@ -36,7 +40,7 @@ ver §6. Nenhuma célula da matriz de hardware foi exercitada.
 **atingido.** Entregas de infraestrutura da Fase 1 além dos marcos numerados, todas
 `done`: repositório com lints de fronteira em CI; `core.fs` (atomic/staging/containment/
 path-safety); núcleo transacional + journal WAL + locks + quarentena; State Store SQLite
-+ migração 0001; Job Manager; CLI envelope v2; catálogo de erros; logging JSONL; doctor.
++ migrações 0001–0002; Job Manager; CLI envelope v2; catálogo de erros; logging JSONL; doctor.
 
 **Critério de saída da Fase 2** (`AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM`):
 **atingido em nível de domínio (verified-dev), com portas fake/efetor dry.** As
@@ -44,7 +48,7 @@ capacidades de hardware (aplicar TDP/sysctl real, DRM/KMS, montagem de removíve
 DMI real) dependem de adapters concretos + hardware/root — **não** exercitadas
 (ver §6/§7). A lógica de domínio (máquinas de estado, fallback, containment,
 allowlist) está provada. Compat Matrix inicial: a tabela `compat_fact` existe
-(migração 0001); o serviço de reconciliação SteamOS ficou como dívida (M-Compat).
+(migrações 0001–0002); o serviço de reconciliação SteamOS ficou como dívida (M-Compat).
 
 **Critério de saída da Fase 3** (`AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11`):
 **atingido em verified-dev.** AC-LB-01/02/03, AC-BI-01/02, AC-SV-01/03 e
@@ -60,7 +64,7 @@ Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
 (reproduzido na Fase 1; o worktree atual foi validado pelo gate completo):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-pytest → 302 passed · steamzero doctor --json → status ok
+independence OK · pytest → 333 passed · steamzero doctor --json → status ok
 ```
 
 ---
@@ -71,15 +75,15 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 97 | `tests/unit/` |
-| Integração | 134 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters) |
-| Injeção de falha (FI) | 32 | `tests/failure_injection/` (marcador `fi`) — inclui FI-16/17/18 (safezip) |
+| Unit | 110 | `tests/unit/` |
+| Integração | 152 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop) |
+| Injeção de falha (FI) | 37 | marcador `fi` — inclui FI-16/17/18 e FI-21..24 Desktop |
 | Rollback (RT) | 19 | marcador `rt` — RT-01/02 e RT-06..11; outros comportamentos de RT-01..05 também provados em `test_transaction`; RT-12..14 pendentes |
 | Segurança (ST) | 30 | marcador `security` — helper + mídia ST-06 |
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
-| UI (focus graph) | 0 | não iniciado (Fase 5) |
-| **Total** | **302** | `pytest -q` → **302 passed** |
+| UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
+| **Total** | **333** | `pytest -q` → **333 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -96,10 +100,12 @@ Cobertura (`pytest --cov=steamzero`):
 | domain/{device,mode,storage,session} | 91–98% |
 | domain/{library,bios,saves,sync,media,convert} | 90–100% |
 | adapters/{engine,registry} | 86–88% |
+| domain/desktop.py | 89% |
+| adapters/{desktop_kde,desktop_ui} | 61–65% (efeitos reais não acionados no host) |
 | core/safezip.py | 98% |
 | privileged/{protocol,helper,client} | 90–100% |
 | jobs/manager.py | 93% |
-| **TOTAL (pacote no worktree)** | **91%** (inclui `ports.py` ainda não rastreado, 0%) |
+| **TOTAL (pacote no worktree)** | **88%** (inclui `ports.py` ainda não rastreado, 0%) |
 
 Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 
@@ -132,7 +138,9 @@ Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
   RT-10 → `test_sync::test_rt10_*`; RT-11 → `test_media::test_rt11_*`.
 - M10/RT-01/02 → `test_adapters::*`: schema/registry, checksum antes de escrita,
   install idempotente, update e rollback manual/automático preservando a release anterior.
-- AC-UI e RT-12..14 → **não implementados** (gates restantes das Fases 4–6).
+- AC-HD-01..05 → `test_desktop*`, `test_runtime_independence` e CLI hermética: auto/dock,
+  teclado, ownership, stale context, rollback, crash recovery, bridge e QML.
+- AC-UI completo e RT-12..14 → **não implementados** (gates restantes das Fases 5–6).
 
 ---
 
@@ -174,11 +182,10 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 **Bloqueante:** nenhuma para as Fases 1–2 (no nível verified-dev).
 
 **Alta:**
-- **A0. Adapters de hardware da Fase 2 ausentes.** device/mode/storage/session/helper
-  usam **portas injetadas** provadas com fakes/dry; falta a camada `adapters.*`
-  concreta (ler DMI real, aplicar KMS/DRM, /proc/mounts + /dev/disk/by-uuid, efetor
-  sysfs/systemd, transporte pkexec/D-Bus) e a composição que a injeta. Sem isso,
-  M4–M6 não funcionam de fato em um Deck. É a maior dívida da Fase 2.
+- **A0. Adapters de hardware da Fase 2 parciais.** M10-H adicionou detecção DMI,
+  KScreen, input/capabilities e efeitos KDE reais com composição; o status foi provado
+  read-only no Deck LCD. Apply de KScreen/KWin, storage/mount, TDP/sysfs, sessão e
+  transporte pkexec/D-Bus continuam sem validação real. É a maior dívida de hardware.
 - **A5. Compat Matrix (F-SD-05) só tem a tabela** `compat_fact`; falta o serviço de
   reconciliação SteamOS/Steam-client na subida (FM-10). Perfis de desempenho
   (F-PF-01/03) modelados via helper set-tdp, mas sem o fluxo apply/restore G-STATE
@@ -203,6 +210,8 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 **Média:**
 - **M1d. Daemon/IPC ausente** — a CLI roda o núcleo in-process (single-shot). O serviço
   local JSON-RPC sobre UNIX socket com SO_PEERCRED/confirmToken (SR-18) não existe ainda.
+  A central M10-H usa bridge HTTP efêmera em loopback, token aleatório e allowlist,
+  encerrada junto ao QML; ela não substitui o daemon persistente planejado.
 - **M2d. Stream de eventos `--follow` (NDJSON) não implementado** — `event-v1` tem schema +
   amostra validada, mas não há emissão ao vivo; jobs emitem para `event_log` (State Store).
 - **M3d. i18n só pt-BR** — sem catálogo `en`; a infraestrutura de chaves suporta, falta o
@@ -238,23 +247,27 @@ make check          # ruff + ruff format --check + boundaries + mypy --strict + 
 
 **Prova disponível:** o clone limpo da entrega anterior produziu 270 testes verdes.
 No worktree desta sessão,
-`make check` produziu **302 passed**; a reprodução em clone limpo deste incremento deverá
+`make check` produziu **333 passed**; a reprodução em clone limpo deste incremento deverá
 ser repetida após seu commit. `steamzero doctor --json` permanece `status: ok`.
 
-`make` alvos: `venv lint format-check typecheck boundaries test cov check`. CI equivalente
+`make` alvos: `venv lint format-check typecheck boundaries independence test cov check`. CI equivalente
 em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 
 ---
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (302 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (333 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
-- **verified-hw:** **nada.** Sem Steam Deck (LCD/OLED), docks ou TVs — G5 do KNOWN-GAPS.
-  Nenhuma célula da STEAM-DECK-HARDWARE-MATRIX foi tocada. Nenhuma ação privilegiada
-  real (TDP/sysctl/mount) foi executada (efetor dry, sem root).
+- **verified-hw-readonly:** `desktop status` identificou no Steam Deck LCD real:
+  Valve Jupiter, Wayland, eDP-1 800×1280@60, escala 1,35 e capabilities KDE/KScreen,
+  Maliit, Steam, KDE Connect e TTS BigLinux. InputPlumber estava ausente e não foi
+  selecionado. Um serviço externo `*-mode-watcher` foi encontrado por padrão genérico;
+  o status ficou `blocked`/observador. Nenhuma configuração ou serviço foi alterado.
+- **verified-hw mutável:** **nada.** Apply de KScreen/KWin, dock/hotplug, input owner,
+  TDP/sysctl/mount e ações privilegiadas permanecem não verificados.
 - **Não verificado (mesmo em VM):**
   - Python 3.11 e 3.12 (rodou só 3.14) — dívida A4.
   - Perda de energia real (poweroff -f / FI-10) — só SIGKILL de processo foi exercitado;
@@ -274,24 +287,24 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 2. **Durabilidade sob perda de energia real.** O recovery é sólido contra SIGKILL (testado
    de verdade). Contra corte de energia no meio de um `fsync`/`rename`, confio no modelo
    POSIX (tmp+fsync+rename+fsync-dir) mas **não testei** com VM `poweroff -f`.
-3. **Empacotamento dos schemas/manifests no wheel.** Os `.json` carregam via
-   `importlib.resources` no editable install (testado). Num **wheel real** dependo do
-   hatchling incluir dados de pacote — não construí/instalei um wheel para confirmar.
+3. **Empacotamento validado.** O wheel real contém adapters, domínio, schemas e QML do
+   M10-H, exclui explicitamente o `ports.py` local não rastreado e foi instalado em venv
+   novo; `doctor` e `desktop status` passaram após instalar a dependência declarada
+   `jsonschema`. Ainda falta validar o bundle Flatpak final.
 4. **Cross-filesystem (ext4↔exFAT do microSD).** `same_filesystem` e o fallback copy+unlink
    existem, mas o caminho cross-FS é pouco exercitado; colisões case-insensitive (PATH-SAFETY §8)
    não implementadas.
-5. **Fronteira "UI não executa shell" na prática.** É garantida por arquitetura e lint, mas
-   **não há daemon/IPC** ainda; a garantia real (SO_PEERCRED, allowlist sobre socket) é da Fase 2.
+5. **Bridge da UI ainda é transitória.** QML usa HTTP efêmero em 127.0.0.1, token
+   aleatório e allowlist sem shell; os testes cobrem token e confirmação. O daemon UNIX
+   com SO_PEERCRED permanece a solução final e ainda não existe.
 6. **Heurística do lint de fronteira.** `tools/lint_boundaries.py` pega os casos claros
    (open-write, os/shutil, Path.write_*), mas não detecta escrita via `Path.replace` nem
    aliasing dinâmico. É defesa em profundidade, não prova formal.
 
-7. **Fase 2 sem hardware/root (o ponto mais importante).** M4–M6 provam a **lógica** com
-   portas fake e efetor dry. NÃO tenho confiança de que funcionem num Deck real: a
-   detecção DMI, a aplicação de modos via DRM/KMS, a montagem de microSD, o set-tdp/sysctl
-   e o polkit não foram executados nem uma vez contra hardware/root. A allowlist e as
-   máquinas de estado são sólidas; a **ponte com o mundo real** (adapters + composição)
-   não existe (dívida A0).
+7. **Hardware mutável ainda não validado (o ponto mais importante).** DMI/KScreen e
+   capabilities agora funcionam read-only no Deck real; efeitos KScreen/KWin existem e
+   são cobertos por runner fake. Não tenho confiança para marcar apply, dock/hotplug,
+   montagem, TDP/sysctl ou polkit como verified-hw antes do checklist assistido.
 
 8. **Fase 3 sem ferramentas externas reais.** BIOS/saves/sync/library/media local estão
    cobertos e RT-06..11 verdes. Porém conversões reais (chdman, dolphin-tool, maxcso,
@@ -305,7 +318,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 domínio, verified-dev**; a Fase 3 entrega M7–M9 e o gate RT-06..11 verdes.
 O núcleo transacional kill-proof (SIGKILL real recuperado), o fuzzing do helper e o
 safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas explícitas:
-nada tocou hardware, root nem
-ferramentas de conversão reais; falta a camada de adapters concretos de hardware (A0).
-A Fase 4 foi iniciada com M10 parcial; Fases 5–6 não iniciaram. Nada mascarado — a suíte
-(302 testes, 0 falhas/skips) e o WORKLOG comprovam cada afirmação acima.
+somente detecção read-only tocou hardware; root, efeitos do perfil e ferramentas de
+conversão reais não foram acionados. A Fase 4 contém M10 parcial e M10-H foundation;
+Fases 5–6 não iniciaram. Nada mascarado — a suíte (333 testes, 0 falhas/skips) e o
+WORKLOG comprovam cada afirmação acima.

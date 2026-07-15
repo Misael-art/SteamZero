@@ -391,3 +391,50 @@ status: ok · state.db integrity: pass · pending operations: 0
 Faltam executor Flatpak transacional, lockfile e demo install/update/rollback dos três em
 VM; DuckStation também precisa de uma nova fonte oficial. `src/steamzero/ports.py` segue
 intacto, não rastreado e fora deste incremento.
+
+## 2026-07-15 — Sessão 6: M10-H Handheld Desktop foundation
+
+**Regra arquitetural fechada:** SteamZero não depende do PhaseZero em build, instalação,
+runtime, recuperação ou testes. ADR-0019 e `tools/check_independence.py` tornam a regra
+um gate de CI. A antiga coexistência em runtime foi removida; o único caminho legado é
+um conversor de snapshot offline, separado, read-only e não empacotado.
+
+**Backend e host adapter:**
+- novo `domain.desktop` com `DesktopContext`, `ExperienceProfile`, ownership válido por
+  fingerprint, planos v1, confirmação, override e perfis handheld/dock/safe;
+- snapshot persistente antes do primeiro efeito, verify por efeito, rollback reverso e
+  recovery pós-crash; conflito genérico bloqueia antes de qualquer mutação;
+- detector Linux/KDE real (DMI, KScreen, `/proc` input, USB dock, capabilities) e efeitos
+  reversíveis de escala KScreen/política KWin;
+- InputPlumber só é elegível com marker SteamZero de validação; instalação isolada não
+  muda ownership; teclado tenta KWin/Maliit e só depois Steam;
+- State Store migração 0002 amplia perfis sem perder linhas da v1.
+
+**CLI e UI:** `desktop status|plan|apply|reset|recover|keyboard|ui`. A central QML tem
+layout de uma coluna no Deck, alvos de 48 px, labels acessíveis e grafo de foco. A bridge
+é efêmera em 127.0.0.1, usa token aleatório, allowlist e os mesmos confirmTokens; Qt não
+entrou na dependência do núcleo. `qmllint` verde e smoke offscreen abriu sem erros.
+
+**Hardware read-only:** em Steam Deck LCD/BigLinux/KDE Wayland, `desktop status --json`
+detectou Valve Jupiter, eDP-1 800×1280@60, escala 1,35, KDE/KScreen, Maliit, Steam,
+KDE Connect e TTS BigLinux. InputPlumber estava ausente. Nenhum apply, hotplug, captura
+de input ou ação privilegiada foi executado. O preflight genérico encontrou um serviço
+externo `*-mode-watcher`, retornou `blocked` e permaneceu observador, sem identificá-lo
+por integração nem tentar controlá-lo. O rótulo é `verified-hw-readonly`.
+
+O wheel real foi construído e inspecionado: domínio/adapters/schemas/QML estão presentes;
+o arquivo local não rastreado `src/steamzero/ports.py` foi excluído explicitamente pelo
+Hatch e o gate de independência verifica essa configuração. Instalação do wheel em venv
+novo passou em `doctor` e `desktop status` após instalar o runtime declarado `jsonschema`.
+
+**Gate:**
+```text
+$ make check
+format/lint/boundaries/independence/mypy OK · pytest: 333 passed em 23.86s
+$ steamzero doctor --json
+status: ok · schemaVersion: 2 · pending operations: 0
+```
+
+Falhas/skips/xfails: zero. `src/steamzero/ports.py` permaneceu intacto, não rastreado e
+deve continuar fora do commit. M10-H fica `foundation`: o próximo gate é o apply
+assistido em hardware com rollback, dock/hotplug real e spike do InputPlumber.

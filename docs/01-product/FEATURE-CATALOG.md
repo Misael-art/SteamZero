@@ -71,6 +71,14 @@ Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do r
 | F-SD-04 | Offline-first e fila de operações remotas | novo | 2 |
 | F-SD-05 | Matriz de compat SteamOS/Steam Client/plugins | novo | 2 |
 
+## Handheld Desktop
+
+| F-HD-01 | Perfis KDE handheld/dock/safe com contexto, estabilidade e override | SteamZero | 4 |
+| F-HD-02 | Ownership exclusivo e providers de input/teclado por capability | SteamZero | 4 |
+| F-HD-03 | Snapshot G-STATE, verify, rollback e recovery de efeitos Desktop | SteamZero | 4 |
+| F-HD-04 | Central Qt/QML touch+controle, bridge efêmera allowlisted | SteamZero | 4/5 |
+| F-HD-05 | Runtime independente e importador legado offline separado | SteamZero | contínuo |
+
 ## Plataforma
 
 | F-PL-01 | Núcleo transacional + journal + locks + quarentena | PhaseZero (generalização do library pipeline) | 1 |

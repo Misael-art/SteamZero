@@ -6,6 +6,8 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
 |---|---|---|
 | `envelope-v2.schema.json` | Saída CLI/API | CLI-CONTRACT |
 | `plan-v1.schema.json` | Plano transacional | MANIFEST-SCHEMAS §4 |
+| `desktop-plan-v1.schema.json` | Plano G-STATE do Desktop Experience | MANIFEST-SCHEMAS §7 |
+| `desktop-status-v1.schema.json` | Contexto/status Desktop | MANIFEST-SCHEMAS §7 |
 | `adapter-v1.schema.json` | adapter.json | ADAPTER-MODEL |
 | `component-lockfile-v1.schema.json` | lockfile de canal | MANIFEST-SCHEMAS §2 |
 | `backup-manifest-v1.schema.json` | manifesto de backup | BACKUP-FORMAT |

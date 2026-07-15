@@ -46,3 +46,10 @@ Validações semânticas além do schema:
 ## 6. Profile/preset manifest
 
 `{schemaVersion, scope, kind, matches{platform|game|device|mode}, values{}, priority}` — merge determinístico documentado em CONFIGURATION-SCHEMAS.
+
+## 7. Desktop Experience
+
+`desktop-plan-v1` contém `requestedProfile`, perfil alvo completo, fingerprint do
+contexto, mudanças, blockers, TTL, `confirmToken` e `rollbackGuarantee: G-STATE`.
+`desktop-status-v1` expõe contexto/capabilities, recomendação, override, estado atual,
+recovery pendente e `independentRuntime: true`. Ambos são aditivos dentro da versão 1.

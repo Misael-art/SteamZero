@@ -1,0 +1,234 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Coordenador Desktop: confirmação, ownership, rollback e recovery."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from steamzero.api import contracts
+from steamzero.core.errors import SteamZeroError
+from steamzero.core.state import StateStore
+from steamzero.domain import desktop as desktop_domain
+from steamzero.domain.desktop import (
+    DesktopContext,
+    DisplayState,
+    ExperienceCoordinator,
+    ExperienceProfile,
+)
+
+
+class FakeContext:
+    def __init__(self, value: DesktopContext) -> None:
+        self.value = value
+
+    def snapshot(self) -> DesktopContext:
+        return self.value
+
+
+class PowerLoss(BaseException):
+    pass
+
+
+class FakeEffect:
+    name = "fake-effect"
+
+    def __init__(self, *, available: bool = True) -> None:
+        self.is_available = available
+        self.state = "original"
+        self.verify_ok = True
+        self.power_loss = False
+        self.restore_fails = False
+
+    def available(self, context: DesktopContext) -> bool:
+        return self.is_available
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {"state": self.state}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self.state = profile.profile_id
+        if self.power_loss:
+            raise PowerLoss
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return self.verify_ok
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        if self.restore_fails:
+            raise RuntimeError("restore indisponível")
+        self.state = str(snapshot["state"])
+
+
+@pytest.fixture
+def deck_context() -> DesktopContext:
+    return DesktopContext(
+        device_kind="deck-lcd",
+        session_type="wayland",
+        displays=(DisplayState("eDP-1", True, True, 800, 1280, 60.0, 1.35),),
+        physical_dock=False,
+        external_keyboard=True,
+        external_mouse=True,
+        capabilities=frozenset({"kwin-virtual-keyboard"}),
+    )
+
+
+@pytest.fixture
+def store(tmp_path: Path) -> StateStore:
+    value = StateStore(tmp_path / "state.db")
+    value.migrate()
+    yield value
+    value.close()
+
+
+def test_plan_schema_and_confirmed_apply(deck_context: DesktopContext, store: StateStore) -> None:
+    effect = FakeEffect()
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan("auto")
+    contracts.validate(plan.to_dict(), "desktop-plan-v1.schema.json")
+
+    result = coordinator.apply(plan.plan_id, plan.confirm_token)
+    assert result.status == "ok"
+    assert result.profile.profile_id == "handheld-desktop"
+    assert effect.state == "handheld-desktop"
+    status = coordinator.status()
+    contracts.validate(status, "desktop-status-v1.schema.json")
+    assert status["independentRuntime"] is True
+
+
+def test_wrong_confirmation_does_not_apply(deck_context: DesktopContext, store: StateStore) -> None:
+    effect = FakeEffect()
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan()
+    with pytest.raises(SteamZeroError, match="E-TX-CONFIRM-REQUIRED"):
+        coordinator.apply(plan.plan_id, "errado")
+    assert effect.state == "original"
+
+
+def test_context_drift_makes_plan_stale(deck_context: DesktopContext, store: StateStore) -> None:
+    context_port = FakeContext(deck_context)
+    coordinator = ExperienceCoordinator(context_port, (FakeEffect(),), store)
+    plan = coordinator.plan()
+    context_port.value = DesktopContext(**{**deck_context.__dict__, "physical_dock": True})
+    with pytest.raises(SteamZeroError, match="E-TX-STALE-PLAN"):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+
+
+@pytest.mark.fi
+def test_generic_owner_conflict_blocks_apply(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    conflicted = DesktopContext(**{**deck_context.__dict__, "conflicts": ("display instável",)})
+    coordinator = ExperienceCoordinator(FakeContext(conflicted), (FakeEffect(),), store)
+    plan = coordinator.plan()
+    with pytest.raises(SteamZeroError, match="E-DESKTOP-OWNER-CONFLICT"):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+
+
+@pytest.mark.fi
+def test_verify_failure_rolls_back(deck_context: DesktopContext, store: StateStore) -> None:
+    effect = FakeEffect()
+    effect.verify_ok = False
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan()
+    with pytest.raises(SteamZeroError, match="E-DESKTOP-VERIFY"):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+    assert effect.state == "original"
+
+
+@pytest.mark.fi
+def test_power_loss_leaves_recoverable_snapshot(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    effect = FakeEffect()
+    effect.power_loss = True
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan()
+    with pytest.raises(PowerLoss):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+    assert coordinator.status()["recoveryRequired"] is True
+
+    effect.power_loss = False
+    recovered = coordinator.recover()
+    assert recovered["status"] == "rolled-back"
+    assert effect.state == "original"
+
+
+@pytest.mark.fi
+def test_all_optional_effects_missing_is_degraded(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    coordinator = ExperienceCoordinator(
+        FakeContext(deck_context), (FakeEffect(available=False),), store
+    )
+    plan = coordinator.plan("safe")
+    result = coordinator.reset(plan.plan_id, plan.confirm_token)
+    assert result.status == "degraded"
+    assert result.skipped_effects == ("fake-effect",)
+
+
+def test_reset_rejects_non_safe_plan(deck_context: DesktopContext, store: StateStore) -> None:
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (), store)
+    plan = coordinator.plan("handheld")
+    with pytest.raises(SteamZeroError, match="E-API-SCHEMA"):
+        coordinator.reset(plan.plan_id, plan.confirm_token)
+
+
+def test_state_contains_only_native_profile_data(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (), store)
+    plan = coordinator.plan()
+    coordinator.apply(plan.plan_id, plan.confirm_token)
+    exported = json.dumps(store.export_json(), sort_keys=True).lower()
+    assert "/mnt/sdcard/projects/phasezero" not in exported
+    assert "$xdg_state_home/phasezero" not in exported
+
+
+def test_auto_transition_requires_three_seconds_stable(
+    deck_context: DesktopContext,
+    store: StateStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context_port = FakeContext(deck_context)
+    coordinator = ExperienceCoordinator(context_port, (), store)
+    initial = coordinator.plan("auto")
+    coordinator.apply(initial.plan_id, initial.confirm_token)
+    context_port.value = DesktopContext(
+        **{
+            **deck_context.__dict__,
+            "displays": (
+                *deck_context.displays,
+                DisplayState("DP-1", True, False, 1920, 1080, 60.0, 1.0),
+            ),
+        }
+    )
+    first = coordinator.plan("auto")
+    assert first.blockers == ("contexto automático ainda não estável por 3 segundos",)
+    later = datetime.fromisoformat(first.created_at) + timedelta(seconds=4)
+    monkeypatch.setattr(desktop_domain, "_now", lambda: later)
+    second = coordinator.plan("auto")
+    assert second.blockers == ()
+    assert second.target.profile_id == "docked-desktop"
+
+
+def test_corrupt_desktop_plan_reports_state_integrity(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    store.save_profile(
+        {
+            "id": "desktop-plan-corrupt",
+            "scope": "desktop-experience",
+            "kind": "desktop-plan",
+            "payload_json": "{not-json",
+            "priority": 0,
+            "profile_owner": "steamzero",
+        }
+    )
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (), store)
+    with pytest.raises(SteamZeroError, match="E-STATE-INTEGRITY"):
+        coordinator.apply("corrupt", "token")

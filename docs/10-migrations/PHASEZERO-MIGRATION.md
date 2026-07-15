@@ -1,25 +1,36 @@
-# PHASEZERO-MIGRATION — relação com o PhaseZero existente
+# PHASEZERO-MIGRATION — importação legada offline e opcional
 
-## Postura
+## Regra de independência
 
-O PhaseZero atual (`/mnt/sdcard/Projects/PhaseZero`) **não é modificado** e continua dono dos domínios fora de escopo (boot/VM/Waydroid/homelab — N3). O Unified é um produto novo que assume o domínio jogos/emulação.
+O SteamZero não detecta, importa, chama, inicia, para ou monitora PhaseZero em runtime.
+Não compartilha estado, código, serviço, lock, configuração nem mecanismo de rollback.
+Uma instalação limpa deve oferecer todas as capacidades sem qualquer artefato legado.
 
-## O que migra (quando o usuário tem PhaseZero Linux em uso)
+Referências ao projeto pesquisado são permitidas apenas em pesquisa, atribuição legal e
+neste protocolo de importação. O gate `make independence` protege o pacote padrão.
 
-| Ativo PhaseZero | Destino no Unified | Método |
-|---|---|---|
-| Layout `Emulation/` criado por `pz emulation layout` | adotado como raízes de conteúdo | scan read-only → adoção por link/registro (sem mover) |
-| Operações/manifests em `$XDG_STATE_HOME/phasezero/operations/` | histórico importado como registros legados (read-only) | parser dedicado; nada é reexecutado |
-| Configs de emuladores aplicadas por `pz emulation * configure` | verify + adoção pelos adapters correspondentes | diff contra templates; divergências viram presets do usuário |
-| Perfis de modo steamdeck (handheld/docked) | perfis do Device/Mode Manager | tradução declarativa |
-| Instalações EmuDeck/RetroDECK feitas via wrappers | ver EMUDECK-IMPORT/RETRODECK-IMPORT | — |
+## Ferramenta separada
 
-## O que NÃO migra
+`tools/import_phasezero_snapshot.py` não é empacotado nem registrado como entrypoint do
+SteamZero. Ele:
 
-Segredos do bootstrap Windows, estado de MCPs/AI, boot entries GRUB, VMs, homelab — fora de domínio.
+1. recebe um diretório de snapshot explicitamente escolhido pelo usuário;
+2. lê somente arquivos JSON regulares, com containment, limite de quantidade/tamanho e
+   rejeição de symlinks;
+3. produz em stdout um bundle `steamzero.offline-legacy-import` autocontido;
+4. nunca executa `pz`, scripts, serviços ou comandos contidos no snapshot;
+5. não aplica o bundle automaticamente.
 
-## Coexistência
+Depois da conversão, apagar a origem não pode alterar o bundle nem o SteamZero. A
+importação futura do bundle seguirá scan→plan→preview→confirm→apply, copiando o estado
+aceito para estruturas nativas.
 
-- O Unified detecta PhaseZero instalado e regista versões na Compat Matrix; ambos podem coexistir (áreas de estado separadas por XDG).
-- Wrappers de emulação do `pz` podem, em versão futura do PhaseZero, delegar ao Unified — decisão do PhaseZero, não deste projeto.
-- Nenhuma migração automática: sempre plano+preview+opt-in por seção (USER-DATA-PRESERVATION).
+## Ownership e conflito
+
+Não existe coexistência coordenada. Antes de assumir entrada/display, o SteamZero usa
+detecção genérica de concorrência por recurso. Estado instável ou dispositivo já
+capturado resulta em `E-DESKTOP-OWNER-CONFLICT` e modo observador; não há tentativa de
+identificar ou controlar o processo externo.
+
+O desligamento de qualquer serviço legado é uma ação externa e explícita do usuário,
+fora do runtime SteamZero. Nenhum rollback SteamZero depende de reativá-lo.

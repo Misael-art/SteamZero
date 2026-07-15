@@ -1,12 +1,16 @@
 # SteamZero
 
-Plataforma consolidada de jogos e emulação para Steam Deck e desktops Linux, projetada a partir da análise de PhaseZero, EmuDeck, LinuxToys e RetroDECK.
+Plataforma autônoma de jogos e emulação para Steam Deck e desktops Linux. A pesquisa
+histórica avaliou PhaseZero, EmuDeck, LinuxToys e RetroDECK, mas nenhum deles é
+dependência de build, instalação, runtime, recuperação ou testes do SteamZero.
 
 **Estado:** implementação aprovada e em andamento. Fases 1–2 e o critério de
 saída da Fase 3 possuem backend `verified-dev` (RT-06..11 verdes). A Fase 4 começou
 com schema/registry, três manifests núcleo e lifecycle portável transacional do M10;
-o executor Flatpak, a demonstração real dos três emuladores, hardware Steam Deck e
-demais marcos continuam pendentes. Consulte `IMPLEMENTATION-REPORT.md` para evidências.
+o M10-H adiciona a fundação Handheld Desktop para BigLinux/KDE, com status real no
+Steam Deck LCD, perfis transacionais e UI Qt/QML opcional. Aplicação real dos perfis,
+executor Flatpak e demais marcos continuam pendentes. Consulte
+`IMPLEMENTATION-REPORT.md` para evidências e limites.
 
 ## Metodologia replicável
 
@@ -35,9 +39,14 @@ demais marcos continuam pendentes. Consulte `IMPLEMENTATION-REPORT.md` para evid
 | `docs/10-migrations` | PhaseZero, import EmuDeck/RetroDECK, preservação de dados |
 | `docs/11-legal` | matriz de licenças, atribuição, avisos de terceiros, política de reuso |
 | `docs/12-roadmap` | roadmap por fases, marcos, riscos, dependências |
-| `docs/adr` | 18 decisões arquiteturais (0013-licença pendente de decisão) |
+| `docs/adr` | decisões arquiteturais, incluindo independência de runtime e isolamento de falhas |
 | `reference/` | clones somente-leitura dos projetos analisados (declarados no WORKLOG) — **não modificar** |
 
 ## Política inegociável
 
 `local-owned-dump-only` — ver [docs/04-security/CONTENT-POLICY.md](docs/04-security/CONTENT-POLICY.md).
+
+Também é inegociável a independência operacional: `make independence` falha se o
+pacote padrão introduzir import, entrypoint, dependência ou literal perigoso de runtime
+legado. Migração legada, quando necessária, ocorre apenas por snapshot offline em uma
+ferramenta separada e removível.

@@ -2,7 +2,9 @@
 
 ## Convenções globais
 
-- `steamzero <domínio> <ação> [alvo] [flags]`; domínios: `component, library, bios, saves, media, perf, controls, frontend, session, mode, storage, jobs, state, config, doctor, backup, support`.
+- `steamzero <domínio> <ação> [alvo] [flags]`; domínios incluem `component, library,
+  bios, saves, media, perf, controls, frontend, session, mode, desktop, storage, jobs,
+  state, config, doctor, backup, support`.
 - **Saída:** humana por padrão; `--json` emite envelope v2 (abaixo) em stdout **puro** (nada mais em stdout; avisos em stderr) — herda a disciplina do PhaseZero `-UiContractJson` ("MUST emit JSON only, no stderr").
 - **Exit codes estáveis:** 0 ok · 1 falha da operação (ver `error.code`) · 2 uso inválido · 3 precisa confirmação (`--confirm` ausente) · 4 bloqueado (lock/rede/compat) · 69 dependência ausente · 77 privilégio requerido (herdados dos usos 69/77 no PhaseZero common.sh).
 - **Mutação:** toda ação mutável tem `--dry-run`, `--plan` (só plana e imprime `planId`+`confirmToken`), `--confirm <token>`; `--yes` só em ações de risco baixo declarado.
@@ -35,6 +37,11 @@ steamzero library rollback --operation-id OP
 steamzero bios status [--platform psx] --json
 steamzero saves timeline <gameId> · steamzero saves restore <gameId> --entry SEQ --confirm T
 steamzero mode apply docked-tv · steamzero mode status --json
+steamzero desktop status --json
+steamzero desktop plan --profile auto|handheld|dock|safe
+steamzero desktop apply --plan-id P --confirm TOKEN
+steamzero desktop reset --plan-id P_SAFE --confirm TOKEN
+steamzero desktop recover · steamzero desktop ui
 steamzero jobs list|pause|resume|cancel <jobId>
 steamzero state export --out state.json · steamzero backup create --full
 steamzero support bundle --preview
@@ -47,3 +54,7 @@ steamzero support bundle --preview
 1. CLI é cliente do daemon; com daemon ausente, roda o núcleo in-process com os mesmos contratos.
 2. Nenhuma ação aceita path cru onde exista ID de entidade (T-05); comandos de import aceitam paths (validados).
 3. `--json` é estável e testado por golden files; mudanças aditivas apenas dentro do mesmo major.
+4. `desktop status` é read-only e funciona sem Qt, KDE, Steam ou InputPlumber. `apply`
+   revalida o fingerprint do contexto e recusa ownership concorrente.
+5. `desktop recover` só restaura snapshot pendente; `desktop reset` aceita exclusivamente
+   plano `safe` já confirmado.

@@ -4,12 +4,14 @@
 
 Uma plataforma de jogos e emulação para Steam Deck e desktops Linux em que **nenhuma operação destrói dados do usuário**, toda mudança é planejada, visível e reversível, e a experiência inteira — da instalação de um emulador à restauração de um save — é operável pelo controle.
 
-O produto une quatro heranças, sem copiá-las:
+O produto parte de quatro fontes de pesquisa, sem criar dependência operacional:
 
 1. **EmuDeck** → cobertura funcional (31+ emuladores, templates de configuração, SRM/ES-DE, cloud sync) e experiência acumulada de casos reais.
 2. **LinuxToys** → instaladores modulares mínimos: um script = uma capacidade, com metadados declarativos no cabeçalho e biblioteca comum de detecção de distro.
 3. **RetroDECK** → isolamento (Flatpak), plataforma coesa (paths móveis, backup de userdata, BIOS checker, componentes com manifest/recipe), distribuição como appliance.
-4. **PhaseZero** → padrão transacional: scan→plan→preview→apply→verify→rollback com `confirmToken`, manifesto de mudanças, envelope JSON, escrita atômica, guards de preflight, bridge de privilégio mínimo.
+4. **PhaseZero** → referência histórica de comportamento transacional. O SteamZero
+   reimplementa seus próprios contratos, estado, rollback e recuperação; nunca importa,
+   executa ou exige o projeto pesquisado.
 
 ## O que o produto É
 
@@ -17,11 +19,15 @@ O produto une quatro heranças, sem copiá-las:
 - **Segura por padrão**: menor privilégio, allowlist de ações, validação de caminhos, staging, checksums, quarentena.
 - **Orientada a estados**: cada componente, jogo, BIOS, save e job tem estado conhecido, auditável e exportável.
 - **Resiliente ao mundo real do Deck**: suspensão, dock/undock, microSD removido, bateria, offline, atualizações da Valve.
+- **Autônomo e substituível por capacidades**: KDE, Steam, InputPlumber e integrações
+  remotas são opcionais; ausência ou crash de um provider não derruba o núcleo.
 - **Legalmente responsável**: política `local-owned-dump-only` — o produto organiza e valida o que o usuário já possui; nunca obtém conteúdo protegido.
 
 ## O que o produto NÃO é
 
-Ver NON-GOALS.md. Em uma linha: não é loja de ROMs, não é lançador universal de scripts arbitrários, não é ferramenta de administração geral de Linux (boot/VM/homelab ficam no PhaseZero clássico).
+Ver NON-GOALS.md. Em uma linha: não é loja de ROMs, não é lançador universal de
+scripts arbitrários e não é ferramenta de administração geral de Linux; boot, VM e
+homelab permanecem fora do escopo, independentemente de qual ferramenta os gerencie.
 
 ## Métrica de sucesso da visão
 

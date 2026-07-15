@@ -3,7 +3,9 @@
 **Status:** aceito
 
 ## Contexto
-§11/§12. Game Mode (gamescope) restringe: janelas únicas, sem tray, teclado virtual do Steam, foco por gamepad. Desktop Mode é KDE completo. PhaseZero já separa modos com scripts dedicados e detecção (`detect-mode.sh`, `display-session.sh`).
+§11/§12. Game Mode (gamescope) restringe: janelas únicas, sem tray, teclado virtual do
+Steam, foco por gamepad. Desktop Mode é KDE completo, mas no painel de 7" também exige
+uma experiência portátil própria. A solução não pode depender de scripts externos.
 
 ## Alternativas
 1. **Duas experiências dedicadas sobre o mesmo daemon: Game Mode UI empacotada como app não-Steam (roda dentro do gamescope) + Desktop UI; QAM opcional** (escolhida).
@@ -11,7 +13,10 @@
 3. Game Mode via web no navegador do Deck — contras: UX de navegador em gamescope é hostil.
 
 ## Decisão
-Game Mode UI adicionada como shortcut Steam (pelo nosso adapter de shortcuts, com launch options controladas — precedente `pz steamdeck launch-options`); detecção de contexto (gamescope vs desktop) escolhe defaults de escala/layout; mesmas ações, mesmos contratos; Desktop UI cobre o superset administrativo.
+Game Mode UI será adicionada como shortcut Steam pelo adapter próprio. Na sessão KDE,
+o Desktop Experience Coordinator escolhe `handheld-desktop` ou `docked-desktop` por
+capabilities e sinais locais; teclado/mouse isolados não trocam o perfil. O shell usa
+Overview/Application Dashboard do Plasma. Mesmas ações e contratos servem ambas as UIs.
 
 ## Consequências
 Session/Mode Manager único serve as duas; testes UI nas duas resoluções/contextos.
