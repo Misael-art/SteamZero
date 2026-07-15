@@ -88,3 +88,53 @@ Aguardar aprovação (`APPROVED_TO_IMPLEMENT` no diretório do projeto ou autori
 - Criado `METODOLOGIA-SINTESE-DE-PROJETOS.md` (raiz): documento autocontido, dirigido a agentes de IA, formalizando o método usado neste projeto — pipeline E1–E8 (descoberta → auditoria com evidência → matrizes de cruzamento → legal → síntese arquitetural → fundação documental → gate de prontidão → handoff com revisão externa), com princípios invariantes (MP-1..5), checklist de replicação e armadilhas observadas nesta execução.
 - Criado `IMPLEMENTATION-PROMPT.md` (raiz): prompt de construção (etapa E8) para o agente implementador, com gates de partida, DoD por commit, proibições e exigência de `IMPLEMENTATION-REPORT.md` auditável.
 - README atualizado com ponteiros para ambos.
+
+## 2026-07-15 — Sessão 2: início da implementação (Fase 1 / M1)
+
+### Gates de partida (todos verdes)
+- **Aprovação formal:** concedida pelo titular nesta conversa ("inicie" + seguir a
+  recomendação do FOUNDATION-READINESS-REPORT), confirmada via prompt de decisão.
+  Registrada em `APPROVED_TO_IMPLEMENT` (raiz).
+- **Q2/ADR-0013 licença:** decidida = **GPL-3.0-or-later**. ADR-0013 → ACEITO;
+  REUSE-POLICY atualizada; `LICENSE` = GPLv3 canônica da FSF baixada por HTTPS e
+  verificada (marcadores + `sha256 3972dc97…`).
+- **git init:** repositório criado (`git init -b main`), `.gitignore` cobrindo
+  venv/caches/reference/runtime.
+- **Decisões de escopo do titular:** Q4 = v1 estritamente emulação+jogos
+  (boot/VM/Waydroid/homelab seguem NON-GOALS); Q7 = pt-BR com chaves i18n.
+
+### Toolchain (evidência)
+- Python 3.14.6 (≥3.11 ✓). Venv `.venv`. Lockfile `requirements-dev.lock` gerado
+  por `pip-compile --generate-hashes` (SR-11) e instalado com `--require-hashes`.
+- `ruff 0.15.21`, `mypy 2.3.0`, `pytest 9.1.1`, `jsonschema 4.26.0`, `hypothesis`.
+- `shellcheck` ausente no ambiente; sem shims bash na Fase 1 (ADR-0001) — gate de
+  CI de shellcheck já escrito, dispara quando houver `shims/**/*.sh`. Dívida baixa.
+
+### Entregue nesta sessão (M1 parcial — base do núcleo)
+- Esqueleto do pacote `src/steamzero/` com fronteiras (MODULE-BOUNDARIES).
+- `core.ids` (ULID 128-bit Crockford + slugs) + testes (unit + property).
+- Pacote `i18n/` pt-BR com catálogo de mensagens (Q7).
+- `core.errors`: registro autoritativo de códigos (ERROR-CATALOG) + objeto
+  error-v1 + `SteamZeroError` que recusa código não catalogado.
+- **Lint de fronteiras** `tools/lint_boundaries.py` (AST puro): BND-EVAL,
+  BND-WRITE-PORT, BND-PROC, BND-SHELL, BND-DOMAIN-ADAPTER — com teste que prova
+  detecção real e que o `src` passa limpo. Rodando em CI desde o 1º commit.
+- Harness: `pyproject.toml` (ruff/mypy-strict/pytest), `Makefile`, `.github/workflows/ci.yml`.
+
+### Divergências/adições registradas (não silenciosas)
+- **Adições ao ERROR-CATALOG** (permitido: catálogo "cresce por PR com revisão"):
+  `E-CLI-USAGE`, `E-STATE-MIGRATION`, `E-STATE-INTEGRITY`, `E-INTERNAL-UNEXPECTED`.
+  Todas com textos pt-BR e cobertas pelo teste de completude do catálogo.
+- **Interpolação de texto de erro:** catálogo mantido com **texto fixo** (sem
+  placeholders); especificidades dinâmicas vão em `detail`/`autoAction` do objeto
+  de erro — escolha conservadora que honra "texto fixo auditado" da CONTENT-POLICY.
+  Interpolação de títulos humanos (ex.: "Falta scph1001.bin") fica para a Fase 3 (UX).
+
+### Evidência de qualidade (saída real)
+- `ruff check` → All checks passed! · `ruff format --check` → 10 files already formatted
+- `mypy` (--strict) → Success: no issues found · `pytest -q` → 41 passed
+- `python tools/lint_boundaries.py --root src` → OK (0 violações)
+
+### Próxima ação
+`core.fs` (atomic write / staging / containment / path-safety) + `core.log`
+(JSONL + masking de segredos), depois locks, journal, transação, state store.

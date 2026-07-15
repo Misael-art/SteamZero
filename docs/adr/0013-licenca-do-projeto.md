@@ -1,6 +1,8 @@
 # ADR-0013 — Licença do projeto (Q2)
 
-**Status:** PENDENTE DE DECISÃO DO TITULAR (bloqueia reuso de código; não bloqueia reimplementação)
+**Status:** ACEITO (2026-07-15) — licença = **GPL-3.0-or-later**. Decisão do titular
+registrada em `APPROVED_TO_IMPLEMENT` e no WORKLOG (Sessão 2). Libera reuso literal
+de código GPL das referências sob a árvore de decisão da REUSE-POLICY.
 
 ## Contexto
 EmuDeck/LinuxToys/RetroDECK: GPL-3.0. PhaseZero: sem licença (titular = autor). Ver 11-legal/LICENSE-MATRIX.md.
@@ -14,10 +16,17 @@ EmuDeck/LinuxToys/RetroDECK: GPL-3.0. PhaseZero: sem licença (titular = autor).
 R-01 (exposição 15). Fase 1 pode começar limpa (código 100% novo), mas a Fase 4 (templates) trava.
 
 ## Decisão
-Aguardando `APPROVED_TO_IMPLEMENT` + escolha explícita. Recomendação técnica registrada: opção 1, com Q3 (licenciar PhaseZero atual, ao menos dual-license do `linux/` para o titular reusar formalmente).
+**Opção 1 — GPL-3.0-or-later.** Escolhida pelo titular em 2026-07-15 junto da
+aprovação formal de implementação. Q3 (licenciar o PhaseZero atual) permanece
+recomendação aberta; não bloqueia, pois a fundação captura o comportamento e a
+reimplementação limpa já é possível.
 
-## Consequências (quando decidida)
-Atualizar LICENSE, SPDX headers, ATTRIBUTION-PLAN, REUSE-POLICY casos classificados.
+## Consequências (decidida)
+- `LICENSE` na raiz = texto canônico GPLv3 (FSF), sha256 `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`.
+- Cabeçalhos SPDX `GPL-3.0-or-later` em todo arquivo de código.
+- `pyproject.toml` declara `license = "GPL-3.0-or-later"`.
+- REUSE-POLICY: casos "derivação GPL" liberados (EmuDeck templates); casos "NÃO
+  copiar" (eval/sem strict) permanecem por não atenderem SECURITY-REQUIREMENTS.
 
 ## Revisão
-Na aprovação da fundação.
+Fechado. Reabrir apenas se houver decisão de relicenciar (exigiria novo ADR).

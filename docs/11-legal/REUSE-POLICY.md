@@ -1,5 +1,11 @@
 # REUSE-POLICY — política de reuso de código (§7)
 
+> **Q2 RESOLVIDA (2026-07-15): licença do SteamZero = GPL-3.0-or-later** (ADR-0013
+> aceito). O passo 2 da árvore ("compatível com a licença do projeto?") agora é
+> verdadeiro para os três projetos GPL-3.0 de referência: cópia literal é permitida
+> **desde que** passe também os passos 1 e 3 (licença conhecida + atende
+> SECURITY-REQUIREMENTS), com SPDX + atribuição + testes próprios (passo 4).
+
 ## Árvore de decisão (por trecho/arquivo candidato a reuso)
 
 ```

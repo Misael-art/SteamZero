@@ -1,0 +1,18 @@
+APPROVED_TO_IMPLEMENT=true
+
+Autorização formal para iniciar a implementação (Fases ≥ 1).
+
+Concedida por: responsável pelo projeto (misael.junio.oliveira@gmail.com)
+Data: 2026-07-15
+Canal: autorização textual nesta conversa ("inicie" + seguir a recomendação
+do FOUNDATION-READINESS-REPORT), confirmada explicitamente via prompt de decisão.
+
+Decisões do responsável registradas junto desta aprovação:
+- Q2 / ADR-0013 — Licença: GPL-3.0-or-later (recomendação aceita). Libera reuso
+  literal de código GPL das referências (EmuDeck/LinuxToys/RetroDECK) sob a
+  árvore de decisão de docs/11-legal/REUSE-POLICY.md.
+- Q4 — Escopo v1: estritamente emulação + jogos. boot/GRUB, VM Windows,
+  Waydroid e homelab permanecem NON-GOALS (docs/00-vision/NON-GOALS.md).
+- Q7 — Idioma primário da UI e mensagens: pt-BR, com chaves i18n desde o início.
+
+Ver docs/WORKLOG.md (entrada 2026-07-15, Sessão 2) para o registro completo.
