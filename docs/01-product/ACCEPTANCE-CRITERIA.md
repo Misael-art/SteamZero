@@ -1,0 +1,53 @@
+# ACCEPTANCE-CRITERIA — critérios de aceitação por área
+
+Formato Given/When/Then. Cada critério vira caso de teste em 08-testing/TEST-MATRIX.md.
+
+## Transações (aplica-se a TODA operação mutável)
+
+- AC-TX-01: Dado um plano gerado, quando qualquer arquivo-alvo muda entre plan e apply (hash divergente), então o apply é recusado com `E-TX-STALE-PLAN` e nenhuma mutação ocorre.
+- AC-TX-02: Dado um apply em andamento, quando o processo é morto (SIGKILL) em qualquer ponto, então após reinício `verify` reporta o estado real e `rollback` restaura o estado inicial byte-idêntico (exceto mtimes), sem temporários órfãos.
+- AC-TX-03: Dado `--dry-run`, então zero syscalls de escrita fora do diretório de staging/state (verificado com strace no CI).
+- AC-TX-04: Todo apply exige `confirmToken` emitido pelo plan correspondente (padrão PhaseZero `library/apply.py:76`).
+
+## Instalação de componentes
+
+- AC-IN-01: Download sem checksum previsto no manifesto ⇒ falha `E-SUPPLY-NO-CHECKSUM` (não é warning).
+- AC-IN-02: Instalar 2× o mesmo componente ⇒ segunda execução termina `no-op` com estado idêntico (idempotência).
+- AC-IN-03: Falha de verify pós-instalação ⇒ rollback automático; componente volta ao estado anterior e o erro diz isso ("A atualização falhou. A versão anterior foi restaurada.").
+
+## Biblioteca
+
+- AC-LB-01: Scan nunca escreve fora do state store (read-only garantido).
+- AC-LB-02: Conversão de ROM mantém o original até verify OK + commit; espaço é checado com margem antes do início.
+- AC-LB-03: Arquivo com path traversal/zip bomb no import ⇒ quarentena + `E-CONTENT-UNSAFE-ARCHIVE`, nunca extração parcial fora do staging.
+
+## BIOS/keys
+
+- AC-BI-01: Nenhum hash/keyname de conteúdo protegido aparece em logs de nível < DEBUG-local; keys nunca aparecem em nenhum nível.
+- AC-BI-02: BIOS ausente é reportada com plataforma+emulador afetado e ação "importar arquivo local" — nunca com link de download.
+
+## Saves
+
+- AC-SV-01: Conflito de save divergente nunca resolve sozinho: ambos preservados + UI de decisão (J6).
+- AC-SV-02: Suspensão dispara checkpoint; queda de energia simulada após retomada não perde mais que o intervalo desde o último flush.
+- AC-SV-03: Restauração por linha do tempo recupera qualquer versão retida byte-idêntica (checksum).
+
+## Sessão/modos Deck
+
+- AC-SD-01: Transição handheld↔docked aplica perfil em ≤5s sem reiniciar o jogo; falha de display percorre a cadeia de fallback até imagem válida.
+- AC-SD-02: Remoção de microSD com jogo instalado nele ⇒ estado `unavailable`, zero escrita no mountpoint fantasma, restauração automática ao reinserir (UUID).
+
+## Offline
+
+- AC-OF-01: Com rede desabilitada: iniciar jogo, carregar save, abrir biblioteca, usar BIOS local, rodar doctor — tudo funciona; operações remotas ficam `queued` e retomam com rede.
+
+## UI/controle
+
+- AC-UI-01: Toda tela é alcançável e operável apenas com gamepad (A confirma, B volta, shoulders trocam abas); teste automatizado de focus graph sem becos.
+- AC-UI-02: Todo erro exibido tem código estável, impacto e ação; detalhes técnicos são opt-in.
+- AC-UI-03: Progresso exibido deriva de medição real (bytes/itens/etapas); proibido progresso sintético.
+
+## Privilégio
+
+- AC-PR-01: Helper privilegiado rejeita qualquer ação fora da allowlist com `E-PRIV-DENIED`; fuzzing de parâmetros não produz execução arbitrária.
+- AC-PR-02: Nenhum fluxo comum (instalar emulador Flatpak user, importar ROMs, saves) requer root.
