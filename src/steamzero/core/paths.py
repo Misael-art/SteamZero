@@ -67,6 +67,14 @@ def logs_dir() -> Path:
     return state_home() / "logs"
 
 
+def plans_dir() -> Path:
+    return state_home() / "plans"
+
+
+def plan_path(plan_id: str) -> Path:
+    return plans_dir() / f"{plan_id}.json"
+
+
 def state_db() -> Path:
     return state_home() / "state.db"
 

@@ -158,6 +158,50 @@ def test_quarantine_moves_not_deletes(state: Path, tmp_path: Path) -> None:
     assert dest.read_bytes() == b"suspeito"
 
 
+def test_same_filesystem_within_tmp(tmp_path: Path) -> None:
+    a = tmp_path / "a"
+    b = tmp_path / "deep" / "b"
+    assert fs.same_filesystem(a, b)
+
+
+def test_iter_files(tmp_path: Path) -> None:
+    fs.write_atomic_text(tmp_path / "a.txt", "1")
+    fs.write_atomic_text(tmp_path / "sub" / "b.txt", "2")
+    (tmp_path / "link").symlink_to(tmp_path / "a.txt")
+    files = list(fs.iter_files(tmp_path))
+    names = {p.name for p in files}
+    assert names == {"a.txt", "b.txt"}  # symlink não incluído
+
+
+def test_iter_files_missing_root(tmp_path: Path) -> None:
+    assert list(fs.iter_files(tmp_path / "nope")) == []
+
+
+def test_remove_tree_idempotent(tmp_path: Path) -> None:
+    d = tmp_path / "tree"
+    fs.write_atomic_text(d / "x", "1")
+    fs.remove_tree(d)
+    assert not d.exists()
+    fs.remove_tree(d)  # 2ª vez não falha
+
+
+def test_write_atomic_cleans_temp_on_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # falha no meio da escrita não deixa tmp órfão
+    import os as _os
+
+    real_write = _os.write
+
+    def boom(fd: int, data: bytes) -> int:
+        raise OSError("disco cheio simulado")
+
+    monkeypatch.setattr(fs.os, "write", boom)
+    with pytest.raises(OSError):
+        fs.write_atomic(tmp_path / "f", b"x")
+    monkeypatch.setattr(fs.os, "write", real_write)
+    leftovers = [x for x in tmp_path.iterdir() if ".tmp." in x.name]
+    assert leftovers == []
+
+
 def test_ensure_state_layout_idempotent(state: Path) -> None:
     fs.ensure_state_layout()  # segunda vez não falha
     for factory in paths.STATE_SUBDIRS:

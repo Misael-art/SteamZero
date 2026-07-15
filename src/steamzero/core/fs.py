@@ -108,6 +108,12 @@ def remove_file(path: Path) -> None:
     _silent_unlink(path)
 
 
+def remove_tree(path: Path) -> None:
+    """Remove uma árvore de diretório (idempotente). Usado no GC de staging."""
+    if path.exists():
+        shutil.rmtree(path)
+
+
 def rotate_log(path: Path, *, keep: int = 3) -> None:
     """Rotaciona ``path`` -> ``path.1`` -> ... -> ``path.<keep>`` (o mais antigo cai).
 
@@ -152,6 +158,7 @@ class AppendWriter:
         self._path = path
         self._fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, mode)
         os.fchmod(self._fd, mode)
+        self._closed = False
 
     @property
     def path(self) -> Path:
@@ -166,7 +173,9 @@ class AppendWriter:
         os.fsync(self._fd)
 
     def close(self) -> None:
-        os.close(self._fd)
+        if not self._closed:
+            os.close(self._fd)
+            self._closed = True
 
     def __enter__(self) -> AppendWriter:
         return self
