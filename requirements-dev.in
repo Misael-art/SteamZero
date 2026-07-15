@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Direct dev + runtime dependencies. Compiled to requirements-dev.lock with
-# pinned versions and hashes (SR-11) via:
+# Dependências diretas de runtime + dev/test. Compiladas para requirements-dev.lock
+# com versões pinadas e hashes (SR-11) via:
 #   pip-compile --generate-hashes requirements-dev.in -o requirements-dev.lock
+#
+# NB: pip-tools (a ferramenta que gera o lock) NÃO entra aqui de propósito — ela
+# arrasta setuptools não-pinado e quebraria `pip install --require-hashes`.
+# Instale-a separadamente só quando for regenerar o lock: `pip install pip-tools`.
 jsonschema
 ruff
 mypy
 pytest
 pytest-cov
 hypothesis
-pip-tools

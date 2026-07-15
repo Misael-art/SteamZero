@@ -31,6 +31,9 @@ coverage.xml
 *.local.db-wal
 *.local.db-shm
 
+# Claude Code local dir (session settings; not part of the product)
+/.claude/
+
 # Editor / OS noise
 .DS_Store
 *.swp
