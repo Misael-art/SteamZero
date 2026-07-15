@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plan-v1.schema.json",
+  "title": "Plano transacional (TRANSACTION-MODEL)",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "planId",
+    "confirmToken",
+    "kind",
+    "root",
+    "createdAt",
+    "expiresAt",
+    "status",
+    "rollbackGuarantee",
+    "requirements",
+    "actions",
+    "preconditions",
+    "preview"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "planId": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "confirmToken": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string" },
+    "root": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["pending", "applied", "aborted"] },
+    "rollbackGuarantee": { "type": "string" },
+    "requirements": { "type": "object" },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["actionId", "target", "newHash", "newSize", "newContentB64"],
+        "properties": {
+          "actionId": { "type": "string" },
+          "target": { "type": "string" },
+          "newHash": { "type": "string" },
+          "newSize": { "type": "integer", "minimum": 0 },
+          "newContentB64": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target", "fingerprint"],
+        "properties": {
+          "target": { "type": "string" },
+          "fingerprint": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "preview": { "type": "string" }
+  },
+  "additionalProperties": true
+}

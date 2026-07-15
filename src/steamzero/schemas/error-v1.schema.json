@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "error-v1.schema.json",
+  "title": "Objeto de erro (ERROR-CATALOG)",
+  "type": "object",
+  "required": ["code", "title"],
+  "properties": {
+    "code": { "type": "string", "pattern": "^E-[A-Z]+-[A-Z0-9-]+$" },
+    "title": { "type": "string" },
+    "what": { "type": ["string", "null"] },
+    "impact": { "type": ["string", "null"] },
+    "probableCause": { "type": ["string", "null"] },
+    "autoAction": { "type": ["string", "null"] },
+    "manualAction": { "type": ["string", "null"] },
+    "action": { "type": ["string", "null"] },
+    "detail": { "type": ["string", "null"] },
+    "operationId": { "type": ["string", "null"] },
+    "detailsRef": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

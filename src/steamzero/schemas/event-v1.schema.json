@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "event-v1.schema.json",
+  "title": "Evento de progresso/estado (EVENTS-AND-PROGRESS)",
+  "type": "object",
+  "required": ["seq", "ts", "kind", "correlationId"],
+  "properties": {
+    "seq": { "type": "integer", "minimum": 0 },
+    "ts": { "type": "string", "format": "date-time" },
+    "kind": { "enum": ["job.progress", "job.state", "entity.changed", "alert"] },
+    "jobId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "progress": {
+      "type": "object",
+      "properties": {
+        "stage": { "type": "string" },
+        "current": { "type": ["number", "null"] },
+        "total": { "type": ["number", "null"] },
+        "unit": { "enum": ["bytes", "items", "steps"] },
+        "rate": { "type": ["number", "null"] },
+        "currentItem": { "type": ["string", "null"] }
+      }
+    },
+    "state": { "type": "string" },
+    "error": { "$ref": "error-v1.schema.json" }
+  },
+  "additionalProperties": false
+}

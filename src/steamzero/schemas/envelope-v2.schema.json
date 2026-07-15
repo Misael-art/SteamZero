@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "envelope-v2.schema.json",
+  "title": "Envelope v2 de saída CLI/API (CLI-CONTRACT)",
+  "type": "object",
+  "required": ["ok", "contract", "module", "action", "status", "correlationId", "generatedAt"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "contract": { "const": "2.0" },
+    "module": { "type": "string" },
+    "action": { "type": "string" },
+    "status": { "enum": ["ok", "degraded", "failed", "blocked", "noop"] },
+    "operationId": { "type": ["string", "null"] },
+    "jobId": { "type": ["string", "null"] },
+    "correlationId": { "type": "string" },
+    "data": { "type": "object" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "enum": ["pass", "warn", "fail"] },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "error": {
+      "anyOf": [{ "type": "null" }, { "$ref": "error-v1.schema.json" }]
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
