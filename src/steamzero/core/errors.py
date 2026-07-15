@@ -69,6 +69,9 @@ ERROR_CATALOG: dict[str, str] = {
     "E-STATE-MIGRATION": "STATE",
     "E-STATE-INTEGRITY": "STATE",
     "E-INTERNAL-UNEXPECTED": "INTERNAL",
+    # Fase 3 (adições registradas — conversões, RT-06/FI-19)
+    "E-CONVERT-TIMEOUT": "CONVERT",
+    "E-CONVERT-FAILED": "CONVERT",
 }
 
 
