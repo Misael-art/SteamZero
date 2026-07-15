@@ -135,6 +135,61 @@ Aguardar aprovação (`APPROVED_TO_IMPLEMENT` no diretório do projeto ou autori
 - `mypy` (--strict) → Success: no issues found · `pytest -q` → 41 passed
 - `python tools/lint_boundaries.py --root src` → OK (0 violações)
 
-### Próxima ação
-`core.fs` (atomic write / staging / containment / path-safety) + `core.log`
-(JSONL + masking de segredos), depois locks, journal, transação, state store.
+### Fase 1 concluída nesta sessão — demonstração objetiva dos marcos (MILESTONES.md)
+
+Sequência de commits temáticos (0 mega-commit): baseline fundação → gate legal →
+scaffold/toolchain → ids/i18n/errors → lint fronteiras → core.fs → core.log/Secret →
+core.lock → journal/transação → FI-04 → State Store → Job Manager → M2 (CLI/schemas)
+→ build reproduzível.
+
+**M1 — "Kill-proof core" (FI-04 verde):**
+```
+$ pytest tests/failure_injection -q
+22 passed in 1.44s
+```
+Cobre kill (SimulatedKill) em cada etapa do pipeline × {alvo existente, ausente},
+kept pós-commit, recovery idempotente, e **SIGKILL real** de subprocesso em
+apply.intent/activate/done/commit. AC-TX-02 provado (estado byte-idêntico, zero
+tmps órfãos, journal terminal).
+
+**M1 — AC-TX-01..04 + rollback (RB-3/RB-4/T-09):**
+```
+$ pytest tests/integration/test_transaction.py -q -k "ac_tx or rb3 or rb4 or verify_failure or new_file"
+7 passed
+```
+
+**M2 — "CLI contratada" (`steamzero doctor --json` validado por schema):**
+```
+$ steamzero doctor --json | (valida contra envelope-v2.schema.json) → ENVELOPE VÁLIDO
+status=ok, checks=4 (runtime.python, state.layout, state.db.integrity, recovery.pending)
+$ steamzero --contract-version → 2.0
+```
+
+**M3 — "Jobs resilientes" (pausa/resume/cancel/reboot-recovery):**
+```
+$ pytest tests/integration/test_jobs.py -q -k "recover or pause or cancel"
+5 passed
+```
+recover: running→interrupted→{queued | rolled-back | completed(roll-forward)}.
+
+**Qualidade (build limpo reproduzido do zero — clone + venv do lockfile):**
+```
+ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
+pytest → 168 passed ; cobertura núcleo: fs 95% journal 97% state 96%
+transaction 93% lock 94% (meta ≥90% no núcleo/core.fs: atingida)
+```
+
+### Divergências/notas adicionais (não silenciosas)
+- **`interrupted -> completed`** adicionado à máquina de estados de job (roll-forward),
+  conforme o TEXTO do JOB-LIFECYCLE §Recuperação; o diagrama não o desenha.
+- **State Store como porta de persistência distinta de core.fs**: escrita SQLite não
+  passa por core.fs (ADR-0005: writer único no daemon); backup do db passa por core.fs.
+- **`operation` table populada pela orquestração** (job manager/domínio), não pelo
+  core.transaction (que usa o journal como fonte de verdade do recovery).
+- **Adições ao ERROR-CATALOG**: E-CLI-USAGE, E-STATE-MIGRATION, E-STATE-INTEGRITY,
+  E-INTERNAL-UNEXPECTED (permitido; catálogo cresce por PR).
+
+### Próxima ação (Fase 2 — não iniciada nesta sessão)
+Device/Mode Manager, Session Manager, microSD por UUID, offline queue, Compat
+Matrix, helper `steamzero-admin` (allowlist+polkit). Ver IMPLEMENTATION-REPORT.md
+para estado por marco e dívidas técnicas.
