@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Layout em disco (TRANSACTION-MODEL §Layout, ADR-0005).
+
+Todos os caminhos derivam de XDG (sobrescrevíveis por env, o que permite isolar
+o estado em testes). Permissões: diretórios 0700, arquivos 0600 (SR-07).
+
+    $XDG_STATE_HOME/steamzero/
+      state.db  journal/<opId>.jsonl  staging/<opId>/  backups/<opId>/
+      quarantine/<opId>/  logs/core.jsonl
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+APP = "steamzero"
+
+
+def _home() -> Path:
+    return Path.home()
+
+
+def state_home() -> Path:
+    """Raiz do estado: ``$XDG_STATE_HOME/steamzero`` (default ~/.local/state)."""
+    base = os.environ.get("XDG_STATE_HOME")
+    return (Path(base) if base else _home() / ".local" / "state") / APP
+
+
+def data_home() -> Path:
+    base = os.environ.get("XDG_DATA_HOME")
+    return (Path(base) if base else _home() / ".local" / "share") / APP
+
+
+def config_home() -> Path:
+    base = os.environ.get("XDG_CONFIG_HOME")
+    return (Path(base) if base else _home() / ".config") / APP
+
+
+def runtime_dir() -> Path:
+    """Diretório de runtime (socket): ``$XDG_RUNTIME_DIR/steamzero``."""
+    base = os.environ.get("XDG_RUNTIME_DIR")
+    if base:
+        return Path(base) / APP
+    return Path(f"/run/user/{os.getuid()}") / APP
+
+
+# --- subcaminhos do estado -------------------------------------------------
+def journal_dir() -> Path:
+    return state_home() / "journal"
+
+
+def staging_dir() -> Path:
+    return state_home() / "staging"
+
+
+def backups_dir() -> Path:
+    return state_home() / "backups"
+
+
+def quarantine_dir() -> Path:
+    return state_home() / "quarantine"
+
+
+def logs_dir() -> Path:
+    return state_home() / "logs"
+
+
+def state_db() -> Path:
+    return state_home() / "state.db"
+
+
+def core_log() -> Path:
+    return logs_dir() / "core.jsonl"
+
+
+def journal_path(operation_id: str) -> Path:
+    return journal_dir() / f"{operation_id}.jsonl"
+
+
+def staging_for(operation_id: str) -> Path:
+    return staging_dir() / operation_id
+
+
+def backup_for(operation_id: str) -> Path:
+    return backups_dir() / operation_id
+
+
+def quarantine_for(operation_id: str) -> Path:
+    return quarantine_dir() / operation_id
+
+
+#: Todos os diretórios base do estado (criados por core.fs.ensure_state_layout).
+STATE_SUBDIRS = (journal_dir, staging_dir, backups_dir, quarantine_dir, logs_dir)
