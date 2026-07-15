@@ -95,6 +95,7 @@ class JobManager:
         logger: log.StructuredLogger | None = None,
         session_active: Callable[[], bool] | None = None,
         on_ac_power: Callable[[], bool] | None = None,
+        network_available: Callable[[], bool] | None = None,
     ) -> None:
         self._store = store
         self._log = logger or log.get_logger()
@@ -102,6 +103,7 @@ class JobManager:
         self._controls: dict[str, _Control] = {}
         self._session_active = session_active or (lambda: False)
         self._on_ac_power = on_ac_power or (lambda: True)
+        self._network_available = network_available or (lambda: True)
 
     # -- registro / criação -------------------------------------------------
     def register(self, job_type: str, handler: Handler) -> None:
@@ -183,6 +185,8 @@ class JobManager:
             return "gameplay"
         if job.constraints.get("requiresAC") and not self._on_ac_power():
             return "battery"
+        if job.constraints.get("requiresNetwork") and not self._network_available():
+            return "network"
         return None
 
     # -- execução -----------------------------------------------------------
@@ -194,7 +198,11 @@ class JobManager:
 
         reason = self.blocked_reason(job)
         if reason is not None:
-            code = "E-JOBS-BLOCKED-GAMEPLAY" if reason == "gameplay" else "E-JOBS-BLOCKED-BATTERY"
+            code = {
+                "gameplay": "E-JOBS-BLOCKED-GAMEPLAY",
+                "battery": "E-JOBS-BLOCKED-BATTERY",
+                "network": "E-SUPPLY-OFFLINE",
+            }[reason]
             job.error_code = code
             if job.state == "queued":
                 self._transition(job, "blocked")
