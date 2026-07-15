@@ -175,6 +175,60 @@ class StateStore:
         row = self._conn.execute("SELECT * FROM operation WHERE id=?", (operation_id,)).fetchone()
         return dict(row) if row is not None else None
 
+    # -- device -------------------------------------------------------------
+    def save_device(self, device: dict[str, Any]) -> None:
+        self._conn.execute(
+            "INSERT INTO device (id, kind, dmi_fingerprint, quirks_json) VALUES (?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, "
+            "dmi_fingerprint=excluded.dmi_fingerprint, quirks_json=excluded.quirks_json",
+            (
+                device["id"],
+                device["kind"],
+                device.get("dmi_fingerprint"),
+                device.get("quirks_json"),
+            ),
+        )
+
+    def get_device(self, device_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM device WHERE id=?", (device_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    # -- storage volumes ----------------------------------------------------
+    def save_volume(self, volume: dict[str, Any]) -> None:
+        cols = ("id", "uuid", "label", "fstype", "role", "state", "capacity", "free", "last_seen")
+        row = {c: volume.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO storage_volume ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def get_volume_by_uuid(self, uuid: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM storage_volume WHERE uuid=?", (uuid,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_volumes(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM storage_volume ORDER BY uuid").fetchall()
+        return [dict(r) for r in rows]
+
+    # -- profiles -----------------------------------------------------------
+    def save_profile(self, profile: dict[str, Any]) -> None:
+        cols = ("id", "scope", "kind", "payload_json", "priority", "profile_owner")
+        row = {c: profile.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO profile ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def get_profile(self, profile_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM profile WHERE id=?", (profile_id,)).fetchone()
+        return dict(row) if row is not None else None
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(
