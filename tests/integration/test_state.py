@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Testes do State Store: migração, integridade, jobs, eventos, export, RT-14."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from steamzero.core import state
+from steamzero.core.errors import SteamZeroError
+
+
+@pytest.fixture
+def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    return tmp_path / "state" / "steamzero" / "state.db"
+
+
+def test_migrate_fresh_to_latest(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    assert store.user_version == state.LATEST == 1
+    tables = {
+        r["name"]
+        for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    }
+    for expected in ("job", "operation", "event_log", "game", "save_entry", "component"):
+        assert expected in tables
+    store.close()
+
+
+def test_migrate_idempotent(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    assert store.migrate() == 1  # 2ª vez: no-op
+    store.close()
+
+
+def test_integrity_ok(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    assert store.integrity_ok()
+    store.check_integrity()  # não levanta
+    store.close()
+
+
+def test_job_crud_and_upsert(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.save_job(
+        {"id": "J1", "type": "component.update", "priority": "interactive", "state": "queued"}
+    )
+    got = store.get_job("J1")
+    assert got is not None
+    assert got["type"] == "component.update"
+    assert got["state"] == "queued"
+    # upsert: muda estado
+    store.save_job(
+        {"id": "J1", "type": "component.update", "priority": "interactive", "state": "running"}
+    )
+    assert store.get_job("J1")["state"] == "running"
+    assert store.get_job("desconhecido") is None
+    store.close()
+
+
+def test_list_jobs_by_state(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.save_job({"id": "A", "type": "t", "priority": "background", "state": "queued"})
+    store.save_job({"id": "B", "type": "t", "priority": "background", "state": "running"})
+    store.save_job({"id": "C", "type": "t", "priority": "background", "state": "queued"})
+    queued = {j["id"] for j in store.list_jobs(states=["queued"])}
+    assert queued == {"A", "C"}
+    assert len(store.list_jobs()) == 3
+    store.close()
+
+
+def test_event_log(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    s1 = store.append_event("job.state", entity="J1", payload={"state": "running"})
+    s2 = store.append_event("entity.changed", entity="comp:x")
+    assert s2 > s1
+    since = store.events_since(s1)
+    assert [e["kind"] for e in since] == ["entity.changed"]
+    store.close()
+
+
+def test_export_json(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
+    export = store.export_json()
+    assert export["schemaVersion"] == 1
+    assert "job" in export["tables"]
+    assert export["tables"]["job"][0]["id"] == "J1"
+    store.close()
+
+
+def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # RT-14 (conceito): migração falha => backup restaurado, versão anterior operante
+    store = state.open_state(db_path)  # v1
+    store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
+    store.close()
+
+    def bad(conn: object) -> None:
+        conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
+        raise RuntimeError("migração v2 quebrada")
+
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (2, bad)])
+    monkeypatch.setattr(state, "LATEST", 2)
+
+    store2 = state.StateStore(db_path)
+    with pytest.raises(SteamZeroError) as ei:
+        store2.migrate()
+    assert ei.value.code == "E-STATE-MIGRATION"
+    assert store2.user_version == 1  # não avançou
+    tables = {
+        r["name"]
+        for r in store2._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    assert "t_novo" not in tables  # migração revertida
+    assert store2.get_job("J1") is not None  # dados preservados
+    store2.close()

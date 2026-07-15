@@ -1,0 +1,215 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""State Store SQLite (ADR-0005, STATE-MODEL, MIGRATION-VERSIONING).
+
+- SQLite WAL, foreign_keys=ON, busy_timeout — writer único no daemon.
+- Schema versionado por ``PRAGMA user_version``; migrações encadeiam N->N+1,
+  cada uma numa transação, com **backup do state.db antes de migrar**; falha =>
+  restaura o backup (E-STATE-MIGRATION) — versão anterior operante (RT-14).
+- Journal transacional fica FORA do db (core.journal): sobrevive a corrupção.
+- ``export_json`` produz um dump canônico legível (steamzero state export).
+- Segredos NUNCA entram em claro aqui (SR-13) — responsabilidade do chamador.
+
+O State Store é uma porta de persistência distinta de core.fs (que rege escrita
+de arquivos avulsos). O backup do próprio db passa por core.fs.
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import UTC, datetime
+from pathlib import Path
+from types import TracebackType
+from typing import Any
+
+from steamzero.core import fs, paths
+from steamzero.core.errors import SteamZeroError
+from steamzero.core.migrations import LATEST, MIGRATIONS
+
+_JOB_COLUMNS = (
+    "id",
+    "type",
+    "params_json",
+    "priority",
+    "state",
+    "progress_json",
+    "operation_id",
+    "correlation_id",
+    "created_by",
+    "constraints_json",
+    "checkpoints_json",
+    "result_json",
+    "error_code",
+    "created_at",
+    "updated_at",
+)
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+class StateStore:
+    """Acesso ao State Store. Use como context manager para fechar a conexão."""
+
+    def __init__(self, path: Path | None = None) -> None:
+        self._path = path or paths.state_db()
+        fs.ensure_dir(self._path.parent)
+        self._conn = sqlite3.connect(self._path, isolation_level=None)
+        self._conn.row_factory = sqlite3.Row
+        self._apply_pragmas()
+
+    def _apply_pragmas(self) -> None:
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA foreign_keys=ON")
+        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute("PRAGMA synchronous=NORMAL")
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def user_version(self) -> int:
+        row = self._conn.execute("PRAGMA user_version").fetchone()
+        return int(row[0])
+
+    def _set_user_version(self, version: int) -> None:
+        # PRAGMA não aceita placeholder; version é int validado.
+        self._conn.execute(f"PRAGMA user_version={int(version)}")
+
+    # -- migração -----------------------------------------------------------
+    def migrate(self) -> int:
+        """Aplica migrações pendentes; retorna a versão final. Idempotente."""
+        current = self.user_version
+        if current >= LATEST:
+            return current
+        backup = self._backup_before_migration() if current > 0 else None
+        try:
+            for version, fn in MIGRATIONS:
+                if version > current:
+                    self._conn.execute("BEGIN")
+                    fn(self._conn)
+                    self._set_user_version(version)
+                    self._conn.execute("COMMIT")
+        except Exception as exc:
+            self._conn.execute("ROLLBACK")
+            if backup is not None:
+                self._restore_from_backup(backup)
+            raise SteamZeroError("E-STATE-MIGRATION", detail=f"falha ao migrar: {exc}") from exc
+        return self.user_version
+
+    def _backup_before_migration(self) -> Path:
+        self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        dest = paths.backups_dir() / f"state-premigration-{_now_iso().replace(':', '')}.db"
+        data = self._path.read_bytes()
+        fs.write_atomic(dest, data)
+        return dest
+
+    def _restore_from_backup(self, backup: Path) -> None:
+        self._conn.close()
+        fs.write_atomic(self._path, backup.read_bytes())
+        self._conn = sqlite3.connect(self._path, isolation_level=None)
+        self._conn.row_factory = sqlite3.Row
+        self._apply_pragmas()
+
+    # -- integridade --------------------------------------------------------
+    def integrity_ok(self) -> bool:
+        row = self._conn.execute("PRAGMA integrity_check").fetchone()
+        return bool(row) and row[0] == "ok"
+
+    def check_integrity(self) -> None:
+        if not self.integrity_ok():
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="integrity_check falhou")
+
+    # -- jobs ---------------------------------------------------------------
+    def save_job(self, job: dict[str, Any]) -> None:
+        """Insere ou atualiza um job (upsert por id). Colunas de _JOB_COLUMNS."""
+        row = {col: job.get(col) for col in _JOB_COLUMNS}
+        row["updated_at"] = _now_iso()
+        row.setdefault("created_at", row["updated_at"])
+        if row.get("created_at") is None:
+            row["created_at"] = row["updated_at"]
+        placeholders = ",".join(f":{c}" for c in _JOB_COLUMNS)
+        updates = ",".join(f"{c}=excluded.{c}" for c in _JOB_COLUMNS if c != "id")
+        cols = ",".join(_JOB_COLUMNS)
+        # SQL montado só de _JOB_COLUMNS (constantes) + placeholders; valores por :param.
+        sql = (
+            f"INSERT INTO job ({cols}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM job WHERE id=?", (job_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_jobs(self, *, states: list[str] | None = None) -> list[dict[str, Any]]:
+        if states:
+            marks = ",".join("?" for _ in states)
+            sql = f"SELECT * FROM job WHERE state IN ({marks}) ORDER BY created_at"  # noqa: S608
+            rows = self._conn.execute(sql, states).fetchall()
+        else:
+            rows = self._conn.execute("SELECT * FROM job ORDER BY created_at").fetchall()
+        return [dict(r) for r in rows]
+
+    # -- event log ----------------------------------------------------------
+    def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
+        cur = self._conn.execute(
+            "INSERT INTO event_log (ts, kind, entity, payload_json) VALUES (?,?,?,?)",
+            (
+                _now_iso(),
+                kind,
+                entity,
+                json.dumps(payload, ensure_ascii=False) if payload else None,
+            ),
+        )
+        return int(cur.lastrowid or 0)
+
+    def events_since(self, seq: int) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM event_log WHERE seq > ? ORDER BY seq", (seq,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # -- export -------------------------------------------------------------
+    def export_json(self) -> dict[str, Any]:
+        """Dump canônico do estado (steamzero state export)."""
+        tables = [
+            r[0]
+            for r in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' "
+                "ORDER BY name"
+            ).fetchall()
+        ]
+        data: dict[str, Any] = {
+            "schemaVersion": self.user_version,
+            "generatedAt": _now_iso(),
+            "tables": {},
+        }
+        for table in tables:
+            rows = self._conn.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()  # noqa: S608
+            data["tables"][table] = [dict(r) for r in rows]
+        return data
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def __enter__(self) -> StateStore:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+
+def open_state(path: Path | None = None) -> StateStore:
+    """Abre (e migra) o State Store, retornando um StateStore pronto."""
+    store = StateStore(path)
+    store.migrate()
+    return store
