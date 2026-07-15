@@ -85,6 +85,13 @@ class SavesStore:
     def timeline(self, game_id: str) -> list[SaveEntry]:
         return [_to_entry(r) for r in self._store.list_saves(game_id)]
 
+    def blob_bytes(self, digest: str) -> bytes:
+        """Lê o blob endereçado por ``digest`` (verificado)."""
+        blob = _blobs_dir() / digest
+        if not blob.exists() or fs.hash_file(blob) != digest:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="blob ausente ou corrompido")
+        return blob.read_bytes()
+
     def restore(self, game_id: str, timeline_seq: int) -> bytes:
         """Retorna os bytes exatos da versão ``timeline_seq`` (byte-idêntica, AC-SV-03)."""
         match = next(

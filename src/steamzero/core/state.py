@@ -347,6 +347,30 @@ class StateStore:
         ).fetchone()
         return int(row[0])
 
+    def get_save_entry(self, entry_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM save_entry WHERE id=?", (entry_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    # -- sync queue ---------------------------------------------------------
+    def save_sync_entry(self, entry: dict[str, Any]) -> None:
+        self._conn.execute(
+            "INSERT INTO sync_queue (id, save_entry_id, direction, state) VALUES (?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET direction=excluded.direction, state=excluded.state",
+            (entry["id"], entry["save_entry_id"], entry.get("direction"), entry["state"]),
+        )
+
+    def set_sync_state(self, sync_id: str, new_state: str) -> None:
+        self._conn.execute("UPDATE sync_queue SET state=? WHERE id=?", (new_state, sync_id))
+
+    def list_sync_queue(self, *, state: str | None = None) -> list[dict[str, Any]]:
+        if state is not None:
+            rows = self._conn.execute(
+                "SELECT * FROM sync_queue WHERE state=? ORDER BY id", (state,)
+            ).fetchall()
+        else:
+            rows = self._conn.execute("SELECT * FROM sync_queue ORDER BY id").fetchall()
+        return [dict(r) for r in rows]
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(
