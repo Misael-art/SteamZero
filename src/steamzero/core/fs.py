@@ -103,6 +103,27 @@ def _silent_unlink(path: Path) -> None:
         os.unlink(path)
 
 
+def remove_file(path: Path) -> None:
+    """Remove um arquivo (idempotente). Deleção também passa pela porta core.fs."""
+    _silent_unlink(path)
+
+
+def rotate_log(path: Path, *, keep: int = 3) -> None:
+    """Rotaciona ``path`` -> ``path.1`` -> ... -> ``path.<keep>`` (o mais antigo cai).
+
+    No-op se ``path`` não existe. Escrita centralizada aqui (core.fs é a porta).
+    """
+    if not path.exists():
+        return
+    oldest = path.with_name(f"{path.name}.{keep}")
+    _silent_unlink(oldest)
+    for i in range(keep - 1, 0, -1):
+        src = path.with_name(f"{path.name}.{i}")
+        if src.exists():
+            os.replace(src, path.with_name(f"{path.name}.{i + 1}"))
+    os.replace(path, path.with_name(f"{path.name}.1"))
+
+
 def sweep_orphan_temps(directory: Path) -> list[Path]:
     """Remove tmps órfãos (``.<nome>.tmp.*``) de ``directory``; retorna removidos.
 
