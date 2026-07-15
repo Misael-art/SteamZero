@@ -72,6 +72,7 @@ markers = [
   "fi: failure-injection tests (FAILURE-INJECTION.md)",
   "rt: rollback tests (ROLLBACK-TESTS.md)",
   "golden: contract golden-file tests",
+  "security: security tests (SECURITY-TESTS.md, ST-*)",
   "slow: long-running",
 ]
 
