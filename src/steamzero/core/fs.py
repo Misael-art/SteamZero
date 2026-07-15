@@ -242,14 +242,14 @@ def validate_relative_entry(name: str) -> PurePosixPath:
 # ===========================================================================
 # Hash e espaço
 # ===========================================================================
-def hash_bytes(data: bytes) -> str:
-    """blake2b hex de ``data`` (STATE-MODEL: hash_blake2b)."""
-    return hashlib.blake2b(data).hexdigest()
+def hash_bytes(data: bytes, *, algo: str = "blake2b") -> str:
+    """Hash hex de ``data`` (default blake2b — STATE-MODEL; ``sha256`` p/ bios-db)."""
+    return hashlib.new(algo, data).hexdigest()
 
 
-def hash_file(path: Path) -> str:
-    """blake2b hex do conteúdo de ``path`` (streaming)."""
-    h = hashlib.blake2b()
+def hash_file(path: Path, *, algo: str = "blake2b") -> str:
+    """Hash hex do conteúdo de ``path`` (streaming). ``algo`` = blake2b | sha256."""
+    h = hashlib.new(algo)
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(_CHUNK), b""):
             h.update(chunk)

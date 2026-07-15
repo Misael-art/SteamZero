@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bios-db-v1.schema.json",
+  "title": "Banco de hashes de BIOS (MANIFEST-SCHEMAS §5) — só hashes/metadados",
+  "type": "object",
+  "required": ["schemaVersion", "platform", "entries"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "platform": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "sha256"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "region": { "type": "string" },
+          "required": { "type": "boolean" },
+          "usedBy": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["adapter"],
+              "properties": {
+                "adapter": { "type": "string" },
+                "min": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -284,6 +284,69 @@ class StateStore:
         rows = self._conn.execute("SELECT * FROM rom_file ORDER BY relpath").fetchall()
         return [dict(r) for r in rows]
 
+    # -- BIOS ---------------------------------------------------------------
+    def save_bios_item(self, item: dict[str, Any]) -> None:
+        cols = (
+            "id",
+            "platform_id",
+            "relpath",
+            "hash",
+            "region",
+            "version",
+            "state",
+            "last_validated",
+        )
+        row = {c: item.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO bios_item ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def list_bios(self, platform_id: str) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM bios_item WHERE platform_id=? ORDER BY relpath", (platform_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # -- saves --------------------------------------------------------------
+    def save_save_entry(self, entry: dict[str, Any]) -> None:
+        cols = (
+            "id",
+            "game_id",
+            "kind",
+            "timeline_seq",
+            "created_at",
+            "device_id",
+            "hash",
+            "size",
+            "origin",
+            "conflict_group",
+            "profile_owner",
+        )
+        row = {c: entry.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO save_entry ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def list_saves(self, game_id: str) -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM save_entry WHERE game_id=? ORDER BY timeline_seq", (game_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def max_timeline_seq(self, game_id: str) -> int:
+        row = self._conn.execute(
+            "SELECT COALESCE(MAX(timeline_seq), 0) FROM save_entry WHERE game_id=?", (game_id,)
+        ).fetchone()
+        return int(row[0])
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(
