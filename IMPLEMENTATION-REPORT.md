@@ -1,6 +1,6 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 1 · **Escopo entregue:** Fase 1 (M1–M3)
+**Data:** 2026-07-15 · **Sessão:** implementação 1 · **Escopo entregue:** Fases 1–2 (M1–M6)
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
 > Cada afirmação abaixo é verificável com os comandos citados. Nada é marcado
@@ -19,9 +19,9 @@ ver §6. Nenhuma célula da matriz de hardware foi exercitada.
 | **M1** Kill-proof core (SIGKILL em toda etapa) | 1 | **done** | `pytest tests/failure_injection -q` → **22 passed**; kill in-process em 8 etapas × {alvo existe/ausente} + kept pós-commit + recovery idempotente + **SIGKILL real** de subprocesso (apply.intent/activate/done/commit). AC-TX-02 provado. |
 | **M2** CLI contratada (envelope v2 + golden) | 1 | **done** | `steamzero doctor --json` valida contra `envelope-v2.schema.json` (status=ok, 4 checks); `steamzero --contract-version` → `2.0`. `pytest tests/golden -q` → **8 passed**. |
 | **M3** Jobs resilientes (pausa/resume/cancel/reboot-recovery) | 1 | **done** | `pytest tests/integration/test_jobs.py -q` → **13 passed**; recovery running→interrupted→{queued\|rolled-back\|completed}. |
-| M4 Deck-aware (modos + display + microSD UUID) | 2 | not-started | — |
-| M5 Helper privilegiado auditado | 2 | not-started | — |
-| M6 Sessão segura (suspend/resume checkpoint) | 2 | not-started | — |
+| **M4** Deck-aware (modos + display + microSD UUID) | 2 | **done** (verified-dev) | `pytest tests/integration/test_{device,mode,storage}.py` → **18 passed**; classificação DMI, cadeia de fallback de display (FM-18/AC-SD-01), microSD por UUID com bloqueio de escrita fantasma (FM-06/AC-SD-02/FI-07). Portas fake — **não** em hardware. |
+| **M5** Helper privilegiado auditado | 2 | **done** (verified-dev) | `pytest -m security` → **29 passed**; allowlist enum, fuzzing (parametrizado + hypothesis) prova zero execução sem gate (AC-PR-01/ST-01), allowlist só privilegiada (AC-PR-02), audit log. Efetor **dry** — sem root/sysfs real. |
+| **M6** Sessão segura (suspend/resume checkpoint) | 2 | **done** (verified-dev) | `pytest tests/integration/test_{session,offline}.py` → **14 passed**; suspend pausa jobs + checkpoint (FI-09/AC-SV-02), fallback flush (E-SAVES-FLUSH-TIMEOUT), close escala até SIGKILL c/ confirmação (FM-08), offline-first (AC-OF-01). Porta fake. |
 | M7 Biblioteca transacional (10k fixtures) | 3 | not-started | — |
 | M8 BIOS center + saves timeline | 3 | not-started | — |
 | M9 Sync não-destrutivo | 3 | not-started | — |
@@ -38,11 +38,20 @@ ver §6. Nenhuma célula da matriz de hardware foi exercitada.
 path-safety); núcleo transacional + journal WAL + locks + quarentena; State Store SQLite
 + migração 0001; Job Manager; CLI envelope v2; catálogo de erros; logging JSONL; doctor.
 
+**Critério de saída da Fase 2** (`AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM`):
+**atingido em nível de domínio (verified-dev), com portas fake/efetor dry.** As
+capacidades de hardware (aplicar TDP/sysctl real, DRM/KMS, montagem de removível,
+DMI real) dependem de adapters concretos + hardware/root — **não** exercitadas
+(ver §6/§7). A lógica de domínio (máquinas de estado, fallback, containment,
+allowlist) está provada. Compat Matrix inicial: a tabela `compat_fact` existe
+(migração 0001); o serviço de reconciliação SteamOS ficou como dívida (M-Compat).
+
 ### Reprodução do build limpo (prova do §5)
-Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`:
+Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
+(reproduzido na Fase 1; a suíte cresceu para 229 desde então — reexecutável):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-pytest → 168 passed · steamzero doctor --json → status ok
+pytest → 229 passed · steamzero doctor --json → status ok
 ```
 
 ---
@@ -54,12 +63,13 @@ Contagem por categoria (por diretório/ marcador):
 | Categoria | Contagem | Onde |
 |---|---|---|
 | Unit | 95 | `tests/unit/` |
-| Integração | 43 | `tests/integration/` |
+| Integração | 75 | `tests/integration/` (transação, state, jobs, cli, device, mode, storage, session, offline) |
 | Injeção de falha (FI) | 22 | `tests/failure_injection/` (marcador `fi`) |
+| Segurança (ST) | 29 | `tests/security/` (marcador `security`) — fuzzing do helper |
 | Golden (contrato) | 8 | `tests/golden/` (marcador `golden`) |
-| Sistema (ST, VMs) | 0 | não iniciado (Fase 5/6) |
+| Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (focus graph) | 0 | não iniciado (Fase 5) |
-| **Total** | **168** | `pytest -q` → **168 passed** |
+| **Total** | **229** | `pytest -q` → **229 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -73,7 +83,10 @@ Cobertura (`pytest --cov=steamzero`):
 | core/transaction.py | 93% |
 | core/lock.py | 94% |
 | core/ids.py · errors.py · secret.py | 100% |
-| **TOTAL (pacote)** | **92%** |
+| domain/{device,mode,storage,session} | 91–98% |
+| privileged/{protocol,helper,client} | 90–100% |
+| jobs/manager.py | 93% |
+| **TOTAL (pacote)** | **93%** |
 
 Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 
@@ -86,7 +99,14 @@ Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 - RB-4 / T-09 (backup adulterado → E-TX-ROLLBACK-FAILED) → `test_transaction::test_rb4_tampered_backup_fails_rollback`
 - FI-06 (preflight de espaço) → `test_transaction::test_space_preflight_blocks`
 - FI-15 (lock órfão) → `test_lock::test_orphan_by_*`
-- AC-UI/AC-SD/AC-LB/AC-BI/AC-SV/AC-OF/AC-PR → **não implementados** (Fases 2–5).
+- AC-SD-01 (transição de modo + fallback de display) → `test_mode::test_*fall*` (verified-dev)
+- AC-SD-02 (microSD removido → unavailable, zero escrita fantasma, restauração UUID) → `test_storage::*` (verified-dev)
+- AC-OF-01 (offline: local funciona, remoto enfileira) → `test_offline::*`
+- AC-PR-01 (helper rejeita fora da allowlist; fuzzing sem execução arbitrária) → `test_helper::test_fuzz_*` (ST-01)
+- AC-PR-02 (nenhum fluxo comum exige root) → `test_helper::test_ac_pr_02_*`
+- AC-SV-02 (suspensão dispara checkpoint) → `test_session::test_suspend_resume_with_checkpoint` (parcial — perda de energia real não testada)
+- FI-07/09/12 (microSD/suspensão/display) → cobertos em nível de domínio com portas fake; variantes de hardware pendentes
+- AC-UI/AC-LB/AC-BI/AC-SV-01/03 → **não implementados** (Fases 3–5).
 
 ---
 
@@ -122,9 +142,18 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 
 ## 4. Dívidas técnicas conhecidas (classificadas)
 
-**Bloqueante:** nenhuma para a Fase 1.
+**Bloqueante:** nenhuma para as Fases 1–2 (no nível verified-dev).
 
 **Alta:**
+- **A0. Adapters de hardware da Fase 2 ausentes.** device/mode/storage/session/helper
+  usam **portas injetadas** provadas com fakes/dry; falta a camada `adapters.*`
+  concreta (ler DMI real, aplicar KMS/DRM, /proc/mounts + /dev/disk/by-uuid, efetor
+  sysfs/systemd, transporte pkexec/D-Bus) e a composição que a injeta. Sem isso,
+  M4–M6 não funcionam de fato em um Deck. É a maior dívida da Fase 2.
+- **A5. Compat Matrix (F-SD-05) só tem a tabela** `compat_fact`; falta o serviço de
+  reconciliação SteamOS/Steam-client na subida (FM-10). Perfis de desempenho
+  (F-PF-01/03) modelados via helper set-tdp, mas sem o fluxo apply/restore G-STATE
+  completo (fica com a Fase 4).
 - **A1. FI-06 real (ENOSPC no meio do apply) não testado** — só o *preflight* (via
   monkeypatch de `free_space`). O caso mid-apply exige FS de loopback com quota. FI-01/02/
   03/05/07..14/16..20 também não implementados (Fases 2–3).
@@ -171,7 +200,8 @@ make check          # ruff + ruff format --check + boundaries + mypy --strict + 
 
 **Prova de que foi seguido:** um clone limpo (`git clone` local, sem `.venv/` nem
 `reference/`) foi construído do zero nesta sessão; `make check` → tudo verde;
-`pytest` → **168 passed**; `steamzero doctor --json` → `status: ok`. (Registro: WORKLOG.)
+`pytest` → **229 passed**; `steamzero doctor --json` → `status: ok`. (Reproduzido no HEAD
+atual em clone limpo; registro: WORKLOG.)
 
 `make` alvos: `venv lint format-check typecheck boundaries test cov check`. CI equivalente
 em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
@@ -180,10 +210,13 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (168 testes), lints, tipos e o binário
-  `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04).
+- **verified-dev (VM/estação):** toda a suíte (229 testes), lints, tipos e o binário
+  `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
+  e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
+  por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
 - **verified-hw:** **nada.** Sem Steam Deck (LCD/OLED), docks ou TVs — G5 do KNOWN-GAPS.
-  Nenhuma célula da STEAM-DECK-HARDWARE-MATRIX foi tocada.
+  Nenhuma célula da STEAM-DECK-HARDWARE-MATRIX foi tocada. Nenhuma ação privilegiada
+  real (TDP/sysctl/mount) foi executada (efetor dry, sem root).
 - **Não verificado (mesmo em VM):**
   - Python 3.11 e 3.12 (rodou só 3.14) — dívida A4.
   - Perda de energia real (poweroff -f / FI-10) — só SIGKILL de processo foi exercitado;
@@ -213,6 +246,15 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
    (open-write, os/shutil, Path.write_*), mas não detecta escrita via `Path.replace` nem
    aliasing dinâmico. É defesa em profundidade, não prova formal.
 
-**Resumo honesto:** a Fase 1 (M1–M3) está sólida e provada no nível de VM/dev, com o núcleo
-transacional kill-proof como peça mais forte (SIGKILL real recuperado). O que falta é
-explicitamente Fases 2–6 e as lacunas acima — nenhuma delas mascarada.
+7. **Fase 2 sem hardware/root (o ponto mais importante).** M4–M6 provam a **lógica** com
+   portas fake e efetor dry. NÃO tenho confiança de que funcionem num Deck real: a
+   detecção DMI, a aplicação de modos via DRM/KMS, a montagem de microSD, o set-tdp/sysctl
+   e o polkit não foram executados nem uma vez contra hardware/root. A allowlist e as
+   máquinas de estado são sólidas; a **ponte com o mundo real** (adapters + composição)
+   não existe (dívida A0).
+
+**Resumo honesto:** as Fases 1 (M1–M3) e 2 (M4–M6) estão sólidas **no nível de lógica de
+domínio, verified-dev**. O núcleo transacional kill-proof (SIGKILL real recuperado) e o
+fuzzing do helper são as peças mais fortes. A Fase 2 tem uma ressalva grande: nada tocou
+hardware nem root — a camada de adapters concretos e a validação em Deck real são a
+próxima prioridade e a maior dívida. Fases 3–6 não iniciadas. Nada mascarado.

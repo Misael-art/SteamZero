@@ -189,7 +189,56 @@ transaction 93% lock 94% (meta ≥90% no núcleo/core.fs: atingida)
 - **Adições ao ERROR-CATALOG**: E-CLI-USAGE, E-STATE-MIGRATION, E-STATE-INTEGRITY,
   E-INTERNAL-UNEXPECTED (permitido; catálogo cresce por PR).
 
-### Próxima ação (Fase 2 — não iniciada nesta sessão)
-Device/Mode Manager, Session Manager, microSD por UUID, offline queue, Compat
-Matrix, helper `steamzero-admin` (allowlist+polkit). Ver IMPLEMENTATION-REPORT.md
-para estado por marco e dívidas técnicas.
+## 2026-07-15 — Sessão 2 (continuação): Fase 2 (M4–M6)
+
+Entregue na mesma sessão, após a Fase 1. **Nível verified-dev** (portas fake /
+efetor dry — nada tocou hardware nem root).
+
+**M4 — Deck-aware:**
+```
+$ pytest tests/integration/test_device.py tests/integration/test_mode.py tests/integration/test_storage.py -q
+18 passed
+```
+- `domain.device`: DMI → deck-lcd/oled/desktop; quirks (faixa TDP).
+- `domain.mode`: cadeia de fallback de display (FM-18) sempre até imagem válida (AC-SD-01).
+- `domain.storage`: microSD por UUID; remoção → missing + `resolve_write_path` recusa
+  (E-STORAGE-MISSING, zero escrita fantasma); reinserção restaura (FM-06/AC-SD-02/FI-07).
+
+**M5 — Helper privilegiado:**
+```
+$ pytest -m security -q
+29 passed
+```
+- `privileged.protocol`: allowlist fechada (6 ações), validadores explícitos, tabelas embutidas.
+- `privileged.helper`: valida protocolo→allowlist→chaves→params→authorizer ANTES de executar;
+  audit append-only. Fuzzing (parametrizado + hypothesis) prova zero execução sem gate
+  (ST-01/AC-PR-01); allowlist só privilegiada (AC-PR-02).
+
+**M6 — Sessão + offline:**
+```
+$ pytest tests/integration/test_session.py tests/integration/test_offline.py -q
+14 passed
+```
+- `domain.session`: suspend pausa jobs + checkpoint (FI-09/AC-SV-02), fallback flush
+  (E-SAVES-FLUSH-TIMEOUT), close escala até SIGKILL c/ confirmação (FM-08).
+- `jobs.manager`: `requiresNetwork` → blocked (E-SUPPLY-OFFLINE); local/doctor offline (AC-OF-01).
+
+**Fronteira crítica mantida:** `domain.*` nunca importa `adapters.*` (portas Protocol
+injetadas) — verificado por `lint_boundaries` (BND-DOMAIN-ADAPTER), 0 violações.
+
+**Qualidade:** ruff/format/boundaries/mypy verdes; `pytest` → 229 passed; cobertura
+93% (domínio 91–98%, privileged 90–100%). Build limpo reproduzido no HEAD → 229 passed.
+
+**Divergência registrada:** máquina de estados de sessão própria (idle→…→closed) — o
+diagrama do DATA-FLOW/§11.1 descreve o comportamento, não os estados nominais; adotados
+estados explícitos (P6).
+
+### Dívida principal da Fase 2 (ver IMPLEMENTATION-REPORT §4-A0)
+Camada `adapters.*` concreta (DMI real, DRM/KMS, /proc/mounts+by-uuid, efetor sysfs/
+systemd, transporte pkexec/D-Bus) + composição que injeta as portas. Sem ela, M4–M6
+não funcionam num Deck real. Compat Matrix (F-SD-05) tem só a tabela.
+
+### Próxima ação
+Fase 3 (M7–M9): Library transacional (scan/plan/apply, 10k fixtures), import seguro
+(safezip), conversões, BIOS store, saves timeline. OU: adapters de hardware da Fase 2
++ validação em Deck real (fecha o gap verified-dev→verified-hw).
