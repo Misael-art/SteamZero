@@ -238,7 +238,52 @@ Camada `adapters.*` concreta (DMI real, DRM/KMS, /proc/mounts+by-uuid, efetor sy
 systemd, transporte pkexec/D-Bus) + composição que injeta as portas. Sem ela, M4–M6
 não funcionam num Deck real. Compat Matrix (F-SD-05) tem só a tabela.
 
+## 2026-07-15 — Sessão 2 (continuação): Fase 3 (M7 parcial, M8–M9 done)
+
+**M7 — Library (parcial):**
+```
+$ pytest tests/integration/test_library.py tests/integration/test_convert.py tests/failure_injection/test_safezip.py -q
+27 passed
+```
+- `core.safezip`: extração confinada por bytes reais — traversal/symlink/NUL/bomb/
+  contagem/profundidade/razão (FI-16/17/18, AC-LB-03, FM-14).
+- `domain.library`: scan read-only (AC-LB-01), import por cópia com origem intocada
+  (RT-07/AC-LB-02), dedupe por hash, multidisco "(Disc N)", archive via safezip com
+  staging limpo em inseguro.
+- `domain.convert`: conversão para staging via porta fake; original-até-commit,
+  preflight de espaço (E-STORAGE-SPACE), timeout/falha limpam staging e preservam o
+  original (RT-06, marcador `rt`).
+- **Falta (M7 não fecha):** pipeline generalizado scan→plan→apply→rollback de
+  organização (move/rename) sobre 10k fixtures + benchmark; RT-08..11; conversores reais.
+
+**M8 — BIOS store + Saves timeline (done):**
+```
+$ pytest tests/integration/test_bios.py tests/integration/test_saves.py -q
+13 passed
+```
+- `domain.bios`: banco bios-db-v1 só-hashes (schema `additionalProperties:false` rejeita
+  conteúdo — CONTENT-POLICY); ausente sem link (AC-BI-02); hash/key nunca em log, só
+  truncado (AC-BI-01/SR-14).
+- `domain.saves`: timeline append-only, blobs por conteúdo (dedupe), restauração
+  byte-idêntica verificada (AC-SV-03), conflito preserva ambos (AC-SV-01/P12).
+
+**M9 — Sync não-destrutivo (done):**
+```
+$ pytest tests/integration/test_sync.py -q
+5 passed
+```
+- `domain.sync`: feature flag; fila offline em sync_queue (DF-4); conflito remoto≠local
+  baixa remoto como versão paralela e marca conflicted — ambos preservados (J6/AC-SV-01).
+
+**Divergências registradas:**
+- `E-CONVERT-TIMEOUT`/`E-CONVERT-FAILED` adicionados ao catálogo (Fase 3, textos pt-BR).
+- "Quarentena" no import de archive externo = staging limpo + evento (a fonte do usuário
+  NÃO é movida; escolha conservadora que preserva dados — a origem é read-only externa).
+
+**Qualidade:** ruff/format/boundaries/mypy verdes; `pytest` → **270 passed** (0 falhas/skips);
+cobertura **94%**. Build limpo reproduzido no HEAD → 270 passed.
+
 ### Próxima ação
-Fase 3 (M7–M9): Library transacional (scan/plan/apply, 10k fixtures), import seguro
-(safezip), conversões, BIOS store, saves timeline. OU: adapters de hardware da Fase 2
-+ validação em Deck real (fecha o gap verified-dev→verified-hw).
+Fechar M7 (pipeline de organização 10k + RT-08..11) OU Fase 4 (engine de adapters +
+adapters de emuladores/frontends) OU fechar o gap verified-dev→verified-hw (adapters de
+hardware reais + Deck). Ver IMPLEMENTATION-REPORT §4 (dívidas) e §7 (autoavaliação).

@@ -1,6 +1,6 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 1 · **Escopo entregue:** Fases 1–2 (M1–M6)
+**Data:** 2026-07-15 · **Sessão:** implementação 1 · **Escopo entregue:** Fases 1–2 (M1–M6) + Fase 3 (M8–M9 done, M7 parcial)
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
 > Cada afirmação abaixo é verificável com os comandos citados. Nada é marcado
@@ -22,9 +22,9 @@ ver §6. Nenhuma célula da matriz de hardware foi exercitada.
 | **M4** Deck-aware (modos + display + microSD UUID) | 2 | **done** (verified-dev) | `pytest tests/integration/test_{device,mode,storage}.py` → **18 passed**; classificação DMI, cadeia de fallback de display (FM-18/AC-SD-01), microSD por UUID com bloqueio de escrita fantasma (FM-06/AC-SD-02/FI-07). Portas fake — **não** em hardware. |
 | **M5** Helper privilegiado auditado | 2 | **done** (verified-dev) | `pytest -m security` → **29 passed**; allowlist enum, fuzzing (parametrizado + hypothesis) prova zero execução sem gate (AC-PR-01/ST-01), allowlist só privilegiada (AC-PR-02), audit log. Efetor **dry** — sem root/sysfs real. |
 | **M6** Sessão segura (suspend/resume checkpoint) | 2 | **done** (verified-dev) | `pytest tests/integration/test_{session,offline}.py` → **14 passed**; suspend pausa jobs + checkpoint (FI-09/AC-SV-02), fallback flush (E-SAVES-FLUSH-TIMEOUT), close escala até SIGKILL c/ confirmação (FM-08), offline-first (AC-OF-01). Porta fake. |
-| M7 Biblioteca transacional (10k fixtures) | 3 | not-started | — |
-| M8 BIOS center + saves timeline | 3 | not-started | — |
-| M9 Sync não-destrutivo | 3 | not-started | — |
+| **M7** Biblioteca transacional (10k fixtures) | 3 | **partial** | `pytest tests/integration/test_library.py tests/integration/test_convert.py tests/failure_injection/test_safezip.py` → **27 passed**: scan read-only (AC-LB-01), import verificado c/ origem intocada (RT-07/AC-LB-02), dedupe, multidisco, safezip (FI-16/17/18/AC-LB-03), conversão original-até-commit (RT-06). **Falta**: pipeline generalizado scan→plan→apply→rollback de organização + benchmark 10k + RT-08..11. |
+| **M8** BIOS center + saves timeline | 3 | **done** | `pytest tests/integration/test_bios.py tests/integration/test_saves.py` → **13 passed**: BIOS store hash-only (CONTENT-POLICY), ausente sem link (AC-BI-02), hash/key nunca em log (AC-BI-01/SR-14); saves timeline append-only, restauração byte-idêntica (AC-SV-03), conflito preserva ambos (AC-SV-01). |
+| **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **5 passed**: feature flag, fila offline (DF-4), conflito remoto≠local preserva ambos e marca conflicted (J6/AC-SV-01), nunca sobrescreve. Porta CloudPort fake. |
 | M10 Engine de adapters + 3 emuladores | 4 | not-started | — |
 | M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
@@ -46,12 +46,20 @@ DMI real) dependem de adapters concretos + hardware/root — **não** exercitada
 allowlist) está provada. Compat Matrix inicial: a tabela `compat_fact` existe
 (migração 0001); o serviço de reconciliação SteamOS ficou como dívida (M-Compat).
 
+**Critério de saída da Fase 3** (`AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11`):
+**parcialmente atingido.** AC-LB-01/02/03, AC-BI-01/02, AC-SV-01/03, RT-06/07
+provados; safezip (FI-16/17/18) verde. **Falta para fechar M7**: o pipeline
+generalizado de organização (scan→plan→apply→rollback de move/rename) sobre 10k
+fixtures + benchmark, e RT-08 (links BIOS)/RT-09 (restore de save)/RT-10 (sync
+interrompido)/RT-11 (mídia). Conversões reais (chdman/dolphin-tool) usam porta
+**fake** — não há binário de conversão exercitado (verified-dev).
+
 ### Reprodução do build limpo (prova do §5)
 Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
-(reproduzido na Fase 1; a suíte cresceu para 229 desde então — reexecutável):
+(reproduzido na Fase 1; a suíte cresceu para 270 desde então — reexecutável):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-pytest → 229 passed · steamzero doctor --json → status ok
+pytest → 270 passed · steamzero doctor --json → status ok
 ```
 
 ---
@@ -63,13 +71,14 @@ Contagem por categoria (por diretório/ marcador):
 | Categoria | Contagem | Onde |
 |---|---|---|
 | Unit | 95 | `tests/unit/` |
-| Integração | 75 | `tests/integration/` (transação, state, jobs, cli, device, mode, storage, session, offline) |
-| Injeção de falha (FI) | 22 | `tests/failure_injection/` (marcador `fi`) |
+| Integração | 106 | `tests/integration/` (transação, state, jobs, cli, device, mode, storage, session, offline, library, bios, saves, sync, convert) |
+| Injeção de falha (FI) | 32 | `tests/failure_injection/` (marcador `fi`) — inclui FI-16/17/18 (safezip) |
+| Rollback (RT) | 5 | marcador `rt` — RT-06 (conversão). RT-01..05 provados em `test_transaction` sem a etiqueta; RT-08..14 pendentes |
 | Segurança (ST) | 29 | `tests/security/` (marcador `security`) — fuzzing do helper |
 | Golden (contrato) | 8 | `tests/golden/` (marcador `golden`) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (focus graph) | 0 | não iniciado (Fase 5) |
-| **Total** | **229** | `pytest -q` → **229 passed** |
+| **Total** | **270** | `pytest -q` → **270 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -84,9 +93,11 @@ Cobertura (`pytest --cov=steamzero`):
 | core/lock.py | 94% |
 | core/ids.py · errors.py · secret.py | 100% |
 | domain/{device,mode,storage,session} | 91–98% |
+| domain/{library,bios,saves,sync,convert} | 94–100% |
+| core/safezip.py | 98% |
 | privileged/{protocol,helper,client} | 90–100% |
 | jobs/manager.py | 93% |
-| **TOTAL (pacote)** | **93%** |
+| **TOTAL (pacote)** | **94%** |
 
 Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 
@@ -106,7 +117,14 @@ Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 - AC-PR-02 (nenhum fluxo comum exige root) → `test_helper::test_ac_pr_02_*`
 - AC-SV-02 (suspensão dispara checkpoint) → `test_session::test_suspend_resume_with_checkpoint` (parcial — perda de energia real não testada)
 - FI-07/09/12 (microSD/suspensão/display) → cobertos em nível de domínio com portas fake; variantes de hardware pendentes
-- AC-UI/AC-LB/AC-BI/AC-SV-01/03 → **não implementados** (Fases 3–5).
+- AC-LB-01 (scan read-only) → `test_library::test_scan_is_read_only`
+- AC-LB-02/03 (original até commit; archive inseguro→quarentena) → `test_library::*`, `test_convert::*`, `test_safezip::*`
+- RT-06 (conversão: ENOSPC/timeout/falha, original intacto) → `test_convert::*` (marcador `rt`)
+- RT-07 (import não altera a fonte) → `test_library::test_import_copies_and_source_untouched`
+- FI-16/17/18 (zip bomb/traversal/limites) → `test_safezip::*`
+- AC-BI-01/02 (hash/key nunca em log; ausente sem link) → `test_bios::test_ac_bi_01_*`, `test_bios::test_status_missing_*`
+- AC-SV-01/03 (conflito preserva ambos; restauração byte-idêntica) → `test_saves::*`, `test_sync::test_conflict_*` (J6)
+- AC-UI, RT-08..14, benchmark 10k → **não implementados** (M7 parcial; Fases 4–6).
 
 ---
 
@@ -200,7 +218,7 @@ make check          # ruff + ruff format --check + boundaries + mypy --strict + 
 
 **Prova de que foi seguido:** um clone limpo (`git clone` local, sem `.venv/` nem
 `reference/`) foi construído do zero nesta sessão; `make check` → tudo verde;
-`pytest` → **229 passed**; `steamzero doctor --json` → `status: ok`. (Reproduzido no HEAD
+`pytest` → **270 passed**; `steamzero doctor --json` → `status: ok`. (Reproduzido no HEAD
 atual em clone limpo; registro: WORKLOG.)
 
 `make` alvos: `venv lint format-check typecheck boundaries test cov check`. CI equivalente
@@ -210,7 +228,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (229 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (270 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -253,8 +271,17 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
    máquinas de estado são sólidas; a **ponte com o mundo real** (adapters + composição)
    não existe (dívida A0).
 
+8. **Fase 3 sem ferramentas externas reais.** BIOS/saves/sync/library são lógica pura,
+   bem coberta. Mas **conversões reais** (chdman, dolphin-tool, maxcso, nsz) usam porta
+   **fake** — nenhum binário de conversão foi exercitado. E o M7 é **parcial**: falta o
+   pipeline generalizado de organização (scan→plan→apply→rollback de move/rename) sobre
+   10k fixtures + o benchmark de desempenho (que o M7 exige explicitamente), além de
+   RT-08..11. O que existe (import/scan/safezip/dedupe/convert-fake) está provado.
+
 **Resumo honesto:** as Fases 1 (M1–M3) e 2 (M4–M6) estão sólidas **no nível de lógica de
-domínio, verified-dev**. O núcleo transacional kill-proof (SIGKILL real recuperado) e o
-fuzzing do helper são as peças mais fortes. A Fase 2 tem uma ressalva grande: nada tocou
-hardware nem root — a camada de adapters concretos e a validação em Deck real são a
-próxima prioridade e a maior dívida. Fases 3–6 não iniciadas. Nada mascarado.
+domínio, verified-dev**; a Fase 3 entrega M8–M9 `done` e M7 `parcial`. O núcleo transacional
+kill-proof (SIGKILL real recuperado), o fuzzing do helper e o safezip (bytes reais) são as
+peças mais fortes. Ressalvas grandes, todas explícitas: nada tocou hardware, root nem
+ferramentas de conversão reais; falta a camada de adapters concretos (dívida A0) e o
+pipeline de organização 10k do M7. Fases 4–6 não iniciadas. Nada mascarado — a suíte
+(270 testes, 0 falhas/skips) e os `git log` comprovam cada afirmação acima.
