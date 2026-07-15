@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adapter-v1.schema.json",
+  "title": "SteamZero adapter manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "kind",
+    "platforms",
+    "capabilities",
+    "sources",
+    "license",
+    "upstream"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "kind": {"enum": ["emulator", "frontend", "tool"]},
+    "platforms": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+      "uniqueItems": true
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "detect",
+          "status",
+          "install",
+          "update",
+          "configure",
+          "verify",
+          "repair",
+          "uninstall",
+          "backup",
+          "restore"
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "configFormat": {"enum": ["ini", "json", "toml", "xml", "none"]},
+    "verify": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["smokeTest"],
+      "properties": {
+        "smokeTest": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "compat": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+    },
+    "conflicts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+    },
+    "requires": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+    },
+    "license": {"type": "string", "minLength": 1},
+    "upstream": {"type": "string", "format": "uri"},
+    "notes": {"type": "string"}
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "priority"],
+      "properties": {
+        "type": {"enum": ["flatpak", "appimage", "native"]},
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"
+        },
+        "priority": {"type": "integer", "minimum": 1},
+        "ref": {"type": "string", "minLength": 1},
+        "remote": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "endOfLife": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "flatpak"}}},
+          "then": {"required": ["ref", "remote"]},
+          "else": {"required": ["url"]}
+        }
+      ]
+    }
+  }
+}

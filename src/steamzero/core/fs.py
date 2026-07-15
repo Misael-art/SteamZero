@@ -114,6 +114,60 @@ def remove_tree(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def copy_file_atomic(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
+    """Copia um arquivo em streaming e publica ``dest`` atomicamente.
+
+    O temporário vive no diretório de destino, portanto o ``replace`` final é
+    atômico. A função não carrega ROMs/imagens grandes inteiras na memória.
+    """
+    parent = ensure_dir(dest.parent)
+    tmp = parent / f".{dest.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    dst_fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        src_fd = os.open(src, os.O_RDONLY)
+        try:
+            while chunk := os.read(src_fd, _CHUNK):
+                _write_all(dst_fd, chunk)
+        finally:
+            os.close(src_fd)
+        os.fsync(dst_fd)
+    except BaseException:
+        _silent_unlink(tmp)
+        raise
+    finally:
+        os.close(dst_fd)
+    os.replace(tmp, dest)
+    _fsync_dir(parent)
+
+
+def move_file(src: Path, dest: Path) -> None:
+    """Move ``src`` para ``dest`` pela porta central de escrita.
+
+    No mesmo filesystem usa rename atômico; entre filesystems faz
+    copy+fsync+replace antes de remover a origem. O chamador é responsável por
+    congelar/revalidar a precondição do destino antes da chamada.
+    """
+    ensure_dir(dest.parent)
+    _move(src, dest)
+
+
+def symlink_atomic(source: Path, target: Path) -> None:
+    """Publica um symlink por troca atômica e persiste o diretório.
+
+    ``source`` é gravado como caminho absoluto para que o consumidor não dependa
+    do diretório corrente. O temporário é removido se a criação falhar.
+    """
+    parent = ensure_dir(target.parent)
+    tmp = parent / f".{target.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    try:
+        os.symlink(str(Path(os.path.realpath(source))), tmp)
+        os.replace(tmp, target)
+        _fsync_dir(parent)
+    except BaseException:
+        _silent_unlink(tmp)
+        raise
+
+
 def rotate_log(path: Path, *, keep: int = 3) -> None:
     """Rotaciona ``path`` -> ``path.1`` -> ... -> ``path.<keep>`` (o mais antigo cai).
 
@@ -331,19 +385,20 @@ def quarantine_file(operation_id: str, src: Path, relpath: str) -> Path:
 
 
 def _copy_atomic(src: Path, dest: Path) -> None:
-    """Copia ``src`` para ``dest`` via write_atomic (streaming em memória por chunk)."""
-    ensure_dir(dest.parent)
-    with open(src, "rb") as f:
-        data = f.read()
-    write_atomic(dest, data)
+    """Compatibilidade interna para cópia atômica em streaming."""
+    copy_file_atomic(src, dest)
 
 
 def _move(src: Path, dest: Path) -> None:
     if same_filesystem(src, dest):
         os.replace(src, dest)
+        _fsync_dir(dest.parent)
+        if src.parent != dest.parent:
+            _fsync_dir(src.parent)
     else:
         _copy_atomic(src, dest)
         os.unlink(src)
+        _fsync_dir(src.parent)
 
 
 def iter_files(root: Path) -> Iterator[Path]:

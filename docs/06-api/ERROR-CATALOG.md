@@ -20,6 +20,7 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-SUPPLY-CHECKSUM` hash divergente ("O download não confere com o esperado e foi descartado.").
 - `E-SUPPLY-OFFLINE` operação requer rede; enfileirada (status blocked, não failure).
 - `E-SUPPLY-UPSTREAM-GONE` release/asset não existe mais.
+- `E-SUPPLY-REMOTE-FAILED` operação remota interrompida; item retorna para a fila.
 
 ### STORAGE
 - `E-STORAGE-SPACE` "São necessários mais X GB para concluir <operação>." (com cálculo de margem)

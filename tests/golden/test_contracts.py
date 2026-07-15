@@ -27,6 +27,7 @@ def test_registry_loads_all_schemas() -> None:
     got = set(contracts.available_schemas())
     assert {
         "envelope-v2.schema.json",
+        "adapter-v1.schema.json",
         "error-v1.schema.json",
         "event-v1.schema.json",
         "plan-v1.schema.json",
@@ -66,6 +67,29 @@ def test_live_plan_validates(state: Path) -> None:
     sandbox = state / "sandbox"
     sandbox.mkdir()
     plan = transaction.plan_write_files({sandbox / "c.ini": b"[x]\n"}, root=sandbox)
+    contracts.validate(plan.to_dict(), "plan-v1.schema.json")
+
+
+@pytest.mark.golden
+def test_live_move_plan_validates(state: Path) -> None:
+    sandbox = state / "moves"
+    sandbox.mkdir()
+    fs.write_atomic(sandbox / "game.nes", b"synthetic")
+    plan = transaction.plan_move_files(
+        {sandbox / "game.nes": sandbox / "nes" / "game.nes"}, root=sandbox
+    )
+    contracts.validate(plan.to_dict(), "plan-v1.schema.json")
+
+
+@pytest.mark.golden
+def test_live_symlink_plan_validates(state: Path) -> None:
+    central = state / "central.bin"
+    consumer = state / "consumer"
+    consumer.mkdir()
+    fs.write_atomic(central, b"synthetic")
+    plan = transaction.plan_symlink_files(
+        {central: consumer / "bios.bin"}, root=consumer, kind="bios.link"
+    )
     contracts.validate(plan.to_dict(), "plan-v1.schema.json")
 
 

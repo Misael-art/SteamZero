@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "dolphin",
+  "kind": "emulator",
+  "platforms": ["gamecube", "wii"],
+  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "org.DolphinEmu.dolphin-emu",
+      "remote": "flathub",
+      "version": "377c3e63506ebc51c6eb8ae717f216514f3fdbdd634d69c00c4c0173fb0629e5",
+      "priority": 1
+    }
+  ],
+  "paths": {"config": "{XDG_CONFIG_HOME}/dolphin-emu/Dolphin.ini"},
+  "configFormat": "ini",
+  "verify": {"smokeTest": ["--version"]},
+  "compat": ["steamos", "bazzite", "linux"],
+  "license": "GPL-2.0-or-later",
+  "upstream": "https://github.com/dolphin-emu/dolphin"
+}

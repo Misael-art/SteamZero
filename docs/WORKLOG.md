@@ -287,3 +287,107 @@ cobertura **94%**. Build limpo reproduzido no HEAD → 270 passed.
 Fechar M7 (pipeline de organização 10k + RT-08..11) OU Fase 4 (engine de adapters +
 adapters de emuladores/frontends) OU fechar o gap verified-dev→verified-hw (adapters de
 hardware reais + Deck). Ver IMPLEMENTATION-REPORT §4 (dívidas) e §7 (autoavaliação).
+
+## 2026-07-15 — Sessão 3: M7 concluído (organização transacional 10k)
+
+**Entregue:**
+- `core.transaction` ganhou ações de move/rename sem conteúdo inline, com precondições
+  de origem+destino, confirmToken, containment, rejeição de colisões/ciclos, backup
+  verificado, journal intent→done, verify e rollback G-FULL idempotente.
+- Falha comum no meio do apply agora dispara rollback automático; crash abrupto continua
+  sendo recuperado pelo journal. Rollback se recusa a destruir origem/destino recriado
+  ou alterado depois da operação (`E-TX-ROLLBACK-FAILED`).
+- `core.fs.copy_file_atomic` copia em streaming com fsync+replace; backups/restores de
+  ROMs não carregam mais o arquivo inteiro em memória.
+- `domain.library.LibraryOrganizer`: scan→plan→apply→rollback por paths relativos, com
+  plano validado pelo schema `plan-v1`.
+
+**Demonstração objetiva M7:**
+```text
+$ pytest tests/integration/test_library_organize.py::test_10k_fixture_apply_and_rollback_benchmark -q -vv
+1 passed in 18.97s
+```
+O teste cria 10.000 fixtures sintéticas, planeja e aplica 10.000 movimentos, verifica o
+layout e executa rollback de todos os itens, restaurando as origens e limpando staging.
+
+**Gate completo:**
+```text
+$ make check
+ruff format/check OK · boundaries OK · mypy strict OK · pytest: 284 passed
+$ pytest --cov=steamzero -q -m 'not slow'
+283 passed, 1 deselected · core.fs 94% · core.transaction 91% · pacote 92%
+```
+O total do pacote inclui `src/steamzero/ports.py` (trabalho não rastreado preexistente,
+preservado nesta sessão) com 0% de cobertura. Falhas/skips/xfails: zero.
+
+**Estado:** M7 `done`; M7–M9 concluídos. O gate amplo da Fase 3 continua parcial por
+RT-08..11 e por conversores externos reais ainda não exercitados. Próxima ação normativa:
+fechar esses RTs ou iniciar M10; a dívida A0 (adapters concretos de hardware) permanece.
+
+## 2026-07-15 — Sessão 4: gate da Fase 3 fechado (RT-08..11)
+
+**RT-08 — links de BIOS:** `core.transaction` ganhou ação `symlink` e `core.fs`
+publicação atômica com fsync. `BiosStore.plan_link` verifica a BIOS central antes de
+planejar. Link deliberadamente quebrado falha no verify, é removido e não toca a fonte;
+apply/rollback normal é idempotente.
+
+**RT-09 — restore de save:** restauração para o arquivo ativo agora usa plan+confirmToken,
+backup e verify/smoke. Falha de validação restaura byte-idêntico o save atual.
+
+**RT-10 — sync interrompido:** fila explicita `pending→in-flight→done|conflicted`;
+exceção remota devolve o item a pending com `E-SUPPLY-REMOTE-FAILED`. Um drain posterior
+retoma; entradas deixadas in-flight por crash também são recuperadas.
+
+**RT-11/ST-06 — mídia:** novo `domain.media` local canonicaliza por gameId/kind e magic
+bytes; órfãos, tamanho excessivo, magic inválido e nomes bidi vão para quarentena lógica
+com nomes seguros. Falha ou rollback devolve canonicalizados e órfãos aos paths originais.
+
+**Evidência:**
+```text
+$ make check
+ruff format/check OK · boundaries OK · mypy strict OK · pytest: 295 passed in 21.83s
+$ pytest --cov=steamzero -q -m 'not slow'
+294 passed, 1 deselected · core.fs 93% · core.transaction 90% · pacote 92%
+$ pytest --collect-only -q -m rt
+17/295 testes RT coletados
+```
+Falhas/skips/xfails: zero. `src/steamzero/ports.py` permaneceu intacto e não rastreado.
+
+**Estado:** o critério explícito de saída da Fase 3 (AC-LB/BI/SV + RT-06..11) está
+atingido em `verified-dev`. Limitações restantes: conversores/provedores reais,
+scraper-cache-rate-limit e migração SSD↔microSD (A6). Próximo marco: M10, começando pela
+engine de manifests e três adapters núcleo; A0 continua sendo a principal dívida de HW.
+
+## 2026-07-15 — Sessão 5: M10 iniciado (engine e três manifests)
+
+**Entregue:**
+- `adapter-v1.schema.json` estrito, loader com validações semânticas e registry fechado;
+- manifests pinados para DuckStation, RetroArch e Dolphin, com IDs/commits consultados
+  nos remotos Flathub user e system;
+- `AdapterEngine` com porta de aquisição injetável, checksum SHA-256 antes de qualquer
+  escrita no componente, plan/confirmToken/apply/verify e persistência no State Store;
+- releases portáveis imutáveis, ativação por `current.json`, install idempotente sem novo
+  fetch, update e rollback G-FULL manual ou automático em falha de smoke test;
+- métodos `save/get/list_component` no State Store e contrato empacotado no wheel.
+
+**Risco descoberto:** `org.duckstation.DuckStation` responde no catálogo remoto, porém
+está marcado end-of-life/sem manutenção desde 2025-08-13 e já não aparece como disponível
+na página do Flathub. O manifesto registra `endOfLife: true`; não será promovido a fonte
+instalável. É necessário pin oficial alternativo com checksum antes de fechar M10.
+
+**Evidência:**
+```text
+$ make check
+ruff format/check OK · boundaries OK · mypy strict OK · pytest: 302 passed in 21.73s
+$ pytest --cov=steamzero -q -m 'not slow'
+301 passed, 1 deselected · adapters.engine 86% · adapters.registry 88% · pacote 91%
+$ pytest --collect-only -q -m rt
+19/302 testes RT coletados (RT-01/02 agora marcados no lifecycle de componentes)
+$ steamzero doctor --json
+status: ok · state.db integrity: pass · pending operations: 0
+```
+
+**Estado:** M10 `partial` em `verified-dev`. Não houve instalação dos emuladores no host.
+Faltam executor Flatpak transacional, lockfile e demo install/update/rollback dos três em
+VM; DuckStation também precisa de uma nova fonte oficial. `src/steamzero/ports.py` segue
+intacto, não rastreado e fora deste incremento.

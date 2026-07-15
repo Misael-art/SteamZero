@@ -63,6 +63,11 @@ MESSAGES: dict[str, str] = {
     "error.E-SUPPLY-UPSTREAM-GONE.impact": "A operação não pôde obter o artefato.",
     "error.E-SUPPLY-UPSTREAM-GONE.cause": "O provedor removeu ou moveu o release referenciado.",
     "error.E-SUPPLY-UPSTREAM-GONE.action": "Atualize o manifesto/lockfile para uma versão disponível.",
+    "error.E-SUPPLY-REMOTE-FAILED.title": "Operação remota interrompida",
+    "error.E-SUPPLY-REMOTE-FAILED.what": "A sincronização remota não foi concluída.",
+    "error.E-SUPPLY-REMOTE-FAILED.impact": "O item voltou para a fila e nenhum estado local foi descartado.",
+    "error.E-SUPPLY-REMOTE-FAILED.cause": "O provedor ou a conexão falhou durante a operação.",
+    "error.E-SUPPLY-REMOTE-FAILED.action": "Tente novamente quando a conexão e o provedor estiverem disponíveis.",
     # ---- STORAGE ----------------------------------------------------------
     "error.E-STORAGE-SPACE.title": "Espaço insuficiente",
     "error.E-STORAGE-SPACE.what": "Não há espaço livre suficiente para concluir a operação.",

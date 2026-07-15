@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from steamzero.core import ids
+from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.saves import SavesStore
 
@@ -59,6 +60,9 @@ class SyncManager:
     def drain(self) -> DrainResult:
         """Processa a fila. Offline/flag-off => tudo permanece pending."""
         uploaded = conflicted = 0
+        # Recovery de crash: qualquer item que ficou in-flight volta à fila.
+        for interrupted in self._store.list_sync_queue(state="in-flight"):
+            self._store.set_sync_state(interrupted["id"], "pending")
         pending_rows = self._store.list_sync_queue(state="pending")
         if not self._enabled or not self._cloud.available():
             return DrainResult(0, 0, len(pending_rows))
@@ -68,19 +72,27 @@ class SyncManager:
             if save is None:
                 self._store.set_sync_state(row["id"], "done")  # entrada órfã
                 continue
-            game_id = save["game_id"]
-            local_digest = save["hash"]
-            remote = self._cloud.fetch_divergent(game_id, local_digest)
-            if remote is not None:
-                # DF-4/J6: baixa remoto como versão paralela; AMBOS preservados
-                local_bytes = self._saves.blob_bytes(local_digest)
-                self._saves.record_conflict(game_id, local_bytes, remote)
-                self._store.set_sync_state(row["id"], "conflicted")
-                conflicted += 1
-            else:
-                self._cloud.upload(local_digest, self._saves.blob_bytes(local_digest))
-                self._store.set_sync_state(row["id"], "done")
-                uploaded += 1
+            self._store.set_sync_state(row["id"], "in-flight")
+            try:
+                game_id = save["game_id"]
+                local_digest = save["hash"]
+                remote = self._cloud.fetch_divergent(game_id, local_digest)
+                if remote is not None:
+                    # DF-4/J6: baixa remoto como versão paralela; AMBOS preservados
+                    local_bytes = self._saves.blob_bytes(local_digest)
+                    self._saves.record_conflict(game_id, local_bytes, remote)
+                    self._store.set_sync_state(row["id"], "conflicted")
+                    conflicted += 1
+                else:
+                    self._cloud.upload(local_digest, self._saves.blob_bytes(local_digest))
+                    self._store.set_sync_state(row["id"], "done")
+                    uploaded += 1
+            except Exception as exc:
+                self._store.set_sync_state(row["id"], "pending")
+                raise SteamZeroError(
+                    "E-SUPPLY-REMOTE-FAILED",
+                    detail="sync interrompido; item devolvido ao estado pending",
+                ) from exc
 
         remaining = len(self._store.list_sync_queue(state="pending"))
         return DrainResult(uploaded, conflicted, remaining)

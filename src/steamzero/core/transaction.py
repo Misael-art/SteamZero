@@ -78,6 +78,8 @@ class FileAction:
     new_hash: str
     new_size: int
     new_content_b64: str
+    kind: str = "write"  # write | move
+    source: str | None = None
 
     def new_content(self) -> bytes:
         return base64.b64decode(self.new_content_b64)
@@ -89,6 +91,8 @@ class FileAction:
             "newHash": self.new_hash,
             "newSize": self.new_size,
             "newContentB64": self.new_content_b64,
+            "kind": self.kind,
+            "source": self.source,
         }
 
     @staticmethod
@@ -99,6 +103,8 @@ class FileAction:
             new_hash=d["newHash"],
             new_size=d["newSize"],
             new_content_b64=d["newContentB64"],
+            kind=d.get("kind", "write"),
+            source=d.get("source"),
         )
 
 
@@ -191,6 +197,8 @@ class RecoveryResult:
 # scan / plan / preview
 # ===========================================================================
 def _fingerprint(target: Path) -> str | None:
+    if target.is_symlink():
+        return f"symlink:{os.readlink(target)}"
     return fs.hash_file(target) if target.exists() else None
 
 
@@ -258,9 +266,167 @@ def plan_write_files(
     return plan
 
 
+def plan_move_files(
+    moves: dict[Path, Path],
+    *,
+    root: Path,
+    kind: str = "library.organize",
+    ttl_s: int = _DEFAULT_TTL_S,
+) -> Plan:
+    """Planeja renomes/movimentos confinados sem embutir conteúdo no plano.
+
+    Cada origem e destino tem fingerprint congelado. Destinos existentes são
+    recusados (nunca há overwrite implícito) e cadeias/ciclos de movimento não
+    são aceitos; o chamador deve produzir um layout sem colisões.
+    """
+    fs.ensure_state_layout()
+    root_r = Path(os.path.realpath(root))
+    resolved_moves: list[tuple[Path, Path]] = []
+    for source, target in moves.items():
+        src = fs.resolve_within(root_r, source)
+        dst = fs.resolve_within(root_r, target)
+        if src == dst:
+            continue
+        if src.is_symlink() or not src.is_file():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem inválida: {src}")
+        resolved_moves.append((src, dst))
+
+    sources = {src for src, _ in resolved_moves}
+    targets = [dst for _, dst in resolved_moves]
+    if len(set(targets)) != len(targets):
+        raise SteamZeroError("E-TX-STALE-PLAN", detail="dois movimentos têm o mesmo destino")
+    if sources.intersection(targets):
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN", detail="cadeias/ciclos de movimento não são suportados"
+        )
+
+    actions: list[FileAction] = []
+    preconditions: list[Precondition] = []
+    total_size = 0
+    for src, dst in sorted(resolved_moves, key=lambda pair: str(pair[1])):
+        if dst.exists() or dst.is_symlink():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {dst}")
+        digest = fs.hash_file(src)
+        size = src.stat().st_size
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(dst),
+                new_hash=digest,
+                new_size=size,
+                new_content_b64="",
+                kind="move",
+                source=str(src),
+            )
+        )
+        preconditions.extend(
+            (
+                Precondition(target=str(src), fingerprint=digest),
+                Precondition(target=str(dst), fingerprint=None),
+            )
+        )
+        total_size += size
+
+    now = _now()
+    plan = Plan(
+        plan_id=ids.new_ulid(),
+        confirm_token=secrets.token_urlsafe(24),
+        kind=kind,
+        root=str(root_r),
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(seconds=ttl_s)).isoformat(),
+        status="pending",
+        rollback_guarantee="G-FULL",
+        requirements={"spaceBytes": 2 * total_size + _SPACE_MARGIN},
+        actions=actions,
+        preconditions=preconditions,
+        preview=_render_preview(kind, actions, "G-FULL"),
+    )
+    _save_plan(plan)
+    return plan
+
+
+def plan_symlink_files(
+    links: dict[Path, Path],
+    *,
+    root: Path,
+    kind: str = "content.link",
+    ttl_s: int = _DEFAULT_TTL_S,
+) -> Plan:
+    """Planeja links ``origem -> destino`` sob uma raiz de consumidores.
+
+    A origem pode viver fora de ``root`` (o BIOS store central é o caso
+    canônico), mas deve ser arquivo regular verificável. O destino precisa estar
+    ausente e confinado à raiz; nunca substituímos algo implicitamente.
+    """
+    fs.ensure_state_layout()
+    root_r = Path(os.path.realpath(root))
+    actions: list[FileAction] = []
+    preconditions: list[Precondition] = []
+    targets: set[Path] = set()
+    for source, requested_target in links.items():
+        if source.is_symlink():
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"origem de link não pode ser symlink: {source}"
+            )
+        src = Path(os.path.realpath(source))
+        if not src.is_file():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem de link inválida: {src}")
+        if requested_target.exists() or requested_target.is_symlink():
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"destino de link já existe: {requested_target}"
+            )
+        target = fs.resolve_within(root_r, requested_target)
+        if target in targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
+        targets.add(target)
+        digest = fs.hash_file(src)
+        size = src.stat().st_size
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(target),
+                new_hash=digest,
+                new_size=size,
+                new_content_b64="",
+                kind="symlink",
+                source=str(src),
+            )
+        )
+        preconditions.extend(
+            (
+                Precondition(target=str(src), fingerprint=digest),
+                Precondition(target=str(target), fingerprint=None),
+            )
+        )
+
+    now = _now()
+    plan = Plan(
+        plan_id=ids.new_ulid(),
+        confirm_token=secrets.token_urlsafe(24),
+        kind=kind,
+        root=str(root_r),
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(seconds=ttl_s)).isoformat(),
+        status="pending",
+        rollback_guarantee="G-FULL",
+        requirements={"spaceBytes": _SPACE_MARGIN},
+        actions=actions,
+        preconditions=preconditions,
+        preview=_render_preview(kind, actions, "G-FULL"),
+    )
+    _save_plan(plan)
+    return plan
+
+
 def _render_preview(kind: str, actions: list[FileAction], guarantee: str) -> str:
     lines = [f"Operação: {kind}", f"Garantia de rollback: {guarantee}", "Arquivos:"]
-    lines.extend(f"  - {a.target} ({a.new_size} bytes)" for a in actions)
+    lines.extend(
+        f"  - {a.source} -> {a.target} ({a.new_size} bytes)"
+        if a.kind in {"move", "symlink"}
+        else f"  - {a.target} ({a.new_size} bytes)"
+        for a in actions
+    )
     return "\n".join(lines)
 
 
@@ -289,6 +455,7 @@ def apply(
     if _now() > datetime.fromisoformat(plan.expires_at):
         raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
 
+    _validate_plan_paths(plan)
     _revalidate_preconditions(plan)
     _preflight_space(plan)
 
@@ -318,6 +485,10 @@ def apply(
         _maybe_crash("apply.commit")
         jrnl.commit()
         _maybe_crash("apply.after-commit")
+    except Exception:
+        jrnl.close()
+        _do_rollback(op_id, reason="apply-failed")
+        raise
     finally:
         jrnl.close()
 
@@ -332,6 +503,25 @@ def _revalidate_preconditions(plan: Plan) -> None:
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"precondição mudou: {pc.target}")
 
 
+def _validate_plan_paths(plan: Plan) -> None:
+    root = Path(plan.root)
+    targets: set[Path] = set()
+    for action in plan.actions:
+        if action.kind not in {"write", "move", "symlink"}:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"ação inválida: {action.kind}")
+        target = fs.resolve_within(root, Path(action.target))
+        if target in targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
+        targets.add(target)
+        if action.kind in {"move", "symlink"}:
+            if action.source is None:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"{action.kind} sem origem")
+            if action.kind == "move":
+                fs.resolve_within(root, Path(action.source))
+            elif not Path(action.source).is_file():
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="origem do symlink inválida")
+
+
 def _preflight_space(plan: Plan) -> None:
     needed = int(plan.requirements.get("spaceBytes", 0))
     if fs.free_space(Path(plan.root)) < needed:
@@ -343,7 +533,8 @@ def _preflight_space(plan: Plan) -> None:
 def _stage(op_id: str, plan: Plan, jrnl: journal.Journal) -> None:
     jrnl.stage("stage")
     for a in plan.actions:
-        fs.stage_bytes(op_id, a.action_id, a.new_content())
+        if a.kind == "write":
+            fs.stage_bytes(op_id, a.action_id, a.new_content())
 
 
 def _backup(op_id: str, plan: Plan, jrnl: journal.Journal) -> dict[str, dict[str, Any]]:
@@ -351,9 +542,22 @@ def _backup(op_id: str, plan: Plan, jrnl: journal.Journal) -> dict[str, dict[str
     entries: list[fs.BackupEntry] = []
     undo_map: dict[str, dict[str, Any]] = {}
     for a in plan.actions:
-        tgt = Path(a.target)
-        if tgt.exists():
-            entry = fs.backup_file(op_id, tgt, a.action_id)
+        target = Path(a.target)
+        if a.kind == "move":
+            if a.source is None:  # defesa em profundidade; validado antes
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="movimento sem origem")
+            source = Path(a.source)
+            entry = fs.backup_file(op_id, source, a.action_id)
+            entries.append(entry)
+            undo_map[a.action_id] = {
+                "op": "move-restore",
+                "source": a.source,
+                "target": a.target,
+                "backupRel": a.action_id,
+                "expectHash": entry.hash,
+            }
+        elif target.exists() or target.is_symlink():
+            entry = fs.backup_file(op_id, target, a.action_id)
             entries.append(entry)
             undo_map[a.action_id] = {
                 "op": "restore",
@@ -394,7 +598,28 @@ def _apply_actions(
     for a in plan.actions:
         jrnl.intent(a.action_id, undo=undo_map[a.action_id])
         _maybe_crash("apply.intent")
-        fs.write_atomic(Path(a.target), a.new_content())
+        if a.kind == "move":
+            if a.source is None:  # defesa em profundidade; validado antes
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="movimento sem origem")
+            source = Path(a.source)
+            target = Path(a.target)
+            if _fingerprint(source) != a.new_hash or _fingerprint(target) is not None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail=f"movimento mudou durante apply: {a.source}"
+                )
+            fs.move_file(source, target)
+        elif a.kind == "symlink":
+            if a.source is None:  # defesa em profundidade; validado antes
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="symlink sem origem")
+            source = Path(a.source)
+            target = Path(a.target)
+            if _fingerprint(source) != a.new_hash or _fingerprint(target) is not None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail=f"link mudou durante apply: {a.target}"
+                )
+            fs.symlink_atomic(source, target)
+        else:
+            fs.write_atomic(Path(a.target), a.new_content())
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -403,7 +628,17 @@ def _apply_actions(
 def _verify(op_id: str, plan: Plan, jrnl: journal.Journal) -> None:
     jrnl.stage("verify")
     for a in plan.actions:
-        if fs.hash_file(Path(a.target)) != a.new_hash:
+        target = Path(a.target)
+        if a.kind == "symlink":
+            valid = (
+                a.source is not None
+                and target.is_symlink()
+                and Path(os.path.realpath(target)) == Path(os.path.realpath(a.source))
+                and _fingerprint(Path(a.source)) == a.new_hash
+            )
+        else:
+            valid = target.exists() and fs.hash_file(target) == a.new_hash
+        if not valid:
             jrnl.close()
             _do_rollback(op_id, reason="verify-failed")
             raise SteamZeroError(
@@ -411,6 +646,15 @@ def _verify(op_id: str, plan: Plan, jrnl: journal.Journal) -> None:
                 operation_id=op_id,
                 auto_action="rollback automático executado",
                 detail=f"hash divergente em {a.target}",
+            )
+        if a.kind == "move" and a.source is not None and Path(a.source).exists():
+            jrnl.close()
+            _do_rollback(op_id, reason="verify-failed")
+            raise SteamZeroError(
+                "E-TX-VERIFY-FAILED",
+                operation_id=op_id,
+                auto_action="rollback automático executado",
+                detail=f"origem ainda existe após movimento: {a.source}",
             )
     _maybe_crash("apply.verify")
 
@@ -459,8 +703,16 @@ def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
         target = Path(undo["target"])
         if undo["op"] == "restore":
             _restore_one(operation_id, target, undo)
-        else:
+        elif undo["op"] == "move-restore":
+            _restore_move(operation_id, undo)
+        elif undo["op"] == "delete":
             fs.remove_file(target)
+        else:
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                operation_id=operation_id,
+                detail=f"undo desconhecido: {undo['op']}",
+            )
         restored.append(str(target))
 
     # zero temporários órfãos (ROLLBACK-TESTS §6)
@@ -478,13 +730,54 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
             operation_id=operation_id,
             detail=f"backup ausente para {target}",
         )
-    data = backup_path.read_bytes()
-    fs.write_atomic(target, data)
+    if fs.hash_file(backup_path) != undo["expectHash"]:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            operation_id=operation_id,
+            detail=f"backup adulterado para {target}",
+        )
+    fs.copy_file_atomic(backup_path, target)
     if fs.hash_file(target) != undo["expectHash"]:  # RB-4: rollback verificado
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
             operation_id=operation_id,
             detail=f"hash pós-restauração divergente em {target}",
+        )
+
+
+def _restore_move(operation_id: str, undo: dict[str, Any]) -> None:
+    source = Path(undo["source"])
+    target = Path(undo["target"])
+    expected = str(undo["expectHash"])
+    backup = paths.backup_for(operation_id) / str(undo["backupRel"])
+    if not backup.exists() or fs.hash_file(backup) != expected:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            operation_id=operation_id,
+            detail=f"backup ausente ou adulterado para {source}",
+        )
+    if source.exists():
+        if fs.hash_file(source) != expected:
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                operation_id=operation_id,
+                detail=f"origem foi recriada com outro conteúdo: {source}",
+            )
+    else:
+        fs.copy_file_atomic(backup, source)
+    if target.exists():
+        if fs.hash_file(target) != expected:
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                operation_id=operation_id,
+                detail=f"destino mudou após a operação: {target}",
+            )
+        fs.remove_file(target)
+    if fs.hash_file(source) != expected:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            operation_id=operation_id,
+            detail=f"hash pós-restauração divergente em {source}",
         )
 
 

@@ -11,12 +11,13 @@ Conflito de saves divergentes preserva AMBOS (AC-SV-01) — nunca auto-resolve (
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import fs, ids, paths
+from steamzero.core import fs, ids, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
@@ -108,6 +109,26 @@ class SavesStore:
                 "E-CONTENT-INCOMPLETE", detail="blob de save ausente ou corrompido"
             )
         return blob.read_bytes()
+
+    def plan_restore(
+        self, game_id: str, timeline_seq: int, *, target: Path, root: Path
+    ) -> transaction.Plan:
+        """Planeja restaurar uma versão no arquivo ativo sem sobrescrita direta."""
+        content = self.restore(game_id, timeline_seq)
+        return transaction.plan_write_files({target: content}, root=root, kind="saves.restore")
+
+    @staticmethod
+    def apply_restore(
+        plan_id: str,
+        confirm_token: str,
+        *,
+        smoke: Callable[[], None] | None = None,
+    ) -> transaction.ApplyResult:
+        return transaction.apply(plan_id, confirm_token, smoke=smoke)
+
+    @staticmethod
+    def rollback_restore(operation_id: str) -> transaction.RollbackResult:
+        return transaction.rollback(operation_id, reason="saves-restore")
 
     def record_conflict(
         self, game_id: str, local: bytes, remote: bytes, *, device_id: str | None = None

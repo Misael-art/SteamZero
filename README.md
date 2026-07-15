@@ -1,8 +1,12 @@
-# SteamZero — Fase 0: Fundação Documental
+# SteamZero
 
 Plataforma consolidada de jogos e emulação para Steam Deck e desktops Linux, projetada a partir da análise de PhaseZero, EmuDeck, LinuxToys e RetroDECK.
 
-**Estado:** fundação documental completa, aguardando aprovação. **Nenhum código de produção existe neste repositório** e nenhum será escrito até existir `APPROVED_TO_IMPLEMENT` neste diretório (ou autorização textual `APPROVED_TO_IMPLEMENT=true`).
+**Estado:** implementação aprovada e em andamento. Fases 1–2 e o critério de
+saída da Fase 3 possuem backend `verified-dev` (RT-06..11 verdes). A Fase 4 começou
+com schema/registry, três manifests núcleo e lifecycle portável transacional do M10;
+o executor Flatpak, a demonstração real dos três emuladores, hardware Steam Deck e
+demais marcos continuam pendentes. Consulte `IMPLEMENTATION-REPORT.md` para evidências.
 
 ## Metodologia replicável
 
@@ -10,9 +14,9 @@ Plataforma consolidada de jogos e emulação para Steam Deck e desktops Linux, p
 
 ## Comece por aqui
 
-1. [FOUNDATION-READINESS-REPORT.md](FOUNDATION-READINESS-REPORT.md) — relatório executivo, classificação `READY FOR PROTOTYPE`, bloqueadores.
-2. [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) — decisões pendentes do responsável (licença é a crítica).
-3. [docs/WORKLOG.md](docs/WORKLOG.md) — o que foi feito, com evidências.
+1. [IMPLEMENTATION-REPORT.md](IMPLEMENTATION-REPORT.md) — estado por marco, testes, dívidas e limites verificados.
+2. [docs/WORKLOG.md](docs/WORKLOG.md) — histórico de implementação com evidências.
+3. [FOUNDATION-READINESS-REPORT.md](FOUNDATION-READINESS-REPORT.md) — relatório histórico da fundação documental.
 
 ## Mapa da documentação
 

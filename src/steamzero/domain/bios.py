@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.api import contracts
-from steamzero.core import fs, ids, log, paths
+from steamzero.core import fs, ids, log, paths, transaction
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 
@@ -101,7 +101,10 @@ class BiosStore:
         dest = fs.resolve_within(
             paths.bios_dir(), paths.bios_dir() / self._db.platform / entry["name"]
         )
-        fs.write_atomic(dest, provided.read_bytes())
+        fs.copy_file_atomic(provided, dest)
+        if fs.hash_file(dest, algo="sha256") != sha:
+            fs.remove_file(dest)
+            raise SteamZeroError("E-STORAGE-IO", detail="cópia da BIOS divergiu da origem")
         self._store.save_bios_item(
             {
                 "id": ids.new_ulid(),
@@ -117,6 +120,29 @@ class BiosStore:
         # log só com hash truncado — nunca o hash completo nem conteúdo (AC-BI-01)
         self._log.info("bios.import.ok", platform=self._db.platform, hashTruncated=trunc)
         return BiosImportResult("imported", entry["name"], trunc)
+
+    def plan_link(
+        self, name: str, *, consumer_root: Path, consumer_relpath: str
+    ) -> transaction.Plan:
+        """Planeja um link seguro do store central para um consumidor (F-BI-02)."""
+        entry = next((item for item in self._db.entries if item["name"] == name), None)
+        source = paths.bios_dir() / self._db.platform / name
+        if entry is None or not source.is_file():
+            raise SteamZeroError("E-CONTENT-BIOS-MISSING", detail="BIOS central ausente")
+        if fs.hash_file(source, algo="sha256") != entry["sha256"]:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="BIOS central corrompida")
+        relative = fs.validate_relative_entry(consumer_relpath)
+        return transaction.plan_symlink_files(
+            {source: consumer_root / relative}, root=consumer_root, kind="bios.link"
+        )
+
+    @staticmethod
+    def apply_link(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        return transaction.apply(plan_id, confirm_token)
+
+    @staticmethod
+    def rollback_link(operation_id: str) -> transaction.RollbackResult:
+        return transaction.rollback(operation_id, reason="bios-link")
 
 
 def _used_by(entry: dict[str, Any], adapter: str) -> bool:

@@ -10,14 +10,22 @@ from pathlib import Path
 import pytest
 
 from steamzero.core import fs, ids, state
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.saves import SavesStore
 from steamzero.domain.sync import SyncManager
 
 
 class FakeCloudPort:
-    def __init__(self, *, available: bool = True, divergent: bytes | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        available: bool = True,
+        divergent: bytes | None = None,
+        fail_upload: bool = False,
+    ) -> None:
         self.is_available = available
         self.divergent = divergent
+        self.fail_upload = fail_upload
         self.uploads: list[str] = []
 
     def available(self) -> bool:
@@ -25,6 +33,8 @@ class FakeCloudPort:
 
     def upload(self, digest: str, data: bytes) -> str:
         self.uploads.append(digest)
+        if self.fail_upload:
+            raise OSError("conexão interrompida após envio parcial")
         return f"remote/{digest}"
 
     def fetch_divergent(self, game_id: str, local_digest: str) -> bytes | None:
@@ -100,3 +110,35 @@ def test_conflict_preserves_both_j6(env: tuple[state.StateStore, SavesStore, str
     assert b"progresso-local" in contents
     assert b"progresso-nuvem-diferente" in contents
     assert store.list_sync_queue(state="conflicted")
+
+
+@pytest.mark.rt
+def test_rt10_interrupted_upload_returns_to_pending_and_retries(
+    env: tuple[state.StateStore, SavesStore, str],
+) -> None:
+    store, saves, game_id = env
+    cloud = FakeCloudPort(fail_upload=True)
+    manager, entry_id = _enqueue_one(store, saves, game_id, cloud, enabled=True)
+    original = store.get_save_entry(entry_id)
+    with pytest.raises(SteamZeroError) as error:
+        manager.drain()
+    assert error.value.code == "E-SUPPLY-REMOTE-FAILED"
+    assert len(store.list_sync_queue(state="pending")) == 1
+    assert store.list_sync_queue(state="in-flight") == []
+    assert store.get_save_entry(entry_id) == original
+
+    cloud.fail_upload = False
+    result = manager.drain()
+    assert result.uploaded == 1 and result.pending == 0
+    assert len(store.list_sync_queue(state="done")) == 1
+
+
+def test_drain_recovers_entry_left_in_flight(env: tuple[state.StateStore, SavesStore, str]) -> None:
+    store, saves, game_id = env
+    cloud = FakeCloudPort()
+    manager, _ = _enqueue_one(store, saves, game_id, cloud, enabled=True)
+    queued = store.list_sync_queue(state="pending")[0]
+    store.set_sync_state(queued["id"], "in-flight")
+    result = manager.drain()
+    assert result.uploaded == 1
+    assert store.list_sync_queue(state="in-flight") == []

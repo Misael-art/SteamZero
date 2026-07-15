@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 SteamZero contributors
-"""Library: scan read-only, import verificado, dedupe, multidisco (F-LB-01/02/04/06).
+"""Library: scan, organização transacional, import, dedupe e multidisco.
 
 - Scan: leitura pura (hash blake2b + classificação); NUNCA escreve fora do state
   (AC-LB-01).
@@ -8,6 +8,8 @@
   cópia — RT-07/AC-LB-02). Dedupe por hash. Archive passa por safezip; inseguro =>
   staging limpo + E-CONTENT-UNSAFE-ARCHIVE, origem intocada (AC-LB-03).
 - Multidisco: agrupa "(Disc N)" no mesmo multi_disc_group.
+- Organização: scan→plan→apply→verify→commit, com confirmação e rollback
+  byte-idêntico pelo núcleo transacional (M7/G-FULL).
 
 Conteúdo é sempre do usuário (CONTENT-POLICY): nada é obtido, sugerido ou baixado.
 """
@@ -18,7 +20,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from steamzero.core import fs, ids, paths, safezip
+from steamzero.core import fs, ids, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
@@ -89,6 +91,42 @@ class LibraryScanner:
                 )
             )
         return results
+
+
+class LibraryOrganizer:
+    """Planeja e executa movimentos/renomes explícitos dentro da biblioteca.
+
+    ``moves`` usa caminhos relativos ``origem -> destino``. A árvore inteira é
+    escaneada antes do plano, mas nenhum arquivo é alterado até ``apply`` com o
+    confirmToken correspondente.
+    """
+
+    def __init__(self, store: StateStore) -> None:
+        self._scanner = LibraryScanner(store)
+
+    def plan(self, root: Path, moves: dict[str, str]) -> transaction.Plan:
+        scanned = {item.relpath: item for item in self._scanner.scan(root)}
+        planned: dict[Path, Path] = {}
+        for source_name, target_name in moves.items():
+            source_rel = fs.validate_relative_entry(source_name)
+            target_rel = fs.validate_relative_entry(target_name)
+            normalized_source = str(source_rel)
+            if normalized_source not in scanned:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail=f"origem não encontrada: {normalized_source}"
+                )
+            planned[root / source_rel] = root / target_rel
+        return transaction.plan_move_files(planned, root=root, kind="library.organize")
+
+    @staticmethod
+    def apply(
+        plan_id: str, confirm_token: str, *, dry_run: bool = False
+    ) -> transaction.ApplyResult:
+        return transaction.apply(plan_id, confirm_token, dry_run=dry_run)
+
+    @staticmethod
+    def rollback(operation_id: str) -> transaction.RollbackResult:
+        return transaction.rollback(operation_id, reason="library-organize")
 
 
 class LibraryImporter:

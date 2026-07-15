@@ -87,3 +87,45 @@ def test_restore_detects_corrupted_blob(env: tuple[state.StateStore, str]) -> No
     with pytest.raises(SteamZeroError) as ei:
         saves.restore(game_id, entry.timeline_seq)
     assert ei.value.code == "E-CONTENT-INCOMPLETE"
+
+
+@pytest.mark.rt
+def test_rt09_restore_failure_keeps_current_save_intact(
+    env: tuple[state.StateStore, str], tmp_path: Path
+) -> None:
+    store, game_id = env
+    saves = SavesStore(store)
+    old = saves.record_save(game_id, b"timeline-version")
+    active_root = tmp_path / "active"
+    active_root.mkdir()
+    active = active_root / "game.sav"
+    fs.write_atomic(active, b"current-progress")
+    current_hash = fs.hash_file(active)
+    plan = saves.plan_restore(game_id, old.timeline_seq, target=active, root=active_root)
+
+    def failed_validation() -> None:
+        raise RuntimeError("emulador recusou o save restaurado")
+
+    with pytest.raises(SteamZeroError) as error:
+        saves.apply_restore(plan.plan_id, plan.confirm_token, smoke=failed_validation)
+    assert error.value.code == "E-TX-VERIFY-FAILED"
+    assert fs.hash_file(active) == current_hash
+    assert active.read_bytes() == b"current-progress"
+
+
+@pytest.mark.rt
+def test_rt09_restore_apply_and_manual_rollback(
+    env: tuple[state.StateStore, str], tmp_path: Path
+) -> None:
+    store, game_id = env
+    saves = SavesStore(store)
+    old = saves.record_save(game_id, b"timeline-version")
+    active_root = tmp_path / "active"
+    active_root.mkdir()
+    active = active_root / "game.sav"
+    fs.write_atomic(active, b"current-progress")
+    plan = saves.plan_restore(game_id, old.timeline_seq, target=active, root=active_root)
+    result = saves.apply_restore(plan.plan_id, plan.confirm_token)
+    assert active.read_bytes() == b"timeline-version"
+    assert saves.rollback_restore(result.operation_id).status == "rolled-back"
+    assert active.read_bytes() == b"current-progress"

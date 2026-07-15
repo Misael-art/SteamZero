@@ -193,6 +193,37 @@ class StateStore:
         row = self._conn.execute("SELECT * FROM device WHERE id=?", (device_id,)).fetchone()
         return dict(row) if row is not None else None
 
+    # -- components / adapters --------------------------------------------
+    def save_component(self, component: dict[str, Any]) -> None:
+        """Persiste o estado detectado de um componente (upsert por id)."""
+        cols = (
+            "id",
+            "adapter_id",
+            "kind",
+            "version",
+            "origin",
+            "state",
+            "verified_at",
+            "manifest_hash",
+        )
+        row = {col: component.get(col) for col in cols}
+        row["verified_at"] = row["verified_at"] or _now_iso()
+        placeholders = ",".join(f":{col}" for col in cols)
+        updates = ",".join(f"{col}=excluded.{col}" for col in cols if col != "id")
+        sql = (
+            f"INSERT INTO component ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def get_component(self, component_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM component WHERE id=?", (component_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_components(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM component ORDER BY id").fetchall()
+        return [dict(row) for row in rows]
+
     # -- storage volumes ----------------------------------------------------
     def save_volume(self, volume: dict[str, Any]) -> None:
         cols = ("id", "uuid", "label", "fstype", "role", "state", "capacity", "free", "last_seen")

@@ -43,6 +43,28 @@ def test_write_atomic_idempotent_and_overwrite(tmp_path: Path) -> None:
     assert p.read_bytes() == b"v2"
 
 
+def test_copy_file_atomic_streams_and_preserves_content(tmp_path: Path) -> None:
+    src = tmp_path / "large.bin"
+    dest = tmp_path / "nested" / "copy.bin"
+    data = (b"steamzero" * 300_000) + b"tail"
+    src.write_bytes(data)
+    fs.copy_file_atomic(src, dest)
+    assert fs.hash_file(dest) == fs.hash_file(src)
+    assert src.read_bytes() == data
+    assert not any(".tmp." in path.name for path in dest.parent.iterdir())
+
+
+def test_symlink_atomic_publishes_absolute_verified_target(tmp_path: Path) -> None:
+    source = tmp_path / "central" / "bios.bin"
+    target = tmp_path / "consumer" / "bios.bin"
+    fs.write_atomic(source, b"synthetic")
+    fs.symlink_atomic(source, target)
+    assert target.is_symlink()
+    assert target.resolve() == source.resolve()
+    assert target.read_bytes() == b"synthetic"
+    assert not any(".tmp." in path.name for path in target.parent.iterdir())
+
+
 def test_sweep_orphan_temps(tmp_path: Path) -> None:
     orphan = tmp_path / ".file.txt.tmp.123.abcdef"
     fs.write_atomic(orphan, b"junk")  # cria arquivo com nome de tmp órfão
