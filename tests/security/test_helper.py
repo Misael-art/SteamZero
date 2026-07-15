@@ -134,6 +134,18 @@ def test_audit_log_written(tmp_path: Path) -> None:
 
 
 @pytest.mark.security
+def test_client_forwards_to_helper() -> None:
+    helper, eff = _helper()
+    client = AdminClient(helper)
+    assert client.available() is True
+    resp = client.request("set-tdp", {"watts": 11})
+    assert resp.ok
+    assert eff.calls == [("set-tdp", {"watts": 11})]
+    # o client injeta o protocolo correto -> ação inválida ainda é negada pelo helper
+    assert not client.request("run-shell", {"x": 1}).ok
+
+
+@pytest.mark.security
 def test_client_helper_missing() -> None:
     client = AdminClient(None)
     assert client.available() is False
