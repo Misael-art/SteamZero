@@ -229,6 +229,61 @@ class StateStore:
         row = self._conn.execute("SELECT * FROM profile WHERE id=?", (profile_id,)).fetchone()
         return dict(row) if row is not None else None
 
+    # -- library (platform / game / rom) ------------------------------------
+    def save_platform(self, platform: dict[str, Any]) -> None:
+        self._conn.execute(
+            "INSERT INTO platform (id, name, esde_folder, extensions_json) VALUES (?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET name=excluded.name, "
+            "esde_folder=excluded.esde_folder, extensions_json=excluded.extensions_json",
+            (
+                platform["id"],
+                platform["name"],
+                platform.get("esde_folder"),
+                platform.get("extensions_json"),
+            ),
+        )
+
+    def save_game(self, game: dict[str, Any]) -> None:
+        cols = ("id", "platform_id", "title", "canonical_path_id", "multi_disc_group", "state")
+        row = {c: game.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO game ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def save_rom(self, rom: dict[str, Any]) -> None:
+        cols = (
+            "id",
+            "game_id",
+            "volume_id",
+            "relpath",
+            "size",
+            "hash_blake2b",
+            "format",
+            "verified_at",
+        )
+        row = {c: rom.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO rom_file ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def find_rom_by_hash(self, hash_blake2b: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT * FROM rom_file WHERE hash_blake2b=?", (hash_blake2b,)
+        ).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_roms(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM rom_file ORDER BY relpath").fetchall()
+        return [dict(r) for r in rows]
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(

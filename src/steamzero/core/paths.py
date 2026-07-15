@@ -33,6 +33,18 @@ def data_home() -> Path:
     return (Path(base) if base else _home() / ".local" / "share") / APP
 
 
+def roms_dir() -> Path:
+    return data_home() / "roms"
+
+
+def bios_dir() -> Path:
+    return data_home() / "bios"
+
+
+def saves_dir() -> Path:
+    return data_home() / "saves"
+
+
 def config_home() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME")
     return (Path(base) if base else _home() / ".config") / APP
