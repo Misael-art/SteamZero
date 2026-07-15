@@ -1,0 +1,260 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Job Manager (ADR-0010, JOB-LIFECYCLE).
+
+Fila persistida no State Store; executor síncrono no daemon. Cada job executa um
+handler registrado por tipo; o handler coopera com pausa/cancelamento chamando
+``ctx.safepoint()`` em pontos de segurança (fim de item/arquivo) e reporta
+progresso medido (P11). Recuperação pós-reboot: jobs ``running`` viram
+``interrupted`` e são revertidos/roll-forward conforme o journal da operação.
+
+Concorrência real (threads/cgroup) fica para além da Fase 1; aqui o executor é
+determinístico e testável. 1 job mutável por recurso é garantido por core.lock
+no handler (não reimplementado aqui).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+from steamzero.core import ids, log, transaction
+from steamzero.core.errors import SteamZeroError
+from steamzero.core.state import StateStore
+from steamzero.jobs.models import PRIORITIES, Job, can_transition
+
+
+class JobCancelled(Exception):
+    """Sinal interno: cancelamento solicitado em ponto de segurança."""
+
+
+class JobPaused(Exception):
+    """Sinal interno: pausa solicitada em ponto de segurança."""
+
+
+@dataclass
+class _Control:
+    pause_requested: bool = False
+    cancel_requested: bool = False
+
+
+class JobContext:
+    """Interface do handler com o manager: progresso, checkpoints, safepoints."""
+
+    def __init__(self, job: Job, manager: JobManager, control: _Control) -> None:
+        self._job = job
+        self._manager = manager
+        self._control = control
+
+    def safepoint(self) -> None:
+        """Ponto de segurança: honra cancel/pause. Chame entre itens/arquivos."""
+        if self._control.cancel_requested:
+            raise JobCancelled
+        if self._control.pause_requested:
+            raise JobPaused
+
+    def set_progress(
+        self,
+        stage: str,
+        *,
+        current: float | None = None,
+        total: float | None = None,
+        unit: str | None = None,
+        current_item: str | None = None,
+    ) -> None:
+        self._job.progress = {
+            "stage": stage,
+            "current": current,
+            "total": total,
+            "unit": unit,
+            "currentItem": current_item,
+        }
+        self._manager._persist(self._job)
+        self._manager._emit(self._job, "job.progress")
+
+    def checkpoint(self, data: Any) -> None:
+        self._job.checkpoints.append(data)
+        self._manager._persist(self._job)
+
+    @property
+    def job(self) -> Job:
+        return self._job
+
+
+Handler = Callable[[Job, JobContext], Any]
+
+
+class JobManager:
+    """Gerencia o ciclo de vida dos jobs (JOB-LIFECYCLE)."""
+
+    def __init__(
+        self,
+        store: StateStore,
+        *,
+        logger: log.StructuredLogger | None = None,
+        session_active: Callable[[], bool] | None = None,
+        on_ac_power: Callable[[], bool] | None = None,
+    ) -> None:
+        self._store = store
+        self._log = logger or log.get_logger()
+        self._handlers: dict[str, Handler] = {}
+        self._controls: dict[str, _Control] = {}
+        self._session_active = session_active or (lambda: False)
+        self._on_ac_power = on_ac_power or (lambda: True)
+
+    # -- registro / criação -------------------------------------------------
+    def register(self, job_type: str, handler: Handler) -> None:
+        self._handlers[job_type] = handler
+
+    def create(
+        self,
+        job_type: str,
+        *,
+        params: dict[str, Any] | None = None,
+        priority: str = "background",
+        created_by: str = "cli",
+        constraints: dict[str, Any] | None = None,
+        correlation_id: str | None = None,
+    ) -> Job:
+        if priority not in PRIORITIES:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"prioridade inválida: {priority}")
+        job = Job(
+            id=ids.new_ulid(),
+            type=job_type,
+            priority=priority,
+            state="created",
+            params=params or {},
+            constraints=constraints or {},
+            created_by=created_by,
+            correlation_id=correlation_id or log.new_correlation_id(),
+        )
+        self._persist(job)
+        self._transition(job, "queued")
+        return job
+
+    # -- persistência / eventos --------------------------------------------
+    def _persist(self, job: Job) -> None:
+        self._store.save_job(job.to_row())
+
+    def _emit(self, job: Job, kind: str) -> None:
+        self._store.append_event(kind, entity=f"job:{job.id}", payload=job.progress or {})
+
+    def _transition(self, job: Job, new_state: str) -> None:
+        if not can_transition(job.state, new_state):
+            raise SteamZeroError(
+                "E-INTERNAL-UNEXPECTED",
+                detail=f"transição inválida de job: {job.state} -> {new_state}",
+            )
+        job.state = new_state
+        self._persist(job)
+        self._store.append_event("job.state", entity=f"job:{job.id}", payload={"state": new_state})
+        self._log.bind(jobId=job.id, correlationId=job.correlation_id or "").info(
+            "job.transition", state=new_state
+        )
+
+    def get(self, job_id: str) -> Job | None:
+        row = self._store.get_job(job_id)
+        return Job.from_row(row) if row is not None else None
+
+    def _require(self, job_id: str) -> Job:
+        job = self.get(job_id)
+        if job is None:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {job_id}")
+        return job
+
+    def list_jobs(self, *, states: list[str] | None = None) -> list[Job]:
+        return [Job.from_row(r) for r in self._store.list_jobs(states=states)]
+
+    # -- controle -----------------------------------------------------------
+    def request_pause(self, job_id: str) -> None:
+        self._controls.setdefault(job_id, _Control()).pause_requested = True
+
+    def request_resume(self, job_id: str) -> None:
+        ctrl = self._controls.setdefault(job_id, _Control())
+        ctrl.pause_requested = False
+
+    def request_cancel(self, job_id: str) -> None:
+        self._controls.setdefault(job_id, _Control()).cancel_requested = True
+
+    # -- bloqueio por constraints ------------------------------------------
+    def blocked_reason(self, job: Job) -> str | None:
+        if job.constraints.get("forbiddenDuringGameplay") and self._session_active():
+            return "gameplay"
+        if job.constraints.get("requiresAC") and not self._on_ac_power():
+            return "battery"
+        return None
+
+    # -- execução -----------------------------------------------------------
+    def run(self, job_id: str) -> Job:
+        """Executa um job (queued/paused) até um estado terminal ou pausa."""
+        job = self._require(job_id)
+        if job.state not in ("queued", "paused"):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"job não executável no estado {job.state}")
+
+        reason = self.blocked_reason(job)
+        if reason is not None:
+            code = "E-JOBS-BLOCKED-GAMEPLAY" if reason == "gameplay" else "E-JOBS-BLOCKED-BATTERY"
+            job.error_code = code
+            if job.state == "queued":
+                self._transition(job, "blocked")
+            return self._require(job_id)
+
+        handler = self._handlers.get(job.type)
+        if handler is None:
+            raise SteamZeroError("E-API-UNKNOWN-ACTION", detail=f"sem handler para {job.type}")
+
+        self._transition(job, "running")
+        control = self._controls.setdefault(job_id, _Control())
+        ctx = JobContext(job, self, control)
+        try:
+            job.result = handler(job, ctx)
+        except JobPaused:
+            self._transition(job, "paused")
+            return self._require(job_id)
+        except JobCancelled:
+            self._transition(job, "cancelling")
+            self._transition(job, "cancelled")
+            return self._require(job_id)
+        except SteamZeroError as exc:
+            job.error_code = exc.code
+            self._fail_and_rollback(job)
+            return self._require(job_id)
+        except Exception as exc:  # handler de terceiros: qualquer falha => rollback
+            self._log.error("job.handler-error", jobId=job.id, error=str(exc))
+            job.error_code = "E-INTERNAL-UNEXPECTED"
+            self._fail_and_rollback(job)
+            return self._require(job_id)
+        self._transition(job, "completed")
+        return self._require(job_id)
+
+    def _fail_and_rollback(self, job: Job) -> None:
+        self._transition(job, "failed")
+        self._transition(job, "rolling-back")
+        if job.operation_id:
+            result = transaction.rollback(job.operation_id, reason="job-failed")
+            terminal = "rolled-back" if result.status == "rolled-back" else "rollback-failed"
+        else:
+            terminal = "rolled-back"  # nada a reverter
+        self._transition(job, terminal)
+
+    # -- recuperação pós-reboot --------------------------------------------
+    def recover(self) -> list[Job]:
+        """Jobs 'running' viram 'interrupted' e são resolvidos (JOB-LIFECYCLE §Recuperação)."""
+        recovered: list[Job] = []
+        for job in self.list_jobs(states=["running"]):
+            self._transition(job, "interrupted")
+            if job.operation_id:
+                result = transaction.recover_operation(job.operation_id)
+                if result.outcome == "kept":
+                    self._transition(job, "completed")  # roll-forward
+                elif result.outcome == "rollback-failed":
+                    self._transition(job, "rolling-back")
+                    self._transition(job, "rollback-failed")
+                else:
+                    self._transition(job, "rolling-back")
+                    self._transition(job, "rolled-back")
+            else:
+                self._transition(job, "queued")  # trabalho idempotente: reenfileira
+            recovered.append(self._require(job.id))
+        return recovered

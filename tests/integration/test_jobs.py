@@ -1,0 +1,223 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Testes do Job Manager: ciclo de vida, pausa/resume/cancel, recovery (M3)."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+from steamzero.core import fs, paths, state, transaction
+from steamzero.core.errors import SteamZeroError
+from steamzero.jobs.manager import JobContext, JobManager
+from steamzero.jobs.models import Job
+
+
+@pytest.fixture
+def env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[tuple[JobManager, state.StateStore, Path]]:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    fs.ensure_state_layout()
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+    store = state.open_state()
+    mgr = JobManager(store)
+    yield mgr, store, sandbox
+    store.close()
+
+
+def _stepwise(job: Job, ctx: JobContext) -> dict[str, bool]:
+    done = int(job.params.get("done", 0))
+    for i in range(done, 3):
+        ctx.safepoint()
+        ctx.set_progress("work", current=i + 1, total=3, unit="items")
+        job.params["done"] = i + 1
+    return {"ok": True}
+
+
+def test_create_is_queued(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    job = mgr.create("noop")
+    assert job.state == "queued"
+    assert mgr.get(job.id) is not None
+
+
+def test_run_happy_path(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    mgr.register("step", _stepwise)
+    job = mgr.create("step")
+    done = mgr.run(job.id)
+    assert done.state == "completed"
+    assert done.result == {"ok": True}
+    assert done.progress["current"] == 3
+
+
+def test_cancel_before_run(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    mgr.register("step", _stepwise)
+    job = mgr.create("step")
+    mgr.request_cancel(job.id)
+    done = mgr.run(job.id)
+    assert done.state == "cancelled"
+
+
+def test_pause_then_resume(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    mgr.register("step", _stepwise)
+    job = mgr.create("step")
+    mgr.request_pause(job.id)
+    paused = mgr.run(job.id)
+    assert paused.state == "paused"
+    mgr.request_resume(job.id)
+    done = mgr.run(job.id)
+    assert done.state == "completed"
+    assert done.params["done"] == 3
+
+
+def test_failure_without_operation_rolls_back(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, _, _ = env
+
+    def boom(job: Job, ctx: JobContext) -> None:
+        raise RuntimeError("falhou")
+
+    mgr.register("boom", boom)
+    job = mgr.create("boom")
+    done = mgr.run(job.id)
+    assert done.state == "rolled-back"
+    assert done.error_code == "E-INTERNAL-UNEXPECTED"
+
+
+def test_failure_with_operation_triggers_transaction_rollback(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, store, sandbox = env
+    target = sandbox / "c"
+    fs.write_atomic_text(target, "orig")
+    plan = transaction.plan_write_files({target: b"novo"}, root=sandbox)
+    result = transaction.apply(plan.plan_id, plan.confirm_token)  # committed
+
+    def failing(job: Job, ctx: JobContext) -> None:
+        raise SteamZeroError("E-COMPONENT-DEGRADED", detail="pós-apply falhou")
+
+    mgr.register("op", failing)
+    job = mgr.create("op")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.operation_id = result.operation_id
+    store.save_operation(
+        result.operation_id, journal_path=str(paths.journal_path(result.operation_id))
+    )
+    store.save_job(job.to_row())
+    done = mgr.run(job.id)
+    assert done.state == "rolled-back"
+    assert target.read_text() == "orig"  # transação revertida
+
+
+def test_blocked_by_gameplay(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    fs.ensure_state_layout()
+    store = state.open_state()
+    mgr = JobManager(store, session_active=lambda: True)
+    mgr.register("conv", _stepwise)
+    job = mgr.create("conv", constraints={"forbiddenDuringGameplay": True})
+    done = mgr.run(job.id)
+    assert done.state == "blocked"
+    assert done.error_code == "E-JOBS-BLOCKED-GAMEPLAY"
+    store.close()
+
+
+def test_blocked_by_battery(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    fs.ensure_state_layout()
+    store = state.open_state()
+    mgr = JobManager(store, on_ac_power=lambda: False)
+    mgr.register("dl", _stepwise)
+    job = mgr.create("dl", constraints={"requiresAC": True})
+    done = mgr.run(job.id)
+    assert done.state == "blocked"
+    assert done.error_code == "E-JOBS-BLOCKED-BATTERY"
+    store.close()
+
+
+def test_unknown_handler(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    job = mgr.create("sem-handler")
+    with pytest.raises(SteamZeroError) as ei:
+        mgr.run(job.id)
+    assert ei.value.code == "E-API-UNKNOWN-ACTION"
+
+
+def test_recover_requeues_running_without_op(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, store, _ = env
+    job = mgr.create("step")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    store.save_job(job.to_row())
+    recovered = mgr.recover()
+    assert len(recovered) == 1
+    assert recovered[0].state == "queued"
+
+
+def test_recover_committed_op_rolls_forward(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, store, sandbox = env
+    target = sandbox / "c"
+    fs.write_atomic_text(target, "v0")
+    plan = transaction.plan_write_files({target: b"v1"}, root=sandbox)
+    result = transaction.apply(plan.plan_id, plan.confirm_token)  # committed
+    job = mgr.create("op")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    job.operation_id = result.operation_id
+    store.save_operation(
+        result.operation_id, journal_path=str(paths.journal_path(result.operation_id))
+    )
+    store.save_job(job.to_row())
+    recovered = mgr.recover()
+    assert recovered[0].state == "completed"  # roll-forward (kept)
+
+
+def test_recover_interrupted_op_rolls_back(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, store, sandbox = env
+    target = sandbox / "c"
+    fs.write_atomic_text(target, "v0")
+    plan = transaction.plan_write_files({target: b"v1"}, root=sandbox)
+
+    def hook(stage: str) -> None:
+        if stage == "apply.done":
+            raise transaction.SimulatedKill
+
+    transaction.set_crash_hook(hook)
+    try:
+        with pytest.raises(transaction.SimulatedKill):
+            transaction.apply(plan.plan_id, plan.confirm_token)
+    finally:
+        transaction.set_crash_hook(None)
+    op_id = next(p.stem for p in paths.journal_dir().glob("*.jsonl"))
+
+    job = mgr.create("op")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    job.operation_id = op_id
+    store.save_operation(op_id, journal_path=str(paths.journal_path(op_id)))
+    store.save_job(job.to_row())
+    recovered = mgr.recover()
+    assert recovered[0].state == "rolled-back"
+    assert target.read_text() == "v0"
+
+
+def test_invalid_transition_raises(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    mgr, _, _ = env
+    mgr.register("step", _stepwise)
+    job = mgr.create("step")
+    mgr.run(job.id)  # completed (terminal)
+    completed = mgr.get(job.id)
+    assert completed is not None and completed.state == "completed"
+    with pytest.raises(SteamZeroError) as ei:
+        mgr._transition(completed, "running")
+    assert ei.value.code == "E-INTERNAL-UNEXPECTED"

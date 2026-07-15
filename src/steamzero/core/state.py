@@ -154,6 +154,27 @@ class StateStore:
             rows = self._conn.execute("SELECT * FROM job ORDER BY created_at").fetchall()
         return [dict(r) for r in rows]
 
+    # -- operações ----------------------------------------------------------
+    def save_operation(
+        self,
+        operation_id: str,
+        *,
+        journal_path: str | None = None,
+        state: str = "active",
+        backup_path: str | None = None,
+    ) -> None:
+        """Registra/atualiza uma operação (referenciada por job.operation_id)."""
+        self._conn.execute(
+            "INSERT INTO operation (id, journal_path, state, backup_path) VALUES (?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET journal_path=excluded.journal_path, "
+            "state=excluded.state, backup_path=excluded.backup_path",
+            (operation_id, journal_path, state, backup_path),
+        )
+
+    def get_operation(self, operation_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM operation WHERE id=?", (operation_id,)).fetchone()
+        return dict(row) if row is not None else None
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(
