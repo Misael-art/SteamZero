@@ -29,8 +29,11 @@
 ```
 steamzero doctor --json
 steamzero component list --json
-steamzero component update duckstation --plan          # → planId + confirmToken + preview
-steamzero component update duckstation --confirm TOKEN
+steamzero component status --id retroarch --json
+steamzero component plan --id retroarch                # → planId + confirmToken + preview
+steamzero component apply --plan-id P --confirm TOKEN
+steamzero component rollback --operation-id OP
+steamzero component recover
 steamzero library scan --scope directory --path ~/Roms --json
 steamzero library apply --plan-id P --confirm TOKEN [--dry-run]
 steamzero library rollback --operation-id OP
@@ -58,3 +61,7 @@ steamzero support bundle --preview
    revalida o fingerprint do contexto e recusa ownership concorrente.
 5. `desktop recover` só restaura snapshot pendente; `desktop reset` aceita exclusivamente
    plano `safe` já confirmado.
+6. `component plan` resolve o commit Flatpak pinado e congela o deployment user-scoped
+   anterior. `apply` revalida esse snapshot, nunca usa `--system` e não aceita fonte EOL.
+7. Rollback Flatpak tem garantia `G-DEPLOYMENT`: restaura o commit anterior ou remove o
+   deployment recém-instalado, sem `--delete-data`; runtimes órfãos podem permanecer para GC.

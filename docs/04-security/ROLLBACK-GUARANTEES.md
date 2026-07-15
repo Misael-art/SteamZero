@@ -9,7 +9,7 @@ Rollback da operação O = levar os recursos tocados por O de volta ao estado re
 | Classe de operação | Garantia | Limite documentado |
 |---|---|---|
 | Escrita de config | G-FULL: byte-idêntico via backup+hash | — |
-| Instalação/atualização de componente | G-FULL para arquivos geridos; G-STATE para pacotes (reinstalação da versão anterior pinada) | pacote nativo pode ter scripts pós-install de terceiros não reversíveis — registrado no plano como risco |
+| Instalação/atualização de componente | G-FULL para arquivos geridos; G-DEPLOYMENT para Flatpak (remote+commit anterior pinado) e G-STATE para outros pacotes | Flatpak preserva app data e pode deixar runtimes órfãos para GC; pacote nativo pode ter scripts pós-install não reversíveis — riscos no plano |
 | Organização/conversão de biblioteca | G-FULL: original mantido até commit | após commit + GC do backup, reverter exige re-conversão |
 | Import de dumps | G-FULL: import é cópia; fonte intocada | — |
 | Saves | G-TIMELINE: qualquer versão retida é restaurável | granularidade = pontos de checkpoint/flush |

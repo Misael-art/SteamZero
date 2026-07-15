@@ -28,5 +28,7 @@ Harness: FS de teste dedicado (tmpfs/loopback), rede mockável, processo do núc
 | FI-22 | Crash abrupto depois do snapshot Desktop | BaseException/SIGKILL antes do verify | recoveryRequired=true; restore idempotente no processo seguinte |
 | FI-23 | Ownership concorrente | contexto declara conflito/oscila fingerprint | apply bloqueado; zero efeito chamado |
 | FI-24 | PATH vazio / Qt, KDE, Steam e InputPlumber ausentes | ambiente hermético | status/plan/safe/recovery funcionam em modo degraded |
+| FI-25 | Processo morre após trocar commit Flatpak e antes do commit lógico | porta fake lança BaseException depois do deploy | intent permanece; próxima execução restaura exatamente o deployment anterior; recovery idempotente |
+| FI-26 | Smoke e rollback Flatpak falham em sequência | porta fake falha nos dois pontos | operação vira recovery-required; erro estável; recuperação posterior conclui sem apagar app data |
 
 Regra de suíte: cada FI roda nas variantes {SSD, microSD-lento (throttle I/O)} quando fizer sentido, e sempre termina com verificação de: estado consistente + zero temporários órfãos + journal fechado + erro do catálogo.

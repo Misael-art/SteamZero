@@ -9,7 +9,8 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
 | `desktop-plan-v1.schema.json` | Plano G-STATE do Desktop Experience | MANIFEST-SCHEMAS §7 |
 | `desktop-status-v1.schema.json` | Contexto/status Desktop | MANIFEST-SCHEMAS §7 |
 | `adapter-v1.schema.json` | adapter.json | ADAPTER-MODEL |
-| `component-lockfile-v1.schema.json` | lockfile de canal | MANIFEST-SCHEMAS §2 |
+| `component-lock-v1.schema.json` | lockfile empacotado de componentes | MANIFEST-SCHEMAS §2 |
+| `component-plan-v1.schema.json` | plano Flatpak pinado | MANIFEST-SCHEMAS §4 |
 | `backup-manifest-v1.schema.json` | manifesto de backup | BACKUP-FORMAT |
 | `bios-db-v1.schema.json` | banco de hashes | MANIFEST-SCHEMAS §5 |
 | `profile-v1.schema.json` | presets/perfis | MANIFEST-SCHEMAS §6 |

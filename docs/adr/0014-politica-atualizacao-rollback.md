@@ -15,6 +15,11 @@ Canais conforme RELEASE-CHANNELS; componente: update = transação com backup da
 
 ## Consequências
 Lockfile testado em conjunto é artefato de release; espaço de retenção gerenciado por GC com política.
+Flatpak usa `G-DEPLOYMENT`: o snapshot anterior congela remote+commit, sua disponibilidade
+é verificada no planejamento e rollback reaplica esse commit. Instalação nova é revertida
+sem `--delete-data`; runtimes baixados podem ficar para GC. Intent durável permite recovery
+após crash antes do commit lógico. Isso não é `G-FULL` do repositório OSTree nem dos dados
+do aplicativo, distinção mostrada no preview.
 
 ## Revisão
 Cadência (Q10) na aprovação; telemetria zero significa que regressões chegam por relatos — reforçar canal beta.

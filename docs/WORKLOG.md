@@ -438,3 +438,33 @@ status: ok · schemaVersion: 2 · pending operations: 0
 Falhas/skips/xfails: zero. `src/steamzero/ports.py` permaneceu intacto, não rastreado e
 deve continuar fora do commit. M10-H fica `foundation`: o próximo gate é o apply
 assistido em hardware com rollback, dock/hotplug real e spike do InputPlumber.
+
+## 2026-07-15 — Sessão 7: M10 Flatpak pinado e recuperável
+
+**Entregue:**
+- `component-lock.json` empacotado e schema `component-lock-v1`; o registry recusa
+  manifesto sem lock, órfão ou hash/origem/commit divergente;
+- `FlatpakExecutor` user-scoped com plan/confirmToken/TTL, commit OSTree de 64 caracteres,
+  preflight remoto do alvo e do commit anterior, revalidação de deployment e bloqueio EOL;
+- intent durável antes do efeito, verify do commit, smoke, rollback G-DEPLOYMENT e recovery
+  pós-crash; app data nunca recebe `--delete-data` e runtimes órfãos ficam para GC;
+- CLI `component list|status|plan|apply|rollback|recover`, sem shell e com argv fixo;
+- FI-25/26 cobrem queda após deploy e falha dupla smoke+rollback.
+
+**Hardware/host:** somente `component list --json` read-only foi executado no host e
+detectou os três adapters como ausentes. Nenhum `flatpak install/update/uninstall/run`
+foi disparado fora das portas fake. O wheel final foi construído, inspecionado (inclui
+executor/lock/schemas e exclui `ports.py`), instalado isoladamente em `/tmp` e repetiu o
+status read-only com sucesso.
+
+**Gate:**
+```text
+$ make check
+format/lint/boundaries/independence/mypy OK · pytest: 350 passed
+$ pytest --cov=steamzero -q -m 'not slow'
+349 passed, 1 deselected · flatpak 75% · lockfile 88% · pacote 86%
+```
+
+M10 continua `partial`: falta a demonstração install/update/rollback dos três em VM e
+uma fonte oficial ativa para DuckStation. O arquivo local `src/steamzero/ports.py`
+permaneceu intacto, fora do wheel e fora deste incremento.

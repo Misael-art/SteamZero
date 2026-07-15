@@ -9,16 +9,19 @@ Campos opcionais: `platforms[], paths{}, configFormat, semanticActions{}, bios[]
 
 Validações semânticas além do schema:
 - `sources[].sha256` obrigatório quando `type != flatpak` (Flatpak delega ao commit OSTree do remote).
+- Fonte Flatpak exige `ref`, `remote` seguros e `version` como commit OSTree hexadecimal
+  completo de 64 caracteres; `endOfLife:true` impede novos planos.
 - `capabilities` ⊇ {detect, status}; `install` exige `verify.smokeTest`.
 - IDs de `requires`/`conflicts` devem existir no registry no momento do build do lockfile.
 
 ## 2. Component lockfile (por release da plataforma, canal stable)
 
-```json
-{ "schemaVersion": 1, "platformVersion": "1.0.0", "channel": "stable",
-  "components": [ {"id":"duckstation","source":"appimage",
-    "version":"v0.1-9xxx","sha256":"...","testedOn":["steamos-3.7","bazzite-42"]} ] }
-```
+O artefato empacotado `component-lock.json`, validado por `component-lock-v1`, contém
+para cada adapter `{id, manifestHash, source{...}}`; `source` reutiliza exatamente o
+schema de origem do manifesto e suporta Flatpak/AppImage/native sem resolução `latest`.
+O registry recusa inicialização se faltar uma entrada, houver órfão ou qualquer campo
+divergir do manifesto canônico. Assim, editar um manifesto sem atualizar/revisar o
+lockfile falha como `E-SUPPLY-CHECKSUM`.
 
 ## 3. Backup manifest — ver BACKUP-FORMAT.md.
 
@@ -33,6 +36,11 @@ Validações semânticas além do schema:
   "risks": ["..."], "rollbackGuarantee": "G-FULL",
   "expiresAt": "ISO8601" }
 ```
+
+Para Flatpak, `component-plan-v1` especializa o contrato com `adapterId`, `ref`,
+`remote`, `targetCommit`, snapshot `before`, ação `install|update|noop`, TTL/token e
+`rollbackGuarantee:G-DEPLOYMENT`. O executor persiste intent antes do primeiro comando;
+recovery de operação sem commit lógico restaura o snapshot anterior.
 
 ## 5. BIOS/hash database (dat)
 

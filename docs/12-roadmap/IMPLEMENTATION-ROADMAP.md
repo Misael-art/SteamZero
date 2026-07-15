@@ -26,6 +26,10 @@ Critério: AC-LB-*, AC-BI-*, AC-SV-*; RT-06..11.
 Entregas: engine de adapters + schema adapter.json + lockfile de componentes; adapters núcleo (lista PRD §7); templates de config (derivação EmuDeck conforme REUSE-POLICY); adapters de frontend Steam/SRM/ES-DE/RetroArch/RetroDECK/Heroic; ações semânticas de controle + perfis Steam Input; launcher genérico com perfis por jogo.
 Critério: instalar/atualizar/verify/rollback de cada adapter em VM; matriz de licenças por componente validada.
 
+Progresso M10: engine portátil, três manifests, lockfile anti-drift e executor Flatpak
+user-scoped recuperável estão `verified-dev`; a demonstração mutável em VM e a fonte
+substituta do DuckStation EOL ainda bloqueiam o fechamento do marco.
+
 ### M10-H — Handheld Desktop Foundation
 
 Submarco prioritário dentro da Fase 4: BigLinux/KDE como plataforma de referência sem

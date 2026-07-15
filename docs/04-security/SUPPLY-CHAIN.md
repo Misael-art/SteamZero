@@ -10,6 +10,9 @@
 
 - Sem dependências "latest" sem controle; sem submódulo flutuante.
 - Nenhum componente baixado/executado em runtime sem: versão + hash + origem + licença + assinatura quando disponível + aprovação no manifesto.
+- Flatpak é pinado pelo commit OSTree completo; o plano confirma a disponibilidade desse
+  commit via remote antes de qualquer mutação e o Flatpak valida a confiança configurada
+  do remote. O lockfile também congela o hash canônico do manifesto.
 - Builds reproduzíveis como meta (Flatpak ajuda: manifest declara fontes com hash — modelo RetroDECK `net.retrodeck.retrodeck.yml`); diferenças documentadas quando não atingível.
 - Artefatos de release assinados (minisign/cosign) + attestation de proveniência (SLSA-style) no CI.
 - Canais: `stable` (lockfile congelado), `beta` (candidato), `dev` (contrato frouxo, avisos explícitos) — política em 09-operations/RELEASE-CHANNELS.md.

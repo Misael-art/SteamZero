@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import importlib.resources
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +17,9 @@ from steamzero.api import contracts
 from steamzero.core.errors import SteamZeroError
 
 _SCHEMA = "adapter-v1.schema.json"
+_FLATPAK_COMMIT_RE = re.compile(r"^[a-f0-9]{64}$")
+_FLATPAK_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,254}$")
+_FLATPAK_REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,8 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             "E-API-SCHEMA",
             detail=f"adapter instalável {data['id']} exige capability verify e smokeTest",
         )
+    if any("\x00" in argument or len(argument) > 256 for argument in smoke):
+        raise SteamZeroError("E-API-SCHEMA", detail=f"adapter {data['id']} tem smokeTest inválido")
 
     sources = tuple(
         AdapterSource(
@@ -93,6 +99,21 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         raise SteamZeroError(
             "E-SUPPLY-NO-CHECKSUM", detail=f"adapter {data['id']} tem artefato sem sha256"
         )
+    for source in sources:
+        if source.type == "flatpak" and not _FLATPAK_COMMIT_RE.fullmatch(source.version):
+            raise SteamZeroError(
+                "E-SUPPLY-NO-CHECKSUM",
+                detail=f"adapter {data['id']} tem commit Flatpak não pinado",
+            )
+        if source.type == "flatpak" and (
+            source.ref is None
+            or source.remote is None
+            or not _FLATPAK_REF_RE.fullmatch(source.ref)
+            or not _FLATPAK_REMOTE_RE.fullmatch(source.remote)
+        ):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"adapter {data['id']} tem origem Flatpak inválida"
+            )
 
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return AdapterManifest(
@@ -138,7 +159,11 @@ class AdapterRegistry:
             if entry.name.endswith(".adapter.json"):
                 data = json.loads(entry.read_text(encoding="utf-8"))
                 manifests.append(load_manifest(data))
-        return cls(manifests)
+        registry = cls(manifests)
+        from steamzero.adapters.lockfile import validate_registry_lock
+
+        validate_registry_lock(registry.list())
+        return registry
 
     def get(self, adapter_id: str) -> AdapterManifest:
         try:

@@ -47,3 +47,8 @@ event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
 6. Multi-usuário (Q9): chave `profile_owner` reservada desde v1, não exposta.
 7. Desktop Experience usa a tabela de perfis na migração v2; planos têm TTL/token,
    recovery guarda snapshots e observation implementa estabilidade de hotplug.
+8. Operações Flatpak mantêm um intent durável em
+   `$XDG_STATE_HOME/steamzero/component-operations/<operationId>.json`; a tabela
+   `operation` referencia o arquivo e espelha
+   `applying|rolling-back|committed|rolled-back|recovery-required`.
+   O snapshot registra somente deployment/ref/remote/commit, nunca dados do aplicativo.

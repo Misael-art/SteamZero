@@ -1,6 +1,6 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 6 · **Escopo entregue:** Fases 1–3
+**Data:** 2026-07-15 · **Sessão:** implementação 7 · **Escopo entregue:** Fases 1–3
 (M1–M9) + Fase 4 em andamento (M10 parcial, M10-H foundation)
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
@@ -28,7 +28,7 @@ ver §6. Apenas as células explicitamente `verified-hw-readonly` foram exercita
 | **M7** Biblioteca transacional (10k fixtures) | 3 | **done** | `pytest tests/integration/test_library_organize.py -q` → **12 passed** em ~19s: scan→plan(confirmToken)→apply→verify→commit→rollback G-FULL sobre **10.000 fixtures**, rollback idempotente, falha parcial e crash pós-move recuperados; colisão/traversal/stale-plan bloqueados. Somado aos **27 testes** de scan/import/safezip/conversão: AC-LB-01..03, RT-06/07 e benchmark do marco verdes. |
 | **M8** BIOS center + saves timeline | 3 | **done** | `pytest tests/integration/test_bios.py tests/integration/test_saves.py` → **15 passed**: BIOS store hash-only, links atômicos com RT-08, saves timeline append-only e restore transacional com RT-09; AC-BI/SV verdes. |
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
-| **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema estrito `adapter-v1`, registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável install/update/verify/rollback G-FULL e checksum SHA-256 em **7 testes**. Os refs Flatpak foram consultados no Flathub, mas o executor Flatpak e a instalação real dos três em VM ainda não foram feitos; DuckStation está EOL no Flathub. |
+| **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema/registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável G-FULL; lockfile anti-drift; executor Flatpak user-scoped com plan/token, commit OSTree exato, verify/smoke, rollback G-DEPLOYMENT e recovery em **24 testes**. A CLI expõe list/status/plan/apply/rollback/recover. Status real read-only passou; instalação dos três em VM ainda não foi feita e DuckStation segue EOL no Flathub. |
 | **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + hw-readonly) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada, gate de independência e importador offline. **31 testes novos**; apply real ainda não executado. |
 | M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
@@ -64,7 +64,7 @@ Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
 (reproduzido na Fase 1; o worktree atual foi validado pelo gate completo):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-independence OK · pytest → 333 passed · steamzero doctor --json → status ok
+independence OK · pytest → 350 passed · steamzero doctor --json → status ok
 ```
 
 ---
@@ -75,15 +75,15 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 110 | `tests/unit/` |
-| Integração | 152 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop) |
-| Injeção de falha (FI) | 37 | marcador `fi` — inclui FI-16/17/18 e FI-21..24 Desktop |
-| Rollback (RT) | 19 | marcador `rt` — RT-01/02 e RT-06..11; outros comportamentos de RT-01..05 também provados em `test_transaction`; RT-12..14 pendentes |
+| Unit | 114 | `tests/unit/` |
+| Integração | 165 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak) |
+| Injeção de falha (FI) | 40 | marcador `fi` — inclui FI-16/17/18, FI-21..24 Desktop e FI-25/26 Flatpak |
+| Rollback (RT) | 23 | marcador `rt` — inclui lifecycle portátil e Flatpak, RT-06..11; RT-12..14 pendentes |
 | Segurança (ST) | 30 | marcador `security` — helper + mídia ST-06 |
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
-| **Total** | **333** | `pytest -q` → **333 passed** |
+| **Total** | **350** | `pytest -q` → **350 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -99,13 +99,14 @@ Cobertura (`pytest --cov=steamzero`):
 | core/ids.py · errors.py · secret.py | 100% |
 | domain/{device,mode,storage,session} | 91–98% |
 | domain/{library,bios,saves,sync,media,convert} | 90–100% |
-| adapters/{engine,registry} | 86–88% |
+| adapters/{engine,registry,lockfile} | 85–88% |
+| adapters/flatpak.py | 75% (porta real não mutada; orquestração exercitada por fake) |
 | domain/desktop.py | 89% |
 | adapters/{desktop_kde,desktop_ui} | 61–65% (efeitos reais não acionados no host) |
 | core/safezip.py | 98% |
 | privileged/{protocol,helper,client} | 90–100% |
 | jobs/manager.py | 93% |
-| **TOTAL (pacote no worktree)** | **88%** (inclui `ports.py` ainda não rastreado, 0%) |
+| **TOTAL (pacote no worktree)** | **86%** (inclui `ports.py` ainda não rastreado, 0%) |
 
 Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 
@@ -138,6 +139,8 @@ Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
   RT-10 → `test_sync::test_rt10_*`; RT-11 → `test_media::test_rt11_*`.
 - M10/RT-01/02 → `test_adapters::*`: schema/registry, checksum antes de escrita,
   install idempotente, update e rollback manual/automático preservando a release anterior.
+- M10 Flatpak → `test_flatpak*` + CLI: lockfile anti-drift, argv fixo user-scoped,
+  commit exato, stale-plan, EOL, G-DEPLOYMENT, FI-25/26 e recovery idempotente.
 - AC-HD-01..05 → `test_desktop*`, `test_runtime_independence` e CLI hermética: auto/dock,
   teclado, ownership, stale context, rollback, crash recovery, bridge e QML.
 - AC-UI completo e RT-12..14 → **não implementados** (gates restantes das Fases 5–6).
@@ -202,10 +205,10 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 - **A6. Integrações externas da Fase 3 incompletas.** Conversores reais, provedores de
   scraping/cache/rate limit e migração SSD↔microSD não foram exercitados fim-a-fim.
   O gate AC/RT está verde em lógica local, mas essas capacidades não estão prontas para uso real.
-- **A7. M10 ainda não é fim-a-fim em Flatpak.** O engine portável e os contratos dos três
-  adapters estão provados localmente, mas falta uma porta Flatpak transacional, lockfile,
-  smoke real e a demonstração install/update/rollback dos três em VM. DuckStation exige
-  selecionar uma nova fonte oficial porque seu ref Flathub está EOL.
+- **A7. M10 ainda não foi demonstrado em VM real.** Engine portátil, lockfile e executor
+  Flatpak transacional estão provados localmente, inclusive crash/recovery por porta fake.
+  Faltam smoke/install/update/rollback reais dos três em VM. DuckStation exige selecionar
+  uma nova fonte oficial porque seu ref Flathub está EOL.
 
 **Média:**
 - **M1d. Daemon/IPC ausente** — a CLI roda o núcleo in-process (single-shot). O serviço
@@ -219,8 +222,9 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 - **M4d. RT-03..05 não têm marcador `rt`**, embora seus comportamentos estejam cobertos
   em `test_transaction.py`; RT-01/02 e RT-06..11 somam 19 casos marcados, RT-12..14
   seguem pendentes.
-- **M5d. `core.proc`/`core.net`/`core.crypto` não implementados** — o primeiro executor
-  real de Flatpak e a aquisição em streaming deverão fechar parte desta dívida.
+- **M5d. `core.proc`/`core.net`/`core.crypto` não implementados** — Flatpak possui runner
+  restrito próprio no adapter (argv fixo/timeout/sem shell); falta a porta compartilhada
+  para futuros processos e aquisição em streaming.
 
 **Baixa:**
 - **B1.** Doctor mínimo (sem varredura de lock órfão nem disponibilidade de ferramentas).
@@ -247,7 +251,7 @@ make check          # ruff + ruff format --check + boundaries + mypy --strict + 
 
 **Prova disponível:** o clone limpo da entrega anterior produziu 270 testes verdes.
 No worktree desta sessão,
-`make check` produziu **333 passed**; a reprodução em clone limpo deste incremento deverá
+`make check` produziu **350 passed**; a reprodução em clone limpo deste incremento deverá
 ser repetida após seu commit. `steamzero doctor --json` permanece `status: ok`.
 
 `make` alvos: `venv lint format-check typecheck boundaries independence test cov check`. CI equivalente
@@ -257,7 +261,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (333 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (350 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -274,8 +278,8 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
     a durabilidade por fsync é assumida correta, não provada contra corte de energia.
   - Concorrência real de jobs (o executor é síncrono; sem threads/cgroup).
   - GitHub Actions (workflow escrito, não executado).
-  - Instalação/update/rollback Flatpak dos três adapters M10; apenas descoberta remota
-    e lifecycle portável sintético foram exercitados.
+  - Instalação/update/rollback Flatpak dos três adapters M10; executor, argv e recovery
+    foram exercitados por porta fake e o status real foi somente read-only.
 
 ---
 
@@ -287,10 +291,12 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 2. **Durabilidade sob perda de energia real.** O recovery é sólido contra SIGKILL (testado
    de verdade). Contra corte de energia no meio de um `fsync`/`rename`, confio no modelo
    POSIX (tmp+fsync+rename+fsync-dir) mas **não testei** com VM `poweroff -f`.
-3. **Empacotamento validado.** O wheel real contém adapters, domínio, schemas e QML do
-   M10-H, exclui explicitamente o `ports.py` local não rastreado e foi instalado em venv
-   novo; `doctor` e `desktop status` passaram após instalar a dependência declarada
-   `jsonschema`. Ainda falta validar o bundle Flatpak final.
+3. **Empacotamento validado.** O wheel real contém adapters, domínio, schemas/QML do
+   M10-H e agora `flatpak.py`, lockfile e schemas de componente; exclui explicitamente o
+   `ports.py` local não rastreado. O wheel final foi instalado isoladamente em `/tmp` e
+   passou `component list --json`; um wheel anterior já havia passado `doctor`/`desktop
+   status` com a dependência declarada `jsonschema`. Ainda falta validar o bundle Flatpak
+   final da plataforma.
 4. **Cross-filesystem (ext4↔exFAT do microSD).** `same_filesystem` e o fallback copy+unlink
    existem, mas o caminho cross-FS é pouco exercitado; colisões case-insensitive (PATH-SAFETY §8)
    não implementadas.
@@ -310,9 +316,9 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
    cobertos e RT-06..11 verdes. Porém conversões reais (chdman, dolphin-tool, maxcso,
    nsz), scraper/cache/rate limit e migração SSD↔microSD não foram exercitados fim-a-fim.
 
-9. **M10 parcial.** O schema, registry e lifecycle portável estão cobertos, mas o engine
-   recusa fontes Flatpak deliberadamente até existir um executor transacional. Além disso,
-   DuckStation perdeu sua fonte Flathub; falta selecionar e pinar uma alternativa oficial.
+9. **M10 parcial.** Schema, registry, lockfile, lifecycle portátil e executor Flatpak
+   estão cobertos, inclusive recovery pós-crash. A mutação real ainda não rodou em VM e
+   DuckStation perdeu sua fonte Flathub; falta selecionar e pinar alternativa oficial.
 
 **Resumo honesto:** as Fases 1 (M1–M3) e 2 (M4–M6) estão sólidas **no nível de lógica de
 domínio, verified-dev**; a Fase 3 entrega M7–M9 e o gate RT-06..11 verdes.
@@ -320,5 +326,5 @@ O núcleo transacional kill-proof (SIGKILL real recuperado), o fuzzing do helper
 safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas explícitas:
 somente detecção read-only tocou hardware; root, efeitos do perfil e ferramentas de
 conversão reais não foram acionados. A Fase 4 contém M10 parcial e M10-H foundation;
-Fases 5–6 não iniciaram. Nada mascarado — a suíte (333 testes, 0 falhas/skips) e o
+Fases 5–6 não iniciaram. Nada mascarado — a suíte (350 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.

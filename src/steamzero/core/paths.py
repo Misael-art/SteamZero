@@ -91,6 +91,14 @@ def plan_path(plan_id: str) -> Path:
     return plans_dir() / f"{plan_id}.json"
 
 
+def component_operations_dir() -> Path:
+    return state_home() / "component-operations"
+
+
+def component_operation_path(operation_id: str) -> Path:
+    return component_operations_dir() / f"{operation_id}.json"
+
+
 def state_db() -> Path:
     return state_home() / "state.db"
 

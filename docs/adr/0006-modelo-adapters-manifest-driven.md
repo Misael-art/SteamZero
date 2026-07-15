@@ -24,6 +24,9 @@ Conforme ADAPTER-MODEL.md + MANIFEST-SCHEMAS.md. Dispatch sempre por registro em
 
 ## Consequências
 Fase 4 = engine + manifests; suíte de contrato genérica que todo adapter passa.
+O registry empacotado valida `component-lock.json` contra o hash canônico de cada
+manifesto. Para Flatpak, a engine especializada aceita somente commit OSTree completo,
+ref/remote validados e execução user-scoped por argv fixo; fonte EOL é apenas observável.
 
 ## Revisão futura
 Após 10 adapters reais: medir % declarativo vs hooks; se hooks >30% dos adapters, redesenhar o schema.

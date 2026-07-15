@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -150,3 +151,93 @@ def test_desktop_status_surfaces_generic_owner_blocker(
     assert env["blockers"] == [
         {"code": "E-DESKTOP-OWNER-CONFLICT", "message": "controlador externo em teste"}
     ]
+
+
+class _FakeComponentRegistry:
+    def list(self) -> list[SimpleNamespace]:
+        return [SimpleNamespace(id="demo-flatpak")]
+
+
+class _FakeComponentExecutor:
+    def __init__(self) -> None:
+        self.applied: tuple[str, str] | None = None
+
+    def status(self, adapter_id: str) -> dict[str, object]:
+        return {"id": adapter_id, "state": "missing", "pinned": False}
+
+    def plan_install(self, adapter_id: str) -> SimpleNamespace:
+        data = {
+            "schemaVersion": 1,
+            "planId": "01J000000000000000000000AA",
+            "confirmToken": "confirm",
+            "adapterId": adapter_id,
+            "ref": "org.example.Emulator",
+            "remote": "flathub",
+            "targetCommit": "a" * 64,
+            "before": {
+                "installed": False,
+                "ref": "org.example.Emulator",
+                "origin": None,
+                "commit": None,
+            },
+            "action": "install",
+            "status": "pending",
+            "createdAt": "2026-07-15T00:00:00+00:00",
+            "expiresAt": "2026-07-15T01:00:00+00:00",
+            "rollbackGuarantee": "G-DEPLOYMENT",
+            "preview": "install demo",
+        }
+        return SimpleNamespace(action="install", to_dict=lambda: data)
+
+    def apply(self, plan_id: str, confirm: str) -> SimpleNamespace:
+        self.applied = (plan_id, confirm)
+        data = {
+            "operationId": "01J000000000000000000000AB",
+            "status": "ok",
+            "adapterId": "demo-flatpak",
+            "commit": "a" * 64,
+        }
+        return SimpleNamespace(
+            status="ok",
+            operation_id=data["operationId"],
+            to_dict=lambda: data,
+        )
+
+
+def test_component_list_and_plan_use_contract_envelopes(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeComponentExecutor()
+    monkeypatch.setattr(cli, "_component_runtime", lambda _store: (_FakeComponentRegistry(), fake))
+
+    assert cli.main(["component", "list", "--json"]) == cli.EXIT_OK
+    listed = json.loads(capsys.readouterr().out)
+    contracts.validate(listed, "envelope-v2.schema.json")
+    assert listed["data"]["components"][0]["id"] == "demo-flatpak"
+
+    assert cli.main(["component", "plan", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
+    planned = json.loads(capsys.readouterr().out)
+    contracts.validate(planned["data"]["plan"], "component-plan-v1.schema.json")
+
+
+def test_component_apply_requires_and_forwards_confirmation(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeComponentExecutor()
+    monkeypatch.setattr(cli, "_component_runtime", lambda _store: (_FakeComponentRegistry(), fake))
+
+    code = cli.main(
+        [
+            "component",
+            "apply",
+            "--plan-id",
+            "01J000000000000000000000AA",
+            "--confirm",
+            "confirm",
+            "--json",
+        ]
+    )
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert fake.applied == ("01J000000000000000000000AA", "confirm")
+    assert env["operationId"] == "01J000000000000000000000AB"

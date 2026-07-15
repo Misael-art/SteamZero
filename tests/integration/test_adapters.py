@@ -11,6 +11,12 @@ from pathlib import Path
 import pytest
 
 from steamzero.adapters import AdapterEngine, AdapterRegistry, AdapterSource
+from steamzero.adapters.lockfile import (
+    ComponentLock,
+    LockedComponent,
+    LockedSource,
+    validate_registry_lock,
+)
 from steamzero.adapters.registry import load_manifest
 from steamzero.core import fs, state
 from steamzero.core.errors import SteamZeroError
@@ -80,6 +86,43 @@ def test_bundled_registry_loads_three_core_adapters() -> None:
         {"detect", "status", "install", "verify"} <= item.capabilities for item in registry.list()
     )
     assert registry.get("duckstation").sources[0].end_of_life is True
+
+
+def test_bundled_registry_is_locked_without_manifest_drift() -> None:
+    registry = AdapterRegistry.bundled()
+    locked = validate_registry_lock(registry.list())
+    assert [item.id for item in locked.components] == ["dolphin", "duckstation", "retroarch"]
+
+
+def test_lockfile_manifest_drift_is_rejected() -> None:
+    manifest = load_manifest(portable_manifest("1.0.0", b"v1"))
+    source = manifest.sources[0]
+    locked_source = LockedSource(
+        type=source.type,
+        version=source.version,
+        priority=source.priority,
+        ref=source.ref,
+        remote=source.remote,
+        url=source.url,
+        sha256=source.sha256,
+        end_of_life=source.end_of_life,
+    )
+    valid = ComponentLock(1, (LockedComponent(manifest.id, manifest.manifest_hash, locked_source),))
+    assert validate_registry_lock([manifest], valid) is valid
+
+    locked = ComponentLock(
+        1,
+        (
+            LockedComponent(
+                manifest.id,
+                "0" * 64,
+                locked_source,
+            ),
+        ),
+    )
+    with pytest.raises(SteamZeroError) as error:
+        validate_registry_lock([manifest], locked)
+    assert error.value.code == "E-SUPPLY-CHECKSUM"
 
 
 def test_manifest_rejects_portable_source_without_checksum() -> None:

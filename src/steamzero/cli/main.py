@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope, status_from_checks
@@ -21,6 +21,10 @@ from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.desktop import ExperienceCoordinator
+
+if TYPE_CHECKING:
+    from steamzero.adapters.flatpak import FlatpakExecutor
+    from steamzero.adapters.registry import AdapterRegistry
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -36,6 +40,12 @@ Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
   jobs list              lista jobs
   state export [--out F] exporta o State Store (JSON)
+  component list         lista adapters e deployments Flatpak
+  component status      mostra um deployment (--id ADAPTER)
+  component plan        planeja install/update pinado (--id ADAPTER)
+  component apply       aplica plano (--plan-id ID --confirm TOKEN)
+  component rollback    restaura deployment anterior (--operation-id ID)
+  component recover     recupera operações Flatpak interrompidas
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -94,6 +104,123 @@ def _cmd_state_export(args: list[str], correlation_id: str) -> tuple[dict[str, A
         data = export
     env = build_envelope("state", "export", status="ok", data=data, correlation_id=correlation_id)
     return env, EXIT_OK
+
+
+def _component_runtime(store: StateStore) -> tuple[AdapterRegistry, FlatpakExecutor]:
+    # Imports locais mantêm doctor/state utilizáveis mesmo sem o binário Flatpak.
+    from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
+    from steamzero.adapters.registry import AdapterRegistry
+
+    registry = AdapterRegistry.bundled()
+    return registry, FlatpakExecutor(store, registry, FlatpakCLI())
+
+
+def _cmd_component_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    with StateStore() as store:
+        store.migrate()
+        registry, executor = _component_runtime(store)
+        components = [executor.status(manifest.id) for manifest in registry.list()]
+    status = "degraded" if any(item["state"] == "degraded" for item in components) else "ok"
+    return (
+        build_envelope(
+            "component",
+            "list",
+            status=status,
+            data={"components": components, "count": len(components)},
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        data = executor.status(adapter_id)
+    status = "degraded" if data["state"] == "degraded" else "ok"
+    return (
+        build_envelope(
+            "component", "status", status=status, data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        plan = executor.plan_install(adapter_id)
+    return (
+        build_envelope(
+            "component",
+            "plan",
+            status="noop" if plan.action == "noop" else "ok",
+            data={"plan": plan.to_dict()},
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        result = executor.apply(plan_id, confirm_token)
+    return (
+        build_envelope(
+            "component",
+            "apply",
+            status=result.status,
+            data=result.to_dict(),
+            operation_id=result.operation_id or None,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    operation_id = _required_flag(args, "--operation-id")
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        result = executor.rollback(operation_id)
+    return (
+        build_envelope(
+            "component",
+            "rollback",
+            status=result.status,
+            data=result.to_dict(),
+            operation_id=result.operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        recovered = executor.recover()
+    data = {"operations": [result.to_dict() for result in recovered], "count": len(recovered)}
+    return (
+        build_envelope(
+            "component",
+            "recover",
+            status="ok" if recovered else "noop",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
 
 
 def _desktop_coordinator() -> ExperienceCoordinator:
@@ -269,6 +396,12 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("jobs", "list"): _cmd_jobs_list,
     ("state", "export"): _cmd_state_export,
+    ("component", "list"): _cmd_component_list,
+    ("component", "status"): _cmd_component_status,
+    ("component", "plan"): _cmd_component_plan,
+    ("component", "apply"): _cmd_component_apply,
+    ("component", "rollback"): _cmd_component_rollback,
+    ("component", "recover"): _cmd_component_recover,
     ("desktop", "status"): _cmd_desktop_status,
     ("desktop", "plan"): _cmd_desktop_plan,
     ("desktop", "apply"): _cmd_desktop_apply,

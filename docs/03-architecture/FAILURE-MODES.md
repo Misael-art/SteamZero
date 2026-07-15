@@ -28,3 +28,4 @@ Protocolo universal (§5.3): `detect failure → stop safely → collect diagnos
 | FM-22 | Dois controladores disputam input/display | fingerprint instável, capture falho ou conflito declarado | bloqueia apply com E-DESKTOP-OWNER-CONFLICT; modo observador | Nenhum segundo remapeador iniciado |
 | FM-23 | Crash durante troca de perfil Desktop | snapshot `desktop-recovery` permanece `applying` | próxima subida oferece/roda restore reverso; falha congela recurso | Último estado capturado ou recovery explícito |
 | FM-24 | Todos os efeitos Desktop indisponíveis | nenhum DesktopEffectPort disponível | aplica apenas estado nativo como `degraded`; modo seguro não captura dispositivos | Acesso físico preservado |
+| FM-25 | Flatpak muda entre plan/apply ou processo cai após deploy | snapshot do deployment + intent durável + revalidação | recusa stale sem efeito ou recovery restaura commit anterior | App data preservado; deployment anterior restaurado |

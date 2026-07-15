@@ -4,8 +4,8 @@ Cada célula referencia ACs (01-product/ACCEPTANCE-CRITERIA.md) e classes de fal
 
 | Funcionalidade | Unit | Integração | Falhas | Rollback | Hardware | UI |
 |---|---|---|---|---|---|---|
-| Instalação componente (flatpak/appimage/nativo) | schema manifesto | AC-IN-01..03 | FI-01..05 | RT-01 | HW: por dispositivo | fluxo instalar |
-| Atualização/canais | lockfile | AC-IN-03 | FI-02,04 | RT-02 | — | plano/preview |
+| Instalação componente (flatpak/appimage/nativo) | schema manifesto + argv Flatpak | AC-IN-01..03; Flatpak pinado user-scoped | FI-01..05,25..26 | RT-01 + G-DEPLOYMENT | Flatpak host read-only; apply em VM pendente | fluxo instalar |
+| Atualização/canais | lockfile anti-drift | AC-IN-03; commit anterior resolvível | FI-02,04,25..26 | RT-02 commit exato | — | plano/preview |
 | Desinstalação | inventário | preserva dados usuário | FI-04 | RT-03 | — | confirmação |
 | Reparação | verify units | repara só camada quebrada | FI-09 | RT-04 | — | — |
 | Config emuladores | parsers round-trip | diff/preset/restore-defaults | FI-14 (json/xml inválido) | RT-05 | — | editor diff |

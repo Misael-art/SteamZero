@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "components": [
+    {
+      "id": "dolphin",
+      "manifestHash": "f092a59c858b62376c1fdbcc09883955d5e0892cf5fa9b54cf8bb7ddef94ecfb",
+      "source": {
+        "type": "flatpak",
+        "version": "377c3e63506ebc51c6eb8ae717f216514f3fdbdd634d69c00c4c0173fb0629e5",
+        "priority": 1,
+        "ref": "org.DolphinEmu.dolphin-emu",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "duckstation",
+      "manifestHash": "7c7f4eae3afb578b606dc34f679981bfc9caa3b7d158e610e1132d0904abd645",
+      "source": {
+        "type": "flatpak",
+        "version": "d2a630c4f30df1c221a9bae52b8897f5e8e7cca95cb7c8e4b7363ed5ebc2d4cd",
+        "priority": 1,
+        "ref": "org.duckstation.DuckStation",
+        "remote": "flathub",
+        "endOfLife": true
+      }
+    },
+    {
+      "id": "retroarch",
+      "manifestHash": "aaa073f99f0e9580030e11ae563ddd6885c34fe282919652d8759b89a15a594c",
+      "source": {
+        "type": "flatpak",
+        "version": "56fdd2ed2f5ae5d7bb887f38858c68757e27afcc8e86e830e338e14cd4988522",
+        "priority": 1,
+        "ref": "org.libretro.RetroArch",
+        "remote": "flathub"
+      }
+    }
+  ]
+}

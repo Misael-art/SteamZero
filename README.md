@@ -8,8 +8,11 @@ dependência de build, instalação, runtime, recuperação ou testes do SteamZe
 saída da Fase 3 possuem backend `verified-dev` (RT-06..11 verdes). A Fase 4 começou
 com schema/registry, três manifests núcleo e lifecycle portável transacional do M10;
 o M10-H adiciona a fundação Handheld Desktop para BigLinux/KDE, com status real no
-Steam Deck LCD, perfis transacionais e UI Qt/QML opcional. Aplicação real dos perfis,
-executor Flatpak e demais marcos continuam pendentes. Consulte
+Steam Deck LCD, perfis transacionais e UI Qt/QML opcional. O M10 agora também possui
+lockfile verificado e executor Flatpak user-scoped com commit pinado, confirmação,
+verify, rollback e recovery; a instalação real em VM e a substituição da fonte EOL do
+DuckStation continuam pendentes. Aplicação real dos perfis e demais marcos também
+continuam pendentes. Consulte
 `IMPLEMENTATION-REPORT.md` para evidências e limites.
 
 ## Metodologia replicável
