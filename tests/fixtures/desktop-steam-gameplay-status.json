@@ -1,0 +1,59 @@
+{
+  "truthState": "applied",
+  "desiredProfile": "handheld-desktop",
+  "appliedProfile": "handheld-desktop",
+  "observedProfile": "handheld-desktop",
+  "effectiveProfile": "handheld-desktop",
+  "recommendedProfile": "handheld-desktop",
+  "observation": {"checkedEffects": [], "unavailableEffects": [], "ambiguousCandidates": [], "errors": []},
+  "statusReasons": [],
+  "recoveryRequired": false,
+  "independentRuntime": true,
+  "context": {
+    "deviceKind": "deck-lcd",
+    "sessionType": "wayland",
+    "displays": [
+      {"name": "eDP-1", "connected": true, "internal": true, "width": 800, "height": 1280, "refreshHz": 60.0, "scale": 1.35}
+    ],
+    "physicalDock": false,
+    "externalKeyboard": false,
+    "externalMouse": false,
+    "capabilities": ["gamescope", "steam", "gamemode"],
+    "conflicts": []
+  },
+  "dashboard": {
+    "components": [],
+    "steam": [],
+    "sync": {"state": "idle", "pending": 0, "conflicted": 0, "done": 0},
+    "doctor": {"state": "healthy", "checks": []},
+    "steamGameplay": {
+      "games": [
+        {
+          "id": "1091500",
+          "name": "Cyberpunk 2077",
+          "coverUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg",
+          "state": "installed"
+        }
+      ],
+      "selectedGameId": "1091500",
+      "environment": [
+        {"id": "steam", "name": "Steam", "detail": "Contexto de jogo e runtime", "owner": "Steam", "required": true, "state": "ready", "statusLabel": "pronto"},
+        {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "ready", "statusLabel": "ativo"},
+        {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "ready", "statusLabel": "ativo"},
+        {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "ready", "statusLabel": "disponível"},
+        {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
+      ],
+      "readiness": {"percent": 85, "title": "Pronto com 1 ajuste recomendado", "detail": "Hardware compatível · Perfil seguro disponível"},
+      "hardware": {"deviceLabel": "Deck LCD", "tdpMin": 3, "tdpMax": 15, "gpuMin": 200, "gpuMax": 1600, "refreshHz": 60, "memoryGb": 11.2, "withinSafeLimits": true},
+      "context": {"device": "Deck LCD", "battery": 74, "mode": "Modo Desktop"},
+      "currentProfile": {"gameId": "1091500", "scope": "game", "profile": "economy", "fps": 30, "tdp": 7, "gpuMode": "auto", "gpuClock": null, "gamescope": true, "gameMode": true, "mangoHud": "off", "upscaling": "fsr2-quality"},
+      "truthState": "desired",
+      "impact": {"battery": "2 h 35 min", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
+      "profiles": [
+        {"id": "economy", "label": "Economia", "fps": 30},
+        {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": true},
+        {"id": "performance", "label": "Desempenho", "fps": 60}
+      ]
+    }
+  }
+}

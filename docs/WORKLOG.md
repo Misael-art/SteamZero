@@ -614,3 +614,26 @@ vulnerabilidades conhecidas. A execução no provedor continua pendente do remot
 fronteiras, independência e mypy verdes. M10 em VM, daemon/reconciliador, transporte
 polkit e matriz física do Deck não foram executados e permanecem bloqueando UI/release
 em `OPERATIONAL-TRUST-GATES.md`.
+
+## 2026-07-16 — Sessão 12: Steam Gameplay no padrão Prontidão do jogo
+
+**Direção visual escolhida:** o terceiro mockup passou a ser a referência da central
+Desktop. A primeira cobertura foi aplicada à área Steam com hierarquia jogo → prontidão
+→ ajustes essenciais → impacto → confirmação, preservando tema azul-preto, foco ciano,
+estados semânticos, sidebar e footer por controle.
+
+**Contrato real e honesto:** `SteamGameplayController` descobre manifests e capas locais,
+observa Steam/Gamescope/Feral GameMode/MangoHud/vkBasalt, memória, tela e limites do Deck.
+Perfis usam token, expiração e fingerprint do ambiente; mudança da biblioteca gera
+`E-TX-STALE-PLAN`, owner concorrente é rechecado no apply e dependência ausente bloqueia
+em vez de simular sucesso. A persistência permanece `desired`, sem afirmar que TDP/GPU
+foram aplicados antes do executor M11.
+
+**UI e gate:** perfis/FPS/MangoHud usam escolhas segmentadas, TDP usa slider contínuo e
+upscaling usa listbox. A revisão mostra alterações, bloqueios e rollback; drivers ausentes
+encaminham apenas a **Abrir Sistema**. A suíte chegou a **377 testes**; Ruff, mypy,
+`qmllint`, fronteiras e independência passaram. A captura Qt/QML em 1600×1000 foi
+comparada ao mockup selecionado.
+
+**Versão:** a árvore passa a `0.1.0a2`; nenhum artefato desta mudança reutiliza a versão
+`0.1.0a1` da baseline.

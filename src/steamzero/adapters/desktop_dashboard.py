@@ -18,6 +18,7 @@ from typing import Any
 
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
+from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
@@ -213,6 +214,7 @@ class DesktopDashboard:
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
         doctor_runner: DoctorRunner = run_doctor,
         steam: SteamDesktopController | None = None,
+        gameplay: SteamGameplayController | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
     ) -> None:
@@ -221,6 +223,9 @@ class DesktopDashboard:
         self._flatpak_factory = flatpak_factory
         self._doctor_runner = doctor_runner
         self._steam = steam or SteamDesktopController(which=which, spawn=spawn)
+        self._gameplay = gameplay or SteamGameplayController(
+            which=which, store_factory=store_factory
+        )
         self._which = which
         self._spawn = spawn
 
@@ -271,12 +276,40 @@ class DesktopDashboard:
                 "checks": [{"name": "doctor", "status": "fail", "message": str(exc)[:240]}],
             }
 
+        try:
+            steam_gameplay = self._gameplay.snapshot(desktop_status)
+        except Exception:
+            steam_gameplay = {
+                "games": [],
+                "environment": [],
+                "readiness": {
+                    "percent": 0,
+                    "title": "Gameplay Steam temporariamente indisponível",
+                    "detail": "O restante da central continua disponível.",
+                },
+                "truthState": "degraded",
+            }
+
         return {
             "components": components,
             "steam": self._steam.rows(desktop_status),
+            "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
         }
+
+    def plan_steam_gameplay(
+        self, payload: dict[str, Any], desktop_status: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._gameplay.plan(payload, desktop_status)
+
+    def apply_steam_gameplay(
+        self,
+        plan_id: str,
+        confirm_token: str,
+        desktop_status: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._gameplay.apply(plan_id, confirm_token, desktop_status)
 
     def plan_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:

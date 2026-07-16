@@ -54,6 +54,8 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/component/plan"' in qml
     assert '"/component/apply"' in qml
     assert '"/steam/open"' in qml
+    assert '"/steam/gameplay/plan"' in qml
+    assert '"/steam/gameplay/apply"' in qml
     assert "Plano bloqueado" in qml
     for section in (
         "Visão geral",
@@ -64,3 +66,13 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Sistema e recuperação",
     ):
         assert section in qml
+    gameplay_qml = (root / "src/steamzero/ui/qml/SteamGameplay.qml").read_text(encoding="utf-8")
+    for contract in (
+        "Prontidão do jogo",
+        "Revisar e aplicar perfil",
+        "Restaurar perfil seguro",
+        "Feral GameMode",
+        "Gamescope",
+        "Abrir Sistema",
+    ):
+        assert contract in gameplay_qml

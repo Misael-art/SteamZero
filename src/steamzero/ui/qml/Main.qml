@@ -5,10 +5,10 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: root
-    width: 1280
-    height: 800
-    minimumWidth: 800
-    minimumHeight: 600
+    width: 1600
+    height: 1000
+    minimumWidth: 1100
+    minimumHeight: 720
     visible: true
     title: qsTr("SteamZero — Central de jogos")
     color: backgroundColor
@@ -84,10 +84,28 @@ ApplicationWindow {
             "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
         }
     ]
+    property var fallbackSteamGameplay: ({
+        "games": [],
+        "environment": [
+            {"id": "steam", "name": "Steam", "detail": "Contexto de jogo e runtime", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
+        ],
+        "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
+        "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
+        "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
+        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native"},
+        "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"}
+    })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
         ? desktopStatus.dashboard.steam : fallbackSteam
+    readonly property var steamGameplayData: desktopStatus.dashboard
+        && desktopStatus.dashboard.steamGameplay
+        ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
     readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
@@ -595,7 +613,7 @@ ApplicationWindow {
             Rectangle {
                 id: sidebar
                 color: root.sidebarColor
-                Layout.preferredWidth: root.width < 980 ? 184 : 228
+                Layout.preferredWidth: root.width < 980 ? 184 : root.width >= 1400 ? 264 : 228
                 Layout.fillHeight: true
                 border.color: root.borderColor
                 border.width: 1
@@ -654,7 +672,7 @@ ApplicationWindow {
                             icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
                             display: AbstractButton.TextBesideIcon
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 48
+                            Layout.minimumHeight: index === 2 && root.sectionIndex === 2 ? 70 : 48
                             leftPadding: 14
                             rightPadding: 12
                             spacing: 12
@@ -689,12 +707,22 @@ ApplicationWindow {
                                     background: Item {}
                                     Layout.preferredWidth: 28
                                 }
-                                Label {
-                                    text: modelData.label
-                                    color: root.sectionIndex === index ? root.cyanColor : root.textColor
-                                    font.pixelSize: 15
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    elide: Text.ElideRight
+                                    spacing: 1
+                                    Label {
+                                        text: modelData.label
+                                        color: root.sectionIndex === index ? root.cyanColor : root.textColor
+                                        font.pixelSize: 15
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        visible: index === 2 && root.sectionIndex === 2
+                                        text: qsTr("Gameplay")
+                                        color: root.cyanColor
+                                        font.pixelSize: 12
+                                    }
                                 }
                             }
                         }
@@ -1268,8 +1296,41 @@ ApplicationWindow {
                         // Steam
                         RowLayout {
                             spacing: 0
-                            ColumnLayout {
+                            SteamGameplay {
+                                id: steamGameplayPage
+                                gameplay: root.steamGameplayData
+                                backgroundColor: root.backgroundColor
+                                surfaceColor: root.surfaceColor
+                                raisedColor: root.raisedColor
+                                borderColor: root.borderColor
+                                textColor: root.textColor
+                                mutedColor: root.mutedColor
+                                cyanColor: root.cyanColor
+                                cyanDarkColor: root.cyanDarkColor
+                                greenColor: root.greenColor
+                                amberColor: root.amberColor
+                                redColor: root.redColor
                                 Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                onPlanRequested: function(payload) {
+                                    root.request("POST", "/steam/gameplay/plan", payload, function(response) {
+                                        steamGameplayPage.showPlan(response.plan)
+                                    })
+                                }
+                                onApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/steam/gameplay/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Perfil Steam salvo"))
+                                    })
+                                }
+                                onSystemRequested: root.sectionIndex = 5
+                            }
+                            ColumnLayout {
+                                visible: false
+                                Layout.preferredWidth: 0
+                                Layout.fillWidth: false
                                 Layout.fillHeight: true
                                 spacing: 0
                                 ColumnLayout {
@@ -1424,7 +1485,7 @@ ApplicationWindow {
                                 }
                             }
                             Rectangle {
-                                visible: root.width >= 1040
+                                visible: false
                                 color: root.surfaceColor
                                 border.color: root.borderColor
                                 Layout.preferredWidth: 292

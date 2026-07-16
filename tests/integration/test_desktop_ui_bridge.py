@@ -87,7 +87,11 @@ class FakeDashboard:
         self.calls: list[tuple[str, ...]] = []
 
     def snapshot(self, _status: dict[str, object]) -> dict[str, object]:
-        return {"components": [{"id": "dolphin"}], "steam": [{"id": "steam-client"}]}
+        return {
+            "components": [{"id": "dolphin"}],
+            "steam": [{"id": "steam-client"}],
+            "steamGameplay": {"games": [{"id": "10"}]},
+        }
 
     def plan_component(self, component_id: str) -> dict[str, object]:
         self.calls.append(("plan", component_id))
@@ -104,6 +108,21 @@ class FakeDashboard:
     def open_steam(self, target: str) -> dict[str, object]:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
+
+    def plan_steam_gameplay(
+        self, payload: dict[str, object], _status: dict[str, object]
+    ) -> dict[str, object]:
+        self.calls.append(("gameplay-plan", str(payload["gameId"])))
+        return {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"}
+
+    def apply_steam_gameplay(
+        self,
+        plan_id: str,
+        confirm_token: str,
+        _status: dict[str, object],
+    ) -> dict[str, object]:
+        self.calls.append(("gameplay-apply", plan_id, confirm_token))
+        return {"status": "saved"}
 
 
 @pytest.fixture
@@ -323,6 +342,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     assert status["dashboard"] == {
         "components": [{"id": "dolphin"}],
         "steam": [{"id": "steam-client"}],
+        "steamGameplay": {"games": [{"id": "10"}]},
     }
 
     planned = request_json(base, token, "/component/plan", {"componentId": "dolphin"})
@@ -335,15 +355,33 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
     request_json(base, token, "/steam/open", {"target": "library"})
+    gameplay_plan = request_json(
+        base,
+        token,
+        "/steam/gameplay/plan",
+        {"gameId": "10"},
+    )
+    assert gameplay_plan["plan"] == {
+        "planId": "gameplay-plan",
+        "confirmToken": "gameplay-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/apply",
+        {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
+    )
     assert dashboard.calls == [
         ("plan", "dolphin"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
         ("steam", "library"),
+        ("gameplay-plan", "10"),
+        ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
     ]
 
 
-def test_bridge_rechecks_owner_conflict_before_component_apply(
+def test_bridge_rechecks_owner_conflict_before_dashboard_mutations(
     conflicted_dashboard_bridge: tuple[str, str, FakeDashboard],
 ) -> None:
     base, token, dashboard = conflicted_dashboard_bridge
@@ -360,4 +398,16 @@ def test_bridge_rechecks_owner_conflict_before_component_apply(
     payload = json.loads(error.value.read())
     assert payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
     error.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as gameplay_error:
+        request_json(
+            base,
+            token,
+            "/steam/gameplay/apply",
+            {"planId": "stale-plan", "confirmToken": "stale-confirmation"},
+        )
+    assert gameplay_error.value.code == 409
+    gameplay_payload = json.loads(gameplay_error.value.read())
+    assert gameplay_payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
+    gameplay_error.value.close()
     assert dashboard.calls == []

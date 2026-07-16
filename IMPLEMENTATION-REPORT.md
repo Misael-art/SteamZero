@@ -83,7 +83,7 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 117 | `tests/unit/` |
+| Unit | 122 | `tests/unit/` |
 | Integração | 179 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
 | Injeção de falha (FI) | 40 | marcador `fi` — inclui FI-16/17/18, FI-21..24 Desktop e FI-25/26 Flatpak |
 | Rollback (RT) | 23 | marcador `rt` — inclui lifecycle portátil e Flatpak, RT-06..11; RT-12..14 pendentes |
@@ -91,7 +91,7 @@ Contagem por categoria (por diretório/ marcador):
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
-| **Total** | **372** | `pytest -q` → **372 passed** |
+| **Total** | **377** | `pytest -q` → **377 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -264,7 +264,7 @@ python3 -m venv /tmp/steamzero-smoke
 /tmp/steamzero-smoke/bin/steamzero doctor --json
 ```
 
-**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **372 passed / 85%**
+**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **377 passed / 85%**
 e o wheel `0.1.0a1` foi instalado sem editable em venv vazio; versão, `pip check`,
 `steamzero.ports` empacotado e `doctor --json` passaram. A prova em clone remoto limpo
 depende do primeiro push/CI.
@@ -276,7 +276,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12/3.14 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (372 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (377 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -348,5 +348,5 @@ safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas expl�
 houve uma aplicação parcial de perfil sem matriz física; root foi usado apenas no bootstrap
 versionado, e ferramentas de conversão reais não foram acionadas. A Fase 4
 contém M10 parcial e M10-H foundation; Fases 5–6 não iniciaram. Nada mascarado — a suíte
-(372 testes, 0 falhas/skips) e o
+(377 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.
