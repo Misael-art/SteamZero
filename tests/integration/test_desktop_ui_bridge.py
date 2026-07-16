@@ -14,7 +14,12 @@ import pytest
 
 from steamzero.adapters.desktop_ui import DesktopControlServer
 from steamzero.core.state import StateStore
-from steamzero.domain.desktop import DesktopContext, DisplayState, ExperienceCoordinator
+from steamzero.domain.desktop import (
+    DesktopConflictAction,
+    DesktopContext,
+    DisplayState,
+    ExperienceCoordinator,
+)
 
 
 class Context:
@@ -30,6 +35,53 @@ class Context:
         )
 
 
+class ConflictContext:
+    def __init__(self) -> None:
+        self.value = DesktopContext(
+            "deck-lcd",
+            "wayland",
+            (DisplayState("eDP-1", True, True, 800, 1280, 60.0, 1.35),),
+            False,
+            False,
+            False,
+            frozenset(),
+            ("controlador externo ativo: test-mode-watcher.service",),
+        )
+
+    def snapshot(self) -> DesktopContext:
+        return self.value
+
+
+class ConflictResolver:
+    def __init__(self, context: ConflictContext) -> None:
+        self.context = context
+        self.calls = 0
+
+    def actions(self, context: DesktopContext) -> tuple[DesktopConflictAction, ...]:
+        if not context.conflicts:
+            return ()
+        return (
+            DesktopConflictAction(
+                "release-test-watcher",
+                "test-mode-watcher.service",
+                "user",
+                "Desativar watcher de teste",
+                False,
+                (("systemctl", "--user", "stop", "test-mode-watcher.service"),),
+            ),
+        )
+
+    def release(self, action: DesktopConflictAction) -> dict[str, object]:
+        self.calls += 1
+        self.context.value = DesktopContext(**{**self.context.value.__dict__, "conflicts": ()})
+        return {"stopped": True, "disabled": True}
+
+
+class BrokenContext:
+    def snapshot(self) -> DesktopContext:
+        raise RuntimeError("falha inesperada simulada")
+
+
 @pytest.fixture
 def bridge(tmp_path: Path) -> tuple[str, str]:
     ready: queue.Queue[DesktopControlServer] = queue.Queue()
@@ -38,6 +90,53 @@ def bridge(tmp_path: Path) -> tuple[str, str]:
         store = StateStore(tmp_path / "state.db")
         store.migrate()
         server = DesktopControlServer(ExperienceCoordinator(Context(), (), store), "secret-token")
+        ready.put(server)
+        server.serve_forever()
+        server.server_close()
+        store.close()
+
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    server = ready.get(timeout=3)
+    yield f"http://127.0.0.1:{server.server_port}", "secret-token"
+    server.shutdown()
+    thread.join(timeout=2)
+
+
+@pytest.fixture
+def conflict_bridge(tmp_path: Path) -> tuple[str, str, ConflictResolver]:
+    ready: queue.Queue[DesktopControlServer] = queue.Queue()
+    context = ConflictContext()
+    resolver = ConflictResolver(context)
+
+    def run_server() -> None:
+        store = StateStore(tmp_path / "conflict-state.db")
+        store.migrate()
+        coordinator = ExperienceCoordinator(context, (), store, resolver)
+        server = DesktopControlServer(coordinator, "secret-token")
+        ready.put(server)
+        server.serve_forever()
+        server.server_close()
+        store.close()
+
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    server = ready.get(timeout=3)
+    yield f"http://127.0.0.1:{server.server_port}", "secret-token", resolver
+    server.shutdown()
+    thread.join(timeout=2)
+
+
+@pytest.fixture
+def broken_bridge(tmp_path: Path) -> tuple[str, str]:
+    ready: queue.Queue[DesktopControlServer] = queue.Queue()
+
+    def run_server() -> None:
+        store = StateStore(tmp_path / "broken-state.db")
+        store.migrate()
+        server = DesktopControlServer(
+            ExperienceCoordinator(BrokenContext(), (), store), "secret-token"
+        )
         ready.put(server)
         server.serve_forever()
         server.server_close()
@@ -90,3 +189,51 @@ def test_bridge_plan_and_confirmed_safe_apply(bridge: tuple[str, str]) -> None:
     profile = applied["profile"]
     assert isinstance(profile, dict)
     assert profile["id"] == "safe"
+
+
+def test_bridge_conflict_resolution_requires_confirmation_and_refreshes_status(
+    conflict_bridge: tuple[str, str, ConflictResolver],
+) -> None:
+    base, token, resolver = conflict_bridge
+    status = request_json(base, token, "/status")
+    actions = status["conflictActions"]
+    assert isinstance(actions, list) and len(actions) == 1
+    action = actions[0]
+    assert isinstance(action, dict)
+
+    planned = request_json(base, token, "/conflict/plan", {"actionId": str(action["actionId"])})
+    plan = planned["plan"]
+    assert isinstance(plan, dict)
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(
+            base,
+            token,
+            "/conflict/apply",
+            {"planId": str(plan["planId"]), "confirmToken": "incorreto"},
+        )
+    assert error.value.code == 409
+    error.value.close()
+    assert resolver.calls == 0
+
+    result = request_json(
+        base,
+        token,
+        "/conflict/apply",
+        {"planId": str(plan["planId"]), "confirmToken": str(plan["confirmToken"])},
+    )
+    assert result["status"] == "ok"
+    assert resolver.calls == 1
+    refreshed = request_json(base, token, "/status")
+    assert refreshed["conflictActions"] == []
+
+
+def test_bridge_returns_structured_error_instead_of_closing_connection(
+    broken_bridge: tuple[str, str],
+) -> None:
+    base, token = broken_bridge
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(base, token, "/status")
+    assert error.value.code == 500
+    payload = json.loads(error.value.read())
+    assert payload["error"]["code"] == "E-INTERNAL-UNEXPECTED"
+    error.value.close()

@@ -23,6 +23,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
     PROFILE_DOCKED,
+    DesktopConflictAction,
     DesktopContext,
     DesktopEffectPort,
     DisplayState,
@@ -38,6 +39,8 @@ _OUTPUT_RE = re.compile(r"^Output:\s+\d+\s+(\S+)", re.MULTILINE)
 _MODE_RE = re.compile(r"(\d+)x(\d+)@([0-9.]+)\*")
 _SCALE_RE = re.compile(r"^\s*Scale:\s*([0-9.]+)", re.MULTILINE)
 _INTERNAL_PREFIXES = ("edp", "lvds", "dsi")
+_LEGACY_WATCHER_UNIT = "phasezero-steamdeck-mode-watcher.service"
+_LEGACY_WATCHER_ACTION = "disable-legacy-steamdeck-mode-watcher"
 
 
 @dataclass(frozen=True)
@@ -163,6 +166,93 @@ def _external_controller_conflicts(runner: Runner, which: Which) -> tuple[str, .
         if unit and "steamzero" not in lowered and any(pattern in lowered for pattern in patterns):
             units.append(f"controlador externo ativo: {unit}")
     return tuple(sorted(set(units)))
+
+
+class LegacyWatcherConflictResolver:
+    """Remove somente o watcher legado conhecido, no escopo user onde foi detectado."""
+
+    def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
+        self._runner = runner
+        self._which = which
+
+    def actions(self, context: DesktopContext) -> tuple[DesktopConflictAction, ...]:
+        expected = f"controlador externo ativo: {_LEGACY_WATCHER_UNIT}"
+        if expected not in context.conflicts or self._which("systemctl") is None:
+            return ()
+        return (self._allowed_action(),)
+
+    def release(self, action: DesktopConflictAction) -> dict[str, Any]:
+        if action != self._allowed_action():
+            raise SteamZeroError(
+                "E-DESKTOP-CONFLICT-RELEASE", detail="ação de remediação fora da allowlist"
+            )
+
+        was_active = self._is_active()
+        was_enabled = self._is_enabled()
+        stopped = self._runner(action.commands[0], 15.0)
+        if stopped.returncode != 0:
+            raise SteamZeroError(
+                "E-DESKTOP-CONFLICT-RELEASE",
+                detail=self._failure_detail("não foi possível parar o watcher", stopped),
+            )
+        disabled = self._runner(action.commands[1], 15.0)
+        if disabled.returncode != 0:
+            rollback = self._restore(was_active=was_active, was_enabled=was_enabled)
+            detail = self._failure_detail("não foi possível desabilitar o watcher", disabled)
+            if rollback:
+                detail += f"; restauração incompleta: {'; '.join(rollback)}"
+            raise SteamZeroError("E-DESKTOP-CONFLICT-RELEASE", detail=detail)
+
+        if self._is_active() or self._is_enabled():
+            rollback = self._restore(was_active=was_active, was_enabled=was_enabled)
+            detail = "o serviço continuou ativo ou habilitado após a operação"
+            if rollback:
+                detail += f"; restauração incompleta: {'; '.join(rollback)}"
+            raise SteamZeroError("E-DESKTOP-CONFLICT-RELEASE", detail=detail)
+        return {
+            "unit": action.unit,
+            "scope": action.scope,
+            "stopped": True,
+            "disabled": True,
+            "rollbackPerformed": False,
+        }
+
+    def _allowed_action(self) -> DesktopConflictAction:
+        return DesktopConflictAction(
+            action_id=_LEGACY_WATCHER_ACTION,
+            unit=_LEGACY_WATCHER_UNIT,
+            scope="user",
+            summary="Desativar o watcher legado que disputa o controle de display e entrada",
+            requires_privilege=False,
+            commands=(
+                ("systemctl", "--user", "stop", _LEGACY_WATCHER_UNIT),
+                ("systemctl", "--user", "disable", _LEGACY_WATCHER_UNIT),
+            ),
+        )
+
+    def _is_active(self) -> bool:
+        result = self._runner(("systemctl", "--user", "is-active", _LEGACY_WATCHER_UNIT), 3.0)
+        return result.returncode == 0
+
+    def _is_enabled(self) -> bool:
+        result = self._runner(("systemctl", "--user", "is-enabled", _LEGACY_WATCHER_UNIT), 3.0)
+        return result.returncode == 0
+
+    def _restore(self, *, was_active: bool, was_enabled: bool) -> list[str]:
+        failures: list[str] = []
+        if was_enabled:
+            enabled = self._runner(("systemctl", "--user", "enable", _LEGACY_WATCHER_UNIT), 15.0)
+            if enabled.returncode != 0:
+                failures.append(self._failure_detail("enable", enabled))
+        if was_active:
+            started = self._runner(("systemctl", "--user", "start", _LEGACY_WATCHER_UNIT), 15.0)
+            if started.returncode != 0:
+                failures.append(self._failure_detail("start", started))
+        return failures
+
+    def _failure_detail(self, prefix: str, result: CommandResult) -> str:
+        detail = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
+        return f"{prefix}: {detail}"
 
 
 class LinuxDesktopContext:
@@ -437,4 +527,6 @@ def activate_virtual_keyboard() -> str:
 
 def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
     effects: tuple[DesktopEffectPort, ...] = (KDEDisplayEffect(), KDEWindowEffect())
-    return ExperienceCoordinator(LinuxDesktopContext(), effects, store)
+    return ExperienceCoordinator(
+        LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()
+    )

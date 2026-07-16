@@ -22,9 +22,14 @@ ApplicationWindow {
     })
     property string selectedProfile: "auto"
     property string lastRequest: ""
+    property bool lastRequestIsError: false
     property string apiUrl: ""
     property string apiToken: ""
     property var currentPlan: null
+    property var conflictPlan: null
+    readonly property bool hasConflicts: desktopStatus.context
+        && desktopStatus.context.conflicts
+        && desktopStatus.context.conflicts.length > 0
 
     signal planRequested(string profile)
     signal recoveryRequested()
@@ -65,11 +70,14 @@ ApplicationWindow {
                 if (xhr.status < 200 || xhr.status >= 300) {
                     const error = response.error || {}
                     lastRequest = error.title || error.detail || qsTr("Ação recusada")
+                    lastRequestIsError = true
                     return
                 }
+                lastRequestIsError = false
                 callback(response)
             } catch (error) {
                 lastRequest = qsTr("Resposta inválida; nenhuma mudança adicional foi feita")
+                lastRequestIsError = true
             }
         }
         xhr.send(JSON.stringify(payload || {}))
@@ -78,10 +86,87 @@ ApplicationWindow {
     function refreshStatus() {
         request("GET", "/status", {}, function(response) {
             desktopStatus = response
+            currentPlan = null
         })
     }
 
+    function commandPreview(plan) {
+        if (!plan || !plan.action || !plan.action.commands)
+            return ""
+        return plan.action.commands.map(function(command) { return command.join(" ") }).join("\n")
+    }
+
     Component.onCompleted: parseArguments()
+
+    Dialog {
+        id: conflictDialog
+        title: qsTr("Desativar serviço conflitante?")
+        modal: true
+        width: Math.min(root.width - 40, 680)
+        x: Math.max(20, (root.width - width) / 2)
+        y: Math.max(20, (root.height - height) / 2)
+        standardButtons: Dialog.NoButton
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 12
+            Label {
+                text: qsTr("O SteamZero continuará bloqueado até o watcher deixar de controlar display e entrada.")
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: root.conflictPlan ? root.conflictPlan.action.unit : ""
+                font.bold: true
+                wrapMode: Text.WrapAnywhere
+                Layout.fillWidth: true
+                Accessible.name: qsTr("Serviço conflitante: %1").arg(text)
+            }
+            TextArea {
+                text: root.commandPreview(root.conflictPlan)
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                Layout.fillWidth: true
+                Layout.minimumHeight: 84
+                Accessible.name: qsTr("Comandos exatos que serão executados")
+            }
+            Label {
+                text: qsTr("Se a segunda etapa falhar, o estado anterior será restaurado.")
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: conflictDialog.close()
+                }
+                Button {
+                    text: qsTr("Desativar e liberar SteamZero")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        if (!root.conflictPlan)
+                            return
+                        root.request("POST", "/conflict/apply", {
+                            "planId": root.conflictPlan.planId,
+                            "confirmToken": root.conflictPlan.confirmToken
+                        }, function(response) {
+                            root.lastRequest = qsTr("Serviço desativado. Gere um novo plano para aplicar o perfil.")
+                            root.conflictPlan = null
+                            conflictDialog.close()
+                            root.refreshStatus()
+                        })
+                    }
+                }
+            }
+        }
+    }
 
     header: ToolBar {
         height: 56
@@ -130,6 +215,75 @@ ApplicationWindow {
                 Layout.leftMargin: 20
             }
 
+            Frame {
+                visible: root.hasConflicts
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                padding: 16
+                background: Rectangle {
+                    color: "#35251a"
+                    radius: 14
+                    border.color: "#ffb86b"
+                    border.width: 2
+                }
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 10
+                    Label {
+                        text: qsTr("Outro serviço está controlando display ou entrada")
+                        color: "#ffd29b"
+                        font.pixelSize: 19
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        Accessible.name: text
+                    }
+                    Label {
+                        text: qsTr("Nenhuma configuração foi aplicada. Desative o serviço conflitante ou mantenha o SteamZero em modo observador.")
+                        color: "#f4d9bd"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    Repeater {
+                        model: root.hasConflicts ? root.desktopStatus.context.conflicts : []
+                        Label {
+                            required property string modelData
+                            text: modelData
+                            color: "#f4d9bd"
+                            wrapMode: Text.WrapAnywhere
+                            Layout.fillWidth: true
+                            Accessible.name: text
+                        }
+                    }
+                    Label {
+                        visible: !root.desktopStatus.conflictActions
+                            || root.desktopStatus.conflictActions.length === 0
+                        text: qsTr("Este conflito não possui desativação automática allowlisted.")
+                        color: "#f4d9bd"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    Button {
+                        id: releaseConflictButton
+                        visible: root.desktopStatus.conflictActions
+                            && root.desktopStatus.conflictActions.length > 0
+                        text: qsTr("Revisar desativação do watcher antigo")
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 48
+                        Accessible.name: text
+                        onClicked: {
+                            const action = root.desktopStatus.conflictActions[0]
+                            root.request("POST", "/conflict/plan", {"actionId": action.actionId}, function(response) {
+                                root.conflictPlan = response.plan
+                                conflictDialog.open()
+                            })
+                        }
+                        KeyNavigation.down: profilePicker
+                    }
+                }
+            }
+
             GridLayout {
                 id: cards
                 columns: width >= 820 ? 2 : 1
@@ -167,7 +321,13 @@ ApplicationWindow {
                                 root.planRequested(root.selectedProfile)
                                 root.request("POST", "/plan", {"profile": root.selectedProfile}, function(response) {
                                     root.currentPlan = response.plan
-                                    root.lastRequest = qsTr("Plano pronto: %1 mudança(s). Revise e aplique.").arg(response.plan.changes.length)
+                                    if (response.plan.blockers.length > 0) {
+                                        root.lastRequest = qsTr("Plano bloqueado: %1").arg(response.plan.blockers.join("; "))
+                                        root.lastRequestIsError = true
+                                    } else {
+                                        root.lastRequest = qsTr("Plano pronto: %1 mudança(s). Revise e aplique.").arg(response.plan.changes.length)
+                                        root.lastRequestIsError = false
+                                    }
                                 })
                             }
                             KeyNavigation.up: profilePicker
@@ -175,7 +335,9 @@ ApplicationWindow {
                         }
                         Button {
                             id: applyButton
-                            text: qsTr("Aplicar plano revisado")
+                            text: root.currentPlan !== null && root.currentPlan.blockers.length > 0
+                                ? qsTr("Aplicação bloqueada — resolva o conflito")
+                                : qsTr("Aplicar plano revisado")
                             enabled: root.currentPlan !== null && root.currentPlan.blockers.length === 0
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
@@ -280,7 +442,7 @@ ApplicationWindow {
             Label {
                 text: root.lastRequest
                 visible: text.length > 0
-                color: "#83e6aa"
+                color: root.lastRequestIsError ? "#ff9b9b" : "#83e6aa"
                 font.pixelSize: 16
                 Accessible.name: text
                 Layout.leftMargin: 20

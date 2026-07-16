@@ -49,5 +49,8 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert "Layout.minimumHeight: 48" in qml
     assert "Accessible.name" in qml
     assert "KeyNavigation" in qml
+    assert '"/conflict/plan"' in qml
+    assert '"/conflict/apply"' in qml
+    assert "Plano bloqueado" in qml
     for section in ("Modo", "Controles e teclado", "Display e janelas", "Diagnóstico"):
         assert section in qml

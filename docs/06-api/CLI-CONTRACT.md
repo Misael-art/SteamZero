@@ -58,7 +58,9 @@ steamzero support bundle --preview
 2. Nenhuma ação aceita path cru onde exista ID de entidade (T-05); comandos de import aceitam paths (validados).
 3. `--json` é estável e testado por golden files; mudanças aditivas apenas dentro do mesmo major.
 4. `desktop status` é read-only e funciona sem Qt, KDE, Steam ou InputPlumber. `apply`
-   revalida o fingerprint do contexto e recusa ownership concorrente.
+   revalida o fingerprint do contexto e recusa ownership concorrente. Quando existe
+   remediação segura, `data.conflictActions` expõe actionId, escopo, privilégio e argv
+   exato; a bridge exige planId + confirmToken antes de executá-la.
 5. `desktop recover` só restaura snapshot pendente; `desktop reset` aceita exclusivamente
    plano `safe` já confirmado.
 6. `component plan` resolve o commit Flatpak pinado e congela o deployment user-scoped

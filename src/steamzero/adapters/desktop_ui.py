@@ -15,7 +15,7 @@ from typing import Any, cast
 from urllib.parse import urlparse
 
 from steamzero.adapters.desktop_kde import activate_virtual_keyboard
-from steamzero.core.errors import SteamZeroError
+from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.domain.desktop import ExperienceCoordinator
 
 _MAX_BODY = 64 * 1024
@@ -46,6 +46,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         except SteamZeroError as exc:
             self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
             return
+        except Exception as exc:
+            self._send(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": build_error("E-INTERNAL-UNEXPECTED", detail=str(exc))},
+            )
+            return
         self._send(HTTPStatus.OK, status)
 
     def do_POST(self) -> None:
@@ -60,6 +66,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return
         except (json.JSONDecodeError, TypeError, ValueError) as exc:
             self._send(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            return
+        except Exception as exc:
+            self._send(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": build_error("E-INTERNAL-UNEXPECTED", detail=str(exc))},
+            )
             return
         self._send(HTTPStatus.OK, result)
 
@@ -90,6 +102,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if not isinstance(requested, str):
                 raise TypeError("profile precisa ser string")
             return {"plan": coordinator.plan(requested).to_dict()}
+        if path == "/conflict/plan":
+            return {
+                "plan": coordinator.plan_conflict_release(
+                    self._required_string(payload, "actionId")
+                ).to_dict()
+            }
+        if path == "/conflict/apply":
+            return coordinator.apply_conflict_release(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
         if path == "/apply":
             return coordinator.apply(
                 self._required_string(payload, "planId"),

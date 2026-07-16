@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "desktop-conflict-plan-v1.schema.json",
+  "title": "SteamZero Desktop Conflict Resolution Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "planId", "confirmToken", "action", "createdAt",
+    "expiresAt", "status", "rollbackGuarantee"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "planId": { "type": "string", "minLength": 10 },
+    "confirmToken": { "type": "string", "minLength": 16 },
+    "action": { "$ref": "#/$defs/action" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["pending", "applied", "aborted"] },
+    "rollbackGuarantee": { "const": "G-STATE" }
+  },
+  "$defs": {
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionId", "unit", "scope", "summary", "requiresPrivilege", "commands"
+      ],
+      "properties": {
+        "actionId": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "pattern": "^[A-Za-z0-9_.@:-]+\\.service$" },
+        "scope": { "enum": ["user", "system"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "requiresPrivilege": { "type": "boolean" },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

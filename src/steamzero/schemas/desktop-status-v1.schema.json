@@ -21,6 +21,10 @@
     "manualOverride": { "type": ["string", "null"] },
     "current": { "type": ["object", "null"] },
     "recoveryRequired": { "type": "boolean" },
-    "independentRuntime": { "const": true }
+    "independentRuntime": { "const": true },
+    "conflictActions": {
+      "type": "array",
+      "items": { "$ref": "desktop-conflict-plan-v1.schema.json#/$defs/action" }
+    }
   }
 }

@@ -5,13 +5,17 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import pytest
+
 from steamzero.adapters.desktop_kde import (
     CommandResult,
     KDEDisplayEffect,
+    LegacyWatcherConflictResolver,
     LinuxDesktopContext,
     VirtualKeyboardController,
     parse_kscreen_outputs,
 )
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, profile_for
 
 KSCREEN = """Output: 1 eDP-1 uuid-a
@@ -26,6 +30,21 @@ Output: 2 DP-1 uuid-b
 \tModes:  1:2560x1080@75.00*!
 \tScale: 1
 """
+
+LEGACY_WATCHER = "phasezero-steamdeck-mode-watcher.service"
+
+
+def _conflicted_context() -> DesktopContext:
+    return DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset(),
+        (f"controlador externo ativo: {LEGACY_WATCHER}",),
+    )
 
 
 def test_parse_kscreen_outputs() -> None:
@@ -99,3 +118,79 @@ def test_context_reports_generic_external_mode_watcher() -> None:
     assert context.conflicts == (
         "controlador externo ativo: vendor-steamdeck-mode-watcher.service",
     )
+
+
+def test_legacy_watcher_release_uses_exact_user_scope_commands() -> None:
+    active = True
+    enabled = True
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        nonlocal active, enabled
+        call = tuple(argv)
+        calls.append(call)
+        operation = call[2]
+        if operation == "is-active":
+            return CommandResult(0 if active else 3, "active\n" if active else "inactive\n")
+        if operation == "is-enabled":
+            return CommandResult(0 if enabled else 1, "enabled\n" if enabled else "disabled\n")
+        if operation == "stop":
+            active = False
+            return CommandResult(0, "")
+        if operation == "disable":
+            enabled = False
+            return CommandResult(0, "")
+        return CommandResult(1, "", "ação inesperada")
+
+    resolver = LegacyWatcherConflictResolver(runner=runner, which=lambda command: command)
+    clean = DesktopContext(**{**_conflicted_context().__dict__, "conflicts": ()})
+    assert resolver.actions(clean) == ()
+    action = resolver.actions(_conflicted_context())[0]
+    result = resolver.release(action)
+
+    assert result["stopped"] is True
+    assert result["disabled"] is True
+    assert active is False and enabled is False
+    assert action.commands == (
+        ("systemctl", "--user", "stop", LEGACY_WATCHER),
+        ("systemctl", "--user", "disable", LEGACY_WATCHER),
+    )
+    assert all(call[:2] == ("systemctl", "--user") for call in calls)
+
+
+def test_legacy_watcher_disable_failure_restores_previous_state() -> None:
+    active = True
+    enabled = True
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        nonlocal active, enabled
+        call = tuple(argv)
+        calls.append(call)
+        operation = call[2]
+        if operation == "is-active":
+            return CommandResult(0 if active else 3, "active\n" if active else "inactive\n")
+        if operation == "is-enabled":
+            return CommandResult(0 if enabled else 1, "enabled\n" if enabled else "disabled\n")
+        if operation == "stop":
+            active = False
+            return CommandResult(0, "")
+        if operation == "disable":
+            return CommandResult(1, "", "falha simulada")
+        if operation == "enable":
+            enabled = True
+            return CommandResult(0, "")
+        if operation == "start":
+            active = True
+            return CommandResult(0, "")
+        return CommandResult(1, "", "ação inesperada")
+
+    resolver = LegacyWatcherConflictResolver(runner=runner, which=lambda command: command)
+    action = resolver.actions(_conflicted_context())[0]
+
+    with pytest.raises(SteamZeroError, match="não foi possível desabilitar"):
+        resolver.release(action)
+
+    assert active is True and enabled is True
+    assert ("systemctl", "--user", "enable", LEGACY_WATCHER) in calls
+    assert ("systemctl", "--user", "start", LEGACY_WATCHER) in calls

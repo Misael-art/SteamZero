@@ -21,6 +21,8 @@ Impacto           — o que deixa/deixou de funcionar
 | `E-SAVES-CONFLICT` | "Existem dois progressos diferentes deste jogo." + escolha lado a lado com metadados |
 | `E-CONTENT-FW-INCOMPAT` | "O firmware selecionado não é compatível com este emulador." |
 | `E-STORAGE-SPACE` | "São necessários mais 8,4 GB para concluir a conversão." + botão "liberar espaço" |
+| `E-DESKTOP-OWNER-CONFLICT` | "Outro serviço está controlando display ou entrada." + unidade detectada + botão "revisar desativação" quando allowlisted |
+| `E-DESKTOP-CONFLICT-RELEASE` | "Não foi possível desativar o serviço por completo." + confirmação de que o SteamZero permaneceu observador e restauração tentada |
 
 ## Regras
 

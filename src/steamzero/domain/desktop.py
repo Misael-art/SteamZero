@@ -32,6 +32,7 @@ _OVERRIDE_ID = "desktop-override"
 _RECOVERY_ID = "desktop-recovery"
 _OBSERVATION_ID = "desktop-observation"
 _PLAN_PREFIX = "desktop-plan-"
+_CONFLICT_PLAN_PREFIX = "desktop-conflict-plan-"
 _PLAN_TTL = timedelta(hours=1)
 
 
@@ -101,6 +102,62 @@ class DesktopContextPort(Protocol):
     def snapshot(self) -> DesktopContext:
         """Obtém um snapshot sem alterar o host."""
         ...
+
+
+@dataclass(frozen=True)
+class DesktopConflictAction:
+    """Remediação allowlisted para um owner externo detectado."""
+
+    action_id: str
+    unit: str
+    scope: str
+    summary: str
+    requires_privilege: bool
+    commands: tuple[tuple[str, ...], ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "actionId": self.action_id,
+            "unit": self.unit,
+            "scope": self.scope,
+            "summary": self.summary,
+            "requiresPrivilege": self.requires_privilege,
+            "commands": [list(command) for command in self.commands],
+        }
+
+    @staticmethod
+    def from_dict(value: dict[str, Any]) -> DesktopConflictAction:
+        text_fields = ("actionId", "unit", "scope", "summary")
+        if any(not isinstance(value.get(field), str) or not value[field] for field in text_fields):
+            raise ValueError("metadados de remediação inválidos")
+        if value["scope"] not in {"user", "system"} or not isinstance(
+            value.get("requiresPrivilege"), bool
+        ):
+            raise ValueError("escopo de remediação inválido")
+        commands = value.get("commands")
+        if not isinstance(commands, list) or not all(
+            isinstance(command, list)
+            and command
+            and all(isinstance(argument, str) and argument for argument in command)
+            for command in commands
+        ):
+            raise ValueError("comandos de remediação inválidos")
+        return DesktopConflictAction(
+            action_id=value["actionId"],
+            unit=value["unit"],
+            scope=value["scope"],
+            summary=value["summary"],
+            requires_privilege=value["requiresPrivilege"],
+            commands=tuple(tuple(command) for command in commands),
+        )
+
+
+class DesktopConflictResolverPort(Protocol):
+    """Porta restrita para liberar ownership concorrente conhecido."""
+
+    def actions(self, context: DesktopContext) -> tuple[DesktopConflictAction, ...]: ...
+
+    def release(self, action: DesktopConflictAction) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -302,6 +359,52 @@ class ExperienceApplyResult:
         }
 
 
+@dataclass
+class DesktopConflictPlan:
+    plan_id: str
+    confirm_token: str
+    action: DesktopConflictAction
+    created_at: str
+    expires_at: str
+    status: str = "pending"
+    schema_version: int = 1
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schemaVersion": self.schema_version,
+            "planId": self.plan_id,
+            "confirmToken": self.confirm_token,
+            "action": self.action.to_dict(),
+            "createdAt": self.created_at,
+            "expiresAt": self.expires_at,
+            "status": self.status,
+            "rollbackGuarantee": "G-STATE",
+        }
+
+    @staticmethod
+    def from_dict(value: dict[str, Any]) -> DesktopConflictPlan:
+        action = value.get("action")
+        if not isinstance(action, dict):
+            raise ValueError("ação de remediação ausente")
+        text_fields = ("planId", "confirmToken", "createdAt", "expiresAt", "status")
+        if any(not isinstance(value.get(field), str) or not value[field] for field in text_fields):
+            raise ValueError("metadados do plano de conflito inválidos")
+        if value["status"] not in {"pending", "applied", "aborted"}:
+            raise ValueError("status do plano de conflito inválido")
+        schema_version = value.get("schemaVersion", 1)
+        if not isinstance(schema_version, int) or schema_version != 1:
+            raise ValueError("schemaVersion do plano de conflito inválido")
+        return DesktopConflictPlan(
+            plan_id=value["planId"],
+            confirm_token=value["confirmToken"],
+            action=DesktopConflictAction.from_dict(action),
+            created_at=value["createdAt"],
+            expires_at=value["expiresAt"],
+            status=value["status"],
+            schema_version=schema_version,
+        )
+
+
 class ExperienceCoordinator:
     """Planeja e coordena efeitos com snapshot persistente e rollback."""
 
@@ -310,10 +413,12 @@ class ExperienceCoordinator:
         context: DesktopContextPort,
         effects: tuple[DesktopEffectPort, ...],
         store: StateStore,
+        conflict_resolver: DesktopConflictResolverPort | None = None,
     ) -> None:
         self._context = context
         self._effects = effects
         self._store = store
+        self._conflict_resolver = conflict_resolver
 
     def close(self) -> None:
         self._store.close()
@@ -331,6 +436,7 @@ class ExperienceCoordinator:
 
     def status(self) -> dict[str, Any]:
         context = self._context.snapshot()
+        conflict_actions = self._conflict_actions(context)
         override = self._load_payload(_OVERRIDE_ID)
         requested = override.get("requestedProfile") if override else None
         target_id = self._resolve_profile(requested or "auto", context)
@@ -344,7 +450,89 @@ class ExperienceCoordinator:
             "current": current,
             "recoveryRequired": bool(recovery and recovery.get("state") == "applying"),
             "independentRuntime": True,
+            "conflictActions": [action.to_dict() for action in conflict_actions],
         }
+
+    def plan_conflict_release(self, action_id: str) -> DesktopConflictPlan:
+        context = self._context.snapshot()
+        action = next(
+            (
+                candidate
+                for candidate in self._conflict_actions(context)
+                if candidate.action_id == action_id
+            ),
+            None,
+        )
+        if action is None:
+            raise SteamZeroError(
+                "E-DESKTOP-OWNER-CONFLICT",
+                detail="o conflito não possui remediação automática disponível",
+            )
+        now = _now()
+        plan = DesktopConflictPlan(
+            plan_id=ids.new_ulid(),
+            confirm_token=secrets.token_urlsafe(24),
+            action=action,
+            created_at=now.isoformat(),
+            expires_at=(now + _PLAN_TTL).isoformat(),
+        )
+        self._save_payload(
+            _CONFLICT_PLAN_PREFIX + plan.plan_id,
+            "desktop-plan",
+            plan.to_dict(),
+            owner="steamzero",
+        )
+        return plan
+
+    def apply_conflict_release(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        plan = self._load_conflict_plan(plan_id)
+        try:
+            expired = _now() > datetime.fromisoformat(plan.expires_at)
+        except ValueError as exc:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="expiresAt do plano inválido") from exc
+        if plan.status != "pending" or expired:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano expirado ou já consumido")
+        if not secrets.compare_digest(confirm_token, plan.confirm_token):
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken incorreto")
+
+        current = next(
+            (
+                candidate
+                for candidate in self._conflict_actions(self._context.snapshot())
+                if candidate.action_id == plan.action.action_id
+            ),
+            None,
+        )
+        if current != plan.action:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="o conflito Desktop mudou")
+        if self._conflict_resolver is None:
+            raise SteamZeroError(
+                "E-DESKTOP-CONFLICT-RELEASE", detail="resolver de conflito indisponível"
+            )
+
+        with lock.ResourceLock("desktop:conflict", job_id=plan.plan_id):
+            try:
+                result = self._conflict_resolver.release(plan.action)
+                remaining = {
+                    action.action_id for action in self._conflict_actions(self._context.snapshot())
+                }
+                if plan.action.action_id in remaining:
+                    raise RuntimeError("o watcher continua ativo após a remediação")
+            except Exception as exc:
+                plan.status = "aborted"
+                self._save_conflict_plan(plan)
+                if isinstance(exc, SteamZeroError):
+                    raise
+                raise SteamZeroError("E-DESKTOP-CONFLICT-RELEASE", detail=str(exc)) from exc
+
+            plan.status = "applied"
+            self._save_conflict_plan(plan)
+            self._store.append_event(
+                "desktop.conflict-released",
+                entity="desktop:experience",
+                payload={"actionId": plan.action.action_id, "unit": plan.action.unit},
+            )
+            return {"status": "ok", "action": plan.action.to_dict(), **result}
 
     def plan(self, requested_profile: str = "auto") -> ExperiencePlan:
         if requested_profile not in REQUESTED_PROFILES:
@@ -593,6 +781,28 @@ class ExperienceCoordinator:
             return ExperiencePlan.from_dict(payload)
         except (KeyError, TypeError, ValueError) as exc:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="payload do plano inválido") from exc
+
+    def _load_conflict_plan(self, plan_id: str) -> DesktopConflictPlan:
+        payload = self._load_payload(_CONFLICT_PLAN_PREFIX + plan_id)
+        if payload is None:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"plano não encontrado: {plan_id}")
+        try:
+            return DesktopConflictPlan.from_dict(payload)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="plano de conflito inválido") from exc
+
+    def _save_conflict_plan(self, plan: DesktopConflictPlan) -> None:
+        self._save_payload(
+            _CONFLICT_PLAN_PREFIX + plan.plan_id,
+            "desktop-plan",
+            plan.to_dict(),
+            owner="steamzero",
+        )
+
+    def _conflict_actions(self, context: DesktopContext) -> tuple[DesktopConflictAction, ...]:
+        if self._conflict_resolver is None:
+            return ()
+        return self._conflict_resolver.actions(context)
 
     def _load_payload(self, profile_id: str) -> dict[str, Any] | None:
         row = self._store.get_profile(profile_id)

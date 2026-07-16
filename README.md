@@ -13,7 +13,8 @@ lockfile verificado e executor Flatpak user-scoped com commit pinado, confirmaç
 verify, rollback e recovery; a instalação real em VM e a substituição da fonte EOL do
 DuckStation continuam pendentes. A aplicação SteamZero foi instalada de forma versionada
 no host BigLinux, com smokes e rollback real; aplicação dos perfis de hardware e demais
-marcos continuam pendentes. Consulte
+marcos continuam pendentes. Conflitos de ownership no Desktop agora exibem causa e uma
+desativação confirmada/allowlisted no escopo real do serviço, sem falha silenciosa. Consulte
 `IMPLEMENTATION-REPORT.md` para evidências e limites.
 
 ## Metodologia replicável

@@ -15,6 +15,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain import desktop as desktop_domain
 from steamzero.domain.desktop import (
+    DesktopConflictAction,
     DesktopContext,
     DisplayState,
     ExperienceCoordinator,
@@ -28,6 +29,34 @@ class FakeContext:
 
     def snapshot(self) -> DesktopContext:
         return self.value
+
+
+class FakeConflictResolver:
+    def __init__(self, context: FakeContext) -> None:
+        self.context = context
+        self.releases = 0
+
+    def actions(self, context: DesktopContext) -> tuple[DesktopConflictAction, ...]:
+        if not context.conflicts:
+            return ()
+        return (
+            DesktopConflictAction(
+                action_id="release-test-watcher",
+                unit="test-mode-watcher.service",
+                scope="user",
+                summary="Desativar watcher de teste",
+                requires_privilege=False,
+                commands=(
+                    ("systemctl", "--user", "stop", "test-mode-watcher.service"),
+                    ("systemctl", "--user", "disable", "test-mode-watcher.service"),
+                ),
+            ),
+        )
+
+    def release(self, action: DesktopConflictAction) -> dict[str, Any]:
+        self.releases += 1
+        self.context.value = DesktopContext(**{**self.context.value.__dict__, "conflicts": ()})
+        return {"stopped": True, "disabled": True}
 
 
 class PowerLoss(BaseException):
@@ -127,6 +156,36 @@ def test_generic_owner_conflict_blocks_apply(
     plan = coordinator.plan()
     with pytest.raises(SteamZeroError, match="E-DESKTOP-OWNER-CONFLICT"):
         coordinator.apply(plan.plan_id, plan.confirm_token)
+
+
+def test_conflict_release_requires_plan_confirmation_and_clears_blocker(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    context = FakeContext(
+        DesktopContext(
+            **{
+                **deck_context.__dict__,
+                "conflicts": ("controlador externo ativo: test-mode-watcher.service",),
+            }
+        )
+    )
+    resolver = FakeConflictResolver(context)
+    coordinator = ExperienceCoordinator(context, (), store, resolver)
+
+    status = coordinator.status()
+    assert status["conflictActions"][0]["scope"] == "user"
+    plan = coordinator.plan_conflict_release("release-test-watcher")
+    contracts.validate(plan.to_dict(), "desktop-conflict-plan-v1.schema.json")
+
+    with pytest.raises(SteamZeroError, match="E-TX-CONFIRM-REQUIRED"):
+        coordinator.apply_conflict_release(plan.plan_id, "token-incorreto")
+    assert resolver.releases == 0
+
+    result = coordinator.apply_conflict_release(plan.plan_id, plan.confirm_token)
+    assert result["status"] == "ok"
+    assert resolver.releases == 1
+    assert coordinator.status()["context"]["conflicts"] == []
+    assert coordinator.status()["conflictActions"] == []
 
 
 @pytest.mark.fi

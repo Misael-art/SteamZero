@@ -60,4 +60,6 @@ recovery de operação sem commit lógico restaura o snapshot anterior.
 `desktop-plan-v1` contém `requestedProfile`, perfil alvo completo, fingerprint do
 contexto, mudanças, blockers, TTL, `confirmToken` e `rollbackGuarantee: G-STATE`.
 `desktop-status-v1` expõe contexto/capabilities, recomendação, override, estado atual,
-recovery pendente e `independentRuntime: true`. Ambos são aditivos dentro da versão 1.
+recovery pendente, ações de conflito allowlisted e `independentRuntime: true`.
+`desktop-conflict-plan-v1` congela unidade/escopo/argv, TTL, `confirmToken` e garantia
+G-STATE antes de liberar um owner externo. Os contratos são aditivos dentro da versão 1.

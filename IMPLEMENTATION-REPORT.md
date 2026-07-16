@@ -1,6 +1,6 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 8 · **Escopo entregue:** Fases 1–3
+**Data:** 2026-07-15 · **Sessão:** implementação 9 · **Escopo entregue:** Fases 1–3
 (M1–M9) + Fase 4 em andamento (M10 parcial, M10-H foundation + bootstrap host)
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
@@ -31,7 +31,7 @@ ver §6. Apenas as células explicitamente `verified-hw-readonly` e
 | **M8** BIOS center + saves timeline | 3 | **done** | `pytest tests/integration/test_bios.py tests/integration/test_saves.py` → **15 passed**: BIOS store hash-only, links atômicos com RT-08, saves timeline append-only e restore transacional com RT-09; AC-BI/SV verdes. |
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
 | **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema/registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável G-FULL; lockfile anti-drift; executor Flatpak user-scoped com plan/token, commit OSTree exato, verify/smoke, rollback G-DEPLOYMENT e recovery em **24 testes**. A CLI expõe list/status/plan/apply/rollback/recover. Status real read-only passou; instalação dos três em VM ainda não foi feita e DuckStation segue EOL no Flathub. |
-| **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + hw-readonly + host-install) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada, gate de independência e importador offline. **31 testes da experiência + 7 do instalador host**; aplicação instalada sob `/opt`, QML e rollback real validados; apply de perfil ainda não executado. |
+| **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + hw-readonly + host-install) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada, gate de independência e importador offline. **36 testes da experiência + 7 do instalador host**; conflito conhecido tem card, plano confirmado e rollback parcial; aplicação instalada sob `/opt`, QML e rollback real validados; apply de perfil ainda não executado. |
 | M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
 | M13 Adoção EmuDeck/RetroDECK em HW real | 5 | not-started | — |
@@ -66,7 +66,7 @@ Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
 (reproduzido na Fase 1; o worktree atual foi validado pelo gate completo):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-independence OK · pytest → 357 passed · steamzero doctor --json → status ok
+independence OK · pytest → 362 passed · steamzero doctor --json → status ok
 ```
 
 ---
@@ -77,15 +77,15 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 114 | `tests/unit/` |
-| Integração | 172 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
+| Unit | 116 | `tests/unit/` |
+| Integração | 175 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
 | Injeção de falha (FI) | 40 | marcador `fi` — inclui FI-16/17/18, FI-21..24 Desktop e FI-25/26 Flatpak |
 | Rollback (RT) | 23 | marcador `rt` — inclui lifecycle portátil e Flatpak, RT-06..11; RT-12..14 pendentes |
 | Segurança (ST) | 30 | marcador `security` — helper + mídia ST-06 |
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
-| **Total** | **357** | `pytest -q` → **357 passed** |
+| **Total** | **362** | `pytest -q` → **362 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -143,8 +143,9 @@ Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
   install idempotente, update e rollback manual/automático preservando a release anterior.
 - M10 Flatpak → `test_flatpak*` + CLI: lockfile anti-drift, argv fixo user-scoped,
   commit exato, stale-plan, EOL, G-DEPLOYMENT, FI-25/26 e recovery idempotente.
-- AC-HD-01..05 → `test_desktop*`, `test_runtime_independence` e CLI hermética: auto/dock,
-  teclado, ownership, stale context, rollback, crash recovery, bridge e QML.
+- AC-HD-01..06 → `test_desktop*`, `test_runtime_independence` e CLI hermética: auto/dock,
+  teclado, ownership, stale context, rollback, crash recovery, bridge/QML e liberação
+  confirmada do watcher user-scoped com restauração em falha parcial.
 - AC-UI completo e RT-12..14 → **não implementados** (gates restantes das Fases 5–6).
 
 ---
@@ -253,7 +254,7 @@ make check          # ruff + ruff format --check + boundaries + mypy --strict + 
 
 **Prova disponível:** o clone limpo da entrega anterior produziu 270 testes verdes.
 No worktree desta sessão,
-`make check` produziu **357 passed**; a reprodução em clone limpo deste incremento deverá
+`make check` produziu **362 passed**; a reprodução em clone limpo deste incremento deverá
 ser repetida após seu commit. `steamzero doctor --json` permanece `status: ok`.
 
 `make` alvos: `venv lint format-check typecheck boundaries independence test cov check`. CI equivalente
@@ -263,7 +264,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (357 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (362 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -271,7 +272,8 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
   Valve Jupiter, Wayland, eDP-1 800×1280@60, escala 1,35 e capabilities KDE/KScreen,
   Maliit, Steam, KDE Connect e TTS BigLinux. InputPlumber estava ausente e não foi
   selecionado. Um serviço externo `*-mode-watcher` foi encontrado por padrão genérico;
-  o status ficou `blocked`/observador. Nenhuma configuração ou serviço foi alterado.
+  o status ficou `blocked`/observador e expôs a remediação user-scoped correta. O plano
+  e a UI foram exercitados sem confirmar apply; nenhuma configuração ou serviço foi alterado.
 - **verified-host-install:** wheel e dependências hash-verified foram instalados com
   `bigsudo` em releases imutáveis sob `/opt`; `doctor`, `pip check`, QML offscreen,
   Desktop entry, ownership e integridade passaram. Rollback real
@@ -332,5 +334,5 @@ safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas expl�
 somente detecção read-only tocou hardware; root foi usado apenas no bootstrap versionado,
 sem efeitos de perfil, e ferramentas de conversão reais não foram acionadas. A Fase 4
 contém M10 parcial e M10-H foundation; Fases 5–6 não iniciaram. Nada mascarado — a suíte
-(357 testes, 0 falhas/skips) e o
+(362 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.

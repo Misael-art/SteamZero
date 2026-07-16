@@ -51,6 +51,7 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 
 ### DESKTOP
 - `E-DESKTOP-OWNER-CONFLICT` outro processo altera/captura o mesmo recurso; permanece observador.
+- `E-DESKTOP-CONFLICT-RELEASE` stop/disable/verificação do owner externo falhou; permanece observador e restaura o estado anterior quando necessário.
 - `E-DESKTOP-VERIFY` efeito não confirmou o perfil; snapshots aplicados são revertidos.
 - `E-DESKTOP-RECOVERY` rollback de um ou mais efeitos falhou; novas mudanças são congeladas.
 

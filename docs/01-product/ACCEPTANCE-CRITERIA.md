@@ -49,6 +49,9 @@ Formato Given/When/Then. Cada critério vira caso de teste em 08-testing/TEST-MA
   máximo um provider é elegível, e InputPlumber exige validação explícita no hardware.
 - AC-HD-05: UI portátil tem alvos ≥48 px, nomes acessíveis, grafo de foco e layout de uma
   coluna na largura lógica do Deck.
+- AC-HD-06: conflito conhecido exibe card persistente com causa e impacto; a UI oferece
+  plano revisável para `stop` + `disable` no escopo real da unidade, exige confirmação e
+  restaura o estado anterior se a desativação falhar parcialmente.
 
 ## Offline
 

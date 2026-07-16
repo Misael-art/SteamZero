@@ -510,3 +510,34 @@ perfil de display/input ou componente Flatpak foi alterado. O wheel instalado n�
 
 **Gate final:** `make check` com **357 testes**, zero falhas/skips/xfails. O
 arquivo local `src/steamzero/ports.py` permaneceu intacto, não rastreado e fora do wheel.
+
+## 2026-07-15 — Sessão 9: feedback e liberação segura de ownership Desktop
+
+**Problema reproduzido:** o bloqueio FM-22 funcionava, mas a central apenas desabilitava
+Apply. Não havia card persistente, explicação acionável nem caminho confirmado para liberar
+o owner, e uma exceção inesperada na bridge podia fechar a conexão sem resposta.
+
+**Escopo real corrigido:** no Deck/BigLinux, `phasezero-steamdeck-mode-watcher.service`
+está carregado de `~/.config/systemd/user`, `active` e `enabled`; não existe unidade de
+sistema com esse nome. Assim, `sudo systemctl stop|disable` atuaria no escopo errado. A
+ação allowlisted usa exatamente `systemctl --user stop` e `systemctl --user disable`.
+
+**Fluxo entregue:** `desktop status` expõe `conflictActions` estruturado; a UI mostra card
+âmbar com causa/impacto/unidade e botão **Revisar desativação do watcher antigo**. O diálogo
+exibe argv exato e só aplica com `planId` + `confirmToken`. Se stop passar e disable falhar,
+o adapter tenta `enable` + `start` para restaurar o owner anterior. O Apply permanece
+bloqueado até um novo status confirmar que o watcher saiu. Falhas esperadas e inesperadas
+viram resposta HTTP estruturada e mensagem visível, não silêncio.
+
+**Evidência sem mutação do watcher:** plano real validado por
+`desktop-conflict-plan-v1`, QML real carregado offscreen com uma conflictAction, e o serviço
+permaneceu `active/enabled` porque a confirmação não foi acionada automaticamente. Testes
+novos cobrem token incorreto sem efeito, bridge+refresh, erro HTTP estruturado, argv
+user-scoped e rollback da falha parcial. `make check`: **362 passed**,
+independência/lint/mypy verdes.
+
+**Host atualizado:** release `0.1.0.dev0-635429c-conflict-ui2`, wheel SHA-256
+`3a0cfd9106df739fdbc05c0afae941d3b4e1be9f838242a6c2f90587dd19f21a`. Doctor,
+`pip check`, schema empacotado, `qmllint` e QML instalado offscreen passaram; o status
+instalado expôs uma conflictAction. O watcher permaneceu `active/enabled`, deixando a
+decisão de desativação para o usuário no diálogo novo.
