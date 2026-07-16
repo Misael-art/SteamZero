@@ -10,8 +10,33 @@ CLI/API; ausência do runtime Qt não afeta status, plano, apply ou recovery do 
 - Toque e controle completos, foco visível, primeiro botão previsível e sem focus trap.
 - Janelas normais maximizadas; diálogos e utilitários ficam isentos.
 - Application Dashboard e Overview do Plasma; nenhum launcher/switcher próprio no M10-H.
-- Seções: Modo, Controles/Teclado, Display/Janelas e Diagnóstico/Recuperação.
+- Seções: Visão geral, Emuladores, Steam, Perfis, Saves e Sync e Sistema.
 - Nenhum fluxo comum exige terminal. A CLI permanece rota break-glass e de automação.
+
+## Central System Studio
+
+A janela principal segue o padrão de gerenciamento selecionado: navegação persistente,
+contexto do dispositivo no cabeçalho, lista operacional no centro e detalhe da seleção à
+direita quando houver largura. Em telas estreitas o detalhe vira progressão natural após
+a lista, sem reduzir alvos ou esconder ações essenciais.
+
+- **Header de estado:** resume Deck, displays e modo Desktop. Conflitos de ownership usam
+  banner âmbar persistente, código do erro e ação imediata para revisar a liberação.
+- **Emuladores:** filtros Todos/Atenção/Instalados, logos reais, estado proveniente do
+  executor Flatpak, sistemas suportados e ação contextual. Install/update sempre abre um
+  plano confirmado; fonte EOL aparece como indisponível, nunca como instalável.
+- **Steam:** área dedicada com a mesma hierarquia de lista/detalhe dos emuladores. Expõe
+  cliente, biblioteca, Steam Input e teclado Steam, usando somente URIs/ações allowlisted
+  e capacidade detectada no host.
+- **Perfis:** seleção, preview e confirmação dos perfis auto/handheld/dock/safe.
+- **Saves e Sync:** fila, conflitos e estado da sincronização; indisponibilidade remota
+  degrada somente esta área.
+- **Sistema:** doctor, logs, checks e recuperação. Quick Reset continua disponível como
+  ação global e aplica apenas um plano `safe` confirmado.
+
+Logos de emuladores e Steam são assets reais com atribuição; a marca SteamZero é um asset
+gerado próprio. Ícones de ações e navegação vêm do tema KDE para permanecer coerentes com
+o Desktop e responder ao esquema do sistema.
 
 ### Conflito com watcher legado
 
@@ -24,6 +49,16 @@ CLI/API; ausência do runtime Qt não afeta status, plano, apply ou recovery do 
   `sudo systemctl ...` consultaria o escopo errado e não desativaria esse watcher.
 - Se `stop` passar e `disable` falhar, o adapter tenta restaurar enable/start. A UI mantém
   o card e mostra `E-DESKTOP-CONFLICT-RELEASE`, sem liberar apply prematuramente.
+- Install/update de componentes também revalida o conflito no backend imediatamente antes
+  da mutação, evitando contornar o bloqueio por status obsoleto na interface.
+
+### Recuperação de emergência
+
+Quando `recoveryRequired` é verdadeiro, a central abre antes do uso normal um diálogo
+modal: **Alteração incompleta detectada**. Há uma única ação primária — **Restaurar último
+estado seguro** — ligada a `desktop recover`. O aviso volta em refresh enquanto o journal
+continuar não terminal; falha HTTP, timeout ou bridge ausente produz feedback visível e
+preserva o estado, sem fechar silenciosamente o diálogo.
 
 ## Perfil dock
 
@@ -34,9 +69,11 @@ CLI/API; ausência do runtime Qt não afeta status, plano, apply ou recovery do 
 
 ## Administração avançada
 
-Em telas largas permanecem as capacidades para P2/P3: lote, diff de presets, logs por
-correlationId, journal, armazenamento e quarentena. A densidade cresce responsivamente;
-não existe uma UI separada que sacrifique a ergonomia portátil.
+Em telas largas a região de detalhe permanece simultaneamente visível; em telas limitadas
+ao painel interno do Deck a lista ocupa a largura útil e mantém rolagem, foco e footer de
+controle. Capacidades futuras para lote, diff de presets, logs por correlationId, journal,
+armazenamento e quarentena entram na mesma arquitetura; não existe uma UI separada que
+sacrifique a ergonomia portátil.
 
 ## Regras de segurança
 

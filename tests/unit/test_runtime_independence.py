@@ -51,6 +51,16 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert "KeyNavigation" in qml
     assert '"/conflict/plan"' in qml
     assert '"/conflict/apply"' in qml
+    assert '"/component/plan"' in qml
+    assert '"/component/apply"' in qml
+    assert '"/steam/open"' in qml
     assert "Plano bloqueado" in qml
-    for section in ("Modo", "Controles e teclado", "Display e janelas", "Diagnóstico"):
+    for section in (
+        "Visão geral",
+        "Gerenciar emuladores",
+        "Steam e integração",
+        "Perfis do Desktop",
+        "Saves e Sync",
+        "Sistema e recuperação",
+    ):
         assert section in qml

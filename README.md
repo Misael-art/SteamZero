@@ -14,8 +14,10 @@ verify, rollback e recovery; a instalação real em VM e a substituição da fon
 DuckStation continuam pendentes. A aplicação SteamZero foi instalada de forma versionada
 no host BigLinux, com smokes e rollback real; aplicação dos perfis de hardware e demais
 marcos continuam pendentes. Conflitos de ownership no Desktop agora exibem causa e uma
-desativação confirmada/allowlisted no escopo real do serviço, sem falha silenciosa. Consulte
-`IMPLEMENTATION-REPORT.md` para evidências e limites.
+desativação confirmada/allowlisted no escopo real do serviço, sem falha silenciosa. A
+central Desktop agora usa um dashboard System Studio adaptativo, com gerenciamento real
+de emuladores, área Steam dedicada, Quick Reset, Sync, doctor e recuperação de emergência.
+Consulte `IMPLEMENTATION-REPORT.md` para evidências e limites.
 
 ## Metodologia replicável
 

@@ -82,6 +82,30 @@ class BrokenContext:
         raise RuntimeError("falha inesperada simulada")
 
 
+class FakeDashboard:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, ...]] = []
+
+    def snapshot(self, _status: dict[str, object]) -> dict[str, object]:
+        return {"components": [{"id": "dolphin"}], "steam": [{"id": "steam-client"}]}
+
+    def plan_component(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("plan", component_id))
+        return {"planId": "component-plan", "confirmToken": "confirm"}
+
+    def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("apply", plan_id, confirm_token))
+        return {"status": "ok"}
+
+    def launch_component(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("launch", component_id))
+        return {"status": "started"}
+
+    def open_steam(self, target: str) -> dict[str, object]:
+        self.calls.append(("steam", target))
+        return {"status": "started", "target": target}
+
+
 @pytest.fixture
 def bridge(tmp_path: Path) -> tuple[str, str]:
     ready: queue.Queue[DesktopControlServer] = queue.Queue()
@@ -146,6 +170,58 @@ def broken_bridge(tmp_path: Path) -> tuple[str, str]:
     thread.start()
     server = ready.get(timeout=3)
     yield f"http://127.0.0.1:{server.server_port}", "secret-token"
+    server.shutdown()
+    thread.join(timeout=2)
+
+
+@pytest.fixture
+def dashboard_bridge(tmp_path: Path) -> tuple[str, str, FakeDashboard]:
+    ready: queue.Queue[DesktopControlServer] = queue.Queue()
+    dashboard = FakeDashboard()
+
+    def run_server() -> None:
+        store = StateStore(tmp_path / "dashboard-state.db")
+        store.migrate()
+        server = DesktopControlServer(
+            ExperienceCoordinator(Context(), (), store),
+            "secret-token",
+            dashboard,  # type: ignore[arg-type]
+        )
+        ready.put(server)
+        server.serve_forever()
+        server.server_close()
+        store.close()
+
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    server = ready.get(timeout=3)
+    yield f"http://127.0.0.1:{server.server_port}", "secret-token", dashboard
+    server.shutdown()
+    thread.join(timeout=2)
+
+
+@pytest.fixture
+def conflicted_dashboard_bridge(tmp_path: Path) -> tuple[str, str, FakeDashboard]:
+    ready: queue.Queue[DesktopControlServer] = queue.Queue()
+    dashboard = FakeDashboard()
+
+    def run_server() -> None:
+        store = StateStore(tmp_path / "conflicted-dashboard-state.db")
+        store.migrate()
+        server = DesktopControlServer(
+            ExperienceCoordinator(ConflictContext(), (), store),
+            "secret-token",
+            dashboard,  # type: ignore[arg-type]
+        )
+        ready.put(server)
+        server.serve_forever()
+        server.server_close()
+        store.close()
+
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    server = ready.get(timeout=3)
+    yield f"http://127.0.0.1:{server.server_port}", "secret-token", dashboard
     server.shutdown()
     thread.join(timeout=2)
 
@@ -237,3 +313,51 @@ def test_bridge_returns_structured_error_instead_of_closing_connection(
     payload = json.loads(error.value.read())
     assert payload["error"]["code"] == "E-INTERNAL-UNEXPECTED"
     error.value.close()
+
+
+def test_bridge_exposes_dashboard_component_and_steam_actions(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+    status = request_json(base, token, "/status")
+    assert status["dashboard"] == {
+        "components": [{"id": "dolphin"}],
+        "steam": [{"id": "steam-client"}],
+    }
+
+    planned = request_json(base, token, "/component/plan", {"componentId": "dolphin"})
+    assert planned["plan"] == {"planId": "component-plan", "confirmToken": "confirm"}
+    request_json(
+        base,
+        token,
+        "/component/apply",
+        {"planId": "component-plan", "confirmToken": "confirm"},
+    )
+    request_json(base, token, "/component/launch", {"componentId": "dolphin"})
+    request_json(base, token, "/steam/open", {"target": "library"})
+    assert dashboard.calls == [
+        ("plan", "dolphin"),
+        ("apply", "component-plan", "confirm"),
+        ("launch", "dolphin"),
+        ("steam", "library"),
+    ]
+
+
+def test_bridge_rechecks_owner_conflict_before_component_apply(
+    conflicted_dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = conflicted_dashboard_bridge
+
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(
+            base,
+            token,
+            "/component/apply",
+            {"planId": "stale-plan", "confirmToken": "stale-confirmation"},
+        )
+
+    assert error.value.code == 409
+    payload = json.loads(error.value.read())
+    assert payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
+    error.value.close()
+    assert dashboard.calls == []

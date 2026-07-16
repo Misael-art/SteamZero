@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, cast
 from urllib.parse import urlparse
 
+from steamzero.adapters.desktop_dashboard import DesktopDashboard
 from steamzero.adapters.desktop_kde import activate_virtual_keyboard
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.domain.desktop import ExperienceCoordinator
@@ -24,10 +25,17 @@ _MAX_BODY = 64 * 1024
 class DesktopControlServer(HTTPServer):
     coordinator: ExperienceCoordinator
     token: str
+    dashboard: DesktopDashboard | None
 
-    def __init__(self, coordinator: ExperienceCoordinator, token: str) -> None:
+    def __init__(
+        self,
+        coordinator: ExperienceCoordinator,
+        token: str,
+        dashboard: DesktopDashboard | None = None,
+    ) -> None:
         self.coordinator = coordinator
         self.token = token
+        self.dashboard = dashboard
         super().__init__(("127.0.0.1", 0), DesktopControlHandler)
 
 
@@ -43,6 +51,9 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return
         try:
             status = self._control_server.coordinator.status()
+            dashboard = self._control_server.dashboard
+            if dashboard is not None:
+                status["dashboard"] = dashboard.snapshot(status)
         except SteamZeroError as exc:
             self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
             return
@@ -113,6 +124,22 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "planId"),
                 self._required_string(payload, "confirmToken"),
             )
+        if path == "/component/plan":
+            return {
+                "plan": self._dashboard().plan_component(
+                    self._required_string(payload, "componentId")
+                )
+            }
+        if path == "/component/apply":
+            self._require_desktop_without_conflicts()
+            return self._dashboard().apply_component(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/component/launch":
+            return self._dashboard().launch_component(self._required_string(payload, "componentId"))
+        if path == "/steam/open":
+            return self._dashboard().open_steam(self._required_string(payload, "target"))
         if path == "/apply":
             return coordinator.apply(
                 self._required_string(payload, "planId"),
@@ -128,6 +155,22 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/keyboard":
             return {"provider": activate_virtual_keyboard()}
         raise ValueError(f"ação não permitida: {path}")
+
+    def _dashboard(self) -> DesktopDashboard:
+        dashboard = self._control_server.dashboard
+        if dashboard is None:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="dashboard Desktop indisponível")
+        return dashboard
+
+    def _require_desktop_without_conflicts(self) -> None:
+        status = self._control_server.coordinator.status()
+        context = status.get("context")
+        conflicts = context.get("conflicts", []) if isinstance(context, dict) else []
+        if conflicts:
+            raise SteamZeroError(
+                "E-DESKTOP-OWNER-CONFLICT",
+                detail="resolva o owner concorrente antes de aplicar alterações",
+            )
 
     def _required_string(self, payload: dict[str, Any], key: str) -> str:
         value = payload.get(key)
@@ -156,9 +199,11 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
             "E-DESKTOP-VERIFY", detail="runtime Qt/QML ausente; backend e CLI continuam disponíveis"
         )
     token = secrets.token_urlsafe(32)
-    server = DesktopControlServer(coordinator, token)
+    dashboard = DesktopDashboard()
+    server = DesktopControlServer(coordinator, token, dashboard)
     server.timeout = 0.2
     initial_status = coordinator.status()
+    initial_status["dashboard"] = dashboard.snapshot(initial_status)
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/Main.qml")
     try:
         with importlib.resources.as_file(resource) as qml_path:

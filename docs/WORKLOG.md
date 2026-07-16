@@ -541,3 +541,35 @@ independência/lint/mypy verdes.
 `pip check`, schema empacotado, `qmllint` e QML instalado offscreen passaram; o status
 instalado expôs uma conflictAction. O watcher permaneceu `active/enabled`, deixando a
 decisão de desativação para o usuário no diálogo novo.
+
+## 2026-07-16 — Sessão 10: System Studio, Steam e recuperação de emergência
+
+**Redesenho funcional:** a central QML foi reconstruída conforme a direção visual System
+Studio selecionada. A navegação agora organiza Visão geral, Emuladores, Steam, Perfis,
+Saves e Sync e Sistema; o cabeçalho informa o contexto do Deck e um banner âmbar mantém
+conflitos de ownership visíveis. Em telas largas há lista/detalhe simultâneos; no painel
+interno do Deck a lista ocupa a largura útil sem perder foco, rolagem ou footer de controle.
+
+**Dados e ações reais:** `DesktopDashboard` agrega registry/lock Flatpak, Steam, fila de
+sync e doctor. Dolphin, DuckStation e RetroArch mostram a verdade do deployment; a fonte
+EOL do DuckStation continua indisponível. A área Steam usa a mesma estrutura visual e
+expõe cliente, biblioteca, Steam Input e teclado. Launches usam refs/URIs allowlisted;
+install/update abre plano com confirmação e revalida o conflito no backend antes da
+mutação. Falha, timeout ou bridge ausente sempre retorna feedback na UI.
+
+**FM-23:** quando o journal exige recovery, a inicialização abre o modal **Alteração
+incompleta detectada** com uma ação única para restaurar o último estado seguro. A UI só
+libera o fluxo normal depois que um novo status confirma a recuperação.
+
+**Design QA:** comparação conjunta e normalizada contra o terceiro conceito, incluindo
+recorte focado de banner/lista/detalhe. Logos reais licenciados substituem placeholders;
+marca própria, botões escuros, estados disabled e seção Steam foram validados. O relatório
+`design-qa.md` encerrou sem P0/P1/P2.
+
+**Gate e host:** `make check` passou com **367 testes**, além de `qmllint`. O wheel
+`ce1c74bf22fb1b14da4de3b732c6b3741104751147807ee1a970778f9f3f6886` inclui QML,
+assets e dashboard e exclui `steamzero.ports`. A release imutável
+`0.1.0.dev0-20260716-systemstudio1` foi instalada com `bigsudo`; `steamzero-host status`
+e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendentes. A cópia
+instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
+registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
