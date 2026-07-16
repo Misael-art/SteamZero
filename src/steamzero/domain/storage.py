@@ -11,31 +11,15 @@ fantasma" (AC-SD-02, FI-07). Paths nunca absolutos no estado (STATE-MODEL §2).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
 
 from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.ports import StoragePort, VolumeInfo
 
-
-@dataclass(frozen=True)
-class VolumeInfo:
-    uuid: str
-    label: str | None
-    fstype: str | None
-    role: str  # internal | microsd | usb
-    mountpoint: str | None  # None = não montado
-    capacity: int | None = None
-    free: int | None = None
-
-
-class StoragePort(Protocol):
-    """Capacidade de enumerar volumes por UUID (ex.: /dev/disk/by-uuid + /proc/mounts)."""
-
-    def list_volumes(self) -> list[VolumeInfo]: ...
+__all__ = ["StorageMonitor", "StoragePort", "VolumeInfo"]
 
 
 def _now_iso() -> str:

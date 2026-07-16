@@ -85,7 +85,7 @@ class FakeEffect:
             raise PowerLoss
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
-        return self.verify_ok
+        return self.verify_ok and self.state == profile.profile_id
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         if self.restore_fails:
@@ -127,6 +127,61 @@ def test_plan_schema_and_confirmed_apply(deck_context: DesktopContext, store: St
     status = coordinator.status()
     contracts.validate(status, "desktop-status-v1.schema.json")
     assert status["independentRuntime"] is True
+    assert status["truthState"] == "ready"
+    assert status["recommendedProfile"] == "handheld-desktop"
+    assert status["desiredProfile"] == "handheld-desktop"
+    assert status["appliedProfile"] == "handheld-desktop"
+    assert status["observedProfile"] == "handheld-desktop"
+
+
+def test_real_dock_to_undock_is_reported_as_stale(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    docked = DesktopContext(
+        **{
+            **deck_context.__dict__,
+            "physical_dock": True,
+            "displays": (
+                *deck_context.displays,
+                DisplayState("DP-1", True, False, 1920, 1080, 60.0, 1.0),
+            ),
+        }
+    )
+    context = FakeContext(docked)
+    effect = FakeEffect()
+    coordinator = ExperienceCoordinator(context, (effect,), store)
+    plan = coordinator.plan("auto")
+    coordinator.apply(plan.plan_id, plan.confirm_token)
+
+    context.value = deck_context
+    status = coordinator.status()
+
+    contracts.validate(status, "desktop-status-v1.schema.json")
+    assert status["truthState"] == "stale"
+    assert status["recommendedProfile"] == "handheld-desktop"
+    assert status["desiredProfile"] == "handheld-desktop"
+    assert status["appliedProfile"] == "docked-desktop"
+    assert status["observedProfile"] == "docked-desktop"
+    assert status["effectiveProfile"] == "docked-desktop"
+    assert "o contexto atual diverge" in " ".join(status["statusReasons"])
+
+
+def test_observed_drift_from_applied_profile_is_degraded(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    effect = FakeEffect()
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan("auto")
+    coordinator.apply(plan.plan_id, plan.confirm_token)
+
+    effect.state = "safe"
+    status = coordinator.status()
+
+    assert status["truthState"] == "degraded"
+    assert status["desiredProfile"] == "handheld-desktop"
+    assert status["appliedProfile"] == "handheld-desktop"
+    assert status["observedProfile"] == "safe"
+    assert "estado observado diverge" in " ".join(status["statusReasons"])
 
 
 def test_wrong_confirmation_does_not_apply(deck_context: DesktopContext, store: StateStore) -> None:

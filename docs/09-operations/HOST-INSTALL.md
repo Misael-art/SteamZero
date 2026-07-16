@@ -24,10 +24,14 @@ sobrescrito.
 
 ## Preparar artefatos sem root
 
-Partindo de um checkout limpo e de um ambiente de desenvolvimento já criado:
+Partindo de um checkout limpo, em um commit identificável, e de um ambiente de
+desenvolvimento criado exclusivamente a partir do lock:
 
 ```bash
-.venv/bin/python -m build --wheel --outdir dist
+test -z "$(git status --porcelain)"
+SOURCE_COMMIT=$(git rev-parse HEAD)
+.venv/bin/python -m pip wheel --no-deps --wheel-dir dist .
+.venv/bin/python tools/release_provenance.py verify-wheel --wheel dist/steamzero-*.whl
 mkdir -p dist/runtime-wheelhouse
 .venv/bin/pip download \
   --only-binary=:all: \
@@ -42,19 +46,23 @@ dependência não tiver wheel binário compatível ou divergir do lock.
 
 ## Instalar ou reparar
 
-Escolha uma identificação única e informe explicitamente o hash obtido acima:
+A identificação não é mais livre: ela é derivada da versão do wheel e dos 12
+primeiros caracteres do commit completo. O instalador lê a versão no `METADATA`,
+exige o SHA-1 completo e recusa um `--release` que não seja canônico:
 
 ```bash
 bigsudo /usr/bin/python3 tools/install_host.py install \
-  --release 0.1.0.dev0-REVISAO-host1 \
-  --wheel dist/steamzero-0.1.0.dev0-py3-none-any.whl \
+  --release 0.1.0a1-${SOURCE_COMMIT:0:12} \
+  --wheel dist/steamzero-0.1.0a1-py3-none-any.whl \
   --wheel-sha256 HASH_SHA256_COMPLETO \
   --requirements requirements-runtime.lock \
-  --wheelhouse dist/runtime-wheelhouse
+  --wheelhouse dist/runtime-wheelhouse \
+  --source-commit "$SOURCE_COMMIT"
 ```
 
 A instalação é offline depois que o wheelhouse foi preparado. Ela copia os
-artefatos, cria um venv próprio, instala dependências exigindo os hashes, executa
+artefatos, cria um manifesto v2 com versão, commit e estado `clean`, instala as
+dependências exigindo os hashes, executa
 `pip check`, `steamzero --version` e `steamzero doctor --json`, e somente então
 troca `current`. Repetir o mesmo comando com a mesma release e hash é idempotente
 e também repara links de integração incompletos.
@@ -92,8 +100,10 @@ de backup/restauração antes de uma versão estável.
 
 ## Limites atuais
 
-- integridade é garantida por hashes locais e lock completo; assinatura de release
-  e SBOM pertencem ao M14/M15;
+- integridade local é garantida por hashes e lock completo; o CI também gera
+  auditoria OSV, SBOM CycloneDX, checksums e proveniência local do wheel;
+  atestação Sigstore em repositório privado depende de GitHub Enterprise Cloud ou
+  de um assinador externo a ser selecionado antes do canal de release;
 - o instalador publica a aplicação e o lançador, mas não aplica automaticamente
   perfis de display/input nem instala componentes Flatpak;
 - a autorização permanece a cargo do agente polkit do KDE; senha nunca deve ser

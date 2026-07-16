@@ -34,8 +34,10 @@ def check(root: Path) -> list[str]:
         .get("targets", {})
         .get("wheel", {})
     )
-    if "src/steamzero/ports.py" not in wheel.get("exclude", []):
-        violations.append("wheel precisa excluir o contrato local não rastreado ports.py")
+    if "src/steamzero/ports.py" in wheel.get("exclude", []):
+        violations.append("wheel não pode excluir a camada neutra steamzero.ports")
+    if not (root / "src" / "steamzero" / "ports.py").is_file():
+        violations.append("camada neutra steamzero.ports ausente")
 
     source_root = root / "src" / "steamzero"
     for path in sorted(source_root.rglob("*.py")):

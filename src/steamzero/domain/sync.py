@@ -13,20 +13,12 @@ provedores diretamente (offline-first: sem I/O de rede no domínio — SYSTEM-AR
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
 
 from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.saves import SavesStore
-
-
-class CloudPort(Protocol):
-    """Capacidade de sincronização remota (fila/rate limit aplicados pela porta)."""
-
-    def available(self) -> bool: ...
-    def upload(self, digest: str, data: bytes) -> str: ...  # retorna ref remota
-    def fetch_divergent(self, game_id: str, local_digest: str) -> bytes | None: ...
+from steamzero.ports import CloudPort
 
 
 @dataclass(frozen=True)

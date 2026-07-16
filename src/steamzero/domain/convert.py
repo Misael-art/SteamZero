@@ -15,22 +15,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.ports import ConversionTimeout, ConverterPort
 
 _SPACE_MARGIN = 16 * 1024 * 1024  # 16 MiB
-
-
-class ConversionTimeout(Exception):
-    """A ferramenta de conversão excedeu o tempo limite."""
-
-
-class ConverterPort(Protocol):
-    """Ferramenta de conversão. Escreve ``dst``; True=ok. Pode levantar ConversionTimeout."""
-
-    def convert(self, src: Path, dst: Path, target_format: str) -> bool: ...
 
 
 @dataclass(frozen=True)

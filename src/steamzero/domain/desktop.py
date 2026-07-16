@@ -439,18 +439,106 @@ class ExperienceCoordinator:
         conflict_actions = self._conflict_actions(context)
         override = self._load_payload(_OVERRIDE_ID)
         requested = override.get("requestedProfile") if override else None
-        target_id = self._resolve_profile(requested or "auto", context)
+        recommended = automatic_profile(context)
+        desired = self._resolve_profile(requested or "auto", context)
         current = self._load_payload(_CURRENT_ID)
         recovery = self._load_payload(_RECOVERY_ID)
+        recovery_required = bool(recovery and recovery.get("state") == "applying")
+        applied = self._applied_profile_id(current)
+        observed, observation = self._observe_profile(context)
+        reasons: list[str] = []
+
+        applied_fingerprint = current.get("contextFingerprint") if current else None
+        context_stale = applied is not None and applied_fingerprint != context.fingerprint()
+        desired_stale = applied is not None and desired != applied
+        if context_stale:
+            reasons.append("o contexto atual diverge do contexto da última aplicação")
+        if desired_stale:
+            reasons.append("o perfil desejado ainda não está aplicado")
+        if observed is not None and applied is not None and observed != applied:
+            reasons.append("o estado observado diverge do último perfil aplicado")
+        if observation["errors"]:
+            reasons.append("uma ou mais capacidades não puderam ser observadas")
+        if observation["unavailableEffects"]:
+            reasons.append("uma ou mais capacidades configuráveis estão indisponíveis")
+        if observation["ambiguousCandidates"]:
+            reasons.append("o estado observado não identifica um único perfil")
+        if context.conflicts:
+            reasons.append("há conflito de ownership no Desktop")
+
+        if recovery_required:
+            truth_state = "recovery-required"
+        elif context.conflicts:
+            truth_state = "degraded"
+        elif context_stale or desired_stale:
+            truth_state = "stale"
+        elif applied is None:
+            truth_state = "unapplied"
+        elif observed != applied or observation["errors"] or observation["unavailableEffects"]:
+            truth_state = "degraded"
+        else:
+            truth_state = "ready"
         return {
             "context": context.to_dict(),
-            "recommendedProfile": automatic_profile(context),
-            "effectiveProfile": target_id,
+            "truthState": truth_state,
+            "recommendedProfile": recommended,
+            "desiredProfile": desired,
+            "appliedProfile": applied,
+            "observedProfile": observed,
+            # Compatibilidade temporária: efetivo significa somente o que foi
+            # observado, nunca mais uma intenção ainda não aplicada.
+            "effectiveProfile": observed,
             "manualOverride": requested,
             "current": current,
-            "recoveryRequired": bool(recovery and recovery.get("state") == "applying"),
+            "observation": observation,
+            "statusReasons": list(dict.fromkeys(reasons)),
+            "recoveryRequired": recovery_required,
             "independentRuntime": True,
             "conflictActions": [action.to_dict() for action in conflict_actions],
+        }
+
+    def _applied_profile_id(self, current: dict[str, Any] | None) -> str | None:
+        profile = current.get("profile") if current else None
+        profile_id = profile.get("id") if isinstance(profile, dict) else None
+        return profile_id if profile_id in PROFILE_IDS else None
+
+    def _observe_profile(self, context: DesktopContext) -> tuple[str | None, dict[str, Any]]:
+        """Infere o perfil vivo sem converter intenção ou persistência em observação."""
+        errors: list[str] = []
+        available_effects: list[DesktopEffectPort] = []
+        unavailable: list[str] = []
+        for effect in self._effects:
+            try:
+                if effect.available(context):
+                    available_effects.append(effect)
+                else:
+                    unavailable.append(effect.name)
+            except Exception as exc:
+                unavailable.append(effect.name)
+                errors.append(f"{effect.name}: {exc}")
+        available = tuple(available_effects)
+        candidates: list[str] = []
+        if available:
+            for profile_id in sorted(PROFILE_IDS):
+                profile = profile_for(profile_id, context)
+                matches = True
+                for effect in available:
+                    try:
+                        if not effect.verify(profile, context):
+                            matches = False
+                            break
+                    except Exception as exc:
+                        matches = False
+                        errors.append(f"{effect.name}: {exc}")
+                        break
+                if matches:
+                    candidates.append(profile_id)
+        observed = candidates[0] if len(candidates) == 1 else None
+        return observed, {
+            "checkedEffects": [effect.name for effect in available],
+            "unavailableEffects": unavailable,
+            "ambiguousCandidates": candidates if len(candidates) != 1 else [],
+            "errors": list(dict.fromkeys(errors)),
         }
 
     def plan_conflict_release(self, action_id: str) -> DesktopConflictPlan:

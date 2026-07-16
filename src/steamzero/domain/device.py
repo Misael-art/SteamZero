@@ -11,22 +11,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 from steamzero.core import fs, ids
 from steamzero.core.state import StateStore
+from steamzero.ports import DevicePort
 
 # Marcadores DMI oficiais do Steam Deck (product_name).
 _DECK_LCD = "jupiter"
 _DECK_OLED = "galileo"
-
-
-class DevicePort(Protocol):
-    """Capacidade de ler identificação de hardware (DMI/sysfs)."""
-
-    def read_dmi(self) -> dict[str, str]:
-        """Retorna campos DMI: product_name, sys_vendor, board_name (minúsculas)."""
-        ...
 
 
 @dataclass(frozen=True)

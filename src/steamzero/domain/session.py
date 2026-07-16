@@ -15,10 +15,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any
 
 from steamzero.core import ids
 from steamzero.core.state import StateStore
+from steamzero.ports import SessionPort
 
 if TYPE_CHECKING:
     from steamzero.jobs.manager import JobManager
@@ -34,17 +35,6 @@ VALID_TRANSITIONS: dict[str, frozenset[str]] = {
     "closed": frozenset(),
     "failed": frozenset(),
 }
-
-
-class SessionPort(Protocol):
-    """Controle do processo/emulador em execução."""
-
-    def launch(self, game_id: str) -> bool: ...
-    def is_alive(self) -> bool: ...
-    def flush_save(self) -> bool: ...  # ação semântica; True = confirmado a tempo
-    def signal_close(self) -> None: ...  # pedido semântico de sair
-    def terminate(self) -> None: ...  # SIGTERM
-    def kill(self) -> None: ...  # SIGKILL
 
 
 def _now_iso() -> str:

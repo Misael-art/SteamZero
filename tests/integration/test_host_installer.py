@@ -69,6 +69,32 @@ def test_release_id_rejects_traversal() -> None:
             install_host._release_id(invalid)
 
 
+def test_release_identity_is_canonical_version_plus_exact_commit() -> None:
+    commit = "a" * 40
+    assert install_host._canonical_release("0.1.0a1", commit) == f"0.1.0a1-{commit[:12]}"
+    with pytest.raises(ValueError, match="SHA-1 completo"):
+        install_host._canonical_release("0.1.0a1", "a" * 12)
+
+
+def test_v2_manifest_requires_matching_release_provenance(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    manifest_path = release / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "schemaVersion": 2,
+            "packageVersion": "0.1.0a1",
+            "sourceCommit": "b" * 40,
+            "sourceTreeState": "clean",
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="versão e ao commit"):
+        install_host._verify_release(release)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")

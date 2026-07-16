@@ -573,3 +573,44 @@ assets e dashboard e exclui `steamzero.ports`. A release imutável
 e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendentes. A cópia
 instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
 registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
+
+## 2026-07-16 — Sessão 11: baseline de confiança e congelamento de features
+
+**Preservação:** o checkout completo foi copiado do microSD para
+`/home/misael/Projects/Port_Steam`, no Btrfs interno, mantendo `.git` e o `ports.py`
+local. Hash do arquivo, `HEAD` e `git fsck --full --strict` foram conferidos; a cópia
+do microSD permaneceu intacta como fallback. O remoto privado/off-host continua
+bloqueado porque não há remoto configurado e o `gh` não está autenticado.
+
+**Baseline histórica corrigida:** antes desta remediação, a execução real foi
+**367 passed / 85%** (4251 statements, 528 misses, 938 branches). O State Store do host
+também prova que não foi apenas read-only: a operação Desktop
+`01KXMDC05NTYS88F5WC8XS8V3T` aplicou `docked-desktop`, capturou KScreen/KWin e chegou
+a `committed`; os eventos `desktop.conflict-released` e `desktop.profile-applied`
+foram persistidos. O relatório deixou de afirmar que nenhum apply ocorreu.
+
+**Arquitetura e verdade Desktop:** `steamzero.ports` passou a ser a única definição de
+seis contratos/DTOs, é empacotado e mantém os imports antigos por reexportação. O status
+Desktop agora separa `recommendedProfile`, `desiredProfile`, `appliedProfile` e
+`observedProfile`; `effectiveProfile` é somente alias temporário do observado. Contexto
+ou desejo divergente retorna `stale`, falha/indisponibilidade de observação retorna
+`degraded`, e um teste reproduz dock→undock após apply real do domínio.
+
+**Versão e proveniência:** a baseline passou de `0.1.0.dev0` para `0.1.0a1`, com uma
+única fonte de versão no pacote. Novas instalações exigem manifesto v2, SHA completo e
+ID canônico `<versão>-<commit[0:12]>`. A auditoria byte a byte das releases antigas foi
+registrada em `RELEASE-LEDGER.md`; releases intermediárias sem árvore Git coincidente
+foram classificadas como não reproduzíveis em vez de receberem um commit inventado.
+
+**CI/supply chain:** backend Hatchling e todas as Actions foram pinados; a matriz cobre
+Python 3.11/3.12/3.14, wheel sem editable, smoke em Ubuntu/Arch/Manjaro por digest,
+cobertura publicada, auditoria `pip-audit` pelo feed OSV, SBOM CycloneDX, checksums e
+proveniência do wheel. A proveniência recusa árvore rastreada suja e commit diferente do
+`HEAD`. Localmente, o wheel `0.1.0a1` foi construído, contém `steamzero.ports`, instalou
+em venv vazio, passou `pip check`/versão/doctor e a auditoria OSV não encontrou
+vulnerabilidades conhecidas. A execução no provedor continua pendente do remoto.
+
+**Gate pós-remediação local:** **372 passed / 85%**, zero falhas/skips/xfails; Ruff,
+fronteiras, independência e mypy verdes. M10 em VM, daemon/reconciliador, transporte
+polkit e matriz física do Deck não foram executados e permanecem bloqueando UI/release
+em `OPERATIONAL-TRUST-GATES.md`.

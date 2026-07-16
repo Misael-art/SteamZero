@@ -40,8 +40,14 @@ ApplicationWindow {
     readonly property color redColor: "#ff6b73"
 
     property var desktopStatus: ({
-        "effectiveProfile": "handheld-desktop",
+        "truthState": "unapplied",
+        "desiredProfile": "handheld-desktop",
+        "appliedProfile": null,
+        "observedProfile": null,
+        "effectiveProfile": null,
         "recommendedProfile": "handheld-desktop",
+        "observation": {"checkedEffects": [], "unavailableEffects": [], "ambiguousCandidates": [], "errors": []},
+        "statusReasons": [],
         "recoveryRequired": false,
         "independentRuntime": true,
         "context": {"deviceKind": "deck-lcd", "displays": [], "capabilities": [], "conflicts": []},
@@ -84,6 +90,10 @@ ApplicationWindow {
         ? desktopStatus.dashboard.steam : fallbackSteam
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
+    readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
+        .indexOf(desktopStatus.truthState) >= 0
+    readonly property bool needsAttention: hasConflicts || desktopTruthNeedsAttention
+        || desktopStatus.recoveryRequired
 
     property int sectionIndex: 1
     property int emulatorFilter: 0
@@ -692,8 +702,10 @@ ApplicationWindow {
 
                     Button {
                         id: attentionButton
-                        visible: root.hasConflicts || root.desktopStatus.recoveryRequired
-                        text: root.hasConflicts ? qsTr("1 ação necessária") : qsTr("Recuperação pendente")
+                        visible: root.needsAttention
+                        text: root.hasConflicts ? qsTr("Conflito do Desktop")
+                            : root.desktopStatus.recoveryRequired ? qsTr("Recuperação pendente")
+                            : qsTr("Estado %1").arg(root.desktopStatus.truthState)
                         icon.name: "security-high"
                         Layout.fillWidth: true
                         Layout.minimumHeight: 54
@@ -803,7 +815,7 @@ ApplicationWindow {
                     spacing: 0
 
                     Rectangle {
-                        visible: root.hasConflicts
+                        visible: root.hasConflicts || root.desktopTruthNeedsAttention
                         color: "#24180b"
                         border.color: root.amberColor
                         border.width: 1
@@ -832,26 +844,39 @@ ApplicationWindow {
                                 spacing: 2
                                 RowLayout {
                                     Label {
-                                        text: qsTr("Outro serviço controla o Desktop")
+                                        text: root.hasConflicts
+                                            ? qsTr("Outro serviço controla o Desktop")
+                                            : root.desktopStatus.truthState === "stale"
+                                                ? qsTr("Perfil do Desktop desatualizado")
+                                                : root.desktopStatus.truthState === "unapplied"
+                                                    ? qsTr("Nenhum perfil foi aplicado")
+                                                    : qsTr("Observação do Desktop degradada")
                                         color: root.amberColor
                                         font.pixelSize: 17
                                         font.bold: true
                                     }
                                     Label {
-                                        text: "E-DESKTOP-OWNER-CONFLICT"
+                                        text: root.hasConflicts ? "E-DESKTOP-OWNER-CONFLICT"
+                                            : root.desktopStatus.truthState.toUpperCase()
                                         color: "#d5b47d"
                                         font.pixelSize: 11
                                     }
                                 }
                                 Label {
-                                    text: qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
+                                    text: root.hasConflicts
+                                        ? qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
+                                        : root.desktopStatus.statusReasons.length > 0
+                                            ? root.desktopStatus.statusReasons[0]
+                                            : qsTr("Revise o perfil desejado, aplicado e observado.")
                                     color: root.textColor
                                     font.pixelSize: 13
                                 }
                             }
                             DarkButton {
                                 id: resolveBannerButton
-                                text: qsTr("Resolver agora")
+                                text: root.hasConflicts ? qsTr("Resolver agora")
+                                    : root.desktopStatus.truthState === "degraded"
+                                        ? qsTr("Ver diagnóstico") : qsTr("Revisar perfis")
                                 palette.buttonText: root.textColor
                                 icon.name: "go-next"
                                 Layout.minimumHeight: 48
@@ -862,7 +887,12 @@ ApplicationWindow {
                                     border.color: resolveBannerButton.activeFocus ? root.cyanColor : "#705127"
                                     border.width: resolveBannerButton.activeFocus ? 2 : 1
                                 }
-                                onClicked: root.beginConflictResolution()
+                                onClicked: {
+                                    if (root.hasConflicts)
+                                        root.beginConflictResolution()
+                                    else
+                                        root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 5 : 3
+                                }
                             }
                         }
                     }
@@ -909,14 +939,14 @@ ApplicationWindow {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             Label {
-                                                text: root.hasConflicts ? qsTr("Ação necessária") : qsTr("Sistema pronto")
-                                                color: root.hasConflicts ? root.amberColor : root.greenColor
+                                                text: root.needsAttention ? qsTr("Ação necessária") : qsTr("Sistema pronto")
+                                                color: root.needsAttention ? root.amberColor : root.greenColor
                                                 font.pixelSize: 22
                                                 font.bold: true
                                             }
                                             Label {
-                                                text: root.hasConflicts
-                                                    ? qsTr("Libere o controle do Desktop para aplicar configurações.")
+                                                text: root.needsAttention
+                                                    ? qsTr("Revise o estado real do Desktop antes de aplicar configurações.")
                                                     : qsTr("Perfil, display e providers foram verificados.")
                                                 color: root.textColor
                                                 wrapMode: Text.WordWrap
@@ -924,10 +954,17 @@ ApplicationWindow {
                                             }
                                         }
                                         Button {
-                                            text: root.hasConflicts ? qsTr("Resolver conflito") : qsTr("Ver sistema")
+                                            text: root.hasConflicts ? qsTr("Resolver conflito")
+                                                : root.desktopTruthNeedsAttention ? qsTr("Revisar perfis")
+                                                : qsTr("Ver sistema")
                                             Layout.minimumHeight: 48
                                             Accessible.name: text
-                                            onClicked: root.hasConflicts ? root.beginConflictResolution() : root.sectionIndex = 5
+                                            onClicked: {
+                                                if (root.hasConflicts)
+                                                    root.beginConflictResolution()
+                                                else
+                                                    root.sectionIndex = root.desktopTruthNeedsAttention ? 3 : 5
+                                            }
                                         }
                                     }
                                 }
@@ -1459,7 +1496,7 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                 }
                                 Label {
-                                    text: qsTr("Perfil atual: %1 · Recomendado: %2").arg(root.desktopStatus.effectiveProfile).arg(root.desktopStatus.recommendedProfile)
+                                    text: qsTr("Aplicado: %1 · Observado: %2 · Desejado: %3").arg(root.desktopStatus.appliedProfile || qsTr("nenhum")).arg(root.desktopStatus.observedProfile || qsTr("incerto")).arg(root.desktopStatus.desiredProfile)
                                     color: root.mutedColor
                                     Layout.leftMargin: 28
                                 }
