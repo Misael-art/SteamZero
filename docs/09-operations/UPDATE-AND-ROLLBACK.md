@@ -22,6 +22,14 @@ check (canal→versão alvo, changelog, requisitos)
 - `steamzero platform rollback` → volta ao commit/pacote anterior + restaura state.db do backup da atualização **somente se** as migrações forem incompatíveis (senão mantém dados novos — regra RB-6: dados criados depois não são destruídos sem aviso; a UI explica a janela de perda).
 - Testado por RT-14 (falha de migração no meio ⇒ restauração íntegra).
 
+### Bootstrap nativo atual
+
+Enquanto o M14 não entrega o canal assinado, o host BigLinux usa releases imutáveis
+em `/opt/steamzero/releases` e o ponteiro atômico `/opt/steamzero/current`. O comando
+`bigsudo /usr/local/sbin/steamzero-host rollback --release <id>` verifica manifesto, hashes,
+permissões e smokes antes da troca. O procedimento reproduzível e seus limites estão
+em [HOST-INSTALL.md](HOST-INSTALL.md).
+
 ## Compatibilidade externa (FM-10/§11.5)
 
 Na subida e no doctor: comparar {SteamOS, Steam Client, Decky} com a Compat Matrix embarcada + atualizável por canal; incompatibilidade conhecida ⇒ capacidades afetadas entram em modo degradado explícito com aviso — nunca tentar mutação sob incompatibilidade conhecida.

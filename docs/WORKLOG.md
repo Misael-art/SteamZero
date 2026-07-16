@@ -468,3 +468,45 @@ $ pytest --cov=steamzero -q -m 'not slow'
 M10 continua `partial`: falta a demonstração install/update/rollback dos três em VM e
 uma fonte oficial ativa para DuckStation. O arquivo local `src/steamzero/ports.py`
 permaneceu intacto, fora do wheel e fora deste incremento.
+
+## 2026-07-15 — Sessão 8: bootstrap host BigLinux resiliente
+
+**Instalação reproduzível:** foi adicionado um lock mínimo de runtime com hashes e um
+instalador stdlib-only para `bigsudo`. Cada release fica imutável em
+`/opt/steamzero/releases/<id>`, com wheel, lock, manifesto, venv próprio e instalador
+auditável. A ativação acontece por troca atômica de `/opt/steamzero/current`; comando e
+Desktop entry são integrações gerenciadas, e arquivos preexistentes alheios são recusados.
+
+O instalador valida release/hash/tamanho/tipo dos artefatos, instala offline com
+`--require-hashes`, executa `pip check`, versão e doctor antes de publicar, fsynca toda a
+árvore e recupera instalação interrompida por `.installing.json`. Estado XDG do usuário
+não é alterado por install/rollback. O plano de gerenciamento
+`/usr/local/sbin/steamzero-host` permanece na versão mais nova durante rollback.
+
+**Falhas descobertas e corrigidas durante adversidade:**
+- pip rejeitou um wheel renomeado; o nome original agora é preservado;
+- mover um venv pronto invalidava shebangs absolutos; ele agora nasce no path final e só
+  fica visível depois dos smokes;
+- o `PATH` seguro do `bigsudo` não inclui `/usr/local/sbin`; documentação usa caminho
+  absoluto;
+- duas categorias principais duplicavam o atalho KDE; ficou apenas `Game`;
+- rollback da aplicação também regredia o gerenciador e podia recriar integração antiga;
+  o plano de gerenciamento foi separado e ganhou ownership marker.
+
+**Evidência real no Steam Deck LCD/BigLinux:** release final
+`0.1.0.dev0-1bb00d7-host3`, wheel SHA-256
+`c5771ea08b0f643384a5244f461b57a1ea435850f70bc5b4f31df9c2c56bd407`.
+`steamzero doctor --json` retornou `ok`, schema 2 e zero operações pendentes; `pip check`,
+manifesto/hashes/permissões root, Desktop entry, `qmllint`, QML offscreen e cache KDE
+passaram. Reinstalação foi idempotente (mesmo `installedAt`). Rollback real
+`host3 → host1 → host3` manteve o gerenciador regular root-owned com hash idêntico e
+restaurou o lançador correto.
+
+`desktop status --json` detectou Deck LCD + monitor DP e retornou `independentRuntime:
+true`; o watcher externo `phasezero-steamdeck-mode-watcher.service` foi apenas detectado
+como conflito e bloqueou mutação (`E-DESKTOP-OWNER-CONFLICT`). Nenhum serviço PhaseZero,
+perfil de display/input ou componente Flatpak foi alterado. O wheel instalado não contém
+`steamzero.ports`.
+
+**Gate final:** `make check` com **357 testes**, zero falhas/skips/xfails. O
+arquivo local `src/steamzero/ports.py` permaneceu intacto, não rastreado e fora do wheel.

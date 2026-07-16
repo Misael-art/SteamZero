@@ -1,0 +1,2 @@
+# Runtime mínimo do núcleo. O lock correspondente é usado pelo instalador host.
+jsonschema==4.26.0

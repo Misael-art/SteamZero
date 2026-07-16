@@ -1,0 +1,147 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Contrato do instalador host versionado sem tocar em caminhos do sistema."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+import install_host
+
+
+def _layout(tmp_path: Path) -> install_host.Layout:
+    return install_host.Layout(
+        root=tmp_path / "opt" / "steamzero",
+        command=tmp_path / "usr" / "local" / "bin" / "steamzero",
+        manager=tmp_path / "usr" / "local" / "sbin" / "steamzero-host",
+        desktop=tmp_path
+        / "usr"
+        / "local"
+        / "share"
+        / "applications"
+        / "org.steamzero.SteamZero.desktop",
+    )
+
+
+def _release(layout: install_host.Layout, name: str) -> Path:
+    release = layout.releases / name
+    executable = release / "venv" / "bin" / "steamzero"
+    artifacts = release / "artifacts"
+    executable.parent.mkdir(parents=True)
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "print('0.1.0') if '--version' in sys.argv else "
+        "print(json.dumps({'status': 'ok'}))\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+    artifacts.mkdir()
+    wheel = artifacts / "steamzero-test.whl"
+    requirements = artifacts / "requirements-runtime.lock"
+    installer = artifacts / "install_host.py"
+    wheel.write_text("wheel", encoding="utf-8")
+    requirements.write_text("lock", encoding="utf-8")
+    installer.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+    installer.chmod(0o755)
+    (release / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "release": name,
+                "wheelFile": wheel.name,
+                "wheelSha256": install_host._sha256(wheel),
+                "requirementsSha256": install_host._sha256(requirements),
+                "installerSha256": install_host._sha256(installer),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return release
+
+
+def test_release_id_rejects_traversal() -> None:
+    for invalid in ("../escape", "/absolute", "", "release with spaces"):
+        with pytest.raises(ValueError):
+            install_host._release_id(invalid)
+
+
+def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    _release(layout, "release-b")
+
+    install_host._activate(layout, "release-a")
+    assert layout.current.readlink() == Path("releases/release-a")
+    assert layout.command.readlink() == layout.current / "venv" / "bin" / "steamzero"
+    assert "X-SteamZero-Managed=true" in layout.desktop.read_text(encoding="utf-8")
+
+    result = install_host.rollback(layout, "release-b")
+    assert result["release"] == "release-b"
+    assert layout.current.readlink() == Path("releases/release-b")
+    assert install_host.status(layout)["release"] == "release-b"
+
+
+def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    _release(layout, "release-b")
+    install_host._activate(layout, "release-a")
+    layout.command.unlink()
+    layout.command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="não gerenciado"):
+        install_host._activate(layout, "release-b")
+
+    assert layout.current.readlink() == Path("releases/release-a")
+
+
+def test_verify_rejects_manifest_directory_mismatch(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    manifest = json.loads((release / "manifest.json").read_text(encoding="utf-8"))
+    manifest["release"] = "other"
+    (release / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="não corresponde"):
+        install_host._verify_release(release)
+
+
+def test_verify_rejects_tampered_release_artifact(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    (release / "artifacts" / "steamzero-test.whl").write_text("tampered", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="integridade inválida: wheel"):
+        install_host._verify_release(release)
+
+
+def test_manager_is_stable_across_release_rollback(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    _release(layout, "release-b")
+    legacy_target = str(layout.current / "artifacts" / "install_host.py")
+    layout.manager.parent.mkdir(parents=True)
+    layout.manager.symlink_to(legacy_target)
+
+    install_host._publish_manager(layout)
+    published = layout.manager.read_bytes()
+    assert layout.manager.is_file() and not layout.manager.is_symlink()
+
+    install_host._activate(layout, "release-a")
+    install_host.rollback(layout, "release-b")
+
+    assert layout.manager.read_bytes() == published
+    assert layout.current.readlink() == Path("releases/release-b")
+
+
+def test_manager_refuses_unmanaged_regular_file(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    layout.manager.parent.mkdir(parents=True)
+    layout.manager.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="gerenciador não gerenciado"):
+        install_host._publish_manager(layout)
