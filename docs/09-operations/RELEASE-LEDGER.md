@@ -42,6 +42,7 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 | `0.1.0a16-592dba1628a4` | `592dba1628a4396ea226f3d03b1126f54f48de45` | `8de1930b362d9bb9d2ed9ad1b17bd089a5c9c4875621c49c32d674f43b004132` | correção instalada; CLI→Polkit direta validada e método ausente das capabilities RPC |
 | `0.1.0a17-76d764ad773e` | `76d764ad773e95c2485d5a88d853513b723c4caa` | `b511b02df87e75bfb66f04b2d47b99c8e102dbded23a5ab6b6510891071a8376` | ativa; limites reais TDP/GPU observados read-only, mutações continuam desabilitadas |
 | `0.1.0a18-1d76d7986330` | `1d76d7986330053240c9001d64468d112303be88` | `618718da9c919471a9c5583ba4c449e67acaf6eb35001045d3719d7256dd98b0` | ativa; motor TDP G-STATE validado em sysfs descartável, transporte mutável ainda gated |
+| `0.1.0a19-364185ac7d87` | `364185ac7d8750a1a7a8f920baccb8893205f94c` | `e58bded9177b60ae20cd453220275008a80cbf2f8dcdbca38140ba6c94a6596c` | ativa; motor GPU SCLK G-STATE validado no wheel instalado contra sysfs descartável, transporte mutável ainda gated |
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.

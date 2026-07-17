@@ -152,3 +152,8 @@ exit code e protocolo.
 Em hardware AMDGPU compatível, `data.hardware` informa a disponibilidade e os
 limites observados de TDP/GPU. `railsConverged=false` é condição degradada; nunca
 se deve aplicar perfil assumindo que `slowPPT` e `fastPPT` já coincidem.
+
+Os motores transacionais internos de TDP e clock GPU podem ser exercitados em
+interfaces descartáveis, mas isso não altera o contrato público: `mutationsEnabled`
+e `manualWriteEnabled` permanecem falsos até certificação em VM, recovery após queda
+real do helper e validação posterior no hardware com protocolo de recuperação.

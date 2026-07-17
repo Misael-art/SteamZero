@@ -27,6 +27,8 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 | `rollback-tdp` | operationId: ULID | restaura somente snapshot root associado |
 | `recover-tdp` | nenhum | restaura journals pending/rollback-failed |
 | `set-gpu-clock` | mhz: int em tabela por modelo | tabela embutida |
+| `rollback-gpu-clock` | operationId: ULID | restaura somente snapshot root associado |
+| `recover-gpu-clock` | nenhum | restaura journals pending/rollback-failed |
 | `install-udev-rule` | ruleId: enum de regras embutidas | conteúdo vem do binário, nunca do chamador |
 | `enable-system-unit` | unitId: enum de units embutidas | idem |
 | `mount-removable` | uuid: formato UUID validado, ro/rw | UUID existe em /dev/disk/by-uuid; mountpoint gerido pelo helper |
@@ -50,6 +52,16 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
   verifica ambas, restaura o snapshot em falha e bloqueia novo apply quando há
   operação interrompida. `rollback-tdp` e `recover-tdp` continuam sem transporte
   público até a prova em VM descartável; `mutationsEnabled=false` é vinculante.
+- O motor interno de clock GPU segue a interface documentada pelo kernel AMDGPU:
+  muda `power_dpm_force_performance_level` para `manual`, envia `s 0 <min>`,
+  `s 1 <max>` e `c` a `pp_od_clk_voltage`, e verifica o estado observado. Antes
+  disso, persiste min/max e o modo anterior em journal root `0600`; rollback e
+  recovery restauram ambos. A implementação só reconhece `OD_SCLK` e limites
+  `OD_RANGE` descobertos. Referência normativa: [AMDGPU Thermal Control — Linux
+  kernel](https://www.kernel.org/doc/html/latest/gpu/amdgpu/thermal.html).
+- `rollback-gpu-clock` e `recover-gpu-clock` também continuam sem transporte
+  público. Os testes locais usam uma implementação sysfs descartável; nenhuma
+  escrita no clock real é autorizada por essa evidência.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 

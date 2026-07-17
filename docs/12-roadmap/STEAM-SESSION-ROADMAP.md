@@ -71,6 +71,12 @@ duas rails, verify, rollback idempotente, lock de pending e recovery pós-interr
 Testes usam sysfs descartável e simulam morte entre as rails. O transporte host
 permanece desabilitado até repetir essas provas em VM com o driver apropriado.
 
+O motor de clock GPU G-STATE também está implementado atrás do gate. Ele limita o
+pedido ao `OD_RANGE` observado, captura os dois extremos SCLK e o performance level,
+aplica a sequência AMDGPU manual/`s 0`/`s 1`/commit, verifica e restaura tudo em falha
+ou recovery pós-interrupção. A prova instalada usa sysfs descartável; a certificação
+em VM com driver AMDGPU e o transporte Polkit mutável continuam pendentes.
+
 ### R4 — lifecycle Steam fim a fim
 
 Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,

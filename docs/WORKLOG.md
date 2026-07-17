@@ -955,3 +955,32 @@ Doctor continuou `ok`, SQLite v5 íntegro, zero pendências e daemon ativo.
 formato, mypy, fronteiras, independência, `qmllint` e proveniência verdes. O agente
 Polkit permanece ativo a pedido do responsável; a duração da autorização já concedida
 continua controlada pela policy do sistema e não é ampliada artificialmente.
+
+## 2026-07-17 — Sessão 25: motor GPU SCLK G-STATE atrás do gate
+
+**Transação AMDGPU interna:** `set-gpu-clock` ganhou motor fechado que descobre somente
+`cardN/device/pp_od_clk_voltage` com `OD_SCLK`/`OD_RANGE` válido e o performance level
+associado. O snapshot persiste min/max SCLK e modo anterior em journal root `0600` antes
+da primeira escrita. O apply usa a sequência documentada pelo kernel — `manual`, `s 0`,
+`s 1`, `c` —, verifica os dois clocks e o modo, e restaura tudo em falha. As ações
+`rollback-gpu-clock` e `recover-gpu-clock` aceitam somente ULID/nenhum parâmetro.
+
+**Failure injection e host seguro:** as provas interrompem o motor logo após entrar em
+modo manual, bloqueiam novo apply com `E-TX-LOCKED` e recuperam o snapshot. Também cobrem
+commit recusado, verify divergente, rollback idempotente, journal/snapshot inválidos,
+capability malformada e clock fora do range observado. O wheel instalado foi executado
+somente numa interface descartável: 200–1600 MHz/auto → 800–800 MHz/manual → rollback
+200–1600 MHz/auto; diretório 0700, journal 0600. O `/sys` real não foi escrito.
+
+**Release e operação:** `0.1.0a19-364185ac7d87`, commit
+`364185ac7d8750a1a7a8f920baccb8893205f94c`, wheel SHA-256
+`e58bded9177b60ae20cd453220275008a80cbf2f8dcdbca38140ba6c94a6596c`.
+O primeiro smoke revelou o daemon antigo ainda carregado; `systemctl --user daemon-reload`
+e a reativação do socket fizeram doctor/daemon convergir para `a19`. Doctor ficou `ok`,
+SQLite v5 íntegro, zero pendências, helper UID 0 observou SCLK real 200–1600 MHz e TDP
+15 W, mas declarou `mutationsEnabled=false` e `manualWriteEnabled=false`. O agente Polkit
+oficial permanece ativo conforme solicitado.
+
+**Gate:** **520 passed / 85,08%**, Ruff, formato, mypy estrito, fronteiras,
+independência, `qmllint`, wheel e manifesto host verdes. A certificação mutável em VM
+AMDGPU continua pendente; este incremento não autoriza clock real no host principal.
