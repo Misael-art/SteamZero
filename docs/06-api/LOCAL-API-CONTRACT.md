@@ -41,3 +41,6 @@ Implementado em `0.1.0a8`: `system.hello`, `system.capabilities` e a allowlist i
 doctor, jobs, state, components, sessão de jogo e Desktop. Cada método aceita apenas campos
 registrados, limita mensagem/conexão/mutações e rejeita UID diferente pelo `SO_PEERCRED`.
 Não existe `shell.exec`, listener TCP ou dispatch por reflexão.
+
+Desde `0.1.0a11`, `session.environment` expõe o snapshot Linux read-only usado pelo
+reconciliador futuro. O método não recebe parâmetros nem oferece uma contraparte mutável.

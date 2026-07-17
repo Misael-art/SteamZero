@@ -48,6 +48,7 @@ Domínios (Fase 1):
   component apply       aplica plano (--plan-id ID --confirm TOKEN)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
+  session environment    observa sessão, energia, rede, DRM e volumes (read-only)
   session status         mostra lifecycle persistido (--game-id APPID)
   session recover        reconhece sessão interrompida (--game-id APPID)
   desktop status         contexto e perfil Desktop efetivo
@@ -240,6 +241,39 @@ def _session_launcher() -> SteamGameLauncher:
     from steamzero.adapters.steam_launcher import SteamGameLauncher
 
     return SteamGameLauncher()
+
+
+def _session_environment() -> dict[str, Any]:
+    from steamzero.adapters.linux_runtime import LinuxSessionEnvironment
+    from steamzero.domain.device import classify
+
+    data = LinuxSessionEnvironment().snapshot()
+    device = data.get("device")
+    if isinstance(device, dict):
+        dmi = device.get("dmi")
+        signals = device.get("signals")
+        device["kind"] = classify(
+            dmi if isinstance(dmi, dict) else {},
+            signals if isinstance(signals, dict) else {},
+        )
+    return data
+
+
+def _cmd_session_environment(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    data = _session_environment()
+    session = data.get("session")
+    session_type = session.get("type") if isinstance(session, dict) else "unknown"
+    status = "degraded" if session_type in {None, "", "unknown"} else "ok"
+    return (
+        build_envelope(
+            "session",
+            "environment",
+            status=status,
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
 
 
 def _cmd_session_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
@@ -455,6 +489,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("component", "apply"): _cmd_component_apply,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
+    ("session", "environment"): _cmd_session_environment,
     ("session", "status"): _cmd_session_status,
     ("session", "recover"): _cmd_session_recover,
     ("desktop", "status"): _cmd_desktop_status,

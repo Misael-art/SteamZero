@@ -87,6 +87,40 @@ def test_session_status_and_recovery_use_stable_contract(
     assert recovered["data"] == {"status": "recovered", "gameId": "10"}
 
 
+def test_session_environment_is_read_only_and_validates_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    snapshot = {
+        "schemaVersion": 1,
+        "observedAt": "2026-07-17T00:00:00+00:00",
+        "readOnly": True,
+        "device": {
+            "dmi": {"sys_vendor": "valve"},
+            "signals": {"internal_display_present": "true"},
+            "evidenceCount": 2,
+            "kind": "deck-lcd",
+        },
+        "session": {
+            "id": "3",
+            "type": "wayland",
+            "desktop": "KDE",
+            "waylandDisplay": "wayland-0",
+            "display": None,
+        },
+        "power": {"onAC": False, "batteries": []},
+        "network": {"online": True, "interfaces": []},
+        "displays": [],
+        "volumes": [],
+    }
+    monkeypatch.setattr(cli, "_session_environment", lambda: snapshot)
+
+    assert cli.main(["session", "environment", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    contracts.validate(envelope, "envelope-v2.schema.json")
+    contracts.validate(envelope["data"], "session-environment-v1.schema.json")
+    assert envelope["data"]["readOnly"] is True
+
+
 def test_state_export_json(capsys: pytest.CaptureFixture[str]) -> None:
     code = cli.main(["state", "export", "--json"])
     env = json.loads(capsys.readouterr().out)

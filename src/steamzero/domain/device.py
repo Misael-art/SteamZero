@@ -30,12 +30,19 @@ class Device:
     quirks: dict[str, Any]
 
 
-def classify(dmi: dict[str, str]) -> str:
+def classify(dmi: dict[str, str], signals: dict[str, str] | None = None) -> str:
     product = (dmi.get("product_name") or "").strip().lower()
     vendor = (dmi.get("sys_vendor") or "").strip().lower()
-    if vendor == "valve" and product == _DECK_LCD:
+    board = (dmi.get("board_name") or "").strip().lower()
+    observed = signals or {}
+    panel = observed.get("internal_display_present") == "true"
+    # O modelo continua derivado dos identificadores oficiais, mas um adapter
+    # real precisa fornecer ao menos um segundo sinal (board ou painel). Portas
+    # legadas sem sinais permanecem classificáveis para migração/testes.
+    corroborated = not signals or board == product or panel
+    if vendor == "valve" and product == _DECK_LCD and corroborated:
         return "deck-lcd"
-    if vendor == "valve" and product == _DECK_OLED:
+    if vendor == "valve" and product == _DECK_OLED and corroborated:
         return "deck-oled"
     return "desktop"
 
@@ -48,7 +55,9 @@ class DeviceManager:
     def detect(self) -> Device:
         """Lê DMI, classifica e persiste a entidade device."""
         dmi = self._port.read_dmi()
-        kind = classify(dmi)
+        signal_reader = getattr(self._port, "read_platform_signals", None)
+        signals = signal_reader() if callable(signal_reader) else {}
+        kind = classify(dmi, signals)
         fingerprint = fs.hash_bytes(
             json.dumps(dmi, sort_keys=True, ensure_ascii=False).encode("utf-8")
         )
@@ -68,7 +77,9 @@ class DeviceManager:
         return device
 
     def is_steam_deck(self) -> bool:
-        return classify(self._port.read_dmi()) in ("deck-lcd", "deck-oled")
+        signal_reader = getattr(self._port, "read_platform_signals", None)
+        signals = signal_reader() if callable(signal_reader) else {}
+        return classify(self._port.read_dmi(), signals) in ("deck-lcd", "deck-oled")
 
 
 def _quirks_for(kind: str) -> dict[str, Any]:

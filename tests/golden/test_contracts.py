@@ -30,6 +30,7 @@ def test_registry_loads_all_schemas() -> None:
         "adapter-v1.schema.json",
         "component-lock-v1.schema.json",
         "component-plan-v1.schema.json",
+        "session-environment-v1.schema.json",
         "error-v1.schema.json",
         "event-v1.schema.json",
         "plan-v1.schema.json",

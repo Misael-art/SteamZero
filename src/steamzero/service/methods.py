@@ -106,6 +106,7 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("component.apply", "component", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("component.rollback", "component", "rollback", (_OPERATION_ID,), mutation=True),
     MethodSpec("component.recover", "component", "recover", mutation=True),
+    MethodSpec("session.environment", "session", "environment"),
     MethodSpec("session.status", "session", "status", (_GAME_ID,)),
     MethodSpec("session.recover", "session", "recover", (_GAME_ID,), mutation=True),
     MethodSpec("desktop.status", "desktop", "status"),

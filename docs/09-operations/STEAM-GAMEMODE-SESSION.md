@@ -17,6 +17,20 @@ O launcher recusa ser iniciado sobre um Desktop existente, salvo no modo de test
 explicitamente opt-in. A entrada instalada é **SteamZero Game Mode** e aponta apenas para a
 release ativa em `/opt/steamzero/current`; nenhum caminho ou serviço PhaseZero é consultado.
 
+## Ambiente observado
+
+Antes de qualquer reconciliador ou mutação, o estado real pode ser auditado com:
+
+```text
+steamzero session environment --json
+```
+
+O snapshot combina DMI com presença do painel interno, sessão gráfica, bateria/AC, rede,
+conectores DRM e volumes montados associados a `/dev/disk/by-uuid`. A leitura usa apenas
+procfs/sysfs/mountinfo e links de dispositivo; não monta volumes, não aplica modos e não
+altera a sessão. No Deck, `mmcblk` identifica o leitor microSD mesmo quando o kernel anuncia
+`removable=0`.
+
 ## Boot direto
 
 Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. O SteamZero não altera
