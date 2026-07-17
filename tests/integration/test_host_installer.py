@@ -43,6 +43,7 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "share"
         / "wayland-sessions"
         / "steamzero-gamemode.desktop",
+        gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
     )
 
 
@@ -213,8 +214,27 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     )
     assert "Name=SteamZero Game Mode" in layout.gamemode_session.read_text()
     assert "phasezero" not in layout.gamemode_session.read_text().casefold()
+    assert layout.gamemode_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    )
 
     install_host._activate(layout, "release-legacy")
     assert not layout.user_service.exists()
     assert not layout.user_socket.exists()
     assert not layout.gamemode_session.exists()
+    assert not layout.gamemode_command.exists()
+
+
+def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    modern = _release(layout, "release-modern")
+    session = modern / "venv" / "bin" / "steamzero-gamemode-session"
+    session.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    session.chmod(0o755)
+    layout.gamemode_command.parent.mkdir(parents=True)
+    layout.gamemode_command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="comando não gerenciado"):
+        install_host._activate(layout, "release-modern")
+
+    assert not layout.current.exists()

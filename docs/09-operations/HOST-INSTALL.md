@@ -11,6 +11,7 @@ Desktop e usa `bigsudo` somente para publicar arquivos do sistema.
 | `/opt/steamzero/releases/<release>` | release imutável, venv e artefatos auditáveis |
 | `/opt/steamzero/current` | único ponteiro que ativa/retrocede uma release |
 | `/usr/local/bin/steamzero` | comando estável para o usuário |
+| `/usr/local/bin/steamzero-gamemode-session` | diagnóstico e inicialização estáveis da sessão Game Mode |
 | `/usr/local/sbin/steamzero-host` | plano de gerenciamento estável: status e rollback |
 | `/usr/local/share/applications/org.steamzero.SteamZero.desktop` | lançador KDE |
 | `/usr/local/lib/systemd/user/steamzero-core.{socket,service}` | plano de controle user-scoped, socket-activated |
