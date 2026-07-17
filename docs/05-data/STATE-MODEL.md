@@ -34,6 +34,9 @@ backup(id, operation_id, manifest_json, size, retained_until)
 sync_queue(id, save_entry_id, direction, state[pending|in-flight|conflicted|done])
 compat_fact(id, subject[steamos|steam-client|component], version, tested_with_json,
             verdict[ok|degraded|broken])
+game_session(id, game_id, state[idle|launching|running|suspending|suspended|
+             resuming|closing|closed|failed], pid, profile_digest, owner,
+             started_at, updated_at, finished_at, exit_code, failure_code, metadata_json)
 event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
 ```
 
@@ -52,3 +55,6 @@ event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
    `operation` referencia o arquivo e espelha
    `applying|rolling-back|committed|rolled-back|recovery-required`.
    O snapshot registra somente deployment/ref/remote/commit, nunca dados do aplicativo.
+9. `game_session` é a fonte de verdade do lifecycle F-SD-01. Um índice parcial permite
+   somente uma sessão ativa por owner; transições e `session.state` são gravados na mesma
+   transação. Linha de comando e ambiente não são persistidos.

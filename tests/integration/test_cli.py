@@ -58,6 +58,34 @@ def test_jobs_list_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert code == cli.EXIT_OK
 
 
+def test_session_status_and_recovery_use_stable_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FakeSessionLauncher:
+        def status(self, app_id: str) -> dict[str, object]:
+            return {
+                "state": "stale",
+                "statusLabel": "Sessão interrompida",
+                "recoveryRequired": True,
+                "runtime": {"sessionId": "S1", "gameId": app_id, "state": "running"},
+            }
+
+        def recover(self, app_id: str) -> dict[str, object]:
+            return {"status": "recovered", "gameId": app_id}
+
+    monkeypatch.setattr(cli, "_session_launcher", FakeSessionLauncher)
+    assert cli.main(["session", "status", "--game-id", "10", "--json"]) == cli.EXIT_BLOCKED
+    status = json.loads(capsys.readouterr().out)
+    contracts.validate(status, "envelope-v2.schema.json")
+    assert status["blockers"][0]["code"] == "E-SESSION-INTERRUPTED"
+    assert status["data"]["runtime"]["sessionId"] == "S1"
+
+    assert cli.main(["session", "recover", "--game-id", "10", "--json"]) == cli.EXIT_OK
+    recovered = json.loads(capsys.readouterr().out)
+    assert recovered["status"] == "ok"
+    assert recovered["data"] == {"status": "recovered", "gameId": "10"}
+
+
 def test_state_export_json(capsys: pytest.CaptureFixture[str]) -> None:
     code = cli.main(["state", "export", "--json"])
     env = json.loads(capsys.readouterr().out)

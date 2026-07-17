@@ -25,6 +25,7 @@ from steamzero.domain.desktop import ExperienceCoordinator
 if TYPE_CHECKING:
     from steamzero.adapters.flatpak import FlatpakExecutor
     from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.adapters.steam_launcher import SteamGameLauncher
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -46,6 +47,8 @@ Domínios (Fase 1):
   component apply       aplica plano (--plan-id ID --confirm TOKEN)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
+  session status         mostra lifecycle persistido (--game-id APPID)
+  session recover        reconhece sessão interrompida (--game-id APPID)
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -232,6 +235,55 @@ def _desktop_coordinator() -> ExperienceCoordinator:
     return build_desktop_coordinator(store)
 
 
+def _session_launcher() -> SteamGameLauncher:
+    from steamzero.adapters.steam_launcher import SteamGameLauncher
+
+    return SteamGameLauncher()
+
+
+def _cmd_session_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    app_id = _required_flag(args, "--game-id")
+    data = _session_launcher().status(app_id)
+    recovery = bool(data.get("recoveryRequired"))
+    degraded = data.get("state") in {"stale", "degraded"}
+    blockers = (
+        [
+            {
+                "code": "E-SESSION-INTERRUPTED",
+                "message": "A sessão anterior precisa ser recuperada antes de outro launch.",
+            }
+        ]
+        if recovery
+        else []
+    )
+    return (
+        build_envelope(
+            "session",
+            "status",
+            status="blocked" if recovery else "degraded" if degraded else "ok",
+            data=data,
+            blockers=blockers,
+            correlation_id=correlation_id,
+        ),
+        EXIT_BLOCKED if recovery else EXIT_OK,
+    )
+
+
+def _cmd_session_recover(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    app_id = _required_flag(args, "--game-id")
+    data = _session_launcher().recover(app_id)
+    return (
+        build_envelope(
+            "session",
+            "recover",
+            status="ok" if data["status"] == "recovered" else "noop",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _desktop_blockers(messages: list[str] | tuple[str, ...]) -> list[dict[str, str]]:
     return [
         {
@@ -402,6 +454,8 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("component", "apply"): _cmd_component_apply,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
+    ("session", "status"): _cmd_session_status,
+    ("session", "recover"): _cmd_session_recover,
     ("desktop", "status"): _cmd_desktop_status,
     ("desktop", "plan"): _cmd_desktop_plan,
     ("desktop", "apply"): _cmd_desktop_apply,

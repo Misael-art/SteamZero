@@ -1,6 +1,6 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-17 · **Sessão:** implementação 16 · **Escopo entregue:** Fases 1–3
+**Data:** 2026-07-17 · **Sessão:** implementação 17 · **Escopo entregue:** Fases 1–3
 (M1–M9) + Fase 4 em andamento e baseline de confiança operacional
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
@@ -34,7 +34,7 @@ os controles de verdade Desktop, proveniência e CI, mas a execução remota/VM 
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
 | **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema/registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável G-FULL; lockfile anti-drift; executor Flatpak user-scoped com plan/token, commit OSTree exato, verify/smoke, rollback G-DEPLOYMENT e recovery em **24 testes**. A CLI expõe list/status/plan/apply/rollback/recover. Status real read-only passou; instalação dos três em VM ainda não foi feita e DuckStation segue EOL no Flathub. |
 | **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + host-partial) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada e gate de independência. O apply real `01KXMDC05NTYS88F5WC8XS8V3T` confirmou `docked-desktop` e persistiu snapshots de display/janelas; o novo status separa recomendado/desejado/aplicado/observado e o teste dock→undock exige `stale`. Hotplug, input, suspend, storage e TDP permanecem pendentes. |
-| M11 Frontends (Steam/SRM/ES-DE) | 4 | **partial** (verified-dev) | Steam: descoberta de biblioteca/capas, perfis desejados de desempenho+LSFG e Steam Input por jogo, plano confirmado e persistência atômica. Sistema instala/repara LSFG-VK 1.0.0 user-scoped com supply chain pinada e rollback G-FULL. `steamzero-launch` executa `%command%` sem shell e observa PID+ambiente+digest; a UI agora configura a Launch Option do jogo selecionado com Steam fechada, parser VDF preservador, confirmação, verify e rollback byte-idêntico. TDP/GPU continuam adiados até transporte privilegiado validado; faltam adapters SRM/ES-DE. |
+| M11 Frontends (Steam/SRM/ES-DE) | 4 | **partial** (verified-dev) | Steam: descoberta de biblioteca/capas, perfis desejados de desempenho+LSFG e Steam Input por jogo, plano confirmado e persistência atômica. Sistema instala/repara LSFG-VK 1.0.0 user-scoped com supply chain pinada e rollback G-FULL. `steamzero-launch` executa `%command%` sem shell, configura Launch Options com rollback e agora registra o lifecycle canônico em `game_session`; índice parcial impede duas sessões ativas, PID morto exige recovery e eventos usam `session.state`. TDP/GPU continuam adiados; faltam adapters SRM/ES-DE. |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
 | M13 Adoção EmuDeck/RetroDECK em HW real | 5 | not-started | — |
 | M14 Flatpak + canais + update/rollback | 6 | not-started | — |
@@ -83,15 +83,15 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 172 | `tests/unit/` |
-| Integração | 183 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
+| Unit | 176 | `tests/unit/` |
+| Integração | 187 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
 | Injeção de falha (FI) | 40 | marcador `fi` — inclui FI-16/17/18, FI-21..24 Desktop e FI-25/26 Flatpak |
 | Rollback (RT) | 23 | marcador `rt` — inclui lifecycle portátil e Flatpak, RT-06..11; RT-12..14 pendentes |
 | Segurança (ST) | 30 | marcador `security` — helper + mídia ST-06 |
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
-| **Total** | **426** | `pytest -q` → **426 passed** |
+| **Total** | **434** | `pytest -q` → **434 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -101,7 +101,8 @@ Cobertura (`pytest --cov=steamzero`):
 |---|---|
 | core/fs.py | 93% |
 | core/journal.py | 97% |
-| core/state.py | 96% |
+| core/state.py | 95% |
+| core/session_state.py | 100% |
 | core/transaction.py | 90% |
 | core/lock.py | 94% |
 | core/ids.py · errors.py · secret.py | 100% |
@@ -112,7 +113,7 @@ Cobertura (`pytest --cov=steamzero`):
 | domain/desktop.py | 89% |
 | adapters/{desktop_kde,desktop_ui} | 61–65% (efeitos reais não acionados no host) |
 | adapters/lsfg.py | 76% (aquisição HTTP real não acionada; checksum/extrator/apply/rollback exercitados por fake) |
-| adapters/steam_launcher.py | 94% (composição/lifecycle real por fake; jogo comercial não iniciado no host) |
+| adapters/steam_launcher.py | 91% (composição/processo por fake; lifecycle persistente e exclusivo real em SQLite) |
 | adapters/steam_launch_options.py | 80% (parser/patch/conta ativa/transação exercitados; Steam real somente read-only) |
 | core/safezip.py | 98% |
 | privileged/{protocol,helper,client} | 90–100% |
@@ -231,7 +232,9 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
   uma nova fonte oficial porque seu ref Flathub está EOL.
 
 **Média:**
-- **M1d. Daemon/IPC ausente** — a CLI roda o núcleo in-process (single-shot). O serviço
+- **M1d. Daemon/IPC ausente** — o lifecycle persistente/exclusivo e os contratos
+  `session status/recover` fecham uma parte do plano de controle, mas a CLI ainda roda o
+  núcleo in-process (single-shot). O serviço
   local JSON-RPC sobre UNIX socket com SO_PEERCRED/confirmToken (SR-18) não existe ainda.
   A central M10-H usa bridge HTTP efêmera em loopback, token aleatório e allowlist,
   encerrada junto ao QML; ela não substitui o daemon persistente planejado.
@@ -272,8 +275,8 @@ python3 -m venv /tmp/steamzero-smoke
 /tmp/steamzero-smoke/bin/steamzero doctor --json
 ```
 
-**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **426 passed / 85%**.
-O wheel `0.1.0a6` foi instalado sem editable em venv vazio; versão, `pip check`,
+**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **434 passed / 85%**.
+O wheel `0.1.0a7` foi instalado sem editable em venv vazio; versão, `pip check`,
 `steamzero.ports` empacotado e `doctor --json` passaram. A prova em clone remoto limpo
 depende do primeiro push/CI.
 
@@ -284,7 +287,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12/3.14 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (426 testes), lints, tipos e os binários
+- **verified-dev (VM/estação):** toda a suíte (434 testes), lints, tipos e os binários
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -356,5 +359,5 @@ safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas expl�
 houve uma aplicação parcial de perfil sem matriz física; root foi usado apenas no bootstrap
 versionado, e ferramentas de conversão reais não foram acionadas. A Fase 4
 contém M10 parcial e M10-H foundation; Fases 5–6 não iniciaram. Nada mascarado — a suíte
-(426 testes, 0 falhas/skips) e o
+(434 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.

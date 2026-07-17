@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -27,7 +28,13 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from steamzero.adapters.lsfg import LSFG_APP_ID
+from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.session_state import (
+    ACTIVE_SESSION_STATES,
+    SESSION_OWNER,
+    normalize_session_state,
+)
 from steamzero.core.state import StateStore
 
 StoreFactory = Callable[[], StateStore]
@@ -195,7 +202,7 @@ class SteamGameLauncher:
         recovery = False
         observed = False
         if runtime is not None:
-            runtime_state = str(runtime.get("state", "unknown"))
+            runtime_state = normalize_session_state(runtime.get("state"))
             pid = runtime.get("pid")
             runtime_digest = str(runtime.get("profileDigest", ""))
             desired_digest = self._profile_digest(desired) if desired is not None else ""
@@ -206,19 +213,28 @@ class SteamGameLauncher:
                 and bool(runtime_digest)
                 and self._observation_probe(pid_value, app_id, runtime_digest)
             )
-            if runtime_state == "active" and observed and runtime_digest == desired_digest:
+            if runtime_state == "running" and observed and runtime_digest == desired_digest:
                 state = "observed"
-            elif runtime_state == "active" and observed:
+            elif runtime_state == "running" and observed:
                 state = "stale"
-            elif runtime_state in {"launching", "active"}:
+            elif runtime_state == "launching" and alive:
+                state = "launching"
+            elif runtime_state == "suspended" and alive:
+                state = "suspended"
+            elif runtime_state == "closing" and alive:
+                state = "closing"
+            elif runtime_state in ACTIVE_SESSION_STATES:
                 state = "stale"
                 recovery = not alive
             elif runtime_state == "failed":
-                state = "degraded"
+                state = "desired" if runtime.get("error") == "E-SESSION-INTERRUPTED" else "degraded"
         labels = {
             "recommended": "Perfil recomendado",
             "desired": "Aguardando lançamento gerenciado",
             "observed": "Perfil observado em execução",
+            "launching": "Iniciando sessão gerenciada",
+            "suspended": "Sessão de jogo suspensa",
+            "closing": "Encerrando sessão gerenciada",
             "stale": ("Perfil alterado durante execução" if observed else "Sessão interrompida"),
             "degraded": "Falha no último lançamento",
         }
@@ -240,8 +256,25 @@ class SteamGameLauncher:
         if not current["recoveryRequired"]:
             return {"status": "clean", "gameId": app_id}
         runtime = dict(current.get("runtime") or {})
-        runtime.update({"state": "interrupted", "finishedAt": _now(), "pid": None})
-        self._save_runtime(app_id, runtime)
+        session_id = runtime.get("sessionId")
+        if isinstance(session_id, str) and not session_id.startswith("legacy:"):
+            self._transition_session(
+                session_id,
+                "failed",
+                pid=None,
+                finished_at=_now(),
+                failure_code="E-SESSION-INTERRUPTED",
+            )
+        else:
+            runtime.update(
+                {
+                    "state": "failed",
+                    "finishedAt": _now(),
+                    "pid": None,
+                    "error": "E-SESSION-INTERRUPTED",
+                }
+            )
+            self._save_legacy_runtime(app_id, runtime)
         return {"status": "recovered", "gameId": app_id}
 
     def compile(self, app_id: str, command: Sequence[str]) -> LaunchSpec:
@@ -329,24 +362,27 @@ class SteamGameLauncher:
 
     def run(self, app_id: str, command: Sequence[str]) -> int:
         spec = self.compile(app_id, command)
-        base = {
-            "state": "launching",
-            "gameId": app_id,
-            "profileDigest": spec.profile_digest,
-            "appliedEffects": list(spec.applied_effects),
-            "deferredEffects": list(spec.deferred_effects),
-            "startedAt": _now(),
-            "pid": None,
-        }
-        self._save_runtime(app_id, base)
+        self._ensure_no_legacy_active_session()
+        session_id = ids.new_ulid()
+        metadata = json.dumps(
+            {
+                "appliedEffects": list(spec.applied_effects),
+                "deferredEffects": list(spec.deferred_effects),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        self._create_session(session_id, app_id, spec.profile_digest, metadata)
         child: ChildProcess | None = None
         previous_handlers: dict[int, Any] = {}
+        closing_requested = False
         try:
             child = self._processes.start(spec.argv, spec.environment)
-            active = {**base, "state": "active", "pid": child.pid}
-            self._save_runtime(app_id, active)
+            self._transition_session(session_id, "running", pid=child.pid)
 
             def forward(signum: int, _frame: object) -> None:
+                nonlocal closing_requested
+                closing_requested = True
                 if child is not None:
                     with suppress(OSError):
                         child.send_signal(signum)
@@ -359,21 +395,25 @@ class SteamGameLauncher:
                         previous_handlers.clear()
                         break
             exit_code = child.wait()
-            self._save_runtime(
-                app_id,
-                {**active, "state": "exited", "finishedAt": _now(), "exitCode": exit_code},
+            if closing_requested:
+                self._transition_session(session_id, "closing")
+            self._transition_session(
+                session_id,
+                "closed",
+                pid=None,
+                finished_at=_now(),
+                exit_code=exit_code,
             )
             return exit_code
-        except Exception as exc:
-            self._save_runtime(
-                app_id,
-                {
-                    **base,
-                    "state": "failed",
-                    "finishedAt": _now(),
-                    "error": type(exc).__name__,
-                },
-            )
+        except Exception:
+            with suppress(Exception):
+                self._transition_session(
+                    session_id,
+                    "failed",
+                    pid=None,
+                    finished_at=_now(),
+                    failure_code="E-SESSION-LAUNCH-FAILED",
+                )
             raise
         finally:
             for restore_signum, handler in previous_handlers.items():
@@ -403,16 +443,22 @@ class SteamGameLauncher:
     def _load_runtime(self, app_id: str) -> dict[str, Any] | None:
         with self._store_factory() as store:
             store.migrate()
-            row = store.get_profile(f"steam-runtime:game:{app_id}")
+            session = store.latest_game_session(app_id)
+            row = store.get_profile(f"steam-runtime:game:{app_id}") if session is None else None
+        if session is not None:
+            return self._session_payload(session)
         if row is None or row.get("kind") != _RUNTIME_KIND:
             return None
         try:
             value = json.loads(str(row["payload_json"]))
         except (KeyError, TypeError, json.JSONDecodeError):
             return None
-        return value if isinstance(value, dict) else None
+        if not isinstance(value, dict):
+            return None
+        value.setdefault("sessionId", f"legacy:{app_id}")
+        return value
 
-    def _save_runtime(self, app_id: str, payload: dict[str, Any]) -> None:
+    def _save_legacy_runtime(self, app_id: str, payload: dict[str, Any]) -> None:
         with self._store_factory() as store:
             store.migrate()
             store.save_profile(
@@ -425,6 +471,84 @@ class SteamGameLauncher:
                     "profile_owner": _RUNTIME_OWNER,
                 }
             )
+
+    def _create_session(
+        self, session_id: str, app_id: str, profile_digest: str, metadata_json: str
+    ) -> None:
+        try:
+            with self._store_factory() as store:
+                store.migrate()
+                store.create_game_session(
+                    {
+                        "id": session_id,
+                        "game_id": app_id,
+                        "state": "launching",
+                        "profile_digest": profile_digest,
+                        "owner": SESSION_OWNER,
+                        "pid": os.getpid(),
+                        "metadata_json": metadata_json,
+                    }
+                )
+        except sqlite3.IntegrityError as exc:
+            with self._store_factory() as store:
+                store.migrate()
+                active = store.active_game_session(SESSION_OWNER)
+            if active is not None:
+                raise SteamZeroError(
+                    "E-TX-LOCKED",
+                    detail="outra sessão de jogo gerenciada ainda está ativa",
+                ) from exc
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail="não foi possível registrar a sessão de jogo"
+            ) from exc
+
+    def _transition_session(self, session_id: str, target: str, **changes: Any) -> None:
+        with self._store_factory() as store:
+            store.migrate()
+            store.transition_game_session(session_id, target, **changes)
+
+    def _ensure_no_legacy_active_session(self) -> None:
+        with self._store_factory() as store:
+            store.migrate()
+            rows = store.list_profiles(kind=_RUNTIME_KIND, owner=_RUNTIME_OWNER)
+        for row in rows:
+            try:
+                payload = json.loads(str(row.get("payload_json") or ""))
+            except json.JSONDecodeError:
+                continue
+            if (
+                isinstance(payload, dict)
+                and normalize_session_state(payload.get("state")) in ACTIVE_SESSION_STATES
+            ):
+                raise SteamZeroError(
+                    "E-TX-LOCKED",
+                    detail="uma sessão gerenciada legada requer recuperação explícita",
+                )
+
+    @staticmethod
+    def _session_payload(row: dict[str, Any]) -> dict[str, Any]:
+        try:
+            metadata = json.loads(str(row.get("metadata_json") or "{}"))
+        except json.JSONDecodeError:
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        payload: dict[str, Any] = {
+            "sessionId": row["id"],
+            "state": row["state"],
+            "gameId": row["game_id"],
+            "profileDigest": row.get("profile_digest") or "",
+            "pid": row.get("pid"),
+            "startedAt": row["started_at"],
+            "finishedAt": row.get("finished_at"),
+            "appliedEffects": list(metadata.get("appliedEffects") or []),
+            "deferredEffects": list(metadata.get("deferredEffects") or []),
+        }
+        if row.get("exit_code") is not None:
+            payload["exitCode"] = row["exit_code"]
+        if row.get("failure_code"):
+            payload["error"] = row["failure_code"]
+        return payload
 
     def _required_tool(self, name: str) -> str:
         path = self._which(name)

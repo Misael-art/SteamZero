@@ -26,6 +26,7 @@ from typing import Any
 from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.migrations import LATEST, MIGRATIONS
+from steamzero.core.session_state import ACTIVE_SESSION_STATES, can_transition
 
 _JOB_COLUMNS = (
     "id",
@@ -270,6 +271,138 @@ class StateStore:
 
     def get_profile(self, profile_id: str) -> dict[str, Any] | None:
         row = self._conn.execute("SELECT * FROM profile WHERE id=?", (profile_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_profiles(
+        self, *, kind: str | None = None, owner: str | None = None
+    ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        values: list[str] = []
+        if kind is not None:
+            clauses.append("kind=?")
+            values.append(kind)
+        if owner is not None:
+            clauses.append("profile_owner=?")
+            values.append(owner)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = self._conn.execute(
+            f"SELECT * FROM profile{where} ORDER BY id",  # noqa: S608 - cláusulas fixas
+            values,
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    # -- game sessions -----------------------------------------------------
+    def create_game_session(self, session: dict[str, Any]) -> None:
+        """Cria uma sessão e adquire atomicamente a exclusividade por owner."""
+        now = _now_iso()
+        row = {
+            "id": session["id"],
+            "game_id": session["game_id"],
+            "state": session["state"],
+            "pid": session.get("pid"),
+            "profile_digest": session.get("profile_digest"),
+            "owner": session["owner"],
+            "started_at": session.get("started_at") or now,
+            "updated_at": now,
+            "finished_at": session.get("finished_at"),
+            "exit_code": session.get("exit_code"),
+            "failure_code": session.get("failure_code"),
+            "metadata_json": session.get("metadata_json"),
+        }
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            self._conn.execute(
+                """
+                INSERT INTO game_session (
+                  id,game_id,state,pid,profile_digest,owner,started_at,updated_at,
+                  finished_at,exit_code,failure_code,metadata_json
+                ) VALUES (
+                  :id,:game_id,:state,:pid,:profile_digest,:owner,:started_at,:updated_at,
+                  :finished_at,:exit_code,:failure_code,:metadata_json
+                )
+                """,
+                row,
+            )
+            self.append_event(
+                "session.state",
+                entity=f"session:{row['id']}",
+                payload={"state": row["state"], "gameId": row["game_id"]},
+            )
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
+
+    def transition_game_session(
+        self, session_id: str, target: str, **changes: Any
+    ) -> dict[str, Any]:
+        """Faz compare-and-transition serializado e emite o evento canônico."""
+        allowed = {
+            "pid",
+            "profile_digest",
+            "finished_at",
+            "exit_code",
+            "failure_code",
+            "metadata_json",
+        }
+        if not set(changes).issubset(allowed):
+            raise SteamZeroError("E-API-SCHEMA", detail="campo de sessão não permitido")
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            current_row = self._conn.execute(
+                "SELECT * FROM game_session WHERE id=?", (session_id,)
+            ).fetchone()
+            if current_row is None:
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="sessão de jogo ausente")
+            current = str(current_row["state"])
+            if not can_transition(current, target):
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY",
+                    detail=f"transição de sessão inválida: {current} -> {target}",
+                )
+            assignments = ["state=?", "updated_at=?"]
+            values: list[Any] = [target, _now_iso()]
+            for key in sorted(changes):
+                assignments.append(f"{key}=?")
+                values.append(changes[key])
+            values.append(session_id)
+            self._conn.execute(
+                f"UPDATE game_session SET {','.join(assignments)} WHERE id=?",  # noqa: S608
+                values,
+            )
+            self.append_event(
+                "session.state",
+                entity=f"session:{session_id}",
+                payload={"state": target, "gameId": current_row["game_id"]},
+            )
+            updated = self._conn.execute(
+                "SELECT * FROM game_session WHERE id=?", (session_id,)
+            ).fetchone()
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
+        if updated is None:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="sessão desapareceu após transição")
+        return dict(updated)
+
+    def latest_game_session(self, game_id: str) -> dict[str, Any] | None:
+        row = self._conn.execute(
+            "SELECT * FROM game_session WHERE game_id=? ORDER BY updated_at DESC,id DESC LIMIT 1",
+            (game_id,),
+        ).fetchone()
+        return dict(row) if row is not None else None
+
+    def active_game_session(self, owner: str) -> dict[str, Any] | None:
+        placeholders = ",".join("?" for _ in ACTIVE_SESSION_STATES)
+        values = [owner, *sorted(ACTIVE_SESSION_STATES)]
+        row = self._conn.execute(
+            f"SELECT * FROM game_session WHERE owner=? AND state IN ({placeholders}) "  # noqa: S608
+            "ORDER BY updated_at DESC LIMIT 1",
+            values,
+        ).fetchone()
         return dict(row) if row is not None else None
 
     # -- library (platform / game / rom) ------------------------------------

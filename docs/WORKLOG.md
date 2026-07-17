@@ -745,3 +745,29 @@ nenhuma mutação foi realizada.
 Launch Options a 80%. Ruff, mypy estrito, fronteiras, independência e `qmllint` verdes.
 
 **Versão:** a árvore passa a `0.1.0a6`; nenhum artefato reutiliza `0.1.0a5`.
+
+## 2026-07-17 — Sessão 17: lifecycle Steam com fonte de verdade única
+
+**Persistência:** a migração v4 adiciona `game_session` com os estados canônicos F-SD-01,
+PID, digest, timestamps, terminal e metadados públicos mínimos. Um índice parcial único
+por owner impede atomicamente dois jogos gerenciados em estados ativos. O domínio de
+sessão e `steamzero-launch` agora compartilham vocabulário, transições e owner.
+
+**Resiliência:** o wrapper registra launching antes do spawn, running com o PID observado,
+closing quando recebeu TERM/INT e closed/failed como terminal. Wrapper morto deixa sessão
+ativa recuperável; outro launch recebe E-TX-LOCKED. Recovery explícito usa
+E-SESSION-INTERRUPTED. Falha de spawn/runtime usa E-SESSION-LAUNCH-FAILED, nunca nome cru
+de exceção. Estados legados active/exited/interrupted continuam legíveis.
+
+**Contrato:** eventos de sessão passaram de `job.state` indevido para `session.state`,
+com `sessionId`/`gameId` no schema. `steamzero session status|recover --game-id APPID`
+expõe o lifecycle sem ampliar a UI Game Mode, preservando o congelamento de G8. Comando e
+ambiente do jogo não entram na tabela, evento ou envelope.
+
+**Host:** inspeção SQLite em `mode=ro` encontrou schema v3, sem `game_session` e sem
+runtime legado ativo. A migração v4 não foi aplicada ao host nesta sessão.
+
+**Gate:** **434 passed / 85%** (5688 statements, 691 misses, 1430 branches); conjunto
+state/session/launcher a 93%. Ruff, mypy estrito, fronteiras e independência verdes.
+
+**Versão:** a árvore passa a `0.1.0a7`; nenhum artefato reutiliza `0.1.0a6`.

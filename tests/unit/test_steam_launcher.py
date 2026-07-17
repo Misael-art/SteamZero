@@ -141,7 +141,7 @@ def test_compile_mangohud_without_gamescope_and_public_summary(tmp_path: Path) -
     }
 
 
-def test_run_records_active_then_exit_and_returns_child_code(tmp_path: Path) -> None:
+def test_run_records_canonical_session_and_returns_child_code(tmp_path: Path) -> None:
     _save_profile(
         tmp_path / "state.db",
         gamescope=False,
@@ -157,8 +157,13 @@ def test_run_records_active_then_exit_and_returns_child_code(tmp_path: Path) -> 
     assert processes.calls[0][0] == ("/usr/bin/game",)
     status = launcher.status("10")
     assert status["state"] == "desired"
-    assert status["runtime"]["state"] == "exited"
+    assert status["runtime"]["state"] == "closed"
     assert status["runtime"]["exitCode"] == 17
+    assert status["runtime"]["sessionId"]
+    with StateStore(tmp_path / "state.db") as store:
+        assert [json.loads(event["payload_json"])["state"] for event in store.events_since(0)][
+            -3:
+        ] == ["launching", "running", "closed"]
 
 
 def test_run_forwards_termination_signal_to_child(tmp_path: Path) -> None:
@@ -174,6 +179,10 @@ def test_run_forwards_termination_signal_to_child(tmp_path: Path) -> None:
     launcher = _launcher(tmp_path, FakeProcesses(child))
     assert launcher.run("10", ("game",)) == 0
     assert child.signals == [signal.SIGTERM]
+    with StateStore(tmp_path / "state.db") as store:
+        session = store.latest_game_session("10")
+    assert session is not None
+    assert session["state"] == "closed"
 
 
 def test_lsfg_environment_uses_owned_dll_and_pinned_layer(tmp_path: Path) -> None:
@@ -235,8 +244,54 @@ def test_spawn_failure_is_recorded_without_exposing_command(tmp_path: Path) -> N
         launcher.run("10", ("secret-game-argument",))
     runtime = launcher.status("10")["runtime"]
     assert runtime["state"] == "failed"
-    assert runtime["error"] == "OSError"
+    assert runtime["error"] == "E-SESSION-LAUNCH-FAILED"
     assert "secret-game-argument" not in json.dumps(runtime)
+
+
+def test_second_managed_session_is_blocked_atomically(tmp_path: Path) -> None:
+    _save_profile(
+        tmp_path / "state.db",
+        gamescope=False,
+        gameMode=False,
+        mangoHud="off",
+        upscaling="native",
+        tdp=None,
+    )
+    with StateStore(tmp_path / "state.db") as store:
+        store.create_game_session(
+            {
+                "id": "active-session",
+                "game_id": "20",
+                "state": "running",
+                "pid": 9999,
+                "owner": "steamzero-game-session",
+            }
+        )
+    processes = FakeProcesses()
+    with pytest.raises(SteamZeroError) as error:
+        _launcher(tmp_path, processes).run("10", ("game",))
+    assert error.value.code == "E-TX-LOCKED"
+    assert processes.calls == []
+
+
+def test_persisted_interrupted_session_requires_and_accepts_recovery(tmp_path: Path) -> None:
+    _save_profile(tmp_path / "state.db")
+    with StateStore(tmp_path / "state.db") as store:
+        store.create_game_session(
+            {
+                "id": "interrupted-session",
+                "game_id": "10",
+                "state": "launching",
+                "owner": "steamzero-launcher",
+            }
+        )
+    launcher = _launcher(tmp_path)
+    assert launcher.status("10")["recoveryRequired"] is True
+    assert launcher.recover("10") == {"status": "recovered", "gameId": "10"}
+    recovered = launcher.status("10")
+    assert recovered["state"] == "desired"
+    assert recovered["runtime"]["state"] == "failed"
+    assert recovered["runtime"]["error"] == "E-SESSION-INTERRUPTED"
 
 
 def test_stale_active_session_requires_explicit_recovery(tmp_path: Path) -> None:

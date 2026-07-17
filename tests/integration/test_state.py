@@ -11,7 +11,11 @@ import pytest
 
 from steamzero.core import state
 from steamzero.core.errors import SteamZeroError
-from steamzero.core.migrations import m0001_baseline
+from steamzero.core.migrations import (
+    m0001_baseline,
+    m0002_desktop_experience,
+    m0003_gameplay_runtime,
+)
 
 
 @pytest.fixture
@@ -22,19 +26,27 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 3
+    assert store.user_version == state.LATEST == 4
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     }
-    for expected in ("job", "operation", "event_log", "game", "save_entry", "component"):
+    for expected in (
+        "job",
+        "operation",
+        "event_log",
+        "game",
+        "game_session",
+        "save_entry",
+        "component",
+    ):
         assert expected in tables
     store.close()
 
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 3  # 2ª vez: no-op
+    assert store.migrate() == 4  # 2ª vez: no-op
     store.close()
 
 
@@ -51,7 +63,7 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 3
+    assert store.user_version == 4
     assert store.get_profile("legacy-profile") is not None
     store.save_profile(
         {
@@ -85,6 +97,70 @@ def test_migration_v3_accepts_gameplay_scopes_and_runtime(db_path: Path) -> None
         }
     )
     assert store.get_profile("steam-runtime:game:10") is not None
+    store.close()
+
+
+def test_migration_v3_to_v4_preserves_legacy_runtime(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True)
+    connection = sqlite3.connect(db_path)
+    m0001_baseline.up(connection)
+    m0002_desktop_experience.up(connection)
+    m0003_gameplay_runtime.up(connection)
+    connection.execute("PRAGMA user_version=3")
+    connection.execute(
+        "INSERT INTO profile (id,scope,kind,payload_json,profile_owner) VALUES (?,?,?,?,?)",
+        (
+            "steam-runtime:game:10",
+            "game",
+            "performance-runtime",
+            '{"state":"active","pid":42}',
+            "steamzero-launcher",
+        ),
+    )
+    connection.commit()
+    connection.close()
+
+    store = state.open_state(db_path)
+    assert store.user_version == 4
+    assert store.get_profile("steam-runtime:game:10") is not None
+    assert store.latest_game_session("10") is None
+    store.close()
+
+
+def test_game_session_is_exclusive_and_transitions_are_persisted(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.create_game_session(
+        {"id": "S1", "game_id": "10", "state": "launching", "owner": "launcher"}
+    )
+    with pytest.raises(sqlite3.IntegrityError):
+        store.create_game_session(
+            {"id": "S2", "game_id": "20", "state": "launching", "owner": "launcher"}
+        )
+    running = store.transition_game_session("S1", "running", pid=42)
+    assert running["pid"] == 42
+    assert store.active_game_session("launcher") == running
+    closed = store.transition_game_session("S1", "closed", pid=None, exit_code=0)
+    assert closed["state"] == "closed"
+    assert store.active_game_session("launcher") is None
+    assert store.latest_game_session("10") == closed
+    events = store.events_since(0)
+    assert [event["kind"] for event in events] == [
+        "session.state",
+        "session.state",
+        "session.state",
+    ]
+    store.close()
+
+
+def test_game_session_rejects_invalid_transition_and_unknown_fields(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.create_game_session(
+        {"id": "S1", "game_id": "10", "state": "launching", "owner": "launcher"}
+    )
+    with pytest.raises(SteamZeroError, match="transição"):
+        store.transition_game_session("S1", "closed")
+    with pytest.raises(SteamZeroError, match="campo"):
+        store.transition_game_session("S1", "running", command="secret")
     store.close()
 
 
@@ -159,7 +235,7 @@ def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 3
+    assert export["schemaVersion"] == 4
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -175,14 +251,14 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
         raise RuntimeError("migração v2 quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (4, bad)])
-    monkeypatch.setattr(state, "LATEST", 4)
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (5, bad)])
+    monkeypatch.setattr(state, "LATEST", 5)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 3  # não avançou
+    assert store2.user_version == 4  # não avançou
     tables = {
         r["name"]
         for r in store2._conn.execute(

@@ -106,6 +106,17 @@ def test_event_sample_validates() -> None:
     }
     contracts.validate(event, "event-v1.schema.json")
 
+    session_event = {
+        "seq": 2,
+        "ts": "2026-07-15T00:00:01+00:00",
+        "kind": "session.state",
+        "correlationId": "01J000000000000000000000AB",
+        "sessionId": "01J000000000000000000000AC",
+        "gameId": "10",
+        "state": "running",
+    }
+    contracts.validate(session_event, "event-v1.schema.json")
+
 
 @pytest.mark.golden
 def test_invalid_instances_rejected() -> None:

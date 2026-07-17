@@ -48,7 +48,22 @@ ficam em `deferredEffects` e não contam como observados.
 
 O launcher encaminha SIGTERM/SIGINT ao filho, aguarda seu encerramento e grava apenas
 AppID, PID, digest, efeitos sem segredo, timestamps e exit code. Após SIGKILL do wrapper,
-PID morto produz `recoveryRequired`; a recuperação marca a sessão como `interrupted`.
+PID morto produz `recoveryRequired`; a recuperação encerra a sessão como `failed` com
+o código estável `E-SESSION-INTERRUPTED`.
+
+Desde o schema v4, `game_session` é a fonte de verdade: o mesmo vocabulário
+`idle→launching→running→…→closed|failed` serve o domínio F-SD-01 e o launcher real.
+Um índice parcial por owner recusa uma segunda sessão ativa de forma atômica. Cada
+transição e seu evento `session.state` são gravados juntos; comando e ambiente nunca são
+persistidos. Estados M11 antigos (`active/exited/interrupted`) continuam legíveis durante
+a migração, mas novos launches não reutilizam o perfil legado.
+
+Diagnóstico e recovery também estão disponíveis sem UI:
+
+```text
+steamzero session status --game-id <APP_ID> --json
+steamzero session recover --game-id <APP_ID>
+```
 
 ## Configuração automática e recuperação
 
