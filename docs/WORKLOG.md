@@ -831,3 +831,30 @@ isso é uma garantia de recuperação, não uma função simulada.
 **85%** (6594 statements, 805 misses, 1736 branches). Ruff, formato, mypy estrito,
 fronteiras, independência, `qmllint`, wheel provenance, manifesto host v3,
 `systemd-analyze --user verify` e status administrativo passaram.
+
+## 2026-07-17 — Sessão 20: roadmap Steam R1 e observação Linux real
+
+**Roadmap normativo:** `STEAM-SESSION-ROADMAP.md` filtra o catálogo para lifecycle,
+suspend, dock/display, microSD, offline, compatibilidade, desempenho, privilégio,
+Steam Input, frontends, Game Mode UI e validação física. A ordem R1–R10 impede que UI
+ou boot automático avancem antes de estado aplicado/observado e recovery comprovado.
+
+**R1:** entrou `session environment`, disponível por CLI e JSON-RPC allowlisted. O adapter
+combina DMI com painel interno, observa sessão gráfica, bateria/AC, rede, conectores DRM e
+volumes de mountinfo associados a `/dev/disk/by-uuid`. Toda a superfície é read-only e
+tolera fontes ausentes. O contrato `session-environment-v1` congela a saída v1.
+
+**Correção descoberta no host:** o leitor microSD do Deck expõe `mmcblk0` com
+`removable=0`; a primeira sonda classificou `/mnt/sdcard` como interno. A regra passou a
+usar a identidade MMC, mantendo NVMe interno e USB separados. A repetição observou o UUID
+`58D14C064972BE55` como `microsd`, sem montar ou escrever no volume.
+
+**Host:** release `0.1.0a11-11e57d269fb2`, commit
+`11e57d269fb205f5c0258888e1afd56b826ca96c`, wheel SHA-256
+`a8caada99aa4049f56ae05a680d67f698aae94fd4f30898797e8a709f7f64641`.
+O daemon instalado observou Deck LCD com quatro evidências, KDE/Wayland, bateria real,
+rede, eDP-1, estado vivo do DP-1, Btrfs interno, EFI e microSD. Doctor, manifesto v3,
+systemd user e permissões IPC continuaram saudáveis.
+
+**Gate:** **482 passed / 85%** (6845 statements, 845 misses, 1804 branches); Ruff,
+formato, mypy, fronteiras, independência, `qmllint`, provenance e smokes host verdes.
