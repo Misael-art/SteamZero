@@ -38,6 +38,9 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 | `0.1.0a12-105cce61a9a3` | `105cce61a9a3d471429f3af520537f29f8025f72` | `72130dd966690ec1e87c1863d9ed1b2a9b35119df0c451d2c7ac9221cdf0a1cd` | R2 incremental instalado; SQLite v5 e deduplicação do reconciliador validados no host |
 | `0.1.0a13-3730f7322c80` | `3730f7322c80c25d320c71c6b68405300064698b` | `2b4ad296fcacc6aaec56b063bfce9ef479cb8933f6a542ff467045c5427bad16` | detecção pós-resume instalada; relógios reais validados sem suspender o host principal |
 | `0.1.0a14-60712ad3972c` | `60712ad3972cca6b23ecfb19233f7de1076bd471` | `1231695893f075be48f8d7b70c0424d58ae61b12f1dd14a570b7f06fd20d60fe` | ativa; helper e policy Polkit instalados, health root/audit 0600 validados, mutações desabilitadas |
+| `0.1.0a15-ba87f9ee5c44` | `ba87f9ee5c4420cf6a063ef28569d4ee0cdbac4d` | `fe815e5dda7c796589d8421a658be8ad30948ae216c01f717c96ebda8636849f` | instalada; smoke revelou que autenticação interativa não deve atravessar o daemon user-scoped |
+| `0.1.0a16-592dba1628a4` | `592dba1628a4396ea226f3d03b1126f54f48de45` | `8de1930b362d9bb9d2ed9ad1b17bd089a5c9c4875621c49c32d674f43b004132` | correção instalada; CLI→Polkit direta validada e método ausente das capabilities RPC |
+| `0.1.0a17-76d764ad773e` | `76d764ad773e95c2485d5a88d853513b723c4caa` | `b511b02df87e75bfb66f04b2d47b99c8e102dbded23a5ab6b6510891071a8376` | ativa; limites reais TDP/GPU observados read-only, mutações continuam desabilitadas |
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.

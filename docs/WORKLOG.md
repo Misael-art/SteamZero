@@ -875,10 +875,10 @@ socket systemd user ficaram ativos; o snapshot persistido observou Deck LCD, KDE
 Wayland, eDP, DP desconectado, Btrfs, EFI e microSD. Após múltiplos ciclos estáveis, a
 contagem permaneceu em um único evento, comprovando a deduplicação no processo real.
 
-**Gate:** **484 passed / 83% exatos** (82,88%; 6863 statements, 939 misses, 1804
-branches). Ruff, formato, mypy, fronteiras, independência, `qmllint`, wheel provenance,
-manifesto host e smokes instalados passaram. O percentual menor que a sessão anterior
-fica registrado sem arredondamento otimista e será recuperado por testes do lifecycle R2.
+**Gate:** **484 passed**. O valor local de cobertura então reportado como 82,88% foi
+posteriormente invalidado: `make check` não renovava `.coverage` e podia ler dados de
+outro processo. Ruff, formato, mypy, fronteiras, independência, `qmllint`, wheel
+provenance, manifesto host e smokes instalados passaram.
 
 ## 2026-07-17 — Sessão 22: retomada R2 e fronteira Polkit R3 mínima
 
@@ -901,7 +901,31 @@ somente action, caller UID, resultado e timestamp. Doctor instalado permaneceu `
 SQLite v5 íntegro e sem operações pendentes. Nenhum TDP, clock, sysctl, mount, unit,
 display, sessão padrão ou GRUB foi alterado.
 
-**Gate:** **488 passed / 82% exatos** (82,14%; 6899 statements, 992 misses, 1814
-branches), além de Ruff, formato, mypy, fronteiras, independência, `qmllint` e
-proveniência do wheel. A queda de cobertura é registrada como dívida explícita dos
-caminhos administrativos/rollback, não ocultada por arredondamento ou baseline antiga.
+**Gate:** **488 passed**. O valor local de 82,14% também pertencia à medição não renovada
+descrita na sessão seguinte e não é uma baseline válida. Ruff, formato, mypy, fronteiras,
+independência, `qmllint` e proveniência do wheel passaram.
+
+## 2026-07-17 — Sessão 23: transporte Polkit, baseline honesta e capabilities AMDGPU
+
+**Baseline corrigida:** `make check` agora apaga dados anteriores, executa a suíte com
+`pytest-cov` e impõe `fail_under=85`. A medição autoritativa de `0.1.0a17` é **503
+passed / 85,09%** (7139 statements, 859 misses, 1874 branches). O cliente Polkit ficou
+com 93%. CI e gate local passam a usar a mesma origem de verdade.
+
+**Falha host e release sucessiva:** `0.1.0a15-ba87f9ee5c44` conectou `admin.health` à
+CLI/RPC, mas o smoke mostrou que `pkexec` originado pelo daemon user-scoped era recusado,
+embora o mesmo fluxo interativo funcionasse no terminal. Nenhuma mutação ocorreu. A
+correção saiu como `0.1.0a16-592dba1628a4`: a ação interativa não é anunciada nas 17
+capabilities RPC e a CLI fala diretamente com o Polkit. Daemon ativo e CLI normal então
+retornaram health `ok` como UID 0.
+
+**Hardware observado:** `0.1.0a17-76d764ad773e`, commit
+`76d764ad773e95c2485d5a88d853513b723c4caa`, wheel SHA-256
+`b511b02df87e75bfb66f04b2d47b99c8e102dbded23a5ab6b6510891071a8376`. O helper leu
+as interfaces reais AMDGPU: `slowPPT` e `fastPPT` convergidos em 15 W, default 15 W,
+range seguro observado 3–29 W e SCLK 200–1600 MHz. `mutationsEnabled=false` e
+`manualWriteEnabled=false`; nenhum valor sysfs foi escrito.
+
+**Host final:** doctor `ok`, SQLite v5 íntegro, zero operações pendentes, daemon ativo,
+manifesto associado ao commit exato e audit root preservado. TDP, GPU, display, mounts,
+sessão padrão e GRUB permaneceram inalterados.
