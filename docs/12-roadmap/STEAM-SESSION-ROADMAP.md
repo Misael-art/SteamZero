@@ -55,6 +55,10 @@ Empacotar `steamzero-admin`, política Polkit e efetores allowlisted. Cada açã
 captura o valor anterior, aplica, verifica e restaura. Saída: fuzzing, VM e
 recovery após SIGKILL; nenhuma string arbitrária atravessa a fronteira.
 
+Estado atual: entry point, policy Polkit gerenciada, audit root e health check
+read-only estão implementados. O efetor host declara `mutationsEnabled=false` e
+recusa as ações mutáveis até seus protocolos G-STATE serem implementados.
+
 ### R4 — lifecycle Steam fim a fim
 
 Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,

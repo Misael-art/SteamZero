@@ -44,6 +44,13 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "wayland-sessions"
         / "steamzero-gamemode.desktop",
         gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
+        admin_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-admin",
+        polkit_policy=tmp_path
+        / "usr"
+        / "share"
+        / "polkit-1"
+        / "actions"
+        / "io.github.misael-art.steamzero.admin.policy",
     )
 
 
@@ -205,6 +212,9 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     session = modern / "venv" / "bin" / "steamzero-gamemode-session"
     session.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     session.chmod(0o755)
+    admin = modern / "venv" / "bin" / "steamzero-admin"
+    admin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    admin.chmod(0o755)
     _release(layout, "release-legacy")
 
     install_host._activate(layout, "release-modern")
@@ -217,12 +227,18 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     assert layout.gamemode_command.readlink() == (
         layout.current / "venv" / "bin" / "steamzero-gamemode-session"
     )
+    assert layout.admin_command.readlink() == (layout.current / "venv" / "bin" / "steamzero-admin")
+    policy = layout.polkit_policy.read_text(encoding="utf-8")
+    assert "io.github.misael-art.steamzero.admin" in policy
+    assert str(layout.admin_command) in policy
 
     install_host._activate(layout, "release-legacy")
     assert not layout.user_service.exists()
     assert not layout.user_socket.exists()
     assert not layout.gamemode_session.exists()
     assert not layout.gamemode_command.exists()
+    assert not layout.admin_command.exists()
+    assert not layout.polkit_policy.exists()
 
 
 def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:

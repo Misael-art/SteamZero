@@ -22,6 +22,7 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 
 | Ação | Parâmetros (schemados) | Validação |
 |---|---|---|
+| `health` | nenhum | somente leitura; versão, protocolo e UID efetivo |
 | `set-tdp` | watts: int 3..30 | range por modelo (LCD/OLED) |
 | `set-gpu-clock` | mhz: int em tabela por modelo | tabela embutida |
 | `install-udev-rule` | ruleId: enum de regras embutidas | conteúdo vem do binário, nunca do chamador |
@@ -32,6 +33,9 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 - **O que o helper nunca aceita:** paths arbitrários, strings de shell, scripts, conteúdo de arquivo vindo do chamador (conteúdos privilegiados são embutidos/assinados no próprio helper).
 - Audit log próprio (`/var/log/steamzero-admin.log`, append-only, 0600 root) com chamador, ação, parâmetros, resultado.
 - Versão do protocolo checada nos dois lados; mismatch = recusa.
+- O primeiro efetor host publicado habilita apenas `health`. As ações mutáveis
+  continuam na allowlist de protocolo, mas o efetor de produção as recusa até
+  cada uma possuir captura do valor anterior, aplicação, verificação e rollback.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 

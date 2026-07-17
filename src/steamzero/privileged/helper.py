@@ -18,14 +18,18 @@ Nenhuma string de shell/path/conteúdo do chamador é executada.
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
+import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from steamzero import __version__
 from steamzero.core import fs
-from steamzero.core.errors import build_error
+from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.privileged.protocol import (
     ACTIONS,
     PROTOCOL_VERSION,
@@ -50,6 +54,24 @@ class DryEffector:
     def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         self.calls.append((action, dict(params)))
         return {"applied": True, "dry": True, "action": action}
+
+
+class HostEffector:
+    """Efetor host conservador: somente health até os mutadores terem rollback."""
+
+    def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
+        if action == "health" and not params:
+            return {
+                "healthy": True,
+                "version": __version__,
+                "protocolVersion": PROTOCOL_VERSION,
+                "effectiveUid": os.geteuid(),
+                "mutationsEnabled": False,
+            }
+        raise SteamZeroError(
+            "E-PRIV-DENIED",
+            detail="efetor host ainda indisponível; nenhuma mutação foi executada",
+        )
 
 
 Authorizer = Callable[[str, str], bool]
@@ -99,6 +121,9 @@ class AdminHelper:
 
         try:
             result = self._effector.apply(request.action, request.params)
+        except SteamZeroError as exc:
+            self._audit(request, "denied", exc.code)
+            return Response(ok=False, error=build_error(exc.code, detail=exc.detail))
         except Exception as exc:  # falha de execução privilegiada
             self._audit(request, "error", str(exc))
             return Response(ok=False, error=build_error("E-INTERNAL-UNEXPECTED", detail=str(exc)))
@@ -123,3 +148,35 @@ class AdminHelper:
         }
         with fs.AppendWriter(self._audit_path) as writer:
             writer.write_line(json.dumps(record, ensure_ascii=False, sort_keys=True), fsync=True)
+
+
+def _response_json(response: Response) -> str:
+    return json.dumps(
+        {"ok": response.ok, "result": response.result, "error": response.error},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Helper privilegiado allowlisted do SteamZero")
+    parser.add_argument("--health", action="store_true")
+    args = parser.parse_args(argv)
+    if not args.health:
+        parser.error("somente --health está publicado neste incremento")
+    if os.geteuid() != 0:
+        response = Response(
+            ok=False,
+            error=build_error("E-PRIV-DENIED", detail="helper precisa ser ativado pelo Polkit"),
+        )
+    else:
+        caller_uid = os.environ.get("PKEXEC_UID", "0")
+        caller = f"uid:{caller_uid}" if caller_uid.isdecimal() else "uid:unknown"
+        helper = AdminHelper(HostEffector(), audit_path=Path("/var/log/steamzero-admin.log"))
+        response = helper.handle(Request(action="health", params={}, caller=caller))
+    sys.stdout.write(_response_json(response) + "\n")
+    return 0 if response.ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

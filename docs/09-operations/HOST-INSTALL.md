@@ -131,3 +131,15 @@ de backup/restauração antes de uma versão estável.
   sessão gráfica não é o mecanismo correto e não é realizado;
 - a autorização permanece a cargo do agente polkit do KDE; senha nunca deve ser
   passada em argumento, arquivo ou chat.
+
+O instalador também publica `/usr/local/libexec/steamzero-admin` e a policy
+`io.github.misael-art.steamzero.admin` quando o wheel contém o entry point. O smoke
+read-only é:
+
+```text
+pkexec /usr/local/libexec/steamzero-admin --health
+```
+
+O resultado deve declarar `mutationsEnabled=false` enquanto os efetores R3 com
+verify/rollback não estiverem certificados. Um health saudável não autoriza TDP,
+GPU, sysctl, mount ou units por antecipação.

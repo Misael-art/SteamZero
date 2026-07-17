@@ -14,7 +14,7 @@ from hypothesis import strategies as st
 from steamzero.core.errors import SteamZeroError
 from steamzero.privileged import protocol
 from steamzero.privileged.client import AdminClient
-from steamzero.privileged.helper import AdminHelper, DryEffector
+from steamzero.privileged.helper import AdminHelper, DryEffector, HostEffector, main
 from steamzero.privileged.protocol import PROTOCOL_VERSION, Request
 
 
@@ -158,6 +158,7 @@ def test_client_helper_missing() -> None:
 def test_ac_pr_02_allowlist_is_only_privileged_ops() -> None:
     # AC-PR-02: fluxos comuns (config write, library, import) NÃO estão na allowlist.
     assert set(protocol.ACTIONS) == {
+        "health",
         "set-tdp",
         "set-gpu-clock",
         "write-sysctl",
@@ -165,6 +166,40 @@ def test_ac_pr_02_allowlist_is_only_privileged_ops() -> None:
         "enable-system-unit",
         "mount-removable",
     }
+
+
+@pytest.mark.security
+def test_host_effector_only_exposes_read_only_health() -> None:
+    health = AdminHelper(HostEffector()).handle(Request("health", {}))
+    assert health.ok and health.result is not None
+    assert health.result["mutationsEnabled"] is False
+    denied = AdminHelper(HostEffector()).handle(Request("set-tdp", {"watts": 10}))
+    assert not denied.ok
+    assert denied.error is not None and denied.error["code"] == "E-PRIV-DENIED"
+
+
+@pytest.mark.security
+def test_admin_entrypoint_requires_root(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("steamzero.privileged.helper.os.geteuid", lambda: 1000)
+    assert main(["--health"]) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "E-PRIV-DENIED"
+
+
+@pytest.mark.security
+def test_admin_entrypoint_health_as_polkit_root(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("steamzero.privileged.helper.os.geteuid", lambda: 0)
+    monkeypatch.setenv("PKEXEC_UID", "1000")
+    monkeypatch.setattr(AdminHelper, "_audit", lambda *_args: None)
+    assert main(["--health"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["result"]["protocolVersion"] == PROTOCOL_VERSION
+    assert payload["result"]["mutationsEnabled"] is False
 
 
 @pytest.mark.security

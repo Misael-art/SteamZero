@@ -21,6 +21,7 @@ steamzero-launch = "steamzero.adapters.steam_launcher:main"
 steamzero-core = "steamzero.service.core:main"
 steamzero-gamemode-session = "steamzero.adapters.steam_session:main"
 steamos-session-select = "steamzero.adapters.steam_session:select_main"
+steamzero-admin = "steamzero.privileged.helper:main"
 
 [tool.hatch.version]
 path = "src/steamzero/__init__.py"

@@ -45,11 +45,15 @@ class Layout:
     root: Path = Path("/opt/steamzero")
     command: Path = Path("/usr/local/bin/steamzero")
     gamemode_command: Path = Path("/usr/local/bin/steamzero-gamemode-session")
+    admin_command: Path = Path("/usr/local/libexec/steamzero-admin")
     manager: Path = Path("/usr/local/sbin/steamzero-host")
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
     user_service: Path = Path("/usr/local/lib/systemd/user/steamzero-core.service")
     user_socket: Path = Path("/usr/local/lib/systemd/user/steamzero-core.socket")
     gamemode_session: Path = Path("/usr/local/share/wayland-sessions/steamzero-gamemode.desktop")
+    polkit_policy: Path = Path(
+        "/usr/share/polkit-1/actions/io.github.misael-art.steamzero.admin.policy"
+    )
 
     @property
     def releases(self) -> Path:
@@ -316,6 +320,29 @@ X-SteamZero-Managed=true
 """
 
 
+def _polkit_policy(layout: Layout) -> str:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!-- SteamZero-Host-Managed: true -->
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>SteamZero</vendor>
+  <vendor_url>https://github.com/Misael-art/SteamZero</vendor_url>
+  <action id="io.github.misael-art.steamzero.admin">
+    <description>Executar uma ação privilegiada allowlisted do SteamZero</description>
+    <message>Autenticação necessária para o helper protegido do SteamZero</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">{layout.admin_command}</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">false</annotate>
+  </action>
+</policyconfig>
+"""
+
+
 def _managed_unit(path: Path) -> bool:
     if not path.exists() and not path.is_symlink():
         return True
@@ -375,6 +402,42 @@ def _sync_gamemode_command(layout: Layout, release_path: Path) -> None:
         return
     with contextlib.suppress(FileNotFoundError):
         layout.gamemode_command.unlink()
+
+
+def _managed_admin(layout: Layout) -> bool:
+    command = layout.admin_command
+    command_ok = (not command.exists() and not command.is_symlink()) or (
+        command.is_symlink()
+        and _readlink(command) == str(layout.current / "venv" / "bin" / "steamzero-admin")
+    )
+    policy = layout.polkit_policy
+    if not policy.exists() and not policy.is_symlink():
+        policy_ok = True
+    elif policy.is_symlink() or not policy.is_file():
+        policy_ok = False
+    else:
+        try:
+            policy_ok = "SteamZero-Host-Managed: true" in policy.read_text(encoding="utf-8")
+        except OSError:
+            policy_ok = False
+    return command_ok and policy_ok
+
+
+def _sync_admin(layout: Layout, release_path: Path) -> None:
+    if not _managed_admin(layout):
+        raise RuntimeError("recusando substituir helper/policy privilegiado não gerenciado")
+    executable = release_path / "venv" / "bin" / "steamzero-admin"
+    if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+        _atomic_symlink(
+            layout.admin_command,
+            str(layout.current / "venv" / "bin" / "steamzero-admin"),
+        )
+        _atomic_text(layout.polkit_policy, _polkit_policy(layout))
+        return
+    with contextlib.suppress(FileNotFoundError):
+        layout.admin_command.unlink()
+    with contextlib.suppress(FileNotFoundError):
+        layout.polkit_policy.unlink()
 
 
 def _verify_release(release_path: Path, *, expected_release: str | None = None) -> dict[str, Any]:
@@ -503,20 +566,25 @@ def _activate(layout: Layout, release: str) -> None:
         raise RuntimeError(
             f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
         )
+    if not _managed_admin(layout):
+        raise RuntimeError("recusando substituir helper/policy privilegiado não gerenciado")
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)
     previous_gamemode_command = _readlink(layout.gamemode_command)
+    previous_admin_command = _readlink(layout.admin_command)
     previous_desktop = layout.desktop.read_bytes() if layout.desktop.is_file() else None
     previous_service = layout.user_service.read_bytes() if layout.user_service.is_file() else None
     previous_socket = layout.user_socket.read_bytes() if layout.user_socket.is_file() else None
     previous_session = (
         layout.gamemode_session.read_bytes() if layout.gamemode_session.is_file() else None
     )
+    previous_policy = layout.polkit_policy.read_bytes() if layout.polkit_policy.is_file() else None
     try:
         _sync_user_units(layout, target)
         _sync_gamemode_session(layout, target)
         _sync_gamemode_command(layout, target)
+        _sync_admin(layout, target)
         _atomic_symlink(layout.command, str(layout.current / "venv" / "bin" / "steamzero"))
         _atomic_text(layout.desktop, _desktop_entry(layout.command))
         # Único ponto que publica uma versão nova; os demais links são estáveis.
@@ -525,6 +593,7 @@ def _activate(layout: Layout, release: str) -> None:
         _restore_link(layout.current, previous_current)
         _restore_link(layout.command, previous_command)
         _restore_link(layout.gamemode_command, previous_gamemode_command)
+        _restore_link(layout.admin_command, previous_admin_command)
         if previous_desktop is None:
             with contextlib.suppress(FileNotFoundError):
                 layout.desktop.unlink()
@@ -533,6 +602,7 @@ def _activate(layout: Layout, release: str) -> None:
         _restore_managed_text(layout.user_service, previous_service)
         _restore_managed_text(layout.user_socket, previous_socket)
         _restore_managed_text(layout.gamemode_session, previous_session)
+        _restore_managed_text(layout.polkit_policy, previous_policy)
         raise
 
 

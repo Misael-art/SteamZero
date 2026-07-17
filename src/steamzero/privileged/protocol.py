@@ -88,6 +88,11 @@ def _v_mount_removable(params: dict[str, Any]) -> None:
         raise ParamError("mode deve ser ro|rw")
 
 
+def _v_health(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("health não aceita parâmetros")
+
+
 @dataclass(frozen=True)
 class ActionSpec:
     name: str
@@ -97,6 +102,7 @@ class ActionSpec:
 
 
 ACTIONS: dict[str, ActionSpec] = {
+    "health": ActionSpec("health", _v_health),
     "set-tdp": ActionSpec("set-tdp", _v_set_tdp, frozenset({"watts"})),
     "set-gpu-clock": ActionSpec("set-gpu-clock", _v_set_gpu_clock, frozenset({"mhz"})),
     "write-sysctl": ActionSpec("write-sysctl", _v_write_sysctl, frozenset({"key", "value"})),
