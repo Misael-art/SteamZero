@@ -48,6 +48,7 @@ Domínios (Fase 1):
   component apply       aplica plano (--plan-id ID --confirm TOKEN)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
+  admin health          verifica helper e autorização Polkit (read-only)
   session environment    observa sessão, energia, rede, DRM e volumes (read-only)
   session status         mostra lifecycle persistido (--game-id APPID)
   session recover        reconhece sessão interrompida (--game-id APPID)
@@ -225,6 +226,44 @@ def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[
             correlation_id=correlation_id,
         ),
         EXIT_OK,
+    )
+
+
+def _admin_client() -> Any:
+    from steamzero.privileged.client import AdminClient
+
+    return AdminClient.host()
+
+
+def _cmd_admin_health(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    client = _admin_client()
+    if not client.available():
+        raise SteamZeroError(
+            "E-PRIV-HELPER-MISSING",
+            detail="steamzero-admin ou pkexec não está instalado no host",
+        )
+    response = client.request("health", {})
+    if response.ok:
+        return (
+            build_envelope(
+                "admin",
+                "health",
+                status="ok",
+                data=response.result,
+                correlation_id=correlation_id,
+            ),
+            EXIT_OK,
+        )
+    return (
+        build_envelope(
+            "admin",
+            "health",
+            status="failed",
+            ok=False,
+            error=response.error,
+            correlation_id=correlation_id,
+        ),
+        EXIT_FAILURE,
     )
 
 
@@ -479,6 +518,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("component", "apply"): _cmd_component_apply,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
+    ("admin", "health"): _cmd_admin_health,
     ("session", "environment"): _cmd_session_environment,
     ("session", "status"): _cmd_session_status,
     ("session", "recover"): _cmd_session_recover,

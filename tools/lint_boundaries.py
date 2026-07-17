@@ -30,7 +30,11 @@ PACKAGE = "steamzero"
 # Única porta de escrita em disco.
 WRITE_PORTS = frozenset({"steamzero.core.fs"})
 # Onde subprocess é permitido.
-PROC_PORT_PREFIXES = ("steamzero.core.proc", "steamzero.adapters.")
+PROC_PORT_PREFIXES = (
+    "steamzero.core.proc",
+    "steamzero.adapters.",
+    "steamzero.privileged.client",
+)
 
 _OS_WRITE_FUNCS = frozenset(
     {"rename", "replace", "remove", "unlink", "mkdir", "makedirs", "rmdir", "symlink", "link"}

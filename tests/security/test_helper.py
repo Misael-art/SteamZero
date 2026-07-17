@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,7 @@ from hypothesis import strategies as st
 
 from steamzero.core.errors import SteamZeroError
 from steamzero.privileged import protocol
-from steamzero.privileged.client import AdminClient
+from steamzero.privileged.client import AdminClient, PkexecHealthTransport, ProcessResult
 from steamzero.privileged.helper import AdminHelper, DryEffector, HostEffector, main
 from steamzero.privileged.protocol import PROTOCOL_VERSION, Request
 
@@ -152,6 +153,143 @@ def test_client_helper_missing() -> None:
     with pytest.raises(SteamZeroError) as ei:
         client.request("set-tdp", {"watts": 10})
     assert ei.value.code == "E-PRIV-HELPER-MISSING"
+
+
+@pytest.mark.security
+def test_pkexec_transport_uses_fixed_argv_and_parses_health(tmp_path: Path) -> None:
+    pkexec = tmp_path / "pkexec"
+    helper = tmp_path / "steamzero-admin"
+    for path in (pkexec, helper):
+        path.write_text("fixture", encoding="utf-8")
+        path.chmod(0o755)
+    calls: list[tuple[tuple[str, ...], float]] = []
+
+    def run(argv: tuple[str, ...], timeout: float) -> ProcessResult:
+        calls.append((argv, timeout))
+        payload = {
+            "ok": True,
+            "result": {
+                "healthy": True,
+                "protocolVersion": 1,
+                "effectiveUid": 0,
+                "mutationsEnabled": False,
+            },
+            "error": None,
+        }
+        return ProcessResult(0, json.dumps(payload).encode(), b"")
+
+    transport = PkexecHealthTransport(
+        pkexec=pkexec,
+        helper=helper,
+        runner=run,
+        timeout=1,
+    )
+    client = AdminClient(None, transport=transport)
+    assert client.available() is True
+    response = client.request("health", {})
+    assert response.ok and response.result is not None
+    assert response.result["mutationsEnabled"] is False
+    assert calls == [((str(pkexec), str(helper), "--health"), 5.0)]
+
+
+@pytest.mark.security
+def test_pkexec_transport_never_spawns_for_mutation(tmp_path: Path) -> None:
+    called = False
+
+    def run(_argv: tuple[str, ...], _timeout: float) -> ProcessResult:
+        nonlocal called
+        called = True
+        raise AssertionError("runner não deve ser chamado")
+
+    transport = PkexecHealthTransport(
+        pkexec=tmp_path / "missing-pkexec",
+        helper=tmp_path / "missing-helper",
+        runner=run,
+    )
+    response = transport.request("set-tdp", {"watts": 10})
+    assert not response.ok
+    assert response.error is not None and response.error["code"] == "E-PRIV-DENIED"
+    assert called is False
+
+
+@pytest.mark.security
+def test_pkexec_transport_reports_missing_and_polkit_denial(tmp_path: Path) -> None:
+    missing = PkexecHealthTransport(
+        pkexec=tmp_path / "missing-pkexec",
+        helper=tmp_path / "missing-helper",
+    )
+    with pytest.raises(SteamZeroError, match="E-PRIV-HELPER-MISSING"):
+        missing.request("health", {})
+
+    pkexec = tmp_path / "pkexec"
+    helper = tmp_path / "helper"
+    for path in (pkexec, helper):
+        path.write_text("fixture", encoding="utf-8")
+        path.chmod(0o755)
+    denied = PkexecHealthTransport(
+        pkexec=pkexec,
+        helper=helper,
+        runner=lambda _argv, _timeout: ProcessResult(126, b"", b"denied"),
+    ).request("health", {})
+    assert not denied.ok
+    assert denied.error is not None and denied.error["code"] == "E-PRIV-DENIED"
+
+
+@pytest.mark.security
+@pytest.mark.parametrize(
+    ("result", "detail"),
+    [
+        (ProcessResult(0, b"not-json", b""), "JSON inválido"),
+        (ProcessResult(0, b'{"ok":true}', b""), "envelope"),
+        (
+            ProcessResult(1, b'{"ok":true,"result":{},"error":null}', b""),
+            "sucesso inconsistente",
+        ),
+        (
+            ProcessResult(0, b'{"ok":false,"result":null,"error":{}}', b""),
+            "falha inconsistente",
+        ),
+    ],
+)
+def test_pkexec_transport_rejects_malformed_helper_contract(
+    tmp_path: Path, result: ProcessResult, detail: str
+) -> None:
+    pkexec = tmp_path / "pkexec"
+    helper = tmp_path / "helper"
+    for path in (pkexec, helper):
+        path.write_text("fixture", encoding="utf-8")
+        path.chmod(0o755)
+    transport = PkexecHealthTransport(
+        pkexec=pkexec,
+        helper=helper,
+        runner=lambda _argv, _timeout: result,
+    )
+    with pytest.raises(SteamZeroError, match="E-PRIV-PROTO-MISMATCH") as raised:
+        transport.request("health", {})
+    assert detail in raised.value.detail
+
+
+@pytest.mark.security
+def test_pkexec_transport_bounds_output_and_timeout(tmp_path: Path) -> None:
+    pkexec = tmp_path / "pkexec"
+    helper = tmp_path / "helper"
+    for path in (pkexec, helper):
+        path.write_text("fixture", encoding="utf-8")
+        path.chmod(0o755)
+    oversized = PkexecHealthTransport(
+        pkexec=pkexec,
+        helper=helper,
+        runner=lambda _argv, _timeout: ProcessResult(0, b"x" * 65537, b""),
+    )
+    with pytest.raises(SteamZeroError, match="E-PRIV-PROTO-MISMATCH"):
+        oversized.request("health", {})
+
+    def timeout(_argv: tuple[str, ...], _seconds: float) -> ProcessResult:
+        raise subprocess.TimeoutExpired("pkexec", 5)
+
+    timed = PkexecHealthTransport(pkexec=pkexec, helper=helper, runner=timeout)
+    with pytest.raises(SteamZeroError, match="E-PRIV-DENIED"):
+        timed.request("health", {})
 
 
 @pytest.mark.security

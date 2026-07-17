@@ -13,6 +13,7 @@ import pytest
 from steamzero import CONTRACT_VERSION
 from steamzero.api import contracts
 from steamzero.cli import main as cli
+from steamzero.privileged.protocol import Response
 
 
 @pytest.fixture(autouse=True)
@@ -57,6 +58,28 @@ def test_jobs_list_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert env["status"] == "noop"
     assert env["data"]["count"] == 0
     assert code == cli.EXIT_OK
+
+
+def test_admin_health_uses_read_only_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = SimpleNamespace(
+        available=lambda: True,
+        request=lambda action, params: Response(
+            ok=True,
+            result={
+                "healthy": action == "health" and params == {},
+                "protocolVersion": 1,
+                "effectiveUid": 0,
+                "mutationsEnabled": False,
+            },
+        ),
+    )
+    monkeypatch.setattr(cli, "_admin_client", lambda: fake)
+    assert cli.main(["admin", "health", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    contracts.validate(envelope, "envelope-v2.schema.json")
+    assert envelope["data"]["mutationsEnabled"] is False
 
 
 def test_session_status_and_recovery_use_stable_contract(

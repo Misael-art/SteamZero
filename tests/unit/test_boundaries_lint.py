@@ -81,6 +81,12 @@ def test_allows_subprocess_in_adapters(tmp_path: Path) -> None:
     assert "BND-PROC" not in _codes(tmp_path, "steamzero/adapters/emu/x.py", code)
 
 
+def test_allows_subprocess_only_in_privileged_client(tmp_path: Path) -> None:
+    code = "import subprocess\ndef f():\n    subprocess.run(['/usr/bin/pkexec'])\n"
+    assert "BND-PROC" not in _codes(tmp_path, "steamzero/privileged/client.py", code)
+    assert "BND-PROC" in _codes(tmp_path, "steamzero/privileged/other.py", code)
+
+
 def test_detects_shell_true(tmp_path: Path) -> None:
     code = "import subprocess\ndef f():\n    subprocess.run('ls', shell=True)\n"
     assert "BND-SHELL" in _codes(tmp_path, "steamzero/adapters/x.py", code)

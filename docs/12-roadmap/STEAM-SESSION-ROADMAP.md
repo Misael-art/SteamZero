@@ -57,7 +57,9 @@ recovery após SIGKILL; nenhuma string arbitrária atravessa a fronteira.
 
 Estado atual: entry point, policy Polkit gerenciada, audit root e health check
 read-only estão implementados. O efetor host declara `mutationsEnabled=false` e
-recusa as ações mutáveis até seus protocolos G-STATE serem implementados.
+recusa as ações mutáveis até seus protocolos G-STATE serem implementados. CLI e
+JSON-RPC já atravessam o transporte Polkit fechado para `admin.health`, com argv
+fixo, timeout, limite de resposta e validação estrita do envelope.
 
 ### R4 — lifecycle Steam fim a fim
 

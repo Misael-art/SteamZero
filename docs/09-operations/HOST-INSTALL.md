@@ -143,3 +143,7 @@ pkexec /usr/local/libexec/steamzero-admin --health
 O resultado deve declarar `mutationsEnabled=false` enquanto os efetores R3 com
 verify/rollback não estiverem certificados. Um health saudável não autoriza TDP,
 GPU, sysctl, mount ou units por antecipação.
+
+Depois de ativar o socket user-scoped, o mesmo fluxo pode ser comprovado pelo
+plano de controle com `steamzero admin health --json`. A resposta só é aceita
+quando helper e CLI concordam sobre envelope, exit code e protocolo.
