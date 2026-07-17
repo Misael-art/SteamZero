@@ -879,3 +879,29 @@ contagem permaneceu em um único evento, comprovando a deduplicação no process
 branches). Ruff, formato, mypy, fronteiras, independência, `qmllint`, wheel provenance,
 manifesto host e smokes instalados passaram. O percentual menor que a sessão anterior
 fica registrado sem arredondamento otimista e será recuperado por testes do lifecycle R2.
+
+## 2026-07-17 — Sessão 22: retomada R2 e fronteira Polkit R3 mínima
+
+**Suspend/resume honesto:** `0.1.0a13-3730f7322c80` adicionou a detecção pós-resume
+pela diferença `CLOCK_BOOTTIME`−`CLOCK_MONOTONIC`, sem alegar um hook pré-suspend.
+O host confirmou ambos os relógios e nenhum falso `session.resume` apareceu em ciclos
+estáveis. Dock→undock e microSD remove→reinsert ganharam cenários determinísticos; a
+execução mutável em VM e o flush pré-suspend continuam pendentes pelos gates R2/R3.
+
+**Polkit mínimo real:** `0.1.0a14-60712ad3972c`, commit
+`60712ad3972cca6b23ecfb19233f7de1076bd471`, wheel SHA-256
+`1231695893f075be48f8d7b70c0424d58ae61b12f1dd14a570b7f06fd20d60fe`. O instalador
+publicou atomicamente `/usr/local/libexec/steamzero-admin` e a policy
+`io.github.misael-art.steamzero.admin`; rollback para release sem a capability remove
+ambos. `pkexec ... --health` executou como UID 0 e retornou protocolo 1,
+`mutationsEnabled=false`. Execução direta sem Polkit retornou `E-PRIV-DENIED`.
+
+**Auditoria e host:** `/var/log/steamzero-admin.log` ficou `root:root 0600` e registrou
+somente action, caller UID, resultado e timestamp. Doctor instalado permaneceu `ok`,
+SQLite v5 íntegro e sem operações pendentes. Nenhum TDP, clock, sysctl, mount, unit,
+display, sessão padrão ou GRUB foi alterado.
+
+**Gate:** **488 passed / 82% exatos** (82,14%; 6899 statements, 992 misses, 1814
+branches), além de Ruff, formato, mypy, fronteiras, independência, `qmllint` e
+proveniência do wheel. A queda de cobertura é registrada como dívida explícita dos
+caminhos administrativos/rollback, não ocultada por arredondamento ou baseline antiga.
