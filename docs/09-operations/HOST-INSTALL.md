@@ -157,3 +157,8 @@ Os motores transacionais internos de TDP e clock GPU podem ser exercitados em
 interfaces descartáveis, mas isso não altera o contrato público: `mutationsEnabled`
 e `manualWriteEnabled` permanecem falsos até certificação em VM, recovery após queda
 real do helper e validação posterior no hardware com protocolo de recuperação.
+
+O mesmo vale para sysctl: a presença do motor transacional interno não publica
+`write-sysctl`. Testes de instalação devem copiar a forma de `/proc/sys` para uma
+árvore temporária e injetar o writer descartável; nunca usar o host principal como
+primeira bancada de `swappiness` ou compactação de memória.

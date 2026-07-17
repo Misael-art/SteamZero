@@ -33,6 +33,8 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 | `enable-system-unit` | unitId: enum de units embutidas | idem |
 | `mount-removable` | uuid: formato UUID validado, ro/rw | UUID existe em /dev/disk/by-uuid; mountpoint gerido pelo helper |
 | `write-sysctl` | key: enum permitido, value: range | tabela embutida |
+| `rollback-sysctl` | operationId: ULID | restaura somente snapshot root associado |
+| `recover-sysctl` | nenhum | restaura journals pending/rollback-failed |
 
 - **O que o helper nunca aceita:** paths arbitrários, strings de shell, scripts, conteúdo de arquivo vindo do chamador (conteúdos privilegiados são embutidos/assinados no próprio helper).
 - Audit log próprio (`/var/log/steamzero-admin.log`, append-only, 0600 root) com chamador, ação, parâmetros, resultado.
@@ -62,6 +64,15 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 - `rollback-gpu-clock` e `recover-gpu-clock` também continuam sem transporte
   público. Os testes locais usam uma implementação sysfs descartável; nenhuma
   escrita no clock real é autorizada por essa evidência.
+- Os motores TDP, GPU e sysctl usam ainda um lock de processo não bloqueante,
+  separado do journal e criado `0600` com `O_NOFOLLOW`. Uma chamada concorrente
+  recebe `E-TX-LOCKED`; o journal continua responsável por interrupções entre
+  processos, enquanto o lock fecha a corrida antes da criação do journal.
+- O motor sysctl resolve chaves por mapa compilado — nunca transforma diretamente
+  uma string do chamador em path. Somente `vm.swappiness` (0..200) e
+  `vm.compaction_proactiveness` (0..100) possuem apply/verify/rollback/recovery.
+  `write-sysctl`, `rollback-sysctl` e `recover-sysctl` permanecem internos até a
+  certificação em VM; o helper publicado continua health-only.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 

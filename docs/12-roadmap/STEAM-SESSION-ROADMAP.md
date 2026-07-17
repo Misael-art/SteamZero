@@ -77,6 +77,13 @@ aplica a sequência AMDGPU manual/`s 0`/`s 1`/commit, verifica e restaura tudo e
 ou recovery pós-interrupção. A prova instalada usa sysfs descartável; a certificação
 em VM com driver AMDGPU e o transporte Polkit mutável continuam pendentes.
 
+O motor sysctl allowlisted está implementado atrás do mesmo gate para
+`vm.swappiness` e `vm.compaction_proactiveness`. Ele usa path compilado, snapshot,
+verify e recovery, sem aceitar path do chamador. Os três motores agora compartilham
+lock não bloqueante de processo, eliminando a corrida entre dois applies simultâneos.
+O smoke instalado foi feito em `/proc/sys` descartável; os valores reais do host
+foram apenas observados.
+
 ### R4 — lifecycle Steam fim a fim
 
 Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,

@@ -984,3 +984,34 @@ oficial permanece ativo conforme solicitado.
 **Gate:** **520 passed / 85,08%**, Ruff, formato, mypy estrito, fronteiras,
 independência, `qmllint`, wheel e manifesto host verdes. A certificação mutável em VM
 AMDGPU continua pendente; este incremento não autoriza clock real no host principal.
+
+## 2026-07-17 — Sessão 26: lock interprocesso e motor sysctl gated
+
+**Concorrência real:** os motores TDP, GPU e sysctl passaram a adquirir um lock
+não bloqueante antes de consultar/criar journals. O arquivo fica fora do diretório de
+journals, usa modo 0600, `O_NOFOLLOW` e `flock`; tentativa simultânea ou lock symlink
+é recusado com `E-TX-LOCKED`. Isso fecha a janela em que dois processos poderiam ver
+ausência de pending ao mesmo tempo.
+
+**Sysctl transacional:** `write-sysctl` agora resolve somente paths compilados para
+`vm.swappiness` e `vm.compaction_proactiveness`, valida os ranges já allowlisted,
+persiste snapshot antes da escrita, verifica o valor observado e restaura em falha.
+`rollback-sysctl` aceita ULID e `recover-sysctl` nenhum parâmetro. Failure injection
+cobre queda após escrita, verify divergente, rollback-failed, recovery, interface ausente,
+snapshot inválido, path fora da allowlist e contenção.
+
+**Wheel e host:** release `0.1.0a20-ced9e2157548`, commit
+`ced9e21575485afd337eb70f5ffae9dbcb08b11f`, wheel SHA-256
+`68344159cc2258151c6d6e74e691445cd5f22f1741c89e2cc2b87fb9be1704f0`.
+O wheel instalado executou `swappiness` 60→10→60 numa árvore `/proc/sys` descartável,
+confirmou lock concorrente `E-TX-LOCKED`, state 0700 e journal 0600. O host real foi
+somente lido e permaneceu em `swappiness=30` e `compaction_proactiveness=20`.
+
+Doctor/daemon convergiram para `a20`, SQLite v5 ficou íntegro e sem pendências. O agente
+Polkit oficial permaneceu ativo; a autorização temporária expirou antes do último health
+administrativo e foi honestamente registrada como `E-PRIV-DENIED`. Isso não desativa o
+agente nem implica falha do helper, e nenhuma mutação ocorreu.
+
+**Gate:** **530 passed / 85,14%** (7666 statements, 918 misses, 2016 branches), Ruff,
+formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto v3 verdes.
+O transporte mutável continua fechado até a certificação em VM descartável.
