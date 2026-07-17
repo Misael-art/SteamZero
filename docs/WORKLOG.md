@@ -720,3 +720,28 @@ confirmado e rollback byte-idêntico.
 independência e `qmllint` verdes. Nenhum jogo comercial foi iniciado no host nesta sessão.
 
 **Versão:** a árvore passa a `0.1.0a5`; nenhum artefato reutiliza `0.1.0a4`.
+
+## 2026-07-17 — Sessão 16: Launch Options automáticas e reversíveis
+
+**Edição preservadora:** entrou um parser estrutural de Valve KeyValues que trabalha com
+offsets dos bytes, preserva comentários, ordem, espaçamento e conteúdo não relacionado.
+Ele altera somente `apps/<appid>/LaunchOptions`, rejeita AppID/folha duplicados, blocos
+ambíguos, symlinks e arquivos acima de 16 MiB. Com múltiplas contas, `MostRecent=1`
+seleciona uma única conta sem expor identificadores na API ou na UI.
+
+**Transação e concorrência:** Steam aberta bloqueia plan/apply/rollback. O plano vincula
+AppID, conta, raiz, alvo único, fingerprint e conteúdo esperado; mudança concorrente ou
+plano de outro arquivo falha antes da mutação. A aplicação exige `confirmToken`, verifica
+o valor observado e registra rollback G-FULL byte-idêntico. A configuração é uma ação
+explícita separada do perfil e a substituição de Launch Options existente é revisada.
+
+**Experiência e host:** a faixa Lançamento gerenciado ganhou status e ações Configurar/
+Desfazer. O diálogo informa Steam fechada, substituição e garantia. O QA 1280×800 com
+escala KDE 1,35 encontrou e corrigiu truncamento do rótulo; a captura final é
+`/tmp/steamzero-launch-options-auto.png`. O host retornou `missing`, Steam fechada e
+nenhuma mutação foi realizada.
+
+**Gate:** **426 passed / 85%** (5527 statements, 673 misses, 1386 branches); módulo de
+Launch Options a 80%. Ruff, mypy estrito, fronteiras, independência e `qmllint` verdes.
+
+**Versão:** a árvore passa a `0.1.0a6`; nenhum artefato reutiliza `0.1.0a5`.

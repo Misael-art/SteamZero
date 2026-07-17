@@ -50,8 +50,29 @@ O launcher encaminha SIGTERM/SIGINT ao filho, aguarda seu encerramento e grava a
 AppID, PID, digest, efeitos sem segredo, timestamps e exit code. Após SIGKILL do wrapper,
 PID morto produz `recoveryRequired`; a recuperação marca a sessão como `interrupted`.
 
-## Limite atual
+## Configuração automática e recuperação
 
-O SteamZero fornece e exibe a Launch Option exata, mas ainda não altera automaticamente o
-`localconfig.vdf`. Essa mutação exigirá Steam parada, parser VDF preservador, snapshot,
-plano/confirmToken, verify e rollback byte-idêntico antes de ser habilitada.
+A tela Steam pode registrar a linha no `localconfig.vdf` do jogo selecionado. A ação é
+separada do salvamento do perfil e sempre passa por uma revisão explícita, especialmente
+quando já existe uma Launch Option que será substituída.
+
+As proteções são obrigatórias:
+
+- a Steam precisa estar completamente fechada no planejamento, no apply e no rollback;
+- arquivos, diretórios de conta e `config` não podem ser symlinks, e o alvo precisa
+  permanecer contido na conta observada;
+- com múltiplas contas, somente `MostRecent=1` de `loginusers.vdf` resolve a conta ativa;
+- o parser aceita o formato KeyValues citado e comentários, rejeita estrutura ambígua e
+  altera somente `apps/<appid>/LaunchOptions`, sem reserializar o restante do arquivo;
+- o arquivo possui limite de 16 MiB; mudança concorrente invalida o plano;
+- plano, `confirmToken`, fingerprint, destino exato e conteúdo esperado são revalidados;
+- o apply verifica a folha gravada e o journal fornece rollback **G-FULL** byte-idêntico.
+
+O botão **Desfazer configuração** restaura a última operação da sessão. Se a aplicação
+for interrompida, o recovery transacional geral continua sendo a fonte de verdade.
+
+## Limite operacional atual
+
+O fluxo está coberto por arquivos Steam sintéticos e o host real foi consultado somente
+em modo read-only. O ciclo físico configurar → abrir Steam → lançar jogo → fechar →
+desfazer permanece pendente para uma bancada descartável com snapshot.

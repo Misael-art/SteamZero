@@ -132,6 +132,20 @@ class FakeDashboard:
         self.calls.append(("gameplay-recover", game_id))
         return {"status": "recovered", "gameId": game_id}
 
+    def plan_steam_launch_options(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("launch-options-plan", game_id))
+        return {"planId": "launch-options-plan", "confirmToken": "launch-options-confirm"}
+
+    def apply_steam_launch_options(
+        self, plan_id: str, confirm_token: str, game_id: str
+    ) -> dict[str, object]:
+        self.calls.append(("launch-options-apply", plan_id, confirm_token, game_id))
+        return {"status": "configured", "operationId": "launch-options-operation"}
+
+    def rollback_steam_launch_options(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("launch-options-rollback", operation_id))
+        return {"status": "rolled-back"}
+
     def plan_lsfg_install(self) -> dict[str, object]:
         self.calls.append(("lsfg-plan",))
         return {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"}
@@ -393,6 +407,29 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
     )
     request_json(base, token, "/steam/gameplay/recover", {"gameId": "10"})
+    launch_options_plan = request_json(
+        base, token, "/steam/gameplay/launch-options/plan", {"gameId": "10"}
+    )
+    assert launch_options_plan["plan"] == {
+        "planId": "launch-options-plan",
+        "confirmToken": "launch-options-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/launch-options/apply",
+        {
+            "planId": "launch-options-plan",
+            "confirmToken": "launch-options-confirm",
+            "gameId": "10",
+        },
+    )
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/launch-options/rollback",
+        {"operationId": "launch-options-operation"},
+    )
     lsfg_plan = request_json(base, token, "/system/lsfg/plan", {})
     assert lsfg_plan["plan"] == {
         "planId": "lsfg-plan",
@@ -419,6 +456,14 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
         ("gameplay-recover", "10"),
+        ("launch-options-plan", "10"),
+        (
+            "launch-options-apply",
+            "launch-options-plan",
+            "launch-options-confirm",
+            "10",
+        ),
+        ("launch-options-rollback", "launch-options-operation"),
         ("lsfg-plan",),
         ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
         ("lsfg-rollback", "lsfg-operation"),

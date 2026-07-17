@@ -155,6 +155,23 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().recover_steam_gameplay(
                 self._required_string(payload, "gameId")
             )
+        if path == "/steam/gameplay/launch-options/plan":
+            return {
+                "plan": self._dashboard().plan_steam_launch_options(
+                    self._required_string(payload, "gameId")
+                )
+            }
+        if path == "/steam/gameplay/launch-options/apply":
+            self._require_desktop_without_conflicts()
+            return self._dashboard().apply_steam_launch_options(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+                self._required_string(payload, "gameId"),
+            )
+        if path == "/steam/gameplay/launch-options/rollback":
+            return self._dashboard().rollback_steam_launch_options(
+                self._required_string(payload, "operationId")
+            )
         if path == "/system/lsfg/plan":
             return {"plan": self._dashboard().plan_lsfg_install()}
         if path == "/system/lsfg/apply":

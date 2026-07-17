@@ -24,6 +24,9 @@ Item {
     signal systemRequested()
     signal steamInputRequested(string gameId)
     signal launcherRecoveryRequested(string gameId)
+    signal launchOptionsPlanRequested(string gameId)
+    signal launchOptionsApplyRequested(string planId, string confirmToken, string gameId)
+    signal launchOptionsRollbackRequested(string operationId)
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -41,6 +44,7 @@ Item {
     property bool gameModeEnabled: true
     property bool initialized: false
     property var reviewedPlan: null
+    property var launchOptionsPlan: null
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -49,6 +53,8 @@ Item {
     readonly property var currentProfile: gameplay && gameplay.currentProfile
         ? gameplay.currentProfile : ({})
     readonly property var launcher: gameplay && gameplay.launcher ? gameplay.launcher : ({})
+    readonly property var launchConfiguration: launcher && launcher.configuration
+        ? launcher.configuration : ({})
     readonly property var selectedGame: games.length > 0 && gameIndex < games.length
         ? games[gameIndex] : ({"id": "", "name": qsTr("Nenhum jogo instalado"), "coverUrl": ""})
 
@@ -132,6 +138,11 @@ Item {
     function showPlan(plan) {
         reviewedPlan = plan
         reviewDialog.open()
+    }
+
+    function showLaunchOptionsPlan(plan) {
+        launchOptionsPlan = plan
+        launchOptionsDialog.open()
     }
 
     function choosePerformance(index) {
@@ -322,7 +333,76 @@ Item {
         }
     }
 
+    Dialog {
+        id: launchOptionsDialog
+        modal: true
+        title: qsTr("Configurar lançamento automaticamente")
+        width: Math.min(page.width - 48, 680)
+        x: (page.width - width) / 2
+        y: (page.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: page.raisedColor
+            radius: 10
+            border.color: page.cyanColor
+            border.width: 2
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: page.launchOptionsPlan && page.launchOptionsPlan.replacesExisting
+                    ? qsTr("Este jogo já possui Launch Options. O valor será substituído, mas poderá ser restaurado byte a byte.")
+                    : qsTr("O wrapper SteamZero será adicionado somente ao jogo selecionado.")
+                color: page.launchOptionsPlan && page.launchOptionsPlan.replacesExisting
+                    ? page.amberColor : page.textColor
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: page.launchOptionsPlan
+                    ? page.launchOptionsPlan.changes.join("\n") : ""
+                color: page.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("A Steam precisa permanecer fechada durante a aplicação. Rollback: G-FULL.")
+                color: page.greenColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: launchOptionsDialog.close()
+                }
+                Button {
+                    text: qsTr("Configurar e verificar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        if (!page.launchOptionsPlan)
+                            return
+                        page.launchOptionsApplyRequested(
+                            page.launchOptionsPlan.planId,
+                            page.launchOptionsPlan.confirmToken,
+                            String(page.launchOptionsPlan.gameId)
+                        )
+                        launchOptionsDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
     ScrollView {
+        id: gameplayScroll
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -331,7 +411,7 @@ Item {
         contentWidth: availableWidth
 
         ColumnLayout {
-            width: parent.width
+            width: gameplayScroll.availableWidth
             spacing: 14
 
             RowLayout {
@@ -526,6 +606,44 @@ Item {
                         font.pixelSize: 11
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
+                    }
+                    RowLayout {
+                        visible: Boolean(page.selectedGame.id)
+                        Layout.fillWidth: true
+                        Label {
+                            text: page.launchConfiguration.statusLabel
+                                || qsTr("Configuração Steam indisponível")
+                            color: page.launchConfiguration.managed
+                                ? page.greenColor : page.amberColor
+                            wrapMode: Text.WordWrap
+                        }
+                        Button {
+                            visible: ["missing", "foreign", "steam-running"].indexOf(
+                                page.launchConfiguration.state
+                            ) >= 0
+                            text: page.launchConfiguration.state === "steam-running"
+                                ? qsTr("Feche a Steam")
+                                : page.width < 1000
+                                    ? qsTr("Configurar")
+                                    : qsTr("Configurar na Steam")
+                            enabled: page.launchConfiguration.state !== "steam-running"
+                            Layout.minimumHeight: 44
+                            Accessible.name: page.launchConfiguration.state === "steam-running"
+                                ? text : qsTr("Configurar Launch Options automaticamente na Steam")
+                            onClicked: page.launchOptionsPlanRequested(
+                                String(page.selectedGame.id)
+                            )
+                        }
+                        Button {
+                            visible: Boolean(page.launchConfiguration.lastOperationId)
+                            text: qsTr("Desfazer configuração")
+                            Layout.minimumHeight: 44
+                            Accessible.name: text
+                            onClicked: page.launchOptionsRollbackRequested(
+                                String(page.launchConfiguration.lastOperationId)
+                            )
+                        }
+                        Item { Layout.fillWidth: true }
                     }
                 }
             }

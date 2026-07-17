@@ -5,8 +5,8 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: root
-    width: 1600
-    height: 1000
+    width: Math.min(1600, Screen.desktopAvailableWidth)
+    height: Math.min(1000, Screen.desktopAvailableHeight)
     minimumWidth: 1100
     minimumHeight: 720
     visible: true
@@ -99,7 +99,7 @@ ApplicationWindow {
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
         "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
-        "launcher": {"state": "unconfigured", "statusLabel": "Selecione um jogo", "launchOption": "", "recoveryRequired": false},
+        "launcher": {"state": "unconfigured", "statusLabel": "Selecione um jogo", "launchOption": "", "recoveryRequired": false, "configuration": {"state": "unavailable", "statusLabel": "Configuração Steam indisponível", "managed": false, "lastOperationId": null}},
         "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
         "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}
     })
@@ -1453,6 +1453,29 @@ ApplicationWindow {
                                         "gameId": gameId
                                     }, function() {
                                         root.refreshStatus(qsTr("Estado do lançamento restaurado"))
+                                    })
+                                }
+                                onLaunchOptionsPlanRequested: function(gameId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/plan", {
+                                        "gameId": gameId
+                                    }, function(response) {
+                                        steamGameplayPage.showLaunchOptionsPlan(response.plan)
+                                    })
+                                }
+                                onLaunchOptionsApplyRequested: function(planId, confirmToken, gameId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken,
+                                        "gameId": gameId
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Lançamento configurado"))
+                                    })
+                                }
+                                onLaunchOptionsRollbackRequested: function(operationId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/rollback", {
+                                        "operationId": operationId
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Configuração restaurada"))
                                     })
                                 }
                             }

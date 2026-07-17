@@ -116,6 +116,25 @@ final result: passed
 
 final result: passed
 
+## Iteração Launch Options automática — 2026-07-17
+
+**Implementação:** `/tmp/steamzero-launch-options-auto.png`
+
+**Viewport físico:** 1280×800 no Steam Deck, KDE com escala 1,35.
+
+- A configuração permanece dentro de **Lançamento gerenciado**, sem competir com a
+  criação do perfil nem aparentar ser uma instalação de Sistema.
+- O estado diferencia configuração ausente, valor externo, Steam em execução e wrapper
+  já gerenciado. Substituição de valor externo exige diálogo de revisão e informa o
+  rollback G-FULL antes da confirmação.
+- O primeiro QA revelou truncamento da ação no breakpoint real. O rótulo compacto
+  **Configurar** mantém o alvo acessível; o nome completo para tecnologia assistiva
+  é **Configurar Launch Options automaticamente na Steam**.
+- Nenhuma diferença P0/P1/P2 permanece na faixa gerenciada. O conteúdo avançado segue
+  rolável sob a barra fixa de ações, como definido na direção visual aprovada.
+
+final result: passed
+
 ## Iteração Sistema / LSFG-VK — 2026-07-17
 
 **Implementação:** `/tmp/steamzero-system-lsfg.png`

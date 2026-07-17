@@ -2,9 +2,10 @@
 # Copyright (C) 2026 SteamZero contributors
 """Read model e planos confirmados para gameplay da Steam no Desktop.
 
-O adapter só observa a biblioteca e capacidades do host. Perfis são persistidos
-como política do SteamZero; efeitos indisponíveis bloqueiam a aplicação em vez de
-serem simulados. A integração de lançamento consumirá a política em M11.
+O adapter observa biblioteca e capacidades do host. Perfis são persistidos como
+política do SteamZero; efeitos indisponíveis bloqueiam a aplicação em vez de serem
+simulados. O launcher consome a política e sua Launch Option é configurada por uma
+transação separada, explícita e reversível.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
+from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
 from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
@@ -109,6 +111,7 @@ class SteamGameplayController:
         lsfg_manifests: Sequence[Path] | None = None,
         lsfg_installer: LsfgInstaller | None = None,
         launcher: SteamGameLauncher | None = None,
+        launch_options: SteamLaunchOptionsManager | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -131,6 +134,7 @@ class SteamGameplayController:
             store_factory=store_factory,
             lsfg_manifests=self._lsfg_manifests,
         )
+        self._launch_options = launch_options or SteamLaunchOptionsManager(roots=self._roots)
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -145,6 +149,8 @@ class SteamGameplayController:
         saved = self._launcher.desired_profile(selected_id) if selected_id else None
         selected_profile = self._complete_profile(saved, selected_id)
         launcher = self._launcher.status(selected_id)
+        if selected_id:
+            launcher["configuration"] = self._launch_options.status(selected_id)
         environment = self._environment(capabilities)
         ready_count = sum(row["state"] == "ready" for row in environment if row["required"])
         required_count = sum(row["required"] for row in environment)
@@ -316,6 +322,17 @@ class SteamGameplayController:
 
     def recover_launcher(self, game_id: str) -> dict[str, Any]:
         return self._launcher.recover(game_id)
+
+    def plan_launch_options(self, game_id: str) -> dict[str, Any]:
+        return self._launch_options.plan(game_id)
+
+    def apply_launch_options(
+        self, plan_id: str, confirm_token: str, game_id: str
+    ) -> dict[str, Any]:
+        return self._launch_options.apply(plan_id, confirm_token, game_id)
+
+    def rollback_launch_options(self, operation_id: str) -> dict[str, Any]:
+        return self._launch_options.rollback(operation_id)
 
     @staticmethod
     def safe_profile(game_id: str) -> dict[str, Any]:

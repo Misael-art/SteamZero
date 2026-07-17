@@ -324,6 +324,17 @@ class DesktopDashboard:
     def recover_steam_gameplay(self, game_id: str) -> dict[str, Any]:
         return self._gameplay.recover_launcher(game_id)
 
+    def plan_steam_launch_options(self, game_id: str) -> dict[str, Any]:
+        return self._gameplay.plan_launch_options(game_id)
+
+    def apply_steam_launch_options(
+        self, plan_id: str, confirm_token: str, game_id: str
+    ) -> dict[str, Any]:
+        return self._gameplay.apply_launch_options(plan_id, confirm_token, game_id)
+
+    def rollback_steam_launch_options(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_launch_options(operation_id)
+
     def plan_lsfg_install(self) -> dict[str, Any]:
         return self._gameplay.plan_lsfg_install()
 

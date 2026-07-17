@@ -58,6 +58,9 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/steam/gameplay/plan"' in qml
     assert '"/steam/gameplay/apply"' in qml
     assert '"/steam/gameplay/recover"' in qml
+    assert '"/steam/gameplay/launch-options/plan"' in qml
+    assert '"/steam/gameplay/launch-options/apply"' in qml
+    assert '"/steam/gameplay/launch-options/rollback"' in qml
     assert '"/system/lsfg/plan"' in qml
     assert '"/system/lsfg/apply"' in qml
     assert '"/system/lsfg/rollback"' in qml
@@ -90,5 +93,8 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Lançamento gerenciado",
         "Opção de inicialização Steam",
         "Restaurar estado",
+        "Configurar na Steam",
+        "Configurar e verificar",
+        "Desfazer configuração",
     ):
         assert contract in gameplay_qml
