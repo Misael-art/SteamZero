@@ -81,6 +81,10 @@ def test_admin_health_uses_read_only_contract(
     contracts.validate(envelope, "envelope-v2.schema.json")
     assert envelope["data"]["mutationsEnabled"] is False
 
+    from steamzero.service.methods import CLI_METHODS
+
+    assert ("admin", "health") not in CLI_METHODS
+
 
 def test_session_status_and_recovery_use_stable_contract(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

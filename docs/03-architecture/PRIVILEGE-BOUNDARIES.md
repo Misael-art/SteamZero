@@ -36,10 +36,11 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 - O primeiro efetor host publicado habilita apenas `health`. As ações mutáveis
   continuam na allowlist de protocolo, mas o efetor de produção as recusa até
   cada uma possuir captura do valor anterior, aplicação, verificação e rollback.
-- `steamzero admin health` e o método RPC `admin.health` usam o mesmo cliente
-  Polkit. O transporte cria somente o argv fixo `pkexec steamzero-admin --health`,
-  limita tempo/saída e valida o envelope completo; dados do chamador nunca viram
-  argumento de processo.
+- `steamzero admin health` usa o cliente Polkit diretamente no processo
+  interativo. Ele não é encaminhado ao daemon: no host real, um `pkexec` iniciado
+  pelo serviço user-scoped não adquiriu autorização interativa. O transporte cria
+  somente o argv fixo `pkexec steamzero-admin --health`, limita tempo/saída e
+  valida o envelope completo; dados do chamador nunca viram argumento de processo.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 
