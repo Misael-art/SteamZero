@@ -31,6 +31,7 @@ from typing import Any, Protocol
 from steamzero import __version__
 from steamzero.core import fs
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.privileged.gpu_effects import GpuClockTransactionEngine, GpuCommandWriter
 from steamzero.privileged.host_effects import SysfsWriter, TdpTransactionEngine
 from steamzero.privileged.protocol import (
     ACTIONS,
@@ -59,20 +60,29 @@ class DryEffector:
 
 
 class HostEffector:
-    """Efetor host com health público e motor TDP ainda sem transporte externo."""
+    """Health público e motores de hardware ainda sem transporte mutável externo."""
 
     def __init__(
         self,
         *,
         sys_root: Path = Path("/sys"),
         state_root: Path = Path("/var/lib/steamzero/admin/tdp"),
+        gpu_state_root: Path = Path("/var/lib/steamzero/admin/gpu-clock"),
         tdp_writer: SysfsWriter | None = None,
+        gpu_value_writer: SysfsWriter | None = None,
+        gpu_command_writer: GpuCommandWriter | None = None,
     ) -> None:
         self._sys_root = sys_root
         kwargs: dict[str, Any] = {"sys_root": sys_root, "state_root": state_root}
         if tdp_writer is not None:
             kwargs["writer"] = tdp_writer
         self._tdp = TdpTransactionEngine(**kwargs)
+        gpu_kwargs: dict[str, Any] = {"sys_root": sys_root, "state_root": gpu_state_root}
+        if gpu_value_writer is not None:
+            gpu_kwargs["value_writer"] = gpu_value_writer
+        if gpu_command_writer is not None:
+            gpu_kwargs["command_writer"] = gpu_command_writer
+        self._gpu_clock = GpuClockTransactionEngine(**gpu_kwargs)
 
     def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         if action == "health" and not params:
@@ -90,6 +100,12 @@ class HostEffector:
             return self._tdp.rollback(str(params["operationId"]))
         if action == "recover-tdp":
             return self._tdp.recover()
+        if action == "set-gpu-clock":
+            return self._gpu_clock.apply(int(params["mhz"]))
+        if action == "rollback-gpu-clock":
+            return self._gpu_clock.rollback(str(params["operationId"]))
+        if action == "recover-gpu-clock":
+            return self._gpu_clock.recover()
         raise SteamZeroError(
             "E-PRIV-DENIED",
             detail="efetor host ainda indisponível; nenhuma mutação foi executada",

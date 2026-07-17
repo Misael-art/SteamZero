@@ -105,6 +105,17 @@ def _v_recover_tdp(params: dict[str, Any]) -> None:
         raise ParamError("recover-tdp não aceita parâmetros")
 
 
+def _v_rollback_gpu_clock(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_gpu_clock(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-gpu-clock não aceita parâmetros")
+
+
 @dataclass(frozen=True)
 class ActionSpec:
     name: str
@@ -119,6 +130,10 @@ ACTIONS: dict[str, ActionSpec] = {
     "rollback-tdp": ActionSpec("rollback-tdp", _v_rollback_tdp, frozenset({"operationId"})),
     "recover-tdp": ActionSpec("recover-tdp", _v_recover_tdp),
     "set-gpu-clock": ActionSpec("set-gpu-clock", _v_set_gpu_clock, frozenset({"mhz"})),
+    "rollback-gpu-clock": ActionSpec(
+        "rollback-gpu-clock", _v_rollback_gpu_clock, frozenset({"operationId"})
+    ),
+    "recover-gpu-clock": ActionSpec("recover-gpu-clock", _v_recover_gpu_clock),
     "write-sysctl": ActionSpec("write-sysctl", _v_write_sysctl, frozenset({"key", "value"})),
     "install-udev-rule": ActionSpec(
         "install-udev-rule", _v_install_udev_rule, frozenset({"ruleId"})
