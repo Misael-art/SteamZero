@@ -22,6 +22,18 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 
 1. checkout sem alterações rastreadas e `HEAD` completo registrado;
 2. ID canônico `<versão>-<commit[0:12]>`;
-3. manifesto v2 com `packageVersion`, `sourceCommit` e `sourceTreeState=clean`;
+3. manifesto v2 ou superior com `packageVersion`, `sourceCommit` e
+   `sourceTreeState=clean`; daemon e Session Manager exigem v3;
 4. wheel, lock, SBOM, auditoria OSV, checksums e proveniência publicados juntos;
 5. tag criada somente depois dos gates verdes e apontando para o mesmo commit.
+
+## Releases host reproduzíveis — 2026-07-17
+
+| Release | Commit exato | SHA-256 do wheel | Resultado |
+|---|---|---|---|
+| `0.1.0a8-d2bf3819d12d` | `d2bf3819d12d16f5b5a682db06af3e63c091efcd` | `f159a3447ec051d74247ad7541baf479ae984dad9ec640c5f3c5424fb9e231d0` | instalada e preservada para rollback; smoke revelou ausência do comando público da sessão |
+| `0.1.0a9-e38b3762f144` | `e38b3762f1449ad664877a390b3729963d4c6fb6` | `1fc320521f036a98f60cf8806adf64938fcd39d85dc87a8d5446973d08edf21d` | instalou o comando estável; smoke offscreen revelou timeout KDE não degradado |
+| `0.1.0a10-1c4527ae3961` | `1c4527ae39612062742b318b102c33c8b311d918` | `a8a77ab25fcd3267d9fc2f756a56d63ae3600c9d68e857daf84d462d2b465d91` | ativa e validada no host |
+
+Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
+geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.

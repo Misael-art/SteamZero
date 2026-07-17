@@ -797,3 +797,37 @@ ao mesmo wheel/commit.
 **Gate local:** **475 passed / 85%** (6582 statements, 806 misses, 1734 branches);
 Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A evidência da
 instalação no host é associada ao commit exato no fechamento operacional desta sessão.
+
+## 2026-07-17 — Sessão 19: fechamento Steam no host real
+
+**Releases honestas:** `0.1.0a8` foi instalada a partir de
+`d2bf3819d12d16f5b5a682db06af3e63c091efcd`, mas o smoke encontrou o entry point da
+sessão somente dentro da release. O instalador passou a publicar e restaurar
+atomicamente `/usr/local/bin/steamzero-gamemode-session`, recusando arquivo alheio; a
+correção foi instalada como `0.1.0a9-e38b3762f144`. Ela não reempacotou `a8`.
+
+**Falha adversa corrigida:** o smoke Qt offscreen do `a9` reproduziu timeout de
+`kscreen-doctor -o` e a exceção derrubava a UI. O runner KDE agora converte timeout em
+`CommandResult(124)` e falha de execução em estado degradável, preservando saída parcial.
+O teste de regressão e o smoke pela fonte passaram; a correção foi lançada como
+`0.1.0a10-1c4527ae3961`, commit
+`1c4527ae39612062742b318b102c33c8b311d918`, wheel SHA-256
+`a8a77ab25fcd3267d9fc2f756a56d63ae3600c9d68e857daf84d462d2b465d91`.
+
+**Host real:** `steamzero doctor` retornou `ok`, schema SQLite v4, integridade `ok` e
+zero operações pendentes. Socket e diretório IPC ficaram `0600/0700`; daemon e socket
+user-scoped estão ativos. O Session Manager observou Steam, Gamescope e fallback Plasma,
+declarou runtime independente e `legacyRuntimeRequired=false`. Nenhum arquivo da sessão
+contém PhaseZero; o watcher legado está `inactive/disabled`. O smoke da UI instalada
+permaneceu ativo por 8 segundos e encerrou somente pelo timeout externo esperado (124).
+
+**Steam e limites reais:** a Steam estava aberta. Inventários de manutenção e mídia
+funcionaram em leitura; a tentativa de planejar limpeza foi corretamente recusada com
+`E-TX-LOCKED`. Nenhum cache, arte, jogo, display, TDP, sessão atual ou GRUB foi mutado.
+Boot direto permanece `gated` até snapshot restaurável, TTY e console remoto comprovados;
+isso é uma garantia de recuperação, não uma função simulada.
+
+**Gate final:** **477 passed**; cobertura combinada exata **84,84%**, exibida como
+**85%** (6594 statements, 805 misses, 1736 branches). Ruff, formato, mypy estrito,
+fronteiras, independência, `qmllint`, wheel provenance, manifesto host v3,
+`systemd-analyze --user verify` e status administrativo passaram.
