@@ -62,6 +62,10 @@ interativa atravessa o transporte Polkit fechado para `admin.health`, com argv
 fixo, timeout, limite de resposta e validação estrita do envelope. O host provou
 que essa autenticação não deve ser delegada ao daemon user-scoped.
 
+O inventário privilegiado read-only já observa as duas rails PPT, seus valores
+atuais/default/máximos e o range SCLK do AMDGPU. Isso substitui faixas presumidas
+por capability real do host, sem ainda escrever em sysfs.
+
 ### R4 — lifecycle Steam fim a fim
 
 Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,

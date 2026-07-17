@@ -148,3 +148,7 @@ O mesmo fluxo pode ser comprovado com `steamzero admin health --json`. Esta aç�
 interativa é executada pela CLI e deliberadamente não atravessa o daemon
 user-scoped; a resposta só é aceita quando helper e CLI concordam sobre envelope,
 exit code e protocolo.
+
+Em hardware AMDGPU compatível, `data.hardware` informa a disponibilidade e os
+limites observados de TDP/GPU. `railsConverged=false` é condição degradada; nunca
+se deve aplicar perfil assumindo que `slowPPT` e `fastPPT` já coincidem.

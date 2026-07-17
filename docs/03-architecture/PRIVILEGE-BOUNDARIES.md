@@ -41,6 +41,9 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
   pelo serviço user-scoped não adquiriu autorização interativa. O transporte cria
   somente o argv fixo `pkexec steamzero-admin --health`, limita tempo/saída e
   valida o envelope completo; dados do chamador nunca viram argumento de processo.
+- O health também inventaria, somente em leitura, `slowPPT`/`fastPPT` do driver
+  `amdgpu` e o `SCLK` anunciado pelo DRM. A UI recebe limites observados e o estado
+  de convergência das duas rails, mas `manualWriteEnabled` permanece falso.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 

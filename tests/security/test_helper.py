@@ -317,6 +317,106 @@ def test_host_effector_only_exposes_read_only_health() -> None:
 
 
 @pytest.mark.security
+def test_host_health_observes_deck_tdp_and_gpu_bounds(tmp_path: Path) -> None:
+    sys_root = tmp_path / "sys"
+    hwmon = sys_root / "class/hwmon/hwmon4"
+    drm = sys_root / "class/drm/card1/device"
+    hwmon.mkdir(parents=True)
+    drm.mkdir(parents=True)
+    values = {
+        "name": "amdgpu\n",
+        "power1_label": "slowPPT\n",
+        "power2_label": "fastPPT\n",
+        "power1_cap": "15000000\n",
+        "power2_cap": "15000000\n",
+        "power1_cap_max": "29000000\n",
+        "power2_cap_max": "30000000\n",
+        "power1_cap_default": "15000000\n",
+        "power2_cap_default": "15000000\n",
+    }
+    for name, value in values.items():
+        (hwmon / name).write_text(value, encoding="utf-8")
+    (drm / "pp_od_clk_voltage").write_bytes(b"OD_RANGE:\nSCLK:     200Mhz       1600Mhz\n\x00\x00")
+
+    response = AdminHelper(HostEffector(sys_root=sys_root)).handle(Request("health", {}))
+    assert response.ok and response.result is not None
+    hardware = response.result["hardware"]
+    assert hardware["tdp"] == {
+        "available": True,
+        "driver": "amdgpu",
+        "minWatts": 3,
+        "maxWatts": 29,
+        "currentWatts": 15.0,
+        "defaultWatts": 15.0,
+        "railsConverged": True,
+    }
+    assert hardware["gpuClock"] == {
+        "available": True,
+        "driver": "amdgpu",
+        "minMhz": 200,
+        "maxMhz": 1600,
+        "manualWriteEnabled": False,
+    }
+
+
+@pytest.mark.security
+def test_host_health_degrades_when_hardware_interfaces_are_absent(tmp_path: Path) -> None:
+    result = HostEffector(sys_root=tmp_path / "absent").apply("health", {})
+    assert result["hardware"] == {
+        "tdp": {"available": False},
+        "gpuClock": {"available": False},
+    }
+
+
+@pytest.mark.security
+def test_host_health_reports_diverged_rails_and_rejects_invalid_gpu(tmp_path: Path) -> None:
+    sys_root = tmp_path / "sys"
+    hwmon = sys_root / "class/hwmon/hwmon0"
+    drm = sys_root / "class/drm/card0/device"
+    hwmon.mkdir(parents=True)
+    drm.mkdir(parents=True)
+    values = {
+        "name": "amdgpu",
+        "power1_label": "slowPPT",
+        "power2_label": "fastPPT",
+        "power1_cap": "15000000",
+        "power2_cap": "12000000",
+        "power1_cap_max": "2000000",
+        "power2_cap_max": "3000000",
+        "power1_cap_default": "15000000",
+        "power2_cap_default": "15000000",
+    }
+    for name, value in values.items():
+        (hwmon / name).write_text(value, encoding="utf-8")
+    (drm / "pp_od_clk_voltage").write_text(
+        "OD_RANGE:\nSCLK: 200Mhz 6000Mhz\n",
+        encoding="utf-8",
+    )
+
+    hardware = HostEffector(sys_root=sys_root).apply("health", {})["hardware"]
+    assert hardware["tdp"]["available"] is False
+    assert hardware["tdp"]["currentWatts"] is None
+    assert hardware["tdp"]["railsConverged"] is False
+    assert hardware["gpuClock"] == {"available": False}
+
+
+@pytest.mark.security
+def test_host_health_ignores_unrecognized_or_incomplete_hwmon(tmp_path: Path) -> None:
+    sys_root = tmp_path / "sys"
+    foreign = sys_root / "class/hwmon/hwmon0"
+    incomplete = sys_root / "class/hwmon/hwmon1"
+    foreign.mkdir(parents=True)
+    incomplete.mkdir()
+    (foreign / "name").write_text("nvme", encoding="utf-8")
+    (incomplete / "name").write_text("amdgpu", encoding="utf-8")
+    (incomplete / "power1_label").write_text("slowPPT", encoding="utf-8")
+    (incomplete / "power2_label").write_text("fastPPT", encoding="utf-8")
+    assert HostEffector(sys_root=sys_root).apply("health", {})["hardware"]["tdp"] == {
+        "available": False
+    }
+
+
+@pytest.mark.security
 def test_admin_entrypoint_requires_root(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

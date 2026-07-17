@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -59,6 +60,9 @@ class DryEffector:
 class HostEffector:
     """Efetor host conservador: somente health até os mutadores terem rollback."""
 
+    def __init__(self, *, sys_root: Path = Path("/sys")) -> None:
+        self._sys_root = sys_root
+
     def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         if action == "health" and not params:
             return {
@@ -67,11 +71,104 @@ class HostEffector:
                 "protocolVersion": PROTOCOL_VERSION,
                 "effectiveUid": os.geteuid(),
                 "mutationsEnabled": False,
+                "hardware": _hardware_capabilities(self._sys_root),
             }
         raise SteamZeroError(
             "E-PRIV-DENIED",
             detail="efetor host ainda indisponível; nenhuma mutação foi executada",
         )
+
+
+def _read_sysfs(path: Path, *, limit: int = 64 * 1024) -> str:
+    try:
+        if not path.is_file():
+            return ""
+        data = path.read_bytes()
+    except OSError:
+        return ""
+    if len(data) > limit:
+        return ""
+    return data.decode("utf-8", errors="replace").replace("\x00", "").strip()
+
+
+def _bounded_micro_watts(value: str) -> int | None:
+    try:
+        parsed = int(value)
+    except ValueError:
+        return None
+    return parsed if 0 <= parsed <= 100_000_000 else None
+
+
+def _tdp_capability(sys_root: Path) -> dict[str, Any]:
+    base = sys_root / "class/hwmon"
+    try:
+        entries = sorted(base.iterdir(), key=lambda path: path.name)
+    except OSError:
+        entries = []
+    for entry in entries:
+        if _read_sysfs(entry / "name").casefold() != "amdgpu":
+            continue
+        labels = (_read_sysfs(entry / "power1_label"), _read_sysfs(entry / "power2_label"))
+        if labels != ("slowPPT", "fastPPT"):
+            continue
+        current = tuple(
+            _bounded_micro_watts(_read_sysfs(entry / f"power{index}_cap")) for index in (1, 2)
+        )
+        maximum = tuple(
+            _bounded_micro_watts(_read_sysfs(entry / f"power{index}_cap_max")) for index in (1, 2)
+        )
+        default = tuple(
+            _bounded_micro_watts(_read_sysfs(entry / f"power{index}_cap_default"))
+            for index in (1, 2)
+        )
+        if any(value is None for value in (*current, *maximum, *default)):
+            continue
+        current_values = tuple(int(value) for value in current if value is not None)
+        maximum_values = tuple(int(value) for value in maximum if value is not None)
+        default_values = tuple(int(value) for value in default if value is not None)
+        max_watts = min(30, *(value // 1_000_000 for value in maximum_values))
+        return {
+            "available": max_watts >= 3,
+            "driver": "amdgpu",
+            "minWatts": 3,
+            "maxWatts": max_watts,
+            "currentWatts": (
+                current_values[0] / 1_000_000 if len(set(current_values)) == 1 else None
+            ),
+            "defaultWatts": min(default_values) / 1_000_000,
+            "railsConverged": len(set(current_values)) == 1,
+        }
+    return {"available": False}
+
+
+def _gpu_clock_capability(sys_root: Path) -> dict[str, Any]:
+    drm = sys_root / "class/drm"
+    try:
+        cards = sorted(drm.glob("card[0-9]*"), key=lambda path: path.name)
+    except OSError:
+        cards = []
+    for card in cards:
+        content = _read_sysfs(card / "device/pp_od_clk_voltage")
+        match = re.search(r"SCLK:\s*(\d+)Mhz\s+(\d+)Mhz", content)
+        if match is None:
+            continue
+        minimum, maximum = (int(value) for value in match.groups())
+        if 100 <= minimum <= maximum <= 5000:
+            return {
+                "available": True,
+                "driver": "amdgpu",
+                "minMhz": minimum,
+                "maxMhz": maximum,
+                "manualWriteEnabled": False,
+            }
+    return {"available": False}
+
+
+def _hardware_capabilities(sys_root: Path) -> dict[str, Any]:
+    return {
+        "tdp": _tdp_capability(sys_root),
+        "gpuClock": _gpu_clock_capability(sys_root),
+    }
 
 
 Authorizer = Callable[[str, str], bool]
