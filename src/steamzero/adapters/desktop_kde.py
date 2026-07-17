@@ -60,15 +60,29 @@ def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
     executable = shutil.which(argv[0])
     if executable is None:
         return CommandResult(127, "", f"comando ausente: {argv[0]}")
-    completed = subprocess.run(  # noqa: S603
-        [executable, *argv[1:]],
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _command_output(exc.stdout)
+        stderr = _command_output(exc.stderr)
+        detail = f"{stderr}\ncomando excedeu {timeout:g}s".strip()
+        return CommandResult(124, stdout, detail)
+    except OSError as exc:
+        return CommandResult(126, "", f"falha ao executar {argv[0]}: {exc}")
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+def _command_output(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
 
 
 def parse_kscreen_outputs(text: str) -> tuple[DisplayState, ...]:

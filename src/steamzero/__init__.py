@@ -8,7 +8,7 @@ Nenhum módulo depende "para cima"; escrita em disco só via ``steamzero.core.fs
 
 __all__ = ["CONTRACT_VERSION", "__version__"]
 
-__version__ = "0.1.0a9"
+__version__ = "0.1.0a10"
 
 #: Versão do contrato CLI/API (envelope v2). Ver docs/06-api/CLI-CONTRACT.md.
 CONTRACT_VERSION = "2.0"

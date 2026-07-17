@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Sequence
 
 import pytest
@@ -14,6 +15,7 @@ from steamzero.adapters.desktop_kde import (
     LinuxDesktopContext,
     VirtualKeyboardController,
     parse_kscreen_outputs,
+    run_command,
 )
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, profile_for
@@ -54,6 +56,28 @@ def test_parse_kscreen_outputs() -> None:
         ("DP-1", False, 1.0),
     ]
     assert outputs[1].refresh_hz == 75.0
+
+
+def test_run_command_converts_timeout_to_degraded_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def timeout(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(
+            ("/usr/bin/kscreen-doctor", "-o"),
+            3.0,
+            output="saída parcial",
+            stderr="display ocupado",
+        )
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.shutil.which", lambda _name: "/tool")
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.subprocess.run", timeout)
+
+    result = run_command(("kscreen-doctor", "-o"), 3.0)
+
+    assert result.returncode == 124
+    assert result.stdout == "saída parcial"
+    assert "display ocupado" in result.stderr
+    assert "excedeu 3s" in result.stderr
 
 
 def test_display_effect_targets_internal_handheld() -> None:
