@@ -12,7 +12,7 @@ from typing import Any
 
 from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError
-from steamzero.privileged.host_effects import SysfsWriter, _write_sysfs
+from steamzero.privileged.host_effects import SysfsWriter, _write_sysfs, transaction_lock
 
 GpuCommandWriter = Callable[[Path, bytes], None]
 
@@ -82,6 +82,10 @@ class GpuClockTransactionEngine:
         self._command_writer = command_writer
 
     def apply(self, mhz: int) -> dict[str, Any]:
+        with transaction_lock(self._state):
+            return self._apply(mhz)
+
+    def _apply(self, mhz: int) -> dict[str, Any]:
         if self._pending():
             raise SteamZeroError(
                 "E-TX-LOCKED",
@@ -133,21 +137,23 @@ class GpuClockTransactionEngine:
         }
 
     def rollback(self, operation_id: str) -> dict[str, Any]:
-        journal = self._load(operation_id)
-        if journal["state"] == "rolled-back":
-            return {"operationId": operation_id, "state": "noop"}
-        if journal["state"] not in {"pending", "applied", "rollback-failed"}:
-            raise SteamZeroError("E-STATE-INTEGRITY", detail="journal de clock não restaurável")
-        self._restore(journal)
-        return {"operationId": operation_id, "state": "rolled-back"}
+        with transaction_lock(self._state):
+            journal = self._load(operation_id)
+            if journal["state"] == "rolled-back":
+                return {"operationId": operation_id, "state": "noop"}
+            if journal["state"] not in {"pending", "applied", "rollback-failed"}:
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="journal de clock não restaurável")
+            self._restore(journal)
+            return {"operationId": operation_id, "state": "rolled-back"}
 
     def recover(self) -> dict[str, Any]:
-        recovered: list[str] = []
-        for journal in self._journals():
-            if journal.get("state") in {"pending", "rollback-failed"}:
-                self._restore(journal)
-                recovered.append(str(journal["operationId"]))
-        return {"state": "recovered" if recovered else "noop", "operations": recovered}
+        with transaction_lock(self._state):
+            recovered: list[str] = []
+            for journal in self._journals():
+                if journal.get("state") in {"pending", "rollback-failed"}:
+                    self._restore(journal)
+                    recovered.append(str(journal["operationId"]))
+            return {"state": "recovered" if recovered else "noop", "operations": recovered}
 
     def _restore(self, journal: dict[str, Any]) -> None:
         clock_path, level_path = self._interface()

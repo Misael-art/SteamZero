@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -14,6 +16,33 @@ from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError
 
 SysfsWriter = Callable[[Path, bytes], None]
+
+
+@contextmanager
+def transaction_lock(state_root: Path) -> Iterator[None]:
+    """Recusa transações concorrentes usando lock root-owned fora do journal."""
+
+    fs.ensure_dir(state_root.parent, mode=0o700)
+    lock_path = state_root.parent / f".{state_root.name}.lock"
+    flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd: int | None = None
+    try:
+        fd = os.open(lock_path, flags, 0o600)
+        os.fchmod(fd, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as exc:
+        if fd is not None:
+            os.close(fd)
+        raise SteamZeroError(
+            "E-TX-LOCKED", detail="outra transação privilegiada está ativa"
+        ) from exc
+    try:
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
 
 
 def _now() -> str:
@@ -64,6 +93,10 @@ class TdpTransactionEngine:
         self._writer = writer
 
     def apply(self, watts: int) -> dict[str, Any]:
+        with transaction_lock(self._state):
+            return self._apply(watts)
+
+    def _apply(self, watts: int) -> dict[str, Any]:
         if self._pending():
             raise SteamZeroError(
                 "E-TX-LOCKED",
@@ -122,21 +155,23 @@ class TdpTransactionEngine:
         }
 
     def rollback(self, operation_id: str) -> dict[str, Any]:
-        journal = self._load(operation_id)
-        if journal["state"] == "rolled-back":
-            return {"operationId": operation_id, "state": "noop"}
-        if journal["state"] not in {"pending", "applied", "rollback-failed"}:
-            raise SteamZeroError("E-STATE-INTEGRITY", detail="journal TDP não restaurável")
-        self._restore(journal)
-        return {"operationId": operation_id, "state": "rolled-back"}
+        with transaction_lock(self._state):
+            journal = self._load(operation_id)
+            if journal["state"] == "rolled-back":
+                return {"operationId": operation_id, "state": "noop"}
+            if journal["state"] not in {"pending", "applied", "rollback-failed"}:
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="journal TDP não restaurável")
+            self._restore(journal)
+            return {"operationId": operation_id, "state": "rolled-back"}
 
     def recover(self) -> dict[str, Any]:
-        recovered: list[str] = []
-        for journal in self._journals():
-            if journal.get("state") in {"pending", "rollback-failed"}:
-                self._restore(journal)
-                recovered.append(str(journal["operationId"]))
-        return {"state": "recovered" if recovered else "noop", "operations": recovered}
+        with transaction_lock(self._state):
+            recovered: list[str] = []
+            for journal in self._journals():
+                if journal.get("state") in {"pending", "rollback-failed"}:
+                    self._restore(journal)
+                    recovered.append(str(journal["operationId"]))
+            return {"state": "recovered" if recovered else "noop", "operations": recovered}
 
     def _restore(self, journal: dict[str, Any]) -> None:
         slow, fast, _maximum = self._interface()

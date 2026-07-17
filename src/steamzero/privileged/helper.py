@@ -40,6 +40,7 @@ from steamzero.privileged.protocol import (
     Request,
     Response,
 )
+from steamzero.privileged.sysctl_effects import SysctlTransactionEngine
 
 
 class Effector(Protocol):
@@ -68,9 +69,12 @@ class HostEffector:
         sys_root: Path = Path("/sys"),
         state_root: Path = Path("/var/lib/steamzero/admin/tdp"),
         gpu_state_root: Path = Path("/var/lib/steamzero/admin/gpu-clock"),
+        proc_sys_root: Path = Path("/proc/sys"),
+        sysctl_state_root: Path = Path("/var/lib/steamzero/admin/sysctl"),
         tdp_writer: SysfsWriter | None = None,
         gpu_value_writer: SysfsWriter | None = None,
         gpu_command_writer: GpuCommandWriter | None = None,
+        sysctl_writer: SysfsWriter | None = None,
     ) -> None:
         self._sys_root = sys_root
         kwargs: dict[str, Any] = {"sys_root": sys_root, "state_root": state_root}
@@ -83,6 +87,13 @@ class HostEffector:
         if gpu_command_writer is not None:
             gpu_kwargs["command_writer"] = gpu_command_writer
         self._gpu_clock = GpuClockTransactionEngine(**gpu_kwargs)
+        sysctl_kwargs: dict[str, Any] = {
+            "proc_sys_root": proc_sys_root,
+            "state_root": sysctl_state_root,
+        }
+        if sysctl_writer is not None:
+            sysctl_kwargs["writer"] = sysctl_writer
+        self._sysctl = SysctlTransactionEngine(**sysctl_kwargs)
 
     def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         if action == "health" and not params:
@@ -106,6 +117,12 @@ class HostEffector:
             return self._gpu_clock.rollback(str(params["operationId"]))
         if action == "recover-gpu-clock":
             return self._gpu_clock.recover()
+        if action == "write-sysctl":
+            return self._sysctl.apply(str(params["key"]), int(params["value"]))
+        if action == "rollback-sysctl":
+            return self._sysctl.rollback(str(params["operationId"]))
+        if action == "recover-sysctl":
+            return self._sysctl.recover()
         raise SteamZeroError(
             "E-PRIV-DENIED",
             detail="efetor host ainda indisponível; nenhuma mutação foi executada",

@@ -61,6 +61,20 @@ def test_gpu_clock_rollback_and_recovery_protocol_are_closed() -> None:
 
 
 @pytest.mark.security
+def test_sysctl_rollback_and_recovery_protocol_are_closed() -> None:
+    helper, eff = _helper()
+    operation_id = "01J000000000000000000000AA"
+    assert helper.handle(Request("rollback-sysctl", {"operationId": operation_id})).ok
+    assert helper.handle(Request("recover-sysctl", {})).ok
+    assert not helper.handle(Request("rollback-sysctl", {"operationId": "../escape"})).ok
+    assert not helper.handle(Request("recover-sysctl", {"all": True})).ok
+    assert eff.calls == [
+        ("rollback-sysctl", {"operationId": operation_id}),
+        ("recover-sysctl", {}),
+    ]
+
+
+@pytest.mark.security
 @pytest.mark.parametrize("watts", [2, 31, 9999, -5, 0, True, "12", 12.5, None])
 def test_fuzz_set_tdp_out_of_range_denied_no_execution(watts: object) -> None:
     helper, eff = _helper()
@@ -332,6 +346,8 @@ def test_ac_pr_02_allowlist_is_only_privileged_ops() -> None:
         "rollback-gpu-clock",
         "recover-gpu-clock",
         "write-sysctl",
+        "rollback-sysctl",
+        "recover-sysctl",
         "install-udev-rule",
         "enable-system-unit",
         "mount-removable",

@@ -71,6 +71,17 @@ def _v_write_sysctl(params: dict[str, Any]) -> None:
         raise ParamError(f"value fora da faixa {lo}..{hi}")
 
 
+def _v_rollback_sysctl(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_sysctl(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-sysctl não aceita parâmetros")
+
+
 def _v_install_udev_rule(params: dict[str, Any]) -> None:
     if params.get("ruleId") not in ALLOWED_UDEV_RULES:
         raise ParamError("ruleId não é uma regra embutida")
@@ -135,6 +146,10 @@ ACTIONS: dict[str, ActionSpec] = {
     ),
     "recover-gpu-clock": ActionSpec("recover-gpu-clock", _v_recover_gpu_clock),
     "write-sysctl": ActionSpec("write-sysctl", _v_write_sysctl, frozenset({"key", "value"})),
+    "rollback-sysctl": ActionSpec(
+        "rollback-sysctl", _v_rollback_sysctl, frozenset({"operationId"})
+    ),
+    "recover-sysctl": ActionSpec("recover-sysctl", _v_recover_sysctl),
     "install-udev-rule": ActionSpec(
         "install-udev-rule", _v_install_udev_rule, frozenset({"ruleId"})
     ),
