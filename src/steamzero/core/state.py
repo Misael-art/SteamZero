@@ -256,6 +256,18 @@ class StateStore:
         )
         self._conn.execute(sql, row)
 
+    def save_profiles(self, profiles: list[dict[str, Any]]) -> None:
+        """Persiste um conjunto de perfis como uma única mudança atômica."""
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            for profile in profiles:
+                self.save_profile(profile)
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
+
     def get_profile(self, profile_id: str) -> dict[str, Any] | None:
         row = self._conn.execute("SELECT * FROM profile WHERE id=?", (profile_id,)).fetchone()
         return dict(row) if row is not None else None

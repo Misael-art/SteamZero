@@ -140,6 +140,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().launch_component(self._required_string(payload, "componentId"))
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
+        if path == "/steam/input/open":
+            return self._dashboard().open_steam_input(self._required_string(payload, "gameId"))
         if path == "/steam/gameplay/plan":
             return {"plan": self._dashboard().plan_steam_gameplay(payload, coordinator.status())}
         if path == "/steam/gameplay/apply":

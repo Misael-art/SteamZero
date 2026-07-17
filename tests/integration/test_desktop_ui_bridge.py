@@ -109,6 +109,10 @@ class FakeDashboard:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
 
+    def open_steam_input(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("steam-input", game_id))
+        return {"status": "started", "gameId": game_id}
+
     def plan_steam_gameplay(
         self, payload: dict[str, object], _status: dict[str, object]
     ) -> dict[str, object]:
@@ -355,6 +359,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
     request_json(base, token, "/steam/open", {"target": "library"})
+    request_json(base, token, "/steam/input/open", {"gameId": "10"})
     gameplay_plan = request_json(
         base,
         token,
@@ -376,6 +381,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
         ("steam", "library"),
+        ("steam-input", "10"),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
     ]

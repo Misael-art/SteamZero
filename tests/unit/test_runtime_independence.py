@@ -54,6 +54,7 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/component/plan"' in qml
     assert '"/component/apply"' in qml
     assert '"/steam/open"' in qml
+    assert '"/steam/input/open"' in qml
     assert '"/steam/gameplay/plan"' in qml
     assert '"/steam/gameplay/apply"' in qml
     assert "Plano bloqueado" in qml
@@ -74,5 +75,8 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Feral GameMode",
         "Gamescope",
         "Abrir Sistema",
+        "Frame generation",
+        "Controles por jogo",
+        "Editar no Steam",
     ):
         assert contract in gameplay_qml

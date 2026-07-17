@@ -637,3 +637,27 @@ comparada ao mockup selecionado.
 
 **Versão:** a árvore passa a `0.1.0a2`; nenhum artefato desta mudança reutiliza a versão
 `0.1.0a1` da baseline.
+
+## 2026-07-17 — Sessão 13: LSFG e Steam Input por jogo
+
+**Perfis por jogo:** o contrato de gameplay passou a aceitar geração de quadros
+Desligada/LSFG 2×/3×/4× e layouts Steam Input allowlisted. A camada LSFG é observada pelo
+manifesto Vulkan em escopos user/local/system; ausência bloqueia o plano e encaminha para Sistema, sem
+download ou aplicação fictícia. Layouts abrem somente `steam://controllerconfig/<appid>`
+com AppID numérico validado.
+
+**Persistência e resiliência:** desempenho continua em `kind=performance`; controles são
+gravados em `kind=controls`, com owner `steam-input`. Os dois perfis usam a nova operação
+atômica `StateStore.save_profiles`: falha em qualquer linha reverte o conjunto inteiro.
+O estado permanece honestamente `desired` até o launcher/reconciliador M11 aplicar e observar.
+
+**Experiência:** a tela escolhida ganhou áreas Desempenho e LSFG/Controles sem mudar a
+hierarquia jogo → escopo → prontidão → revisão. No breakpoint compacto, Ambiente e capacidade
+ficam disponíveis em diálogo em vez de esmagar os ajustes; a ação de revisão permanece fixa.
+
+**Gate:** **382 passed / 85%** (4646 statements, 560 misses, 1092 branches); Ruff,
+mypy estrito, fronteiras, independência, `qmllint` e comparação visual passaram.
+
+**Versão:** a árvore passa a `0.1.0a3`; a instalação automática pinada do LSFG-VK permanece
+como próxima entrega de Sistema porque exige aquisição verificada, staging em streaming e
+rollback de arquivos sob `~/.local`, sem embutir um artefato de ~74 MB no plano transacional.

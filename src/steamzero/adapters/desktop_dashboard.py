@@ -202,6 +202,16 @@ class SteamDesktopController:
         self._spawn((executable, uri))
         return {"status": "started", "target": target, "uri": uri}
 
+    def open_controller_config(self, game_id: str) -> dict[str, Any]:
+        if not game_id.isdigit() or len(game_id) > 32:
+            raise SteamZeroError("E-API-SCHEMA", detail="gameId inválido")
+        executable = self._which("steam")
+        if executable is None:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="cliente Steam não encontrado")
+        uri = f"steam://controllerconfig/{game_id}"
+        self._spawn((executable, uri))
+        return {"status": "started", "gameId": game_id, "uri": uri}
+
 
 class DesktopDashboard:
     """Compõe o read model da central e delega mutações aos serviços existentes."""
@@ -345,6 +355,9 @@ class DesktopDashboard:
 
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
+
+    def open_steam_input(self, game_id: str) -> dict[str, Any]:
+        return self._steam.open_controller_config(game_id)
 
     def _component_row(
         self, manifest: AdapterManifest, executor: FlatpakExecutor, *, conflicts: bool

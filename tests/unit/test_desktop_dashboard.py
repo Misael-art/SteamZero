@@ -97,6 +97,22 @@ def test_steam_open_uses_only_allowlisted_uri() -> None:
         controller.open("arbitrary-uri")
 
 
+def test_steam_input_opens_only_numeric_game_configuration() -> None:
+    calls: list[tuple[str, ...]] = []
+    controller = SteamDesktopController(
+        which=lambda _command: "/usr/bin/steam",
+        running_probe=lambda: False,
+        spawn=lambda argv: calls.append(tuple(argv)),
+    )
+
+    result = controller.open_controller_config("1091500")
+
+    assert result["uri"] == "steam://controllerconfig/1091500"
+    assert calls == [("/usr/bin/steam", "steam://controllerconfig/1091500")]
+    with pytest.raises(SteamZeroError, match="gameId inválido"):
+        controller.open_controller_config("1091500;shutdown")
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(tmp_path: Path) -> None:
     flatpak = FakeFlatpak()
     steam = SteamDesktopController(
@@ -202,11 +218,6 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
         encoding="utf-8",
     )
     available = {"steam", "gamescope", "gamemoderun", "mangohud"}
-    controller = SteamGameplayController(
-        roots=(root,),
-        which=lambda command: f"/usr/bin/{command}" if command in available else None,
-        store_factory=lambda: StateStore(tmp_path / "state.db"),
-    )
     status = {"context": {"deviceKind": "deck-lcd", "displays": []}}
     payload = {
         "gameId": "10",
@@ -220,7 +231,18 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
         "gameMode": True,
         "mangoHud": "basic",
         "upscaling": "fsr2-quality",
+        "frameGeneration": "lsfg-2x",
+        "controllerLayout": "official",
     }
+
+    lsfg_manifest = tmp_path / "VkLayer_LS_frame_generation.json"
+    lsfg_manifest.write_text("{}", encoding="utf-8")
+    controller = SteamGameplayController(
+        roots=(root,),
+        which=lambda command: f"/usr/bin/{command}" if command in available else None,
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        lsfg_manifests=(lsfg_manifest,),
+    )
 
     plan = controller.plan(payload, status)
     assert plan["blockers"] == []
@@ -233,6 +255,59 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
         saved = store.get_profile("steam-gameplay:game:10")
     assert saved is not None
     assert saved["kind"] == "performance"
+    assert "controllerLayout" not in str(saved["payload_json"])
+    with StateStore(tmp_path / "state.db") as store:
+        controls = store.get_profile("steam-controls:game:10")
+    assert controls is not None
+    assert controls["kind"] == "controls"
+    assert '"layout":"official"' in str(controls["payload_json"])
+
+
+def test_gameplay_plan_blocks_lsfg_when_vulkan_layer_is_missing(tmp_path: Path) -> None:
+    root = tmp_path / "Steam"
+    steamapps = root / "steamapps"
+    steamapps.mkdir(parents=True)
+    (steamapps / "appmanifest_10.acf").write_text(
+        '"AppState"\n{\n  "appid" "10"\n  "name" "Counter-Strike"\n}\n',
+        encoding="utf-8",
+    )
+    available = {"steam", "gamescope", "gamemoderun"}
+    controller = SteamGameplayController(
+        roots=(root,),
+        which=lambda command: f"/usr/bin/{command}" if command in available else None,
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        lsfg_manifests=(tmp_path / "missing.json",),
+    )
+
+    payload = SteamGameplayController.safe_profile("10")
+    payload["frameGeneration"] = "lsfg-3x"
+    plan = controller.plan(
+        payload,
+        {"context": {"deviceKind": "deck-lcd", "displays": []}},
+    )
+
+    assert any("LSFG-VK" in blocker for blocker in plan["blockers"])
+
+
+@pytest.mark.parametrize(
+    "field,value", [("frameGeneration", "latest"), ("controllerLayout", "shell")]
+)
+def test_gameplay_rejects_unknown_lsfg_and_controller_values(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    root = tmp_path / "Steam"
+    (root / "steamapps").mkdir(parents=True)
+    controller = SteamGameplayController(
+        roots=(root,),
+        which=lambda command: "/usr/bin/steam" if command == "steam" else None,
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+    )
+    payload = SteamGameplayController.safe_profile("")
+    payload[field] = value
+
+    with pytest.raises(SteamZeroError) as error:
+        controller.plan(payload, {"context": {"deviceKind": "deck-lcd", "displays": []}})
+    assert error.value.code == "E-API-SCHEMA"
 
 
 def test_gameplay_plan_blocks_missing_runtime_instead_of_simulating_apply(

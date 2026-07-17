@@ -34,7 +34,7 @@ os controles de verdade Desktop, proveniência e CI, mas a execução remota/VM 
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
 | **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema/registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável G-FULL; lockfile anti-drift; executor Flatpak user-scoped com plan/token, commit OSTree exato, verify/smoke, rollback G-DEPLOYMENT e recovery em **24 testes**. A CLI expõe list/status/plan/apply/rollback/recover. Status real read-only passou; instalação dos três em VM ainda não foi feita e DuckStation segue EOL no Flathub. |
 | **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + host-partial) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada e gate de independência. O apply real `01KXMDC05NTYS88F5WC8XS8V3T` confirmou `docked-desktop` e persistiu snapshots de display/janelas; o novo status separa recomendado/desejado/aplicado/observado e o teste dock→undock exige `stale`. Hotplug, input, suspend, storage e TDP permanecem pendentes. |
-| M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
+| M11 Frontends (Steam/SRM/ES-DE) | 4 | **foundation** (verified-dev) | Steam: descoberta de biblioteca/capas, perfis desejados de desempenho+LSFG e Steam Input por jogo, plano confirmado, persistência atômica e abertura allowlisted de `controllerconfig/<appid>`. O launcher que aplica/observa a política e os adapters SRM/ES-DE ainda não existem. |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
 | M13 Adoção EmuDeck/RetroDECK em HW real | 5 | not-started | — |
 | M14 Flatpak + canais + update/rollback | 6 | not-started | — |
@@ -203,6 +203,10 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
   reconciliação SteamOS/Steam-client na subida (FM-10). Perfis de desempenho
   (F-PF-01/03) modelados via helper set-tdp, mas sem o fluxo apply/restore G-STATE
   completo (fica com a Fase 4).
+- **A6. Aquisição LSFG-VK ainda não implementada.** O perfil detecta a camada Vulkan,
+  bloqueia quando ausente e encaminha para Sistema. Instalação automática exige artefato
+  oficial pinado/hash-verificado, aquisição em streaming, validação de propriedade do
+  Lossless Scaling e rollback dos arquivos user-scoped; nenhum botão afirma instalar hoje.
 - **A1. FI-06 real (ENOSPC no meio do apply) não testado** — só o *preflight* (via
   monkeypatch de `free_space`). O caso mid-apply exige FS de loopback com quota. FI-01/02/
   03/05/07..14/16..20 também não implementados (Fases 2–3).
@@ -264,7 +268,7 @@ python3 -m venv /tmp/steamzero-smoke
 /tmp/steamzero-smoke/bin/steamzero doctor --json
 ```
 
-**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **377 passed / 85%**
+**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **382 passed / 85%**
 e o wheel `0.1.0a1` foi instalado sem editable em venv vazio; versão, `pip check`,
 `steamzero.ports` empacotado e `doctor --json` passaram. A prova em clone remoto limpo
 depende do primeiro push/CI.
@@ -276,7 +280,7 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12/3.14 — ver dívida A4).
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (377 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (382 testes), lints, tipos e o binário
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.

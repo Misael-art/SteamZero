@@ -91,12 +91,13 @@ ApplicationWindow {
             {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "missing", "statusLabel": "ausente"},
             {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
             {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
-            {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
+            {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "lsfg", "name": "LSFG-VK", "detail": "Geração de quadros configurada por jogo", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
         ],
         "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
-        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native"},
+        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
         "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"}
     })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
@@ -116,6 +117,7 @@ ApplicationWindow {
     property int sectionIndex: 1
     property int emulatorFilter: 0
     property int steamFilter: 0
+    property string steamArea: "performance"
     property var selectedEmulator: null
     property var selectedSteam: null
     property string selectedProfile: "auto"
@@ -146,6 +148,7 @@ ApplicationWindow {
         const apiMarker = args.indexOf("--steamzero-api")
         const tokenMarker = args.indexOf("--steamzero-token")
         const sectionMarker = args.indexOf("--steamzero-section")
+        const steamAreaMarker = args.indexOf("--steamzero-steam-area")
         if (apiMarker >= 0 && apiMarker + 1 < args.length)
             apiUrl = args[apiMarker + 1]
         if (tokenMarker >= 0 && tokenMarker + 1 < args.length)
@@ -155,6 +158,9 @@ ApplicationWindow {
             if (sections[args[sectionMarker + 1]] !== undefined)
                 sectionIndex = sections[args[sectionMarker + 1]]
         }
+        if (steamAreaMarker >= 0 && steamAreaMarker + 1 < args.length
+                && ["performance", "controls"].indexOf(args[steamAreaMarker + 1]) >= 0)
+            steamArea = args[steamAreaMarker + 1]
         ensureSelections()
         if (desktopStatus.recoveryRequired) {
             recoveryPromptShown = true
@@ -1299,6 +1305,7 @@ ApplicationWindow {
                             SteamGameplay {
                                 id: steamGameplayPage
                                 gameplay: root.steamGameplayData
+                                initialArea: root.steamArea
                                 backgroundColor: root.backgroundColor
                                 surfaceColor: root.surfaceColor
                                 raisedColor: root.raisedColor
@@ -1326,6 +1333,13 @@ ApplicationWindow {
                                     })
                                 }
                                 onSystemRequested: root.sectionIndex = 5
+                                onSteamInputRequested: function(gameId) {
+                                    root.request("POST", "/steam/input/open", {
+                                        "gameId": gameId
+                                    }, function() {
+                                        root.notify(qsTr("Configuração Steam Input aberta"), false)
+                                    })
+                                }
                             }
                             ColumnLayout {
                                 visible: false

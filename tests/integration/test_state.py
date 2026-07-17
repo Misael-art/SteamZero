@@ -72,6 +72,27 @@ def test_integrity_ok(db_path: Path) -> None:
     store.close()
 
 
+def test_save_profiles_rolls_back_the_whole_group_on_failure(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    base = {
+        "scope": "game",
+        "payload_json": "{}",
+        "priority": 100,
+        "profile_owner": "steamzero",
+    }
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.save_profiles(
+            [
+                {**base, "id": "performance", "kind": "performance"},
+                {**base, "id": "invalid", "kind": "not-allowlisted"},
+            ]
+        )
+
+    assert store.get_profile("performance") is None
+    store.close()
+
+
 def test_job_crud_and_upsert(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job(

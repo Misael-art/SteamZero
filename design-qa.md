@@ -72,4 +72,29 @@ de 3200 px.
 - Validar foco físico e legibilidade no painel 1280×800 do Deck antes de remover o status
   de validação visual em hardware.
 
+## Iteração LSFG e Steam Input — 2026-07-17
+
+**Implementação — desempenho:** `/tmp/steamzero-lsfg-fixed-actions.png`
+
+**Implementação — controles:** `/tmp/steamzero-controls-1600-scaled.png`
+
+**Comparação combinada:** `/tmp/steamzero-lsfg-comparison.png`
+
+**Viewport lógico:** 1600×1000, capturado no Steam Deck com `QT_SCALE_FACTOR=0.75`
+para caber no painel físico sem alterar a geometria lógica do mockup.
+
+- O subgrupo **Desempenho e LSFG / Controles** mantém jogo, escopo e prontidão como
+  contexto persistente. A troca de área não cria uma nova rota nem perde o perfil em edição.
+- LSFG usa listbox discreta Desligado/2×/3×/4×, mostra a propriedade Sistema e bloqueia
+  a revisão quando a camada Vulkan não foi observada. Não existe instalação simulada.
+- Controles usa listbox por jogo, status Steam Input e ação allowlisted **Editar no Steam**.
+  A política de controles é persistida separadamente da política de desempenho.
+- A primeira captura no painel reduzido mostrou a aba Controles cortada e a ação principal
+  abaixo da dobra. As áreas foram movidas para uma linha própria, Ambiente ganhou diálogo
+  compacto em larguras menores e as ações passaram a uma barra fixa.
+- A comparação com a referência mantém tema, tipografia, estados, hierarquia e densidade.
+  Nenhuma diferença P0/P1/P2 permanece; Ambiente/Capacidade passa para diálogo apenas no
+  breakpoint compacto, preservando acesso sem comprimir Ajustes essenciais.
+- `qmllint` passou e a execução Qt/QML das duas áreas não emitiu erros de console.
+
 final result: passed
