@@ -31,6 +31,7 @@ from typing import Any, Protocol
 from steamzero import __version__
 from steamzero.core import fs
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.privileged.host_effects import SysfsWriter, TdpTransactionEngine
 from steamzero.privileged.protocol import (
     ACTIONS,
     PROTOCOL_VERSION,
@@ -58,10 +59,20 @@ class DryEffector:
 
 
 class HostEffector:
-    """Efetor host conservador: somente health até os mutadores terem rollback."""
+    """Efetor host com health público e motor TDP ainda sem transporte externo."""
 
-    def __init__(self, *, sys_root: Path = Path("/sys")) -> None:
+    def __init__(
+        self,
+        *,
+        sys_root: Path = Path("/sys"),
+        state_root: Path = Path("/var/lib/steamzero/admin/tdp"),
+        tdp_writer: SysfsWriter | None = None,
+    ) -> None:
         self._sys_root = sys_root
+        kwargs: dict[str, Any] = {"sys_root": sys_root, "state_root": state_root}
+        if tdp_writer is not None:
+            kwargs["writer"] = tdp_writer
+        self._tdp = TdpTransactionEngine(**kwargs)
 
     def apply(self, action: str, params: dict[str, Any]) -> dict[str, Any]:
         if action == "health" and not params:
@@ -73,6 +84,12 @@ class HostEffector:
                 "mutationsEnabled": False,
                 "hardware": _hardware_capabilities(self._sys_root),
             }
+        if action == "set-tdp":
+            return self._tdp.apply(int(params["watts"]))
+        if action == "rollback-tdp":
+            return self._tdp.rollback(str(params["operationId"]))
+        if action == "recover-tdp":
+            return self._tdp.recover()
         raise SteamZeroError(
             "E-PRIV-DENIED",
             detail="efetor host ainda indisponível; nenhuma mutação foi executada",

@@ -66,6 +66,11 @@ O inventário privilegiado read-only já observa as duas rails PPT, seus valores
 atuais/default/máximos e o range SCLK do AMDGPU. Isso substitui faixas presumidas
 por capability real do host, sem ainda escrever em sysfs.
 
+O motor TDP G-STATE está implementado atrás do gate: journal anterior à escrita,
+duas rails, verify, rollback idempotente, lock de pending e recovery pós-interrupção.
+Testes usam sysfs descartável e simulam morte entre as rails. O transporte host
+permanece desabilitado até repetir essas provas em VM com o driver apropriado.
+
 ### R4 — lifecycle Steam fim a fim
 
 Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,

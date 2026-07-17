@@ -33,6 +33,20 @@ def test_valid_set_tdp_executes() -> None:
 
 
 @pytest.mark.security
+def test_tdp_rollback_and_recovery_protocol_are_closed() -> None:
+    helper, eff = _helper()
+    operation_id = "01J000000000000000000000AA"
+    assert helper.handle(Request("rollback-tdp", {"operationId": operation_id})).ok
+    assert helper.handle(Request("recover-tdp", {})).ok
+    assert not helper.handle(Request("rollback-tdp", {"operationId": "../../etc"})).ok
+    assert not helper.handle(Request("recover-tdp", {"all": True})).ok
+    assert eff.calls == [
+        ("rollback-tdp", {"operationId": operation_id}),
+        ("recover-tdp", {}),
+    ]
+
+
+@pytest.mark.security
 @pytest.mark.parametrize("watts", [2, 31, 9999, -5, 0, True, "12", 12.5, None])
 def test_fuzz_set_tdp_out_of_range_denied_no_execution(watts: object) -> None:
     helper, eff = _helper()
@@ -298,6 +312,8 @@ def test_ac_pr_02_allowlist_is_only_privileged_ops() -> None:
     assert set(protocol.ACTIONS) == {
         "health",
         "set-tdp",
+        "rollback-tdp",
+        "recover-tdp",
         "set-gpu-clock",
         "write-sysctl",
         "install-udev-rule",
@@ -307,11 +323,15 @@ def test_ac_pr_02_allowlist_is_only_privileged_ops() -> None:
 
 
 @pytest.mark.security
-def test_host_effector_only_exposes_read_only_health() -> None:
-    health = AdminHelper(HostEffector()).handle(Request("health", {}))
+def test_host_effector_only_exposes_read_only_health(tmp_path: Path) -> None:
+    effector = HostEffector(
+        sys_root=tmp_path / "missing-sys",
+        state_root=tmp_path / "state",
+    )
+    health = AdminHelper(effector).handle(Request("health", {}))
     assert health.ok and health.result is not None
     assert health.result["mutationsEnabled"] is False
-    denied = AdminHelper(HostEffector()).handle(Request("set-tdp", {"watts": 10}))
+    denied = AdminHelper(effector).handle(Request("set-tdp", {"watts": 10}))
     assert not denied.ok
     assert denied.error is not None and denied.error["code"] == "E-PRIV-DENIED"
 

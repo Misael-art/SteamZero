@@ -13,7 +13,7 @@ Rollback da operação O = levar os recursos tocados por O de volta ao estado re
 | Organização/conversão de biblioteca | G-FULL: original mantido até commit | após commit + GC do backup, reverter exige re-conversão |
 | Import de dumps | G-FULL: import é cópia; fonte intocada | — |
 | Saves | G-TIMELINE: qualquer versão retida é restaurável | granularidade = pontos de checkpoint/flush |
-| Ações do helper privilegiado | G-STATE: valor anterior registrado e reaplicável (TDP, sysctl, unit) | estado de hardware volátil (clock) se perde em reboot — por design |
+| Ações do helper privilegiado | G-STATE: valor anterior registrado e reaplicável (TDP, sysctl, unit); TDP persiste journal root antes de `slowPPT`/`fastPPT` | estado de hardware volátil (clock) se perde em reboot — por design; transporte mutável permanece gated até VM |
 | Migração SSD↔microSD | G-FULL até commit (copy-verify-switch-delete) | — |
 
 ## Invariantes (testadas em ROLLBACK-TESTS)

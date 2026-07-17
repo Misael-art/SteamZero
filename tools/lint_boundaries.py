@@ -28,7 +28,7 @@ from pathlib import Path
 PACKAGE = "steamzero"
 
 # Única porta de escrita em disco.
-WRITE_PORTS = frozenset({"steamzero.core.fs"})
+WRITE_PORTS = frozenset({"steamzero.core.fs", "steamzero.privileged.host_effects"})
 # Onde subprocess é permitido.
 PROC_PORT_PREFIXES = (
     "steamzero.core.proc",

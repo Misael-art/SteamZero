@@ -35,6 +35,7 @@ ALLOWED_SYSTEM_UNITS = frozenset({"steamzero-mount.service"})
 _UUID_RE = re.compile(
     r"^(?:[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}|[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})$"
 )
+_ULID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 
 
 class ParamError(ValueError):
@@ -93,6 +94,17 @@ def _v_health(params: dict[str, Any]) -> None:
         raise ParamError("health não aceita parâmetros")
 
 
+def _v_rollback_tdp(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_tdp(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-tdp não aceita parâmetros")
+
+
 @dataclass(frozen=True)
 class ActionSpec:
     name: str
@@ -104,6 +116,8 @@ class ActionSpec:
 ACTIONS: dict[str, ActionSpec] = {
     "health": ActionSpec("health", _v_health),
     "set-tdp": ActionSpec("set-tdp", _v_set_tdp, frozenset({"watts"})),
+    "rollback-tdp": ActionSpec("rollback-tdp", _v_rollback_tdp, frozenset({"operationId"})),
+    "recover-tdp": ActionSpec("recover-tdp", _v_recover_tdp),
     "set-gpu-clock": ActionSpec("set-gpu-clock", _v_set_gpu_clock, frozenset({"mhz"})),
     "write-sysctl": ActionSpec("write-sysctl", _v_write_sysctl, frozenset({"key", "value"})),
     "install-udev-rule": ActionSpec(

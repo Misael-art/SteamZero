@@ -24,6 +24,8 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 |---|---|---|
 | `health` | nenhum | somente leitura; versão, protocolo e UID efetivo |
 | `set-tdp` | watts: int 3..30 | range por modelo (LCD/OLED) |
+| `rollback-tdp` | operationId: ULID | restaura somente snapshot root associado |
+| `recover-tdp` | nenhum | restaura journals pending/rollback-failed |
 | `set-gpu-clock` | mhz: int em tabela por modelo | tabela embutida |
 | `install-udev-rule` | ruleId: enum de regras embutidas | conteúdo vem do binário, nunca do chamador |
 | `enable-system-unit` | unitId: enum de units embutidas | idem |
@@ -44,6 +46,10 @@ Lição do PhaseZero: o `pz_admin_run` (common.sh:39-52) escala **por comando in
 - O health também inventaria, somente em leitura, `slowPPT`/`fastPPT` do driver
   `amdgpu` e o `SCLK` anunciado pelo DRM. A UI recebe limites observados e o estado
   de convergência das duas rails, mas `manualWriteEnabled` permanece falso.
+- O motor interno de TDP já grava journal root `0600` antes da primeira rail,
+  verifica ambas, restaura o snapshot em falha e bloqueia novo apply quando há
+  operação interrompida. `rollback-tdp` e `recover-tdp` continuam sem transporte
+  público até a prova em VM descartável; `mutationsEnabled=false` é vinculante.
 
 ## Sandbox Flatpak (quando empacotado assim — ADR-0003)
 
