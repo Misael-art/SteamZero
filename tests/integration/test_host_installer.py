@@ -23,6 +23,26 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "share"
         / "applications"
         / "org.steamzero.SteamZero.desktop",
+        user_service=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "user"
+        / "steamzero-core.service",
+        user_socket=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "user"
+        / "steamzero-core.socket",
+        gamemode_session=tmp_path
+        / "usr"
+        / "local"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
     )
 
 
@@ -171,3 +191,30 @@ def test_manager_refuses_unmanaged_regular_file(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="gerenciador não gerenciado"):
         install_host._publish_manager(layout)
+
+
+def test_activation_publishes_and_removes_user_units_by_release_capability(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    modern = _release(layout, "release-modern")
+    core = modern / "venv" / "bin" / "steamzero-core"
+    core.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    core.chmod(0o755)
+    session = modern / "venv" / "bin" / "steamzero-gamemode-session"
+    session.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    session.chmod(0o755)
+    _release(layout, "release-legacy")
+
+    install_host._activate(layout, "release-modern")
+    assert "ListenStream=%t/steamzero/core.sock" in layout.user_socket.read_text()
+    assert str(layout.current / "venv" / "bin" / "steamzero-core") in (
+        layout.user_service.read_text()
+    )
+    assert "Name=SteamZero Game Mode" in layout.gamemode_session.read_text()
+    assert "phasezero" not in layout.gamemode_session.read_text().casefold()
+
+    install_host._activate(layout, "release-legacy")
+    assert not layout.user_service.exists()
+    assert not layout.user_socket.exists()
+    assert not layout.gamemode_session.exists()

@@ -99,6 +99,22 @@ def component_operation_path(operation_id: str) -> Path:
     return component_operations_dir() / f"{operation_id}.json"
 
 
+def steam_maintenance_plans_dir() -> Path:
+    return state_home() / "steam-maintenance-plans"
+
+
+def steam_maintenance_plan_path(plan_id: str) -> Path:
+    return steam_maintenance_plans_dir() / f"{plan_id}.json"
+
+
+def steam_maintenance_operations_dir() -> Path:
+    return state_home() / "steam-maintenance-operations"
+
+
+def steam_maintenance_operation_path(operation_id: str) -> Path:
+    return steam_maintenance_operations_dir() / f"{operation_id}.json"
+
+
 def state_db() -> Path:
     return state_home() / "state.db"
 

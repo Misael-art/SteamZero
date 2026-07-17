@@ -1,0 +1,30 @@
+# SteamZero Game Mode Session
+
+`steamzero-gamemode-session` é uma sessão SDDM independente. Ela verifica Steam, Gamescope
+e um launcher Plasma antes de iniciar. O argv do compositor é fechado:
+
+```text
+gamescope --steam -- steam -steamos3 -gamepadui
+```
+
+Ao sair, falhar ou receber um destino desconhecido, o Session Manager executa o fallback
+Plasma disponível (`startkde-biglinux wayland`, `startplasma-wayland` ou X11). Três falhas
+consecutivas nunca viram loop de login. `steamos-session-select` aceita apenas desktop,
+plasma, steam, gamepadui, reboot e shutdown; o alvo fica no runtime XDG 0700 e a Steam é
+encerrada sem shell.
+
+O launcher recusa ser iniciado sobre um Desktop existente, salvo no modo de teste
+explicitamente opt-in. A entrada instalada é **SteamZero Game Mode** e aponta apenas para a
+release ativa em `/opt/steamzero/current`; nenhum caminho ou serviço PhaseZero é consultado.
+
+## Boot direto
+
+Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. O SteamZero não altera
+GRUB para “iniciar SteamOS”. Autologin/seleção padrão no SDDM permanece `gated`: só pode ser
+implementado por um plano privilegiado depois de snapshot Btrfs restaurável, TTY testada,
+console remoto e watchdog de fallback. Até esse gate, escolha a sessão manualmente no SDDM.
+
+O Gamescope upstream se descreve como compositor da sessão SteamOS e documenta o modo
+embedded; a composição completa da sessão fora do SteamOS exige validação específica da
+distribuição e do hardware. Fonte primária:
+[ValveSoftware/gamescope](https://github.com/ValveSoftware/gamescope).

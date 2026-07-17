@@ -13,6 +13,8 @@ Desktop e usa `bigsudo` somente para publicar arquivos do sistema.
 | `/usr/local/bin/steamzero` | comando estável para o usuário |
 | `/usr/local/sbin/steamzero-host` | plano de gerenciamento estável: status e rollback |
 | `/usr/local/share/applications/org.steamzero.SteamZero.desktop` | lançador KDE |
+| `/usr/local/lib/systemd/user/steamzero-core.{socket,service}` | plano de controle user-scoped, socket-activated |
+| `/usr/local/share/wayland-sessions/steamzero-gamemode.desktop` | sessão Game Mode independente, selecionável no SDDM |
 
 Configurações e dados continuam nos diretórios XDG de cada usuário. O instalador
 não lê, migra nem apaga esses dados e não procura PhaseZero.
@@ -61,7 +63,7 @@ bigsudo /usr/bin/python3 tools/install_host.py install \
 ```
 
 A instalação é offline depois que o wheelhouse foi preparado. Ela copia os
-artefatos, cria um manifesto v2 com versão, commit e estado `clean`, instala as
+artefatos, cria um manifesto v3 com versão, commit e estado `clean`, instala as
 dependências exigindo os hashes, executa
 `pip check`, `steamzero --version` e `steamzero doctor --json`, e somente então
 troca `current`. Repetir o mesmo comando com a mesma release e hash é idempotente
@@ -72,11 +74,27 @@ execução só a reconstrói quando release e hash coincidem; divergências são
 recusadas. Arquivos preexistentes não gerenciados em `/usr/local` nunca são
 sobrescritos.
 
+Depois da primeira instalação, ative somente o socket do usuário corrente:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now steamzero-core.socket
+systemctl --user status steamzero-core.socket --no-pager
+steamzero-gamemode-session --check
+```
+
+O serviço sobe sob demanda. A sessão **SteamZero Game Mode** aparece no seletor do SDDM e
+sempre possui fallback para Plasma. O instalador não muda a sessão padrão, não habilita
+autologin e não toca no GRUB.
+
 ## Verificar
 
 ```bash
 steamzero --version
 steamzero doctor --json
+systemctl --user is-active steamzero-core.socket
+systemctl --user is-active steamzero-core.service
+steamzero-gamemode-session --check
 bigsudo /usr/local/sbin/steamzero-host status
 ```
 
@@ -92,6 +110,7 @@ As releases anteriores são retidas. Liste-as e ative uma versão verificada:
 ls -1 /opt/steamzero/releases
 bigsudo /usr/local/sbin/steamzero-host rollback --release RELEASE_ANTERIOR
 steamzero doctor --json
+systemctl --user daemon-reload
 ```
 
 O rollback altera o ponteiro `current`; não reinstala pacotes e não reverte dados
@@ -106,5 +125,8 @@ de backup/restauração antes de uma versão estável.
   de um assinador externo a ser selecionado antes do canal de release;
 - o instalador publica a aplicação e o lançador, mas não aplica automaticamente
   perfis de display/input nem instala componentes Flatpak;
+- boot direto em Game Mode continua bloqueado até snapshot Btrfs restaurável, TTY e console
+  remoto comprovados. Selecionar a sessão no SDDM é suportado; reconfigurar GRUB para uma
+  sessão gráfica não é o mecanismo correto e não é realizado;
 - a autorização permanece a cargo do agente polkit do KDE; senha nunca deve ser
   passada em argumento, arquivo ou chat.

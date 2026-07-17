@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 Item {
@@ -27,6 +28,12 @@ Item {
     signal launchOptionsPlanRequested(string gameId)
     signal launchOptionsApplyRequested(string planId, string confirmToken, string gameId)
     signal launchOptionsRollbackRequested(string operationId)
+    signal maintenancePlanRequested(string gameId, var categories)
+    signal maintenanceApplyRequested(string planId, string confirmToken, string confirmPhrase)
+    signal maintenanceRecoveryRequested()
+    signal mediaPlanRequested(string gameId, string accountId, string packagePath)
+    signal mediaApplyRequested(string planId, string confirmToken)
+    signal mediaRollbackRequested(string operationId)
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -45,6 +52,10 @@ Item {
     property bool initialized: false
     property var reviewedPlan: null
     property var launchOptionsPlan: null
+    property var maintenancePlan: null
+    property var mediaPlan: null
+    property string mediaPackagePath: ""
+    property string mediaLastOperationId: ""
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -55,6 +66,12 @@ Item {
     readonly property var launcher: gameplay && gameplay.launcher ? gameplay.launcher : ({})
     readonly property var launchConfiguration: launcher && launcher.configuration
         ? launcher.configuration : ({})
+    readonly property var maintenance: gameplay && gameplay.maintenance
+        ? gameplay.maintenance : ({"totalBytes": 0, "categories": [], "excluded": []})
+    readonly property var media: gameplay && gameplay.media
+        ? gameplay.media : ({"accounts": []})
+    readonly property var sessionManager: gameplay && gameplay.sessionManager
+        ? gameplay.sessionManager : ({"state": "degraded", "directBoot": {"state": "gated"}})
     readonly property var selectedGame: games.length > 0 && gameIndex < games.length
         ? games[gameIndex] : ({"id": "", "name": qsTr("Nenhum jogo instalado"), "coverUrl": ""})
 
@@ -143,6 +160,28 @@ Item {
     function showLaunchOptionsPlan(plan) {
         launchOptionsPlan = plan
         launchOptionsDialog.open()
+    }
+
+    function showMaintenancePlan(plan) {
+        maintenancePlan = plan
+        cleanupPhrase.text = ""
+        maintenanceDialog.open()
+    }
+
+    function showMediaPlan(plan) {
+        mediaPlan = plan
+        mediaDialog.open()
+    }
+
+    function formatBytes(value) {
+        const bytes = Number(value || 0)
+        if (bytes < 1024)
+            return bytes + " B"
+        if (bytes < 1024 * 1024)
+            return (bytes / 1024).toFixed(1) + " KiB"
+        if (bytes < 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
     }
 
     function choosePerformance(index) {
@@ -401,6 +440,121 @@ Item {
         }
     }
 
+    Dialog {
+        id: maintenanceDialog
+        modal: true
+        title: qsTr("Revisar limpeza segura")
+        width: Math.min(page.width - 48, 660)
+        x: (page.width - width) / 2
+        y: (page.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: page.raisedColor; radius: 10; border.color: page.amberColor; border.width: 2 }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: page.maintenancePlan
+                    ? qsTr("%1 serão liberados de caches regeneráveis.").arg(page.formatBytes(page.maintenancePlan.totalBytes))
+                    : ""
+                color: page.textColor
+                font.pixelSize: 18
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Compatdata, saves, jogos, Workshop e downloads nunca entram nesta operação. A Steam deve estar fechada.")
+                color: page.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Esta remoção não possui rollback porque o espaço é liberado de fato. Digite LIBERAR ESPACO para confirmar.")
+                color: page.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextField {
+                id: cleanupPhrase
+                placeholderText: "LIBERAR ESPACO"
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+                Accessible.name: qsTr("Frase de confirmação destrutiva")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: qsTr("Cancelar"); Layout.fillWidth: true; Layout.minimumHeight: 48; onClicked: maintenanceDialog.close() }
+                Button {
+                    text: qsTr("Liberar espaço")
+                    enabled: cleanupPhrase.text === "LIBERAR ESPACO"
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        page.maintenanceApplyRequested(
+                            page.maintenancePlan.planId,
+                            page.maintenancePlan.confirmToken,
+                            cleanupPhrase.text
+                        )
+                        maintenanceDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: mediaDialog
+        modal: true
+        title: qsTr("Aplicar pacote de mídia")
+        width: Math.min(page.width - 48, 660)
+        x: (page.width - width) / 2
+        y: (page.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: page.raisedColor; radius: 10; border.color: page.cyanColor; border.width: 2 }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: page.mediaPlan
+                    ? qsTr("Itens: %1 · variantes substituídas: %2").arg(page.mediaPlan.assets.join(", ")).arg(page.mediaPlan.replacedVariants)
+                    : ""
+                color: page.textColor
+                font.pixelSize: 17
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("A arte atual será preservada byte a byte e poderá ser restaurada. Nenhuma mídia é baixada pelo SteamZero.")
+                color: page.greenColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: qsTr("Cancelar"); Layout.fillWidth: true; Layout.minimumHeight: 48; onClicked: mediaDialog.close() }
+                Button {
+                    text: qsTr("Aplicar com rollback")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        page.mediaApplyRequested(page.mediaPlan.planId, page.mediaPlan.confirmToken)
+                        mediaDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    FolderDialog {
+        id: mediaFolderDialog
+        title: qsTr("Selecionar pacote local de mídia")
+        onAccepted: {
+            const encoded = selectedFolder.toString().replace(/^file:\/\//, "")
+            page.mediaPackagePath = decodeURIComponent(encoded)
+        }
+    }
+
     ScrollView {
         id: gameplayScroll
         anchors.top: parent.top
@@ -518,7 +672,7 @@ Item {
                     Layout.rightMargin: 12
                 }
                 Repeater {
-                    model: [qsTr("Desempenho e LSFG"), qsTr("Controles")]
+                    model: [qsTr("Desempenho e LSFG"), qsTr("Controles"), qsTr("Biblioteca")]
                     delegate: Button {
                         required property int index
                         required property string modelData
@@ -1113,6 +1267,215 @@ Item {
                 }
             }
 
+            Rectangle {
+                visible: page.workspaceIndex === 2
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.minimumHeight: 78
+                color: page.sessionManager.state === "ready" ? "#0c2a21" : "#24180b"
+                border.color: page.sessionManager.state === "ready" ? page.greenColor : page.amberColor
+                radius: 8
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    ToolButton { enabled: false; icon.name: "system-switch-user"; icon.color: page.greenColor; background: Item {} }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Label { text: qsTr("SteamZero Game Mode"); color: page.textColor; font.pixelSize: 17; font.bold: true }
+                        Label {
+                            text: page.sessionManager.state === "ready"
+                                ? qsTr("Sessão independente pronta no SDDM, com fallback automático para o Desktop.")
+                                : qsTr("Steam, Gamescope ou fallback Plasma ainda não está disponível.")
+                            color: page.mutedColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                    Label {
+                        text: page.sessionManager.statusLabel || qsTr("Verificando")
+                        color: page.sessionManager.state === "ready" ? page.greenColor : page.amberColor
+                        font.bold: true
+                    }
+                    Label {
+                        text: qsTr("Boot direto: protegido")
+                        color: page.amberColor
+                        font.bold: true
+                    }
+                }
+            }
+
+            RowLayout {
+                visible: page.workspaceIndex === 2
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.bottomMargin: 20
+                spacing: 14
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 360
+                    color: page.surfaceColor
+                    border.color: page.borderColor
+                    radius: 9
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 18
+                        spacing: 12
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ToolButton { enabled: false; icon.name: "edit-clear-all"; icon.color: page.cyanColor; background: Item {} }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Limpeza e manutenção"); color: page.textColor; font.pixelSize: 19; font.bold: true }
+                                Label { text: qsTr("Somente caches regeneráveis do jogo selecionado"); color: page.mutedColor }
+                            }
+                            Label {
+                                text: page.formatBytes(page.maintenance.totalBytes)
+                                color: page.maintenance.totalBytes > 0 ? page.cyanColor : page.greenColor
+                                font.pixelSize: 20
+                                font.bold: true
+                            }
+                        }
+                        Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+                        Repeater {
+                            model: page.maintenance.categories || []
+                            delegate: RowLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 48
+                                CheckBox {
+                                    checked: modelData.id === "shader-cache"
+                                    enabled: false
+                                    Accessible.name: modelData.id
+                                }
+                                Label {
+                                    text: modelData.id === "shader-cache" ? qsTr("Shader cache") : qsTr("Crash dumps")
+                                    color: page.textColor
+                                    Layout.fillWidth: true
+                                }
+                                Label { text: page.formatBytes(modelData.sizeBytes); color: page.mutedColor }
+                            }
+                        }
+                        Label {
+                            text: qsTr("Protegidos: compatdata, saves, conteúdo dos jogos, Workshop e downloads.")
+                            color: page.greenColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Item { Layout.fillHeight: true }
+                        Button {
+                            visible: Boolean(page.maintenance.recoveryRequired)
+                            text: qsTr("Concluir limpeza interrompida")
+                            icon.name: "view-refresh"
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 48
+                            Accessible.name: text
+                            onClicked: page.maintenanceRecoveryRequested()
+                        }
+                        Button {
+                            text: page.maintenance.steamRunning ? qsTr("Feche a Steam") : qsTr("Revisar limpeza")
+                            enabled: !page.maintenance.steamRunning
+                                && page.maintenance.totalBytes > 0
+                                && Boolean(page.selectedGame.id)
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 50
+                            Accessible.name: text
+                            onClicked: page.maintenancePlanRequested(
+                                String(page.selectedGame.id), ["shader-cache"]
+                            )
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 360
+                    color: page.surfaceColor
+                    border.color: page.borderColor
+                    radius: 9
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 18
+                        spacing: 12
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ToolButton { enabled: false; icon.name: "image-x-generic"; icon.color: page.cyanColor; background: Item {} }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Pacote de mídia"); color: page.textColor; font.pixelSize: 19; font.bold: true }
+                                Label { text: qsTr("Grade, retrato, hero e logo locais"); color: page.mutedColor }
+                            }
+                            Label { text: "G-FULL"; color: page.greenColor; font.bold: true }
+                        }
+                        Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+                        Label { text: qsTr("Conta Steam"); color: page.mutedColor }
+                        ComboBox {
+                            id: mediaAccountPicker
+                            model: page.media.accounts || []
+                            textRole: "label"
+                            enabled: count > 0
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 48
+                            Accessible.name: qsTr("Selecionar conta Steam para a mídia")
+                        }
+                        Label { text: qsTr("Pasta do pacote"); color: page.mutedColor }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            TextField {
+                                text: page.mediaPackagePath || qsTr("Nenhuma pasta selecionada")
+                                readOnly: true
+                                color: page.mediaPackagePath ? page.textColor : page.mutedColor
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Caminho do pacote local")
+                            }
+                            Button {
+                                text: qsTr("Escolher")
+                                icon.name: "folder-open"
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Escolher pasta do pacote de mídia")
+                                onClicked: mediaFolderDialog.open()
+                            }
+                        }
+                        Label {
+                            text: qsTr("Arquivos aceitos: grid, portrait, hero e logo em PNG, JPG ou WebP. Fonte somente local.")
+                            color: page.mutedColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Item { Layout.fillHeight: true }
+                        Button {
+                            visible: Boolean(page.mediaLastOperationId)
+                            text: qsTr("Restaurar mídia anterior")
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 48
+                            Accessible.name: text
+                            onClicked: page.mediaRollbackRequested(page.mediaLastOperationId)
+                        }
+                        Button {
+                            text: page.media.steamRunning ? qsTr("Feche a Steam") : qsTr("Revisar pacote")
+                            enabled: !page.media.steamRunning
+                                && page.mediaPackagePath.length > 0
+                                && mediaAccountPicker.count > 0
+                                && Boolean(page.selectedGame.id)
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 50
+                            Accessible.name: text
+                            onClicked: page.mediaPlanRequested(
+                                String(page.selectedGame.id),
+                                String(page.media.accounts[mediaAccountPicker.currentIndex].id),
+                                page.mediaPackagePath
+                            )
+                        }
+                    }
+                }
+            }
+
         }
     }
 
@@ -1121,7 +1484,8 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        height: 78
+        visible: page.workspaceIndex !== 2
+        height: visible ? 78 : 0
         color: page.backgroundColor
         border.color: page.borderColor
         z: 3

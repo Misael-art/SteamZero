@@ -11,6 +11,7 @@ import shutil
 import subprocess
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -170,6 +171,38 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/steam/gameplay/launch-options/rollback":
             return self._dashboard().rollback_steam_launch_options(
+                self._required_string(payload, "operationId")
+            )
+        if path == "/steam/maintenance/plan":
+            raw_categories = payload.get("categories")
+            if not isinstance(raw_categories, list) or not all(
+                isinstance(value, str) for value in raw_categories
+            ):
+                raise ValueError("campo obrigatório: categories")
+            return self._dashboard().plan_steam_maintenance(
+                self._required_string(payload, "gameId"), raw_categories
+            )
+        if path == "/steam/maintenance/apply":
+            return self._dashboard().apply_steam_maintenance(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+                self._required_string(payload, "confirmPhrase"),
+            )
+        if path == "/steam/maintenance/recover":
+            return self._dashboard().recover_steam_maintenance()
+        if path == "/steam/media/plan":
+            return self._dashboard().plan_steam_media(
+                self._required_string(payload, "gameId"),
+                self._required_string(payload, "accountId"),
+                Path(self._required_string(payload, "packagePath")),
+            )
+        if path == "/steam/media/apply":
+            return self._dashboard().apply_steam_media(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/steam/media/rollback":
+            return self._dashboard().rollback_steam_media(
                 self._required_string(payload, "operationId")
             )
         if path == "/system/lsfg/plan":

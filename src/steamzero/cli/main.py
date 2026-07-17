@@ -10,6 +10,7 @@ stderr). Exit codes estáveis (CLI-CONTRACT §Convenções).
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -531,6 +532,12 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write("\n" + _USAGE)
         return EXIT_USAGE
 
+    daemon_result = _try_daemon(domain, action, rest, correlation_id)
+    if daemon_result is not None:
+        env, code = daemon_result
+        _emit(env, json_out=json_out)
+        return code
+
     try:
         env, code = handler(rest, correlation_id)
     except SteamZeroError as exc:
@@ -565,6 +572,42 @@ def main(argv: list[str] | None = None) -> int:
 
     _emit(env, json_out=json_out)
     return code
+
+
+def _try_daemon(
+    domain: str, action: str | None, args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int] | None:
+    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente."""
+    if os.environ.get("STEAMZERO_NO_DAEMON") == "1":
+        return None
+    from steamzero.service.client import CoreProtocolError, CoreUnavailable, invoke
+    from steamzero.service.methods import CLI_METHODS, InvalidParams
+
+    spec = CLI_METHODS.get((domain, action))
+    if spec is None:
+        return None
+    try:
+        params = spec.args_to_params(args, correlation_id)
+    except InvalidParams:
+        # A CLI local pode ter uma opção deliberadamente não exposta pelo daemon.
+        return None
+    try:
+        invocation = invoke(spec.method, params)
+    except CoreUnavailable:
+        return None
+    except CoreProtocolError as exc:
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    return invocation.envelope, invocation.exit_code
 
 
 if __name__ == "__main__":

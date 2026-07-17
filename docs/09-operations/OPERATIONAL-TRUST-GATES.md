@@ -12,7 +12,7 @@ foi executada.
 | G3 — CI real | **implementado, ainda não executado remotamente** | 3.11/3.12/3.14, clean wheel smoke e containers Ubuntu/Arch/Manjaro verdes no provedor |
 | G4 — supply chain | **validado localmente; assinatura pendente** | locks/hashes, OSV, SBOM e proveniência verdes; assinatura verificável definida para o remoto privado |
 | G5 — M10 real | **pendente** | VM descartável prova install/update/rollback de Dolphin e RetroArch; DuckStation usa fonte suportada e pinada |
-| G6 — plano de controle | **parcial: lifecycle Steam persistente** | reconciliador user-scoped, IPC autenticado e polkit mínimo ainda pendentes; `game_session`, exclusividade, eventos e recovery do launcher verdes |
+| G6 — plano de controle | **parcial: daemon/IPC e lifecycle Steam implementados** | `steamzero-core` user-scoped, socket UNIX 0600, `SO_PEERCRED`, allowlist e fallback CLI estão verdes; reconciliador contínuo e polkit mínimo ainda pendem |
 | G7 — hardware Deck | **pendente** | protocolo abaixo executado para KScreen/KWin, dock/hotplug, suspend, storage, TDP e rollback |
 | G8 — UI/Game Mode/release | **congelado** | somente abre após G0–G7, incluindo testes QML, focus graph, acessibilidade, Flatpak, canais e assinatura |
 

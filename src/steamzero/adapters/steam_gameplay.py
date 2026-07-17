@@ -24,6 +24,9 @@ from typing import Any
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
 from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
 from steamzero.adapters.steam_launcher import SteamGameLauncher
+from steamzero.adapters.steam_maintenance import SteamMaintenance
+from steamzero.adapters.steam_media import SteamMediaManager
+from steamzero.adapters.steam_session import readiness as session_readiness
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
@@ -112,6 +115,8 @@ class SteamGameplayController:
         lsfg_installer: LsfgInstaller | None = None,
         launcher: SteamGameLauncher | None = None,
         launch_options: SteamLaunchOptionsManager | None = None,
+        maintenance: SteamMaintenance | None = None,
+        media: SteamMediaManager | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -135,6 +140,8 @@ class SteamGameplayController:
             lsfg_manifests=self._lsfg_manifests,
         )
         self._launch_options = launch_options or SteamLaunchOptionsManager(roots=self._roots)
+        self._maintenance = maintenance or SteamMaintenance(roots=self._roots)
+        self._media = media or SteamMediaManager(roots=self._roots)
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -200,6 +207,9 @@ class SteamGameplayController:
                 {"id": "performance", "label": "Desempenho", "fps": 60},
             ],
             "lsfgInstaller": self._lsfg.status(),
+            "maintenance": self._maintenance.snapshot(selected_id),
+            "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
+            "sessionManager": session_readiness(which=self._which),
         }
 
     def plan_lsfg_install(self) -> dict[str, Any]:
@@ -333,6 +343,26 @@ class SteamGameplayController:
 
     def rollback_launch_options(self, operation_id: str) -> dict[str, Any]:
         return self._launch_options.rollback(operation_id)
+
+    def plan_maintenance(self, game_id: str, categories: Sequence[str]) -> dict[str, Any]:
+        return self._maintenance.plan(categories, game_id)
+
+    def apply_maintenance(
+        self, plan_id: str, confirm_token: str, confirm_phrase: str
+    ) -> dict[str, Any]:
+        return self._maintenance.apply(plan_id, confirm_token, confirm_phrase)
+
+    def recover_maintenance(self) -> dict[str, Any]:
+        return self._maintenance.recover()
+
+    def plan_media(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
+        return self._media.plan(game_id, account_id, package_dir)
+
+    def apply_media(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._media.apply(plan_id, confirm_token)
+
+    def rollback_media(self, operation_id: str) -> dict[str, Any]:
+        return self._media.rollback(operation_id)
 
     @staticmethod
     def safe_profile(game_id: str) -> dict[str, Any]:

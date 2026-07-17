@@ -91,3 +91,7 @@ for interrompida, o recovery transacional geral continua sendo a fonte de verdad
 O fluxo está coberto por arquivos Steam sintéticos e o host real foi consultado somente
 em modo read-only. O ciclo físico configurar → abrir Steam → lançar jogo → fechar →
 desfazer permanece pendente para uma bancada descartável com snapshot.
+
+Manutenção de cache, pacote de mídia e a sessão Game Mode independente são descritos em
+`STEAM-MAINTENANCE-AND-MEDIA.md` e `STEAM-GAMEMODE-SESSION.md`. Eles não ampliam o launcher
+com acesso a GRUB, compatdata ou shell.

@@ -771,3 +771,29 @@ runtime legado ativo. A migração v4 não foi aplicada ao host nesta sessão.
 state/session/launcher a 93%. Ruff, mypy estrito, fronteiras e independência verdes.
 
 **Versão:** a árvore passa a `0.1.0a7`; nenhum artefato reutiliza `0.1.0a6`.
+
+## 2026-07-17 — Sessão 18: plano de controle e gestão Steam resiliente
+
+**Daemon/IPC:** entrou `steamzero-core`, user-scoped e socket-activated, com JSON-RPC 2.0
+em socket UNIX 0600, diretório 0700, `SO_PEERCRED`, limite de mensagem/conexão/mutações e
+dispatch por allowlist. A CLI prefere IPC e só cai para in-process antes de conectar; uma
+resposta ambígua nunca repete mutação. O instalador publica units systemd user e valida os
+novos entry points sem abrir TCP ou depender de PhaseZero.
+
+**Gestão Steam:** a área Biblioteca ganhou limpeza real de shader cache com frase
+destrutiva, fingerprint, rename atômico e recovery pós-crash. Compatdata, saves, jogos,
+Workshop e downloads são exclusões invariantes. Pacotes locais de grid/portrait/hero/logo
+passam por magic bytes, conta explícita, transação G-FULL e rollback byte-idêntico.
+
+**Sessão:** `steamzero-gamemode-session` fornece uma entrada SDDM própria, argv fechado de
+Gamescope/Steam e fallback automático para Plasma. O host revelou que a única sessão
+console existente apontava para `/usr/local/lib/phasezero`; a nova sessão não usa esse
+arquivo. Boot direto continua protegido porque GRUB não seleciona sessões gráficas e o
+protocolo snapshot+TTY+console remoto ainda não foi cumprido.
+
+**Versão:** a árvore passa a `0.1.0a8`; manifesto host v3 associa daemon e Session Manager
+ao mesmo wheel/commit.
+
+**Gate local:** **475 passed / 85%** (6582 statements, 806 misses, 1734 branches);
+Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A evidência da
+instalação no host é associada ao commit exato no fechamento operacional desta sessão.

@@ -1478,6 +1478,56 @@ ApplicationWindow {
                                         root.refreshStatus(response.message || qsTr("Configuração restaurada"))
                                     })
                                 }
+                                onMaintenancePlanRequested: function(gameId, categories) {
+                                    root.request("POST", "/steam/maintenance/plan", {
+                                        "gameId": gameId,
+                                        "categories": categories
+                                    }, function(response) {
+                                        steamGameplayPage.showMaintenancePlan(response)
+                                    })
+                                }
+                                onMaintenanceApplyRequested: function(planId, confirmToken, confirmPhrase) {
+                                    root.request("POST", "/steam/maintenance/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken,
+                                        "confirmPhrase": confirmPhrase
+                                    }, function(response) {
+                                        root.refreshStatus(qsTr("%1 liberados com segurança").arg(
+                                            steamGameplayPage.formatBytes(response.freedBytes)
+                                        ))
+                                    })
+                                }
+                                onMaintenanceRecoveryRequested: {
+                                    root.request("POST", "/steam/maintenance/recover", {}, function() {
+                                        root.refreshStatus(qsTr("Limpeza interrompida concluída"))
+                                    })
+                                }
+                                onMediaPlanRequested: function(gameId, accountId, packagePath) {
+                                    root.request("POST", "/steam/media/plan", {
+                                        "gameId": gameId,
+                                        "accountId": accountId,
+                                        "packagePath": packagePath
+                                    }, function(response) {
+                                        steamGameplayPage.showMediaPlan(response)
+                                    })
+                                }
+                                onMediaApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/steam/media/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function(response) {
+                                        steamGameplayPage.mediaLastOperationId = response.operationId || ""
+                                        root.refreshStatus(response.message || qsTr("Pacote de mídia aplicado"))
+                                    })
+                                }
+                                onMediaRollbackRequested: function(operationId) {
+                                    root.request("POST", "/steam/media/rollback", {
+                                        "operationId": operationId
+                                    }, function() {
+                                        steamGameplayPage.mediaLastOperationId = ""
+                                        root.refreshStatus(qsTr("Mídia anterior restaurada"))
+                                    })
+                                }
                             }
                             ColumnLayout {
                                 visible: false

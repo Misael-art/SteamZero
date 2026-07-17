@@ -18,6 +18,7 @@ from steamzero.cli import main as cli
 @pytest.fixture(autouse=True)
 def state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("STEAMZERO_NO_DAEMON", "1")
     return tmp_path
 
 

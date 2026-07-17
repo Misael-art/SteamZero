@@ -46,6 +46,9 @@ class Layout:
     command: Path = Path("/usr/local/bin/steamzero")
     manager: Path = Path("/usr/local/sbin/steamzero-host")
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
+    user_service: Path = Path("/usr/local/lib/systemd/user/steamzero-core.service")
+    user_socket: Path = Path("/usr/local/lib/systemd/user/steamzero-core.socket")
+    gamemode_session: Path = Path("/usr/local/share/wayland-sessions/steamzero-gamemode.desktop")
 
     @property
     def releases(self) -> Path:
@@ -257,11 +260,104 @@ X-SteamZero-Managed=true
 """
 
 
+def _service_unit(layout: Layout) -> str:
+    executable = layout.current / "venv" / "bin" / "steamzero-core"
+    return f"""# SteamZero-Host-Managed: true
+[Unit]
+Description=SteamZero user control plane
+Documentation=https://github.com/Misael-art/SteamZero
+Requires=steamzero-core.socket
+After=steamzero-core.socket
+
+[Service]
+Type=simple
+ExecStart={executable} --systemd
+Environment=PYTHONNOUSERSITE=1
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true
+"""
+
+
+def _socket_unit() -> str:
+    return """# SteamZero-Host-Managed: true
+[Unit]
+Description=SteamZero local user socket
+
+[Socket]
+ListenStream=%t/steamzero/core.sock
+SocketMode=0600
+DirectoryMode=0700
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target
+"""
+
+
+def _gamemode_session_entry(layout: Layout) -> str:
+    executable = layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    return f"""[Desktop Entry]
+Name=SteamZero Game Mode
+Comment=Sessão Steam em Gamescope com fallback seguro para o Desktop
+Exec={executable}
+TryExec={executable}
+Type=Application
+DesktopNames=gamescope
+X-SteamZero-Managed=true
+"""
+
+
+def _managed_unit(path: Path) -> bool:
+    if not path.exists() and not path.is_symlink():
+        return True
+    if path.is_symlink() or not path.is_file():
+        return False
+    try:
+        return _MANAGER_MARKER in path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+
+def _sync_user_units(layout: Layout, release_path: Path) -> None:
+    for path in (layout.user_service, layout.user_socket):
+        if not _managed_unit(path):
+            raise RuntimeError(f"recusando substituir unidade não gerenciada: {path}")
+    core = release_path / "venv" / "bin" / "steamzero-core"
+    if core.is_file() and not core.is_symlink() and os.access(core, os.X_OK):
+        _atomic_text(layout.user_service, _service_unit(layout))
+        _atomic_text(layout.user_socket, _socket_unit())
+        return
+    for path in (layout.user_service, layout.user_socket):
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+
+
+def _sync_gamemode_session(layout: Layout, release_path: Path) -> None:
+    if not _managed_desktop(layout.gamemode_session):
+        raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
+    executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
+    if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+        _atomic_text(layout.gamemode_session, _gamemode_session_entry(layout))
+        return
+    with contextlib.suppress(FileNotFoundError):
+        layout.gamemode_session.unlink()
+
+
 def _verify_release(release_path: Path, *, expected_release: str | None = None) -> dict[str, Any]:
     if release_path.is_symlink() or not release_path.is_dir():
         raise RuntimeError(f"diretório de release inválido: {release_path}")
     manifest_path = release_path / "manifest.json"
     executable = release_path / "venv" / "bin" / "steamzero"
+    core_executable = release_path / "venv" / "bin" / "steamzero-core"
+    session_executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
     installer = release_path / "artifacts" / _INSTALLER_NAME
     if not manifest_path.is_file() or manifest_path.is_symlink():
         raise RuntimeError(f"manifesto ausente em {release_path}")
@@ -275,9 +371,9 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
     data: dict[str, Any] = loaded
     expected = expected_release or release_path.name
     schema_version = data.get("schemaVersion")
-    if schema_version not in {1, 2} or data.get("release") != expected:
+    if schema_version not in {1, 2, 3} or data.get("release") != expected:
         raise RuntimeError("manifesto da release não corresponde ao diretório")
-    if schema_version == 2:
+    if schema_version in {2, 3}:
         source_commit = data.get("sourceCommit")
         package_version = data.get("packageVersion")
         if (
@@ -292,6 +388,18 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             raise RuntimeError("proveniência inválida no manifesto v2") from exc
         if canonical != expected:
             raise RuntimeError("release não corresponde à versão e ao commit de origem")
+    if schema_version == 3 and (
+        not core_executable.is_file()
+        or core_executable.is_symlink()
+        or not os.access(core_executable, os.X_OK)
+    ):
+        raise RuntimeError(f"daemon inválido em {release_path}")
+    if schema_version == 3 and (
+        not session_executable.is_file()
+        or session_executable.is_symlink()
+        or not os.access(session_executable, os.X_OK)
+    ):
+        raise RuntimeError(f"Session Manager inválido em {release_path}")
     wheel_file = data.get("wheelFile")
     if not isinstance(wheel_file, str) or Path(wheel_file).name != wheel_file:
         raise RuntimeError("nome do wheel inválido no manifesto")
@@ -308,7 +416,7 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
         if not isinstance(expected_hash, str) or _sha256(artifact) != expected_hash:
             raise RuntimeError(f"integridade inválida: {label}")
     if os.geteuid() == 0:
-        for protected in (
+        protected_paths = [
             release_path,
             release_path / "artifacts",
             release_path / "venv",
@@ -317,7 +425,10 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             wheel,
             requirements,
             installer,
-        ):
+        ]
+        if schema_version == 3:
+            protected_paths.extend((core_executable, session_executable))
+        for protected in protected_paths:
             stat = protected.stat()
             if stat.st_uid != 0 or stat.st_mode & 0o022:
                 raise RuntimeError(f"permissões inseguras em {protected}")
@@ -333,6 +444,9 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             "PYTHONNOUSERSITE": "1",
         }
         version = _run([str(executable), "--version"], env=environment).stdout.strip()
+        if schema_version == 3:
+            _run([str(core_executable), "--help"], env=environment)
+            _run([str(session_executable), "--help"], env=environment)
         doctor = _run([str(executable), "doctor", "--json"], env=environment)
         payload = json.loads(doctor.stdout)
         if (
@@ -354,11 +468,23 @@ def _activate(layout: Layout, release: str) -> None:
         raise RuntimeError(f"recusando substituir arquivo não gerenciado: {layout.command}")
     if not _managed_desktop(layout.desktop):
         raise RuntimeError(f"recusando substituir desktop entry não gerenciada: {layout.desktop}")
+    for unit in (layout.user_service, layout.user_socket):
+        if not _managed_unit(unit):
+            raise RuntimeError(f"recusando substituir unidade não gerenciada: {unit}")
+    if not _managed_desktop(layout.gamemode_session):
+        raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)
     previous_desktop = layout.desktop.read_bytes() if layout.desktop.is_file() else None
+    previous_service = layout.user_service.read_bytes() if layout.user_service.is_file() else None
+    previous_socket = layout.user_socket.read_bytes() if layout.user_socket.is_file() else None
+    previous_session = (
+        layout.gamemode_session.read_bytes() if layout.gamemode_session.is_file() else None
+    )
     try:
+        _sync_user_units(layout, target)
+        _sync_gamemode_session(layout, target)
         _atomic_symlink(layout.command, str(layout.current / "venv" / "bin" / "steamzero"))
         _atomic_text(layout.desktop, _desktop_entry(layout.command))
         # Único ponto que publica uma versão nova; os demais links são estáveis.
@@ -371,7 +497,18 @@ def _activate(layout: Layout, release: str) -> None:
                 layout.desktop.unlink()
         else:
             _atomic_text(layout.desktop, previous_desktop.decode("utf-8"))
+        _restore_managed_text(layout.user_service, previous_service)
+        _restore_managed_text(layout.user_socket, previous_socket)
+        _restore_managed_text(layout.gamemode_session, previous_session)
         raise
+
+
+def _restore_managed_text(path: Path, content: bytes | None) -> None:
+    if content is None:
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+    else:
+        _atomic_text(path, content.decode("utf-8"))
 
 
 def _restore_link(path: Path, target: str | None) -> None:
@@ -507,7 +644,7 @@ def install(
         )
         _run([str(pip), "check"])
         manifest: dict[str, Any] = {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "release": release,
             "packageVersion": package_version,
             "sourceCommit": source_commit,

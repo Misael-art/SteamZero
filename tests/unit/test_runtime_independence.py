@@ -96,5 +96,19 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Configurar na Steam",
         "Configurar e verificar",
         "Desfazer configuração",
+        "Limpeza e manutenção",
+        "Pacote de mídia",
+        "SteamZero Game Mode",
+        "Boot direto: protegido",
     ):
         assert contract in gameplay_qml
+    main_qml = (root / "src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
+    for route in (
+        '"/steam/maintenance/plan"',
+        '"/steam/maintenance/apply"',
+        '"/steam/maintenance/recover"',
+        '"/steam/media/plan"',
+        '"/steam/media/apply"',
+        '"/steam/media/rollback"',
+    ):
+        assert route in main_qml

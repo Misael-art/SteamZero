@@ -335,6 +335,26 @@ class DesktopDashboard:
     def rollback_steam_launch_options(self, operation_id: str) -> dict[str, Any]:
         return self._gameplay.rollback_launch_options(operation_id)
 
+    def plan_steam_maintenance(self, game_id: str, categories: Sequence[str]) -> dict[str, Any]:
+        return self._gameplay.plan_maintenance(game_id, categories)
+
+    def apply_steam_maintenance(
+        self, plan_id: str, confirm_token: str, confirm_phrase: str
+    ) -> dict[str, Any]:
+        return self._gameplay.apply_maintenance(plan_id, confirm_token, confirm_phrase)
+
+    def recover_steam_maintenance(self) -> dict[str, Any]:
+        return self._gameplay.recover_maintenance()
+
+    def plan_steam_media(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
+        return self._gameplay.plan_media(game_id, account_id, package_dir)
+
+    def apply_steam_media(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._gameplay.apply_media(plan_id, confirm_token)
+
+    def rollback_steam_media(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_media(operation_id)
+
     def plan_lsfg_install(self) -> dict[str, Any]:
         return self._gameplay.plan_lsfg_install()
 
