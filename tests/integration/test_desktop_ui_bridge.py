@@ -128,6 +128,18 @@ class FakeDashboard:
         self.calls.append(("gameplay-apply", plan_id, confirm_token))
         return {"status": "saved"}
 
+    def plan_lsfg_install(self) -> dict[str, object]:
+        self.calls.append(("lsfg-plan",))
+        return {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"}
+
+    def apply_lsfg_install(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("lsfg-apply", plan_id, confirm_token))
+        return {"status": "installed", "operationId": "lsfg-operation"}
+
+    def rollback_lsfg_install(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("lsfg-rollback", operation_id))
+        return {"status": "rolled-back"}
+
 
 @pytest.fixture
 def bridge(tmp_path: Path) -> tuple[str, str]:
@@ -376,6 +388,23 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/steam/gameplay/apply",
         {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
     )
+    lsfg_plan = request_json(base, token, "/system/lsfg/plan", {})
+    assert lsfg_plan["plan"] == {
+        "planId": "lsfg-plan",
+        "confirmToken": "lsfg-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/system/lsfg/apply",
+        {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"},
+    )
+    request_json(
+        base,
+        token,
+        "/system/lsfg/rollback",
+        {"operationId": "lsfg-operation"},
+    )
     assert dashboard.calls == [
         ("plan", "dolphin"),
         ("apply", "component-plan", "confirm"),
@@ -384,6 +413,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("steam-input", "10"),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
+        ("lsfg-plan",),
+        ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
+        ("lsfg-rollback", "lsfg-operation"),
     ]
 
 

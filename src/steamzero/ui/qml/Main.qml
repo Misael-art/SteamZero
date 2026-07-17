@@ -98,7 +98,8 @@ ApplicationWindow {
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
         "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
-        "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"}
+        "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
+        "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}
     })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
@@ -107,6 +108,8 @@ ApplicationWindow {
     readonly property var steamGameplayData: desktopStatus.dashboard
         && desktopStatus.dashboard.steamGameplay
         ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
+    readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
+        ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
     readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
@@ -124,6 +127,8 @@ ApplicationWindow {
     property var currentPlan: null
     property var conflictPlan: null
     property var componentPlan: null
+    property var lsfgPlan: null
+    property string lsfgLastOperationId: ""
     property string apiUrl: ""
     property string apiToken: ""
     property string lastRequest: ""
@@ -369,6 +374,13 @@ ApplicationWindow {
         })
     }
 
+    function beginLsfgInstall() {
+        request("POST", "/system/lsfg/plan", {}, function(response) {
+            lsfgPlan = response.plan
+            lsfgDialog.open()
+        })
+    }
+
     function openKeyboard() {
         keyboardRequested()
         request("POST", "/keyboard", {}, function(response) {
@@ -565,6 +577,100 @@ ApplicationWindow {
                         }, function(response) {
                             resetDialog.close()
                             root.refreshStatus(qsTr("Quick Reset concluído"))
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: lsfgDialog
+        title: qsTr("Preparar LSFG-VK")
+        modal: true
+        width: Math.min(root.width - 48, 720)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanColor
+            border.width: 2
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("Instalação no usuário, sem sudo, usando somente o release oficial pinado.")
+                color: root.textColor
+                font.pixelSize: 17
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: qsTr("Versão"); color: root.mutedColor; Layout.preferredWidth: 100 }
+                Label { text: root.lsfgPlan ? root.lsfgPlan.version : "—"; color: root.textColor; font.bold: true }
+                Item { Layout.fillWidth: true }
+                Label { text: "G-FULL"; color: root.greenColor; font.bold: true }
+            }
+            TextArea {
+                text: root.lsfgPlan ? root.lsfgPlan.changes.join("\n") : ""
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                color: root.textColor
+                background: Rectangle {
+                    color: root.backgroundColor
+                    radius: 8
+                    border.color: root.borderColor
+                }
+                Layout.fillWidth: true
+                Layout.minimumHeight: 104
+                Accessible.name: qsTr("Arquivos que serão instalados")
+            }
+            Label {
+                text: root.lsfgPlan
+                    ? qsTr("SHA-256 do arquivo: %1").arg(root.lsfgPlan.sha256)
+                    : ""
+                color: root.mutedColor
+                font.family: "monospace"
+                font.pixelSize: 11
+                wrapMode: Text.WrapAnywhere
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Lossless Scaling continua sendo fornecido pela Steam e não é copiado pelo SteamZero.")
+                color: root.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: lsfgDialog.close()
+                }
+                Button {
+                    text: qsTr("Instalar e verificar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        if (!root.lsfgPlan)
+                            return
+                        root.request("POST", "/system/lsfg/apply", {
+                            "planId": root.lsfgPlan.planId,
+                            "confirmToken": root.lsfgPlan.confirmToken
+                        }, function(response) {
+                            root.lsfgLastOperationId = response.operationId || ""
+                            root.lsfgPlan = null
+                            lsfgDialog.close()
+                            root.refreshStatus(response.message || qsTr("LSFG-VK preparado"))
                         })
                     }
                 }
@@ -1749,6 +1855,118 @@ ApplicationWindow {
                                             Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: 12 }
                                         }
                                         Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
+                                    }
+                                }
+                                Label {
+                                    text: qsTr("Componentes de gameplay")
+                                    color: root.textColor
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    Layout.leftMargin: 28
+                                }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 8
+                                    border.color: root.lsfgSystemData.state === "ready"
+                                        ? root.greenColor
+                                        : root.lsfgSystemData.state === "degraded"
+                                        ? root.amberColor : root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 116
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 18
+                                        spacing: 16
+                                        ToolButton {
+                                            enabled: false
+                                            icon.name: "view-media-visualization"
+                                            icon.color: root.lsfgSystemData.state === "ready"
+                                                ? root.greenColor : root.cyanColor
+                                            icon.width: 30
+                                            icon.height: 30
+                                            background: Item {}
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 3
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "LSFG-VK"
+                                                    color: root.textColor
+                                                    font.pixelSize: 18
+                                                    font.bold: true
+                                                }
+                                                Label {
+                                                    text: root.lsfgSystemData.statusLabel
+                                                    color: root.lsfgSystemData.state === "ready"
+                                                        ? root.greenColor : root.amberColor
+                                                    font.bold: true
+                                                }
+                                            }
+                                            Label {
+                                                text: root.lsfgSystemData.detail
+                                                color: root.mutedColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                text: root.lsfgSystemData.losslessScalingInstalled
+                                                    ? qsTr("Lossless Scaling detectado na Steam")
+                                                    : qsTr("Requer Lossless Scaling instalado pela Steam")
+                                                color: root.lsfgSystemData.losslessScalingInstalled
+                                                    ? root.greenColor : root.amberColor
+                                                font.pixelSize: 11
+                                            }
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state !== "ready"
+                                                && !root.lsfgSystemData.losslessScalingInstalled
+                                            text: qsTr("Abrir biblioteca")
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: qsTr("Abrir biblioteca Steam para Lossless Scaling")
+                                            onClicked: root.request("POST", "/steam/open", {
+                                                "target": "library"
+                                            }, function() {
+                                                root.notify(qsTr("Biblioteca Steam aberta"), false)
+                                            })
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state !== "ready"
+                                                && root.lsfgSystemData.losslessScalingInstalled
+                                            text: root.lsfgSystemData.state === "degraded"
+                                                ? qsTr("Reparar LSFG-VK") : qsTr("Preparar LSFG-VK")
+                                            enabled: root.lsfgSystemData.installable
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: text
+                                            onClicked: root.beginLsfgInstall()
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state === "ready"
+                                            text: qsTr("Verificado · %1").arg(
+                                                root.lsfgSystemData.version || "1.0.0"
+                                            )
+                                            enabled: false
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: text
+                                        }
+                                        Button {
+                                            visible: root.lsfgLastOperationId.length > 0
+                                                || Boolean(root.lsfgSystemData.lastOperationId)
+                                            text: qsTr("Desfazer")
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: qsTr("Desfazer última instalação LSFG-VK")
+                                            onClicked: root.request("POST", "/system/lsfg/rollback", {
+                                                "operationId": root.lsfgLastOperationId.length > 0
+                                                    ? root.lsfgLastOperationId
+                                                    : String(root.lsfgSystemData.lastOperationId)
+                                            }, function(response) {
+                                                root.lsfgLastOperationId = ""
+                                                root.refreshStatus(response.message || qsTr("LSFG-VK restaurado"))
+                                            })
+                                        }
                                     }
                                 }
                                 Label { text: qsTr("Diagnóstico"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28 }

@@ -50,6 +50,7 @@
       "currentProfile": {"gameId": "1091500", "scope": "game", "profile": "economy", "fps": 30, "tdp": 7, "gpuMode": "auto", "gpuClock": null, "gamescope": true, "gameMode": true, "mangoHud": "off", "upscaling": "fsr2-quality", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
       "truthState": "desired",
       "impact": {"battery": "2 h 35 min", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
+      "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "af5ee1626d9543349245520689da107c3ebc5ef3755086441fbb854173b8e096", "losslessScalingInstalled": true, "supportedHardware": true, "installable": true, "lastOperationId": null},
       "profiles": [
         {"id": "economy", "label": "Economia", "fps": 30},
         {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": true},

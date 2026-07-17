@@ -57,6 +57,9 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/steam/input/open"' in qml
     assert '"/steam/gameplay/plan"' in qml
     assert '"/steam/gameplay/apply"' in qml
+    assert '"/system/lsfg/plan"' in qml
+    assert '"/system/lsfg/apply"' in qml
+    assert '"/system/lsfg/rollback"' in qml
     assert "Plano bloqueado" in qml
     for section in (
         "Visão geral",
@@ -80,3 +83,5 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Editar no Steam",
     ):
         assert contract in gameplay_qml
+    for contract in ("Preparar LSFG-VK", "Instalar e verificar", "Desfazer"):
+        assert contract in qml

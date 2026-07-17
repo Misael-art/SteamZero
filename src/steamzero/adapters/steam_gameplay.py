@@ -20,6 +20,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
@@ -46,6 +47,7 @@ _CONTROLLER_LAYOUTS = frozenset(
 _PLAN_TTL = timedelta(minutes=15)
 _ACF_FIELD = re.compile(r'^\s*"(?P<key>appid|name)"\s+"(?P<value>.*)"\s*$')
 _LIBRARY_PATH = re.compile(r'^\s*"path"\s+"(?P<value>.*)"\s*$')
+_INSTALL_DIR = re.compile(r'^\s*"installdir"\s+"(?P<value>[^"\x00\r\n]+)"\s*$')
 
 
 def _now() -> datetime:
@@ -104,6 +106,7 @@ class SteamGameplayController:
         store_factory: StoreFactory = StateStore,
         meminfo: Path = Path("/proc/meminfo"),
         lsfg_manifests: Sequence[Path] | None = None,
+        lsfg_installer: LsfgInstaller | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -119,6 +122,7 @@ class SteamGameplayController:
                 Path("/usr/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json"),
             )
         )
+        self._lsfg = lsfg_installer or LsfgInstaller(lossless_probe=self._has_lossless_scaling)
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -175,7 +179,17 @@ class SteamGameplayController:
                 {"id": "balanced", "label": "Equilibrado", "fps": 40, "recommended": True},
                 {"id": "performance", "label": "Desempenho", "fps": 60},
             ],
+            "lsfgInstaller": self._lsfg.status(),
         }
+
+    def plan_lsfg_install(self) -> dict[str, Any]:
+        return self._lsfg.plan_install()
+
+    def apply_lsfg_install(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._lsfg.apply(plan_id, confirm_token)
+
+    def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
+        return self._lsfg.rollback(operation_id)
 
     def plan(self, payload: dict[str, Any], desktop_status: dict[str, Any]) -> dict[str, Any]:
         normalized = self._validate_profile(payload)
@@ -408,6 +422,8 @@ class SteamGameplayController:
                 if parsed is None:
                     continue
                 app_id, name = parsed
+                if app_id == LSFG_APP_ID:
+                    continue
                 games[app_id] = {
                     "id": app_id,
                     "name": name,
@@ -415,6 +431,28 @@ class SteamGameplayController:
                     "state": "installed",
                 }
         return sorted(games.values(), key=lambda item: str(item["name"]).casefold())[:200]
+
+    def _has_lossless_scaling(self) -> bool:
+        for root in self._library_roots():
+            manifest = root / "steamapps" / f"appmanifest_{LSFG_APP_ID}.acf"
+            try:
+                lines = manifest.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            for line in lines[:300]:
+                match = _INSTALL_DIR.match(line)
+                if match is None:
+                    continue
+                install_dir = match.group("value").strip()
+                if (
+                    install_dir
+                    and "/" not in install_dir
+                    and "\\" not in install_dir
+                    and install_dir not in {".", ".."}
+                    and (root / "steamapps" / "common" / install_dir / "Lossless.dll").is_file()
+                ):
+                    return True
+        return False
 
     def _library_roots(self) -> tuple[Path, ...]:
         found: dict[str, Path] = {}

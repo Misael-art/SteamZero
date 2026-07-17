@@ -321,6 +321,15 @@ class DesktopDashboard:
     ) -> dict[str, Any]:
         return self._gameplay.apply(plan_id, confirm_token, desktop_status)
 
+    def plan_lsfg_install(self) -> dict[str, Any]:
+        return self._gameplay.plan_lsfg_install()
+
+    def apply_lsfg_install(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._gameplay.apply_lsfg_install(plan_id, confirm_token)
+
+    def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_lsfg_install(operation_id)
+
     def plan_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()

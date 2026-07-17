@@ -661,3 +661,31 @@ mypy estrito, fronteiras, independência, `qmllint` e comparação visual passar
 **Versão:** a árvore passa a `0.1.0a3`; a instalação automática pinada do LSFG-VK permanece
 como próxima entrega de Sistema porque exige aquisição verificada, staging em streaming e
 rollback de arquivos sob `~/.local`, sem embutir um artefato de ~74 MB no plano transacional.
+
+## 2026-07-17 — Sessão 14: instalação pinada e reversível do LSFG-VK
+
+**Supply chain:** Sistema passou a adquirir exclusivamente `lsfg-vk_noui.zip` da release
+oficial 1.0.0, fixada por URL e SHA-256
+`af5ee1626d9543349245520689da107c3ebc5ef3755086441fbb854173b8e096`. A biblioteca
+extraída também é validada pelo hash
+`de4954bcce6904b62b6c48f1525c7fd78b4c2d7f9a959edf621528d9363ebbfd`. O ZIP aceita
+somente as duas entradas esperadas, rejeita symlinks/excesso de tamanho e normaliza o
+manifesto Vulkan para o caminho user-scoped absoluto.
+
+**Propriedade e transação:** o SteamZero exige a instalação real do Lossless Scaling
+(App 993090 e `Lossless.dll`) antes de preparar a camada; não baixa nem redistribui o
+componente proprietário. Biblioteca e manifesto são gravados sob `~/.local` pelo núcleo
+transacional com plano, confirmToken, verificação pós-apply e rollback G-FULL. Nenhuma
+escrita global, `sudo`, `pacman` ou dependência PhaseZero foi introduzida.
+
+**Experiência e verdade:** Sistema mostra ausente/verificado/reparo necessário, a fonte,
+a dependência proprietária e as ações Preparar/Reparar/Desfazer. Sem a dependência, abre
+somente a biblioteca Steam. A detecção no host real retornou `missing`, dependência ausente
+e `installable=false`; portanto nenhuma mutação foi tentada. A aplicação por jogo continua
+honestamente `desired` até o launcher/reconciliador M11.
+
+**Gate:** **387 passed / 85%** (4839 statements, 601 misses, 1150 branches); Ruff,
+mypy estrito, fronteiras, independência e `qmllint` verdes. A captura
+`/tmp/steamzero-system-lsfg.png` não apresentou diferenças P0/P1/P2.
+
+**Versão:** a árvore passa a `0.1.0a4`; nenhum artefato reutiliza a versão anterior.

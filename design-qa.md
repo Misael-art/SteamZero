@@ -98,3 +98,21 @@ para caber no painel físico sem alterar a geometria lógica do mockup.
 - `qmllint` passou e a execução Qt/QML das duas áreas não emitiu erros de console.
 
 final result: passed
+
+## Iteração Sistema / LSFG-VK — 2026-07-17
+
+**Implementação:** `/tmp/steamzero-system-lsfg.png`
+
+**Viewport lógico:** 1600×1000, capturado no Steam Deck com `QT_SCALE_FACTOR=0.75`.
+
+- O componente foi posicionado em Sistema, distinguindo claramente a responsabilidade
+  do SteamZero (preparar a camada livre) da Steam (fornecer o aplicativo proprietário).
+- Status, origem, dependência e ações usam a mesma linguagem visual de prontidão do mockup
+  escolhido. Sem Lossless Scaling, a única ação é **Abrir biblioteca**; não há instalação
+  simulada nem elevação de privilégio.
+- A revisão prévia expõe versão, garantia G-FULL, caminhos alterados, hash completo e a
+  restrição de propriedade antes de habilitar **Instalar e verificar**.
+- Nenhuma diferença P0/P1/P2, texto cortado ou erro de console foi observado; `qmllint`
+  e os testes de contrato da UI passaram.
+
+final result: passed

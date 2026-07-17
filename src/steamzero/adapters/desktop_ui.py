@@ -151,6 +151,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "confirmToken"),
                 coordinator.status(),
             )
+        if path == "/system/lsfg/plan":
+            return {"plan": self._dashboard().plan_lsfg_install()}
+        if path == "/system/lsfg/apply":
+            return self._dashboard().apply_lsfg_install(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/system/lsfg/rollback":
+            return self._dashboard().rollback_lsfg_install(
+                self._required_string(payload, "operationId")
+            )
         if path == "/apply":
             return coordinator.apply(
                 self._required_string(payload, "planId"),

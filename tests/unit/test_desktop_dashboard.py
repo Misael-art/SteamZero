@@ -150,6 +150,14 @@ def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) 
         '"AppState"\n{\n  "appid" "1091500"\n  "name" "Cyberpunk 2077"\n}\n',
         encoding="utf-8",
     )
+    (steamapps / "appmanifest_993090.acf").write_text(
+        '"AppState"\n{\n  "appid" "993090"\n  "name" "Lossless Scaling"\n'
+        '  "installdir" "Lossless Scaling"\n}\n',
+        encoding="utf-8",
+    )
+    lossless_dir = steamapps / "common" / "Lossless Scaling"
+    lossless_dir.mkdir(parents=True)
+    (lossless_dir / "Lossless.dll").write_bytes(b"owned fixture")
     meminfo = tmp_path / "meminfo"
     meminfo.write_text("MemAvailable:       11744000 kB\n", encoding="utf-8")
     available = {"steam", "gamescope", "gamemoderun"}
@@ -185,6 +193,7 @@ def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) 
     assert snapshot["hardware"]["memoryGb"] == 11.2
     assert snapshot["impact"]["resolution"] == "800x1280"
     assert snapshot["readiness"]["percent"] == 100
+    assert snapshot["lsfgInstaller"]["losslessScalingInstalled"] is True
 
 
 def test_gameplay_failure_degrades_only_steam_section(tmp_path: Path) -> None:
