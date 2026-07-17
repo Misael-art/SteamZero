@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -243,6 +244,11 @@ def test_session_environment_snapshot_and_event_are_atomic(db_path: Path) -> Non
     event = store.events_since(0)[-1]
     assert event["kind"] == "session.environment"
     assert '"changes": ["initial"]' in event["payload_json"]
+
+    resume_seq = store.record_session_resume(42.125)
+    resume = [row for row in store.events_since(resume_seq - 1) if row["kind"] == "session.resume"]
+    assert len(resume) == 1
+    assert json.loads(resume[0]["payload_json"]) == {"suspendedSeconds": 42.125}
     store.close()
 
 

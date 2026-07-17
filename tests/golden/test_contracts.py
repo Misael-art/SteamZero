@@ -128,6 +128,15 @@ def test_event_sample_validates() -> None:
     }
     contracts.validate(environment_event, "event-v1.schema.json")
 
+    resume_event = {
+        "seq": 4,
+        "ts": "2026-07-15T00:00:03+00:00",
+        "kind": "session.resume",
+        "correlationId": "01J000000000000000000000AE",
+        "suspendedSeconds": 42.125,
+    }
+    contracts.validate(resume_event, "event-v1.schema.json")
+
 
 @pytest.mark.golden
 def test_invalid_instances_rejected() -> None:

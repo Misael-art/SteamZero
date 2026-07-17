@@ -37,6 +37,12 @@ displays ou volumes mudam. Percentual de bateria, espaço livre e timestamp são
 ignorados pelo digest para evitar crescimento por polling. Nesta etapa o reconciliador
 somente observa e registra; ele ainda não aplica modo nem executa recovery.
 
+Retomadas são detectadas sem privilégio pela diferença entre `CLOCK_BOOTTIME`, que
+avança durante o suspend, e `CLOCK_MONOTONIC`, que fica congelado. O evento persistente
+`session.resume` habilita recuperação pós-resume. Flush e checkpoint antes de dormir
+continuam condicionados ao hook systemd/logind da fronteira R3; o evento não inventa
+uma garantia pré-suspend que o processo user-scoped ainda não possui.
+
 ## Boot direto
 
 Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. O SteamZero não altera

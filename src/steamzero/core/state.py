@@ -582,6 +582,15 @@ class StateStore:
         row = self._conn.execute("SELECT * FROM session_environment WHERE id='current'").fetchone()
         return dict(row) if row is not None else None
 
+    def record_session_resume(self, suspended_seconds: float) -> int:
+        """Registra uma retomada observada, sem alegar um hook pré-suspend."""
+        bounded = max(0.0, min(float(suspended_seconds), 31_536_000.0))
+        return self.append_event(
+            "session.resume",
+            entity="system-session:current",
+            payload={"suspendedSeconds": round(bounded, 3)},
+        )
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(
