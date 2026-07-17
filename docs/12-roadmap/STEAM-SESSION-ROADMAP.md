@@ -43,6 +43,10 @@ Observar suspend/resume, hotplug, mount e sessão de jogo; reconciliar apenas a
 camada divergente; emitir eventos persistentes e nunca aplicar perfil durante
 owner externo. Saída: dock→undock e remove→reinsert reproduzíveis em VM.
 
+Estado atual: a observação periódica, o digest material, o snapshot SQLite v5 e
+os eventos atômicos estão implementados. Hooks de suspend, aplicação por camada
+e os cenários mutáveis de VM permanecem pendentes.
+
 ### R3 — fronteira privilegiada real
 
 Empacotar `steamzero-admin`, política Polkit e efetores allowlisted. Cada ação

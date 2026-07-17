@@ -7,7 +7,7 @@
   "properties": {
     "seq": { "type": "integer", "minimum": 0 },
     "ts": { "type": "string", "format": "date-time" },
-    "kind": { "enum": ["job.progress", "job.state", "session.state", "entity.changed", "alert"] },
+    "kind": { "enum": ["job.progress", "job.state", "session.state", "session.environment", "entity.changed", "alert"] },
     "jobId": { "type": "string" },
     "sessionId": { "type": "string" },
     "gameId": { "type": "string" },
@@ -24,6 +24,8 @@
       }
     },
     "state": { "type": "string" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "changes": { "type": "array", "items": { "type": "string" } },
     "error": { "$ref": "error-v1.schema.json" }
   },
   "additionalProperties": false

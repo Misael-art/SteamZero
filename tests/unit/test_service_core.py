@@ -80,6 +80,7 @@ def test_safe_socket_path_and_direct_serve_cleanup(
     runtime = tmp_path / "run"
     runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     path = core._safe_socket_path()
     assert path.parent.stat().st_mode & 0o077 == 0
 
@@ -208,6 +209,7 @@ def test_systemd_socket_inheritance_and_stale_socket_recovery(
     runtime = tmp_path / "run"
     runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-stale"))
     monkeypatch.delenv("LISTEN_PID")
     monkeypatch.delenv("LISTEN_FDS")
     stale_path = runtime / "steamzero" / "core.sock"

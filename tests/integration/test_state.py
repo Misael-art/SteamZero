@@ -26,7 +26,7 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 4
+    assert store.user_version == state.LATEST == 5
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -37,6 +37,7 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
         "event_log",
         "game",
         "game_session",
+        "session_environment",
         "save_entry",
         "component",
     ):
@@ -46,7 +47,7 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 4  # 2ª vez: no-op
+    assert store.migrate() == 5  # 2ª vez: no-op
     store.close()
 
 
@@ -63,7 +64,7 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 4
+    assert store.user_version == 5
     assert store.get_profile("legacy-profile") is not None
     store.save_profile(
         {
@@ -121,7 +122,7 @@ def test_migration_v3_to_v4_preserves_legacy_runtime(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 4
+    assert store.user_version == 5
     assert store.get_profile("steam-runtime:game:10") is not None
     assert store.latest_game_session("10") is None
     store.close()
@@ -231,11 +232,25 @@ def test_event_log(db_path: Path) -> None:
     store.close()
 
 
+def test_session_environment_snapshot_and_event_are_atomic(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    payload = {"observedAt": "2026-07-17T00:00:00+00:00", "readOnly": True}
+    store.save_session_environment(payload, "a" * 64, changes=["initial"])
+    current = store.get_session_environment()
+    assert current is not None
+    assert current["digest"] == "a" * 64
+    assert '"readOnly":true' in current["payload_json"]
+    event = store.events_since(0)[-1]
+    assert event["kind"] == "session.environment"
+    assert '"changes": ["initial"]' in event["payload_json"]
+    store.close()
+
+
 def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 4
+    assert export["schemaVersion"] == 5
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -251,14 +266,14 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
         raise RuntimeError("migração v2 quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (5, bad)])
-    monkeypatch.setattr(state, "LATEST", 5)
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (6, bad)])
+    monkeypatch.setattr(state, "LATEST", 6)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 4  # não avançou
+    assert store2.user_version == 5  # não avançou
     tables = {
         r["name"]
         for r in store2._conn.execute(

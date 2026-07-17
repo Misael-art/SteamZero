@@ -31,6 +31,12 @@ procfs/sysfs/mountinfo e links de dispositivo; não monta volumes, não aplica m
 altera a sessão. No Deck, `mmcblk` identifica o leitor microSD mesmo quando o kernel anuncia
 `removable=0`.
 
+O daemon reconcilia esse snapshot a cada cinco segundos. A migração v5 mantém somente o
+último estado material e emite `session.environment` quando device, sessão, AC, rede,
+displays ou volumes mudam. Percentual de bateria, espaço livre e timestamp são deliberadamente
+ignorados pelo digest para evitar crescimento por polling. Nesta etapa o reconciliador
+somente observa e registra; ele ainda não aplica modo nem executa recovery.
+
 ## Boot direto
 
 Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. O SteamZero não altera

@@ -547,6 +547,41 @@ class StateStore:
             rows = self._conn.execute("SELECT * FROM sync_queue ORDER BY id").fetchall()
         return [dict(r) for r in rows]
 
+    # -- ambiente da sessão -----------------------------------------------
+    def save_session_environment(
+        self, payload: dict[str, Any], digest: str, *, changes: list[str]
+    ) -> None:
+        """Atualiza o snapshot e seu evento como uma única transação."""
+        observed_at = str(payload.get("observedAt") or _now_iso())
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            self._conn.execute(
+                """
+                INSERT INTO session_environment (id,observed_at,digest,payload_json)
+                VALUES ('current',?,?,?)
+                ON CONFLICT(id) DO UPDATE SET
+                  observed_at=excluded.observed_at,
+                  digest=excluded.digest,
+                  payload_json=excluded.payload_json
+                """,
+                (observed_at, digest, encoded),
+            )
+            self.append_event(
+                "session.environment",
+                entity="session-environment:current",
+                payload={"digest": digest, "changes": changes},
+            )
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
+
+    def get_session_environment(self) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT * FROM session_environment WHERE id='current'").fetchone()
+        return dict(row) if row is not None else None
+
     # -- event log ----------------------------------------------------------
     def append_event(self, kind: str, *, entity: str | None = None, payload: Any = None) -> int:
         cur = self._conn.execute(

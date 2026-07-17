@@ -14,6 +14,7 @@ import signal
 import socket
 import socketserver
 import struct
+import threading
 from pathlib import Path
 from types import FrameType
 from typing import Any
@@ -23,6 +24,7 @@ from steamzero.api.envelope import build_envelope
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
+from steamzero.service.reconciler import SessionEnvironmentReconciler
 
 _MAX_REQUEST = 1 << 20
 _MAX_REQUESTS_PER_CONNECTION = 128
@@ -210,6 +212,11 @@ def _server_from_systemd() -> CoreServer | None:
 
 
 def serve(*, systemd: bool = False) -> int:
+    # Migração serial antes de abrir concorrência entre handlers e reconciliador.
+    from steamzero.core.state import StateStore
+
+    with StateStore() as store:
+        store.migrate()
     server = _server_from_systemd() if systemd else None
     owned_path: Path | None = None
     if server is None:
@@ -228,6 +235,15 @@ def serve(*, systemd: bool = False) -> int:
         fs.set_mode(socket_path, 0o600)
         owned_path = socket_path
 
+    reconcile_stop = threading.Event()
+    reconcile_thread = threading.Thread(
+        target=SessionEnvironmentReconciler().run,
+        args=(reconcile_stop,),
+        name="steamzero-environment-reconciler",
+        daemon=True,
+    )
+    reconcile_thread.start()
+
     def stop(_signum: int, _frame: FrameType | None) -> None:
         # shutdown precisa ocorrer fora da thread serve_forever.
         import threading
@@ -239,6 +255,8 @@ def serve(*, systemd: bool = False) -> int:
     try:
         server.serve_forever(poll_interval=0.25)
     finally:
+        reconcile_stop.set()
+        reconcile_thread.join(timeout=6.0)
         signal.signal(signal.SIGTERM, previous_term)
         signal.signal(signal.SIGINT, previous_int)
         server.server_close()

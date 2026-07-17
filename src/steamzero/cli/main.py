@@ -244,19 +244,9 @@ def _session_launcher() -> SteamGameLauncher:
 
 
 def _session_environment() -> dict[str, Any]:
-    from steamzero.adapters.linux_runtime import LinuxSessionEnvironment
-    from steamzero.domain.device import classify
+    from steamzero.runtime import observe_session_environment
 
-    data = LinuxSessionEnvironment().snapshot()
-    device = data.get("device")
-    if isinstance(device, dict):
-        dmi = device.get("dmi")
-        signals = device.get("signals")
-        device["kind"] = classify(
-            dmi if isinstance(dmi, dict) else {},
-            signals if isinstance(signals, dict) else {},
-        )
-    return data
+    return observe_session_environment()
 
 
 def _cmd_session_environment(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
