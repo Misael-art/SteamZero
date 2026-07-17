@@ -929,3 +929,29 @@ range seguro observado 3–29 W e SCLK 200–1600 MHz. `mutationsEnabled=false` 
 **Host final:** doctor `ok`, SQLite v5 íntegro, zero operações pendentes, daemon ativo,
 manifesto associado ao commit exato e audit root preservado. TDP, GPU, display, mounts,
 sessão padrão e GRUB permaneceram inalterados.
+
+## 2026-07-17 — Sessão 24: motor TDP G-STATE atrás do gate
+
+**Transação privilegiada interna:** `set-tdp` agora possui um motor fechado que descobre
+somente `amdgpu slowPPT/fastPPT`, restringe o pedido ao máximo observado, grava journal
+0600 antes da primeira escrita, aplica as duas rails, verifica e restaura os valores
+anteriores em falha. `rollback-tdp` aceita somente ULID associado; `recover-tdp` restaura
+journals `pending`/`rollback-failed`. O transporte público continua health-only e declara
+`mutationsEnabled=false`.
+
+**Failure injection:** uma prova interrompe o processo imediatamente após escrever
+`slowPPT`. O novo apply foi bloqueado por `E-TX-LOCKED`; recovery restaurou ambas as rails
+e uma segunda recuperação foi `noop`. Também foram cobertos verify divergente, rollback
+idempotente, journal inválido, interface ausente e valor acima da capability.
+
+**Wheel e host:** release `0.1.0a18-1d76d7986330`, commit
+`1d76d7986330053240c9001d64468d112303be88`, wheel SHA-256
+`618718da9c919471a9c5583ba4c449e67acaf6eb35001045d3719d7256dd98b0`. O motor do wheel
+instalado foi executado numa cópia descartável das interfaces reais: 15 W→10 W nas duas
+rails→rollback para 15 W; diretório 0700 e journal 0600. `/sys` real não foi escrito.
+Doctor continuou `ok`, SQLite v5 íntegro, zero pendências e daemon ativo.
+
+**Gate:** **510 passed / 85,03%** (7320 statements, 886 misses, 1924 branches), Ruff,
+formato, mypy, fronteiras, independência, `qmllint` e proveniência verdes. O agente
+Polkit permanece ativo a pedido do responsável; a duração da autorização já concedida
+continua controlada pela policy do sistema e não é ampliada artificialmente.
