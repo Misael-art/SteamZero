@@ -351,6 +351,126 @@ def test_active_session_requires_process_identity_and_current_digest(tmp_path: P
     assert changed["recoveryRequired"] is False
 
 
+@pytest.mark.parametrize(
+    "state", ["launching", "running", "suspending", "suspended", "resuming", "closing"]
+)
+def test_reused_live_pid_requires_recovery_without_signalling_process(
+    tmp_path: Path, state: str
+) -> None:
+    _save_profile(tmp_path / "state.db")
+    compiler = _launcher(tmp_path)
+    digest = compiler.compile("10", ("game",)).profile_digest
+    with StateStore(tmp_path / "state.db") as store:
+        store.create_game_session(
+            {
+                "id": "reused-pid-session",
+                "game_id": "10",
+                "state": "launching",
+                "pid": 4242,
+                "profile_digest": digest,
+                "owner": "steamzero-game-session",
+            }
+        )
+        if state != "launching":
+            store.transition_game_session("reused-pid-session", "running", pid=4242)
+        if state in {"suspending", "suspended", "resuming"}:
+            store.transition_game_session("reused-pid-session", "suspending")
+        if state in {"suspended", "resuming"}:
+            store.transition_game_session("reused-pid-session", "suspended")
+        if state == "resuming":
+            store.transition_game_session("reused-pid-session", "resuming")
+        if state == "closing":
+            store.transition_game_session("reused-pid-session", "closing")
+
+    observed_calls: list[tuple[int, str, str]] = []
+    launcher = SteamGameLauncher(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        alive_probe=lambda pid: pid == 4242,
+        observation_probe=lambda pid, app_id, seen: (
+            observed_calls.append((pid, app_id, seen)) or False
+        ),
+        wrapper_probe=lambda pid, app_id: False,
+        context_probe=lambda: None,
+    )
+
+    status = launcher.status("10")
+    assert status["state"] == "stale"
+    assert status["recoveryRequired"] is True
+    assert observed_calls == ([] if state == "launching" else [(4242, "10", digest)])
+    assert launcher.recover("10") == {"status": "recovered", "gameId": "10"}
+    assert launcher.status("10")["runtime"]["error"] == "E-SESSION-INTERRUPTED"
+
+
+@pytest.mark.parametrize(
+    ("runtime_state", "expected"),
+    [
+        ("suspending", "suspending"),
+        ("suspended", "suspended"),
+        ("resuming", "resuming"),
+        ("closing", "closing"),
+    ],
+)
+def test_lifecycle_intermediate_states_require_observed_identity(
+    tmp_path: Path, runtime_state: str, expected: str
+) -> None:
+    _save_profile(tmp_path / "state.db")
+    compiler = _launcher(tmp_path)
+    digest = compiler.compile("10", ("game",)).profile_digest
+    with StateStore(tmp_path / "state.db") as store:
+        store.create_game_session(
+            {
+                "id": "lifecycle-session",
+                "game_id": "10",
+                "state": "launching",
+                "pid": 4242,
+                "profile_digest": digest,
+                "owner": "steamzero-game-session",
+            }
+        )
+        store.transition_game_session("lifecycle-session", "running", pid=4242)
+        if runtime_state in {"suspending", "suspended", "resuming"}:
+            store.transition_game_session("lifecycle-session", "suspending")
+        if runtime_state in {"suspended", "resuming"}:
+            store.transition_game_session("lifecycle-session", "suspended")
+        if runtime_state == "resuming":
+            store.transition_game_session("lifecycle-session", "resuming")
+        if runtime_state == "closing":
+            store.transition_game_session("lifecycle-session", "closing")
+
+    launcher = SteamGameLauncher(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        alive_probe=lambda pid: pid == 4242,
+        observation_probe=lambda pid, app_id, seen: True,
+        context_probe=lambda: None,
+    )
+    status = launcher.status("10")
+    assert status["state"] == expected
+    assert status["recoveryRequired"] is False
+
+
+def test_launching_requires_wrapper_identity(tmp_path: Path) -> None:
+    _save_profile(tmp_path / "state.db")
+    with StateStore(tmp_path / "state.db") as store:
+        store.create_game_session(
+            {
+                "id": "launching-session",
+                "game_id": "10",
+                "state": "launching",
+                "pid": 4242,
+                "owner": "steamzero-game-session",
+            }
+        )
+    launcher = SteamGameLauncher(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        alive_probe=lambda pid: pid == 4242,
+        wrapper_probe=lambda pid, app_id: pid == 4242 and app_id == "10",
+        context_probe=lambda: None,
+    )
+    status = launcher.status("10")
+    assert status["state"] == "launching"
+    assert status["recoveryRequired"] is False
+
+
 def test_launcher_rejects_invalid_appid_and_missing_profile(tmp_path: Path) -> None:
     launcher = _launcher(tmp_path)
     with pytest.raises(SteamZeroError) as invalid:
@@ -426,6 +546,18 @@ def test_low_level_process_and_display_observation(
     assert launcher_module._is_alive(-1) is False
     assert launcher_module._is_alive(os.getpid()) is True
     assert launcher_module._is_observed_process(-1, "10", "digest") is False
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            Path,
+            "read_bytes",
+            lambda _path: (
+                b"/opt/steamzero/venv/bin/python\0/usr/local/bin/steamzero-launch\0"
+                b"--appid\0"
+                b"10\0--\0game\0"
+            ),
+        )
+        assert launcher_module._is_launcher_process(42, "10") is True
+        assert launcher_module._is_launcher_process(42, "20") is False
 
     env = dict(os.environ)
     env.update({"STEAMZERO_GAME_ID": "10", "STEAMZERO_PROFILE_DIGEST": "digest"})

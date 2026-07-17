@@ -41,6 +41,7 @@ StoreFactory = Callable[[], StateStore]
 Which = Callable[[str], str | None]
 AliveProbe = Callable[[int], bool]
 ObservationProbe = Callable[[int, str, str], bool]
+WrapperProbe = Callable[[int, str], bool]
 ContextProbe = Callable[[], str | None]
 
 _RUNTIME_KIND = "performance-runtime"
@@ -85,6 +86,21 @@ def _is_observed_process(pid: int, app_id: str, profile_digest: str) -> bool:
     return (
         f"STEAMZERO_GAME_ID={app_id}".encode() in values
         and f"STEAMZERO_PROFILE_DIGEST={profile_digest}".encode() in values
+    )
+
+
+def _is_launcher_process(pid: int, app_id: str) -> bool:
+    """Confirma o wrapper launching sem persistir ou expor sua linha de comando."""
+    try:
+        argv = (Path("/proc") / str(pid) / "cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return False
+    expected = app_id.encode("ascii")
+    has_launcher = any(
+        Path(value.decode(errors="replace")).name == "steamzero-launch" for value in argv
+    )
+    return has_launcher and any(
+        argv[index] == b"--appid" and argv[index + 1] == expected for index in range(len(argv) - 1)
     )
 
 
@@ -159,6 +175,7 @@ class SteamGameLauncher:
         processes: ProcessPort | None = None,
         alive_probe: AliveProbe = _is_alive,
         observation_probe: ObservationProbe = _is_observed_process,
+        wrapper_probe: WrapperProbe = _is_launcher_process,
         context_probe: ContextProbe = _display_context,
         environ: Callable[[], dict[str, str]] = lambda: dict(os.environ),
         lsfg_manifests: Sequence[Path] | None = None,
@@ -169,6 +186,7 @@ class SteamGameLauncher:
         self._processes = processes or SubprocessPort()
         self._alive_probe = alive_probe
         self._observation_probe = observation_probe
+        self._wrapper_probe = wrapper_probe
         self._context_probe = context_probe
         self._environ = environ
         self._lsfg_manifests = (
@@ -210,22 +228,30 @@ class SteamGameLauncher:
             alive = pid_value > 0 and self._alive_probe(pid_value)
             observed = (
                 alive
+                and runtime_state != "launching"
                 and bool(runtime_digest)
                 and self._observation_probe(pid_value, app_id, runtime_digest)
+            )
+            wrapper_observed = (
+                alive and runtime_state == "launching" and self._wrapper_probe(pid_value, app_id)
             )
             if runtime_state == "running" and observed and runtime_digest == desired_digest:
                 state = "observed"
             elif runtime_state == "running" and observed:
                 state = "stale"
-            elif runtime_state == "launching" and alive:
+            elif runtime_state == "launching" and wrapper_observed:
                 state = "launching"
-            elif runtime_state == "suspended" and alive:
+            elif runtime_state == "suspending" and observed:
+                state = "suspending"
+            elif runtime_state == "suspended" and observed:
                 state = "suspended"
-            elif runtime_state == "closing" and alive:
+            elif runtime_state == "resuming" and observed:
+                state = "resuming"
+            elif runtime_state == "closing" and observed:
                 state = "closing"
             elif runtime_state in ACTIVE_SESSION_STATES:
                 state = "stale"
-                recovery = not alive
+                recovery = True
             elif runtime_state == "failed":
                 state = "desired" if runtime.get("error") == "E-SESSION-INTERRUPTED" else "degraded"
         labels = {
@@ -233,7 +259,9 @@ class SteamGameLauncher:
             "desired": "Aguardando lançamento gerenciado",
             "observed": "Perfil observado em execução",
             "launching": "Iniciando sessão gerenciada",
+            "suspending": "Preparando suspensão da sessão",
             "suspended": "Sessão de jogo suspensa",
+            "resuming": "Retomando sessão gerenciada",
             "closing": "Encerrando sessão gerenciada",
             "stale": ("Perfil alterado durante execução" if observed else "Sessão interrompida"),
             "degraded": "Falha no último lançamento",
