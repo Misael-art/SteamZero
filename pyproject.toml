@@ -17,6 +17,7 @@ dependencies = [
 
 [project.scripts]
 steamzero = "steamzero.cli.main:main"
+steamzero-launch = "steamzero.adapters.steam_launcher:main"
 
 [tool.hatch.version]
 path = "src/steamzero/__init__.py"

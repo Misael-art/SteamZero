@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
+from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
@@ -107,6 +108,7 @@ class SteamGameplayController:
         meminfo: Path = Path("/proc/meminfo"),
         lsfg_manifests: Sequence[Path] | None = None,
         lsfg_installer: LsfgInstaller | None = None,
+        launcher: SteamGameLauncher | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -123,6 +125,12 @@ class SteamGameplayController:
             )
         )
         self._lsfg = lsfg_installer or LsfgInstaller(lossless_probe=self._has_lossless_scaling)
+        self._launcher = launcher or SteamGameLauncher(
+            roots=self._roots,
+            which=which,
+            store_factory=store_factory,
+            lsfg_manifests=self._lsfg_manifests,
+        )
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -134,8 +142,9 @@ class SteamGameplayController:
         displays = context_dict.get("displays", [])
         resolution = self._resolution(displays)
         selected_id = games[0]["id"] if games else ""
-        saved = self._saved_profile(selected_id)
+        saved = self._launcher.desired_profile(selected_id) if selected_id else None
         selected_profile = self._complete_profile(saved, selected_id)
+        launcher = self._launcher.status(selected_id)
         environment = self._environment(capabilities)
         ready_count = sum(row["state"] == "ready" for row in environment if row["required"])
         required_count = sum(row["required"] for row in environment)
@@ -171,8 +180,13 @@ class SteamGameplayController:
             },
             "currentProfile": selected_profile,
             "truthState": (
-                "desired" if saved or self._saved_controls(selected_id) else "recommended"
+                launcher["state"]
+                if saved
+                else "desired"
+                if self._saved_controls(selected_id)
+                else "recommended"
             ),
+            "launcher": launcher,
             "impact": self._impact(selected_profile, resolution),
             "profiles": [
                 {"id": "economy", "label": "Economia", "fps": 30},
@@ -208,6 +222,14 @@ class SteamGameplayController:
             blockers.append("Feral GameMode não está disponível; abra Sistema.")
         if normalized["mangoHud"] != "off" and not capabilities["mangohud"]:
             blockers.append("MangoHud não está disponível; abra Sistema.")
+        if (
+            normalized["mangoHud"] != "off"
+            and normalized["gamescope"]
+            and capabilities["gamescope"]
+            and capabilities["mangohud"]
+            and not capabilities["mangoapp"]
+        ):
+            blockers.append("MangoApp é necessário para usar o overlay dentro do Gamescope.")
         if normalized["frameGeneration"] != "off" and not capabilities["lsfg"]:
             blockers.append("LSFG-VK não está disponível; abra Sistema para preparar o componente.")
         if normalized["controllerLayout"] != "steam-recommended" and not capabilities["steam"]:
@@ -217,7 +239,10 @@ class SteamGameplayController:
         is_deck = str(context_dict.get("deviceKind", "")).startswith("deck-")
         if normalized["tdp"] is not None and not is_deck:
             blockers.append("Controle de TDP não foi observado neste hardware.")
-        current = self._complete_profile(self._saved_profile(game_id), game_id)
+        current = self._complete_profile(
+            self._launcher.desired_profile(game_id) if game_id else None,
+            game_id,
+        )
         changes = self._changes(current, normalized)
         plan = GameplayPlan(
             plan_id=f"steam-gameplay-{secrets.token_hex(10)}",
@@ -260,7 +285,7 @@ class SteamGameplayController:
                     "profile_owner": "steamzero",
                 }
             ]
-            if plan.profile["gameId"]:
+            if plan.profile["scope"] == "game" and plan.profile["gameId"]:
                 profiles.append(
                     {
                         "id": self._controls_profile_id(plan.profile["gameId"]),
@@ -285,8 +310,12 @@ class SteamGameplayController:
             "status": "saved",
             "truthState": "desired",
             "profile": plan.profile,
-            "message": "Perfil salvo; será aplicado pelo lançamento gerenciado do SteamZero.",
+            "launcher": self._launcher.status(str(plan.profile["gameId"])),
+            "message": "Perfil salvo; configure a opção de lançamento gerenciado na Steam.",
         }
+
+    def recover_launcher(self, game_id: str) -> dict[str, Any]:
+        return self._launcher.recover(game_id)
 
     @staticmethod
     def safe_profile(game_id: str) -> dict[str, Any]:
@@ -314,20 +343,6 @@ class SteamGameplayController:
         if controls is not None:
             profile["controllerLayout"] = controls.get("layout", profile["controllerLayout"])
         return profile
-
-    def _saved_profile(self, game_id: str) -> dict[str, Any] | None:
-        if not game_id:
-            return None
-        with self._store_factory() as store:
-            store.migrate()
-            row = store.get_profile(self._profile_id("game", game_id))
-        if row is None or row.get("kind") != "performance":
-            return None
-        try:
-            value = json.loads(str(row["payload_json"]))
-        except (KeyError, TypeError, json.JSONDecodeError):
-            return None
-        return value if isinstance(value, dict) else None
 
     def _saved_controls(self, game_id: str) -> dict[str, Any] | None:
         if not game_id:
@@ -509,6 +524,7 @@ class SteamGameplayController:
             "gamescope": self._which("gamescope") is not None,
             "gamemode": self._which("gamemoderun") is not None,
             "mangohud": self._which("mangohud") is not None,
+            "mangoapp": self._which("mangoapp") is not None,
             "vkbasalt": self._which("vkbasalt") is not None,
             "lsfg": any(path.is_file() for path in self._lsfg_manifests),
         }
@@ -520,6 +536,13 @@ class SteamGameplayController:
             ("gamescope", "Gamescope", "Composição e limite de quadros", "SteamZero", True),
             ("gamemode", "Feral GameMode", "Prioridade de CPU e processos", "Steam", True),
             ("mangohud", "MangoHud", "Métricas durante o jogo", "SteamZero", False),
+            (
+                "mangoapp",
+                "MangoApp",
+                "Overlay compatível com Gamescope",
+                "Sistema",
+                False,
+            ),
             ("vkbasalt", "vkBasalt", "Pós-processamento Vulkan", "Sistema", False),
             (
                 "lsfg",

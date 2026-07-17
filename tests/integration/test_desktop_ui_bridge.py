@@ -128,6 +128,10 @@ class FakeDashboard:
         self.calls.append(("gameplay-apply", plan_id, confirm_token))
         return {"status": "saved"}
 
+    def recover_steam_gameplay(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("gameplay-recover", game_id))
+        return {"status": "recovered", "gameId": game_id}
+
     def plan_lsfg_install(self) -> dict[str, object]:
         self.calls.append(("lsfg-plan",))
         return {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"}
@@ -388,6 +392,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/steam/gameplay/apply",
         {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
     )
+    request_json(base, token, "/steam/gameplay/recover", {"gameId": "10"})
     lsfg_plan = request_json(base, token, "/system/lsfg/plan", {})
     assert lsfg_plan["plan"] == {
         "planId": "lsfg-plan",
@@ -413,6 +418,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("steam-input", "10"),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
+        ("gameplay-recover", "10"),
         ("lsfg-plan",),
         ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
         ("lsfg-rollback", "lsfg-operation"),

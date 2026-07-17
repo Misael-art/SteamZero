@@ -689,3 +689,34 @@ mypy estrito, fronteiras, independência e `qmllint` verdes. A captura
 `/tmp/steamzero-system-lsfg.png` não apresentou diferenças P0/P1/P2.
 
 **Versão:** a árvore passa a `0.1.0a4`; nenhum artefato reutiliza a versão anterior.
+
+## 2026-07-17 — Sessão 15: launcher Steam aplicado e observável
+
+**Execução real:** entrou o entry point `steamzero-launch`, destinado às Launch Options
+`steamzero-launch --appid <id> -- %command%`. A linha é interpretada sem shell e o comando
+recebido da Steam permanece uma lista de argumentos. A política é resolvida por prioridade
+por jogo → contexto portátil/dock → global. Gamescope limita FPS e aplica FSR quando pedido;
+GameMode usa `gamemoderun`; MangoHud usa `mangohud` fora do Gamescope e `--mangoapp` dentro
+dele; LSFG usa somente as variáveis oficiais, a camada observada e o `Lossless.dll` possuído.
+
+**Verdade e lifecycle:** cada execução registra launching→active→exited/failed no State
+Store. `observed` exige PID vivo, marcadores de ambiente do SteamZero e digest do perfil
+atual; PID reutilizado não produz falso positivo. Mudança de perfil durante a execução vira
+`stale` sem matar o jogo. Wrapper interrompido com PID morto exige recuperação explícita.
+Sinais TERM/INT são encaminhados ao filho e nenhuma linha de comando ou ambiente é gravada
+no estado. TDP, clock de GPU e FSR2 interno aparecem como adiados, nunca aplicados.
+
+**Schema:** a migração v3 corrige uma inconformidade anterior: a UI aceitava os escopos
+Global/Portátil/Dock, mas o CHECK SQLite v2 os rejeitava. A migração preserva perfis antigos,
+adiciona os três escopos e o tipo `performance-runtime`.
+
+**Experiência:** a página Prontidão do jogo mostra estado do lançamento, Launch Option
+selecionável e recuperação contextual. A captura `/tmp/steamzero-launcher-runtime.png`
+confirma hierarquia e legibilidade no viewport lógico 1600×1000. A edição automática do
+`localconfig.vdf` permanece bloqueada até existir parser preservador, Steam parada, plano
+confirmado e rollback byte-idêntico.
+
+**Gate:** **411 passed / 85%**; launcher a 94%; Ruff, mypy estrito, fronteiras,
+independência e `qmllint` verdes. Nenhum jogo comercial foi iniciado no host nesta sessão.
+
+**Versão:** a árvore passa a `0.1.0a5`; nenhum artefato reutiliza `0.1.0a4`.

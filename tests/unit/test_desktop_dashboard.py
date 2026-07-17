@@ -226,7 +226,7 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
         '"AppState"\n{\n  "appid" "10"\n  "name" "Counter-Strike"\n}\n',
         encoding="utf-8",
     )
-    available = {"steam", "gamescope", "gamemoderun", "mangohud"}
+    available = {"steam", "gamescope", "gamemoderun", "mangohud", "mangoapp"}
     status = {"context": {"deviceKind": "deck-lcd", "displays": []}}
     payload = {
         "gameId": "10",

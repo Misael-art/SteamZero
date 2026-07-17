@@ -99,6 +99,23 @@ para caber no painel físico sem alterar a geometria lógica do mockup.
 
 final result: passed
 
+## Iteração Launcher Steam observável — 2026-07-17
+
+**Implementação:** `/tmp/steamzero-launcher-runtime.png`
+
+**Viewport lógico:** 1600×1000, capturado no Steam Deck com `QT_SCALE_FACTOR=0.75`.
+
+- A faixa **Lançamento gerenciado** fica entre seleção/escopo e prontidão, refletindo a
+  ordem mental jogo → política → runtime → ajustes.
+- Estado e Launch Option são legíveis e selecionáveis sem competir com o CTA principal.
+  A recuperação só aparece para sessão interrompida; execução observada usa verde e
+  divergência/falha usa âmbar.
+- O texto explica que o perfil somente vira observado durante uma execução real, evitando
+  confundir política salva com hardware efetivamente alterado.
+- Nenhuma diferença P0/P1/P2, truncamento ou controle menor que o padrão foi observado.
+
+final result: passed
+
 ## Iteração Sistema / LSFG-VK — 2026-07-17
 
 **Implementação:** `/tmp/steamzero-system-lsfg.png`

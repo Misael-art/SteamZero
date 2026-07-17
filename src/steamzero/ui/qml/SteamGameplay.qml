@@ -23,6 +23,7 @@ Item {
     signal applyRequested(string planId, string confirmToken)
     signal systemRequested()
     signal steamInputRequested(string gameId)
+    signal launcherRecoveryRequested(string gameId)
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -47,6 +48,7 @@ Item {
     readonly property var impact: gameplay && gameplay.impact ? gameplay.impact : ({})
     readonly property var currentProfile: gameplay && gameplay.currentProfile
         ? gameplay.currentProfile : ({})
+    readonly property var launcher: gameplay && gameplay.launcher ? gameplay.launcher : ({})
     readonly property var selectedGame: games.length > 0 && gameIndex < games.length
         ? games[gameIndex] : ({"id": "", "name": qsTr("Nenhum jogo instalado"), "coverUrl": ""})
 
@@ -457,6 +459,75 @@ Item {
                     }
                 }
                 Item { Layout.fillWidth: true }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.minimumHeight: launcherColumn.implicitHeight + 24
+                color: page.launcher.state === "observed" ? "#0c2a21"
+                    : page.launcher.state === "stale" || page.launcher.state === "degraded"
+                    ? "#24180b" : page.surfaceColor
+                border.color: page.launcher.state === "observed" ? page.greenColor
+                    : page.launcher.state === "stale" || page.launcher.state === "degraded"
+                    ? page.amberColor : page.borderColor
+                radius: 8
+                ColumnLayout {
+                    id: launcherColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: 12
+                    spacing: 7
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Lançamento gerenciado")
+                            color: page.textColor
+                            font.bold: true
+                        }
+                        Label {
+                            text: page.launcher.statusLabel || qsTr("Perfil recomendado")
+                            color: page.launcher.state === "observed"
+                                ? page.greenColor : page.amberColor
+                            font.bold: true
+                        }
+                        Item { Layout.fillWidth: true }
+                        Button {
+                            visible: Boolean(page.launcher.recoveryRequired)
+                            text: qsTr("Restaurar estado")
+                            Layout.minimumHeight: 44
+                            Accessible.name: text
+                            onClicked: page.launcherRecoveryRequested(
+                                String(page.selectedGame.id || "")
+                            )
+                        }
+                    }
+                    TextField {
+                        visible: Boolean(page.launcher.launchOption)
+                        text: page.launcher.launchOption || ""
+                        readOnly: true
+                        selectByMouse: true
+                        color: page.textColor
+                        font.family: "monospace"
+                        Layout.fillWidth: true
+                        Accessible.name: qsTr("Opção de inicialização Steam para o jogo")
+                        background: Rectangle {
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 5
+                        }
+                    }
+                    Label {
+                        visible: Boolean(page.launcher.launchOption)
+                        text: qsTr("Use esta linha nas opções de inicialização do jogo; o perfil só vira observado durante a execução real.")
+                        color: page.mutedColor
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                }
             }
 
             Rectangle {

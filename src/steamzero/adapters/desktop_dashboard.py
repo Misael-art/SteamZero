@@ -321,6 +321,9 @@ class DesktopDashboard:
     ) -> dict[str, Any]:
         return self._gameplay.apply(plan_id, confirm_token, desktop_status)
 
+    def recover_steam_gameplay(self, game_id: str) -> dict[str, Any]:
+        return self._gameplay.recover_launcher(game_id)
+
     def plan_lsfg_install(self) -> dict[str, Any]:
         return self._gameplay.plan_lsfg_install()
 

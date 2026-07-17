@@ -151,6 +151,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "confirmToken"),
                 coordinator.status(),
             )
+        if path == "/steam/gameplay/recover":
+            return self._dashboard().recover_steam_gameplay(
+                self._required_string(payload, "gameId")
+            )
         if path == "/system/lsfg/plan":
             return {"plan": self._dashboard().plan_lsfg_install()}
         if path == "/system/lsfg/apply":

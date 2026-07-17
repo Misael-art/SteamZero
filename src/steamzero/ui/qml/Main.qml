@@ -91,6 +91,7 @@ ApplicationWindow {
             {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "missing", "statusLabel": "ausente"},
             {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
             {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "mangoapp", "name": "MangoApp", "detail": "Overlay compatível com Gamescope", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
             {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
             {"id": "lsfg", "name": "LSFG-VK", "detail": "Geração de quadros configurada por jogo", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
         ],
@@ -98,6 +99,7 @@ ApplicationWindow {
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
         "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+        "launcher": {"state": "unconfigured", "statusLabel": "Selecione um jogo", "launchOption": "", "recoveryRequired": false},
         "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
         "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}
     })
@@ -1444,6 +1446,13 @@ ApplicationWindow {
                                         "gameId": gameId
                                     }, function() {
                                         root.notify(qsTr("Configuração Steam Input aberta"), false)
+                                    })
+                                }
+                                onLauncherRecoveryRequested: function(gameId) {
+                                    root.request("POST", "/steam/gameplay/recover", {
+                                        "gameId": gameId
+                                    }, function() {
+                                        root.refreshStatus(qsTr("Estado do lançamento restaurado"))
                                     })
                                 }
                             }

@@ -22,7 +22,7 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 2
+    assert store.user_version == state.LATEST == 3
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -34,7 +34,7 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 2  # 2ª vez: no-op
+    assert store.migrate() == 3  # 2ª vez: no-op
     store.close()
 
 
@@ -51,7 +51,7 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 2
+    assert store.user_version == 3
     assert store.get_profile("legacy-profile") is not None
     store.save_profile(
         {
@@ -62,6 +62,29 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
             "priority": 0,
         }
     )
+    store.close()
+
+
+def test_migration_v3_accepts_gameplay_scopes_and_runtime(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    for scope in ("global", "portable", "dock"):
+        store.save_profile(
+            {
+                "id": f"steam-gameplay:{scope}:default",
+                "scope": scope,
+                "kind": "performance",
+                "payload_json": "{}",
+            }
+        )
+    store.save_profile(
+        {
+            "id": "steam-runtime:game:10",
+            "scope": "game",
+            "kind": "performance-runtime",
+            "payload_json": '{"state":"active"}',
+        }
+    )
+    assert store.get_profile("steam-runtime:game:10") is not None
     store.close()
 
 
@@ -136,7 +159,7 @@ def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 2
+    assert export["schemaVersion"] == 3
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -152,14 +175,14 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
         raise RuntimeError("migração v2 quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (3, bad)])
-    monkeypatch.setattr(state, "LATEST", 3)
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (4, bad)])
+    monkeypatch.setattr(state, "LATEST", 4)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 2  # não avançou
+    assert store2.user_version == 3  # não avançou
     tables = {
         r["name"]
         for r in store2._conn.execute(

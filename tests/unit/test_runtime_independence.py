@@ -57,6 +57,7 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/steam/input/open"' in qml
     assert '"/steam/gameplay/plan"' in qml
     assert '"/steam/gameplay/apply"' in qml
+    assert '"/steam/gameplay/recover"' in qml
     assert '"/system/lsfg/plan"' in qml
     assert '"/system/lsfg/apply"' in qml
     assert '"/system/lsfg/rollback"' in qml
@@ -85,3 +86,9 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         assert contract in gameplay_qml
     for contract in ("Preparar LSFG-VK", "Instalar e verificar", "Desfazer"):
         assert contract in qml
+    for contract in (
+        "Lançamento gerenciado",
+        "Opção de inicialização Steam",
+        "Restaurar estado",
+    ):
+        assert contract in gameplay_qml
