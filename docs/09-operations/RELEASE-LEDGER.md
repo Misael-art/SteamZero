@@ -44,6 +44,7 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 | `0.1.0a18-1d76d7986330` | `1d76d7986330053240c9001d64468d112303be88` | `618718da9c919471a9c5583ba4c449e67acaf6eb35001045d3719d7256dd98b0` | ativa; motor TDP G-STATE validado em sysfs descartável, transporte mutável ainda gated |
 | `0.1.0a19-364185ac7d87` | `364185ac7d8750a1a7a8f920baccb8893205f94c` | `e58bded9177b60ae20cd453220275008a80cbf2f8dcdbca38140ba6c94a6596c` | ativa; motor GPU SCLK G-STATE validado no wheel instalado contra sysfs descartável, transporte mutável ainda gated |
 | `0.1.0a20-ced9e2157548` | `ced9e21575485afd337eb70f5ffae9dbcb08b11f` | `68344159cc2258151c6d6e74e691445cd5f22f1741c89e2cc2b87fb9be1704f0` | ativa; lock interprocesso e motor sysctl G-STATE validados no wheel instalado sem escrever `/proc/sys` real |
+| `0.1.0a21-7e1136cc80ae` | `7e1136cc80aecf2d5e5c1e5be4c931c25f9c5218` | `8f53b5429726f99231f197ff35c0a6286ec454322e923c6eb850ab54c7a6f2b4` | ativa; lifecycle exige identidade do wrapper/filho e recupera PID reutilizado sem sinalizar processo alheio |
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.

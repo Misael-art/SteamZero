@@ -51,6 +51,14 @@ AppID, PID, digest, efeitos sem segredo, timestamps e exit code. Após SIGKILL d
 PID morto produz `recoveryRequired`; a recuperação encerra a sessão como `failed` com
 o código estável `E-SESSION-INTERRUPTED`.
 
+PID vivo isoladamente não prova ownership. Em `launching`, o processo precisa ser
+observado como `steamzero-launch --appid <APP_ID>` em `/proc/<pid>/cmdline`; nos estados
+`running`, `suspending`, `suspended`, `resuming` e `closing`, o ambiente precisa conter
+o AppID e o digest exatos da sessão. Um PID reutilizado por outro processo vira
+`stale + recoveryRequired`; recovery apenas fecha o registro e nunca envia sinal ao
+processo alheio. Linha de comando e ambiente são inspecionados em memória e não aparecem
+no State Store ou nos logs.
+
 Desde o schema v4, `game_session` é a fonte de verdade: o mesmo vocabulário
 `idle→launching→running→…→closed|failed` serve o domínio F-SD-01 e o launcher real.
 Um índice parcial por owner recusa uma segunda sessão ativa de forma atômica. Cada

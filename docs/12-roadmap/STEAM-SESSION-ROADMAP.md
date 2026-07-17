@@ -90,6 +90,14 @@ Unificar `steamzero-launch` e Session Manager com hooks de jobs, saves, áudio,
 input, display e storage. Saída: launching→running→suspended→running→closed em
 jogo real, com estado interrompido recuperável.
 
+Estado atual: o launcher e o Session Manager já usam o mesmo vocabulário e tabela
+canônica, exclusividade por owner, eventos atômicos, propagação SIGTERM/SIGINT e
+recovery explícito. A identidade agora é verificada em todos os estados ativos:
+wrapper+AppID durante `launching` e marcadores AppID+digest no filho nas demais fases.
+PID reutilizado não mantém o owner bloqueado e nunca recebe sinal durante recovery.
+Ainda faltam integrar ao launcher real os hooks de saves/jobs/input/display/storage e
+executar suspend/resume com um jogo de bancada.
+
 ### R5 — desempenho aplicado e reversível
 
 Aplicar TDP/GPU por modelo, escopos de energia/device e restauração ao sair.

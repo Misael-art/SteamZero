@@ -1015,3 +1015,28 @@ agente nem implica falha do helper, e nenhuma mutação ocorreu.
 **Gate:** **530 passed / 85,14%** (7666 statements, 918 misses, 2016 branches), Ruff,
 formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto v3 verdes.
 O transporte mutável continua fechado até a certificação em VM descartável.
+
+## 2026-07-17 — Sessão 27: identidade de processo no lifecycle Steam
+
+**Falha corrigida:** um PID ativo, porém reutilizado por processo alheio, fazia a sessão
+ficar `stale` sem oferecer recovery e mantinha o índice exclusivo do owner bloqueado.
+O launcher agora confirma `steamzero-launch --appid <jogo>` durante `launching` e exige
+`STEAMZERO_GAME_ID` + digest exatos no ambiente do filho em `running`, `suspending`,
+`suspended`, `resuming` e `closing`. Divergência produz `recoveryRequired=true`; recovery
+altera somente o State Store e nunca sinaliza o PID não reconhecido.
+
+**Wheel e host:** release `0.1.0a21-7e1136cc80ae`, commit
+`7e1136cc80aecf2d5e5c1e5be4c931c25f9c5218`, wheel SHA-256
+`8f53b5429726f99231f197ff35c0a6286ec454322e923c6eb850ab54c7a6f2b4`.
+O wheel instalado lançou `/usr/bin/true` pelo adapter real e observou
+`launching→running→closed`, exit 0 e PID final nulo. Uma sessão sintética apontando para
+o PID vivo do smoke foi reconhecida como reutilização, recuperada, e o processo continuou
+vivo. Um wrapper executável real nomeado `steamzero-launch --appid 10` foi identificado.
+
+Doctor/daemon convergiram para `a21`, SQLite v5 permaneceu íntegro, zero pendências,
+socket, service e agente Polkit ficaram ativos. A tentativa posterior de repetir status
+root não recebeu nova autorização; o manifesto v3 instalado foi verificado em leitura e
+nenhuma mutação privilegiada foi executada nessa etapa.
+
+**Gate:** **541 passed / 85,21%** (7681 statements, 917 misses, 2020 branches), Ruff,
+formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto verdes.
