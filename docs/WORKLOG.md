@@ -858,3 +858,24 @@ systemd user e permissões IPC continuaram saudáveis.
 
 **Gate:** **482 passed / 85%** (6845 statements, 845 misses, 1804 branches); Ruff,
 formato, mypy, fronteiras, independência, `qmllint`, provenance e smokes host verdes.
+
+## 2026-07-17 — Sessão 21: reconciliador persistente R2 no host
+
+**R2 incremental:** o daemon user-scoped passou a amostrar o ambiente real a cada cinco
+segundos. Um digest material considera dispositivo, sessão, AC, conectividade, topologia
+de displays e volumes; timestamp, percentual de bateria e espaço livre não criam ruído.
+Snapshot e evento `session.environment` são gravados atomicamente no SQLite v5. A CLI e
+o daemon usam a mesma composição Linux, sem importar ou executar PhaseZero.
+
+**Host:** release `0.1.0a12-105cce61a9a3`, commit
+`105cce61a9a3d471429f3af520537f29f8025f72`, wheel SHA-256
+`72130dd966690ec1e87c1863d9ed1b2a9b35119df0c451d2c7ac9221cdf0a1cd`. O doctor
+instalado retornou schema v5, integridade `ok` e zero operações pendentes. Daemon e
+socket systemd user ficaram ativos; o snapshot persistido observou Deck LCD, KDE
+Wayland, eDP, DP desconectado, Btrfs, EFI e microSD. Após múltiplos ciclos estáveis, a
+contagem permaneceu em um único evento, comprovando a deduplicação no processo real.
+
+**Gate:** **484 passed / 83% exatos** (82,88%; 6863 statements, 939 misses, 1804
+branches). Ruff, formato, mypy, fronteiras, independência, `qmllint`, wheel provenance,
+manifesto host e smokes instalados passaram. O percentual menor que a sessão anterior
+fica registrado sem arredondamento otimista e será recuperado por testes do lifecycle R2.

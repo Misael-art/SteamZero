@@ -35,6 +35,7 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 | `0.1.0a9-e38b3762f144` | `e38b3762f1449ad664877a390b3729963d4c6fb6` | `1fc320521f036a98f60cf8806adf64938fcd39d85dc87a8d5446973d08edf21d` | instalou o comando estável; smoke offscreen revelou timeout KDE não degradado |
 | `0.1.0a10-1c4527ae3961` | `1c4527ae39612062742b318b102c33c8b311d918` | `a8a77ab25fcd3267d9fc2f756a56d63ae3600c9d68e857daf84d462d2b465d91` | ativa e validada no host |
 | `0.1.0a11-11e57d269fb2` | `11e57d269fb205f5c0258888e1afd56b826ca96c` | `a8caada99aa4049f56ae05a680d67f698aae94fd4f30898797e8a709f7f64641` | R1 instalado; ambiente de sessão real validado read-only |
+| `0.1.0a12-105cce61a9a3` | `105cce61a9a3d471429f3af520537f29f8025f72` | `72130dd966690ec1e87c1863d9ed1b2a9b35119df0c451d2c7ac9221cdf0a1cd` | R2 incremental instalado; SQLite v5 e deduplicação do reconciliador validados no host |
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.
