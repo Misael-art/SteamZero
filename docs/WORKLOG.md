@@ -573,3 +573,42 @@ assets e dashboard e exclui `steamzero.ports`. A release imutável
 e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendentes. A cópia
 instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
 registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
+
+## 2026-07-18 — Sessão 11: refinamento responsivo da UI Desktop
+
+**Escopo isolado:** implementação realizada em worktree dedicado da branch
+`codex/ui-emulacao`. Somente `src/steamzero/ui/qml/`, este registro e a seção correspondente
+do relatório de implementação foram alterados. Adapters, domínio, bridge, schemas e
+contratos de payload permaneceram intactos.
+
+**Entregue:** tokens lógicos de composição/tipografia/densidade; rail portátil de 72 px;
+container central limitado e balanceado em ultrawide/4K; preset TV; footer adaptativo;
+cards com altura implícita; inspector lateral de 320–420 px e drawer no Deck; filtro vazio
+sem seleção residual; estados vazios de emuladores, sync e diagnóstico; cards de perfis
+com recomendado/desejado/aplicado/não verificado; alerta expandido/compacto sem explicação
+duplicada na tela de Sistema; header sticky; navegador semântico por seções; preferências
+de alto contraste e redução de movimento; termos técnicos humanizados no primeiro nível.
+
+Operações reais agora exibem, após 280 ms, uma tela de carregamento indeterminada com
+contexto preservado. A UI não estima porcentagem e não altera a bridge: o overlay deriva
+exclusivamente de `pendingRequests`, inclusive em erro e timeout.
+
+**Evidência visual:** nove goldens inspecionados cobrem Deck 1280×800, filtro vazio,
+drawer, carregamento, Full HD, ultrawide, 4K desktop e 4K TV. O teste Qt Quick cobre
+breakpoints, escala/orientação do Deck, filtro vazio, carregamento tardio e preferências
+de acessibilidade.
+
+**Gates (`verified-dev`):**
+```text
+qmllint src/steamzero/ui/qml/*.qml src/steamzero/ui/qml/tests/*.qml → OK
+qmltestrunner → 6 passed, 0 failed/skipped
+QML Qt 6 offscreen smoke → processo permaneceu ativo, sem diagnóstico de runtime
+make check → format/lint/boundaries/independence/mypy OK · pytest 367 passed
+git diff --check -- src/steamzero/ui/qml → OK
+```
+
+**Limites preservados:** o payload atual não expõe capability/lifecycle para coordenação
+da janela de configuração de controles da Steam nem read model de “Lançamento gerenciado”.
+Esses fluxos não foram simulados na QML. `/steam/open` continua sendo o fallback allowlisted
+existente, preservando seção e seleção. Wayland, X11, gamepad, touch, dock/hotplug e hardware
+real não foram exercitados nesta sessão.

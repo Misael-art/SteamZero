@@ -336,3 +336,72 @@ sem efeitos de perfil, e ferramentas de conversão reais não foram acionadas. A
 contém M10 parcial e M10-H foundation; Fases 5–6 não iniciaram. Nada mascarado — a suíte
 (362 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.
+
+---
+
+## 8. Refinamento responsivo da UI Desktop — sessão 11
+
+Rótulo desta fatia: **`verified-dev`**. Branch: `codex/ui-emulacao`.
+
+### Resultado
+
+Sem redesenhar a identidade System Studio, a apresentação QML foi decomposta em tokens e
+componentes para inspector adaptativo, empty state, carregamento, cards, footer e navegação
+por seções. O shell usa pixels lógicos e os sinais já existentes de dispositivo, displays,
+escala, teclado/mouse e capabilities; nenhum contrato de payload foi alterado.
+
+| Perfil | Composição entregue |
+|---|---|
+| Deck 1280×800 | rail de 72 px, conteúdo em uma coluna, inspector em drawer, margens 16 px, alvos ≥48 px e footer de 46 px |
+| Full HD | sidebar de 248 px, inspector de 344 px, grid de perfis e margens 24 px |
+| Ultrawide | conteúdo central limitado a 1920 px e balanceado por gutters; sem formulários esticados |
+| 4K desktop | composição lógica equivalente a Full HD, golden em escala 200% |
+| 4K TV | sidebar de 300 px, alvos de 64 px e escala tipográfica/espacial ampliada |
+
+Antes, o layout dependia principalmente de `root.width`, margens repetidas de 28 px,
+painéis de 292 px, linhas de 94 px e footer fixo. Depois, a UI faz reflow por composição,
+limita largura, usa altura implícita e só reduz densidade depois de reorganizar o conteúdo.
+
+O filtro `Instalados 0` agora limpa `selectedEmulator`, fecha o inspector e oferece
+**Ver todos** e **Instalar primeiro emulador** (a segunda ação apenas abre o plano seguro já
+existente). Perfis, sync e diagnóstico receberam estados vazios orientativos. Prontidão não
+é apresentada como “tudo aplicado”: ambiente, desejo, recomendação, último perfil aplicado
+e estado não verificado permanecem distinguíveis.
+
+O carregamento solicitado é tardio (evita flash em requests rápidos), bloqueia interação
+concorrente, mantém a tela anterior como contexto e nunca inventa percentual. Redução de
+movimento remove a animação de navegação; alto contraste troca tokens, não aplica filtro.
+
+### Evidência
+
+```text
+qmllint → OK
+Qt Quick Test → 6 passed, 0 failed, 0 skipped
+Qt 6 offscreen smoke → OK (encerrado apenas por timeout do harness)
+make check → 367 passed; format/lint/boundaries/independence/mypy verdes
+git diff --check → OK
+```
+
+Nove goldens foram renderizados e inspecionados em
+`src/steamzero/ui/qml/golden/`: visão geral Deck, filtro vazio, drawer, carregamento,
+perfis Full HD, conflito Full HD, sync ultrawide, 4K desktop e 4K TV.
+
+### Limites e riscos restantes
+
+- **Wayland/X11:** não verificado nesta fatia; o render foi Qt 6 offscreen/software.
+- **Hardware:** não verificado; nenhum apply, URI Steam ou efeito de sistema foi acionado.
+- **Gamepad/touch/hot-swap/dock:** não verificados em hardware. O grafo existente e os
+  labels acessíveis foram preservados, e PgUp/PgDown exercem a navegação por seções no dev.
+- **Steam Controller coordenado:** não implementado na QML porque o payload atual só
+  oferece `/steam/open`; não existem `steamControllerWindowManaged`, lifecycle de janela
+  externa ou ação “trazer para frente”. Implementar isso exige adapter/capability no escopo
+  de outra branch, com testes Wayland/X11 e rollback de regra temporária.
+- **Lançamento gerenciado:** o read model atual não fornece seus estados/detalhes; a QML
+  não inventa fallback. A apresentação compacta/expandida deve ser ligada quando o contrato
+  real existir.
+- **i18n:** todas as novas strings usam `qsTr`, mas o catálogo inglês continua ausente,
+  dívida já registrada como M3d.
+
+Próxima etapa recomendada: integrar os dois read models ausentes em branch de adapters,
+então executar a matriz assistida no Deck/KDE Wayland, X11 suportado, controle/touch e
+dock/hotplug antes de promover qualquer célula para `verified-hw`.

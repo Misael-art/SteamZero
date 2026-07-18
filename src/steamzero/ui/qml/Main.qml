@@ -7,8 +7,8 @@ ApplicationWindow {
     id: root
     width: 1280
     height: 800
-    minimumWidth: 800
-    minimumHeight: 600
+    minimumWidth: 720
+    minimumHeight: 560
     visible: true
     title: qsTr("SteamZero — Central de jogos")
     color: backgroundColor
@@ -26,18 +26,46 @@ ApplicationWindow {
     palette.disabled.buttonText: "#667481"
     palette.disabled.text: "#667481"
 
-    readonly property color backgroundColor: "#071019"
-    readonly property color sidebarColor: "#09131d"
-    readonly property color surfaceColor: "#0d1924"
-    readonly property color raisedColor: "#122131"
-    readonly property color borderColor: "#2a3a49"
-    readonly property color textColor: "#f2f6fb"
-    readonly property color mutedColor: "#9eabba"
-    readonly property color cyanColor: "#13bdf2"
-    readonly property color cyanDarkColor: "#0a5f85"
-    readonly property color amberColor: "#ff9f1a"
-    readonly property color greenColor: "#59d35d"
-    readonly property color redColor: "#ff6b73"
+    readonly property var desktopContext: desktopStatus.context || ({})
+    readonly property bool handheldDevice: desktopContext.deviceKind
+        && String(desktopContext.deviceKind).indexOf("deck-") === 0
+    readonly property var connectedDisplays: desktopContext.displays || []
+    readonly property var primaryDisplay: connectedDisplays.find(function(display) {
+        return display.connected && (display.internal || connectedDisplays.length === 1)
+    }) || connectedDisplays.find(function(display) { return display.connected }) || ({})
+    readonly property bool televisionMode: connectedDisplays.some(function(display) {
+        return display.connected && !display.internal && (display.width || 0) >= 3840
+    }) && !desktopContext.externalKeyboard && !desktopContext.externalMouse
+    property bool reducedMotionPreference: false
+    property bool highContrastPreference: false
+
+    UiTokens {
+        id: ui
+        viewportWidth: root.width
+        viewportHeight: root.height
+        handheld: root.handheldDevice
+        television: root.televisionMode
+        highContrast: root.highContrastPreference
+        reducedMotion: root.reducedMotionPreference
+    }
+
+    readonly property color backgroundColor: ui.background
+    readonly property color sidebarColor: ui.sidebar
+    readonly property color surfaceColor: ui.surface
+    readonly property color raisedColor: ui.raised
+    readonly property color borderColor: ui.border
+    readonly property color textColor: ui.text
+    readonly property color mutedColor: ui.muted
+    readonly property color cyanColor: ui.cyan
+    readonly property color cyanDarkColor: ui.cyanDark
+    readonly property color amberColor: ui.amber
+    readonly property color greenColor: ui.green
+    readonly property color redColor: ui.red
+    readonly property string compositionProfile: ui.composition
+    readonly property bool compactLayout: ui.compact
+    readonly property int sidebarLogicalWidth: ui.sidebarWidth
+    readonly property int minimumInteractiveTarget: ui.targetSize
+    readonly property bool motionReduced: ui.reducedMotion
 
     property var desktopStatus: ({
         "effectiveProfile": "handheld-desktop",
@@ -82,8 +110,21 @@ ApplicationWindow {
         ? desktopStatus.dashboard.components : fallbackComponents
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
         ? desktopStatus.dashboard.steam : fallbackSteam
+    readonly property var filteredEmulatorItems: filterRows(emulatorItems, emulatorFilter)
+    readonly property var filteredSteamItems: filterRows(steamItems, steamFilter)
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
+    readonly property int syncPending: desktopStatus.dashboard && desktopStatus.dashboard.sync
+        ? desktopStatus.dashboard.sync.pending || 0 : 0
+    readonly property int syncConflicted: desktopStatus.dashboard && desktopStatus.dashboard.sync
+        ? desktopStatus.dashboard.sync.conflicted || 0 : 0
+    readonly property int syncDone: desktopStatus.dashboard && desktopStatus.dashboard.sync
+        ? desktopStatus.dashboard.sync.done || 0 : 0
+    readonly property int syncTotal: syncPending + syncConflicted + syncDone
+    readonly property string doctorState: desktopStatus.dashboard && desktopStatus.dashboard.doctor
+        ? desktopStatus.dashboard.doctor.state || "unverified" : "unverified"
+    readonly property bool environmentReady: !hasConflicts && !desktopStatus.recoveryRequired
+        && doctorState !== "failed"
 
     property int sectionIndex: 1
     property int emulatorFilter: 0
@@ -100,10 +141,32 @@ ApplicationWindow {
     property bool lastRequestIsError: false
     property int pendingRequests: 0
     property bool recoveryPromptShown: false
+    property bool loadingOverlayVisible: false
+    property string loadingTitle: qsTr("Preparando tudo para você")
+    property string loadingDetail: qsTr("Aguarde enquanto o SteamZero verifica o estado com segurança.")
+    property bool alertExpanded: true
+    property bool syncExplanationVisible: false
+    property Item emulatorDrawerReturnItem: null
+    property Item steamDrawerReturnItem: null
 
     signal planRequested(string profile)
     signal recoveryRequested()
     signal keyboardRequested()
+
+    onEmulatorFilterChanged: ensureEmulatorSelection()
+    onSteamFilterChanged: ensureSteamSelection()
+    onHasConflictsChanged: {
+        if (hasConflicts)
+            alertExpanded = true
+    }
+    onPendingRequestsChanged: {
+        if (pendingRequests > 0) {
+            loadingDelay.restart()
+        } else {
+            loadingDelay.stop()
+            loadingOverlayVisible = false
+        }
+    }
 
     function parseArguments() {
         const args = Qt.application.arguments
@@ -118,6 +181,8 @@ ApplicationWindow {
         const apiMarker = args.indexOf("--steamzero-api")
         const tokenMarker = args.indexOf("--steamzero-token")
         const sectionMarker = args.indexOf("--steamzero-section")
+        reducedMotionPreference = args.indexOf("--steamzero-reduced-motion") >= 0
+        highContrastPreference = args.indexOf("--steamzero-high-contrast") >= 0
         if (apiMarker >= 0 && apiMarker + 1 < args.length)
             apiUrl = args[apiMarker + 1]
         if (tokenMarker >= 0 && tokenMarker + 1 < args.length)
@@ -127,6 +192,7 @@ ApplicationWindow {
             if (sections[args[sectionMarker + 1]] !== undefined)
                 sectionIndex = sections[args[sectionMarker + 1]]
         }
+        selectedProfile = desktopStatus.manualOverride || "auto"
         ensureSelections()
         if (desktopStatus.recoveryRequired) {
             recoveryPromptShown = true
@@ -155,6 +221,8 @@ ApplicationWindow {
         }
         const xhr = new XMLHttpRequest()
         let completed = false
+        loadingTitle = requestTitle(path)
+        loadingDetail = requestDetail(path)
         pendingRequests += 1
         xhr.open(method, apiUrl + path)
         xhr.setRequestHeader("Content-Type", "application/json")
@@ -198,6 +266,7 @@ ApplicationWindow {
         request("GET", "/status", {}, function(response) {
             desktopStatus = response
             currentPlan = null
+            selectedProfile = desktopStatus.manualOverride || "auto"
             ensureSelections()
             if (desktopStatus.recoveryRequired && !recoveryPromptShown) {
                 recoveryPromptShown = true
@@ -209,16 +278,34 @@ ApplicationWindow {
     }
 
     function ensureSelections() {
-        if (emulatorItems.length > 0) {
-            const emulatorId = selectedEmulator ? selectedEmulator.id : ""
-            selectedEmulator = emulatorItems.find(function(row) { return row.id === emulatorId })
-                || emulatorItems[0]
-        }
-        if (steamItems.length > 0) {
-            const steamId = selectedSteam ? selectedSteam.id : ""
-            selectedSteam = steamItems.find(function(row) { return row.id === steamId })
-                || steamItems[0]
-        }
+        ensureEmulatorSelection()
+        ensureSteamSelection()
+    }
+
+    function ensureEmulatorSelection() {
+        const emulatorId = selectedEmulator ? selectedEmulator.id : ""
+        selectedEmulator = filteredEmulatorItems.find(function(row) { return row.id === emulatorId })
+            || (filteredEmulatorItems.length > 0 ? filteredEmulatorItems[0] : null)
+        if (!selectedEmulator && emulatorInspectorDrawer.opened)
+            emulatorInspectorDrawer.close()
+    }
+
+    function ensureSteamSelection() {
+        const steamId = selectedSteam ? selectedSteam.id : ""
+        selectedSteam = filteredSteamItems.find(function(row) { return row.id === steamId })
+            || (filteredSteamItems.length > 0 ? filteredSteamItems[0] : null)
+        if (!selectedSteam && steamInspectorDrawer.opened)
+            steamInspectorDrawer.close()
+    }
+
+    function openEmulatorInspector() {
+        if (selectedEmulator)
+            emulatorInspectorDrawer.open()
+    }
+
+    function openSteamInspector() {
+        if (selectedSteam)
+            steamInspectorDrawer.open()
     }
 
     function filterRows(rows, filter) {
@@ -243,6 +330,129 @@ ApplicationWindow {
         return rows.filter(function(row) {
             return ["installed", "available", "running"].indexOf(row.state) >= 0
         }).length
+    }
+
+    function firstInstallableEmulator() {
+        return emulatorItems.find(function(row) {
+            return row.action && row.action.enabled && row.action.kind === "component-plan"
+        }) || null
+    }
+
+    function requestTitle(path) {
+        if (path === "/component/apply")
+            return qsTr("Instalando com segurança")
+        if (path === "/apply" || path === "/reset")
+            return qsTr("Aplicando o perfil revisado")
+        if (path === "/recover")
+            return qsTr("Restaurando o último estado seguro")
+        if (path === "/steam/open")
+            return qsTr("Abrindo a Steam")
+        return qsTr("Atualizando o estado")
+    }
+
+    function requestDetail(path) {
+        if (path === "/component/apply")
+            return qsTr("O componente será verificado antes de ficar disponível.")
+        if (path === "/recover" || path === "/reset")
+            return qsTr("A recuperação preserva jogos, saves e configurações pessoais.")
+        return qsTr("Isso pode levar alguns instantes. O contexto atual será preservado.")
+    }
+
+    function profileLabel(profileId) {
+        const labels = {
+            "auto": qsTr("Automático"),
+            "handheld": qsTr("Portátil"),
+            "handheld-desktop": qsTr("Portátil"),
+            "dock": qsTr("Dock"),
+            "docked-desktop": qsTr("Dock"),
+            "safe": qsTr("Seguro")
+        }
+        return labels[profileId] || profileId || qsTr("Não verificado")
+    }
+
+    function observedProfileId() {
+        const current = desktopStatus.current || {}
+        return current.profile && current.profile.id ? current.profile.id : ""
+    }
+
+    function profileMatches(candidate, effective) {
+        if (candidate === "handheld")
+            return effective === "handheld" || effective === "handheld-desktop"
+        if (candidate === "dock")
+            return effective === "dock" || effective === "docked-desktop"
+        return candidate === effective
+    }
+
+    function desiredProfileId() {
+        return desktopStatus.manualOverride || "auto"
+    }
+
+    function displaySummary() {
+        if (!primaryDisplay || !primaryDisplay.width || !primaryDisplay.height)
+            return qsTr("Resolução não verificada")
+        let displayWidth = primaryDisplay.width
+        let displayHeight = primaryDisplay.height
+        if (handheldDevice && primaryDisplay.internal && displayHeight > displayWidth) {
+            const swap = displayWidth
+            displayWidth = displayHeight
+            displayHeight = swap
+        }
+        const scale = primaryDisplay.scale ? qsTr(" · escala %1%").arg(Math.round(primaryDisplay.scale * 100)) : ""
+        return qsTr("%1×%2%3").arg(displayWidth).arg(displayHeight).arg(scale)
+    }
+
+    function pageTitle() {
+        return [qsTr("Visão geral"), qsTr("Emuladores"), qsTr("Steam"),
+            qsTr("Perfis do Desktop"), qsTr("Saves e Sync"), qsTr("Sistema e recuperação")][sectionIndex]
+    }
+
+    function currentScrollTarget() {
+        if (sectionIndex === 0)
+            return overviewScroll.contentItem
+        if (sectionIndex === 3)
+            return profilesScroll.contentItem
+        if (sectionIndex === 4)
+            return syncScroll.contentItem
+        if (sectionIndex === 5)
+            return systemScroll.contentItem
+        return null
+    }
+
+    function currentSections() {
+        if (sectionIndex === 0)
+            return [
+                {"label": qsTr("Contexto"), "item": overviewHeaderAnchor},
+                {"label": qsTr("Prontidão"), "item": overviewReadinessAnchor},
+                {"label": qsTr("Áreas principais"), "item": overviewAreasAnchor}
+            ]
+        if (sectionIndex === 3) {
+            const sections = [
+                {"label": qsTr("Estado dos perfis"), "item": profilesHeaderAnchor},
+                {"label": qsTr("Escolher perfil"), "item": profilesChoicesAnchor}
+            ]
+            if (profilesPlanAnchor.visible)
+                sections.push({"label": qsTr("Plano revisado"), "item": profilesPlanAnchor})
+            return sections
+        }
+        if (sectionIndex === 4) {
+            const sections = [
+                {"label": qsTr("Estado da sincronização"), "item": syncHeaderAnchor},
+                {"label": root.syncTotal === 0 ? qsTr("Fila vazia") : qsTr("Resumo da fila"),
+                 "item": root.syncTotal === 0 ? syncEmptyAnchor : syncSummaryAnchor}
+            ]
+            if (syncExplanationAnchor.visible)
+                sections.push({"label": qsTr("Como funciona"), "item": syncExplanationAnchor})
+            return sections
+        }
+        if (sectionIndex === 5) {
+            const sections = [{"label": qsTr("Contexto do sistema"), "item": systemHeaderAnchor}]
+            if (systemAttentionAnchor.visible)
+                sections.push({"label": qsTr("Ação necessária"), "item": systemAttentionAnchor})
+            sections.push({"label": qsTr("Diagnóstico"), "item": systemDoctorAnchor})
+            sections.push({"label": qsTr("Ações seguras"), "item": systemActionsAnchor})
+            return sections
+        }
+        return []
     }
 
     function stateColor(state) {
@@ -348,6 +558,25 @@ ApplicationWindow {
         id: feedbackTimer
         interval: root.lastRequestIsError ? 10000 : 5000
         onTriggered: root.lastRequest = ""
+    }
+    Timer {
+        id: loadingDelay
+        interval: 280
+        repeat: false
+        onTriggered: {
+            if (root.pendingRequests > 0)
+                root.loadingOverlayVisible = true
+        }
+    }
+    Shortcut {
+        sequence: "PgUp"
+        enabled: sectionNavigator.visible
+        onActivated: sectionNavigator.previousSection()
+    }
+    Shortcut {
+        sequence: "PgDown"
+        enabled: sectionNavigator.visible
+        onActivated: sectionNavigator.nextSection()
     }
 
     Dialog {
@@ -488,7 +717,7 @@ ApplicationWindow {
 
     Dialog {
         id: resetDialog
-        title: qsTr("Quick Reset")
+        title: qsTr("Restauração rápida")
         modal: true
         width: Math.min(root.width - 48, 620)
         x: (root.width - width) / 2
@@ -530,7 +759,7 @@ ApplicationWindow {
                             "confirmToken": root.currentPlan.confirmToken
                         }, function(response) {
                             resetDialog.close()
-                            root.refreshStatus(qsTr("Quick Reset concluído"))
+                            root.refreshStatus(qsTr("Restauração rápida concluída"))
                         })
                     }
                 }
@@ -573,6 +802,135 @@ ApplicationWindow {
         }
     }
 
+    AdaptiveInspector {
+        id: emulatorInspectorDrawer
+        returnFocusItem: root.emulatorDrawerReturnItem
+        panelColor: root.surfaceColor
+        borderColor: root.borderColor
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: ui.pageMargin
+            spacing: ui.gap
+
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: root.selectedEmulator ? root.selectedEmulator.name : qsTr("Emulador")
+                    color: root.textColor
+                    font.pixelSize: ui.sectionTitleSize
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                ToolButton {
+                    text: "×"
+                    icon.name: "window-close"
+                    font.pixelSize: 22
+                    Layout.minimumWidth: ui.targetSize
+                    Layout.minimumHeight: ui.targetSize
+                    Accessible.name: qsTr("Fechar detalhes do emulador")
+                    onClicked: emulatorInspectorDrawer.close()
+                }
+            }
+            Label {
+                text: root.selectedEmulator ? root.selectedEmulator.statusLabel : qsTr("Não verificado")
+                color: root.selectedEmulator ? root.stateColor(root.selectedEmulator.state) : root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+            Label { text: qsTr("Sobre"); color: root.textColor; font.bold: true }
+            Label {
+                text: root.selectedEmulator ? root.selectedEmulator.detail : ""
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: root.selectedEmulator && root.selectedEmulator.blockedReason
+                text: root.selectedEmulator ? root.selectedEmulator.blockedReason : ""
+                color: root.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Item { Layout.fillHeight: true }
+            DarkButton {
+                text: root.selectedEmulator ? root.selectedEmulator.action.label : ""
+                enabled: root.selectedEmulator && root.selectedEmulator.action.enabled
+                icon.name: "go-next"
+                Layout.fillWidth: true
+                Layout.minimumHeight: ui.targetSize
+                Accessible.name: text
+                onClicked: root.performRowAction(root.selectedEmulator)
+            }
+        }
+    }
+
+    AdaptiveInspector {
+        id: steamInspectorDrawer
+        returnFocusItem: root.steamDrawerReturnItem
+        panelColor: root.surfaceColor
+        borderColor: root.borderColor
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: ui.pageMargin
+            spacing: ui.gap
+
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: root.selectedSteam ? root.selectedSteam.name : "Steam"
+                    color: root.textColor
+                    font.pixelSize: ui.sectionTitleSize
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                ToolButton {
+                    text: "×"
+                    icon.name: "window-close"
+                    font.pixelSize: 22
+                    Layout.minimumWidth: ui.targetSize
+                    Layout.minimumHeight: ui.targetSize
+                    Accessible.name: qsTr("Fechar detalhes da Steam")
+                    onClicked: steamInspectorDrawer.close()
+                }
+            }
+            Label {
+                text: root.selectedSteam ? root.selectedSteam.statusLabel : qsTr("Não verificado")
+                color: root.selectedSteam ? root.stateColor(root.selectedSteam.state) : root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+            Label { text: qsTr("Integração"); color: root.textColor; font.bold: true }
+            Label {
+                text: root.selectedSteam ? root.selectedSteam.detail : ""
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("A tarefa abre na Steam. Ao retornar, sua seção e seleção continuam aqui.")
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Item { Layout.fillHeight: true }
+            DarkButton {
+                text: root.selectedSteam ? root.selectedSteam.action.label : ""
+                enabled: root.selectedSteam && root.selectedSteam.action.enabled
+                icon.name: "steam"
+                Layout.fillWidth: true
+                Layout.minimumHeight: ui.targetSize
+                Accessible.name: text
+                onClicked: root.performRowAction(root.selectedSteam)
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -585,38 +943,42 @@ ApplicationWindow {
             Rectangle {
                 id: sidebar
                 color: root.sidebarColor
-                Layout.preferredWidth: root.width < 980 ? 184 : 228
+                Layout.preferredWidth: ui.sidebarWidth
+                Layout.minimumWidth: ui.sidebarWidth
+                Layout.maximumWidth: ui.sidebarWidth
                 Layout.fillHeight: true
                 border.color: root.borderColor
                 border.width: 1
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 8
+                    anchors.margins: ui.compact ? 8 : 14
+                    spacing: ui.compact ? 5 : 8
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 72
+                        Layout.minimumHeight: ui.compact ? 56 : 72
                         Image {
                             source: "../assets/steamzero-mark.png"
                             sourceSize.width: 48
                             sourceSize.height: 48
                             fillMode: Image.PreserveAspectFit
-                            Layout.preferredWidth: 48
-                            Layout.preferredHeight: 48
+                            Layout.preferredWidth: ui.compact ? 42 : 48
+                            Layout.preferredHeight: ui.compact ? 42 : 48
+                            Layout.alignment: Qt.AlignHCenter
                             Accessible.name: qsTr("Marca SteamZero")
                         }
                         ColumnLayout {
+                            visible: !ui.compact
                             spacing: 0
                             Label {
                                 text: "STEAMZERO"
                                 color: root.textColor
-                                font.pixelSize: root.width < 980 ? 16 : 19
+                                font.pixelSize: 19
                                 font.bold: true
                             }
                             Label {
-                                visible: root.width >= 980
+                                visible: !ui.compact
                                 text: qsTr("Central de jogos")
                                 color: root.mutedColor
                                 font.pixelSize: 13
@@ -645,10 +1007,12 @@ ApplicationWindow {
                             display: AbstractButton.TextBesideIcon
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
-                            leftPadding: 14
-                            rightPadding: 12
-                            spacing: 12
+                            leftPadding: ui.compact ? 6 : 14
+                            rightPadding: ui.compact ? 6 : 12
+                            spacing: ui.compact ? 0 : 12
                             Accessible.name: text
+                            ToolTip.visible: ui.compact && hovered
+                            ToolTip.text: text
                             KeyNavigation.up: index > 0 ? navRepeater.itemAt(index - 1) : quickResetButton
                             KeyNavigation.down: index + 1 < navRepeater.count
                                 ? navRepeater.itemAt(index + 1) : attentionButton
@@ -680,6 +1044,16 @@ ApplicationWindow {
                                     Layout.preferredWidth: 28
                                 }
                                 Label {
+                                    visible: ui.compact
+                                    text: modelData.label.charAt(0)
+                                    color: root.sectionIndex === index ? root.cyanColor : root.textColor
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    visible: !ui.compact
                                     text: modelData.label
                                     color: root.sectionIndex === index ? root.cyanColor : root.textColor
                                     font.pixelSize: 15
@@ -693,11 +1067,15 @@ ApplicationWindow {
                     Button {
                         id: attentionButton
                         visible: root.hasConflicts || root.desktopStatus.recoveryRequired
-                        text: root.hasConflicts ? qsTr("1 ação necessária") : qsTr("Recuperação pendente")
+                        text: root.hasConflicts
+                            ? qsTr("%1 ação necessária").arg(root.desktopContext.conflicts.length)
+                            : qsTr("Recuperação pendente")
                         icon.name: "security-high"
                         Layout.fillWidth: true
                         Layout.minimumHeight: 54
                         Accessible.name: text
+                        ToolTip.visible: ui.compact && hovered
+                        ToolTip.text: text
                         KeyNavigation.up: navRepeater.itemAt(navRepeater.count - 1)
                         KeyNavigation.down: quickResetButton
                         onClicked: root.sectionIndex = 5
@@ -709,7 +1087,17 @@ ApplicationWindow {
                                 icon.color: root.amberColor
                                 background: Item {}
                             }
+                            Label {
+                                visible: ui.compact
+                                text: "!"
+                                color: root.amberColor
+                                font.pixelSize: 20
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.fillWidth: true
+                            }
                             ColumnLayout {
+                                visible: !ui.compact
                                 spacing: 1
                                 Label { text: attentionButton.text; color: root.amberColor; font.bold: true }
                                 Label { text: qsTr("Requer sua atenção"); color: root.mutedColor; font.pixelSize: 12 }
@@ -720,6 +1108,7 @@ ApplicationWindow {
                     Item { Layout.fillHeight: true }
 
                     Label {
+                        visible: !ui.compact
                         text: qsTr("AÇÕES DO SISTEMA")
                         color: root.mutedColor
                         font.pixelSize: 11
@@ -727,12 +1116,15 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: quickResetButton
-                        text: qsTr("Quick Reset")
+                        text: ui.compact ? "↶" : qsTr("Restauração rápida")
                         icon.name: "edit-undo"
+                        display: ui.compact ? AbstractButton.TextOnly : AbstractButton.TextBesideIcon
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
                         Layout.minimumHeight: 48
-                        Accessible.name: text
+                        Accessible.name: qsTr("Restauração rápida")
+                        ToolTip.visible: ui.compact && hovered
+                        ToolTip.text: Accessible.name
                         background: Rectangle {
                             color: quickResetButton.activeFocus ? root.raisedColor : root.surfaceColor
                             radius: 6
@@ -745,7 +1137,8 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: cloudSyncButton
-                        text: qsTr("Cloud Sync")
+                        visible: !ui.compact
+                        text: qsTr("Sincronização em nuvem")
                         icon.name: "folder-cloud"
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
@@ -763,7 +1156,8 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: doctorButton
-                        text: qsTr("steamzero doctor")
+                        visible: !ui.compact
+                        text: qsTr("Diagnóstico do sistema")
                         icon.name: "tools-report-bug"
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
@@ -782,6 +1176,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.fillWidth: true
                         Label {
+                            visible: !ui.compact
                             text: root.desktopStatus.independentRuntime
                                 ? qsTr("Runtime autônomo") : qsTr("Verificação necessária")
                             color: root.desktopStatus.independentRuntime ? root.greenColor : root.amberColor
@@ -793,26 +1188,34 @@ ApplicationWindow {
                 }
             }
 
+            Item {
+                visible: ui.wide
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
             Rectangle {
                 color: root.backgroundColor
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.maximumWidth: ui.maximumContentWidth
+                Layout.alignment: Qt.AlignHCenter
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 0
 
                     Rectangle {
-                        visible: root.hasConflicts
+                        visible: root.hasConflicts && root.sectionIndex !== 5
                         color: "#24180b"
                         border.color: root.amberColor
                         border.width: 1
                         radius: 8
                         Layout.fillWidth: true
-                        Layout.leftMargin: 14
-                        Layout.rightMargin: 14
-                        Layout.topMargin: 12
-                        Layout.preferredHeight: 72
+                        Layout.leftMargin: ui.pageMargin
+                        Layout.rightMargin: ui.pageMargin
+                        Layout.topMargin: ui.compact ? 8 : 12
+                        Layout.preferredHeight: root.alertExpanded ? 82 : 56
 
                         RowLayout {
                             anchors.fill: parent
@@ -832,26 +1235,40 @@ ApplicationWindow {
                                 spacing: 2
                                 RowLayout {
                                     Label {
-                                        text: qsTr("Outro serviço controla o Desktop")
+                                        text: root.alertExpanded
+                                            ? qsTr("Outro serviço controla o Desktop")
+                                            : qsTr("Desktop degradado · %1 problema").arg(root.desktopContext.conflicts.length)
                                         color: root.amberColor
                                         font.pixelSize: 17
                                         font.bold: true
                                     }
                                     Label {
+                                        visible: root.alertExpanded && !ui.compact
                                         text: "E-DESKTOP-OWNER-CONFLICT"
                                         color: "#d5b47d"
                                         font.pixelSize: 11
                                     }
                                 }
                                 Label {
-                                    text: qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
+                                    visible: root.alertExpanded
+                                    text: qsTr("Algumas ações estão bloqueadas até o conflito ser resolvido.")
                                     color: root.textColor
                                     font.pixelSize: 13
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
                                 }
+                            }
+                            ToolButton {
+                                icon.name: root.alertExpanded ? "arrow-up" : "arrow-down"
+                                icon.color: root.mutedColor
+                                Layout.minimumWidth: 48
+                                Layout.minimumHeight: 48
+                                Accessible.name: root.alertExpanded ? qsTr("Recolher alerta") : qsTr("Expandir alerta")
+                                onClicked: root.alertExpanded = !root.alertExpanded
                             }
                             DarkButton {
                                 id: resolveBannerButton
-                                text: qsTr("Resolver agora")
+                                text: root.alertExpanded ? qsTr("Resolver agora") : qsTr("Ver diagnóstico")
                                 palette.buttonText: root.textColor
                                 icon.name: "go-next"
                                 Layout.minimumHeight: 48
@@ -862,7 +1279,12 @@ ApplicationWindow {
                                     border.color: resolveBannerButton.activeFocus ? root.cyanColor : "#705127"
                                     border.width: resolveBannerButton.activeFocus ? 2 : 1
                                 }
-                                onClicked: root.beginConflictResolution()
+                                onClicked: {
+                                    if (root.alertExpanded)
+                                        root.beginConflictResolution()
+                                    else
+                                        root.sectionIndex = 5
+                                }
                             }
                         }
                     }
@@ -874,69 +1296,84 @@ ApplicationWindow {
 
                         // Visão geral
                         ScrollView {
+                            id: overviewScroll
                             clip: true
                             contentWidth: availableWidth
                             ColumnLayout {
-                                width: parent.width
-                                spacing: 18
-                                anchors.margins: 28
+                                id: overviewContent
+                                width: parent.width - 72
+                                spacing: ui.gap
                                 Label {
+                                    id: overviewHeaderAnchor
                                     text: qsTr("Visão geral")
                                     color: root.textColor
-                                    font.pixelSize: 30
+                                    font.pixelSize: ui.pageTitleSize
                                     font.bold: true
-                                    Layout.topMargin: 24
-                                    Layout.leftMargin: 28
+                                    Layout.topMargin: ui.pageMargin
+                                    Layout.leftMargin: ui.pageMargin
                                 }
                                 Label {
                                     text: root.deviceSummary()
                                     color: root.mutedColor
-                                    font.pixelSize: 15
-                                    Layout.leftMargin: 28
+                                    font.pixelSize: ui.bodySize
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
                                 }
                                 Rectangle {
+                                    id: overviewReadinessAnchor
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
-                                    Layout.minimumHeight: 124
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    implicitHeight: overviewStatusContent.implicitHeight + 40
                                     color: root.surfaceColor
                                     radius: 10
                                     border.color: root.borderColor
                                     RowLayout {
+                                        id: overviewStatusContent
                                         anchors.fill: parent
                                         anchors.margins: 20
                                         spacing: 22
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             Label {
-                                                text: root.hasConflicts ? qsTr("Ação necessária") : qsTr("Sistema pronto")
-                                                color: root.hasConflicts ? root.amberColor : root.greenColor
-                                                font.pixelSize: 22
+                                                text: root.environmentReady
+                                                    ? qsTr("Pronto para configurar") : qsTr("Ação necessária")
+                                                color: root.environmentReady ? root.greenColor : root.amberColor
+                                                font.pixelSize: ui.sectionTitleSize
                                                 font.bold: true
                                             }
                                             Label {
                                                 text: root.hasConflicts
-                                                    ? qsTr("Libere o controle do Desktop para aplicar configurações.")
-                                                    : qsTr("Perfil, display e providers foram verificados.")
+                                                    ? qsTr("Libere o controle do Desktop para revisar e aplicar configurações.")
+                                                    : root.desktopStatus.recoveryRequired
+                                                        ? qsTr("Restaure o último estado seguro antes de continuar.")
+                                                        : root.observedProfileId().length > 0
+                                                            ? qsTr("O ambiente está disponível. Último perfil aplicado: %1.").arg(root.profileLabel(root.observedProfileId()))
+                                                            : qsTr("O ambiente está disponível. Ainda não há um perfil aplicado verificado.")
                                                 color: root.textColor
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
                                         }
                                         Button {
-                                            text: root.hasConflicts ? qsTr("Resolver conflito") : qsTr("Ver sistema")
+                                            text: root.hasConflicts ? qsTr("Resolver conflito")
+                                                : root.desktopStatus.recoveryRequired ? qsTr("Restaurar estado") : qsTr("Ver sistema")
                                             Layout.minimumHeight: 48
                                             Accessible.name: text
-                                            onClicked: root.hasConflicts ? root.beginConflictResolution() : root.sectionIndex = 5
+                                            onClicked: root.hasConflicts ? root.beginConflictResolution()
+                                                : root.desktopStatus.recoveryRequired ? recoveryDialog.open() : root.sectionIndex = 5
                                         }
                                     }
                                 }
                                 Label {
+                                    id: overviewAreasAnchor
                                     text: qsTr("Áreas principais")
                                     color: root.textColor
-                                    font.pixelSize: 20
+                                    font.pixelSize: ui.sectionTitleSize
                                     font.bold: true
-                                    Layout.leftMargin: 28
+                                    Layout.leftMargin: ui.pageMargin
                                 }
                                 Repeater {
                                     model: [
@@ -949,9 +1386,9 @@ ApplicationWindow {
                                         text: modelData.title
                                         icon.name: modelData.icon
                                         Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 66
+                                        Layout.leftMargin: ui.pageMargin
+                                        Layout.rightMargin: ui.pageMargin
+                                        implicitHeight: contentItem.implicitHeight + 16
                                         Accessible.name: qsTr("%1: %2").arg(modelData.title).arg(modelData.detail)
                                         onClicked: root.sectionIndex = modelData.target
                                         contentItem: RowLayout {
@@ -959,7 +1396,7 @@ ApplicationWindow {
                                             ColumnLayout {
                                                 Layout.fillWidth: true
                                                 Label { text: modelData.title; color: root.textColor; font.bold: true }
-                                                Label { text: modelData.detail; color: root.mutedColor; font.pixelSize: 13 }
+                                                Label { text: modelData.detail; color: root.mutedColor; font.pixelSize: ui.labelSize; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                             }
                                             ToolButton { enabled: false; icon.name: "go-next"; icon.color: root.mutedColor; background: Item {} }
                                         }
@@ -977,15 +1414,15 @@ ApplicationWindow {
                                 spacing: 0
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    Layout.margins: 28
+                                    Layout.margins: ui.pageMargin
                                     spacing: 8
                                     RowLayout {
                                         Layout.fillWidth: true
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 2
-                                            Label { text: qsTr("Gerenciar emuladores"); color: root.textColor; font.pixelSize: 30; font.bold: true }
-                                            Label { text: qsTr("Instale, atualize e restaure configurações com segurança."); color: root.mutedColor; font.pixelSize: 15 }
+                                            Label { text: qsTr("Gerenciar emuladores"); color: root.textColor; font.pixelSize: ui.pageTitleSize; font.bold: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                            Label { text: qsTr("Instale, atualize e restaure configurações com segurança."); color: root.mutedColor; font.pixelSize: ui.bodySize; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                         }
                                         Button {
                                             visible: root.desktopStatus.recoveryRequired
@@ -1052,33 +1489,66 @@ ApplicationWindow {
                                 Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 20
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
                                     Layout.preferredHeight: 34
                                     Label { text: qsTr("EMULADOR"); color: root.mutedColor; font.pixelSize: 11; Layout.fillWidth: true }
-                                    Label { visible: root.width >= 1100; text: qsTr("ESTADO"); color: root.mutedColor; font.pixelSize: 11; Layout.preferredWidth: 180 }
+                                    Label { visible: !ui.compact; text: qsTr("ESTADO"); color: root.mutedColor; font.pixelSize: 11; Layout.preferredWidth: 180 }
                                     Label { text: qsTr("AÇÃO"); color: root.mutedColor; font.pixelSize: 11; Layout.preferredWidth: 132 }
                                 }
                                 ListView {
                                     id: emulatorList
-                                    model: root.filterRows(root.emulatorItems, root.emulatorFilter)
+                                    model: root.filteredEmulatorItems
                                     clip: true
                                     spacing: 2
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     Layout.leftMargin: 8
                                     Layout.rightMargin: 8
-                                    currentIndex: 0
+                                    currentIndex: root.selectedEmulator
+                                        ? root.filteredEmulatorItems.findIndex(function(row) { return row.id === root.selectedEmulator.id }) : -1
+                                    footer: EmptyState {
+                                        width: emulatorList.width
+                                        height: emulatorList.count === 0 ? emulatorList.height : 0
+                                        visible: emulatorList.count === 0
+                                        iconName: "edit-find"
+                                        title: qsTr("Nenhum emulador neste filtro")
+                                        description: root.emulatorFilter === 2
+                                            ? qsTr("Ainda não há emuladores instalados. Você pode revisar uma instalação segura ou voltar a ver todos.")
+                                            : qsTr("Os componentes continuam preservados; apenas o filtro atual não encontrou resultados.")
+                                        primaryText: qsTr("Ver todos")
+                                        secondaryText: root.firstInstallableEmulator() ? qsTr("Instalar primeiro emulador") : ""
+                                        textColor: root.textColor
+                                        mutedColor: root.mutedColor
+                                        accentColor: root.cyanColor
+                                        minimumTarget: ui.targetSize
+                                        onPrimaryTriggered: root.emulatorFilter = 0
+                                        onSecondaryTriggered: {
+                                            const row = root.firstInstallableEmulator()
+                                            if (row) {
+                                                root.emulatorFilter = 0
+                                                root.selectedEmulator = row
+                                                root.performRowAction(row)
+                                            }
+                                        }
+                                    }
                                     delegate: ItemDelegate {
+                                        id: emulatorDelegate
                                         required property int index
                                         required property var modelData
                                         width: ListView.view.width
-                                        height: 94
+                                        height: Math.max(86, implicitContentHeight + 16)
                                         highlighted: root.selectedEmulator && root.selectedEmulator.id === modelData.id
                                         Accessible.name: qsTr("%1, %2").arg(modelData.name).arg(modelData.statusLabel)
                                         KeyNavigation.up: index > 0 ? emulatorList.itemAtIndex(index - 1) : navRepeater.itemAt(1)
                                         KeyNavigation.down: index + 1 < emulatorList.count ? emulatorList.itemAtIndex(index + 1) : navRepeater.itemAt(1)
-                                        onClicked: root.selectedEmulator = modelData
+                                        onClicked: {
+                                            root.selectedEmulator = modelData
+                                            if (ui.compact) {
+                                                root.emulatorDrawerReturnItem = emulatorDelegate
+                                                root.openEmulatorInspector()
+                                            }
+                                        }
                                         background: Rectangle {
                                             color: parent.highlighted ? "#122534" : "transparent"
                                             radius: 8
@@ -1136,7 +1606,7 @@ ApplicationWindow {
                                                 }
                                             }
                                             RowLayout {
-                                                visible: root.width >= 1100
+                                                visible: !ui.compact
                                                 Layout.preferredWidth: 180
                                                 ToolButton { enabled: false; icon.name: root.stateIcon(modelData.state); icon.color: root.stateColor(modelData.state); background: Item {} }
                                                 ColumnLayout {
@@ -1150,7 +1620,7 @@ ApplicationWindow {
                                                 text: modelData.action.label
                                                 palette.buttonText: componentRowAction.enabled ? root.textColor : root.mutedColor
                                                 enabled: modelData.action.enabled
-                                                Layout.preferredWidth: 132
+                                                Layout.preferredWidth: ui.compact ? 116 : 132
                                                 Layout.minimumHeight: 48
                                                 Accessible.name: qsTr("%1: %2").arg(text).arg(modelData.name)
                                                 background: Rectangle {
@@ -1170,10 +1640,12 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                visible: root.width >= 1040
+                                visible: !ui.compact && root.selectedEmulator !== null
                                 color: root.surfaceColor
                                 border.color: root.borderColor
-                                Layout.preferredWidth: 292
+                                Layout.preferredWidth: ui.inspectorWidth
+                                Layout.minimumWidth: 320
+                                Layout.maximumWidth: 420
                                 Layout.fillHeight: true
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -1237,10 +1709,10 @@ ApplicationWindow {
                                 spacing: 0
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    Layout.margins: 28
+                                    Layout.margins: ui.pageMargin
                                     spacing: 8
-                                    Label { text: qsTr("Steam e integração"); color: root.textColor; font.pixelSize: 30; font.bold: true }
-                                    Label { text: qsTr("Gerencie cliente, biblioteca, Steam Input e teclado em um só lugar."); color: root.mutedColor; font.pixelSize: 15 }
+                                    Label { text: qsTr("Steam e integração"); color: root.textColor; font.pixelSize: ui.pageTitleSize; font.bold: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                    Label { text: qsTr("Gerencie cliente, biblioteca, Steam Input e teclado em um só lugar."); color: root.mutedColor; font.pixelSize: ui.bodySize; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                     Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: 12 }
                                     RowLayout {
                                         spacing: 0
@@ -1297,23 +1769,48 @@ ApplicationWindow {
                                 Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
                                 ListView {
                                     id: steamList
-                                    model: root.filterRows(root.steamItems, root.steamFilter)
+                                    model: root.filteredSteamItems
                                     clip: true
                                     spacing: 2
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     Layout.leftMargin: 8
                                     Layout.rightMargin: 8
+                                    currentIndex: root.selectedSteam
+                                        ? root.filteredSteamItems.findIndex(function(row) { return row.id === root.selectedSteam.id }) : -1
+                                    footer: EmptyState {
+                                        width: steamList.width
+                                        height: steamList.count === 0 ? steamList.height : 0
+                                        visible: steamList.count === 0
+                                        iconName: "steam"
+                                        title: qsTr("Nenhuma integração neste filtro")
+                                        description: qsTr("A Steam é opcional. Limpe o filtro ou atualize o estado para verificar novamente.")
+                                        primaryText: qsTr("Ver todos")
+                                        secondaryText: qsTr("Atualizar estado")
+                                        textColor: root.textColor
+                                        mutedColor: root.mutedColor
+                                        accentColor: root.cyanColor
+                                        minimumTarget: ui.targetSize
+                                        onPrimaryTriggered: root.steamFilter = 0
+                                        onSecondaryTriggered: root.refreshStatus(qsTr("Estado da Steam atualizado"))
+                                    }
                                     delegate: ItemDelegate {
+                                        id: steamDelegate
                                         required property int index
                                         required property var modelData
                                         width: ListView.view.width
-                                        height: 94
+                                        height: Math.max(86, implicitContentHeight + 16)
                                         highlighted: root.selectedSteam && root.selectedSteam.id === modelData.id
                                         Accessible.name: qsTr("%1, %2").arg(modelData.name).arg(modelData.statusLabel)
                                         KeyNavigation.up: index > 0 ? steamList.itemAtIndex(index - 1) : navRepeater.itemAt(2)
                                         KeyNavigation.down: index + 1 < steamList.count ? steamList.itemAtIndex(index + 1) : navRepeater.itemAt(2)
-                                        onClicked: root.selectedSteam = modelData
+                                        onClicked: {
+                                            root.selectedSteam = modelData
+                                            if (ui.compact) {
+                                                root.steamDrawerReturnItem = steamDelegate
+                                                root.openSteamInspector()
+                                            }
+                                        }
                                         background: Rectangle {
                                             color: parent.highlighted ? "#122534" : "transparent"
                                             radius: 8
@@ -1358,7 +1855,7 @@ ApplicationWindow {
                                                 Label { text: modelData.versionLabel || ""; color: root.mutedColor; font.pixelSize: 11 }
                                             }
                                             RowLayout {
-                                                visible: root.width >= 1100
+                                                visible: !ui.compact
                                                 Layout.preferredWidth: 180
                                                 ToolButton { enabled: false; icon.name: root.stateIcon(modelData.state); icon.color: root.stateColor(modelData.state); background: Item {} }
                                                 Label { text: modelData.statusLabel; color: root.stateColor(modelData.state); wrapMode: Text.WordWrap; Layout.fillWidth: true }
@@ -1368,7 +1865,7 @@ ApplicationWindow {
                                                 text: modelData.action.label
                                                 palette.buttonText: steamRowAction.enabled ? root.textColor : root.mutedColor
                                                 enabled: modelData.action.enabled
-                                                Layout.preferredWidth: 144
+                                                Layout.preferredWidth: ui.compact ? 124 : 144
                                                 Layout.minimumHeight: 48
                                                 Accessible.name: qsTr("%1: %2").arg(text).arg(modelData.name)
                                                 background: Rectangle {
@@ -1387,10 +1884,12 @@ ApplicationWindow {
                                 }
                             }
                             Rectangle {
-                                visible: root.width >= 1040
+                                visible: !ui.compact && root.selectedSteam !== null
                                 color: root.surfaceColor
                                 border.color: root.borderColor
-                                Layout.preferredWidth: 292
+                                Layout.preferredWidth: ui.inspectorWidth
+                                Layout.minimumWidth: 320
+                                Layout.maximumWidth: 420
                                 Layout.fillHeight: true
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -1445,113 +1944,186 @@ ApplicationWindow {
 
                         // Perfis
                         ScrollView {
+                            id: profilesScroll
                             clip: true
                             contentWidth: availableWidth
                             ColumnLayout {
-                                width: parent.width
-                                spacing: 16
+                                id: profilesContent
+                                width: parent.width - 72
+                                spacing: ui.gap
                                 Label {
+                                    id: profilesHeaderAnchor
                                     text: qsTr("Perfis do Desktop")
                                     color: root.textColor
-                                    font.pixelSize: 30
+                                    font.pixelSize: ui.pageTitleSize
                                     font.bold: true
-                                    Layout.topMargin: 28
-                                    Layout.leftMargin: 28
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: ui.pageMargin
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
                                 }
                                 Label {
-                                    text: qsTr("Perfil atual: %1 · Recomendado: %2").arg(root.desktopStatus.effectiveProfile).arg(root.desktopStatus.recommendedProfile)
+                                    text: qsTr("Desejado: %1 · Recomendado: %2 · Último aplicado: %3")
+                                        .arg(root.profileLabel(root.desiredProfileId()))
+                                        .arg(root.profileLabel(root.desktopStatus.recommendedProfile))
+                                        .arg(root.profileLabel(root.observedProfileId()))
                                     color: root.mutedColor
-                                    Layout.leftMargin: 28
-                                }
-                                Rectangle {
-                                    color: root.surfaceColor
-                                    radius: 10
-                                    border.color: root.borderColor
+                                    wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
-                                    Layout.minimumHeight: 180
-                                    ColumnLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 20
-                                        spacing: 12
-                                        Label { text: qsTr("Escolha o comportamento"); color: root.textColor; font.pixelSize: 18; font.bold: true }
-                                        ComboBox {
-                                            id: profilePicker
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                }
+
+                                GridLayout {
+                                    id: profilesChoicesAnchor
+                                    columns: ui.compact ? 1 : 2
+                                    columnSpacing: ui.gap
+                                    rowSpacing: ui.gap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+
+                                    Repeater {
+                                        id: profileCards
+                                        model: [
+                                            {"id": "auto", "name": qsTr("Automático"), "icon": "system-run", "summary": qsTr("Acompanha o contexto de tela e dock com segurança.")},
+                                            {"id": "handheld", "name": qsTr("Portátil"), "icon": "input-gaming", "summary": qsTr("Prioriza leitura, toque e controle no painel interno.")},
+                                            {"id": "dock", "name": qsTr("Dock"), "icon": "video-display", "summary": qsTr("Equilibra densidade para monitor e periféricos externos.")},
+                                            {"id": "safe", "name": qsTr("Seguro"), "icon": "security-medium", "summary": qsTr("Restaura uma composição mínima que não depende de providers.")}
+                                        ]
+                                        delegate: Button {
+                                            id: profileCard
+                                            required property int index
+                                            required property var modelData
+                                            property bool recommended: root.profileMatches(modelData.id, root.desktopStatus.recommendedProfile)
+                                            property bool desired: root.selectedProfile === modelData.id
+                                            property bool applied: root.profileMatches(modelData.id, root.observedProfileId())
+
                                             Layout.fillWidth: true
-                                            Layout.minimumHeight: 48
-                                            model: [qsTr("Automático"), qsTr("Portátil"), qsTr("Dock"), qsTr("Seguro")]
-                                            Accessible.name: qsTr("Selecionar perfil")
-                                            onActivated: root.selectedProfile = ["auto", "handheld", "dock", "safe"][currentIndex]
-                                            KeyNavigation.down: planButton
-                                        }
-                                        Button {
-                                            id: planButton
-                                            text: qsTr("Revisar alterações")
-                                            Layout.fillWidth: true
-                                            Layout.minimumHeight: 48
-                                            Accessible.name: text
-                                            KeyNavigation.up: profilePicker
-                                            KeyNavigation.down: applyButton
-                                            onClicked: {
-                                                root.planRequested(root.selectedProfile)
-                                                root.request("POST", "/plan", {"profile": root.selectedProfile}, function(response) {
-                                                    root.currentPlan = response.plan
-                                                    if (response.plan.blockers.length > 0)
-                                                        root.notify(qsTr("Plano bloqueado: %1").arg(response.plan.blockers.join("; ")), true)
-                                                    else
-                                                        root.notify(qsTr("Plano pronto para revisão"), false)
-                                                })
+                                            Layout.minimumWidth: 260
+                                            implicitHeight: profileCardContent.implicitHeight + 28
+                                            text: modelData.name
+                                            Accessible.name: qsTr("Perfil %1%2%3")
+                                                .arg(modelData.name)
+                                                .arg(recommended ? qsTr(", recomendado") : "")
+                                                .arg(applied ? qsTr(", aplicado e verificado anteriormente") : "")
+                                            KeyNavigation.left: index % 2 === 1 ? profileCards.itemAt(index - 1) : profileCard
+                                            KeyNavigation.right: index % 2 === 0 && index + 1 < profileCards.count ? profileCards.itemAt(index + 1) : profileCard
+                                            KeyNavigation.up: index > 1 ? profileCards.itemAt(index - 2) : navRepeater.itemAt(3)
+                                            KeyNavigation.down: index + 2 < profileCards.count ? profileCards.itemAt(index + 2) : planButton
+                                            onClicked: root.selectedProfile = modelData.id
+
+                                            background: Rectangle {
+                                                color: profileCard.desired ? "#153449" : root.surfaceColor
+                                                radius: 10
+                                                border.color: profileCard.activeFocus || profileCard.desired
+                                                    ? root.cyanColor : root.borderColor
+                                                border.width: profileCard.activeFocus || profileCard.desired ? 2 : 1
+                                            }
+                                            contentItem: ColumnLayout {
+                                                id: profileCardContent
+                                                spacing: 7
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    ToolButton { enabled: false; icon.name: modelData.icon; icon.color: root.cyanColor; background: Item {} }
+                                                    Label { text: modelData.name; color: root.textColor; font.pixelSize: ui.cardTitleSize; font.bold: true; Layout.fillWidth: true }
+                                                    Label { visible: profileCard.recommended; text: qsTr("Recomendado"); color: root.greenColor; font.bold: true }
+                                                }
+                                                Label { text: modelData.summary; color: root.mutedColor; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                Label { visible: profileCard.desired; text: qsTr("Desejado para o próximo plano"); color: root.cyanColor; font.bold: true }
+                                                Label { visible: profileCard.applied; text: qsTr("Aplicado · última verificação concluída"); color: root.greenColor }
+                                                Label {
+                                                    visible: !profileCard.applied && root.observedProfileId().length === 0
+                                                    text: qsTr("Observado · não verificado")
+                                                    color: root.mutedColor
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                Rectangle {
-                                    visible: root.currentPlan !== null
-                                    color: root.surfaceColor
-                                    radius: 10
-                                    border.color: root.currentPlan && root.currentPlan.blockers.length > 0 ? root.amberColor : root.cyanDarkColor
+
+                                SectionCard {
+                                    title: qsTr("Revisar antes de aplicar")
+                                    subtitle: qsTr("O SteamZero primeiro cria um plano. Nenhuma alteração é feita nesta etapa.")
+                                    surfaceColor: root.surfaceColor
+                                    borderColor: root.borderColor
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    titleSize: ui.cardTitleSize
+                                    padding: ui.gap
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
-                                    Layout.minimumHeight: 180
-                                    ColumnLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 20
-                                        spacing: 10
-                                        Label { text: qsTr("Plano revisado"); color: root.textColor; font.pixelSize: 18; font.bold: true }
-                                        Label {
-                                            text: root.currentPlan ? root.currentPlan.changes.join("\n") : ""
-                                            color: root.mutedColor
-                                            wrapMode: Text.WordWrap
-                                            Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+
+                                    Button {
+                                        id: planButton
+                                        text: qsTr("Revisar alterações de %1").arg(root.profileLabel(root.selectedProfile))
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
+                                        Accessible.name: text
+                                        KeyNavigation.up: profileCards.itemAt(profileCards.count - 1)
+                                        KeyNavigation.down: applyButton
+                                        onClicked: {
+                                            root.planRequested(root.selectedProfile)
+                                            root.request("POST", "/plan", {"profile": root.selectedProfile}, function(response) {
+                                                root.currentPlan = response.plan
+                                                if (response.plan.blockers.length > 0)
+                                                    root.notify(qsTr("Plano bloqueado: %1").arg(response.plan.blockers.join("; ")), true)
+                                                else
+                                                    root.notify(qsTr("Plano pronto para revisão"), false)
+                                            })
                                         }
-                                        Label {
-                                            visible: root.currentPlan && root.currentPlan.blockers.length > 0
-                                            text: root.currentPlan ? qsTr("Plano bloqueado: %1").arg(root.currentPlan.blockers.join("; ")) : ""
-                                            color: root.amberColor
-                                            wrapMode: Text.WordWrap
-                                            Layout.fillWidth: true
-                                        }
-                                        Button {
-                                            id: applyButton
-                                            text: root.currentPlan && root.currentPlan.blockers.length > 0
-                                                ? qsTr("Aplicação bloqueada — resolva o conflito") : qsTr("Aplicar plano revisado")
-                                            enabled: root.currentPlan !== null && root.currentPlan.blockers.length === 0
-                                            Layout.fillWidth: true
-                                            Layout.minimumHeight: 48
-                                            Accessible.name: text
-                                            KeyNavigation.up: planButton
-                                            KeyNavigation.down: profilePicker
-                                            onClicked: {
-                                                const path = root.currentPlan.target.id === "safe" ? "/reset" : "/apply"
-                                                root.request("POST", path, {
-                                                    "planId": root.currentPlan.planId,
-                                                    "confirmToken": root.currentPlan.confirmToken
-                                                }, function(response) {
-                                                    root.refreshStatus(qsTr("Perfil aplicado: %1").arg(response.profile.id))
-                                                })
-                                            }
+                                    }
+                                }
+
+                                SectionCard {
+                                    id: profilesPlanAnchor
+                                    visible: root.currentPlan !== null
+                                    title: qsTr("Plano revisado")
+                                    surfaceColor: root.surfaceColor
+                                    borderColor: root.currentPlan && root.currentPlan.blockers.length > 0
+                                        ? root.amberColor : root.cyanDarkColor
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    titleSize: ui.cardTitleSize
+                                    padding: ui.gap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    Layout.bottomMargin: ui.pageMargin
+
+                                    Label {
+                                        text: root.currentPlan ? root.currentPlan.changes.join("\n") : ""
+                                        color: root.mutedColor
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        visible: root.currentPlan && root.currentPlan.blockers.length > 0
+                                        text: root.currentPlan ? qsTr("Plano bloqueado: %1").arg(root.currentPlan.blockers.join("; ")) : ""
+                                        color: root.amberColor
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Button {
+                                        id: applyButton
+                                        text: root.currentPlan && root.currentPlan.blockers.length > 0
+                                            ? qsTr("Aplicação bloqueada — resolva o conflito") : qsTr("Aplicar plano revisado")
+                                        enabled: root.currentPlan !== null && root.currentPlan.blockers.length === 0
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
+                                        Accessible.name: text
+                                        KeyNavigation.up: planButton
+                                        KeyNavigation.down: profileCards.itemAt(0)
+                                        onClicked: {
+                                            const path = root.currentPlan.target.id === "safe" ? "/reset" : "/apply"
+                                            root.request("POST", path, {
+                                                "planId": root.currentPlan.planId,
+                                                "confirmToken": root.currentPlan.confirmToken
+                                            }, function(response) {
+                                                root.refreshStatus(qsTr("Perfil aplicado: %1").arg(root.profileLabel(response.profile.id)))
+                                            })
                                         }
                                     }
                                 }
@@ -1560,99 +2132,205 @@ ApplicationWindow {
 
                         // Saves e Sync
                         ScrollView {
+                            id: syncScroll
                             clip: true
                             contentWidth: availableWidth
                             ColumnLayout {
-                                width: parent.width
-                                spacing: 16
-                                Label { text: qsTr("Saves e Sync"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
-                                Label { text: qsTr("Fila offline: nenhum save é sobrescrito quando há conflito."); color: root.mutedColor; Layout.leftMargin: 28 }
-                                Repeater {
-                                    model: [
-                                        {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh"},
-                                        {"label": qsTr("Conflitos preservados"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.conflicted || 0 : 0, "icon": "dialog-warning"},
-                                        {"label": qsTr("Concluídos"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.done || 0 : 0, "icon": "dialog-ok-apply"}
-                                    ]
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        color: root.surfaceColor
-                                        radius: 8
-                                        border.color: root.borderColor
-                                        Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 64
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 16
-                                            ToolButton { enabled: false; icon.name: modelData.icon; icon.color: root.cyanColor; background: Item {} }
-                                            Label { text: modelData.label; color: root.textColor; Layout.fillWidth: true }
-                                            Label { text: String(modelData.value); color: root.textColor; font.pixelSize: 20; font.bold: true }
-                                        }
-                                    }
+                                id: syncContent
+                                width: parent.width - 72
+                                spacing: ui.gap
+                                Label {
+                                    id: syncHeaderAnchor
+                                    text: qsTr("Saves e Sync")
+                                    color: root.textColor
+                                    font.pixelSize: ui.pageTitleSize
+                                    font.bold: true
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: ui.pageMargin
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
                                 }
                                 Label {
-                                    text: qsTr("Cloud Sync permanece opcional. Se a rede ou o provedor cair, os itens continuam na fila local.")
+                                    text: qsTr("Fila offline: nenhum save é sobrescrito quando há conflito.")
                                     color: root.mutedColor
                                     wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
                                 }
-                                Button {
-                                    text: qsTr("Atualizar status")
-                                    icon.name: "view-refresh"
-                                    Layout.leftMargin: 28
-                                    Layout.minimumHeight: 48
-                                    Accessible.name: text
-                                    onClicked: root.refreshStatus(qsTr("Status de sincronização atualizado"))
+
+                                EmptyState {
+                                    id: syncEmptyAnchor
+                                    visible: root.syncTotal === 0
+                                    iconName: "folder-sync"
+                                    title: qsTr("Tudo tranquilo por aqui")
+                                    description: qsTr("Não há transferências ou conflitos na fila local. Estado do provider: %1.")
+                                        .arg(root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                            ? root.desktopStatus.dashboard.sync.state || qsTr("não verificado")
+                                            : qsTr("não verificado"))
+                                    primaryText: qsTr("Atualizar estado")
+                                    secondaryText: qsTr("Como funciona")
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    accentColor: root.greenColor
+                                    minimumTarget: ui.targetSize
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 260
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    onPrimaryTriggered: root.refreshStatus(qsTr("Status de sincronização atualizado"))
+                                    onSecondaryTriggered: root.syncExplanationVisible = !root.syncExplanationVisible
+                                }
+
+                                GridLayout {
+                                    id: syncSummaryAnchor
+                                    visible: root.syncTotal > 0
+                                    columns: ui.compact ? 1 : 3
+                                    columnSpacing: ui.gap
+                                    rowSpacing: ui.gap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+
+                                    Repeater {
+                                        model: [
+                                            {"label": qsTr("Pendentes"), "value": root.syncPending, "icon": "view-refresh", "color": root.cyanColor},
+                                            {"label": qsTr("Conflitos preservados"), "value": root.syncConflicted, "icon": "dialog-warning", "color": root.amberColor},
+                                            {"label": qsTr("Concluídos"), "value": root.syncDone, "icon": "dialog-ok-apply", "color": root.greenColor}
+                                        ]
+                                        delegate: SectionCard {
+                                            required property var modelData
+                                            title: modelData.label
+                                            surfaceColor: root.surfaceColor
+                                            borderColor: root.borderColor
+                                            textColor: root.textColor
+                                            mutedColor: root.mutedColor
+                                            padding: ui.gap
+                                            titleSize: ui.cardTitleSize
+                                            Layout.fillWidth: true
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                ToolButton { enabled: false; icon.name: modelData.icon; icon.color: modelData.color; background: Item {} }
+                                                Label { text: String(modelData.value); color: root.textColor; font.pixelSize: 26; font.bold: true; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                SectionCard {
+                                    id: syncExplanationAnchor
+                                    visible: root.syncExplanationVisible || root.syncTotal > 0
+                                    title: qsTr("Sincronização em nuvem")
+                                    subtitle: qsTr("O provider é opcional. Se a rede cair, os itens permanecem na fila local; conflitos preservam as duas versões.")
+                                    surfaceColor: root.surfaceColor
+                                    borderColor: root.borderColor
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    padding: ui.gap
+                                    titleSize: ui.cardTitleSize
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    Layout.bottomMargin: ui.pageMargin
+
+                                    Button {
+                                        text: qsTr("Atualizar estado")
+                                        icon.name: "view-refresh"
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
+                                        Accessible.name: text
+                                        onClicked: root.refreshStatus(qsTr("Status de sincronização atualizado"))
+                                    }
                                 }
                             }
                         }
 
                         // Sistema
                         ScrollView {
+                            id: systemScroll
                             clip: true
                             contentWidth: availableWidth
                             ColumnLayout {
-                                width: parent.width
-                                spacing: 16
-                                Label { text: qsTr("Sistema e recuperação"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
-                                Label { text: root.deviceSummary(); color: root.mutedColor; Layout.leftMargin: 28 }
+                                id: systemContent
+                                width: parent.width - 72
+                                spacing: ui.gap
+                                Label {
+                                    id: systemHeaderAnchor
+                                    text: qsTr("Sistema e recuperação")
+                                    color: root.textColor
+                                    font.pixelSize: ui.pageTitleSize
+                                    font.bold: true
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: ui.pageMargin
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                }
+                                Label {
+                                    text: qsTr("%1 · %2").arg(root.deviceSummary()).arg(root.displaySummary())
+                                    color: root.mutedColor
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                }
                                 Rectangle {
+                                    id: systemAttentionAnchor
                                     visible: root.hasConflicts
                                     color: "#24180b"
                                     radius: 8
                                     border.color: root.amberColor
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
-                                    Layout.minimumHeight: 100
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    implicitHeight: systemConflictContent.implicitHeight + 28
                                     RowLayout {
+                                        id: systemConflictContent
                                         anchors.fill: parent
-                                        anchors.margins: 18
+                                        anchors.margins: 14
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            Label { text: qsTr("Conflito de controle do sistema"); color: root.amberColor; font.pixelSize: 18; font.bold: true }
+                                            Label { text: qsTr("Conflito de controle do sistema"); color: root.amberColor; font.pixelSize: ui.cardTitleSize; font.bold: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                             Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: 12 }
                                         }
-                                        Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
+                                        Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: ui.targetSize; Accessible.name: text; onClicked: root.beginConflictResolution() }
                                     }
                                 }
-                                Label { text: qsTr("Diagnóstico"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28 }
+                                Label { id: systemDoctorAnchor; text: qsTr("Diagnóstico do sistema"); color: root.textColor; font.pixelSize: ui.sectionTitleSize; font.bold: true; Layout.leftMargin: ui.pageMargin }
+                                EmptyState {
+                                    visible: !(root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
+                                        && root.desktopStatus.dashboard.doctor.checks
+                                        && root.desktopStatus.dashboard.doctor.checks.length > 0)
+                                    iconName: "tools-report-bug"
+                                    title: qsTr("Diagnóstico ainda não disponível")
+                                    description: qsTr("Execute uma verificação para consultar os checks reais do sistema.")
+                                    primaryText: qsTr("Executar verificação")
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    accentColor: root.cyanColor
+                                    minimumTarget: ui.targetSize
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    onPrimaryTriggered: root.refreshStatus(qsTr("Diagnóstico atualizado"))
+                                }
                                 Repeater {
                                     model: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
                                         ? root.desktopStatus.dashboard.doctor.checks || [] : []
                                     delegate: Rectangle {
+                                        id: doctorCard
                                         required property var modelData
                                         color: root.surfaceColor
                                         radius: 7
                                         border.color: root.borderColor
                                         Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 58
+                                        Layout.leftMargin: ui.pageMargin
+                                        Layout.rightMargin: ui.pageMargin
+                                        implicitHeight: doctorContent.implicitHeight + 24
                                         RowLayout {
+                                            id: doctorContent
                                             anchors.fill: parent
                                             anchors.margins: 14
                                             ToolButton {
@@ -1663,34 +2341,43 @@ ApplicationWindow {
                                             }
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                Label { text: modelData.name; color: root.textColor; font.bold: true }
-                                                Label { text: modelData.message; color: root.mutedColor; font.pixelSize: 12; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                                Label { text: modelData.name; color: root.textColor; font.bold: true; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                Label { text: modelData.message; color: root.mutedColor; font.pixelSize: ui.metadataSize; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                             }
                                         }
                                     }
                                 }
-                                RowLayout {
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
+                                GridLayout {
+                                    id: systemActionsAnchor
+                                    columns: ui.compact ? 1 : 3
+                                    columnSpacing: ui.gap
+                                    rowSpacing: ui.gap
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: ui.pageMargin
+                                    Layout.rightMargin: ui.pageMargin
+                                    Layout.bottomMargin: ui.pageMargin
                                     Button {
                                         text: qsTr("Executar verificação")
                                         icon.name: "view-refresh"
-                                        Layout.minimumHeight: 48
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
                                         Accessible.name: text
                                         onClicked: root.refreshStatus(qsTr("Diagnóstico atualizado"))
                                     }
                                     Button {
                                         text: qsTr("Abrir teclado virtual")
                                         icon.name: "input-keyboard-virtual"
-                                        Layout.minimumHeight: 48
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
                                         Accessible.name: text
                                         onClicked: root.openKeyboard()
                                     }
                                     Button {
                                         visible: root.desktopStatus.recoveryRequired
-                                        text: qsTr("Restaurar estado seguro")
+                                        text: qsTr("Restaurar último estado seguro")
                                         icon.name: "security-medium"
-                                        Layout.minimumHeight: 48
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: ui.targetSize
                                         Accessible.name: text
                                         onClicked: recoveryDialog.open()
                                     }
@@ -1699,26 +2386,82 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                Rectangle {
+                    id: stickyContextHeader
+                    visible: root.currentScrollTarget() !== null
+                        && root.currentScrollTarget().contentY > 72
+                    z: 30
+                    height: ui.compact ? 48 : 54
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.topMargin: root.hasConflicts ? (root.alertExpanded ? 94 : 68) : 0
+                    color: "#f20d1924"
+                    border.color: root.borderColor
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: ui.pageMargin
+                        anchors.rightMargin: ui.pageMargin + 72
+                        spacing: ui.gap
+                        Label {
+                            text: root.pageTitle()
+                            color: root.textColor
+                            font.pixelSize: ui.cardTitleSize
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            visible: !ui.compact
+                            text: root.profileLabel(root.desktopStatus.effectiveProfile)
+                            color: root.mutedColor
+                        }
+                        ToolButton {
+                            visible: root.pendingRequests > 0
+                            enabled: false
+                            icon.name: "view-refresh"
+                            icon.color: root.cyanColor
+                            background: Item {}
+                            Accessible.name: qsTr("Operação em andamento")
+                        }
+                    }
+                }
+
+                SectionNavigator {
+                    id: sectionNavigator
+                    z: 40
+                    flickable: root.currentScrollTarget()
+                    sections: root.currentSections()
+                    reducedMotion: root.reducedMotionPreference
+                    surfaceColor: root.raisedColor
+                    borderColor: root.borderColor
+                    textColor: root.textColor
+                    mutedColor: root.mutedColor
+                    accentColor: root.cyanColor
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Item {
+                visible: ui.wide
+                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
         }
 
-        Rectangle {
-            color: "#080d13"
-            border.color: root.borderColor
+        ResponsiveFooter {
+            compact: ui.compact
+            backgroundColor: "#080d13"
+            borderColor: root.borderColor
+            textColor: root.textColor
+            mutedColor: root.mutedColor
+            targetHeight: ui.footerHeight
+            showContextAction: root.sectionIndex === 1 || root.sectionIndex === 2
             Layout.fillWidth: true
-            Layout.preferredHeight: 54
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 24
-                Label { text: qsTr("STEAM  MENU"); color: root.mutedColor; font.bold: true }
-                Item { Layout.fillWidth: true }
-                Label { text: qsTr("D-PAD  NAVEGAR"); color: root.mutedColor }
-                Label { text: qsTr("A  SELECIONAR"); color: root.textColor }
-                Label { text: qsTr("X  AÇÃO DE CONTEXTO"); color: root.textColor }
-                Label { text: qsTr("B  VOLTAR"); color: root.textColor }
-            }
         }
     }
 
@@ -1730,7 +2473,7 @@ ApplicationWindow {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: 20
-        anchors.bottomMargin: 68
+        anchors.bottomMargin: ui.footerHeight + 14
         color: root.lastRequestIsError ? "#35171b" : "#102b20"
         radius: 8
         border.color: root.lastRequestIsError ? root.redColor : root.greenColor
@@ -1743,5 +2486,18 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             Accessible.name: text
         }
+    }
+
+    LoadingOverlay {
+        anchors.fill: parent
+        active: root.loadingOverlayVisible
+        reducedMotion: root.reducedMotionPreference
+        title: root.loadingTitle
+        detail: root.loadingDetail
+        surfaceColor: root.raisedColor
+        borderColor: root.borderColor
+        textColor: root.textColor
+        mutedColor: root.mutedColor
+        accentColor: root.cyanColor
     }
 }
