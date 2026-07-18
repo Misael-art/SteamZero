@@ -122,11 +122,11 @@ class SteamDesktopController:
                 "iconName": "steam",
                 "state": client_state,
                 "statusLabel": client_label,
-                "versionLabel": "Gerenciado pelo BigLinux" if installed else "—",
+                "versionLabel": "Cliente do sistema" if installed else "—",
                 "detail": (
                     "O Steam está pronto para abrir sua biblioteca."
                     if installed
-                    else "Instale o cliente Steam pelos repositórios do BigLinux."
+                    else "Instale o cliente Steam pelos repositórios da sua distribuição."
                 ),
                 "action": {
                     "kind": "steam-open",

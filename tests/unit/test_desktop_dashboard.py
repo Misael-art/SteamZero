@@ -57,8 +57,22 @@ def test_steam_rows_are_optional_and_conflict_aware() -> None:
     rows = controller.rows(_status(conflict=True))
 
     assert rows[0]["statusLabel"] == "Instalado"
+    assert rows[0]["versionLabel"] == "Cliente do sistema"
     assert rows[2]["state"] == "blocked"
     assert rows[3]["action"]["kind"] == "keyboard"
+
+
+def test_steam_rows_do_not_claim_a_specific_distribution() -> None:
+    controller = SteamDesktopController(
+        which=lambda _command: None,
+        running_probe=lambda: False,
+        spawn=lambda _argv: None,
+    )
+
+    rows = controller.rows(_status())
+
+    assert "sua distribuição" in rows[0]["detail"]
+    assert "BigLinux" not in str(rows)
 
 
 def test_steam_open_uses_only_allowlisted_uri() -> None:
