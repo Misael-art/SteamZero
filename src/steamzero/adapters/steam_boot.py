@@ -41,7 +41,9 @@ class BootLayout:
     boot: Path = Path("/boot")
     config: Path = Path("/etc/steamzero/gamemode-user")
     sddm_config: Path = Path("/etc/sddm.conf.d/99-steamzero-gamemode.conf")
-    session: Path = Path("/usr/local/share/wayland-sessions/steamzero-gamemode.desktop")
+    # /usr/share é o único diretório varrido por todos os display managers;
+    # /etc/sddm.conf de distros (BigLinux) restringe SessionDir a ele (ADR-0020).
+    session: Path = Path("/usr/share/wayland-sessions/steamzero-gamemode.desktop")
     unit: Path = Path("/usr/local/lib/systemd/system/steamzero-gamemode-boot.service")
     grub_script: Path = Path("/etc/grub.d/42_steamzero_gamemode")
     grub_config: Path = Path("/boot/grub/grub.cfg")
@@ -66,9 +68,40 @@ def _managed(path: Path) -> bool:
     )
 
 
+def _read_config_user(layout: BootLayout) -> tuple[str, bool]:
+    """(usuário configurado, acesso negado); EACCES nunca é lido como 'não configurado'."""
+    try:
+        raw = layout.config.read_text(encoding="utf-8").strip()
+    except PermissionError:
+        return "", True
+    except OSError:
+        return "", False
+    lines = raw.splitlines()
+    user = lines[1].strip() if len(lines) == 2 and lines[0].strip() == _MANAGED else ""
+    return user, False
+
+
 def _config_user(layout: BootLayout) -> str:
-    lines = _read_text(layout.config).splitlines()
-    return lines[1].strip() if len(lines) == 2 and lines[0].strip() == _MANAGED else ""
+    return _read_config_user(layout)[0]
+
+
+def _probe_owned(path: Path) -> tuple[bool, bool]:
+    """(presente e gerenciado, acesso negado); Path.exists() esconde EACCES do diretório."""
+    try:
+        path.stat()
+    except PermissionError:
+        return False, True
+    except OSError:
+        return False, False
+    try:
+        if path.is_symlink() or not path.is_file():
+            return False, False
+        text = path.read_text(encoding="utf-8")
+    except PermissionError:
+        return False, True
+    except OSError:
+        return False, False
+    return _MANAGED in text, False
 
 
 def _validate_user(username: str, *, lookup: Callable[[str], Any] = pwd.getpwnam) -> str:
@@ -377,18 +410,37 @@ def disable(
 
 
 def status(layout: BootLayout = _DEFAULT_LAYOUT) -> dict[str, Any]:
-    configured = bool(_config_user(layout))
-    owned = all(_managed(path) and path.exists() for path in (layout.unit, layout.grub_script))
+    username, denied = _read_config_user(layout)
+    owned = True
+    for path in (layout.unit, layout.grub_script):
+        present, path_denied = _probe_owned(path)
+        if path_denied:
+            denied = True
+        elif not present:
+            owned = False
+    configured = bool(username) and owned
+    if denied and not configured:
+        return {
+            "state": "unknown",
+            "configured": False,
+            "permissionDenied": True,
+            "changesGrub": True,
+            "session": "steamzero-gamemode.desktop",
+            "marker": "steamzero.gamemode=1",
+            "legacyMarkerAccepted": True,
+            "reason": "Sem permissão para inspecionar a configuração de boot.",
+        }
     return {
-        "state": "ready" if configured and owned else "available",
-        "configured": configured and owned,
+        "state": "ready" if configured else "available",
+        "configured": configured,
+        "permissionDenied": False,
         "changesGrub": True,
         "session": "steamzero-gamemode.desktop",
         "marker": "steamzero.gamemode=1",
         "legacyMarkerAccepted": True,
         "reason": (
             "Entrada SteamZero pronta; falha retorna ao greeter/Plasma."
-            if configured and owned
+            if configured
             else "Ativação privilegiada e reversível ainda não executada."
         ),
     }

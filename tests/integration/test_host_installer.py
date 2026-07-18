@@ -39,6 +39,11 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "steamzero-core.socket",
         gamemode_session=tmp_path
         / "usr"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
+        legacy_gamemode_session=tmp_path
+        / "usr"
         / "local"
         / "share"
         / "wayland-sessions"

@@ -52,7 +52,13 @@ class Layout:
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
     user_service: Path = Path("/usr/local/lib/systemd/user/steamzero-core.service")
     user_socket: Path = Path("/usr/local/lib/systemd/user/steamzero-core.socket")
-    gamemode_session: Path = Path("/usr/local/share/wayland-sessions/steamzero-gamemode.desktop")
+    # /usr/share é o único diretório de sessões varrido por todos os display
+    # managers; /etc/sddm.conf de distros (BigLinux) restringe SessionDir a ele
+    # e invisibiliza sessões em /usr/local (incidente 2026-07-18, ADR-0020).
+    gamemode_session: Path = Path("/usr/share/wayland-sessions/steamzero-gamemode.desktop")
+    legacy_gamemode_session: Path = Path(
+        "/usr/local/share/wayland-sessions/steamzero-gamemode.desktop"
+    )
     polkit_policy: Path = Path(
         "/usr/share/polkit-1/actions/io.github.misael-art.steamzero.admin.policy"
     )
@@ -373,6 +379,11 @@ def _sync_user_units(layout: Layout, release_path: Path) -> None:
 def _sync_gamemode_session(layout: Layout, release_path: Path) -> None:
     if not _managed_desktop(layout.gamemode_session):
         raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
+    if layout.legacy_gamemode_session.exists() and _managed_desktop(
+        layout.legacy_gamemode_session
+    ):
+        with contextlib.suppress(FileNotFoundError):
+            layout.legacy_gamemode_session.unlink()
     executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
     if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
         _atomic_text(layout.gamemode_session, _gamemode_session_entry(layout))

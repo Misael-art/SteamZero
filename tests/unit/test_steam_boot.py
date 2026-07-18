@@ -19,12 +19,7 @@ def _layout(tmp_path: Path) -> steam_boot.BootLayout:
         boot=tmp_path / "boot",
         config=tmp_path / "etc" / "steamzero" / "gamemode-user",
         sddm_config=tmp_path / "etc" / "sddm.conf.d" / "99-steamzero-gamemode.conf",
-        session=tmp_path
-        / "usr"
-        / "local"
-        / "share"
-        / "wayland-sessions"
-        / "steamzero-gamemode.desktop",
+        session=tmp_path / "usr" / "share" / "wayland-sessions" / "steamzero-gamemode.desktop",
         unit=tmp_path
         / "usr"
         / "local"
@@ -130,7 +125,34 @@ def test_status_distinguishes_available_and_configured(tmp_path: Path) -> None:
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
-    assert steam_boot.status(layout)["state"] == "ready"
+    result = steam_boot.status(layout)
+    assert result["state"] == "ready"
+    assert result["permissionDenied"] is False
+
+
+def test_status_reports_permission_denied_not_unconfigured(tmp_path: Path) -> None:
+    """Incidente 2026-07-18: EACCES era exibido como 'ativação não executada'."""
+    if os.geteuid() == 0:
+        pytest.skip("root ignora permissões de arquivo")
+    layout = _layout(tmp_path)
+    layout.config.parent.mkdir(parents=True)
+    layout.config.write_text(f"{steam_boot._MANAGED}\nmisael\n", encoding="utf-8")
+    layout.config.chmod(0o000)
+    try:
+        result = steam_boot.status(layout)
+    finally:
+        layout.config.chmod(0o600)
+    assert result["state"] == "unknown"
+    assert result["permissionDenied"] is True
+    assert result["configured"] is False
+    assert "não executada" not in result["reason"]
+
+
+def test_default_session_lives_in_usr_share() -> None:
+    """Incidente 2026-07-18: /etc/sddm.conf restringe SessionDir a /usr/share."""
+    assert steam_boot.BootLayout().session == Path(
+        "/usr/share/wayland-sessions/steamzero-gamemode.desktop"
+    )
 
 
 def test_grub_entry_is_independent_and_preserves_current_boot_shape(tmp_path: Path) -> None:

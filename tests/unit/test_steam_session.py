@@ -29,7 +29,8 @@ def test_readiness_never_requires_legacy_runtime() -> None:
     assert status["state"] == "ready"
     assert status["independentRuntime"] is True
     assert status["legacyRuntimeRequired"] is False
-    assert status["directBoot"]["state"] in {"available", "ready"}
+    # "unknown" cobre execução sem privilégio para inspecionar /etc (ADR-0020).
+    assert status["directBoot"]["state"] in {"available", "ready", "unknown"}
     assert status["directBoot"]["changesGrub"] is True
 
 
