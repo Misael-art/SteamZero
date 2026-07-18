@@ -17,6 +17,9 @@ dependencies = [
 
 [project.scripts]
 steamzero = "steamzero.cli.main:main"
+steamzero-gamemode-session = "steamzero.adapters.steam_session:main"
+steamzero-gamemode-boot = "steamzero.adapters.steam_boot:main"
+steamos-session-select = "steamzero.adapters.steam_session:select_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/steamzero"]

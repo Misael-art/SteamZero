@@ -148,6 +148,11 @@ MESSAGES: dict[str, str] = {
     "error.E-SAVES-FLUSH-TIMEOUT.cause": "Flush do save excedeu o tempo limite na suspensão.",
     "error.E-SAVES-FLUSH-TIMEOUT.action": "Nenhuma ação necessária; o progresso do último flush está seguro.",
     # ---- SESSION / MODE ---------------------------------------------------
+    "error.E-SESSION-LAUNCH-FAILED.title": "A sessão não iniciou",
+    "error.E-SESSION-LAUNCH-FAILED.what": "A sessão gerenciada falhou antes de concluir o lançamento.",
+    "error.E-SESSION-LAUNCH-FAILED.impact": "O Game Mode foi encerrado e o Desktop seguro continua disponível.",
+    "error.E-SESSION-LAUNCH-FAILED.cause": "O processo, runtime ou uma integração obrigatória falhou.",
+    "error.E-SESSION-LAUNCH-FAILED.action": "Abra o diagnóstico, corrija o componente indicado e tente novamente.",
     "error.E-SESSION-RESUME-DEGRADED.title": "Retomada degradada",
     "error.E-SESSION-RESUME-DEGRADED.what": "Uma camada falhou ao retomar a sessão.",
     "error.E-SESSION-RESUME-DEGRADED.impact": "A sessão retomou com reparo aplicado ou pendente.",
