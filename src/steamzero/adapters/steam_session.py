@@ -57,13 +57,15 @@ def readiness(
 ) -> dict[str, Any]:
     steam = which("steam")
     gamescope = which("gamescope")
+    session_wrapper = which("gamescope-session-plus")
     desktop = _desktop_command(which)
-    ready = bool(steam and gamescope and desktop)
+    ready = bool(steam and gamescope and session_wrapper and desktop)
     return {
         "state": "ready" if ready else "degraded",
         "statusLabel": "Game Mode disponível" if ready else "Dependências incompletas",
         "steam": steam is not None,
         "gamescope": gamescope is not None,
+        "gamescopeSession": session_wrapper is not None,
         "desktopFallback": desktop is not None,
         "independentRuntime": True,
         "sessionId": "steamzero-gamemode",
@@ -110,7 +112,15 @@ def run_session(
         raise SteamZeroError("E-SESSION-LAUNCH-FAILED", detail="fallback Plasma indisponível")
     steam = which("steam")
     gamescope = which("gamescope")
-    if not status["steam"] or not status["gamescope"] or steam is None or gamescope is None:
+    session_wrapper = which("gamescope-session-plus")
+    if (
+        not status["steam"]
+        or not status["gamescope"]
+        or not status["gamescopeSession"]
+        or steam is None
+        or gamescope is None
+        or session_wrapper is None
+    ):
         return _exec_desktop(desktop)
     environment = dict(os.environ if environ is None else environ)
     if (environment.get("WAYLAND_DISPLAY") or environment.get("DISPLAY")) and environment.get(
@@ -134,7 +144,7 @@ def run_session(
     while failures < 3:
         fs.remove_file(target_path)
         completed = runner(
-            [gamescope, "--steam", "--", steam, "-steamos3", "-gamepadui"],
+            [session_wrapper, "steam"],
             stdin=subprocess.DEVNULL,
             check=False,
             env=environment,

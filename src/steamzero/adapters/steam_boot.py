@@ -681,6 +681,7 @@ def enable(
     grub_mkconfig = which("grub-mkconfig")
     steam = which("steam")
     gamescope = which("gamescope")
+    gamescope_session = which("gamescope-session-plus")
     desktop = _first_available(
         which, ("startkde-biglinux", "startplasma-wayland", "startplasma-x11")
     )
@@ -689,12 +690,13 @@ def enable(
         or grub_mkconfig is None
         or steam is None
         or gamescope is None
+        or gamescope_session is None
         or desktop is None
     ):
         raise SteamZeroError(
             "E-SESSION-LAUNCH-FAILED",
             detail=(
-                "preflight incompleto: systemd, GRUB, Steam, Gamescope ou fallback Desktop ausente"
+                "preflight incompleto: systemd, GRUB, Steam, Gamescope Session ou Desktop ausente"
             ),
         )
     cmdline = _read_text(layout.cmdline)

@@ -26,6 +26,7 @@ def test_readiness_reports_independent_runtime() -> None:
             {
                 "steam": "/usr/bin/steam",
                 "gamescope": "/usr/bin/gamescope",
+                "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
                 "startkde-biglinux": "/usr/bin/startkde-biglinux",
             }
         ),
@@ -33,6 +34,7 @@ def test_readiness_reports_independent_runtime() -> None:
     )
     assert status["state"] == "ready"
     assert status["independentRuntime"] is True
+    assert status["gamescopeSession"] is True
     # "unknown" cobre execução sem privilégio para inspecionar /etc (ADR-0020).
     assert status["directBoot"]["state"] in {"available", "ready", "unknown"}
     assert status["directBoot"]["changesGrub"] is True
@@ -62,6 +64,32 @@ def test_missing_gamescope_falls_back_to_biglinux_desktop(
     assert executed == ["/usr/bin/startkde-biglinux", "wayland"]
 
 
+def test_missing_gamescope_session_wrapper_falls_back_to_desktop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executed: list[str] = []
+
+    def fake_exec(_path: str, argv: list[str]) -> None:
+        executed.extend(argv)
+        raise RuntimeError("exec intercepted")
+
+    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    with pytest.raises(RuntimeError, match="intercepted"):
+        steam_session.run_session(
+            which=_which(
+                {
+                    "steam": "/usr/bin/steam",
+                    "gamescope": "/usr/bin/gamescope",
+                    "startplasma-wayland": "/usr/bin/startplasma-wayland",
+                }
+            ),
+            environ={},
+            boot_status=_boot_status,
+        )
+
+    assert executed == ["/usr/bin/startplasma-wayland"]
+
+
 def test_session_refuses_to_replace_an_existing_desktop() -> None:
     with pytest.raises(SteamZeroError) as error:
         steam_session.run_session(
@@ -69,6 +97,7 @@ def test_session_refuses_to_replace_an_existing_desktop() -> None:
                 {
                     "steam": "/usr/bin/steam",
                     "gamescope": "/usr/bin/gamescope",
+                    "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
                     "startplasma-wayland": "/usr/bin/startplasma-wayland",
                 }
             ),
@@ -78,7 +107,7 @@ def test_session_refuses_to_replace_an_existing_desktop() -> None:
     assert error.value.code == "E-SESSION-LAUNCH-FAILED"
 
 
-def test_session_uses_fixed_gamescope_argv_then_falls_back(
+def test_session_uses_distro_gamescope_wrapper_then_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[list[str]] = []
@@ -99,6 +128,7 @@ def test_session_uses_fixed_gamescope_argv_then_falls_back(
                 {
                     "steam": "/usr/bin/steam",
                     "gamescope": "/usr/bin/gamescope",
+                    "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
                     "startplasma-wayland": "/usr/bin/startplasma-wayland",
                 }
             ),
@@ -107,16 +137,7 @@ def test_session_uses_fixed_gamescope_argv_then_falls_back(
             boot_started=lambda: {"state": "started"},
             boot_status=_boot_status,
         )
-    assert calls == [
-        [
-            "/usr/bin/gamescope",
-            "--steam",
-            "--",
-            "/usr/bin/steam",
-            "-steamos3",
-            "-gamepadui",
-        ]
-    ]
+    assert calls == [["/usr/bin/gamescope-session-plus", "steam"]]
     assert executed == ["/usr/bin/startplasma-wayland"]
 
 
@@ -143,6 +164,7 @@ def test_session_marker_failure_is_logged_and_does_not_black_screen(
                 {
                     "steam": "/usr/bin/steam",
                     "gamescope": "/usr/bin/gamescope",
+                    "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
                     "startplasma-wayland": "/usr/bin/startplasma-wayland",
                 }
             ),
@@ -152,7 +174,7 @@ def test_session_marker_failure_is_logged_and_does_not_black_screen(
             boot_status=_boot_status,
         )
 
-    assert calls[0][0] == "/usr/bin/gamescope"
+    assert calls[0][0] == "/usr/bin/gamescope-session-plus"
     assert "falha ao registrar início" in capsys.readouterr().err
 
 
