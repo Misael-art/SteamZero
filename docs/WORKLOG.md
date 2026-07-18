@@ -573,3 +573,42 @@ assets e dashboard e exclui `steamzero.ports`. A release imutável
 e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendentes. A cópia
 instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
 registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
+
+## 2026-07-18 — Sessão 31: robustez e resiliência do boot Game Mode
+
+**Evidência física incorporada:** o responsável confirmou que a entrada SteamZero chegou
+diretamente ao Big Picture após o GRUB. Esse caminho funcional foi preservado como baseline;
+nenhuma instalação, regeneração de GRUB ou mutação de `/etc`, `/boot` ou `/usr` foi executada
+nesta sessão.
+
+**Boot e sessão endurecidos:** o script `/etc/grub.d` agora resolve o par kernel/initramfs
+quando o `grub-mkconfig` o executa, acompanhando atualizações sem congelar o nome observado no
+momento do `enable`. O preflight reproduz a precedência efetiva do SDDM, exige que a sessão
+esteja no `SessionDir` visível, valida Steam/Gamescope/fallback Desktop antes de efeitos e
+confirma a presença/ausência da entrada no `grub.cfg`; falha pós-geração restaura os bytes
+anteriores. Symlinks quebrados ou artefatos sem marcador de ownership são recusados.
+
+**Detecção pós-boot e backoff:** cada boot solicitado recebe marcador por `boot_id`; a sessão
+registra início em estado do usuário. Três solicitações consecutivas sem início suspendem o
+autologin e devolvem o host ao greeter. Selecionar a sessão manualmente ou executar `recover`
+zera o backoff. Reexecução do oneshot no mesmo boot é idempotente, e falha ao gravar telemetria
+é registrada sem impedir Gamescope ou o fallback Plasma.
+
+**Instalação e apresentação:** a sessão é publicada em
+`/usr/share/wayland-sessions/steamzero-gamemode.desktop`; uma cópia antiga em `/usr/local` só
+é removida quando possui ownership SteamZero. Links estáveis e Desktop entry participam do
+rollback do instalador. As duas strings BigLinux-específicas do dashboard foram neutralizadas
+em commit próprio, mantendo a decisão por capacidade da ADR-0020.
+
+**Provas:** teste renomeia kernel+initramfs e reexecuta o mesmo script GRUB; cenário completo
+de três falhas→backoff→sessão manual→recuperação; precedência SDDM; EACCES distinto de não
+configurado; rollback por `grub.cfg` inválido; ownership de symlink quebrado; falha de marcador
+sem tela preta; instalação/rollback da sessão. Gate completo: Ruff, formato, fronteiras,
+independência e mypy verdes; **401 passed**. Cobertura integral: **85%**, com `steam_boot` 83%
+e `steam_session` 79%. Wheel `steamzero-0.1.0.dev0` construído e instalado em venv descartável,
+SHA-256 `9b03b2702458a280525329d7f781696e94e81a830c3c6c0956ac092c756e8f03`; entrypoints e
+`status` passaram. Probes read-only no host confirmaram `/usr/share/wayland-sessions` e a
+entrada para `vmlinuz-6.18-x86_64`/UUID real.
+
+**Commits:** `eee14ab` (backend/testes), `28e432e` (instalador/SessionDir) e `e535f3d`
+(P1-1, strings isoladas). Instalação root e novo reboot físico permanecem gates externos.
