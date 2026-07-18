@@ -16,6 +16,8 @@ def _layout(tmp_path: Path) -> install_host.Layout:
     return install_host.Layout(
         root=tmp_path / "opt" / "steamzero",
         command=tmp_path / "usr" / "local" / "bin" / "steamzero",
+        gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
+        gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
         manager=tmp_path / "usr" / "local" / "sbin" / "steamzero-host",
         desktop=tmp_path
         / "usr"
@@ -23,6 +25,17 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "share"
         / "applications"
         / "org.steamzero.SteamZero.desktop",
+        gamemode_session=tmp_path
+        / "usr"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
+        legacy_gamemode_session=tmp_path
+        / "usr"
+        / "local"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
     )
 
 
@@ -85,6 +98,33 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
     assert install_host.status(layout)["release"] == "release-b"
 
 
+def test_activation_publishes_session_in_effective_sddm_location(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    for name in ("steamzero-gamemode-session", "steamzero-gamemode-boot"):
+        executable = release / "venv" / "bin" / name
+        executable.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        executable.chmod(0o755)
+    layout.legacy_gamemode_session.parent.mkdir(parents=True)
+    layout.legacy_gamemode_session.write_text(
+        "[Desktop Entry]\nX-SteamZero-Managed=true\n", encoding="utf-8"
+    )
+
+    install_host._activate(layout, "release-a")
+
+    assert layout.gamemode_session.is_file()
+    assert "/usr/local/share/wayland-sessions" not in layout.gamemode_session.read_text(
+        encoding="utf-8"
+    )
+    assert not layout.legacy_gamemode_session.exists()
+    assert layout.gamemode_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    )
+    assert layout.gamemode_boot_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamzero-gamemode-boot"
+    )
+
+
 def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")
@@ -97,6 +137,19 @@ def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) 
         install_host._activate(layout, "release-b")
 
     assert layout.current.readlink() == Path("releases/release-a")
+
+
+def test_activation_refuses_broken_session_symlink_without_switching(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.gamemode_session.parent.mkdir(parents=True)
+    layout.gamemode_session.symlink_to(tmp_path / "missing-session")
+
+    with pytest.raises(RuntimeError, match="sessão não gerenciada"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert layout.gamemode_session.is_symlink()
 
 
 def test_verify_rejects_manifest_directory_mismatch(tmp_path: Path) -> None:

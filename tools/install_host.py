@@ -41,8 +41,14 @@ _INSTALLER_NAME = "install_host.py"
 class Layout:
     root: Path = Path("/opt/steamzero")
     command: Path = Path("/usr/local/bin/steamzero")
+    gamemode_command: Path = Path("/usr/local/bin/steamzero-gamemode-session")
+    gamemode_boot_command: Path = Path("/usr/local/libexec/steamzero-gamemode-boot")
     manager: Path = Path("/usr/local/sbin/steamzero-host")
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
+    gamemode_session: Path = Path("/usr/share/wayland-sessions/steamzero-gamemode.desktop")
+    legacy_gamemode_session: Path = Path(
+        "/usr/local/share/wayland-sessions/steamzero-gamemode.desktop"
+    )
 
     @property
     def releases(self) -> Path:
@@ -177,8 +183,18 @@ def _readlink(path: Path) -> str | None:
     return os.readlink(path) if path.is_symlink() else None
 
 
+def _lexists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
 def _managed_desktop(path: Path) -> bool:
-    if not path.exists():
+    if not _lexists(path):
         return True
     if path.is_symlink() or not path.is_file():
         return False
@@ -225,6 +241,70 @@ Categories=Game;
 StartupNotify=true
 X-SteamZero-Managed=true
 """
+
+
+def _gamemode_session_entry(layout: Layout) -> str:
+    executable = layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    return f"""[Desktop Entry]
+Name=SteamZero Game Mode
+Comment=Sessão Steam em Gamescope com fallback seguro para o Desktop
+Exec={executable}
+TryExec={executable}
+Type=Application
+DesktopNames=gamescope
+X-SteamZero-Managed=true
+"""
+
+
+def _managed_stable_link(path: Path, target: Path) -> bool:
+    if not path.exists() and not path.is_symlink():
+        return True
+    return path.is_symlink() and _readlink(path) == str(target)
+
+
+def _sync_gamemode_integrations(layout: Layout, release_path: Path) -> None:
+    session_target = layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    boot_target = layout.current / "venv" / "bin" / "steamzero-gamemode-boot"
+    if not _managed_desktop(layout.gamemode_session):
+        raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
+    if not _managed_desktop(layout.legacy_gamemode_session):
+        raise RuntimeError(
+            f"recusando remover sessão legada não gerenciada: {layout.legacy_gamemode_session}"
+        )
+    if not _managed_stable_link(layout.gamemode_command, session_target):
+        raise RuntimeError(
+            f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
+        )
+    if not _managed_stable_link(layout.gamemode_boot_command, boot_target):
+        raise RuntimeError(
+            f"recusando substituir comando não gerenciado: {layout.gamemode_boot_command}"
+        )
+
+    session_executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
+    boot_executable = release_path / "venv" / "bin" / "steamzero-gamemode-boot"
+    with contextlib.suppress(FileNotFoundError):
+        layout.legacy_gamemode_session.unlink()
+    if (
+        session_executable.is_file()
+        and not session_executable.is_symlink()
+        and os.access(session_executable, os.X_OK)
+    ):
+        _atomic_text(layout.gamemode_session, _gamemode_session_entry(layout))
+        _atomic_symlink(layout.gamemode_command, str(session_target))
+    else:
+        with contextlib.suppress(FileNotFoundError):
+            layout.gamemode_session.unlink()
+        with contextlib.suppress(FileNotFoundError):
+            layout.gamemode_command.unlink()
+    if (
+        boot_executable.is_file()
+        and not boot_executable.is_symlink()
+        and os.access(boot_executable, os.X_OK)
+    ):
+        _atomic_symlink(layout.gamemode_boot_command, str(boot_target))
+    else:
+        with contextlib.suppress(FileNotFoundError):
+            layout.gamemode_boot_command.unlink()
 
 
 def _verify_release(release_path: Path, *, expected_release: str | None = None) -> dict[str, Any]:
@@ -301,23 +381,54 @@ def _activate(layout: Layout, release: str) -> None:
         raise RuntimeError(f"recusando substituir arquivo não gerenciado: {layout.command}")
     if not _managed_desktop(layout.desktop):
         raise RuntimeError(f"recusando substituir desktop entry não gerenciada: {layout.desktop}")
+    if not _managed_desktop(layout.gamemode_session):
+        raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
+    if not _managed_desktop(layout.legacy_gamemode_session):
+        raise RuntimeError(
+            f"recusando remover sessão legada não gerenciada: {layout.legacy_gamemode_session}"
+        )
+    if not _managed_stable_link(
+        layout.gamemode_command,
+        layout.current / "venv" / "bin" / "steamzero-gamemode-session",
+    ):
+        raise RuntimeError(
+            f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
+        )
+    if not _managed_stable_link(
+        layout.gamemode_boot_command,
+        layout.current / "venv" / "bin" / "steamzero-gamemode-boot",
+    ):
+        raise RuntimeError(
+            f"recusando substituir comando não gerenciado: {layout.gamemode_boot_command}"
+        )
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)
     previous_desktop = layout.desktop.read_bytes() if layout.desktop.is_file() else None
+    previous_gamemode_command = _readlink(layout.gamemode_command)
+    previous_gamemode_boot_command = _readlink(layout.gamemode_boot_command)
+    previous_gamemode_session = (
+        layout.gamemode_session.read_bytes() if layout.gamemode_session.is_file() else None
+    )
+    previous_legacy_session = (
+        layout.legacy_gamemode_session.read_bytes()
+        if layout.legacy_gamemode_session.is_file()
+        else None
+    )
     try:
         _atomic_symlink(layout.command, str(layout.current / "venv" / "bin" / "steamzero"))
         _atomic_text(layout.desktop, _desktop_entry(layout.command))
+        _sync_gamemode_integrations(layout, target)
         # Único ponto que publica uma versão nova; os demais links são estáveis.
         _atomic_symlink(layout.current, f"releases/{release}")
     except BaseException:
         _restore_link(layout.current, previous_current)
         _restore_link(layout.command, previous_command)
-        if previous_desktop is None:
-            with contextlib.suppress(FileNotFoundError):
-                layout.desktop.unlink()
-        else:
-            _atomic_text(layout.desktop, previous_desktop.decode("utf-8"))
+        _restore_link(layout.gamemode_command, previous_gamemode_command)
+        _restore_link(layout.gamemode_boot_command, previous_gamemode_boot_command)
+        _restore_text(layout.desktop, previous_desktop)
+        _restore_text(layout.gamemode_session, previous_gamemode_session)
+        _restore_text(layout.legacy_gamemode_session, previous_legacy_session)
         raise
 
 
@@ -327,6 +438,14 @@ def _restore_link(path: Path, target: str | None) -> None:
             path.unlink()
     else:
         _atomic_symlink(path, target)
+
+
+def _restore_text(path: Path, content: bytes | None) -> None:
+    if content is None:
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+    else:
+        _atomic_text(path, content.decode("utf-8"))
 
 
 def _copy_artifacts(
