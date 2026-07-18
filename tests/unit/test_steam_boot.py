@@ -311,6 +311,8 @@ def test_grub_entry_is_independent_and_preserves_current_boot_shape(tmp_path: Pa
     assert "SteamZero Game Mode" in generated
     assert "steamzero.gamemode=1" in generated
     assert "phasezero" not in generated.lower()
+    assert "root=UUID=307f0ecc-3ad9-4619-893d-28454cad339a" in generated
+    assert " UUID=307f0ecc-3ad9-4619-893d-28454cad339a " not in generated
     assert "/@/boot/amd-ucode.img" in generated
     assert "/@/boot/initramfs-6.18-x86_64.img" in generated
 

@@ -474,7 +474,11 @@ def _boot_spec(cmdline: str, boot: Path = Path("/boot")) -> tuple[str, str, str,
             "E-SESSION-LAUNCH-FAILED", detail="kernel/initramfs atuais não estão em /boot"
         )
     rootflags = values.get("rootflags")
-    args = [root, "rw" if "rw" in flags else "ro"]
+    # O initramfs exige a chave completa ``root=``. ``values["root"]`` contém
+    # apenas o valor (por exemplo, ``UUID=...``); emitir esse valor isolado faz
+    # o kernel enxergar uma raiz vazia e cair no emergency shell antes do
+    # systemd. Preserve explicitamente o formato observado em /proc/cmdline.
+    args = [f"root={root}", "rw" if "rw" in flags else "ro"]
     if rootflags:
         if not re.fullmatch(r"[A-Za-z0-9_=/@,.-]+", rootflags):
             raise SteamZeroError("E-SESSION-LAUNCH-FAILED", detail="rootflags inválido")
