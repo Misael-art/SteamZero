@@ -141,6 +141,44 @@ def test_session_uses_distro_gamescope_wrapper_then_falls_back(
     assert executed == ["/usr/bin/startplasma-wayland"]
 
 
+def test_native_big_picture_desktop_request_reaches_desktop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[list[str]] = []
+    executed: list[str] = []
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        steam_session.request_target("plasma", which=lambda _name: None)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    def fake_exec(_path: str, argv: list[str]) -> None:
+        executed.extend(argv)
+        raise RuntimeError("desktop reached")
+
+    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    with pytest.raises(RuntimeError, match="desktop reached"):
+        steam_session.run_session(
+            which=_which(
+                {
+                    "steam": "/usr/bin/steam",
+                    "gamescope": "/usr/bin/gamescope",
+                    "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
+                    "startplasma-wayland": "/usr/bin/startplasma-wayland",
+                }
+            ),
+            runner=runner,
+            environ={"PATH": "/usr/bin"},
+            boot_started=lambda: {"state": "started"},
+            boot_status=_boot_status,
+        )
+
+    assert calls == [["/usr/bin/gamescope-session-plus", "steam"]]
+    assert executed == ["/usr/bin/startplasma-wayland"]
+    assert not (tmp_path / "run" / "steamzero" / "gamemode-target").exists()
+
+
 def test_session_marker_failure_is_logged_and_does_not_black_screen(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

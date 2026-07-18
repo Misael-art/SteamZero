@@ -17,6 +17,7 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         root=tmp_path / "opt" / "steamzero",
         command=tmp_path / "usr" / "local" / "bin" / "steamzero",
         gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
+        session_selector_command=tmp_path / "usr" / "local" / "bin" / "steamos-session-select",
         gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
         manager=tmp_path / "usr" / "local" / "sbin" / "steamzero-host",
         desktop=tmp_path
@@ -101,7 +102,11 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
 def test_activation_publishes_session_in_effective_sddm_location(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     release = _release(layout, "release-a")
-    for name in ("steamzero-gamemode-session", "steamzero-gamemode-boot"):
+    for name in (
+        "steamzero-gamemode-session",
+        "steamos-session-select",
+        "steamzero-gamemode-boot",
+    ):
         executable = release / "venv" / "bin" / name
         executable.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
         executable.chmod(0o755)
@@ -120,9 +125,25 @@ def test_activation_publishes_session_in_effective_sddm_location(tmp_path: Path)
     assert layout.gamemode_command.readlink() == (
         layout.current / "venv" / "bin" / "steamzero-gamemode-session"
     )
+    assert layout.session_selector_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamos-session-select"
+    )
     assert layout.gamemode_boot_command.readlink() == (
         layout.current / "venv" / "bin" / "steamzero-gamemode-boot"
     )
+
+
+def test_activation_refuses_unmanaged_session_selector_without_switching(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.session_selector_command.parent.mkdir(parents=True)
+    layout.session_selector_command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="seletor de sessão não gerenciado"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert layout.session_selector_command.read_text(encoding="utf-8") == "do not replace"
 
 
 def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) -> None:

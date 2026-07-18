@@ -42,6 +42,7 @@ class Layout:
     root: Path = Path("/opt/steamzero")
     command: Path = Path("/usr/local/bin/steamzero")
     gamemode_command: Path = Path("/usr/local/bin/steamzero-gamemode-session")
+    session_selector_command: Path = Path("/usr/local/bin/steamos-session-select")
     gamemode_boot_command: Path = Path("/usr/local/libexec/steamzero-gamemode-boot")
     manager: Path = Path("/usr/local/sbin/steamzero-host")
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
@@ -264,6 +265,7 @@ def _managed_stable_link(path: Path, target: Path) -> bool:
 
 def _sync_gamemode_integrations(layout: Layout, release_path: Path) -> None:
     session_target = layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    selector_target = layout.current / "venv" / "bin" / "steamos-session-select"
     boot_target = layout.current / "venv" / "bin" / "steamzero-gamemode-boot"
     if not _managed_desktop(layout.gamemode_session):
         raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
@@ -275,12 +277,18 @@ def _sync_gamemode_integrations(layout: Layout, release_path: Path) -> None:
         raise RuntimeError(
             f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
         )
+    if not _managed_stable_link(layout.session_selector_command, selector_target):
+        raise RuntimeError(
+            "recusando substituir seletor de sessão não gerenciado: "
+            f"{layout.session_selector_command}"
+        )
     if not _managed_stable_link(layout.gamemode_boot_command, boot_target):
         raise RuntimeError(
             f"recusando substituir comando não gerenciado: {layout.gamemode_boot_command}"
         )
 
     session_executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
+    selector_executable = release_path / "venv" / "bin" / "steamos-session-select"
     boot_executable = release_path / "venv" / "bin" / "steamzero-gamemode-boot"
     with contextlib.suppress(FileNotFoundError):
         layout.legacy_gamemode_session.unlink()
@@ -296,6 +304,18 @@ def _sync_gamemode_integrations(layout: Layout, release_path: Path) -> None:
             layout.gamemode_session.unlink()
         with contextlib.suppress(FileNotFoundError):
             layout.gamemode_command.unlink()
+    if (
+        selector_executable.is_file()
+        and not selector_executable.is_symlink()
+        and os.access(selector_executable, os.X_OK)
+    ):
+        # /usr/local/bin precede /usr/bin no ambiente da sessão. Assim o botão
+        # nativo do SteamOS escreve o destino que este launcher consome, sem
+        # substituir o seletor pertencente ao pacote da distribuição.
+        _atomic_symlink(layout.session_selector_command, str(selector_target))
+    else:
+        with contextlib.suppress(FileNotFoundError):
+            layout.session_selector_command.unlink()
     if (
         boot_executable.is_file()
         and not boot_executable.is_symlink()
@@ -395,6 +415,14 @@ def _activate(layout: Layout, release: str) -> None:
             f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
         )
     if not _managed_stable_link(
+        layout.session_selector_command,
+        layout.current / "venv" / "bin" / "steamos-session-select",
+    ):
+        raise RuntimeError(
+            "recusando substituir seletor de sessão não gerenciado: "
+            f"{layout.session_selector_command}"
+        )
+    if not _managed_stable_link(
         layout.gamemode_boot_command,
         layout.current / "venv" / "bin" / "steamzero-gamemode-boot",
     ):
@@ -406,6 +434,7 @@ def _activate(layout: Layout, release: str) -> None:
     previous_command = _readlink(layout.command)
     previous_desktop = layout.desktop.read_bytes() if layout.desktop.is_file() else None
     previous_gamemode_command = _readlink(layout.gamemode_command)
+    previous_session_selector_command = _readlink(layout.session_selector_command)
     previous_gamemode_boot_command = _readlink(layout.gamemode_boot_command)
     previous_gamemode_session = (
         layout.gamemode_session.read_bytes() if layout.gamemode_session.is_file() else None
@@ -425,6 +454,7 @@ def _activate(layout: Layout, release: str) -> None:
         _restore_link(layout.current, previous_current)
         _restore_link(layout.command, previous_command)
         _restore_link(layout.gamemode_command, previous_gamemode_command)
+        _restore_link(layout.session_selector_command, previous_session_selector_command)
         _restore_link(layout.gamemode_boot_command, previous_gamemode_boot_command)
         _restore_text(layout.desktop, previous_desktop)
         _restore_text(layout.gamemode_session, previous_gamemode_session)
