@@ -368,7 +368,10 @@ def test_enable_writes_owned_files_and_regenerates_grub(
         if argv[0].endswith("grub-mkconfig"):
             layout.grub_config.parent.mkdir(parents=True, exist_ok=True)
             layout.grub_config.write_text(
-                "menuentry --id=steamzero-gamemode { linux /vmlinuz steamzero.gamemode=1 }\n",
+                "menuentry --id=steamzero-gamemode {\n"
+                "  linux /vmlinuz root=UUID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee "
+                "steamzero.gamemode=1\n"
+                "}\n",
                 encoding="utf-8",
             )
         return subprocess.CompletedProcess(argv, 0, "", "")
@@ -387,6 +390,20 @@ def test_enable_writes_owned_files_and_regenerates_grub(
     assert ["/usr/bin/systemctl", "enable", layout.unit.name] in calls
     assert ["/usr/bin/grub-mkconfig", "-o", str(layout.grub_config)] in calls
     assert steam_boot.status(layout, user_lookup=_user)["configured"] is True
+
+
+def test_generated_grub_validation_rejects_marker_without_root_argument(tmp_path: Path) -> None:
+    grub_config = tmp_path / "grub.cfg"
+    grub_config.write_text(
+        "menuentry --id=steamzero-gamemode {\n"
+        "  linux /vmlinuz UUID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee "
+        "steamzero.gamemode=1\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SteamZeroError, match="root=UUID ausente"):
+        steam_boot._validate_generated_grub(grub_config, present=True)
 
 
 def test_enable_rolls_back_when_generated_grub_lacks_entry(tmp_path: Path) -> None:

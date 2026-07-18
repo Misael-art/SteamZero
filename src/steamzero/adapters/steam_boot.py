@@ -617,13 +617,38 @@ def _validate_generated_grub(path: Path, *, present: bool) -> None:
         raise SteamZeroError(
             "E-SESSION-LAUNCH-FAILED", detail="grub.cfg gerado não pôde ser validado"
         ) from exc
-    found = "steamzero-gamemode" in content and "steamzero.gamemode=1" in content
-    if found != present:
+    entry_present = "steamzero-gamemode" in content
+    marker_present = "steamzero.gamemode=1" in content
+    if not present and (entry_present or marker_present):
+        raise SteamZeroError(
+            "E-SESSION-LAUNCH-FAILED",
+            detail="entrada SteamZero deveria estar ausente no grub.cfg",
+        )
+    if present and not (entry_present and marker_present):
         expectation = "ausente" if not present else "presente"
         raise SteamZeroError(
             "E-SESSION-LAUNCH-FAILED",
             detail=f"entrada SteamZero deveria estar {expectation} no grub.cfg",
         )
+    if present:
+        bootable = False
+        for line in content.splitlines():
+            tokens = line.split()
+            if len(tokens) < 3 or tokens[0] != "linux" or "steamzero.gamemode=1" not in tokens:
+                continue
+            roots = [
+                token.removeprefix("root=UUID=")
+                for token in tokens
+                if token.startswith("root=UUID=")
+            ]
+            if len(roots) == 1 and _UUID_RE.fullmatch(roots[0]):
+                bootable = True
+                break
+        if not bootable:
+            raise SteamZeroError(
+                "E-SESSION-LAUNCH-FAILED",
+                detail="entrada SteamZero inválida no grub.cfg: argumento root=UUID ausente",
+            )
 
 
 def enable(
