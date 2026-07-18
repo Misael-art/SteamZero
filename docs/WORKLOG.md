@@ -1114,3 +1114,44 @@ Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A UI
 Área **Modo Desktop** usando os componentes e tokens existentes; a revisão visual e o
 focus graph completos permanecem, conforme decisão do responsável, para quando todas as
 funções estiverem coesas.
+
+## 2026-07-18 — Sessão 30: incidente de boot diagnosticado, correções e desacoplamento PhaseZero
+
+**Incidente real diagnosticado:** as duas entradas GRUB ("PhaseZero SteamOS Console" e
+"SteamZero Game Mode") falhavam em chegar ao Big Picture. Journal comprovou a causa
+primária: `sddm: Unable to find autologin session entry "steamzero-gamemode.desktop"` —
+a sessão vivia em `/usr/local/share/wayland-sessions`, mas o `/etc/sddm.conf` do
+BigLinux (lido por último na precedência) restringe `SessionDir=/usr/share/wayland-sessions`.
+O boot caía no greeter; o login manual entrava na sessão legada, que degradava para
+Plasma por falta de `gamescope-session-plus`. Causa secundária: `status()` sem
+privilégio engolia `EACCES` e reportava "ativação não executada" com boot direto
+instalado — telemetria falsa durante todo o incidente.
+
+**ADR-0020 (proposto):** arquitetura multi-distro para Arch e derivadas —
+`DisplayManagerPort` (SessionDir efetivo como pré-condição de autologin) e
+`BootEntryPort` (GRUB/systemd-boot/rEFInd/Limine + one-shot), preflight no `enable`,
+verificação pós-boot com backoff e matriz de VMs no laboratório KVM. Capacidade
+detectada, nunca nome de distro; artefato próprio muda de lugar, config alheia
+não é editada.
+
+**Correções (release `a26`, commit `ca88ada`):** sessão movida para
+`/usr/share/wayland-sessions` (instalador remove a cópia legada gerenciada ao
+sincronizar) e `status()` com estado `unknown` + `permissionDenied=true` sob EACCES.
+Verificado no host: sem privilégio `state=unknown/permissionDenied=true`; com
+privilégio `state=ready/configured=true`.
+
+**Desacoplamento PhaseZero (release `a27`, commit `1dc331c`):** decisão do responsável —
+PhaseZero foi somente referência de pesquisa e não faz parte do produto. `prepare()`
+reage apenas a `steamzero.gamemode=1` (marcador alheio = boot normal); `BootLayout`
+perdeu `legacy_sddm_config`/`legacy_unit`; payloads perderam
+`legacyMarker`/`legacyMarkerAccepted`/`legacyRuntimeRequired`; a UI não menciona o
+projeto pesquisado e o contrato de independência passou a exigir a ausência da
+referência. Limpeza externa e explícita do host executada com `bigsudo`: entrada GRUB,
+sessão wayland, unit de boot, scripts `/usr/local/lib/phasezero`, sudoers, drop-in de
+suspend, units de usuário, autostart e tray — `find` em `/etc`, `/usr/local` e
+`~/.config` retorna zero referências; grub.cfg regenerado só com a entrada SteamZero.
+
+**Gates:** 569 passed, Ruff, mypy estrito, fronteiras e independência verdes nas duas
+releases. Manifesto v4 ativo vincula `0.1.0a27` a
+`1dc331c9eea9e61736541b8d0822f0831918561b`. Gate físico pendente: observar Big Picture
+no próximo reboot pela entrada "SteamZero Game Mode".
