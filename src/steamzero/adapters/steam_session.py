@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Sessão Game Mode independente com fallback seguro para o Desktop.
 
-O launcher é selecionável no SDDM; ele não altera GRUB nem ativa autologin. Uma
-falha de Steam/Gamescope sempre entrega a sessão ao Plasma disponível, evitando
-loop de login. Boot direto continua um gate privilegiado separado.
+O launcher é selecionável no SDDM. A integração privilegiada de boot vive no
+módulo ``steam_boot`` e apenas aponta o SDDM para esta sessão. Uma falha de
+Steam/Gamescope sempre entrega a sessão ao Plasma disponível, evitando loop.
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ def _desktop_command(which: Which = shutil.which) -> tuple[str, ...] | None:
 
 
 def readiness(*, which: Which = shutil.which) -> dict[str, Any]:
+    from steamzero.adapters.steam_boot import status as boot_status
+
     steam = which("steam")
     gamescope = which("gamescope")
     desktop = _desktop_command(which)
@@ -52,11 +54,7 @@ def readiness(*, which: Which = shutil.which) -> dict[str, Any]:
         "independentRuntime": True,
         "legacyRuntimeRequired": False,
         "sessionId": "steamzero-gamemode",
-        "directBoot": {
-            "state": "gated",
-            "reason": "Exige snapshot restaurável, TTY e console remoto comprovados.",
-            "changesGrub": False,
-        },
+        "directBoot": boot_status(),
     }
 
 

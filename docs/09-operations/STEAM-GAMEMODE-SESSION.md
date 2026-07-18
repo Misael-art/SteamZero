@@ -45,10 +45,27 @@ uma garantia pré-suspend que o processo user-scoped ainda não possui.
 
 ## Boot direto
 
-Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. O SteamZero não altera
-GRUB para “iniciar SteamOS”. Autologin/seleção padrão no SDDM permanece `gated`: só pode ser
-implementado por um plano privilegiado depois de snapshot Btrfs restaurável, TTY testada,
-console remoto e watchdog de fallback. Até esse gate, escolha a sessão manualmente no SDDM.
+Uma sessão gráfica é escolhida pelo display manager, não pelo GRUB. A entrada
+**SteamZero Game Mode** apenas acrescenta `steamzero.gamemode=1` ao kernel; o oneshot
+`steamzero-gamemode-boot.service`, executado antes do display manager, valida a sessão e
+publica uma seleção SDDM com `Relogin=false`. Sessão ausente remove o autologin gerenciado e
+volta ao greeter. Steam/Gamescope ausente ou três falhas consecutivas entregam o controle ao
+Plasma.
+
+Ativação e remoção são explícitas, root-only e regeneram o GRUB:
+
+```text
+bigsudo /usr/local/libexec/steamzero-gamemode-boot enable --user USUARIO
+/usr/local/libexec/steamzero-gamemode-boot status
+bigsudo /usr/local/libexec/steamzero-gamemode-boot disable
+```
+
+O ativador deriva kernel, initramfs, UUID e subvolume do boot corrente, exige que os
+artefatos existam, usa escrita atômica, preserva o `grub.cfg` anterior durante a transação e
+recusa arquivos sem marcador de ownership. O marcador legado
+`phasezero.steamos=1` é aceito somente para migração da entrada já existente; o runtime,
+serviço e sessão selecionada são exclusivamente do SteamZero. O serviço legado é desativado
+depois que a nova entrada e o fallback foram verificados.
 
 O Gamescope upstream se descreve como compositor da sessão SteamOS e documenta o modo
 embedded; a composição completa da sessão fora do SteamOS exige validação específica da

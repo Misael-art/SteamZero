@@ -99,9 +99,22 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Limpeza e manutenção",
         "Pacote de mídia",
         "SteamZero Game Mode",
-        "Boot direto: protegido",
+        "Boot direto: ativo",
+        "Modo Desktop",
     ):
         assert contract in gameplay_qml
+    desktop_qml = (root / "src/steamzero/ui/qml/SteamDesktop.qml").read_text(encoding="utf-8")
+    for contract in (
+        "Experiência do Modo Desktop",
+        "Entrada, touch e teclado",
+        "Tela, dock e hotplug",
+        "Sessão e resiliência",
+        "Laboratório KVM/libvirt",
+        "Revisar e aplicar no Desktop",
+        "Runtime PhaseZero",
+        "Não requerido",
+    ):
+        assert contract in desktop_qml
     main_qml = (root / "src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     for route in (
         '"/steam/maintenance/plan"',

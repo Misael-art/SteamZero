@@ -128,10 +128,12 @@ explicitamente `verified-vm` de `verified-hw`.
 
 ### R10 — sessão padrão com recuperação
 
-Somente após R9: snapshot Btrfs restaurável, TTY, console remoto, watchdog e
-contador de falhas permitem configurar a sessão SDDM como padrão/autologin. O
-GRUB não escolhe uma sessão gráfica; três falhas precisam retornar ao login ou
-Plasma automaticamente.
+O responsável autorizou a ativação no Deck LCD após o boot legado reproduzir a queda
+silenciosa para KDE. O SteamZero agora possui entrada GRUB, preparador SDDM e Session
+Manager próprios: `Relogin=false`, sessão ausente retorna ao greeter e três falhas retornam
+ao Plasma. O marcador legado é somente uma ponte de migração e não introduz dependência de
+runtime. O fechamento permanece parcial até reboot físico confirmar Game Mode, retorno ao
+Desktop, greeter por sessão ausente e desativação reversível com console de recuperação.
 
 ## Gates por incremento
 

@@ -45,6 +45,8 @@ class Layout:
     root: Path = Path("/opt/steamzero")
     command: Path = Path("/usr/local/bin/steamzero")
     gamemode_command: Path = Path("/usr/local/bin/steamzero-gamemode-session")
+    gamemode_boot_command: Path = Path("/usr/local/libexec/steamzero-gamemode-boot")
+    host_prepare_command: Path = Path("/usr/local/libexec/steamzero-host-prepare")
     admin_command: Path = Path("/usr/local/libexec/steamzero-admin")
     manager: Path = Path("/usr/local/sbin/steamzero-host")
     desktop: Path = Path("/usr/local/share/applications/org.steamzero.SteamZero.desktop")
@@ -404,6 +406,56 @@ def _sync_gamemode_command(layout: Layout, release_path: Path) -> None:
         layout.gamemode_command.unlink()
 
 
+def _managed_gamemode_boot_command(layout: Layout) -> bool:
+    path = layout.gamemode_boot_command
+    if not path.exists() and not path.is_symlink():
+        return True
+    return path.is_symlink() and _readlink(path) == str(
+        layout.current / "venv" / "bin" / "steamzero-gamemode-boot"
+    )
+
+
+def _sync_gamemode_boot_command(layout: Layout, release_path: Path) -> None:
+    if not _managed_gamemode_boot_command(layout):
+        raise RuntimeError(
+            f"recusando substituir comando de boot não gerenciado: {layout.gamemode_boot_command}"
+        )
+    executable = release_path / "venv" / "bin" / "steamzero-gamemode-boot"
+    if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+        _atomic_symlink(
+            layout.gamemode_boot_command,
+            str(layout.current / "venv" / "bin" / "steamzero-gamemode-boot"),
+        )
+        return
+    with contextlib.suppress(FileNotFoundError):
+        layout.gamemode_boot_command.unlink()
+
+
+def _managed_host_prepare_command(layout: Layout) -> bool:
+    path = layout.host_prepare_command
+    if not path.exists() and not path.is_symlink():
+        return True
+    return path.is_symlink() and _readlink(path) == str(
+        layout.current / "venv" / "bin" / "steamzero-host-prepare"
+    )
+
+
+def _sync_host_prepare_command(layout: Layout, release_path: Path) -> None:
+    if not _managed_host_prepare_command(layout):
+        raise RuntimeError(
+            f"recusando substituir preparador não gerenciado: {layout.host_prepare_command}"
+        )
+    executable = release_path / "venv" / "bin" / "steamzero-host-prepare"
+    if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+        _atomic_symlink(
+            layout.host_prepare_command,
+            str(layout.current / "venv" / "bin" / "steamzero-host-prepare"),
+        )
+        return
+    with contextlib.suppress(FileNotFoundError):
+        layout.host_prepare_command.unlink()
+
+
 def _managed_admin(layout: Layout) -> bool:
     command = layout.admin_command
     command_ok = (not command.exists() and not command.is_symlink()) or (
@@ -447,6 +499,8 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
     executable = release_path / "venv" / "bin" / "steamzero"
     core_executable = release_path / "venv" / "bin" / "steamzero-core"
     session_executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"
+    boot_executable = release_path / "venv" / "bin" / "steamzero-gamemode-boot"
+    host_prepare_executable = release_path / "venv" / "bin" / "steamzero-host-prepare"
     installer = release_path / "artifacts" / _INSTALLER_NAME
     if not manifest_path.is_file() or manifest_path.is_symlink():
         raise RuntimeError(f"manifesto ausente em {release_path}")
@@ -460,9 +514,9 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
     data: dict[str, Any] = loaded
     expected = expected_release or release_path.name
     schema_version = data.get("schemaVersion")
-    if schema_version not in {1, 2, 3} or data.get("release") != expected:
+    if schema_version not in {1, 2, 3, 4} or data.get("release") != expected:
         raise RuntimeError("manifesto da release não corresponde ao diretório")
-    if schema_version in {2, 3}:
+    if schema_version in {2, 3, 4}:
         source_commit = data.get("sourceCommit")
         package_version = data.get("packageVersion")
         if (
@@ -477,18 +531,30 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             raise RuntimeError("proveniência inválida no manifesto v2") from exc
         if canonical != expected:
             raise RuntimeError("release não corresponde à versão e ao commit de origem")
-    if schema_version == 3 and (
+    if schema_version in {3, 4} and (
         not core_executable.is_file()
         or core_executable.is_symlink()
         or not os.access(core_executable, os.X_OK)
     ):
         raise RuntimeError(f"daemon inválido em {release_path}")
-    if schema_version == 3 and (
+    if schema_version in {3, 4} and (
         not session_executable.is_file()
         or session_executable.is_symlink()
         or not os.access(session_executable, os.X_OK)
     ):
         raise RuntimeError(f"Session Manager inválido em {release_path}")
+    if schema_version == 4 and (
+        not boot_executable.is_file()
+        or boot_executable.is_symlink()
+        or not os.access(boot_executable, os.X_OK)
+    ):
+        raise RuntimeError(f"preparador de boot inválido em {release_path}")
+    if schema_version == 4 and (
+        not host_prepare_executable.is_file()
+        or host_prepare_executable.is_symlink()
+        or not os.access(host_prepare_executable, os.X_OK)
+    ):
+        raise RuntimeError(f"preparador de host inválido em {release_path}")
     wheel_file = data.get("wheelFile")
     if not isinstance(wheel_file, str) or Path(wheel_file).name != wheel_file:
         raise RuntimeError("nome do wheel inválido no manifesto")
@@ -515,8 +581,10 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             requirements,
             installer,
         ]
-        if schema_version == 3:
+        if schema_version in {3, 4}:
             protected_paths.extend((core_executable, session_executable))
+        if schema_version == 4:
+            protected_paths.extend((boot_executable, host_prepare_executable))
         for protected in protected_paths:
             stat = protected.stat()
             if stat.st_uid != 0 or stat.st_mode & 0o022:
@@ -533,9 +601,12 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             "PYTHONNOUSERSITE": "1",
         }
         version = _run([str(executable), "--version"], env=environment).stdout.strip()
-        if schema_version == 3:
+        if schema_version in {3, 4}:
             _run([str(core_executable), "--help"], env=environment)
             _run([str(session_executable), "--help"], env=environment)
+        if schema_version == 4:
+            _run([str(boot_executable), "status"], env=environment)
+            _run([str(host_prepare_executable), "status"], env=environment)
         doctor = _run([str(executable), "doctor", "--json"], env=environment)
         payload = json.loads(doctor.stdout)
         if (
@@ -566,12 +637,22 @@ def _activate(layout: Layout, release: str) -> None:
         raise RuntimeError(
             f"recusando substituir comando não gerenciado: {layout.gamemode_command}"
         )
+    if not _managed_gamemode_boot_command(layout):
+        raise RuntimeError(
+            f"recusando substituir comando de boot não gerenciado: {layout.gamemode_boot_command}"
+        )
+    if not _managed_host_prepare_command(layout):
+        raise RuntimeError(
+            f"recusando substituir preparador não gerenciado: {layout.host_prepare_command}"
+        )
     if not _managed_admin(layout):
         raise RuntimeError("recusando substituir helper/policy privilegiado não gerenciado")
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)
     previous_gamemode_command = _readlink(layout.gamemode_command)
+    previous_gamemode_boot_command = _readlink(layout.gamemode_boot_command)
+    previous_host_prepare_command = _readlink(layout.host_prepare_command)
     previous_admin_command = _readlink(layout.admin_command)
     previous_desktop = layout.desktop.read_bytes() if layout.desktop.is_file() else None
     previous_service = layout.user_service.read_bytes() if layout.user_service.is_file() else None
@@ -584,6 +665,8 @@ def _activate(layout: Layout, release: str) -> None:
         _sync_user_units(layout, target)
         _sync_gamemode_session(layout, target)
         _sync_gamemode_command(layout, target)
+        _sync_gamemode_boot_command(layout, target)
+        _sync_host_prepare_command(layout, target)
         _sync_admin(layout, target)
         _atomic_symlink(layout.command, str(layout.current / "venv" / "bin" / "steamzero"))
         _atomic_text(layout.desktop, _desktop_entry(layout.command))
@@ -593,6 +676,8 @@ def _activate(layout: Layout, release: str) -> None:
         _restore_link(layout.current, previous_current)
         _restore_link(layout.command, previous_command)
         _restore_link(layout.gamemode_command, previous_gamemode_command)
+        _restore_link(layout.gamemode_boot_command, previous_gamemode_boot_command)
+        _restore_link(layout.host_prepare_command, previous_host_prepare_command)
         _restore_link(layout.admin_command, previous_admin_command)
         if previous_desktop is None:
             with contextlib.suppress(FileNotFoundError):
@@ -747,7 +832,7 @@ def install(
         )
         _run([str(pip), "check"])
         manifest: dict[str, Any] = {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "release": release,
             "packageVersion": package_version,
             "sourceCommit": source_commit,

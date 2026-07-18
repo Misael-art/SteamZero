@@ -29,8 +29,8 @@ def test_readiness_never_requires_legacy_runtime() -> None:
     assert status["state"] == "ready"
     assert status["independentRuntime"] is True
     assert status["legacyRuntimeRequired"] is False
-    assert status["directBoot"]["state"] == "gated"
-    assert status["directBoot"]["changesGrub"] is False
+    assert status["directBoot"]["state"] in {"available", "ready"}
+    assert status["directBoot"]["changesGrub"] is True
 
 
 def test_missing_gamescope_falls_back_to_biglinux_desktop(

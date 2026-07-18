@@ -12,6 +12,8 @@ Desktop e usa `bigsudo` somente para publicar arquivos do sistema.
 | `/opt/steamzero/current` | único ponteiro que ativa/retrocede uma release |
 | `/usr/local/bin/steamzero` | comando estável para o usuário |
 | `/usr/local/bin/steamzero-gamemode-session` | diagnóstico e inicialização estáveis da sessão Game Mode |
+| `/usr/local/libexec/steamzero-gamemode-boot` | seleção GRUB→SDDM reversível, sem runtime legado |
+| `/usr/local/libexec/steamzero-host-prepare` | prontidão/preparação KVM-libvirt por família de distro |
 | `/usr/local/sbin/steamzero-host` | plano de gerenciamento estável: status e rollback |
 | `/usr/local/share/applications/org.steamzero.SteamZero.desktop` | lançador KDE |
 | `/usr/local/lib/systemd/user/steamzero-core.{socket,service}` | plano de controle user-scoped, socket-activated |
@@ -64,7 +66,7 @@ bigsudo /usr/bin/python3 tools/install_host.py install \
 ```
 
 A instalação é offline depois que o wheelhouse foi preparado. Ela copia os
-artefatos, cria um manifesto v3 com versão, commit e estado `clean`, instala as
+artefatos, cria um manifesto v4 com versão, commit e estado `clean`, instala as
 dependências exigindo os hashes, executa
 `pip check`, `steamzero --version` e `steamzero doctor --json`, e somente então
 troca `current`. Repetir o mesmo comando com a mesma release e hash é idempotente
@@ -85,8 +87,34 @@ steamzero-gamemode-session --check
 ```
 
 O serviço sobe sob demanda. A sessão **SteamZero Game Mode** aparece no seletor do SDDM e
-sempre possui fallback para Plasma. O instalador não muda a sessão padrão, não habilita
-autologin e não toca no GRUB.
+sempre possui fallback para Plasma. O instalador da release não muda a sessão padrão. A
+ativação separada abaixo é a única operação que publica entrada própria no GRUB e seleção
+temporária no SDDM:
+
+```bash
+bigsudo /usr/local/libexec/steamzero-gamemode-boot enable --user misael
+/usr/local/libexec/steamzero-gamemode-boot status
+```
+
+Para reverter, use `bigsudo /usr/local/libexec/steamzero-gamemode-boot disable`.
+
+## Preparar laboratório agnóstico
+
+O laboratório virtual cobre clean install, update, rollback, packaging e smoke de UI. Ele
+não declara `virtio-gpu` equivalente ao AMDGPU do Deck; TDP, clock, KScreen, dock e suspend
+continuam no hardware físico com snapshot e recuperação.
+
+```bash
+/usr/local/libexec/steamzero-host-prepare status
+/usr/local/libexec/steamzero-host-prepare plan
+bigsudo /usr/local/libexec/steamzero-host-prepare apply \
+  --user misael --confirm PREPARAR-VIRTUALIZACAO
+```
+
+O comando detecta pacman, apt ou dnf, usa listas de pacotes compiladas sem shell, habilita
+libvirt, converge a rede `default` e adiciona o usuário ao grupo `libvirt` quando presente.
+No BigLinux/Manjaro o conjunto inclui QEMU desktop, libvirt, virt-install, OVMF, swtpm,
+dnsmasq e iptables-nft. É necessário relogin quando a associação ao grupo mudar.
 
 ## Verificar
 
@@ -96,6 +124,8 @@ steamzero doctor --json
 systemctl --user is-active steamzero-core.socket
 systemctl --user is-active steamzero-core.service
 steamzero-gamemode-session --check
+/usr/local/libexec/steamzero-gamemode-boot status
+/usr/local/libexec/steamzero-host-prepare status
 bigsudo /usr/local/sbin/steamzero-host status
 ```
 
@@ -126,9 +156,9 @@ de backup/restauração antes de uma versão estável.
   de um assinador externo a ser selecionado antes do canal de release;
 - o instalador publica a aplicação e o lançador, mas não aplica automaticamente
   perfis de display/input nem instala componentes Flatpak;
-- boot direto em Game Mode continua bloqueado até snapshot Btrfs restaurável, TTY e console
-  remoto comprovados. Selecionar a sessão no SDDM é suportado; reconfigurar GRUB para uma
-  sessão gráfica não é o mecanismo correto e não é realizado;
+- boot direto publica somente um marcador e deixa a seleção gráfica a cargo do SDDM; a
+  certificação pós-reboot ainda precisa comprovar Game Mode, retorno ao Plasma e greeter
+  depois de três falhas em cada release/hardware;
 - a autorização permanece a cargo do agente polkit do KDE; senha nunca deve ser
   passada em argumento, arquivo ou chat.
 

@@ -44,6 +44,8 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "wayland-sessions"
         / "steamzero-gamemode.desktop",
         gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
+        gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
+        host_prepare_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-host-prepare",
         admin_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-admin",
         polkit_policy=tmp_path
         / "usr"

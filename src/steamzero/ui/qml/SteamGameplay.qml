@@ -8,6 +8,7 @@ Item {
     id: page
 
     required property var gameplay
+    property var desktopStatus: ({})
     required property color backgroundColor
     required property color surfaceColor
     required property color raisedColor
@@ -34,6 +35,12 @@ Item {
     signal mediaPlanRequested(string gameId, string accountId, string packagePath)
     signal mediaApplyRequested(string planId, string confirmToken)
     signal mediaRollbackRequested(string operationId)
+    signal desktopProfilePlanRequested(string profile)
+    signal desktopProfileApplyRequested(string planId, string confirmToken)
+    signal desktopSafeResetRequested()
+    signal desktopConflictRequested()
+    signal desktopRecoveryRequested()
+    signal desktopKeyboardRequested()
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -173,6 +180,10 @@ Item {
         mediaDialog.open()
     }
 
+    function showDesktopPlan(plan) {
+        desktopModePanel.showPlan(plan)
+    }
+
     function formatBytes(value) {
         const bytes = Number(value || 0)
         if (bytes < 1024)
@@ -207,9 +218,19 @@ Item {
     }
 
     onGameplayChanged: loadProfile()
-    onInitialAreaChanged: workspaceIndex = initialArea === "controls" ? 1 : 0
+    function areaIndex(area) {
+        if (area === "controls")
+            return 1
+        if (area === "library")
+            return 2
+        if (area === "desktop")
+            return 3
+        return 0
+    }
+
+    onInitialAreaChanged: workspaceIndex = areaIndex(initialArea)
     Component.onCompleted: {
-        workspaceIndex = initialArea === "controls" ? 1 : 0
+        workspaceIndex = areaIndex(initialArea)
         loadProfile()
     }
 
@@ -578,7 +599,8 @@ Item {
                     Layout.fillWidth: true
                     spacing: 2
                     Label {
-                        text: qsTr("Prontidão do jogo")
+                        text: page.workspaceIndex === 3
+                            ? qsTr("Experiência no Modo Desktop") : qsTr("Prontidão do jogo")
                         color: page.textColor
                         font.pixelSize: 28
                         font.bold: true
@@ -595,13 +617,14 @@ Item {
                         font.pixelSize: 13
                     }
                 }
-                Label { text: qsTr("Jogo"); color: page.mutedColor }
+                Label { visible: page.workspaceIndex !== 3; text: qsTr("Jogo"); color: page.mutedColor }
                 ComboBox {
                     id: gamePicker
                     model: page.games
                     textRole: "name"
                     currentIndex: page.gameIndex
                     enabled: page.games.length > 0
+                    visible: page.workspaceIndex !== 3
                     Layout.preferredWidth: Math.min(360, page.width * 0.3)
                     Layout.minimumHeight: 48
                     Accessible.name: qsTr("Selecionar jogo")
@@ -630,6 +653,7 @@ Item {
             }
 
             RowLayout {
+                visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20
@@ -672,14 +696,17 @@ Item {
                     Layout.rightMargin: 12
                 }
                 Repeater {
-                    model: [qsTr("Desempenho e LSFG"), qsTr("Controles"), qsTr("Biblioteca")]
+                    model: [
+                        qsTr("Desempenho e LSFG"), qsTr("Controles"),
+                        qsTr("Biblioteca"), qsTr("Modo Desktop")
+                    ]
                     delegate: Button {
                         required property int index
                         required property string modelData
                         text: modelData
                         checkable: true
                         checked: page.workspaceIndex === index
-                        Layout.preferredWidth: index === 0 ? 174 : 126
+                        Layout.preferredWidth: index === 0 ? 174 : index === 3 ? 142 : 126
                         Layout.minimumHeight: 44
                         Accessible.name: qsTr("Abrir área %1").arg(text)
                         onClicked: page.workspaceIndex = index
@@ -696,6 +723,7 @@ Item {
             }
 
             Rectangle {
+                visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20
@@ -803,6 +831,7 @@ Item {
             }
 
             Rectangle {
+                visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
                 Layout.leftMargin: 20
                 Layout.rightMargin: 20
@@ -1298,8 +1327,12 @@ Item {
                         font.bold: true
                     }
                     Label {
-                        text: qsTr("Boot direto: protegido")
-                        color: page.amberColor
+                        text: page.sessionManager.directBoot
+                            && page.sessionManager.directBoot.configured
+                            ? qsTr("Boot direto: ativo") : qsTr("Boot direto: disponível")
+                        color: page.sessionManager.directBoot
+                            && page.sessionManager.directBoot.configured
+                            ? page.greenColor : page.amberColor
                         font.bold: true
                     }
                 }
@@ -1476,6 +1509,40 @@ Item {
                 }
             }
 
+            SteamDesktop {
+                id: desktopModePanel
+                visible: page.workspaceIndex === 3
+                desktopStatus: page.desktopStatus
+                sessionManager: page.sessionManager
+                hostPreparation: page.gameplay && page.gameplay.hostPreparation
+                    ? page.gameplay.hostPreparation
+                    : ({"state": "attention", "hardwareLab": {"reason": ""}})
+                backgroundColor: page.backgroundColor
+                surfaceColor: page.surfaceColor
+                raisedColor: page.raisedColor
+                borderColor: page.borderColor
+                textColor: page.textColor
+                mutedColor: page.mutedColor
+                cyanColor: page.cyanColor
+                cyanDarkColor: page.cyanDarkColor
+                greenColor: page.greenColor
+                amberColor: page.amberColor
+                redColor: page.redColor
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                onProfilePlanRequested: function(profile) {
+                    page.desktopProfilePlanRequested(profile)
+                }
+                onProfileApplyRequested: function(planId, confirmToken) {
+                    page.desktopProfileApplyRequested(planId, confirmToken)
+                }
+                onSafeResetRequested: page.desktopSafeResetRequested()
+                onConflictRequested: page.desktopConflictRequested()
+                onRecoveryRequested: page.desktopRecoveryRequested()
+                onKeyboardRequested: page.desktopKeyboardRequested()
+                onSystemRequested: page.systemRequested()
+            }
+
         }
     }
 
@@ -1484,7 +1551,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        visible: page.workspaceIndex !== 2
+        visible: page.workspaceIndex < 2
         height: visible ? 78 : 0
         color: page.backgroundColor
         border.color: page.borderColor

@@ -1040,3 +1040,36 @@ nenhuma mutação privilegiada foi executada nessa etapa.
 
 **Gate:** **541 passed / 85,21%** (7681 statements, 917 misses, 2020 branches), Ruff,
 formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto verdes.
+
+## 2026-07-17 — Sessão 28: boot Game Mode próprio e Área Modo Desktop
+
+**Causa reproduzida:** a entrada GRUB legada entregava corretamente
+`phasezero.steamos=1` ao kernel e o SDDM selecionava `phasezero-steamos.desktop`, mas o
+launcher exigia `gamescope-session-plus`, ausente no host, e executava
+`startkde-biglinux wayland`. O desvio ocorria depois do GRUB/SDDM e explicava o retorno
+silencioso ao KDE.
+
+**Session Manager independente:** `steamzero-gamemode-boot` passou a gerar entrada
+**SteamZero Game Mode**, reconciliar o SDDM antes do display manager e selecionar somente
+`steamzero-gamemode.desktop`. `Relogin=false`, sessão ausente remove o autologin e retorna
+ao greeter; Steam/Gamescope falhos retornam ao Plasma. A ativação é root-only, atômica,
+regenera o GRUB, preserva o `grub.cfg` durante a transação e possui `disable` reversível.
+O marcador antigo é aceito apenas para migração; não há import, binário ou serviço
+PhaseZero requerido.
+
+**Host agnóstico:** o novo `steamzero-host-prepare` detecta pacman, apt ou dnf, publica
+plano fixo e exige confirmação literal antes de instalar QEMU/libvirt/virt-install,
+UEFI, TPM e rede. A verdade distingue laboratório VM com `virtio-gpu` de hardware Valve:
+clean install/update/rollback pertencem à VM; AMDGPU, TDP, clock, KScreen, dock e suspend
+pertencem ao Deck físico com snapshot e recuperação.
+
+**UI:** a área Steam agora inclui **Modo Desktop** no mesmo seletor contextual de
+Desempenho, Controles e Biblioteca. A tela conserva a direção visual Prontidão e agrupa
+perfil recomendado/desejado/aplicado/observado, entrada/touch/teclado, tela/dock/hotplug,
+sessão/boot, conflito e recovery. Ações chamam os endpoints reais de plano, apply, reset,
+conflito, recuperação e teclado; componentes de Sistema direcionam para Sistema.
+
+**Gate pré-host:** **564 passed / 85,34%** (8025 statements, 945 misses, 2134 branches),
+Ruff, formato, mypy estrito, fronteiras, independência, `qmllint` e documentação verdes.
+Instalação, ativação e evidência pós-reboot permanecem fora deste registro até a release
+imutável ser construída a partir do commit limpo.

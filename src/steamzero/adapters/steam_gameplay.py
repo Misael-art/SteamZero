@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.host_preparation import snapshot as host_preparation_snapshot
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
 from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
 from steamzero.adapters.steam_launcher import SteamGameLauncher
@@ -210,6 +211,7 @@ class SteamGameplayController:
             "maintenance": self._maintenance.snapshot(selected_id),
             "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
             "sessionManager": session_readiness(which=self._which),
+            "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
         }
 
     def plan_lsfg_install(self) -> dict[str, Any]:

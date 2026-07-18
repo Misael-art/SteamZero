@@ -166,7 +166,8 @@ ApplicationWindow {
                 sectionIndex = sections[args[sectionMarker + 1]]
         }
         if (steamAreaMarker >= 0 && steamAreaMarker + 1 < args.length
-                && ["performance", "controls"].indexOf(args[steamAreaMarker + 1]) >= 0)
+                && ["performance", "controls", "library", "desktop"]
+                    .indexOf(args[steamAreaMarker + 1]) >= 0)
             steamArea = args[steamAreaMarker + 1]
         ensureSelections()
         if (desktopStatus.recoveryRequired) {
@@ -1413,6 +1414,7 @@ ApplicationWindow {
                             SteamGameplay {
                                 id: steamGameplayPage
                                 gameplay: root.steamGameplayData
+                                desktopStatus: root.desktopStatus
                                 initialArea: root.steamArea
                                 backgroundColor: root.backgroundColor
                                 surfaceColor: root.surfaceColor
@@ -1441,6 +1443,27 @@ ApplicationWindow {
                                     })
                                 }
                                 onSystemRequested: root.sectionIndex = 5
+                                onDesktopProfilePlanRequested: function(profile) {
+                                    root.request("POST", "/plan", {"profile": profile}, function(response) {
+                                        steamGameplayPage.showDesktopPlan(response.plan)
+                                    })
+                                }
+                                onDesktopProfileApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function() {
+                                        root.refreshStatus(qsTr("Perfil do Modo Desktop aplicado"))
+                                    })
+                                }
+                                onDesktopSafeResetRequested: root.beginQuickReset()
+                                onDesktopConflictRequested: root.beginConflictResolution()
+                                onDesktopRecoveryRequested: root.request(
+                                    "POST", "/recover", {}, function() {
+                                        root.refreshStatus(qsTr("Estado Desktop seguro restaurado"))
+                                    }
+                                )
+                                onDesktopKeyboardRequested: root.openKeyboard()
                                 onSteamInputRequested: function(gameId) {
                                     root.request("POST", "/steam/input/open", {
                                         "gameId": gameId
