@@ -44,6 +44,22 @@ def test_snapshot_distinguishes_virtual_lab_from_real_deck(tmp_path: Path) -> No
     assert status["virtualLab"]["gpu"] == "virtio"
 
 
+def test_snapshot_autodetects_official_deck_from_dmi(tmp_path: Path) -> None:
+    dmi = tmp_path / "dmi"
+    dmi.mkdir()
+    (dmi / "product_name").write_text("Jupiter\n", encoding="utf-8")
+    (dmi / "sys_vendor").write_text("Valve\n", encoding="utf-8")
+    (dmi / "board_name").write_text("Jupiter\n", encoding="utf-8")
+    status = host_preparation.snapshot(
+        which=lambda _name: None,
+        kvm=tmp_path / "missing-kvm",
+        os_release=tmp_path / "missing-os-release",
+        dmi_root=dmi,
+    )
+    assert status["officialDeck"] is True
+    assert status["hardwareLab"]["state"] == "ready"
+
+
 def test_plan_uses_only_fixed_package_argv() -> None:
     result = host_preparation.plan(which=_which({"pacman": "/usr/bin/pacman"}))
     assert result["commands"] == [

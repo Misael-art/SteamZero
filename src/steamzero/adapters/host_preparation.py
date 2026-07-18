@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.device import classify
 
 Which = Callable[[str], str | None]
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -79,12 +80,23 @@ def _manager(which: Which) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _device_kind(dmi_root: Path) -> str:
+    values: dict[str, str] = {}
+    for name in ("product_name", "sys_vendor", "board_name"):
+        try:
+            values[name] = (dmi_root / name).read_text(encoding="utf-8").strip()
+        except OSError:
+            values[name] = ""
+    return classify(values)
+
+
 def snapshot(
-    device_kind: str = "desktop",
+    device_kind: str | None = None,
     *,
     which: Which = shutil.which,
     kvm: Path = Path("/dev/kvm"),
     os_release: Path = Path("/etc/os-release"),
+    dmi_root: Path = Path("/sys/devices/virtual/dmi/id"),
 ) -> dict[str, Any]:
     distro = _os_release(os_release)
     manager, _executable = _manager(which)
@@ -96,7 +108,8 @@ def snapshot(
     }
     kvm_ready = kvm.exists() and os.access(kvm, os.R_OK | os.W_OK)
     virtualization_ready = kvm_ready and all(commands.values())
-    official_deck = device_kind in {"deck-lcd", "deck-oled"}
+    observed_device = device_kind or _device_kind(dmi_root)
+    official_deck = observed_device in {"deck-lcd", "deck-oled"}
     return {
         "state": "ready" if virtualization_ready else "attention",
         "statusLabel": (
@@ -245,7 +258,7 @@ def apply(
         usermod = which("usermod")
         if usermod:
             _run([usermod, "-aG", "libvirt", username], runner=runner)
-    result = snapshot("desktop", which=which)
+    result = snapshot(which=which)
     return {
         "state": "prepared",
         "user": user.pw_name,
