@@ -180,14 +180,14 @@ def test_apply_accepts_network_start_race_when_recheck_is_active(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[list[str]] = []
-    net_info_calls = 0
+    net_list_calls = 0
 
     def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        nonlocal net_info_calls
+        nonlocal net_list_calls
         calls.append(argv)
-        if "net-info" in argv:
-            net_info_calls += 1
-            output = "Active: yes\n" if net_info_calls >= 2 else ""
+        if "net-list" in argv:
+            net_list_calls += 1
+            output = "default\n" if net_list_calls >= 2 else ""
             return subprocess.CompletedProcess(argv, 0, output, "")
         if "net-start" in argv:
             return subprocess.CompletedProcess(argv, 1, "", "network is already active")
@@ -219,8 +219,18 @@ def test_apply_accepts_network_start_race_when_recheck_is_active(
         runner=runner,
     )
     assert result["state"] == "prepared"
-    assert net_info_calls == 2
+    assert net_list_calls == 2
     assert any("net-autostart" in command for command in calls)
+
+
+def test_network_active_probe_is_locale_independent() -> None:
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert argv[-2:] == ["net-list", "--name"]
+        return subprocess.CompletedProcess(argv, 0, "default\n", "")
+
+    assert host_preparation._network_is_active(
+        ["/usr/bin/virsh", "--connect", "qemu:///system"], runner=runner
+    )
 
 
 def test_cli_routes_and_serializes_errors(

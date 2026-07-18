@@ -203,6 +203,22 @@ def _run(argv: Sequence[str], *, runner: Runner) -> subprocess.CompletedProcess[
     )
 
 
+def _network_is_active(connection: Sequence[str], *, runner: Runner) -> bool:
+    """Consulta redes ativas sem interpretar rótulos localizados do virsh."""
+
+    observed = runner(
+        [*connection, "net-list", "--name"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        text=True,
+        timeout=60,
+        env={**os.environ, "LC_ALL": "C", "LANGUAGE": "C"},
+    )
+    return observed.returncode == 0 and "default" in observed.stdout.splitlines()
+
+
 def apply(
     username: str,
     confirm_phrase: str,
@@ -247,7 +263,7 @@ def apply(
                 timeout=60,
                 env={**os.environ, "LC_ALL": "C"},
             )
-        if "Active: yes" not in network_info.stdout:
+        if not _network_is_active(connection, runner=runner):
             started = runner(
                 [*connection, "net-start", "default"],
                 stdin=subprocess.DEVNULL,
@@ -258,20 +274,9 @@ def apply(
                 timeout=60,
                 env={**os.environ, "LC_ALL": "C"},
             )
-            if started.returncode != 0:
-                observed = runner(
-                    [*connection, "net-info", "default"],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    check=False,
-                    text=True,
-                    timeout=60,
-                    env={**os.environ, "LC_ALL": "C"},
-                )
-                if observed.returncode != 0 or "Active: yes" not in observed.stdout:
-                    detail = (started.stderr or observed.stderr or "rede default inativa").strip()
-                    raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
+            if started.returncode != 0 and not _network_is_active(connection, runner=runner):
+                detail = (started.stderr or "rede default inativa").strip()
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         _run([*connection, "net-autostart", "default"], runner=runner)
     try:
         libvirt_group = grp.getgrnam("libvirt")
