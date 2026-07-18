@@ -346,11 +346,6 @@ ColumnLayout {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    Label { text: qsTr("Runtime PhaseZero"); color: panel.mutedColor; Layout.fillWidth: true }
-                    Label { text: qsTr("Não requerido"); color: panel.greenColor; font.bold: true }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
                     Label { text: qsTr("Laboratório KVM/libvirt"); color: panel.mutedColor; Layout.fillWidth: true }
                     Label {
                         text: panel.hostPreparation.state === "ready"

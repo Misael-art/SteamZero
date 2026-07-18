@@ -29,7 +29,7 @@ from steamzero.core.errors import SteamZeroError
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
-_MARKERS = frozenset({"steamzero.gamemode=1", "phasezero.steamos=1"})
+_MARKERS = frozenset({"steamzero.gamemode=1"})
 _MANAGED = "# SteamZero-Boot-Managed: true"
 _USER_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 _UUID_RE = re.compile(r"^[A-Fa-f0-9-]{8,64}$")
@@ -48,8 +48,6 @@ class BootLayout:
     grub_script: Path = Path("/etc/grub.d/42_steamzero_gamemode")
     grub_config: Path = Path("/boot/grub/grub.cfg")
     cmdline: Path = Path("/proc/cmdline")
-    legacy_sddm_config: Path = Path("/etc/sddm.conf.d/90-phasezero-steamos.conf")
-    legacy_unit: str = "phasezero-steamos-boot-prepare.service"
 
 
 _DEFAULT_LAYOUT = BootLayout()
@@ -147,7 +145,7 @@ def prepare(
     raw_cmdline = _read_text(layout.cmdline) if cmdline is None else cmdline
     if not _requested(raw_cmdline):
         _remove_managed(layout.sddm_config)
-        return {"state": "inactive", "session": None, "legacyMarker": False}
+        return {"state": "inactive", "session": None}
 
     username = _config_user(layout)
     _validate_user(username, lookup=user_lookup)
@@ -162,13 +160,10 @@ def prepare(
             "E-SESSION-LAUNCH-FAILED", detail="configuração SDDM SteamZero não gerenciada"
         )
     fs.write_atomic_text(layout.sddm_config, _sddm_text(username), mode=0o644)
-    if "PhaseZero managed" in _read_text(layout.legacy_sddm_config):
-        fs.remove_file(layout.legacy_sddm_config)
     return {
         "state": "selected",
         "session": "steamzero-gamemode.desktop",
         "user": username,
-        "legacyMarker": "phasezero.steamos=1" in raw_cmdline.split(),
     }
 
 
@@ -325,8 +320,6 @@ def enable(
         _run([systemctl, "enable", layout.unit.name], runner=runner)
         _run([grub_mkconfig, "-o", str(layout.grub_config)], runner=runner)
         prepared = prepare(layout, cmdline=cmdline, user_lookup=user_lookup)
-        with contextlib.suppress(subprocess.CalledProcessError):
-            _run([systemctl, "disable", layout.legacy_unit], runner=runner)
     except BaseException:
         for path, content in previous.items():
             if content is None:
@@ -427,7 +420,6 @@ def status(layout: BootLayout = _DEFAULT_LAYOUT) -> dict[str, Any]:
             "changesGrub": True,
             "session": "steamzero-gamemode.desktop",
             "marker": "steamzero.gamemode=1",
-            "legacyMarkerAccepted": True,
             "reason": "Sem permissão para inspecionar a configuração de boot.",
         }
     return {
@@ -437,7 +429,6 @@ def status(layout: BootLayout = _DEFAULT_LAYOUT) -> dict[str, Any]:
         "changesGrub": True,
         "session": "steamzero-gamemode.desktop",
         "marker": "steamzero.gamemode=1",
-        "legacyMarkerAccepted": True,
         "reason": (
             "Entrada SteamZero pronta; falha retorna ao greeter/Plasma."
             if configured

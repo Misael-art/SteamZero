@@ -111,10 +111,10 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Sessão e resiliência",
         "Laboratório KVM/libvirt",
         "Revisar e aplicar no Desktop",
-        "Runtime PhaseZero",
-        "Não requerido",
     ):
         assert contract in desktop_qml
+    # A UI não menciona o projeto pesquisado: independência sem referência (ADR-0019).
+    assert "phasezero" not in desktop_qml.casefold()
     main_qml = (root / "src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     for route in (
         '"/steam/maintenance/plan"',

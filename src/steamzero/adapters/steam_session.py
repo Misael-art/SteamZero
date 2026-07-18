@@ -52,7 +52,6 @@ def readiness(*, which: Which = shutil.which) -> dict[str, Any]:
         "gamescope": gamescope is not None,
         "desktopFallback": desktop is not None,
         "independentRuntime": True,
-        "legacyRuntimeRequired": False,
         "sessionId": "steamzero-gamemode",
         "directBoot": boot_status(),
     }

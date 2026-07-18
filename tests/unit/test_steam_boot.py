@@ -30,7 +30,6 @@ def _layout(tmp_path: Path) -> steam_boot.BootLayout:
         grub_script=tmp_path / "etc" / "grub.d" / "42_steamzero_gamemode",
         grub_config=tmp_path / "boot" / "grub" / "grub.cfg",
         cmdline=tmp_path / "proc" / "cmdline",
-        legacy_sddm_config=tmp_path / "etc" / "sddm.conf.d" / "90-phasezero-steamos.conf",
     )
 
 
@@ -45,20 +44,17 @@ def _install_session(layout: steam_boot.BootLayout) -> None:
     layout.config.write_text(f"{steam_boot._MANAGED}\nmisael\n", encoding="utf-8")
 
 
-def test_prepare_accepts_legacy_marker_but_selects_only_steamzero(tmp_path: Path) -> None:
+def test_prepare_ignores_foreign_markers(tmp_path: Path) -> None:
+    """Só o marcador próprio ativa a sessão; marcadores alheios são boot normal."""
     layout = _layout(tmp_path)
     _install_session(layout)
-    layout.legacy_sddm_config.parent.mkdir(parents=True, exist_ok=True)
-    layout.legacy_sddm_config.write_text("# PhaseZero managed\n", encoding="utf-8")
+    layout.sddm_config.parent.mkdir(parents=True, exist_ok=True)
+    layout.sddm_config.write_text(f"{steam_boot._MANAGED}\n[Autologin]\n", encoding="utf-8")
 
     result = steam_boot.prepare(layout, cmdline="quiet phasezero.steamos=1", user_lookup=_user)
 
-    assert result["state"] == "selected"
-    assert result["legacyMarker"] is True
-    content = layout.sddm_config.read_text(encoding="utf-8")
-    assert "Session=steamzero-gamemode.desktop" in content
-    assert "Relogin=false" in content
-    assert not layout.legacy_sddm_config.exists()
+    assert result["state"] == "inactive"
+    assert not layout.sddm_config.exists()
 
 
 def test_prepare_missing_session_removes_stale_autologin(tmp_path: Path) -> None:
@@ -90,7 +86,7 @@ def test_prepare_accepts_native_marker_and_rejects_invalid_user(tmp_path: Path) 
     layout = _layout(tmp_path)
     _install_session(layout)
     result = steam_boot.prepare(layout, cmdline="quiet steamzero.gamemode=1", user_lookup=_user)
-    assert result["legacyMarker"] is False
+    assert result["state"] == "selected"
 
     layout.config.write_text(f"{steam_boot._MANAGED}\nroot\n", encoding="utf-8")
     with pytest.raises(SteamZeroError, match="não interativo"):

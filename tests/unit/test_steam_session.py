@@ -16,7 +16,7 @@ def _which(commands: dict[str, str]) -> steam_session.Which:
     return commands.get
 
 
-def test_readiness_never_requires_legacy_runtime() -> None:
+def test_readiness_reports_independent_runtime() -> None:
     status = steam_session.readiness(
         which=_which(
             {
@@ -28,7 +28,6 @@ def test_readiness_never_requires_legacy_runtime() -> None:
     )
     assert status["state"] == "ready"
     assert status["independentRuntime"] is True
-    assert status["legacyRuntimeRequired"] is False
     # "unknown" cobre execução sem privilégio para inspecionar /etc (ADR-0020).
     assert status["directBoot"]["state"] in {"available", "ready", "unknown"}
     assert status["directBoot"]["changesGrub"] is True
