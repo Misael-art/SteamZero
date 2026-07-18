@@ -45,6 +45,10 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 | `0.1.0a19-364185ac7d87` | `364185ac7d8750a1a7a8f920baccb8893205f94c` | `e58bded9177b60ae20cd453220275008a80cbf2f8dcdbca38140ba6c94a6596c` | ativa; motor GPU SCLK G-STATE validado no wheel instalado contra sysfs descartável, transporte mutável ainda gated |
 | `0.1.0a20-ced9e2157548` | `ced9e21575485afd337eb70f5ffae9dbcb08b11f` | `68344159cc2258151c6d6e74e691445cd5f22f1741c89e2cc2b87fb9be1704f0` | ativa; lock interprocesso e motor sysctl G-STATE validados no wheel instalado sem escrever `/proc/sys` real |
 | `0.1.0a21-7e1136cc80ae` | `7e1136cc80aecf2d5e5c1e5be4c931c25f9c5218` | `8f53b5429726f99231f197ff35c0a6286ec454322e923c6eb850ab54c7a6f2b4` | ativa; lifecycle exige identidade do wrapper/filho e recupera PID reutilizado sem sinalizar processo alheio |
+| `0.1.0a22-7c1084e35707` | `7c1084e357075ebe5374f6a752ca9c24077d4510` | `dec3cc2bba2a8f201e1c6865fb769a9c624e01c66cc0e89f4618042f49cd1c05` | instalada; introduziu boot Game Mode próprio, preparo agnóstico do host e Área Modo Desktop; smoke revelou classificação DMI ausente no comando standalone |
+| `0.1.0a23-f24b59e2c860` | `f24b59e2c860a7c75438b5be0788a4ecf16b795f` | `db1b0d304ea42c1f92a1b0e1fe2de46ea4ab95f8bc90ec12d5d5b4463f81ff2f` | instalada; reconheceu o Deck LCD automaticamente; preparação real revelou corrida ao iniciar a rede libvirt |
+| `0.1.0a24-e5dc9b35e9d4` | `e5dc9b35e9d4bfa99a9215516ca3584881b8ac04` | `22e884609743987d512cfe7f5227debeabc0e0d465fd4be8477d26b92e5a859f` | instalada; rechecou a rede após corrida; host revelou que o parser ainda dependia da formatação textual do `virsh` |
+| `0.1.0a25-2b9f65e54a4b` | `2b9f65e54a4b2314cc293c4a20e389f37c40a6f5` | `fc88b41a9d08996321da8ada10c48f0a694dc6cd52e807ab00fdecb6d21aff47` | ativa; probe libvirt independente de locale, KVM/libvirt pronto no Deck LCD e cadeia GRUB→SDDM→Game Mode ativada; falta observação pós-reboot |
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.

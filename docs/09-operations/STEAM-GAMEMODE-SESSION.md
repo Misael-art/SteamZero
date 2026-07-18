@@ -60,6 +60,23 @@ bigsudo /usr/local/libexec/steamzero-gamemode-boot enable --user USUARIO
 bigsudo /usr/local/libexec/steamzero-gamemode-boot disable
 ```
 
+Depois de `enable`, a auditoria sem reboot deve confirmar `configured=true`, unit próprio
+habilitado, unit legado desabilitado, `Relogin=false` e o marcador
+`steamzero.gamemode=1` no `grub.cfg`. O check da sessão valida Steam, Gamescope e o
+fallback Desktop sem tentar abrir uma segunda sessão gráfica:
+
+```text
+bigsudo /usr/local/libexec/steamzero-gamemode-boot status
+systemctl is-enabled steamzero-gamemode-boot.service
+systemctl is-enabled phasezero-steamos-boot-prepare.service
+/usr/local/bin/steamzero-gamemode-session --check
+```
+
+Essa auditoria não substitui a prova pós-reboot. O primeiro boot de cada release deve ser
+feito com console de recuperação disponível; sucesso exige observar a UI Gamepad da Steam
+e depois testar o retorno explícito ao Plasma. O SteamZero nunca reinicia o host como parte
+de `enable`.
+
 O ativador deriva kernel, initramfs, UUID e subvolume do boot corrente, exige que os
 artefatos existam, usa escrita atômica, preserva o `grub.cfg` anterior durante a transação e
 recusa arquivos sem marcador de ownership. O marcador legado

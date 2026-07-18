@@ -1073,3 +1073,44 @@ conflito, recuperação e teclado; componentes de Sistema direcionam para Sistem
 Ruff, formato, mypy estrito, fronteiras, independência, `qmllint` e documentação verdes.
 Instalação, ativação e evidência pós-reboot permanecem fora deste registro até a release
 imutável ser construída a partir do commit limpo.
+
+## 2026-07-17 — Sessão 29: instalação real, KVM/libvirt e boot Game Mode ativado
+
+**Releases sucessivas e honestas:** o primeiro wheel instalável foi
+`0.1.0a22-7c1084e35707`. O smoke standalone mostrou que a classificação do Deck dependia
+do contexto fornecido pela UI; `a23-f24b59e2c860` passou a ler DMI diretamente. A
+instalação real dos pacotes revelou uma corrida entre a consulta e a ativação da rede
+libvirt; `a24-e5dc9b35e9d4` adicionou rechecagem. O host então expôs alinhamento/localização
+do texto do `virsh`; `a25-2b9f65e54a4b` substituiu o parser por `net-list --name`. Nenhum
+wheel foi republicado sob a mesma versão; commits e hashes completos estão no release
+ledger.
+
+**Laboratório agnóstico no Deck real:** a release `a25` instalou e verificou
+QEMU 11.0.2, libvirt 12.5, virt-install 5.1.0, OVMF, swtpm 0.10.1, dnsmasq e backend nft.
+`libvirtd.service` ficou ativo/habilitado, a rede `default` ativa, persistente e em
+autostart, `misael` pertence ao grupo `libvirt` e `domcapabilities --virttype kvm`
+confirmou KVM x86_64, EFI/OVMF, virtio, TPM emulado e CPU AMD host-passthrough. O snapshot
+classificou `officialDeck=true`, `/dev/kvm` acessível, laboratório VM `ready` e laboratório
+físico AMDGPU/TDP/KScreen `ready`, sem alegar que virtio-gpu equivale ao hardware Valve.
+
+**Boot independente ativado:** `steamzero-gamemode-boot enable` gerou a entrada
+**SteamZero Game Mode** com `steamzero.gamemode=1`, publicou o unit oneshot antes do
+display manager e selecionou `steamzero-gamemode.desktop` no SDDM com `Relogin=false`.
+O unit `phasezero-steamos-boot-prepare.service` ficou desabilitado e a configuração SDDM
+legada foi removida. O launcher instalado confirmou Steam, Gamescope, runtime independente
+e fallback Plasma. O host não foi reiniciado automaticamente; observar Big Picture após
+o próximo reboot continua um gate físico explícito.
+
+**Estado operacional:** o manifesto v4 ativo vincula `0.1.0a25` ao commit
+`2b9f65e54a4b2314cc293c4a20e389f37c40a6f5` e wheel SHA-256
+`fc88b41a9d08996321da8ada10c48f0a694dc6cd52e807ab00fdecb6d21aff47`.
+Doctor retornou `ok`, SQLite v5 íntegro, zero operações pendentes, socket/core ativos e
+agente Polkit oficial ativo. O Desktop reportou honestamente `degraded`: recomendado,
+desejado e aplicado estão em `docked-desktop`, enquanto a observação atual ainda é
+`handheld-desktop`; nenhuma aplicação destrutiva foi feita para mascarar essa divergência.
+
+**Gate final:** **567 passed / 85,27%** (8041 statements, 955 misses, 2138 branches),
+Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A UI recebeu a
+Área **Modo Desktop** usando os componentes e tokens existentes; a revisão visual e o
+focus graph completos permanecem, conforme decisão do responsável, para quando todas as
+funções estiverem coesas.

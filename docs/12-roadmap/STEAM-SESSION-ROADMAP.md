@@ -132,8 +132,11 @@ O responsável autorizou a ativação no Deck LCD após o boot legado reproduzir
 silenciosa para KDE. O SteamZero agora possui entrada GRUB, preparador SDDM e Session
 Manager próprios: `Relogin=false`, sessão ausente retorna ao greeter e três falhas retornam
 ao Plasma. O marcador legado é somente uma ponte de migração e não introduz dependência de
-runtime. O fechamento permanece parcial até reboot físico confirmar Game Mode, retorno ao
-Desktop, greeter por sessão ausente e desativação reversível com console de recuperação.
+runtime. A release `0.1.0a25` foi ativada no Deck LCD: GRUB contém o marcador próprio,
+SDDM aponta para `steamzero-gamemode.desktop`, o preparador legado está desabilitado e o
+check instalado observou Steam, Gamescope e fallback Plasma. O fechamento permanece
+parcial até reboot físico confirmar Game Mode, retorno ao Desktop, greeter por sessão
+ausente e desativação reversível com console de recuperação.
 
 ## Gates por incremento
 

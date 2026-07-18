@@ -99,6 +99,23 @@ para caber no painel físico sem alterar a geometria lógica do mockup.
 
 final result: passed
 
+## Iteração Área Modo Desktop — 2026-07-17
+
+- O seletor contextual da seção Steam agora oferece **Modo Desktop** ao lado de
+  Desempenho e LSFG, Controles e Biblioteca, sem criar uma navegação paralela.
+- A tela reutiliza a direção visual Prontidão aprovada, os tokens do `Main.qml`, ícones
+  KDE e os componentes existentes. A hierarquia separa verdade do perfil, input,
+  display/dock, sessão/recuperação e preparação do Sistema.
+- Plano, apply, reset, resolução de conflito, recovery e teclado chamam handlers reais;
+  preparação KVM/libvirt e drivers permanecem ações de Sistema, não instalações fingidas
+  dentro da Steam.
+- `qmllint` passou para `Main.qml`, `SteamGameplay.qml` e `SteamDesktop.qml`; o gate de
+  código passou com 567 testes. O host observou corretamente uma divergência Desktop como
+  `degraded`, em vez de exibir sucesso incorreto.
+- A comparação visual completa, navegação física por controle e focus graph ficam
+  deliberadamente pendentes até a consolidação das funções, conforme definido pelo
+  responsável. Esta entrada não declara `final result: passed` para essa superfície.
+
 ## Iteração Launcher Steam observável — 2026-07-17
 
 **Implementação:** `/tmp/steamzero-launcher-runtime.png`
