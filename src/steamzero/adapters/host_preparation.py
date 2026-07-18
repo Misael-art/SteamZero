@@ -248,7 +248,30 @@ def apply(
                 env={**os.environ, "LC_ALL": "C"},
             )
         if "Active: yes" not in network_info.stdout:
-            _run([*connection, "net-start", "default"], runner=runner)
+            started = runner(
+                [*connection, "net-start", "default"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                text=True,
+                timeout=60,
+                env={**os.environ, "LC_ALL": "C"},
+            )
+            if started.returncode != 0:
+                observed = runner(
+                    [*connection, "net-info", "default"],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                    text=True,
+                    timeout=60,
+                    env={**os.environ, "LC_ALL": "C"},
+                )
+                if observed.returncode != 0 or "Active: yes" not in observed.stdout:
+                    detail = (started.stderr or observed.stderr or "rede default inativa").strip()
+                    raise SteamZeroError("E-COMPONENT-DEGRADED", detail=detail)
         _run([*connection, "net-autostart", "default"], runner=runner)
     try:
         libvirt_group = grp.getgrnam("libvirt")

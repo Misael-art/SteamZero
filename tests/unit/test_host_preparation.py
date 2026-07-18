@@ -176,6 +176,53 @@ def test_apply_runs_packages_service_and_group_without_shell(
     assert ["/usr/sbin/usermod", "-aG", "libvirt", "misael"] in calls
 
 
+def test_apply_accepts_network_start_race_when_recheck_is_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+    net_info_calls = 0
+
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal net_info_calls
+        calls.append(argv)
+        if "net-info" in argv:
+            net_info_calls += 1
+            output = "Active: yes\n" if net_info_calls >= 2 else ""
+            return subprocess.CompletedProcess(argv, 0, output, "")
+        if "net-start" in argv:
+            return subprocess.CompletedProcess(argv, 1, "", "network is already active")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        host_preparation.pwd,
+        "getpwnam",
+        lambda name: SimpleNamespace(pw_uid=1000, pw_name=name),
+    )
+    monkeypatch.setattr(
+        host_preparation.grp,
+        "getgrnam",
+        lambda _name: SimpleNamespace(gr_mem=["misael"]),
+    )
+    commands = {
+        "pacman": "/usr/bin/pacman",
+        "systemctl": "/usr/bin/systemctl",
+        "virsh": "/usr/bin/virsh",
+        "qemu-system-x86_64": "/usr/bin/qemu-system-x86_64",
+        "virt-install": "/usr/bin/virt-install",
+        "swtpm": "/usr/bin/swtpm",
+    }
+    result = host_preparation.apply(
+        "misael",
+        "PREPARAR-VIRTUALIZACAO",
+        which=_which(commands),
+        runner=runner,
+    )
+    assert result["state"] == "prepared"
+    assert net_info_calls == 2
+    assert any("net-autostart" in command for command in calls)
+
+
 def test_cli_routes_and_serializes_errors(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
