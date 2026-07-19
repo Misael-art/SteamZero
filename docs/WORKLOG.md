@@ -1246,3 +1246,36 @@ suspend, units de usuário, autostart e tray — `find` em `/etc`, `/usr/local` 
 releases. Manifesto v4 ativo vincula `0.1.0a27` a
 `1dc331c9eea9e61736541b8d0822f0831918561b`. Gate físico pendente: observar Big Picture
 no próximo reboot pela entrada "SteamZero Game Mode".
+
+## 2026-07-19 — Sessão 31: diagnóstico e correção do teclado virtual no Desktop
+
+**Problema reportado:** serviços de experiência Desktop implementados por agente anterior
+não funcionavam; teste real no host mostrou que o teclado virtual não abria.
+
+**Diagnóstico:**
+- A instalação ativa no host é `0.1.0a34-4c495cf92fbe`, enquanto a árvore de trabalho
+  atual (`codex/robustez-boot-resiliencia`) está em `0.1.0a33` (`9fe5213`). A instalação
+  contém uma `KDEShortcutsEffect` que não existe no código fonte atual, evidenciando
+  divergência entre build publicada e branch de desenvolvimento.
+- O comando `qdbus6 org.kde.KWin /VirtualKeyboard forceActivate` retornava sucesso
+  (exit 0), mas a propriedade `available` do KWin era `false` e `visible` permanecia
+  `false`; o `maliit-server` não estava rodando e não se registrava como input method.
+- O código antigo considerava o `forceActivate` com exit 0 como sucesso, mascarando
+  a falha real.
+
+**Correção (commit `b025bb3`):**
+- `VirtualKeyboardController` agora verifica `available` antes de ativar e `visible`
+  depois de ativar via KWin DBus.
+- Se o teclado KWin não estiver disponível, tenta iniciar `maliit-server` (com guarda
+  contra duplicatas via `/proc/<pid>/comm`).
+- Adicionados fallbacks documentados: `steam` (tenta abrir o cliente se não estiver
+  rodando), `wvkbd-mobintl` e `onboard`.
+- Erro final alterado de "aceitou a ativação" para "ficou visível", refletindo a
+  verificação real.
+
+**Gates:** 597 passed, Ruff, mypy estrito, fronteiras e independência verdes.
+
+**Pendência operador:** para que a correção entre em vigor no host, é necessário
+construir e instalar uma nova release a partir desta branch (`0.1.0a33+`). Nenhum
+agente deve executar `install_host.py install` — esta ação é exclusiva do operador
+humano com privilégio, conforme AGENTS.md §1.
