@@ -18,11 +18,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths
+from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
     PROFILE_DOCKED,
+    PROFILE_SAFE,
     DesktopConflictAction,
     DesktopContext,
     DesktopEffectPort,
@@ -521,6 +522,153 @@ class KDEWindowEffect:
             raise RuntimeError(f"{' '.join(argv)}: {detail}")
 
 
+class KDEShortcutsEffect:
+    """Atalhos KDE globais com snapshot/rollback via kglobalshortcutsrc."""
+
+    name = "kde-shortcuts"
+    _MISSING = "__steamzero_missing__"
+    _DESKTOP_FILE_NAME = "steamzero-desktop-keyboard.desktop"
+
+    _SHORTCUTS: tuple[tuple[tuple[str, ...], str, str], ...] = (
+        (("kwin",), "ExposeAll", "Meta+Ctrl+D,Meta+Ctrl+D,Exposição de todas as áreas de trabalho"),
+        (("kwin",), "Lock Session", "Meta+Ctrl+L,Meta+Ctrl+L,Bloquear sessão"),
+        (("kwin",), "ShowDesktop", "Meta+D,Meta+D,Mostrar área de trabalho"),
+        (
+            ("services", "steamzero-desktop-keyboard"),
+            "_launch",
+            "Meta+Ctrl+K,Meta+Ctrl+K,Abrir teclado virtual SteamZero",
+        ),
+    )
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        applications_dir: Path | None = None,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._applications_dir = applications_dir or (
+            Path.home() / ".local" / "share" / "applications"
+        )
+
+    def available(self, context: DesktopContext) -> bool:
+        return "kde-config" in context.capabilities and all(
+            self._which(command) is not None for command in ("kreadconfig6", "kwriteconfig6")
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        snapshot: dict[str, Any] = {"shortcuts": {}}
+        for groups, key, _default in self._SHORTCUTS:
+            value = self._read(groups, key)
+            node = snapshot["shortcuts"]
+            for group in groups:
+                node = node.setdefault(group, {})
+            node[key] = value if value else self._MISSING
+        desktop_path = self._desktop_file_path()
+        snapshot["desktopFileCreated"] = not desktop_path.is_file()
+        return snapshot
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        if profile.profile_id == PROFILE_SAFE:
+            return
+        for groups, key, value in self._SHORTCUTS:
+            self._write(groups, key, value)
+        self._ensure_desktop_file()
+        self._reconfigure()
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        if profile.profile_id == PROFILE_SAFE:
+            return True
+        for groups, key, value in self._SHORTCUTS:
+            if self._read(groups, key) != value:
+                return False
+        return self._desktop_file_path().is_file()
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        shortcuts = snapshot.get("shortcuts")
+        if not isinstance(shortcuts, dict):
+            raise RuntimeError("snapshot de atalhos inválido")
+        for groups, key, _default in self._SHORTCUTS:
+            node = shortcuts
+            for group in groups:
+                node = node.get(group, {}) if isinstance(node, dict) else {}
+            value = node.get(key, self._MISSING) if isinstance(node, dict) else self._MISSING
+            if not isinstance(value, str):
+                value = self._MISSING
+            args = [
+                "kwriteconfig6",
+                "--file",
+                "kglobalshortcutsrc",
+                *self._group_args(groups),
+                "--key",
+                key,
+            ]
+            if value == self._MISSING:
+                args.append("--delete")
+            else:
+                args.append(value)
+            self._require_ok(tuple(args))
+        created = snapshot.get("desktopFileCreated")
+        if created is True:
+            fs.remove_file(self._desktop_file_path())
+        self._reconfigure()
+
+    def _read(self, groups: tuple[str, ...], key: str) -> str:
+        result = self._runner(
+            ("kreadconfig6", "--file", "kglobalshortcutsrc", *self._group_args(groups), "--key", key),
+            3.0,
+        )
+        return result.stdout.strip() if result.returncode == 0 else ""
+
+    def _write(self, groups: tuple[str, ...], key: str, value: str) -> None:
+        self._require_ok(
+            (
+                "kwriteconfig6",
+                "--file",
+                "kglobalshortcutsrc",
+                *self._group_args(groups),
+                "--key",
+                key,
+                value,
+            )
+        )
+
+    def _group_args(self, groups: tuple[str, ...]) -> tuple[str, ...]:
+        args: list[str] = []
+        for group in groups:
+            args.extend(("--group", group))
+        return tuple(args)
+
+    def _ensure_desktop_file(self) -> None:
+        path = self._desktop_file_path()
+        if path.is_file():
+            return
+        content = (
+            "[Desktop Entry]\n"
+            "Name=SteamZero Virtual Keyboard\n"
+            "Exec=steamzero desktop keyboard\n"
+            "Type=Application\n"
+            "Terminal=false\n"
+            "Icon=input-keyboard-virtual\n"
+        )
+        fs.write_atomic_text(path, content)
+
+    def _desktop_file_path(self) -> Path:
+        return self._applications_dir / self._DESKTOP_FILE_NAME
+
+    def _reconfigure(self) -> None:
+        if self._which("qdbus6"):
+            self._runner(("qdbus6", "org.kde.kglobalaccel", "/kglobalaccel", "reconfigure"), 3.0)
+
+    def _require_ok(self, argv: Sequence[str]) -> None:
+        result = self._runner(argv, 5.0)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "falha sem detalhe"
+            raise RuntimeError(f"{' '.join(argv)}: {detail}")
+
+
 class VirtualKeyboardController:
     """Ativa no máximo um provider, avançando apenas após falha confirmada."""
 
@@ -572,7 +720,11 @@ def activate_virtual_keyboard() -> str:
 
 
 def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
-    effects: tuple[DesktopEffectPort, ...] = (KDEDisplayEffect(), KDEWindowEffect())
+    effects: tuple[DesktopEffectPort, ...] = (
+        KDEDisplayEffect(),
+        KDEWindowEffect(),
+        KDEShortcutsEffect(),
+    )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()
     )

@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from steamzero.api import contracts
+from steamzero.adapters.desktop_kde import CommandResult
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain import desktop as desktop_domain
@@ -346,3 +347,45 @@ def test_corrupt_desktop_plan_reports_state_integrity(
     coordinator = ExperienceCoordinator(FakeContext(deck_context), (), store)
     with pytest.raises(SteamZeroError, match="E-STATE-INTEGRITY"):
         coordinator.apply("corrupt", "token")
+
+
+def test_kde_shortcuts_snapshot_rollback(deck_context: DesktopContext, store: StateStore, tmp_path: Path) -> None:
+    calls: list[tuple[str, ...]] = []
+    apps_dir = tmp_path / "applications"
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "kreadconfig6":
+            return CommandResult(0, "")
+        return CommandResult(0, "")
+
+    from steamzero.adapters.desktop_kde import KDEShortcutsEffect
+
+    effect = KDEShortcutsEffect(
+        runner=runner,
+        which=lambda command: command,
+        applications_dir=apps_dir,
+    )
+    context = DesktopContext(
+        **{
+            **deck_context.__dict__,
+            "capabilities": frozenset({"kde-config"}),
+        }
+    )
+    coordinator = ExperienceCoordinator(FakeContext(context), (effect,), store)
+    plan = coordinator.plan("handheld")
+    with pytest.raises(SteamZeroError, match="E-DESKTOP-VERIFY"):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+
+    assert (
+        "kwriteconfig6",
+        "--file",
+        "kglobalshortcutsrc",
+        "--group",
+        "kwin",
+        "--key",
+        "ExposeAll",
+        "Meta+Ctrl+D,Meta+Ctrl+D,Exposição de todas as áreas de trabalho",
+    ) in calls
+    # Rollback automático removeu o .desktop criado durante apply.
+    assert not (apps_dir / "steamzero-desktop-keyboard.desktop").exists()

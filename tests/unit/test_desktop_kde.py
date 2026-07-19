@@ -11,6 +11,7 @@ import pytest
 from steamzero.adapters.desktop_kde import (
     CommandResult,
     KDEDisplayEffect,
+    KDEShortcutsEffect,
     LegacyWatcherConflictResolver,
     LinuxDesktopContext,
     VirtualKeyboardController,
@@ -351,3 +352,120 @@ def test_status_reports_deck_input_keys_state(monkeypatch: pytest.MonkeyPatch) -
     assert context.deck_input_keys is True
     assert "deck-keys-available" in context.capabilities
     assert context.to_dict()["deckInputKeys"] is True
+
+
+def test_kde_shortcuts_effect_applies_meta_ctrl_k_for_osk(tmp_path: Path) -> None:
+    calls: list[tuple[str, ...]] = []
+    apps_dir = tmp_path / "applications"
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kde-config"}),
+    )
+    effect = KDEShortcutsEffect(
+        runner=runner,
+        which=lambda command: command,
+        applications_dir=apps_dir,
+    )
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+
+    assert (
+        "kwriteconfig6",
+        "--file",
+        "kglobalshortcutsrc",
+        "--group",
+        "kwin",
+        "--key",
+        "ExposeAll",
+        "Meta+Ctrl+D,Meta+Ctrl+D,Exposição de todas as áreas de trabalho",
+    ) in calls
+    assert (
+        "kwriteconfig6",
+        "--file",
+        "kglobalshortcutsrc",
+        "--group",
+        "services",
+        "--group",
+        "steamzero-desktop-keyboard",
+        "--key",
+        "_launch",
+        "Meta+Ctrl+K,Meta+Ctrl+K,Abrir teclado virtual SteamZero",
+    ) in calls
+    assert (apps_dir / "steamzero-desktop-keyboard.desktop").is_file()
+
+
+def test_kde_shortcuts_effect_restores_missing_binding_with_delete(tmp_path: Path) -> None:
+    calls: list[tuple[str, ...]] = []
+    apps_dir = tmp_path / "applications"
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "")
+
+    effect = KDEShortcutsEffect(
+        runner=runner,
+        which=lambda command: command,
+        applications_dir=apps_dir,
+    )
+    snapshot = {
+        "shortcuts": {
+            "kwin": {"ExposeAll": "__steamzero_missing__"},
+            "services": {"steamzero-desktop-keyboard": {"_launch": "__steamzero_missing__"}},
+        },
+        "desktopFileCreated": True,
+    }
+    desktop_file = apps_dir / "steamzero-desktop-keyboard.desktop"
+    desktop_file.parent.mkdir(parents=True)
+    desktop_file.write_text("dummy", encoding="utf-8")
+
+    effect.restore(snapshot)
+
+    assert (
+        "kwriteconfig6",
+        "--file",
+        "kglobalshortcutsrc",
+        "--group",
+        "kwin",
+        "--key",
+        "ExposeAll",
+        "--delete",
+    ) in calls
+    assert (
+        "kwriteconfig6",
+        "--file",
+        "kglobalshortcutsrc",
+        "--group",
+        "services",
+        "--group",
+        "steamzero-desktop-keyboard",
+        "--key",
+        "_launch",
+        "--delete",
+    ) in calls
+    assert not desktop_file.exists()
+
+
+def test_kde_shortcuts_effect_unavailable_without_kde_config() -> None:
+    effect = KDEShortcutsEffect(
+        runner=lambda _argv, _timeout: CommandResult(0, ""),
+        which=lambda command: command,
+    )
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset(),
+    )
+    assert effect.available(context) is False
