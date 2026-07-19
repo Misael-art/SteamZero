@@ -527,8 +527,16 @@ class VirtualKeyboardController:
                 result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
                 if result.returncode == 0:
                     return provider
-            # Standalone e KDE Connect ficam visíveis como capacidades, mas não são
-            # iniciados por subprocesso persistente neste coordenador single-shot.
+            elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
+                result = self._runner(("wvkbd-mobintl", "--daemon"), 3.0)
+                if result.returncode == 0:
+                    return provider
+            elif provider == "onboard" and self._which("onboard") is not None:
+                result = self._runner(("onboard", "--foreground"), 3.0)
+                if result.returncode == 0:
+                    return provider
+            # KDE Connect é visível como capacidade, mas é iniciado em outro
+            # dispositivo (telefone), não por subprocesso neste coordenador.
         raise SteamZeroError(
             "E-DESKTOP-VERIFY", detail="nenhum provider de teclado aceitou a ativação"
         )

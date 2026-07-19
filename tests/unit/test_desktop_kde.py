@@ -124,6 +124,71 @@ def test_virtual_keyboard_falls_back_to_steam_after_kwin_failure() -> None:
     assert [call[0] for call in calls] == ["qdbus6", "steam"]
 
 
+def test_virtual_keyboard_uses_wvkbd_when_steam_and_kwin_absent() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"wvkbd"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    assert controller.activate(context) == "wvkbd"
+    assert ("wvkbd-mobintl", "--daemon") in calls
+
+
+def test_virtual_keyboard_falls_back_to_wvkbd_after_kwin_and_steam_fail() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        failing = {"qdbus6", "steam"}
+        return CommandResult(0 if argv[0] not in failing else 1, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard", "steam-keyboard", "wvkbd"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    assert controller.activate(context) == "wvkbd"
+    assert [call[0] for call in calls] == ["qdbus6", "steam", "wvkbd-mobintl"]
+
+
+def test_virtual_keyboard_raises_when_no_provider_accepts() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(1, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"wvkbd"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    with pytest.raises(SteamZeroError, match="E-DESKTOP-VERIFY"):
+        controller.activate(context)
+    assert ("wvkbd-mobintl", "--daemon") in calls
+
+
 def test_context_reports_generic_external_mode_watcher() -> None:
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         if argv[0] == "kscreen-doctor":
