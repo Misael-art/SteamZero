@@ -48,6 +48,13 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "share"
         / "wayland-sessions"
         / "steamzero-gamemode.desktop",
+        gamemode_boot_unit=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "system"
+        / "steamzero-gamemode-boot.service",
         gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
         session_selector_command=tmp_path / "usr" / "local" / "bin" / "steamos-session-select",
         gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
@@ -197,6 +204,47 @@ def test_activation_refuses_unmanaged_session_selector_without_switching(tmp_pat
 
     assert not layout.current.exists()
     assert layout.session_selector_command.read_text(encoding="utf-8") == "do not replace"
+
+
+def _add_venv_binary(layout: install_host.Layout, name: str, release: str) -> None:
+    binary = layout.releases / release / "venv" / "bin" / name
+    binary.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    binary.chmod(0o755)
+
+
+def test_activation_refuses_release_without_boot_chain_when_direct_boot_active(
+    tmp_path: Path,
+) -> None:
+    """Incidente 2026-07-19: release sem entry points de Game Mode foi ativada
+    com o boot direto instalado e derrubou autologin, sessão e oneshot."""
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.gamemode_boot_unit.parent.mkdir(parents=True)
+    layout.gamemode_boot_unit.write_text(
+        "# SteamZero-Boot-Managed: true\n[Unit]\n", encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimeError, match="boot direto ativo"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert not layout.command.exists()
+
+
+def test_activation_with_boot_chain_proceeds_when_direct_boot_active(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    for name in ("steamzero-gamemode-boot", "steamzero-gamemode-session", "steamos-session-select"):
+        _add_venv_binary(layout, name, "release-a")
+    layout.gamemode_boot_unit.parent.mkdir(parents=True)
+    layout.gamemode_boot_unit.write_text(
+        "# SteamZero-Boot-Managed: true\n[Unit]\n", encoding="utf-8"
+    )
+
+    install_host._activate(layout, "release-a")
+
+    assert layout.current.is_symlink()
+    assert install_host._readlink(layout.current) == "releases/release-a"
 
 
 def test_activation_refuses_broken_session_symlink_without_switching(tmp_path: Path) -> None:

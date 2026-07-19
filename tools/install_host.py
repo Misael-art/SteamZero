@@ -57,6 +57,11 @@ class Layout:
     # managers; /etc/sddm.conf de distros (BigLinux) restringe SessionDir a ele
     # e invisibiliza sessões em /usr/local (incidente 2026-07-18, ADR-0020).
     gamemode_session: Path = Path("/usr/share/wayland-sessions/steamzero-gamemode.desktop")
+    # Publicado por steam_boot.enable(), fora do ownership do instalador; sua
+    # presença indica boot direto ativo e exige a cadeia de binários no venv.
+    gamemode_boot_unit: Path = Path(
+        "/usr/local/lib/systemd/system/steamzero-gamemode-boot.service"
+    )
     legacy_gamemode_session: Path = Path(
         "/usr/local/share/wayland-sessions/steamzero-gamemode.desktop"
     )
@@ -668,10 +673,44 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
     return data
 
 
+_BOOT_CHAIN_BINARIES = (
+    "steamzero-gamemode-boot",
+    "steamzero-gamemode-session",
+    "steamos-session-select",
+)
+
+
+def _venv_binary_ok(release_path: Path, name: str) -> bool:
+    binary = release_path / "venv" / "bin" / name
+    return binary.is_file() and not binary.is_symlink() and os.access(binary, os.X_OK)
+
+
+def _require_boot_chain(layout: Layout, target: Path) -> None:
+    """Boot direto ativo exige a cadeia de binários no venv da release alvo.
+
+    Incidente 2026-07-19: uma release sem entry points de Game Mode foi ativada
+    com o unit oneshot, o autologin SDDM e a sessão publicados apontando para
+    ``current`` — o boot caiu no greeter com sessão morta. A publicação por
+    capacidade continua valendo para os artefatos do próprio instalador; a
+    integração de boot pertence ao steam_boot e deve ser desativada antes de
+    ativar uma release sem esses binários.
+    """
+    if not layout.gamemode_boot_unit.exists() and not layout.gamemode_boot_unit.is_symlink():
+        return
+    missing = [name for name in _BOOT_CHAIN_BINARIES if not _venv_binary_ok(target, name)]
+    if missing:
+        raise RuntimeError(
+            "recusando ativar release sem binários exigidos pelo boot direto ativo: "
+            + ", ".join(missing)
+            + "; desative o boot Game Mode antes de ativar esta release"
+        )
+
+
 def _activate(layout: Layout, release: str) -> None:
     release = _release_id(release)
     target = layout.releases / release
     _verify_release(target)
+    _require_boot_chain(layout, target)
     if layout.current.exists() and not layout.current.is_symlink():
         raise RuntimeError(f"recusando substituir current não gerenciado: {layout.current}")
     if layout.command.exists() and not layout.command.is_symlink():
