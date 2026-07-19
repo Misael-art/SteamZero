@@ -270,6 +270,33 @@ TestCase {
         window.destroy()
     }
 
+    function test_primaryFocusGraphSupportsDirectionalActivationAndBack() {
+        const window = createTemporaryObject(windowComponent, null)
+        verify(window !== null)
+        window.visible = true
+        window.requestActivate()
+        tryCompare(window, "active", true)
+
+        const overview = window.mainNavigationItem(0)
+        const emulators = window.mainNavigationItem(1)
+        verify(overview !== null)
+        verify(emulators !== null)
+        window.focusMainNavigation(0)
+        tryCompare(overview, "activeFocus", true)
+
+        keyClick(Qt.Key_Down)
+        tryCompare(emulators, "activeFocus", true)
+        keyClick(Qt.Key_Return)
+        compare(window.sectionIndex, 1)
+
+        window.navigateToSection(4)
+        compare(window.sectionIndex, 4)
+        keyClick(Qt.Key_Escape)
+        compare(window.sectionIndex, 1)
+        tryCompare(emulators, "activeFocus", true)
+        window.destroy()
+    }
+
     function test_sectionMenuReturnsFocusToOrigin() {
         const harness = createTemporaryObject(focusHarnessComponent, null)
         verify(harness !== null)

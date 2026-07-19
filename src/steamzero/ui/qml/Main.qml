@@ -214,6 +214,18 @@ ApplicationWindow {
         sectionFocusItems = remembered
     }
 
+    function mainNavigationItem(index) {
+        if (!Number.isInteger(index) || index < 0 || index >= navRepeater.count)
+            return null
+        return navRepeater.itemAt(index)
+    }
+
+    function focusMainNavigation(index) {
+        const target = mainNavigationItem(index)
+        if (target)
+            target.forceActiveFocus(Qt.OtherFocusReason)
+    }
+
     function navigateToSection(index, rememberHistory) {
         const destination = Number(index)
         if (!Number.isInteger(destination) || destination < 0 || destination > 5)
@@ -1130,19 +1142,18 @@ ApplicationWindow {
                     Repeater {
                         id: navRepeater
                         model: [
-                            {"label": qsTr("Visão geral"), "icon": "view-dashboard"},
-                            {"label": qsTr("Emuladores"), "icon": "input-gaming"},
-                            {"label": qsTr("Steam"), "icon": "steam"},
-                            {"label": qsTr("Perfis"), "icon": "preferences-system"},
-                            {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
-                            {"label": qsTr("Sistema"), "icon": "configure"}
+                            {"label": qsTr("Visão geral"), "glyph": "overview"},
+                            {"label": qsTr("Emuladores"), "glyph": "emulators"},
+                            {"label": qsTr("Steam"), "glyph": "steam"},
+                            {"label": qsTr("Perfis"), "glyph": "profiles"},
+                            {"label": qsTr("Saves e Sync"), "glyph": "sync"},
+                            {"label": qsTr("Sistema"), "glyph": "system"}
                         ]
                         delegate: Button {
                             required property int index
                             required property var modelData
+                            property alias navigationIconItem: navigationGlyphItem
                             text: modelData.label
-                            icon.name: modelData.icon
-                            icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
                             display: AbstractButton.TextBesideIcon
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
@@ -1173,23 +1184,14 @@ ApplicationWindow {
                             }
                             contentItem: RowLayout {
                                 spacing: 12
-                                ToolButton {
-                                    enabled: false
-                                    icon.name: modelData.icon
-                                    icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
-                                    icon.width: 24
-                                    icon.height: 24
-                                    background: Item {}
+                                NavigationIcon {
+                                    id: navigationGlyphItem
+                                    glyph: modelData.glyph
+                                    iconColor: root.sectionIndex === index
+                                        ? root.cyanColor : root.mutedColor
                                     Layout.preferredWidth: 28
-                                }
-                                Label {
-                                    visible: ui.compact
-                                    text: modelData.label.charAt(0)
-                                    color: root.sectionIndex === index ? root.cyanColor : root.textColor
-                                    font.pixelSize: 18
-                                    font.bold: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 28
+                                    Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
                                 }
                                 Label {
                                     visible: !ui.compact

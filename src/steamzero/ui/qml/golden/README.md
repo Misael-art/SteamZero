@@ -7,6 +7,7 @@ mockado foi adicionado ao runtime.
 | Arquivo | Composição exercitada |
 |---|---|
 | `deck-overview-1280x800.png` | rail portátil, prontidão contextual e footer compacto |
+| `deck-navigation-icons-1280x800.png` | rail portátil com glifos modernos, distintos e sem iniciais textuais |
 | `deck-alert-expanded-1280x800.png` | alerta global novo ou bloqueante, com explicação e ação |
 | `deck-alert-compact-1280x800.png` | alerta reconhecido sem duplicar o diagnóstico completo |
 | `deck-emulators-data-1280x800.png` | lista com estados reais variáveis e ações preservadas |
@@ -14,6 +15,7 @@ mockado foi adicionado ao runtime.
 | `deck-emulator-drawer-1280x800.png` | inspector em drawer sem perder lista/contexto |
 | `deck-error-feedback-1280x800.png` | erro traduzido em impacto e ação de diagnóstico |
 | `deck-loading-1280x800.png` | carregamento indeterminado, bloqueio seguro e contexto preservado |
+| `deck-navigation-icons-1280x800.png` | rail compacto com ícones vetoriais próprios e foco ciano |
 | `deck-high-contrast-1280x800.png` | tokens de alto contraste sem filtro visual destrutivo |
 | `deck-section-menu-1280x800.png` | lista semântica, foco visível, dots e footer contextual |
 | `fullhd-steam-1920x1080.png` | lista e inspector Steam na composição padrão |
