@@ -117,6 +117,54 @@ def test_prepare_accepts_native_marker_and_rejects_invalid_user(tmp_path: Path) 
         )
 
 
+def test_prepare_clears_consumed_steamzero_next_entry(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _install_session(layout)
+    grubenv = layout.boot / "grub" / "grubenv"
+    grubenv.parent.mkdir(parents=True)
+    grubenv.write_text(
+        "env_block=512+1\nnext_entry=steamzero-gamemode\n",
+        encoding="utf-8",
+    )
+    calls: list[list[str]] = []
+
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        grubenv.write_text("env_block=512+1\n", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    result = steam_boot.prepare(
+        layout,
+        cmdline="steamzero.gamemode=1",
+        user_lookup=_user,
+        runner=runner,
+        which=lambda command: "/usr/bin/grub-editenv" if command == "grub-editenv" else None,
+    )
+
+    assert result["state"] == "selected"
+    assert calls == [["/usr/bin/grub-editenv", str(grubenv), "unset", "next_entry"]]
+    assert "next_entry" not in grubenv.read_text(encoding="utf-8")
+
+
+def test_prepare_refuses_recurring_boot_when_grubenv_cleanup_fails(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _install_session(layout)
+    grubenv = layout.boot / "grub" / "grubenv"
+    grubenv.parent.mkdir(parents=True)
+    grubenv.write_text("next_entry=steamzero-gamemode\n", encoding="utf-8")
+
+    with pytest.raises(SteamZeroError, match="não foi possível limpar"):
+        steam_boot.prepare(
+            layout,
+            cmdline="steamzero.gamemode=1",
+            user_lookup=_user,
+            runner=lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 0, "", ""),
+            which=lambda _command: "/usr/bin/grub-editenv",
+        )
+
+    assert not layout.sddm_config.exists()
+
+
 @pytest.mark.parametrize(
     ("cmdline", "message"),
     (

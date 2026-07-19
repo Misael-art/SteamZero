@@ -332,12 +332,48 @@ def _remove_managed(path: Path) -> None:
     fs.remove_file(path)
 
 
+def _clear_one_shot_entry(
+    layout: BootLayout, *, runner: Runner, which: Callable[[str], str | None]
+) -> bool:
+    """Remove somente o ``next_entry`` SteamZero que já produziu este boot.
+
+    Algumas distribuições carregam um bloco de ambiente adicional e salvam a
+    limpeza nele, deixando a variável original em ``grubenv``. Nesse caso o
+    suposto boot único vira recorrente. O preparador roda como root e converge
+    explicitamente apenas o identificador pertencente ao SteamZero.
+    """
+    grubenv = layout.boot / "grub" / "grubenv"
+    if not _lexists(grubenv):
+        return False
+    if grubenv.is_symlink() or not grubenv.is_file():
+        raise SteamZeroError(
+            "E-SESSION-LAUNCH-FAILED", detail=f"bloco de ambiente GRUB inseguro: {grubenv}"
+        )
+    if "next_entry=steamzero-gamemode" not in _read_text(grubenv).splitlines():
+        return False
+    grub_editenv = which("grub-editenv")
+    if grub_editenv is None:
+        raise SteamZeroError(
+            "E-SESSION-LAUNCH-FAILED",
+            detail="grub-editenv ausente; recusando manter boot SteamZero recorrente",
+        )
+    _run([grub_editenv, str(grubenv), "unset", "next_entry"], runner=runner)
+    if "next_entry=steamzero-gamemode" in _read_text(grubenv).splitlines():
+        raise SteamZeroError(
+            "E-SESSION-LAUNCH-FAILED",
+            detail="não foi possível limpar a seleção única SteamZero do GRUB",
+        )
+    return True
+
+
 def prepare(
     layout: BootLayout = _DEFAULT_LAYOUT,
     *,
     cmdline: str | None = None,
     boot_id: str | None = None,
     user_lookup: Callable[[str], Any] = pwd.getpwnam,
+    runner: Runner = subprocess.run,
+    which: Callable[[str], str | None] = shutil.which,
 ) -> dict[str, Any]:
     """Converge a seleção do SDDM para o marcador de boot observado."""
     raw_cmdline = _read_text(layout.cmdline) if cmdline is None else cmdline
@@ -361,6 +397,7 @@ def prepare(
             "backoff": state["backoff"],
         }
 
+    _clear_one_shot_entry(layout, runner=runner, which=which)
     user = _validate_user(username, lookup=user_lookup)
     if current_boot_id is None:
         current_boot_id = _boot_id(layout, boot_id)
@@ -739,7 +776,13 @@ def enable(
         _run([systemctl, "enable", layout.unit.name], runner=runner)
         _run([grub_mkconfig, "-o", str(layout.grub_config)], runner=runner)
         _validate_generated_grub(layout.grub_config, present=True)
-        prepared = prepare(layout, cmdline=cmdline, user_lookup=user_lookup)
+        prepared = prepare(
+            layout,
+            cmdline=cmdline,
+            user_lookup=user_lookup,
+            runner=runner,
+            which=which,
+        )
     except BaseException:
         for path, content in previous.items():
             if content is None:
