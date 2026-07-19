@@ -1314,3 +1314,48 @@ steamzero doctor --json
 ```
 
 Nenhum agente executou `install_host.py install`; a instalação no host permanece como ação exclusiva do operador, conforme AGENTS.md §1.
+
+## 2026-07-19 — Sessão 32: resiliência do teclado virtual — input method KWin, UI e fallback Steam
+
+**Motivação:** após instalar a release `0.1.0a33`, o teclado virtual ainda não aparecia
+porque o KWin não tinha input method configurado e o fallback Steam não iniciava o
+cliente de forma confiável.
+
+**Implementação (commit `6bcf03d`):**
+
+1. **Gerenciamento do input method do KWin (Passo 1):**
+   - Novo `KDEInputMethodEffect` em `desktop_kde.py`.
+   - Verifica se o teclado virtual do KWin está `available` via DBus.
+   - Se não estiver e o Maliit estiver instalado, configura
+     `kwinrc -> Wayland -> InputMethod` para o arquivo `.desktop` do Maliit e
+     reconfigura o KWin.
+   - Captura o valor anterior para rollback seguro.
+   - Adicionado à cadeia de efeitos do coordenador Desktop.
+
+2. **Monitoramento e ações na UI (Passo 2):**
+   - `input_method_status()` retorna `available`, `configured-restart-needed`,
+     `unconfigured` ou `missing`.
+   - Dashboard expõe `inputMethod` no snapshot.
+   - `SteamDesktop.qml` mostra o estado do teclado virtual e botão contextual:
+     - "Abrir teclado" quando disponível
+     - "Reiniciar sessão" quando configurado mas o KWin precisa reiniciar
+     - "Configurar" quando não configurado (dispara plano Desktop auto)
+     - "Ver detalhes" quando indisponível
+
+3. **Fallback Steam mais robusto (Ponto 3):**
+   - Verifica se o processo `steam` está rodando via `/proc`.
+   - Se não estiver, tenta `steam -silent` e aguarda até 5s pelo processo.
+   - Só considera sucesso se o cliente realmente estiver no ar.
+
+4. **Outras melhorias:**
+   - Extração de helpers `_kwin_vk_property`, `_kwin_vk_available`,
+     `_kwin_vk_visible`, `_process_running` e `_maliit_desktop_file`.
+   - Adicionados fallbacks `wvkbd-mobintl` e `onboard`.
+
+**Gates:** 601 passed, Ruff, mypy estrito, fronteiras, independência e `qmllint` verdes.
+
+**Próximo passo operador:** reconstruir e instalar release a partir do commit
+`6bcf03d` para que o `KDEInputMethodEffect` e a UI atualizada entrem em vigor no
+host. A configuração do input method é aplicada automaticamente no próximo
+`desktop apply`; dependendo do KWin, pode ser necessário reiniciar a sessão Plasma
+para o teclado virtual ficar disponível.
