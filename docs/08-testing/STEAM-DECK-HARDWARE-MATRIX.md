@@ -38,5 +38,9 @@ Resultados por release em `test-reports/hw/<versão>/<dispositivo>.json` (gerado
 | Owner externo de modo | verified-hw-readonly | padrão genérico encontrou serviço `*-mode-watcher`; status ficou blocked/observer | serviço não foi chamado nem alterado |
 | Painel interno eDP-1 800×1280 rotacionado, escala 1,35 | verified-hw-readonly | parser KScreen + status | escala não alterada |
 | Maliit/KDE Connect/TTS BigLinux presentes | verified-hw-readonly | capability probe | ativação fim-a-fim pendente |
-| InputPlumber | untested | pacote ausente no host | spike obrigatório antes de virar owner |
+| InputPlumber | untested | pacote ausente no host | spike obrigatório antes de virar owner; kde-shortcuts é owner por ora |
 | Dock/monitor externo | untested no gate | lógica coberta por fake | hotplug real ainda precisa checklist assistido |
+| OSK standalone (wvkbd-mobintl) | untested | código + testes automatizados prontos | aguarda validação física no Deck |
+| Atalhos KDE globais (Meta+Ctrl+K/D/L, Meta+D) | untested | código + testes automatizados prontos | aguarda validação física no Deck |
+| Auto-show de OSK no foco de TextField | untested | código QML + teste de dados prontos | aguarda validação física com Maliit |
+| deckInputKeys (botões do Deck como teclas) | verified-hw-readonly | detectado no host real | se false, atalhos KDE físicos não funcionam; InputPlumber futuro |
