@@ -1279,3 +1279,38 @@ não funcionavam; teste real no host mostrou que o teclado virtual não abria.
 construir e instalar uma nova release a partir desta branch (`0.1.0a33+`). Nenhum
 agente deve executar `install_host.py install` — esta ação é exclusiva do operador
 humano com privilégio, conforme AGENTS.md §1.
+
+## 2026-07-19 — Sessão 31 (continuação): release 0.1.0a33 preparada para instalação
+
+**Artefatos construídos (não commitados — `dist/` está em `.gitignore`):**
+- Wheel: `dist/steamzero-0.1.0a33-py3-none-any.whl`
+- SHA-256: `b207f1022f329fce0bfb07c55cd23d0443496bf2680507a0a3feeb14f7ec0503`
+- Source commit: `8e7f55fef9acc02a552c389c3037f98d0d5b8eb8`
+- Release canônica: `0.1.0a33-8e7f55fef9ac`
+- Wheelhouse runtime: `dist/runtime-wheelhouse/` com 5 dependências verificadas por hash
+- Verificação: `tools/release_provenance.py verify-wheel` identificou projeto, versão e hash corretamente.
+
+**Comando de instalação para o operador humano (requer `bigsudo`):**
+
+```bash
+cd /mnt/sdcard/Projects/Port_Steam
+SOURCE_COMMIT=8e7f55fef9acc02a552c389c3037f98d0d5b8eb8
+bigsudo /usr/bin/python3 tools/install_host.py install \
+  --release "0.1.0a33-${SOURCE_COMMIT:0:12}" \
+  --wheel dist/steamzero-0.1.0a33-py3-none-any.whl \
+  --wheel-sha256 b207f1022f329fce0bfb07c55cd23d0443496bf2680507a0a3feeb14f7ec0503 \
+  --requirements requirements-runtime.lock \
+  --wheelhouse dist/runtime-wheelhouse \
+  --source-commit "$SOURCE_COMMIT"
+```
+
+**Após a instalação:**
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart steamzero-core.socket steamzero-core.service
+steamzero --version
+steamzero doctor --json
+```
+
+Nenhum agente executou `install_host.py install`; a instalação no host permanece como ação exclusiva do operador, conforme AGENTS.md §1.
