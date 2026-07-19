@@ -33,6 +33,15 @@ Geteuid = Callable[[], int]
 
 _MARKERS = frozenset({"steamzero.gamemode=1"})
 _MANAGED = "# SteamZero-Boot-Managed: true"
+# Limpa o autologin gerenciado ANTES do prepare: se o binário do prepare sumir
+# (release sem a cadeia de boot ativada — incidente 2026-07-19), o boot cai no
+# greeter limpo em vez de lançar sessão quebrada por autologin obsoleto. O grep
+# preserva ownership: arquivo sem marcador nunca é removido.
+_AUTOLOGIN_CLEANUP = (
+    "-/bin/sh -c 'grep -qs \"SteamZero-Boot-Managed\" "
+    "/etc/sddm.conf.d/99-steamzero-gamemode.conf && "
+    "rm -f /etc/sddm.conf.d/99-steamzero-gamemode.conf; exit 0'"
+)
 _USER_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 _UUID_RE = re.compile(r"^[A-Fa-f0-9-]{8,64}$")
 _BOOT_PATH_RE = re.compile(r"^/[A-Za-z0-9_./@+-]+$")
@@ -614,6 +623,7 @@ Before=display-manager.service
 
 [Service]
 Type=oneshot
+ExecStartPre={_AUTOLOGIN_CLEANUP}
 ExecStart=/usr/local/libexec/steamzero-gamemode-boot prepare
 
 [Install]

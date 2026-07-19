@@ -434,6 +434,9 @@ def test_enable_writes_owned_files_and_regenerates_grub(
     )
     assert result["state"] == "enabled"
     assert layout.unit.is_file()
+    unit_text = layout.unit.read_text(encoding="utf-8")
+    assert "ExecStartPre=-/bin/sh -c 'grep -qs" in unit_text
+    assert unit_text.index("ExecStartPre") < unit_text.index("ExecStart=/usr/local/libexec")
     assert layout.grub_script.stat().st_mode & 0o111
     assert ["/usr/bin/systemctl", "enable", layout.unit.name] in calls
     assert ["/usr/bin/grub-mkconfig", "-o", str(layout.grub_config)] in calls
