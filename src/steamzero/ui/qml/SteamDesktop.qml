@@ -43,6 +43,8 @@ ColumnLayout {
         || capabilities.indexOf("kwin-virtual-keyboard") >= 0
     readonly property var directBoot: sessionManager && sessionManager.directBoot
         ? sessionManager.directBoot : ({"state": "available", "configured": false})
+    readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
+        ? desktopStatus.current.profile.touchMode : false
 
     function profileLabel(value) {
         if (value === "handheld-desktop")
@@ -426,6 +428,8 @@ ColumnLayout {
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAnywhere
+                inputMethodHints: Qt.ImhNone
+                onActiveFocusChanged: { if (activeFocus && panel.touchMode) Qt.inputMethod.show() }
                 color: panel.textColor
                 Layout.fillWidth: true
                 Layout.minimumHeight: 140

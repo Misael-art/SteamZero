@@ -300,12 +300,16 @@ class DesktopDashboard:
                 "truthState": "degraded",
             }
 
+        current = desktop_status.get("current") if isinstance(desktop_status, dict) else {}
+        profile = current.get("profile") if isinstance(current, dict) else {}
+        touch_mode = bool(profile.get("touchMode")) if isinstance(profile, dict) else False
         return {
             "components": components,
             "steam": self._steam.rows(desktop_status),
             "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
+            "touchMode": touch_mode,
         }
 
     def plan_steam_gameplay(

@@ -81,6 +81,8 @@ Item {
         ? gameplay.sessionManager : ({"state": "degraded", "directBoot": {"state": "gated"}})
     readonly property var selectedGame: games.length > 0 && gameIndex < games.length
         ? games[gameIndex] : ({"id": "", "name": qsTr("Nenhum jogo instalado"), "coverUrl": ""})
+    readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
+        ? desktopStatus.current.profile.touchMode : false
 
     function valueIndex(values, value, fallback) {
         const index = values.indexOf(value)
@@ -497,6 +499,9 @@ Item {
             TextField {
                 id: cleanupPhrase
                 placeholderText: "LIBERAR ESPACO"
+                inputMethodHints: Qt.ImhNone
+                onActiveFocusChanged: { if (activeFocus && page.touchMode) Qt.inputMethod.show() }
+                EnterKey.type: EnterKeyEnum.Done
                 Layout.fillWidth: true
                 Layout.minimumHeight: 48
                 Accessible.name: qsTr("Frase de confirmação destrutiva")
@@ -771,6 +776,8 @@ Item {
                         text: page.launcher.launchOption || ""
                         readOnly: true
                         selectByMouse: true
+                        inputMethodHints: Qt.ImhNone
+                        onActiveFocusChanged: { if (activeFocus && page.touchMode) Qt.inputMethod.show() }
                         color: page.textColor
                         font.family: "monospace"
                         Layout.fillWidth: true
@@ -1462,6 +1469,8 @@ Item {
                             TextField {
                                 text: page.mediaPackagePath || qsTr("Nenhuma pasta selecionada")
                                 readOnly: true
+                                inputMethodHints: Qt.ImhNone
+                                onActiveFocusChanged: { if (activeFocus && page.touchMode) Qt.inputMethod.show() }
                                 color: page.mediaPackagePath ? page.textColor : page.mutedColor
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 48

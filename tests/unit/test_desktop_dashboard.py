@@ -387,3 +387,26 @@ def test_gameplay_apply_refuses_plan_after_library_changes(tmp_path: Path) -> No
     with pytest.raises(SteamZeroError) as error:
         controller.apply(str(plan["planId"]), str(plan["confirmToken"]), status)
     assert error.value.code == "E-TX-STALE-PLAN"
+
+
+def test_dashboard_snapshot_includes_touch_mode_from_profile(tmp_path: Path) -> None:
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+    )
+
+    status = {
+        "context": {"capabilities": [], "conflicts": []},
+        "current": {"profile": {"touchMode": True}},
+    }
+    snapshot = dashboard.snapshot(status)
+    assert snapshot["touchMode"] is True

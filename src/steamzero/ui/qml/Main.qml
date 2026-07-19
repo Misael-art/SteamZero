@@ -118,6 +118,8 @@ ApplicationWindow {
         .indexOf(desktopStatus.truthState) >= 0
     readonly property bool needsAttention: hasConflicts || desktopTruthNeedsAttention
         || desktopStatus.recoveryRequired
+    readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
+        ? desktopStatus.current.profile.touchMode : false
 
     property int sectionIndex: 1
     property int emulatorFilter: 0
@@ -430,6 +432,8 @@ ApplicationWindow {
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAnywhere
+                inputMethodHints: Qt.ImhNone
+                onActiveFocusChanged: { if (activeFocus && root.touchMode) Qt.inputMethod.show() }
                 color: root.textColor
                 background: Rectangle { color: root.backgroundColor; radius: 8; border.color: root.borderColor }
                 Layout.fillWidth: true
@@ -623,6 +627,8 @@ ApplicationWindow {
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAnywhere
+                inputMethodHints: Qt.ImhNone
+                onActiveFocusChanged: { if (activeFocus && root.touchMode) Qt.inputMethod.show() }
                 color: root.textColor
                 background: Rectangle {
                     color: root.backgroundColor
