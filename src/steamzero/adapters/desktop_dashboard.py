@@ -18,6 +18,7 @@ from typing import Any
 
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
+from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
@@ -201,6 +202,16 @@ class SteamDesktopController:
         self._spawn((executable, uri))
         return {"status": "started", "target": target, "uri": uri}
 
+    def open_controller_config(self, game_id: str) -> dict[str, Any]:
+        if not game_id.isdigit() or len(game_id) > 32:
+            raise SteamZeroError("E-API-SCHEMA", detail="gameId inválido")
+        executable = self._which("steam")
+        if executable is None:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="cliente Steam não encontrado")
+        uri = f"steam://controllerconfig/{game_id}"
+        self._spawn((executable, uri))
+        return {"status": "started", "gameId": game_id, "uri": uri}
+
 
 class DesktopDashboard:
     """Compõe o read model da central e delega mutações aos serviços existentes."""
@@ -213,6 +224,7 @@ class DesktopDashboard:
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
         doctor_runner: DoctorRunner = run_doctor,
         steam: SteamDesktopController | None = None,
+        gameplay: SteamGameplayController | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
     ) -> None:
@@ -221,6 +233,9 @@ class DesktopDashboard:
         self._flatpak_factory = flatpak_factory
         self._doctor_runner = doctor_runner
         self._steam = steam or SteamDesktopController(which=which, spawn=spawn)
+        self._gameplay = gameplay or SteamGameplayController(
+            which=which, store_factory=store_factory
+        )
         self._which = which
         self._spawn = spawn
 
@@ -271,12 +286,83 @@ class DesktopDashboard:
                 "checks": [{"name": "doctor", "status": "fail", "message": str(exc)[:240]}],
             }
 
+        try:
+            steam_gameplay = self._gameplay.snapshot(desktop_status)
+        except Exception:
+            steam_gameplay = {
+                "games": [],
+                "environment": [],
+                "readiness": {
+                    "percent": 0,
+                    "title": "Gameplay Steam temporariamente indisponível",
+                    "detail": "O restante da central continua disponível.",
+                },
+                "truthState": "degraded",
+            }
+
         return {
             "components": components,
             "steam": self._steam.rows(desktop_status),
+            "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
         }
+
+    def plan_steam_gameplay(
+        self, payload: dict[str, Any], desktop_status: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._gameplay.plan(payload, desktop_status)
+
+    def apply_steam_gameplay(
+        self,
+        plan_id: str,
+        confirm_token: str,
+        desktop_status: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._gameplay.apply(plan_id, confirm_token, desktop_status)
+
+    def recover_steam_gameplay(self, game_id: str) -> dict[str, Any]:
+        return self._gameplay.recover_launcher(game_id)
+
+    def plan_steam_launch_options(self, game_id: str) -> dict[str, Any]:
+        return self._gameplay.plan_launch_options(game_id)
+
+    def apply_steam_launch_options(
+        self, plan_id: str, confirm_token: str, game_id: str
+    ) -> dict[str, Any]:
+        return self._gameplay.apply_launch_options(plan_id, confirm_token, game_id)
+
+    def rollback_steam_launch_options(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_launch_options(operation_id)
+
+    def plan_steam_maintenance(self, game_id: str, categories: Sequence[str]) -> dict[str, Any]:
+        return self._gameplay.plan_maintenance(game_id, categories)
+
+    def apply_steam_maintenance(
+        self, plan_id: str, confirm_token: str, confirm_phrase: str
+    ) -> dict[str, Any]:
+        return self._gameplay.apply_maintenance(plan_id, confirm_token, confirm_phrase)
+
+    def recover_steam_maintenance(self) -> dict[str, Any]:
+        return self._gameplay.recover_maintenance()
+
+    def plan_steam_media(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
+        return self._gameplay.plan_media(game_id, account_id, package_dir)
+
+    def apply_steam_media(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._gameplay.apply_media(plan_id, confirm_token)
+
+    def rollback_steam_media(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_media(operation_id)
+
+    def plan_lsfg_install(self) -> dict[str, Any]:
+        return self._gameplay.plan_lsfg_install()
+
+    def apply_lsfg_install(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._gameplay.apply_lsfg_install(plan_id, confirm_token)
+
+    def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_lsfg_install(operation_id)
 
     def plan_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:
@@ -312,6 +398,9 @@ class DesktopDashboard:
 
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
+
+    def open_steam_input(self, game_id: str) -> dict[str, Any]:
+        return self._steam.open_controller_config(game_id)
 
     def _component_row(
         self, manifest: AdapterManifest, executor: FlatpakExecutor, *, conflicts: bool

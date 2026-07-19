@@ -54,6 +54,16 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert '"/component/plan"' in qml
     assert '"/component/apply"' in qml
     assert '"/steam/open"' in qml
+    assert '"/steam/input/open"' in qml
+    assert '"/steam/gameplay/plan"' in qml
+    assert '"/steam/gameplay/apply"' in qml
+    assert '"/steam/gameplay/recover"' in qml
+    assert '"/steam/gameplay/launch-options/plan"' in qml
+    assert '"/steam/gameplay/launch-options/apply"' in qml
+    assert '"/steam/gameplay/launch-options/rollback"' in qml
+    assert '"/system/lsfg/plan"' in qml
+    assert '"/system/lsfg/apply"' in qml
+    assert '"/system/lsfg/rollback"' in qml
     assert "Plano bloqueado" in qml
     for section in (
         "Visão geral",
@@ -64,3 +74,54 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
         "Sistema e recuperação",
     ):
         assert section in qml
+    gameplay_qml = (root / "src/steamzero/ui/qml/SteamGameplay.qml").read_text(encoding="utf-8")
+    for contract in (
+        "Prontidão do jogo",
+        "Revisar e aplicar perfil",
+        "Restaurar perfil seguro",
+        "Feral GameMode",
+        "Gamescope",
+        "Abrir Sistema",
+        "Frame generation",
+        "Controles por jogo",
+        "Editar no Steam",
+    ):
+        assert contract in gameplay_qml
+    for contract in ("Preparar LSFG-VK", "Instalar e verificar", "Desfazer"):
+        assert contract in qml
+    for contract in (
+        "Lançamento gerenciado",
+        "Opção de inicialização Steam",
+        "Restaurar estado",
+        "Configurar na Steam",
+        "Configurar e verificar",
+        "Desfazer configuração",
+        "Limpeza e manutenção",
+        "Pacote de mídia",
+        "SteamZero Game Mode",
+        "Boot direto: ativo",
+        "Modo Desktop",
+    ):
+        assert contract in gameplay_qml
+    desktop_qml = (root / "src/steamzero/ui/qml/SteamDesktop.qml").read_text(encoding="utf-8")
+    for contract in (
+        "Experiência do Modo Desktop",
+        "Entrada, touch e teclado",
+        "Tela, dock e hotplug",
+        "Sessão e resiliência",
+        "Laboratório KVM/libvirt",
+        "Revisar e aplicar no Desktop",
+    ):
+        assert contract in desktop_qml
+    # A UI não menciona o projeto pesquisado: independência sem referência (ADR-0019).
+    assert "phasezero" not in desktop_qml.casefold()
+    main_qml = (root / "src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
+    for route in (
+        '"/steam/maintenance/plan"',
+        '"/steam/maintenance/apply"',
+        '"/steam/maintenance/recover"',
+        '"/steam/media/plan"',
+        '"/steam/media/apply"',
+        '"/steam/media/rollback"',
+    ):
+        assert route in main_qml

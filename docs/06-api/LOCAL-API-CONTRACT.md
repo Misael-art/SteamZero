@@ -6,7 +6,7 @@
 - Sem TCP por padrão. Modo remoto não existe no v1 (nem atrás de flag).
 - Eventos: subscription via mesmo socket (notificações JSON-RPC) — ver EVENTS-AND-PROGRESS.
 
-Exceção transitória M10-H: enquanto o daemon persistente não existe, `desktop ui` cria
+Exceção transitória M10-H: enquanto a central QML ainda não migrou todo o fluxo, `desktop ui` cria
 uma bridge HTTP somente em `127.0.0.1`, porta aleatória e token de 256 bits, encerrada
 junto ao processo QML. A bridge expõe apenas status/plan/apply/reset/recover/keyboard,
 mantém `confirmToken` e não aceita conexão remota. Não é API pública nem modo remoto.
@@ -32,4 +32,15 @@ Formato único: `{code: "E-…", title, detail, impact, action, operationId?, do
 
 ## Disponibilidade
 
-Daemon ativável por socket unit (systemd user) — primeira chamada sobe o serviço; queda do daemon com jobs ativos → recovery na subida (JOB-LIFECYCLE).
+Daemon ativável por `steamzero-core.socket` (systemd user) — a primeira chamada sobe o
+serviço. A CLI usa o socket quando ele existe e faz fallback in-process somente quando a
+conexão ainda não foi estabelecida. Falha após o envio é ambígua e **não** repete mutação
+localmente. Queda do daemon com jobs ativos → recovery na subida (JOB-LIFECYCLE).
+
+Implementado em `0.1.0a8`: `system.hello`, `system.capabilities` e a allowlist inicial de
+doctor, jobs, state, components, sessão de jogo e Desktop. Cada método aceita apenas campos
+registrados, limita mensagem/conexão/mutações e rejeita UID diferente pelo `SO_PEERCRED`.
+Não existe `shell.exec`, listener TCP ou dispatch por reflexão.
+
+Desde `0.1.0a11`, `session.environment` expõe o snapshot Linux read-only usado pelo
+reconciliador futuro. O método não recebe parâmetros nem oferece uma contraparte mutável.

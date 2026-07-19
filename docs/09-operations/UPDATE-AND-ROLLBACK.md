@@ -30,6 +30,12 @@ em `/opt/steamzero/releases` e o ponteiro atômico `/opt/steamzero/current`. O c
 permissões e smokes antes da troca. O procedimento reproduzível e seus limites estão
 em [HOST-INSTALL.md](HOST-INSTALL.md).
 
+Novas instalações usam manifesto v2 e ID canônico `<versão>-<commit[0:12]>`; o
+commit completo e o estado limpo da fonte são obrigatórios. Manifests v1 permanecem
+aceitos apenas para verificar e reverter releases legadas já instaladas. Eles não
+podem ser usados como evidência de proveniência de uma nova publicação; a auditoria
+retrospectiva está em [RELEASE-LEDGER.md](RELEASE-LEDGER.md).
+
 ## Compatibilidade externa (FM-10/§11.5)
 
 Na subida e no doctor: comparar {SteamOS, Steam Client, Decky} com a Compat Matrix embarcada + atualizável por canal; incompatibilidade conhecida ⇒ capacidades afetadas entram em modo degradado explícito com aviso — nunca tentar mutação sob incompatibilidade conhecida.

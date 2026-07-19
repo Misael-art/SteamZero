@@ -50,6 +50,11 @@ def ensure_state_layout() -> None:
         ensure_dir(factory())
 
 
+def set_mode(path: Path, mode: int) -> None:
+    """Aplica permissões a um caminho pela porta central de escrita."""
+    os.chmod(path, mode)
+
+
 # ===========================================================================
 # Escrita atômica
 # ===========================================================================
@@ -149,6 +154,35 @@ def move_file(src: Path, dest: Path) -> None:
     """
     ensure_dir(dest.parent)
     _move(src, dest)
+
+
+def move_path_atomic(src: Path, dest: Path) -> None:
+    """Move arquivo ou diretório no mesmo filesystem por rename atômico.
+
+    Usado por operações destrutivas que primeiro retiram um cache do namespace
+    ativo e só depois o removem. Nunca faz cópia implícita de uma árvore.
+    """
+    if src.is_symlink() or not src.exists():
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem inválida: {src}")
+    if dest.exists() or dest.is_symlink():
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {dest}")
+    ensure_dir(dest.parent)
+    if not same_filesystem(src, dest.parent):
+        raise SteamZeroError("E-STORAGE-IO", detail="rename destrutivo cruza filesystems")
+    os.replace(src, dest)
+    _fsync_dir(dest.parent)
+    if src.parent != dest.parent:
+        _fsync_dir(src.parent)
+
+
+def remove_path(path: Path) -> None:
+    """Remove arquivo ou árvore sem seguir symlink."""
+    if path.is_symlink():
+        _silent_unlink(path)
+    elif path.is_dir():
+        shutil.rmtree(path)
+    else:
+        _silent_unlink(path)
 
 
 def symlink_atomic(source: Path, target: Path) -> None:

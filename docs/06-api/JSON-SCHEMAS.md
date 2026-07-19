@@ -9,6 +9,7 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
 | `desktop-plan-v1.schema.json` | Plano G-STATE do Desktop Experience | MANIFEST-SCHEMAS §7 |
 | `desktop-conflict-plan-v1.schema.json` | Plano confirmado para liberar owner externo | MANIFEST-SCHEMAS §7 |
 | `desktop-status-v1.schema.json` | Contexto/status Desktop | MANIFEST-SCHEMAS §7 |
+| `session-environment-v1.schema.json` | Ambiente Linux read-only da sessão | STEAM-SESSION-ROADMAP R1 |
 | `adapter-v1.schema.json` | adapter.json | ADAPTER-MODEL |
 | `component-lock-v1.schema.json` | lockfile empacotado de componentes | MANIFEST-SCHEMAS §2 |
 | `component-plan-v1.schema.json` | plano Flatpak pinado | MANIFEST-SCHEMAS §4 |
@@ -31,7 +32,7 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
   "properties": {
     "seq": {"type":"integer","minimum":0},
     "ts": {"type":"string","format":"date-time"},
-    "kind": {"enum":["job.progress","job.state","entity.changed","alert"]},
+    "kind": {"enum":["job.progress","job.state","session.state","session.environment","entity.changed","alert"]},
     "jobId": {"type":"string"}, "correlationId": {"type":"string"},
     "progress": {"type":"object","properties":{
       "stage":{"type":"string"}, "current":{"type":"number"},

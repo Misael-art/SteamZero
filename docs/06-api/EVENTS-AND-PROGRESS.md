@@ -11,6 +11,9 @@
 | kind | Conteúdo | Frequência |
 |---|---|---|
 | `job.state` | transições da máquina de JOB-LIFECYCLE | por transição |
+| `session.state` | lifecycle canônico do jogo (`launching`…`failed`) | por transição |
+| `session.environment` | digest + grupos materiais alterados no host | por mudança observada |
+| `session.resume` | duração aproximada observada após suspend | por retomada |
 | `job.progress` | `{stage, current, total, unit, rate, currentItem, etaSeconds?}` | throttle ≤ 4/s por job |
 | `entity.changed` | `{entityType, id, change}` (component instalado, save novo, volume missing...) | por mudança |
 | `alert` | problemas críticos (rollback-failed, storage-missing) | imediato |
@@ -22,3 +25,9 @@
 3. Cancelamento: `job.cancel` → evento `job.state: cancelling` imediato + `cancelled` quando o ponto de segurança foi atingido; a UI mostra "cancelando com segurança…" nesse intervalo.
 4. Pausa/retomada emitem eventos com causa (`user`, `battery`, `network`, `gameplay`).
 5. Jobs longos emitem `checkpoint` (para resume) — visível como "progresso persistido".
+6. Eventos de sessão carregam apenas `sessionId`, `gameId` e estado; comando e ambiente
+   do jogo nunca entram no log ou no contrato público.
+7. O reconciliador não emite evento por percentual de bateria, espaço livre ou timestamp;
+   somente topologia/capacidade material produz uma nova sequência.
+8. `session.resume` compara `CLOCK_BOOTTIME` com `CLOCK_MONOTONIC`. É evidência
+   pós-resume; não equivale a um hook pré-suspend nem promete flush anterior.

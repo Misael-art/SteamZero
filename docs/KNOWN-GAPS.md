@@ -12,3 +12,4 @@
 | G8 | Versões exatas de SteamOS/Steam Client para a matriz de compatibilidade (§11.5) não levantadas | Pendência de pesquisa operacional | Levantar na Fase 2 com hardware real |
 | G9 | PhaseZero não tem arquivo LICENSE | Pendência legal (Q2/Q3) | Decisão do titular antes de qualquer reuso formal |
 | G10 | Requisitos de acessibilidade (narração/screen reader em Game Mode) sem solução técnica validada em Godot | Pesquisa pendente | ADR-0002 exige protótipo com critérios mensuráveis na Fase 5 |
+| G11 | Boot direto/autologin da sessão Game Mode não validado com snapshot+console de recuperação | Bloqueio operacional G7 | Sessão manual SDDM e fallback Plasma existem; não tocar em GRUB/SDDM default antes do protocolo físico |

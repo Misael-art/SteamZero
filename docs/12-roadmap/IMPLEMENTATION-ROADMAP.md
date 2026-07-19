@@ -13,6 +13,10 @@ Critério de saída: AC-TX-01..04 verdes; kill em cada etapa do pipeline recuper
 
 ## Fase 2 — Steam Deck Core
 
+O fechamento operacional desta fase e das integrações Steam das fases 4–5 é
+detalhado em [STEAM-SESSION-ROADMAP](STEAM-SESSION-ROADMAP.md), com baseline
+honesta, ordem R1–R10 e gates de hardware.
+
 Entregas: Device/Mode Manager (handheld/docked-*/desktop + fallback de display), Session Manager (§11.1) com hooks suspend/resume, monitor de volumes por UUID (microSD), modo offline + fila, Compat Matrix inicial, helper privilegiado `steamzero-admin` (TDP/sysctl/udev allowlist) + polkit, perfis de desempenho básicos (aplicar/restaurar).
 Critério: AC-SD-01/02, AC-OF-01, AC-PR-01/02 em VM; checklist HW iniciado (Q6).
 

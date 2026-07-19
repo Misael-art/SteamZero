@@ -28,6 +28,15 @@ a lista, sem reduzir alvos ou esconder ações essenciais.
 - **Steam:** área dedicada com a mesma hierarquia de lista/detalhe dos emuladores. Expõe
   cliente, biblioteca, Steam Input e teclado Steam, usando somente URIs/ações allowlisted
   e capacidade detectada no host.
+- **Steam / Gameplay:** usa a direção visual "Prontidão do jogo": biblioteca local,
+  escopo global/por jogo/portátil/dock, perfil recomendado, FPS segmentado, TDP contínuo
+  somente quando os limites do Deck foram observados, GPU automática/manual, Gamescope,
+  Feral GameMode, MangoHud e upscaling. SteamZero, Steam e Sistema têm responsabilidades
+  visuais distintas; componente ausente oferece apenas **Abrir Sistema**.
+- **Verdade do perfil Steam:** revisão e aplicação usam plano efêmero confirmado e
+  revalidam biblioteca, capacidades e owner Desktop. `truthState=desired` representa a
+  política persistida para o lançamento gerenciado; TDP/GPU não são declarados aplicados
+  nem observados antes da existência do executor de runtime correspondente.
 - **Perfis:** seleção, preview e confirmação dos perfis auto/handheld/dock/safe.
 - **Saves e Sync:** fila, conflitos e estado da sincronização; indisponibilidade remota
   degrada somente esta área.

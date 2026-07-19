@@ -218,7 +218,12 @@ def load_plan(plan_id: str) -> Plan:
 
 
 def plan_write_files(
-    files: dict[Path, bytes], *, root: Path, kind: str = "config.write", ttl_s: int = _DEFAULT_TTL_S
+    files: dict[Path, bytes],
+    *,
+    root: Path,
+    kind: str = "config.write",
+    ttl_s: int = _DEFAULT_TTL_S,
+    removals: set[Path] | None = None,
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -246,6 +251,26 @@ def plan_write_files(
         total_new += len(content)
         if resolved.exists():
             total_existing += resolved.stat().st_size
+    written_targets = {Path(action.target) for action in actions}
+    for requested in sorted(removals or set(), key=str):
+        resolved = fs.resolve_within(root_r, requested)
+        if resolved in written_targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"write e delete duplicados: {resolved}")
+        if resolved.is_symlink() or not resolved.is_file():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"remoção inválida: {resolved}")
+        fingerprint = _fingerprint(resolved)
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(resolved),
+                new_hash="",
+                new_size=0,
+                new_content_b64="",
+                kind="delete",
+            )
+        )
+        preconditions.append(Precondition(target=str(resolved), fingerprint=fingerprint))
+        total_existing += resolved.stat().st_size
     requirements = {"spaceBytes": 2 * total_new + total_existing + _SPACE_MARGIN}
     now = _now()
     plan = Plan(
@@ -507,7 +532,7 @@ def _validate_plan_paths(plan: Plan) -> None:
     root = Path(plan.root)
     targets: set[Path] = set()
     for action in plan.actions:
-        if action.kind not in {"write", "move", "symlink"}:
+        if action.kind not in {"write", "move", "symlink", "delete"}:
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"ação inválida: {action.kind}")
         target = fs.resolve_within(root, Path(action.target))
         if target in targets:
@@ -618,6 +643,8 @@ def _apply_actions(
                     "E-TX-STALE-PLAN", detail=f"link mudou durante apply: {a.target}"
                 )
             fs.symlink_atomic(source, target)
+        elif a.kind == "delete":
+            fs.remove_file(Path(a.target))
         else:
             fs.write_atomic(Path(a.target), a.new_content())
         _maybe_crash("apply.activate")
@@ -629,7 +656,9 @@ def _verify(op_id: str, plan: Plan, jrnl: journal.Journal) -> None:
     jrnl.stage("verify")
     for a in plan.actions:
         target = Path(a.target)
-        if a.kind == "symlink":
+        if a.kind == "delete":
+            valid = not target.exists() and not target.is_symlink()
+        elif a.kind == "symlink":
             valid = (
                 a.source is not None
                 and target.is_symlink()

@@ -69,6 +69,15 @@ def test_launch_running(store: state.StateStore) -> None:
     session = mgr.launch("game-1")
     assert session.state == "running"
     assert mgr.is_active() is True
+    persisted = store.latest_game_session("game-1")
+    assert persisted is not None
+    assert persisted["id"] == session.id
+    assert persisted["state"] == "running"
+    assert [event["kind"] for event in store.events_since(0)] == [
+        "session.state",
+        "session.state",
+        "session.state",
+    ]
 
 
 def test_launch_failure(store: state.StateStore) -> None:
@@ -130,8 +139,11 @@ def test_resume_degraded_when_process_died(store: state.StateStore) -> None:
     mgr.suspend()
     port._alive = False  # processo morreu durante a suspensão
     r = mgr.resume()
-    assert r.state == "running"
+    assert r.state == "failed"
     assert r.last_warning == "E-SESSION-RESUME-DEGRADED"
+    persisted = store.latest_game_session("g")
+    assert persisted is not None
+    assert persisted["failure_code"] == "E-SESSION-RESUME-DEGRADED"
 
 
 def test_close_cooperative(store: state.StateStore) -> None:

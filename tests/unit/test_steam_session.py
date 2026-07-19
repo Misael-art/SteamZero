@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -151,9 +152,55 @@ def test_session_uses_distro_gamescope_wrapper_then_falls_back(
             environ={"PATH": "/usr/bin"},
             boot_started=lambda: {"state": "started"},
             boot_status=_boot_status,
+            retry_delay=lambda _seconds: None,
         )
-    assert calls == [["/usr/bin/gamescope-session-plus", "steam"]]
+    assert calls == [["/usr/bin/gamescope-session-plus", "steam"]] * 3
     assert executed == ["/usr/bin/startplasma-wayland"]
+
+
+def test_steam_updater_exit_is_retried_before_explicit_desktop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[list[str]] = []
+    executed: list[str] = []
+    delays: list[float] = []
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        if len(calls) == 2:
+            steam_session.request_target("desktop", which=lambda _name: None)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    def fake_exec(_path: str, argv: list[str]) -> None:
+        executed.extend(argv)
+        raise RuntimeError("desktop reached")
+
+    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    with pytest.raises(RuntimeError, match="desktop reached"):
+        steam_session.run_session(
+            which=_which(
+                {
+                    "steam": "/usr/bin/steam",
+                    "gamescope": "/usr/bin/gamescope",
+                    "gamescope-session-plus": "/usr/bin/gamescope-session-plus",
+                    "startplasma-wayland": "/usr/bin/startplasma-wayland",
+                }
+            ),
+            runner=runner,
+            environ={"PATH": "/usr/bin"},
+            boot_started=lambda: {"state": "started"},
+            boot_status=_boot_status,
+            retry_delay=delays.append,
+        )
+
+    assert calls == [["/usr/bin/gamescope-session-plus", "steam"]] * 2
+    assert delays == [1.0]
+    assert executed == ["/usr/bin/startplasma-wayland"]
+    state = json.loads((tmp_path / "state" / "steamzero" / "gamemode-session.json").read_text())
+    assert state["state"] == "desktop-requested"
+    assert state["target"] == "desktop"
 
 
 def test_native_big_picture_desktop_request_reaches_desktop(
@@ -225,6 +272,7 @@ def test_session_marker_failure_is_logged_and_does_not_black_screen(
             environ={"PATH": "/usr/bin"},
             boot_started=failed_marker,
             boot_status=_boot_status,
+            retry_delay=lambda _seconds: None,
         )
 
     assert calls[0][0] == "/usr/bin/gamescope-session-plus"

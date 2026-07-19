@@ -1,19 +1,21 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
-**Data:** 2026-07-15 · **Sessão:** implementação 9 · **Escopo entregue:** Fases 1–3
-(M1–M9) + Fase 4 em andamento (M10 parcial, M10-H foundation + bootstrap host)
+**Data:** 2026-07-17 · **Sessão:** implementação 17 · **Escopo entregue:** Fases 1–3
+(M1–M9) + Fase 4 em andamento e baseline de confiança operacional
 
 > Este relatório será reexecutado e auditado por revisão externa independente.
 > Cada afirmação abaixo é verificável com os comandos citados. Nada é marcado
-> "validado" sem teste. O Steam Deck LCD disponível foi usado para status read-only
-> do M10-H e instalação/rollback da aplicação; nenhum apply de display/input foi
-> executado no host.
+> "validado" sem teste. O Steam Deck LCD disponível foi usado para instalação/rollback
+> da aplicação e houve um apply real e confirmado de KScreen/KWin. Isso não valida
+> dock/hotplug, input, suspend, storage ou TDP; o produto continua impróprio para
+> confiança operacional até os gates documentados serem concluídos.
 
 Ambiente de verificação: Steam Deck LCD com BigLinux/Manjaro, KDE Wayland, kernel
 6.18.38, **Python 3.14.6**, git 2.55.
-Rótulo global desta entrega: **`verified-dev`** (VM/estação de desenvolvimento) —
-ver §6. Apenas as células explicitamente `verified-hw-readonly` e
-`verified-host-install` foram exercitadas no Deck.
+Rótulo global desta entrega: **`verified-dev + host-partial`**, não release. A baseline
+pré-remediação foi congelada em **367 testes / 85%**; o incremento atual acrescenta
+os controles de verdade Desktop, proveniência e CI, mas a execução remota/VM ainda
+é pendente. Ver [OPERATIONAL-TRUST-GATES.md](docs/09-operations/OPERATIONAL-TRUST-GATES.md).
 
 ---
 
@@ -31,8 +33,8 @@ ver §6. Apenas as células explicitamente `verified-hw-readonly` e
 | **M8** BIOS center + saves timeline | 3 | **done** | `pytest tests/integration/test_bios.py tests/integration/test_saves.py` → **15 passed**: BIOS store hash-only, links atômicos com RT-08, saves timeline append-only e restore transacional com RT-09; AC-BI/SV verdes. |
 | **M9** Sync não-destrutivo | 3 | **done** | `pytest tests/integration/test_sync.py` → **6 passed**: feature flag, fila offline, conflito preservador e estados pending→in-flight→done; upload interrompido retorna a pending e é retomado (RT-10). Porta CloudPort fake. |
 | **M10** Engine de adapters + 3 emuladores | 4 | **partial** (verified-dev) | Schema/registry e manifests pinados de DuckStation/RetroArch/Dolphin; lifecycle portável G-FULL; lockfile anti-drift; executor Flatpak user-scoped com plan/token, commit OSTree exato, verify/smoke, rollback G-DEPLOYMENT e recovery em **24 testes**. A CLI expõe list/status/plan/apply/rollback/recover. Status real read-only passou; instalação dos três em VM ainda não foi feita e DuckStation segue EOL no Flathub. |
-| **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + hw-readonly + host-install) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada, gate de independência e importador offline. **36 testes da experiência + 7 do instalador host**; conflito conhecido tem card, plano confirmado e rollback parcial; aplicação instalada sob `/opt`, QML e rollback real validados; apply de perfil ainda não executado. |
-| M11 Frontends (Steam/SRM/ES-DE) | 4 | not-started | — |
+| **M10-H** Handheld Desktop BigLinux/KDE | 4 | **foundation** (verified-dev + host-partial) | Contexto real Deck/KScreen, perfis auto/handheld/dock/safe, plano+confirmToken, snapshots G-STATE/recovery, efeitos KDE reversíveis, teclado em fallback, bridge QML tokenizada e gate de independência. O apply real `01KXMDC05NTYS88F5WC8XS8V3T` confirmou `docked-desktop` e persistiu snapshots de display/janelas; o novo status separa recomendado/desejado/aplicado/observado e o teste dock→undock exige `stale`. Hotplug, input, suspend, storage e TDP permanecem pendentes. |
+| M11 Frontends (Steam/SRM/ES-DE) | 4 | **partial** (verified-dev) | Steam: descoberta de biblioteca/capas, perfis desejados de desempenho+LSFG e Steam Input por jogo, plano confirmado e persistência atômica. Sistema instala/repara LSFG-VK 1.0.0 user-scoped com supply chain pinada e rollback G-FULL. `steamzero-launch` executa `%command%` sem shell, configura Launch Options com rollback e agora registra o lifecycle canônico em `game_session`; índice parcial impede duas sessões ativas, PID morto exige recovery e eventos usam `session.state`. TDP/GPU continuam adiados; faltam adapters SRM/ES-DE. |
 | M12 Game Mode UI (focus graph) | 5 | not-started | — |
 | M13 Adoção EmuDeck/RetroDECK em HW real | 5 | not-started | — |
 | M14 Flatpak + canais + update/rollback | 6 | not-started | — |
@@ -66,8 +68,12 @@ Clone fresco + venv do lockfile (hash-verified) + `pip install --no-deps -e .`
 (reproduzido na Fase 1; o worktree atual foi validado pelo gate completo):
 ```
 ruff OK · ruff format OK · boundaries OK (0 violações) · mypy --strict OK
-independence OK · pytest → 362 passed · steamzero doctor --json → status ok
+independence OK · pytest → 367 passed · cobertura total → 85%
 ```
+
+Essa linha é a baseline histórica imediatamente anterior a esta remediação. Ela inclui
+`ports.py` ainda fora do wheel. O estado atual torna `ports.py` canônico e empacotado;
+a contagem e cobertura pós-remediação são registradas abaixo e no WORKLOG.
 
 ---
 
@@ -77,15 +83,15 @@ Contagem por categoria (por diretório/ marcador):
 
 | Categoria | Contagem | Onde |
 |---|---|---|
-| Unit | 116 | `tests/unit/` |
-| Integração | 175 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
+| Unit | 176 | `tests/unit/` |
+| Integração | 187 | `tests/integration/` (inclui organização 10k, BIOS/saves/sync/media/adapters/Desktop/Flatpak/host) |
 | Injeção de falha (FI) | 40 | marcador `fi` — inclui FI-16/17/18, FI-21..24 Desktop e FI-25/26 Flatpak |
 | Rollback (RT) | 23 | marcador `rt` — inclui lifecycle portátil e Flatpak, RT-06..11; RT-12..14 pendentes |
 | Segurança (ST) | 30 | marcador `security` — helper + mídia ST-06 |
 | Golden (contrato) | 10 | `tests/golden/` (plan-v1 write/move/symlink) |
 | Sistema (VMs) | 0 | não iniciado (Fase 5/6) |
 | UI (foundation) | 3 | parser/contrato QML + bridge tokenizada (incluídos em unit/integração) |
-| **Total** | **362** | `pytest -q` → **362 passed** |
+| **Total** | **434** | `pytest -q` → **434 passed** |
 
 **Falhas: 0. Skips: 0. xfails: 0.** (Nenhum teste silenciado.)
 
@@ -95,7 +101,8 @@ Cobertura (`pytest --cov=steamzero`):
 |---|---|
 | core/fs.py | 93% |
 | core/journal.py | 97% |
-| core/state.py | 96% |
+| core/state.py | 95% |
+| core/session_state.py | 100% |
 | core/transaction.py | 90% |
 | core/lock.py | 94% |
 | core/ids.py · errors.py · secret.py | 100% |
@@ -105,10 +112,13 @@ Cobertura (`pytest --cov=steamzero`):
 | adapters/flatpak.py | 75% (porta real não mutada; orquestração exercitada por fake) |
 | domain/desktop.py | 89% |
 | adapters/{desktop_kde,desktop_ui} | 61–65% (efeitos reais não acionados no host) |
+| adapters/lsfg.py | 76% (aquisição HTTP real não acionada; checksum/extrator/apply/rollback exercitados por fake) |
+| adapters/steam_launcher.py | 91% (composição/processo por fake; lifecycle persistente e exclusivo real em SQLite) |
+| adapters/steam_launch_options.py | 80% (parser/patch/conta ativa/transação exercitados; Steam real somente read-only) |
 | core/safezip.py | 98% |
 | privileged/{protocol,helper,client} | 90–100% |
 | jobs/manager.py | 93% |
-| **TOTAL (pacote no worktree)** | **86%** (inclui `ports.py` ainda não rastreado, 0%) |
+| **TOTAL (pacote no worktree)** | **85%** (`ports.py` canônico, rastreado e coberto a 100%) |
 
 Meta TEST-STRATEGY (≥90% núcleo transacional/core.fs): **atingida**.
 
@@ -189,22 +199,30 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
 
 **Alta:**
 - **A0. Adapters de hardware da Fase 2 parciais.** M10-H adicionou detecção DMI,
-  KScreen, input/capabilities e efeitos KDE reais com composição; o status foi provado
-  read-only no Deck LCD. Apply de KScreen/KWin, storage/mount, TDP/sysfs, sessão e
-  transporte pkexec/D-Bus continuam sem validação real. É a maior dívida de hardware.
+  KScreen, input/capabilities e efeitos KDE reais com composição. Um apply de
+  KScreen/KWin foi confirmado no Deck, mas não constitui matriz física: storage/mount,
+  TDP/sysfs, input, suspend, hotplug e transporte polkit continuam sem validação real.
+  É a maior dívida de hardware.
 - **A5. Compat Matrix (F-SD-05) só tem a tabela** `compat_fact`; falta o serviço de
   reconciliação SteamOS/Steam-client na subida (FM-10). Perfis de desempenho
   (F-PF-01/03) modelados via helper set-tdp, mas sem o fluxo apply/restore G-STATE
   completo (fica com a Fase 4).
+- **A6. Launch Options automáticas ainda sem ciclo físico completo.** A edição de
+  `localconfig.vdf` já exige Steam fechada, seleciona a conta ativa sem expor seu ID,
+  preserva os demais bytes, usa plano/confirmToken, verifica o valor e oferece rollback
+  G-FULL. Nesta sessão o host foi somente observado; ainda falta executar em bancada
+  descartável o ciclo configurar → abrir Steam → lançar jogo → fechar → desfazer.
 - **A1. FI-06 real (ENOSPC no meio do apply) não testado** — só o *preflight* (via
   monkeypatch de `free_space`). O caso mid-apply exige FS de loopback com quota. FI-01/02/
   03/05/07..14/16..20 também não implementados (Fases 2–3).
 - **A2. AC-TX-03 sem verificação por `strace`** — asseguro "sem escrita no alvo" por
   asserção de estado, não por contagem de syscalls como o AC pede. Falta harness de strace no CI.
-- **A3. `shellcheck` não executado** — ausente no ambiente; não há shims bash na Fase 1
-  (ADR-0001), mas o gate de CI só foi escrito, não exercitado.
-- **A4. Matriz Python 3.11/3.12 não exercitada** — rodou só em 3.14.6. `requires-python>=3.11`
-  e o workflow declara 3.11/3.12, mas GitHub Actions não foi executado aqui.
+- **A3. Shell gate sem alvo atual.** Não há shims Bash (ADR-0001); o job que instalava
+  `shellcheck` de forma não pinada foi removido. O gate volta com ferramenta pinada se
+  scripts shell entrarem no produto.
+- **A4. Matriz Python 3.11/3.12 não exercitada remotamente** — localmente rodou 3.14.6.
+  O workflow agora declara 3.11/3.12/3.14, mas depende do primeiro push privado para
+  produzir a evidência real.
 - **A6. Integrações externas da Fase 3 incompletas.** Conversores reais, provedores de
   scraping/cache/rate limit e migração SSD↔microSD não foram exercitados fim-a-fim.
   O gate AC/RT está verde em lógica local, mas essas capacidades não estão prontas para uso real.
@@ -214,7 +232,9 @@ Nenhum ADR foi divergido; ADR-0013 foi **fechado** (aceito, GPL-3.0-or-later) co
   uma nova fonte oficial porque seu ref Flathub está EOL.
 
 **Média:**
-- **M1d. Daemon/IPC ausente** — a CLI roda o núcleo in-process (single-shot). O serviço
+- **M1d. Daemon/IPC ausente** — o lifecycle persistente/exclusivo e os contratos
+  `session status/recover` fecham uma parte do plano de controle, mas a CLI ainda roda o
+  núcleo in-process (single-shot). O serviço
   local JSON-RPC sobre UNIX socket com SO_PEERCRED/confirmToken (SR-18) não existe ainda.
   A central M10-H usa bridge HTTP efêmera em loopback, token aleatório e allowlist,
   encerrada junto ao QML; ela não substitui o daemon persistente planejado.
@@ -247,24 +267,27 @@ Pré-requisitos: Python ≥ 3.11 com `venv`, git, acesso ao PyPI.
 git clone <repo-url> Port_Steam && cd Port_Steam
 python3 -m venv .venv
 .venv/bin/pip install --require-hashes -r requirements-dev.lock   # deps pinadas + hash (SR-11)
-.venv/bin/pip install --no-deps -e .                              # o pacote steamzero
 make check          # ruff + ruff format --check + boundaries + mypy --strict + pytest
-.venv/bin/steamzero doctor --json                                 # smoke
+.venv/bin/python -m pip wheel --no-deps --wheel-dir dist .
+python3 -m venv /tmp/steamzero-smoke
+/tmp/steamzero-smoke/bin/pip install --require-hashes -r requirements-runtime.lock
+/tmp/steamzero-smoke/bin/pip install --no-deps dist/steamzero-*.whl
+/tmp/steamzero-smoke/bin/steamzero doctor --json
 ```
 
-**Prova disponível:** o clone limpo da entrega anterior produziu 270 testes verdes.
-No worktree desta sessão,
-`make check` produziu **362 passed**; a reprodução em clone limpo deste incremento deverá
-ser repetida após seu commit. `steamzero doctor --json` permanece `status: ok`.
+**Prova disponível:** no worktree Btrfs desta sessão, a suíte produziu **434 passed / 85%**.
+O wheel `0.1.0a7` foi instalado sem editable em venv vazio; versão, `pip check`,
+`steamzero.ports` empacotado e `doctor --json` passaram. A prova em clone remoto limpo
+depende do primeiro push/CI.
 
 `make` alvos: `venv lint format-check typecheck boundaries independence test cov check`. CI equivalente
-em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
+em `.github/workflows/ci.yml` (matriz 3.11/3.12/3.14 — ver dívida A4).
 
 ---
 
 ## 6. verified-vm vs verified-hw vs não verificado
 
-- **verified-dev (VM/estação):** toda a suíte (362 testes), lints, tipos e o binário
+- **verified-dev (VM/estação):** toda a suíte (434 testes), lints, tipos e os binários
   `steamzero` — em Linux Manjaro, Python 3.14.6. Inclui SIGKILL real de processo (FI-04)
   e fuzzing do helper (ST-01). A lógica de domínio da Fase 2 (modos, fallback, microSD
   por UUID, sessão, allowlist) roda com **portas fake / efetor dry**.
@@ -272,14 +295,16 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
   Valve Jupiter, Wayland, eDP-1 800×1280@60, escala 1,35 e capabilities KDE/KScreen,
   Maliit, Steam, KDE Connect e TTS BigLinux. InputPlumber estava ausente e não foi
   selecionado. Um serviço externo `*-mode-watcher` foi encontrado por padrão genérico;
-  o status ficou `blocked`/observador e expôs a remediação user-scoped correta. O plano
-  e a UI foram exercitados sem confirmar apply; nenhuma configuração ou serviço foi alterado.
+  o status ficou bloqueado e expôs a remediação user-scoped correta. Depois da confirmação,
+  o evento `desktop.conflict-released` foi persistido e o watcher saiu; a aplicação de
+  perfil posterior é classificada separadamente como hardware mutável parcial.
 - **verified-host-install:** wheel e dependências hash-verified foram instalados com
   `bigsudo` em releases imutáveis sob `/opt`; `doctor`, `pip check`, QML offscreen,
   Desktop entry, ownership e integridade passaram. Rollback real
   `host3 → host1 → host3` preservou o gerenciador estável e o estado XDG.
-- **verified-hw mutável:** **nada.** Apply de KScreen/KWin, dock/hotplug, input owner,
-  TDP/sysctl/mount e ações privilegiadas permanecem não verificados.
+- **verified-hw mutável parcial:** um apply de KScreen/KWin chegou a `committed` para
+  `docked-desktop`; dock/hotplug, input owner, TDP/sysctl/mount e recuperação por
+  snapshot físico permanecem não verificados.
 - **Não verificado (mesmo em VM):**
   - Python 3.11 e 3.12 (rodou só 3.14) — dívida A4.
   - Perda de energia real (poweroff -f / FI-10) — só SIGKILL de processo foi exercitado;
@@ -299,9 +324,9 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 2. **Durabilidade sob perda de energia real.** O recovery é sólido contra SIGKILL (testado
    de verdade). Contra corte de energia no meio de um `fsync`/`rename`, confio no modelo
    POSIX (tmp+fsync+rename+fsync-dir) mas **não testei** com VM `poweroff -f`.
-3. **Empacotamento e bootstrap host validados.** O wheel real contém adapters, domínio, schemas/QML do
-   M10-H e agora `flatpak.py`, lockfile e schemas de componente; exclui explicitamente o
-   `ports.py` local não rastreado. O wheel final foi instalado no host com venv próprio,
+3. **Empacotamento e bootstrap host validados.** O wheel real contém adapters, domínio,
+   schemas/QML do M10-H, `flatpak.py`, lockfile, schemas de componente e a camada
+   canônica `steamzero.ports`. O wheel final foi instalado no host com venv próprio,
    lock hash-verified e release retida; passou `doctor`, `component list`, integridade e
    rollback real. Ainda falta validar o bundle Flatpak final da plataforma.
 4. **Cross-filesystem (ext4↔exFAT do microSD).** `same_filesystem` e o fallback copy+unlink
@@ -314,10 +339,10 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
    (open-write, os/shutil, Path.write_*), mas não detecta escrita via `Path.replace` nem
    aliasing dinâmico. É defesa em profundidade, não prova formal.
 
-7. **Hardware mutável ainda não validado (o ponto mais importante).** DMI/KScreen e
-   capabilities agora funcionam read-only no Deck real; efeitos KScreen/KWin existem e
-   são cobertos por runner fake. Não tenho confiança para marcar apply, dock/hotplug,
-   montagem, TDP/sysctl ou polkit como verified-hw antes do checklist assistido.
+7. **Hardware mutável ainda não possui matriz (o ponto mais importante).** DMI/KScreen
+   e capabilities funcionam no Deck real e houve um apply KScreen/KWin confirmado.
+   Uma única operação não prova dock/hotplug, montagem, TDP/sysctl, polkit nem rollback
+   após falha; esses itens continuam fora de `verified-hw` completo.
 
 8. **Fase 3 sem ferramentas externas reais.** BIOS/saves/sync/library/media local estão
    cobertos e RT-06..11 verdes. Porém conversões reais (chdman, dolphin-tool, maxcso,
@@ -331,8 +356,8 @@ em `.github/workflows/ci.yml` (matriz 3.11/3.12 — ver dívida A4).
 domínio, verified-dev**; a Fase 3 entrega M7–M9 e o gate RT-06..11 verdes.
 O núcleo transacional kill-proof (SIGKILL real recuperado), o fuzzing do helper e o
 safezip (bytes reais) são as peças mais fortes. Ressalvas grandes, todas explícitas:
-somente detecção read-only tocou hardware; root foi usado apenas no bootstrap versionado,
-sem efeitos de perfil, e ferramentas de conversão reais não foram acionadas. A Fase 4
+houve uma aplicação parcial de perfil sem matriz física; root foi usado apenas no bootstrap
+versionado, e ferramentas de conversão reais não foram acionadas. A Fase 4
 contém M10 parcial e M10-H foundation; Fases 5–6 não iniciaram. Nada mascarado — a suíte
-(362 testes, 0 falhas/skips) e o
+(434 testes, 0 falhas/skips) e o
 WORKLOG comprovam cada afirmação acima.

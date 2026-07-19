@@ -30,6 +30,7 @@ def test_registry_loads_all_schemas() -> None:
         "adapter-v1.schema.json",
         "component-lock-v1.schema.json",
         "component-plan-v1.schema.json",
+        "session-environment-v1.schema.json",
         "error-v1.schema.json",
         "event-v1.schema.json",
         "plan-v1.schema.json",
@@ -105,6 +106,36 @@ def test_event_sample_validates() -> None:
         "progress": {"stage": "apply", "current": 3, "total": 10, "unit": "items"},
     }
     contracts.validate(event, "event-v1.schema.json")
+
+    session_event = {
+        "seq": 2,
+        "ts": "2026-07-15T00:00:01+00:00",
+        "kind": "session.state",
+        "correlationId": "01J000000000000000000000AB",
+        "sessionId": "01J000000000000000000000AC",
+        "gameId": "10",
+        "state": "running",
+    }
+    contracts.validate(session_event, "event-v1.schema.json")
+
+    environment_event = {
+        "seq": 3,
+        "ts": "2026-07-15T00:00:02+00:00",
+        "kind": "session.environment",
+        "correlationId": "01J000000000000000000000AD",
+        "digest": "a" * 64,
+        "changes": ["displays", "power"],
+    }
+    contracts.validate(environment_event, "event-v1.schema.json")
+
+    resume_event = {
+        "seq": 4,
+        "ts": "2026-07-15T00:00:03+00:00",
+        "kind": "session.resume",
+        "correlationId": "01J000000000000000000000AE",
+        "suspendedSeconds": 42.125,
+    }
+    contracts.validate(resume_event, "event-v1.schema.json")
 
 
 @pytest.mark.golden

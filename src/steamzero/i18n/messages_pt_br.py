@@ -148,6 +148,11 @@ MESSAGES: dict[str, str] = {
     "error.E-SAVES-FLUSH-TIMEOUT.cause": "Flush do save excedeu o tempo limite na suspensão.",
     "error.E-SAVES-FLUSH-TIMEOUT.action": "Nenhuma ação necessária; o progresso do último flush está seguro.",
     # ---- SESSION / MODE ---------------------------------------------------
+    "error.E-SESSION-INTERRUPTED.title": "Sessão de jogo interrompida",
+    "error.E-SESSION-INTERRUPTED.what": "O processo gerenciado terminou sem concluir o lifecycle.",
+    "error.E-SESSION-INTERRUPTED.impact": "Novos jogos ficam bloqueados até a recuperação do estado.",
+    "error.E-SESSION-INTERRUPTED.cause": "O launcher caiu ou foi encerrado antes de registrar o fechamento.",
+    "error.E-SESSION-INTERRUPTED.action": "Confirme a recuperação da sessão antes de iniciar outro jogo.",
     "error.E-SESSION-LAUNCH-FAILED.title": "A sessão não iniciou",
     "error.E-SESSION-LAUNCH-FAILED.what": "A sessão gerenciada falhou antes de concluir o lançamento.",
     "error.E-SESSION-LAUNCH-FAILED.impact": "O Game Mode foi encerrado e o Desktop seguro continua disponível.",

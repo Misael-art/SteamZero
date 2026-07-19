@@ -15,7 +15,9 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Never
 
@@ -26,7 +28,9 @@ Which = Callable[[str], str | None]
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 BootMarker = Callable[[], dict[str, Any]]
 BootStatus = Callable[[], dict[str, Any]]
+Delay = Callable[[float], None]
 _TARGETS = frozenset({"desktop", "plasma", "steam", "gamepadui", "reboot", "shutdown"})
+_MAX_UNEXPECTED_EXITS = 3
 
 
 def _mark_boot_started() -> dict[str, Any]:
@@ -77,6 +81,29 @@ def _target_path() -> Path:
     return paths.runtime_dir() / "gamemode-target"
 
 
+def _session_state_path() -> Path:
+    return paths.state_home() / "gamemode-session.json"
+
+
+def _record_session_state(
+    *, state: str, attempt: int, exit_code: int | None = None, target: str | None = None
+) -> None:
+    """Mantém uma evidência legível da última transição, sem depender do journal root."""
+    payload = {
+        "schemaVersion": 1,
+        "state": state,
+        "attempt": attempt,
+        "exitCode": exit_code,
+        "target": target,
+        "updatedAt": datetime.now(UTC).isoformat(),
+    }
+    fs.write_atomic_text(
+        _session_state_path(),
+        json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n",
+        mode=0o600,
+    )
+
+
 def request_target(
     target: str, *, which: Which = shutil.which, runner: Runner = subprocess.run
 ) -> dict[str, Any]:
@@ -105,6 +132,7 @@ def run_session(
     environ: dict[str, str] | None = None,
     boot_started: BootMarker = _mark_boot_started,
     boot_status: BootStatus = _direct_boot_status,
+    retry_delay: Delay = time.sleep,
 ) -> int:
     status = readiness(which=which, boot_status=boot_status)
     desktop = _desktop_command(which)
@@ -141,8 +169,10 @@ def run_session(
         # A telemetria de boot não pode transformar uma sessão funcional em tela preta.
         print(f"SteamZero: falha ao registrar início da sessão: {exc}", file=sys.stderr)
     failures = 0
-    while failures < 3:
+    while failures < _MAX_UNEXPECTED_EXITS:
+        attempt = failures + 1
         fs.remove_file(target_path)
+        _record_session_state(state="starting", attempt=attempt)
         completed = runner(
             [session_wrapper, "steam"],
             stdin=subprocess.DEVNULL,
@@ -152,6 +182,9 @@ def run_session(
         )
         target = _read_target(target_path)
         fs.remove_file(target_path)
+        _record_session_state(
+            state="exited", attempt=attempt, exit_code=completed.returncode, target=target
+        )
         if target in {"steam", "gamepadui"}:
             failures = 0 if completed.returncode == 0 else failures + 1
             continue
@@ -159,16 +192,32 @@ def run_session(
             _power("reboot", which=which, runner=runner)
         elif target == "shutdown":
             _power("poweroff", which=which, runner=runner)
+        elif target in {"desktop", "plasma"}:
+            _record_session_state(
+                state="desktop-requested",
+                attempt=attempt,
+                exit_code=completed.returncode,
+                target=target,
+            )
+            return _exec_desktop(desktop)
+        else:
+            # Steam se encerra durante a própria atualização sem escrever um
+            # destino. Isso é uma falha transitória, não uma solicitação de KDE.
+            failures += 1
+            if failures < _MAX_UNEXPECTED_EXITS:
+                retry_delay(float(2 ** (failures - 1)))
+                continue
         return _exec_desktop(desktop)
+    _record_session_state(state="fallback", attempt=failures)
     return _exec_desktop(desktop)
 
 
-def _read_target(path: Path) -> str:
+def _read_target(path: Path) -> str | None:
     try:
         value = path.read_text(encoding="utf-8").strip()
     except OSError:
-        return "desktop"
-    return value if value in _TARGETS else "desktop"
+        return None
+    return value if value in _TARGETS else None
 
 
 def _power(action: str, *, which: Which, runner: Runner) -> None:
