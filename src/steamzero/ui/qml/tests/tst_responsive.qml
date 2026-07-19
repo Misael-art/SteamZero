@@ -19,6 +19,11 @@ TestCase {
     }
 
     Component {
+        id: accessibilityMenuComponent
+        AccessibilityMenu { width: 420 }
+    }
+
+    Component {
         id: navigatorHarnessComponent
         Item {
             property alias navigator: sectionNavigator
@@ -297,7 +302,21 @@ TestCase {
         verify(String(window.borderColor) !== normalBorder)
         window.reducedMotionPreference = true
         compare(window.motionReduced, true)
+        window.interfaceScalePreference = 1.5
+        compare(window.minimumInteractiveTarget, 72)
         window.destroy()
+    }
+
+    function test_accessibilityMenuOffersSupportedVisualScales() {
+        const menu = createTemporaryObject(accessibilityMenuComponent, null)
+        verify(menu !== null)
+        menu.textScale = 1.0
+        compare(menu.scaleIndex(), 0)
+        menu.textScale = 1.25
+        compare(menu.scaleIndex(), 1)
+        menu.textScale = 1.5
+        compare(menu.scaleIndex(), 2)
+        menu.destroy()
     }
 
     function test_sectionNavigationUsesSemanticAnchors() {

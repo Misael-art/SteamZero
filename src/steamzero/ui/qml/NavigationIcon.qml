@@ -88,6 +88,13 @@ Item {
                 context.moveTo(22, 11)
                 context.lineTo(23, 18)
                 context.lineTo(16.5, 16.5)
+            } else if (root.glyph === "accessibility") {
+                context.moveTo(14, 5)
+                context.arc(14, 5, 2.2, 0, Math.PI * 2)
+                line(context, 5, 10, 23, 10)
+                line(context, 14, 8, 14, 17)
+                line(context, 14, 17, 8, 24)
+                line(context, 14, 17, 20, 24)
             } else {
                 context.arc(14, 14, 5, 0, Math.PI * 2)
                 for (let index = 0; index < 8; index++) {

@@ -38,6 +38,7 @@ ApplicationWindow {
     }) && !desktopContext.externalKeyboard && !desktopContext.externalMouse
     property bool reducedMotionPreference: false
     property bool highContrastPreference: false
+    property real interfaceScalePreference: 1.0
 
     UiTokens {
         id: ui
@@ -47,6 +48,7 @@ ApplicationWindow {
         television: root.televisionMode
         highContrast: root.highContrastPreference
         reducedMotion: root.reducedMotionPreference
+        userScale: root.interfaceScalePreference
     }
 
     readonly property color backgroundColor: ui.background
@@ -234,7 +236,16 @@ ApplicationWindow {
         sectionMenu.open()
     }
 
+    function openAccessibilityMenu() {
+        accessibilityMenu.returnFocusItem = root.activeFocusItem
+        accessibilityMenu.open()
+    }
+
     function goBack() {
+        if (accessibilityMenu.opened) {
+            accessibilityMenu.close()
+            return
+        }
         if (sectionMenu.opened) {
             sectionMenu.close()
             return
@@ -926,6 +937,25 @@ ApplicationWindow {
         onSectionChosen: function(index) { sectionNavigator.goTo(index) }
     }
 
+    AccessibilityMenu {
+        id: accessibilityMenu
+        width: Math.min(root.width - 32, 460)
+        x: Math.round((root.width - width) / 2)
+        y: Math.round((root.height - height) / 2)
+        highContrast: root.highContrastPreference
+        reducedMotion: root.reducedMotionPreference
+        textScale: root.interfaceScalePreference
+        surfaceColor: root.raisedColor
+        borderColor: root.borderColor
+        textColor: root.textColor
+        mutedColor: root.mutedColor
+        accentColor: root.cyanColor
+        minimumTarget: ui.targetSize
+        onHighContrastRequested: function(enabled) { root.highContrastPreference = enabled }
+        onReducedMotionRequested: function(enabled) { root.reducedMotionPreference = enabled }
+        onTextScaleRequested: function(scale) { root.interfaceScalePreference = scale }
+    }
+
     AdaptiveInspector {
         id: emulatorInspectorDrawer
         returnFocusItem: root.emulatorDrawerReturnItem
@@ -1220,6 +1250,41 @@ ApplicationWindow {
                     }
 
                     Item { Layout.fillHeight: true }
+
+                    Button {
+                        id: accessibilityButton
+                        text: qsTr("Acessibilidade")
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: ui.targetSize
+                        Accessible.name: qsTr("Abrir preferências de acessibilidade")
+                        ToolTip.visible: ui.compact && hovered
+                        ToolTip.text: Accessible.name
+                        onClicked: root.openAccessibilityMenu()
+                        contentItem: RowLayout {
+                            NavigationIcon {
+                                glyph: "accessibility"
+                                iconColor: accessibilityButton.activeFocus
+                                    ? root.cyanColor : root.mutedColor
+                                Layout.preferredWidth: 28
+                                Layout.preferredHeight: 28
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                            Label {
+                                visible: !ui.compact
+                                text: accessibilityButton.text
+                                color: root.textColor
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+                        }
+                        background: Rectangle {
+                            color: accessibilityButton.activeFocus ? root.raisedColor : "transparent"
+                            radius: 7
+                            border.color: accessibilityButton.activeFocus
+                                ? root.cyanColor : root.borderColor
+                            border.width: accessibilityButton.activeFocus ? 2 : 1
+                        }
+                    }
 
                     Label {
                         visible: !ui.compact
