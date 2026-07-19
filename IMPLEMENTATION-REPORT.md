@@ -405,3 +405,54 @@ perfis Full HD, conflito Full HD, sync ultrawide, 4K desktop e 4K TV.
 Próxima etapa recomendada: integrar os dois read models ausentes em branch de adapters,
 então executar a matriz assistida no Deck/KDE Wayland, X11 suportado, controle/touch e
 dock/hotplug antes de promover qualquer célula para `verified-hw`.
+
+---
+
+## 9. Fechamento da navegação e acessibilidade da UI — sessão 12
+
+Rótulo desta fatia: **`verified-dev`**. Branch: `codex/ui-emulacao`.
+
+A navegação principal agora mantém histórico limitado, preserva o scroll próprio de cada
+área e devolve o foco ao elemento de origem ao voltar. `Escape` fecha, em ordem segura,
+lista de seções, inspectors e modais canceláveis antes de retornar à tela anterior; o
+modal obrigatório de recovery continua sem atalho de fuga. Diálogos de conflito,
+componente, restauração e recovery restauram foco após fechamento, inclusive depois de
+uma request assíncrona.
+
+O navegador vertical ganhou lista semântica de seções, foco visível, posição acessível e
+atalho `F6`. `PgUp/PgDown` percorrem anchors calculados depois do layout; reduced motion
+continua instantâneo. O footer só anuncia esses comandos quando o navegador está de fato
+disponível. As ações de modais fazem reflow em uma coluna no perfil compacto.
+
+Contraste de texto essencial, texto secundário e ciano sobre o background passou a ser
+validado por razão numérica, nos tokens padrão e de alto contraste. A suíte Qt Quick agora
+cobre também anchors semânticos, limites do histórico, retorno de foco do popup e rejeição
+de destinos inválidos.
+
+### Evidência final
+
+```text
+qmllint → OK
+Qt Quick Test → 10 passed, 0 failed, 0 skipped
+Qt 6 offscreen smoke → processo ativo e sem diagnóstico até o timeout do harness
+make check → 367 passed; format/lint/boundaries/independence/mypy verdes
+git diff --check → OK
+```
+
+Dezesseis goldens foram renderizados com fixtures no formato do contrato atual e
+inspecionados manualmente. A matriz acrescenta lista de emuladores, alertas expandido e
+compacto, alto contraste, menu de seções, Steam Full HD e sync com dados, além das
+composições já cobertas para Deck, ultrawide e 4K.
+
+### Limites de escopo, sem simulação
+
+- O Qt instalado não oferece módulo `QtGamepad`; portanto `LT/RT`, `View`, hot-swap e troca
+  Nintendo A/B não foram declarados funcionais. Os equivalentes verificados em dev são
+  `PgUp/PgDown`, `F6`, `Enter` e `Escape`.
+- Coordenação de janela Steam, bring-to-front e lifecycle externo exigem capability e
+  read model em adapters/bridge. Esses arquivos pertencem a outra branch e não foram
+  alterados.
+- “Lançamento gerenciado” permanece sem apresentação inventada porque o payload atual
+  não contém seus estados. A dívida deve ser ligada ao contrato real antes da QML.
+- Wayland/X11, controle, touch, mudança de resolução, dock/undock e hardware físico
+  permanecem **não verificados** nesta sessão.

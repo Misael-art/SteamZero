@@ -15,6 +15,8 @@ Item {
     property color accentColor: "#13bdf2"
     property int activeIndex: 0
 
+    signal menuRequested()
+
     implicitWidth: 64
     implicitHeight: navigatorColumn.implicitHeight
     visible: flickable !== null && sections.length > 1
@@ -92,6 +94,18 @@ Item {
         spacing: 4
 
         ToolButton {
+            id: menuButton
+            text: "≡"
+            font.pixelSize: 20
+            Layout.minimumWidth: 48
+            Layout.minimumHeight: 48
+            Accessible.name: qsTr("Abrir lista de seções")
+            ToolTip.visible: activeFocus || hovered
+            ToolTip.text: Accessible.name
+            onClicked: root.menuRequested()
+        }
+
+        ToolButton {
             id: previousButton
             icon.name: "go-up"
             enabled: root.activeIndex > 0
@@ -130,7 +144,7 @@ Item {
             onClicked: root.nextSection()
         }
         Label {
-            visible: previousButton.activeFocus || nextButton.activeFocus
+            visible: menuButton.activeFocus || previousButton.activeFocus || nextButton.activeFocus
             text: root.sectionLabel(root.activeIndex)
             color: root.textColor
             font.pixelSize: 11

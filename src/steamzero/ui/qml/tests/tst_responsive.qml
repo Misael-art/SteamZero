@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import ".."
 
@@ -10,6 +11,93 @@ TestCase {
     Component {
         id: windowComponent
         Main { visible: false }
+    }
+
+    Component {
+        id: tokensComponent
+        UiTokens { viewportWidth: 1920; viewportHeight: 1080 }
+    }
+
+    Component {
+        id: navigatorHarnessComponent
+        Item {
+            property alias navigator: sectionNavigator
+            property alias scrollArea: scrollArea
+            width: 520
+            height: 320
+
+            Flickable {
+                id: scrollArea
+                width: 420
+                height: 240
+                contentWidth: width
+                contentHeight: 960
+                Item { id: firstAnchor; y: 0 }
+                Item { id: secondAnchor; y: 380 }
+                Item { id: thirdAnchor; y: 820 }
+            }
+            SectionNavigator {
+                id: sectionNavigator
+                flickable: scrollArea
+                reducedMotion: true
+                sections: [
+                    {"label": "Primeira", "item": firstAnchor},
+                    {"label": "Segunda", "item": secondAnchor},
+                    {"label": "Terceira", "item": thirdAnchor}
+                ]
+            }
+        }
+    }
+
+    Component {
+        id: focusHarnessComponent
+        Window {
+            property alias originButton: originButton
+            property alias sectionMenu: sectionMenu
+            width: 640
+            height: 480
+            visible: true
+
+            Button {
+                id: originButton
+                text: "Abrir seções"
+                anchors.centerIn: parent
+            }
+            SectionMenu {
+                id: sectionMenu
+                width: 360
+                x: (parent.width - width) / 2
+                y: (parent.height - height) / 2
+                sections: [
+                    {"label": "Primeira"},
+                    {"label": "Segunda"}
+                ]
+            }
+        }
+    }
+
+    function channelToLinear(channel) {
+        const normalized = channel / 255
+        return normalized <= 0.04045 ? normalized / 12.92
+            : Math.pow((normalized + 0.055) / 1.055, 2.4)
+    }
+
+    function luminance(hexColor) {
+        const hex = String(hexColor).replace("#", "").slice(-6)
+        const red = parseInt(hex.slice(0, 2), 16)
+        const green = parseInt(hex.slice(2, 4), 16)
+        const blue = parseInt(hex.slice(4, 6), 16)
+        return 0.2126 * channelToLinear(red)
+            + 0.7152 * channelToLinear(green)
+            + 0.0722 * channelToLinear(blue)
+    }
+
+    function contrastRatio(first, second) {
+        const firstLuminance = luminance(first)
+        const secondLuminance = luminance(second)
+        const lighter = Math.max(firstLuminance, secondLuminance)
+        const darker = Math.min(firstLuminance, secondLuminance)
+        return (lighter + 0.05) / (darker + 0.05)
     }
 
     function componentRow(state) {
@@ -122,5 +210,70 @@ TestCase {
         window.reducedMotionPreference = true
         compare(window.motionReduced, true)
         window.destroy()
+    }
+
+    function test_sectionNavigationUsesSemanticAnchors() {
+        const harness = createTemporaryObject(navigatorHarnessComponent, null)
+        verify(harness !== null)
+        verify(harness.navigator.visible)
+
+        harness.navigator.goTo(1)
+        compare(harness.navigator.activeIndex, 1)
+        compare(harness.scrollArea.contentY, 368)
+        compare(harness.navigator.sectionLabel(1), "Segunda · 2 de 3")
+
+        harness.navigator.nextSection()
+        compare(harness.navigator.activeIndex, 2)
+        compare(harness.scrollArea.contentY, 720)
+        harness.navigator.previousSection()
+        compare(harness.navigator.activeIndex, 1)
+        harness.destroy()
+    }
+
+    function test_sectionHistorySupportsBackNavigation() {
+        const window = createTemporaryObject(windowComponent, null)
+        verify(window !== null)
+        window.sectionIndex = 1
+        window.sectionHistory = []
+        window.navigateToSection(4)
+        compare(window.sectionIndex, 4)
+        compare(window.sectionHistory.length, 1)
+        compare(window.sectionHistory[0], 1)
+        window.navigateToSection(99)
+        compare(window.sectionIndex, 4)
+        compare(window.sectionHistory.length, 1)
+        window.goBack()
+        compare(window.sectionIndex, 1)
+        compare(window.sectionHistory.length, 0)
+        window.destroy()
+    }
+
+    function test_sectionMenuReturnsFocusToOrigin() {
+        const harness = createTemporaryObject(focusHarnessComponent, null)
+        verify(harness !== null)
+        harness.originButton.forceActiveFocus()
+        tryCompare(harness.originButton, "activeFocus", true)
+
+        harness.sectionMenu.returnFocusItem = harness.originButton
+        harness.sectionMenu.open()
+        tryCompare(harness.sectionMenu, "opened", true)
+        verify(!harness.originButton.activeFocus)
+        harness.sectionMenu.close()
+        tryCompare(harness.originButton, "activeFocus", true)
+        harness.destroy()
+    }
+
+    function test_textTokensMeetEssentialContrastThresholds() {
+        const tokens = createTemporaryObject(tokensComponent, null)
+        verify(tokens !== null)
+        verify(contrastRatio(tokens.text, tokens.background) >= 7.0)
+        verify(contrastRatio(tokens.muted, tokens.background) >= 4.5)
+        verify(contrastRatio(tokens.cyan, tokens.background) >= 4.5)
+
+        tokens.highContrast = true
+        verify(contrastRatio(tokens.text, tokens.background) >= 7.0)
+        verify(contrastRatio(tokens.muted, tokens.background) >= 7.0)
+        verify(contrastRatio(tokens.cyan, tokens.background) >= 7.0)
+        tokens.destroy()
     }
 }

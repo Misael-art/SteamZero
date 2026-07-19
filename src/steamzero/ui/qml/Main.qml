@@ -148,6 +148,12 @@ ApplicationWindow {
     property bool syncExplanationVisible: false
     property Item emulatorDrawerReturnItem: null
     property Item steamDrawerReturnItem: null
+    property Item conflictDialogReturnItem: null
+    property Item componentDialogReturnItem: null
+    property Item resetDialogReturnItem: null
+    property Item recoveryDialogReturnItem: null
+    property var sectionHistory: []
+    property var sectionFocusItems: ({})
 
     signal planRequested(string profile)
     signal recoveryRequested()
@@ -198,6 +204,87 @@ ApplicationWindow {
             recoveryPromptShown = true
             Qt.callLater(recoveryDialog.open)
         }
+    }
+
+    function rememberSectionFocus() {
+        if (!root.activeFocusItem)
+            return
+        const remembered = Object.assign({}, sectionFocusItems)
+        remembered[sectionIndex] = root.activeFocusItem
+        sectionFocusItems = remembered
+    }
+
+    function navigateToSection(index, rememberHistory) {
+        const destination = Number(index)
+        if (!Number.isInteger(destination) || destination < 0 || destination > 5)
+            return
+        if (destination === sectionIndex)
+            return
+        rememberSectionFocus()
+        if (rememberHistory !== false) {
+            const history = sectionHistory.slice()
+            if (history.length === 0 || history[history.length - 1] !== sectionIndex)
+                history.push(sectionIndex)
+            sectionHistory = history.slice(-12)
+        }
+        sectionIndex = destination
+        Qt.callLater(sectionNavigator.updateActiveSection)
+    }
+
+    function restoreFocus(item) {
+        if (item)
+            Qt.callLater(function() { item.forceActiveFocus(Qt.OtherFocusReason) })
+    }
+
+    function openRecoveryDialog() {
+        recoveryDialogReturnItem = root.activeFocusItem
+        recoveryDialog.open()
+    }
+
+    function openSectionMenu() {
+        if (!sectionNavigator.visible)
+            return
+        sectionMenu.returnFocusItem = root.activeFocusItem
+        sectionMenu.currentIndex = sectionNavigator.activeIndex
+        sectionMenu.open()
+    }
+
+    function goBack() {
+        if (sectionMenu.opened) {
+            sectionMenu.close()
+            return
+        }
+        if (emulatorInspectorDrawer.opened) {
+            emulatorInspectorDrawer.close()
+            return
+        }
+        if (steamInspectorDrawer.opened) {
+            steamInspectorDrawer.close()
+            return
+        }
+        if (conflictDialog.opened) {
+            conflictDialog.close()
+            return
+        }
+        if (componentDialog.opened) {
+            componentDialog.close()
+            return
+        }
+        if (resetDialog.opened) {
+            resetDialog.close()
+            return
+        }
+        if (recoveryDialog.opened)
+            return
+        if (sectionHistory.length === 0)
+            return
+        const history = sectionHistory.slice()
+        const destination = history.pop()
+        sectionHistory = history
+        sectionIndex = destination
+        const target = sectionFocusItems[destination]
+        restoreFocus(target)
+        Qt.callLater(sectionNavigator.updateActiveSection)
     }
 
     function notify(message, isError) {
@@ -270,7 +357,7 @@ ApplicationWindow {
             ensureSelections()
             if (desktopStatus.recoveryRequired && !recoveryPromptShown) {
                 recoveryPromptShown = true
-                recoveryDialog.open()
+                root.openRecoveryDialog()
             }
             if (message)
                 notify(message, false)
@@ -508,6 +595,7 @@ ApplicationWindow {
             return
         const kind = row.action.kind
         if (kind === "component-plan") {
+            componentDialogReturnItem = root.activeFocusItem
             request("POST", "/component/plan", {"componentId": row.id}, function(response) {
                 componentPlan = response.plan
                 componentDialog.open()
@@ -531,6 +619,7 @@ ApplicationWindow {
             notify(qsTr("Este conflito não possui correção automática allowlisted"), true)
             return
         }
+        conflictDialogReturnItem = root.activeFocusItem
         const action = desktopStatus.conflictActions[0]
         request("POST", "/conflict/plan", {"actionId": action.actionId}, function(response) {
             conflictPlan = response.plan
@@ -539,6 +628,7 @@ ApplicationWindow {
     }
 
     function beginQuickReset() {
+        resetDialogReturnItem = root.activeFocusItem
         request("POST", "/plan", {"profile": "safe"}, function(response) {
             currentPlan = response.plan
             resetDialog.open()
@@ -578,15 +668,30 @@ ApplicationWindow {
         enabled: sectionNavigator.visible
         onActivated: sectionNavigator.nextSection()
     }
+    Shortcut {
+        sequence: "F6"
+        enabled: sectionNavigator.visible
+        onActivated: root.openSectionMenu()
+    }
+    Shortcut {
+        sequence: "Escape"
+        onActivated: root.goBack()
+    }
 
     Dialog {
         id: conflictDialog
         title: qsTr("Resolver conflito de controle")
         modal: true
+        closePolicy: Popup.NoAutoClose
         width: Math.min(root.width - 48, 720)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: {
+            const target = root.conflictDialogReturnItem
+            root.conflictDialogReturnItem = null
+            root.restoreFocus(target)
+        }
 
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.amberColor }
         contentItem: ColumnLayout {
@@ -622,7 +727,8 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
-            RowLayout {
+            GridLayout {
+                columns: ui.compact ? 1 : 2
                 Layout.fillWidth: true
                 Button {
                     text: qsTr("Cancelar")
@@ -659,10 +765,16 @@ ApplicationWindow {
             ? (root.componentPlan.action === "install" ? qsTr("Revisar instalação") : qsTr("Revisar atualização"))
             : qsTr("Revisar componente")
         modal: true
+        closePolicy: Popup.NoAutoClose
         width: Math.min(root.width - 48, 720)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: {
+            const target = root.componentDialogReturnItem
+            root.componentDialogReturnItem = null
+            root.restoreFocus(target)
+        }
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.cyanDarkColor }
         contentItem: ColumnLayout {
             spacing: 14
@@ -683,7 +795,8 @@ ApplicationWindow {
                 Layout.minimumHeight: 132
                 Accessible.name: qsTr("Prévia da operação")
             }
-            RowLayout {
+            GridLayout {
+                columns: ui.compact ? 1 : 2
                 Layout.fillWidth: true
                 Button {
                     text: qsTr("Cancelar")
@@ -719,10 +832,16 @@ ApplicationWindow {
         id: resetDialog
         title: qsTr("Restauração rápida")
         modal: true
+        closePolicy: Popup.NoAutoClose
         width: Math.min(root.width - 48, 620)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: {
+            const target = root.resetDialogReturnItem
+            root.resetDialogReturnItem = null
+            root.restoreFocus(target)
+        }
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.amberColor }
         contentItem: ColumnLayout {
             spacing: 14
@@ -738,7 +857,8 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
-            RowLayout {
+            GridLayout {
+                columns: ui.compact ? 1 : 2
                 Layout.fillWidth: true
                 Button {
                     text: qsTr("Cancelar")
@@ -776,6 +896,11 @@ ApplicationWindow {
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: {
+            const target = root.recoveryDialogReturnItem
+            root.recoveryDialogReturnItem = null
+            root.restoreFocus(target)
+        }
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.amberColor; border.width: 2 }
         contentItem: ColumnLayout {
             spacing: 16
@@ -800,6 +925,20 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    SectionMenu {
+        id: sectionMenu
+        width: Math.min(root.width - 32, 420)
+        x: Math.round((root.width - width) / 2)
+        y: Math.round((root.height - height) / 2)
+        sections: root.currentSections()
+        surfaceColor: root.raisedColor
+        borderColor: root.borderColor
+        textColor: root.textColor
+        mutedColor: root.mutedColor
+        accentColor: root.cyanColor
+        onSectionChosen: function(index) { sectionNavigator.goTo(index) }
     }
 
     AdaptiveInspector {
@@ -1016,7 +1155,7 @@ ApplicationWindow {
                             KeyNavigation.up: index > 0 ? navRepeater.itemAt(index - 1) : quickResetButton
                             KeyNavigation.down: index + 1 < navRepeater.count
                                 ? navRepeater.itemAt(index + 1) : attentionButton
-                            onClicked: root.sectionIndex = index
+                            onClicked: root.navigateToSection(index)
                             background: Rectangle {
                                 color: root.sectionIndex === parent.index ? "#183044" : "transparent"
                                 radius: 7
@@ -1078,7 +1217,7 @@ ApplicationWindow {
                         ToolTip.text: text
                         KeyNavigation.up: navRepeater.itemAt(navRepeater.count - 1)
                         KeyNavigation.down: quickResetButton
-                        onClicked: root.sectionIndex = 5
+                        onClicked: root.navigateToSection(5)
                         background: Rectangle { color: "#211a10"; radius: 7; border.color: "#59401f" }
                         contentItem: RowLayout {
                             ToolButton {
@@ -1152,7 +1291,7 @@ ApplicationWindow {
                         }
                         KeyNavigation.up: quickResetButton
                         KeyNavigation.down: doctorButton
-                        onClicked: root.sectionIndex = 4
+                        onClicked: root.navigateToSection(4)
                     }
                     DarkButton {
                         id: doctorButton
@@ -1171,7 +1310,7 @@ ApplicationWindow {
                         }
                         KeyNavigation.up: cloudSyncButton
                         KeyNavigation.down: navRepeater.itemAt(0)
-                        onClicked: root.sectionIndex = 5
+                        onClicked: root.navigateToSection(5)
                     }
                     RowLayout {
                         Layout.fillWidth: true
@@ -1283,7 +1422,7 @@ ApplicationWindow {
                                     if (root.alertExpanded)
                                         root.beginConflictResolution()
                                     else
-                                        root.sectionIndex = 5
+                                        root.navigateToSection(5)
                                 }
                             }
                         }
@@ -1363,7 +1502,8 @@ ApplicationWindow {
                                             Layout.minimumHeight: 48
                                             Accessible.name: text
                                             onClicked: root.hasConflicts ? root.beginConflictResolution()
-                                                : root.desktopStatus.recoveryRequired ? recoveryDialog.open() : root.sectionIndex = 5
+                                                : root.desktopStatus.recoveryRequired ? root.openRecoveryDialog()
+                                                : root.navigateToSection(5)
                                         }
                                     }
                                 }
@@ -1390,7 +1530,7 @@ ApplicationWindow {
                                         Layout.rightMargin: ui.pageMargin
                                         implicitHeight: contentItem.implicitHeight + 16
                                         Accessible.name: qsTr("%1: %2").arg(modelData.title).arg(modelData.detail)
-                                        onClicked: root.sectionIndex = modelData.target
+                                        onClicked: root.navigateToSection(modelData.target)
                                         contentItem: RowLayout {
                                             ToolButton { enabled: false; icon.name: modelData.icon; icon.color: root.cyanColor; background: Item {} }
                                             ColumnLayout {
@@ -1430,7 +1570,7 @@ ApplicationWindow {
                                             icon.name: "security-medium"
                                             Layout.minimumHeight: 48
                                             Accessible.name: text
-                                            onClicked: recoveryDialog.open()
+                                            onClicked: root.openRecoveryDialog()
                                         }
                                     }
                                     Label { text: root.deviceSummary(); color: root.mutedColor; font.pixelSize: 12 }
@@ -2379,7 +2519,7 @@ ApplicationWindow {
                                         Layout.fillWidth: true
                                         Layout.minimumHeight: ui.targetSize
                                         Accessible.name: text
-                                        onClicked: recoveryDialog.open()
+                                        onClicked: root.openRecoveryDialog()
                                     }
                                 }
                             }
@@ -2443,6 +2583,7 @@ ApplicationWindow {
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
+                    onMenuRequested: root.openSectionMenu()
                 }
             }
 
@@ -2461,6 +2602,8 @@ ApplicationWindow {
             mutedColor: root.mutedColor
             targetHeight: ui.footerHeight
             showContextAction: root.sectionIndex === 1 || root.sectionIndex === 2
+            sectionNavigationAvailable: sectionNavigator.visible
+            sectionListAvailable: sectionNavigator.visible
             Layout.fillWidth: true
         }
     }

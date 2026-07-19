@@ -7,15 +7,23 @@ Rectangle {
     id: root
     property bool compact: false
     property bool showContextAction: false
+    property bool sectionNavigationAvailable: false
+    property bool sectionListAvailable: false
     property color backgroundColor: "#080d13"
     property color borderColor: "#2a3a49"
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property int targetHeight: 52
-    property var commands: compact
-        ? [qsTr("D-PAD  Navegar"), qsTr("A  Selecionar"), qsTr("B  Voltar")]
-        : [qsTr("STEAM  Menu"), qsTr("D-PAD  Navegar"), qsTr("A  Selecionar"),
-           qsTr("B  Voltar")]
+    property var commands: {
+        const result = compact
+            ? [qsTr("D-PAD  Navegar"), qsTr("A  Selecionar"), qsTr("Esc  Voltar")]
+            : [qsTr("D-PAD  Navegar"), qsTr("A  Selecionar"), qsTr("Esc  Voltar")]
+        if (sectionNavigationAvailable)
+            result.unshift(qsTr("PgUp/PgDn  Seções"))
+        if (sectionListAvailable && !compact)
+            result.unshift(qsTr("F6  Lista de seções"))
+        return result
+    }
 
     color: backgroundColor
     border.color: borderColor
@@ -35,7 +43,7 @@ Rectangle {
                 required property string modelData
                 text: modelData
                 color: index === 0 ? root.mutedColor : root.textColor
-                font.pixelSize: root.compact ? 11 : 13
+                font.pixelSize: root.compact ? 10 : 13
                 font.bold: index === 0
                 elide: Text.ElideRight
                 Layout.fillWidth: true
