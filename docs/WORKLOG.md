@@ -635,3 +635,23 @@ com **367 passed** e todos os gates estáticos verdes; `git diff --check` verde.
 loading, contraste, alertas compacto/expandido e menu de seções; Full HD com Steam,
 perfis, sync com dados e conflito; ultrawide vazio; 4K desktop e preset TV. Nenhum adapter,
 domínio, schema ou contrato de payload foi alterado nesta sessão.
+
+## 2026-07-18 — Sessão 13: ícones modernos no rail portátil e verdade operacional
+
+**Rail do Steam Deck:** as iniciais textuais da navegação compacta foram substituídas por
+seis glifos vetoriais distintos para Visão geral, Emuladores, Steam, Perfis, Saves e Sync
+e Sistema. Seleção, foco, contraste, tooltip e nomes acessíveis continuam preservados; os
+alvos permanecem com no mínimo 48 px. O footer compacto passou a respeitar tipografia de
+12 px e o navegador semântico aplica a mesma métrica mínima a todos os controles.
+
+**Verdade operacional:** a QML não fabrica mais Dolphin, DuckStation, RetroArch, Steam,
+perfil ou prontidão enquanto o read model não chegou. Estado ausente ou malformado produz
+coleções vazias, doctor `unverified` e ambiente não pronto. Fixtures sintéticas continuam
+restritas aos testes e às capturas, sem alterar adapters, domínio ou contratos de payload.
+
+**QA (`verified-dev`):** os goldens do Deck para overview, lista com dados e empty state
+foram atualizados, e uma captura dedicada documenta os ícones do rail em 1280×800.
+`qmllint` passou; Qt Quick Test terminou com **16 passed**, incluindo cobertura dos seis
+glifos, ausência de fallback operacional e métricas portáteis; `make check` passou com
+**367 testes**, format/lint/boundaries/independence/mypy verdes. O smoke Qt 6 offscreen
+permaneceu ativo até o timeout esperado, sem diagnóstico de runtime.
