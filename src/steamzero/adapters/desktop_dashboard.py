@@ -16,6 +16,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.desktop_kde import input_method_status
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
@@ -300,12 +301,24 @@ class DesktopDashboard:
                 "truthState": "degraded",
             }
 
+        try:
+            im_status = input_method_status()
+        except Exception as exc:
+            im_status = {
+                "state": "unknown",
+                "detail": str(exc)[:240],
+                "configuredInputMethod": None,
+                "preferredInputMethod": None,
+                "serverRunning": False,
+            }
+
         return {
             "components": components,
             "steam": self._steam.rows(desktop_status),
             "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
+            "inputMethod": im_status,
         }
 
     def plan_steam_gameplay(

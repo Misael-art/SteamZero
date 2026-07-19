@@ -42,6 +42,9 @@ ColumnLayout {
     readonly property bool keyboardAvailable: capabilities.indexOf("steam-keyboard") >= 0
         || capabilities.indexOf("plasma-keyboard") >= 0
         || capabilities.indexOf("kwin-virtual-keyboard") >= 0
+    readonly property var inputMethod: desktopStatus.dashboard && desktopStatus.dashboard.inputMethod
+        ? desktopStatus.dashboard.inputMethod
+        : {"state": "unknown", "detail": qsTr("Status do teclado virtual ainda não carregado.")}
     readonly property var directBoot: sessionManager && sessionManager.directBoot
         ? sessionManager.directBoot : ({"state": "available", "configured": false})
 
@@ -268,14 +271,42 @@ ColumnLayout {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: qsTr("Teclado virtual"); color: panel.textColor; Layout.fillWidth: true }
-                    Label { text: panel.keyboardAvailable ? qsTr("Disponível") : qsTr("Ausente"); color: panel.keyboardAvailable ? panel.greenColor : panel.amberColor }
+                    Label {
+                        text: panel.inputMethod.state === "available" ? qsTr("Ativo")
+                            : panel.inputMethod.state === "configured-restart-needed" ? qsTr("Reinício necessário")
+                            : panel.inputMethod.state === "unconfigured" ? qsTr("Não configurado")
+                            : panel.inputMethod.state === "missing" ? qsTr("Indisponível")
+                            : qsTr("Verificando")
+                        color: panel.inputMethod.state === "available" ? panel.greenColor
+                            : panel.inputMethod.state === "configured-restart-needed" ? panel.amberColor
+                            : panel.redColor
+                    }
                     Button {
-                        text: qsTr("Abrir teclado")
-                        enabled: panel.keyboardAvailable
+                        text: panel.inputMethod.state === "available" ? qsTr("Abrir teclado")
+                            : panel.inputMethod.state === "configured-restart-needed" ? qsTr("Reiniciar sessão")
+                            : panel.inputMethod.state === "unconfigured" ? qsTr("Configurar")
+                            : qsTr("Ver detalhes")
+                        enabled: panel.inputMethod.state !== "unknown"
                         Layout.minimumHeight: 48
                         Accessible.name: text
-                        onClicked: panel.keyboardRequested()
+                        onClicked: {
+                            if (panel.inputMethod.state === "available") {
+                                panel.keyboardRequested()
+                            } else if (panel.inputMethod.state === "configured-restart-needed") {
+                                panel.systemRequested()
+                            } else if (panel.inputMethod.state === "unconfigured") {
+                                panel.profilePlanRequested("auto")
+                            }
+                        }
                     }
+                }
+                Label {
+                    visible: panel.inputMethod.state !== "available"
+                    text: panel.inputMethod.detail
+                    color: panel.mutedColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    font.pixelSize: 12
                 }
                 RowLayout {
                     Layout.fillWidth: true
