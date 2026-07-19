@@ -8,6 +8,7 @@ mockado foi adicionado ao runtime.
 |---|---|
 | `deck-overview-1280x800.png` | rail portátil, prontidão contextual e footer compacto |
 | `deck-navigation-icons-1280x800.png` | rail portátil com glifos modernos, distintos e sem iniciais textuais |
+| `deck-accessibility-menu-1280x800.png` | preferências visuais acessíveis no rail portátil |
 | `deck-alert-expanded-1280x800.png` | alerta global novo ou bloqueante, com explicação e ação |
 | `deck-alert-compact-1280x800.png` | alerta reconhecido sem duplicar o diagnóstico completo |
 | `deck-emulators-data-1280x800.png` | lista com estados reais variáveis e ações preservadas |

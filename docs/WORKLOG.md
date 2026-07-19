@@ -649,9 +649,13 @@ perfil ou prontidão enquanto o read model não chegou. Estado ausente ou malfor
 coleções vazias, doctor `unverified` e ambiente não pronto. Fixtures sintéticas continuam
 restritas aos testes e às capturas, sem alterar adapters, domínio ou contratos de payload.
 
+**Acessibilidade acionável:** o rail expõe preferências visuais com retorno de foco para
+alto contraste, redução de movimento e escala de interface entre 100% e 150%. As opções
+são estritamente apresentacionais e não disparam nem simulam mudanças operacionais.
+
 **QA (`verified-dev`):** os goldens do Deck para overview, lista com dados e empty state
 foram atualizados, e uma captura dedicada documenta os ícones do rail em 1280×800.
-`qmllint` passou; Qt Quick Test terminou com **16 passed**, incluindo cobertura dos seis
-glifos, ausência de fallback operacional e métricas portáteis; `make check` passou com
+`qmllint` passou; Qt Quick Test terminou com **17 passed**, incluindo cobertura dos seis
+glifos, preferências visuais, ausência de fallback operacional e métricas portáteis; `make check` passou com
 **367 testes**, format/lint/boundaries/independence/mypy verdes. O smoke Qt 6 offscreen
 permaneceu ativo até o timeout esperado, sem diagnóstico de runtime.
