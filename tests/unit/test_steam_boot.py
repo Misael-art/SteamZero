@@ -554,6 +554,48 @@ def test_disable_removes_only_owned_integration(
     assert ["/usr/bin/grub-mkconfig", "-o", str(layout.grub_config)] in calls
 
 
+def test_disable_failure_restores_files_and_systemd_enablement(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    managed_files = {
+        layout.config: f"{steam_boot._MANAGED}\nmisael\n",
+        layout.unit: f"{steam_boot._MANAGED}\n[Unit]\n",
+        layout.grub_script: f"{steam_boot._MANAGED}\n",
+        layout.sddm_config: f"{steam_boot._MANAGED}\n[Autologin]\n",
+    }
+    for path, content in managed_files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    layout.grub_config.parent.mkdir(parents=True, exist_ok=True)
+    original_grub = b"menuentry --id=steamzero-gamemode { steamzero.gamemode=1 }\n"
+    layout.grub_config.write_bytes(original_grub)
+    calls: list[list[str]] = []
+
+    def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        if argv[1:2] == ["is-enabled"]:
+            return subprocess.CompletedProcess(argv, 0, "enabled\n", "")
+        if argv[0].endswith("grub-mkconfig"):
+            layout.grub_config.write_text(
+                "menuentry --id=steamzero-gamemode { steamzero.gamemode=1 }\n",
+                encoding="utf-8",
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    with pytest.raises(SteamZeroError, match="deveria estar ausente"):
+        steam_boot.disable(
+            layout,
+            runner=runner,
+            which=lambda name: f"/usr/bin/{name}",
+            user_lookup=_user,
+            geteuid=lambda: 0,
+        )
+
+    for path, content in managed_files.items():
+        assert path.read_text(encoding="utf-8") == content
+    assert layout.grub_config.read_bytes() == original_grub
+    assert ["/usr/bin/systemctl", "enable", layout.unit.name] in calls
+
+
 def test_disable_requires_root_and_owned_files(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

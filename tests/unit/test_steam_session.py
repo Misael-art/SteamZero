@@ -107,6 +107,21 @@ def test_session_refuses_to_replace_an_existing_desktop() -> None:
     assert error.value.code == "E-SESSION-LAUNCH-FAILED"
 
 
+def test_missing_gamescope_does_not_start_nested_desktop() -> None:
+    with pytest.raises(SteamZeroError) as error:
+        steam_session.run_session(
+            which=_which(
+                {
+                    "steam": "/usr/bin/steam",
+                    "startplasma-wayland": "/usr/bin/startplasma-wayland",
+                }
+            ),
+            environ={"WAYLAND_DISPLAY": "wayland-0"},
+            boot_status=_boot_status,
+        )
+    assert error.value.code == "E-SESSION-LAUNCH-FAILED"
+
+
 def test_session_uses_distro_gamescope_wrapper_then_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

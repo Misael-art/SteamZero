@@ -848,6 +848,18 @@ def disable(
         raise SteamZeroError(
             "E-SESSION-LAUNCH-FAILED", detail="systemd ou grub-mkconfig indisponível"
         )
+    was_enabled = (
+        runner(
+            [systemctl, "is-enabled", layout.unit.name],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            text=True,
+            timeout=30,
+        ).returncode
+        == 0
+    )
     previous = {
         path: path.read_bytes() if path.is_file() and not path.is_symlink() else None
         for path in (
@@ -879,6 +891,12 @@ def disable(
                 else 0o644
             )
             fs.write_atomic(path, content, mode=mode)
+        with contextlib.suppress(Exception):
+            _run([systemctl, "daemon-reload"], runner=runner)
+            _run(
+                [systemctl, "enable" if was_enabled else "disable", layout.unit.name],
+                runner=runner,
+            )
         raise
     return {"state": "disabled", "session": None}
 

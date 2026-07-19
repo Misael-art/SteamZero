@@ -110,6 +110,14 @@ def run_session(
     desktop = _desktop_command(which)
     if desktop is None:
         raise SteamZeroError("E-SESSION-LAUNCH-FAILED", detail="fallback Plasma indisponível")
+    environment = dict(os.environ if environ is None else environ)
+    if (environment.get("WAYLAND_DISPLAY") or environment.get("DISPLAY")) and environment.get(
+        "STEAMZERO_ALLOW_NESTED_SESSION"
+    ) != "1":
+        raise SteamZeroError(
+            "E-SESSION-LAUNCH-FAILED",
+            detail="recusando iniciar Game Mode dentro de uma sessão gráfica existente",
+        )
     steam = which("steam")
     gamescope = which("gamescope")
     session_wrapper = which("gamescope-session-plus")
@@ -122,14 +130,6 @@ def run_session(
         or session_wrapper is None
     ):
         return _exec_desktop(desktop)
-    environment = dict(os.environ if environ is None else environ)
-    if (environment.get("WAYLAND_DISPLAY") or environment.get("DISPLAY")) and environment.get(
-        "STEAMZERO_ALLOW_NESTED_SESSION"
-    ) != "1":
-        raise SteamZeroError(
-            "E-SESSION-LAUNCH-FAILED",
-            detail="recusando iniciar Game Mode dentro de uma sessão gráfica existente",
-        )
     fs.ensure_dir(paths.runtime_dir(), mode=0o700)
     target_path = _target_path()
     executable_dir = str(Path(sys.executable).resolve().parent)
