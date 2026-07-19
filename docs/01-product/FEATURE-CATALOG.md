@@ -2,6 +2,8 @@
 
 Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do roadmap.
 
+> Visão técnica de proveniência (262 funções, incluindo internas do núcleo, classificadas em Inspiração/Adaptação/Aprimoramento/Novo com evidência `arquivo:linha`): [FUNCTION-PROVENANCE-MATRIX](../02-research/FUNCTION-PROVENANCE-MATRIX.md).
+
 ## Ciclo de vida de componentes
 
 | ID | Funcionalidade | Origem conceitual | Fase |

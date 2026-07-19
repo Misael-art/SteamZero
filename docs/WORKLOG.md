@@ -574,6 +574,15 @@ e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendent
 instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
 registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
 
+## 2026-07-15 — Sessão de pesquisa: quadro de funções e proveniência
+
+- Criado `docs/02-research/FUNCTION-PROVENANCE-MATRIX.md`: **262 funções** (camada de usuário + internas do núcleo) em 15 seções, cada uma classificada por proveniência com evidência.
+- Taxonomia de 4 níveis (decidida com o responsável): **INSP** (conceito, implementação independente) · **ADAP** (deriva de artefato concreto — sujeito à licença) · **APRI** (existe no original com falha documentada que corrigimos, citando `arquivo:linha`) · **NOVO** (nenhum dos quatro entrega, citando `GA-xx`).
+- Contagens apuradas por script (não estimadas): NOVO 117 (44,7%) · INSP 104 (39,7%) · APRI 37 (14,1%) · **ADAP 4 (1,5%)**. Citações de origem nas 145 linhas rastreáveis: PhaseZero 93 · RetroDECK 47 · EmuDeck 41 · LinuxToys 11 — confirmando quantitativamente a tese da ROBUSTNESS-SCORE (PZ=execução, RD=plataforma, ED=domínio, LT=forma).
+- **Achado com impacto legal:** apenas 4 funções (templates de config do ED, estrutura `roms/`, banco de hashes de BIOS, perfis Steam Input) são ADAP. **258 das 262 (98,5%) independem da decisão de licença (Q2/ADR-0013)** e todas as 4 têm alternativa documentada — a licença deixa de ser bloqueador de implementação e passa a ser decisão de custo sobre 4 artefatos.
+- Escopo Handheld Desktop (F-HD-01..05, ADR-0019/M10-H), acrescentado durante a implementação, teve a proveniência apurada e entrou como seção 13.5 (SZ-HD-01..12).
+- Verificações de consistência executadas e verdes: cobertura de todos os `F-xx` do FEATURE-CATALOG; zero `GA-xx` órfão; zero ID `SZ-*` duplicado.
+
 ## 2026-07-18 — Sessão 31: robustez e resiliência do boot Game Mode
 
 **Evidência física incorporada:** o responsável confirmou que a entrada SteamZero chegou
