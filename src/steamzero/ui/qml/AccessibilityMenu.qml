@@ -15,6 +15,7 @@ Popup {
     property color mutedColor: "#9eabba"
     property color accentColor: "#13bdf2"
     property int minimumTarget: 48
+    property real visualScale: 1.0
 
     signal highContrastRequested(bool enabled)
     signal reducedMotionRequested(bool enabled)
@@ -54,13 +55,14 @@ Popup {
         Label {
             text: qsTr("Acessibilidade visual")
             color: root.textColor
-            font.pixelSize: 20
+            font.pixelSize: Math.round(20 * root.visualScale)
             font.bold: true
             Layout.fillWidth: true
         }
         Label {
             text: qsTr("As alterações são imediatas e não modificam o estado operacional.")
             color: root.mutedColor
+            font.pixelSize: Math.round(13 * root.visualScale)
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -68,6 +70,7 @@ Popup {
             id: highContrastSwitch
             text: qsTr("Alto contraste")
             checked: root.highContrast
+            font.pixelSize: Math.round(14 * root.visualScale)
             Layout.fillWidth: true
             Layout.minimumHeight: root.minimumTarget
             Accessible.name: text
@@ -77,6 +80,7 @@ Popup {
             id: reducedMotionSwitch
             text: qsTr("Reduzir movimento")
             checked: root.reducedMotion
+            font.pixelSize: Math.round(14 * root.visualScale)
             Layout.fillWidth: true
             Layout.minimumHeight: root.minimumTarget
             Accessible.name: text
@@ -86,6 +90,7 @@ Popup {
             text: qsTr("Escala da interface")
             color: root.textColor
             font.bold: true
+            font.pixelSize: Math.round(14 * root.visualScale)
             Layout.fillWidth: true
         }
         ComboBox {
@@ -97,6 +102,7 @@ Popup {
             ]
             textRole: "label"
             currentIndex: root.scaleIndex()
+            font.pixelSize: Math.round(14 * root.visualScale)
             Layout.fillWidth: true
             Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Escala da interface: %1").arg(currentText)
@@ -104,6 +110,7 @@ Popup {
         }
         Button {
             text: qsTr("Concluir")
+            font.pixelSize: Math.round(14 * root.visualScale)
             Layout.fillWidth: true
             Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Fechar preferências de acessibilidade")

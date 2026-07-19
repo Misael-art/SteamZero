@@ -951,6 +951,7 @@ ApplicationWindow {
         mutedColor: root.mutedColor
         accentColor: root.cyanColor
         minimumTarget: ui.targetSize
+        visualScale: ui.visualScale
         onHighContrastRequested: function(enabled) { root.highContrastPreference = enabled }
         onReducedMotionRequested: function(enabled) { root.reducedMotionPreference = enabled }
         onTextScaleRequested: function(scale) { root.interfaceScalePreference = scale }

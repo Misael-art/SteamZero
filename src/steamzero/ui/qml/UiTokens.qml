@@ -19,9 +19,8 @@ QtObject {
     readonly property int sidebarWidth: compact ? 72 : television ? 300 : 248
     readonly property int pageMargin: compact ? 16 : television ? 36 : 24
     readonly property int gap: compact ? 12 : television ? 24 : 16
-    readonly property int targetSize: Math.round((television ? 64 : 48) * visualScale)
-    readonly property int footerHeight: Math.max(compact ? 46 : television ? 64 : 52,
-        targetSize + (compact ? 6 : 4))
+    readonly property int targetSize: television ? 64 : 48
+    readonly property int footerHeight: compact ? 46 : television ? 64 : 52
     readonly property int inspectorWidth: Math.round((wide ? 400 : 344)
         * Math.min(visualScale, 1.25))
     readonly property int maximumContentWidth: wide ? 1920 : 1760

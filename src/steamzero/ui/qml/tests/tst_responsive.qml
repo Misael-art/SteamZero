@@ -303,7 +303,8 @@ TestCase {
         window.reducedMotionPreference = true
         compare(window.motionReduced, true)
         window.interfaceScalePreference = 1.5
-        compare(window.minimumInteractiveTarget, 72)
+        compare(window.minimumInteractiveTarget, 48)
+        verify(window.sidebarLogicalWidth >= 72)
         window.destroy()
     }
 
