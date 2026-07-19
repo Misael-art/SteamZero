@@ -638,3 +638,21 @@ falhas consecutivas.
 **Provas finais:** testes novos cobrem o seletor nativo `plasma`, publicação/ownership do link,
 limpeza do `next_entry` e recusa quando a variável permanece. Ruff, formato, fronteiras,
 independência e mypy verdes; **407 passed**. Commits desta validação: `d015a40` e `b075ead`.
+
+## 2026-07-18 — Sessão 33: fechamento conservador de rollback e sessão
+
+**Rollback completo:** uma falha durante `disable` agora restaura, além dos arquivos e do
+`grub.cfg`, o estado anterior de habilitação da unidade systemd e recarrega sua definição.
+O teste de regressão injeta uma saída GRUB inválida após o `disable` e prova a recuperação
+dos bytes e do `systemctl enable` original.
+
+**Contenção de sessão:** o launcher verifica `WAYLAND_DISPLAY`/`DISPLAY` antes do fallback
+por dependência. Assim, Steam ou Gamescope ausente nunca provoca um segundo Plasma dentro de
+uma sessão gráfica existente; o override explícito de desenvolvimento permanece disponível.
+
+**Provas desta sessão:** `make check` verde (formato, Ruff, fronteiras, independência, mypy
+estrito e **409 passed**); cobertura **85%** global, `steam_boot` **85%** e `steam_session`
+**81%**. Wheel final instalado com dependências travadas, SHA-256
+`91d440609762925e33577cb292a895c1cca4ab4d18c555dbde3874ed4f56c099`; CLI e os três
+entrypoints de Game Mode passaram no smoke read-only. Commit: `60edfa0`. Nenhuma mutação
+privilegiada, reinstalação host ou reboot físico foi executado nesta sessão.
