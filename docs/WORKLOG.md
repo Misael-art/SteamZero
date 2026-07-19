@@ -612,3 +612,29 @@ entrada para `vmlinuz-6.18-x86_64`/UUID real.
 
 **Commits:** `eee14ab` (backend/testes), `28e432e` (instalador/SessionDir) e `e535f3d`
 (P1-1, strings isoladas). Instalação root e novo reboot físico permanecem gates externos.
+
+## 2026-07-18 — Sessão 32: validação física Game Mode → Desktop
+
+**Boot real concluído:** o kernel iniciou com `root=UUID=307f0ecc-3ad9-4619-893d-28454cad339a`
+e `steamzero.gamemode=1`; o oneshot selecionou a sessão gerenciada no `SessionDir` efetivo do
+SDDM. `gamescope-session-plus@steam.service` iniciou Gamescope e o Steam com
+`-gamepadui -steamos3`. O cliente concluiu atualização/verificação e apresentou o Big Picture
+no Steam Deck LCD.
+
+**Handoff real para o Desktop:** o botão nativo registrou `target: plasma` às 20:59:41,
+encerrou Steam e Gamescope de forma ordenada e iniciou os serviços Plasma às 20:59:49. O
+Codex Desktop voltou na sessão KDE às 21:00:43. Para eliminar dependência indireta do seletor
+da distribuição, o instalador publica `/usr/local/bin/steamos-session-select` como link estável
+para o entrypoint SteamZero, sem alterar `/usr/bin` nem `/usr/lib/os-session-select`.
+
+**Falha encontrada no teste físico:** o BigLinux manteve
+`next_entry=steamzero-gamemode` no `grubenv` mesmo após consumir o boot único, por causa da
+combinação com `env_block`. O preparador agora remove exclusivamente esse identificador após
+observar o marcador SteamZero, recusa bloco inseguro ou limpeza ineficaz e deixa seleções
+alheias intactas. A release `0.1.0a33-b075ead` foi instalada mantendo a a32 para rollback;
+`prepare` removeu o valor persistente e `status` confirmou estado `ready`, zero backoff e zero
+falhas consecutivas.
+
+**Provas finais:** testes novos cobrem o seletor nativo `plasma`, publicação/ownership do link,
+limpeza do `next_entry` e recusa quando a variável permanece. Ruff, formato, fronteiras,
+independência e mypy verdes; **407 passed**. Commits desta validação: `d015a40` e `b075ead`.
