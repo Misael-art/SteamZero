@@ -81,6 +81,16 @@ TestCase {
         FeedbackNotice { width: 520 }
     }
 
+    Component {
+        id: footerComponent
+        ResponsiveFooter { width: 720; compact: true }
+    }
+
+    Component {
+        id: navigationIconComponent
+        NavigationIcon { width: 28; height: 28 }
+    }
+
     function channelToLinear(channel) {
         const normalized = channel / 255
         return normalized <= 0.04045 ? normalized / 12.92
@@ -174,6 +184,62 @@ TestCase {
         compare(window.sidebarLogicalWidth, 300)
         compare(window.minimumInteractiveTarget, 64)
         window.destroy()
+    }
+
+    function test_compactNavigationUsesModernIconsInsteadOfInitials() {
+        const window = createTemporaryObject(windowComponent, null)
+        verify(window !== null)
+        window.width = 1280
+        window.height = 800
+        window.desktopStatus = status("deck-lcd", [], {
+            "name": "eDP-1", "connected": true, "internal": true,
+            "width": 800, "height": 1280, "scale": 1.35
+        })
+        compare(window.compositionProfile, "compact")
+
+        const expectedGlyphs = ["overview", "emulators", "steam", "profiles", "sync", "system"]
+        for (let index = 0; index < expectedGlyphs.length; index++) {
+            const navigationItem = window.mainNavigationItem(index)
+            verify(navigationItem !== null)
+            compare(navigationItem.navigationIconItem.glyph, expectedGlyphs[index])
+            verify(navigationItem.navigationIconItem.visible)
+        }
+        window.destroy()
+    }
+
+    function test_navigationGlyphsCoverEveryPrimaryDestination() {
+        const glyphs = ["overview", "emulators", "steam", "profiles", "sync", "system"]
+        for (let index = 0; index < glyphs.length; index++) {
+            const icon = createTemporaryObject(navigationIconComponent, null, {"glyph": glyphs[index]})
+            verify(icon !== null)
+            compare(icon.glyph, glyphs[index])
+            verify(icon.implicitWidth >= 28)
+            verify(icon.implicitHeight >= 28)
+            icon.destroy()
+        }
+    }
+
+    function test_unverifiedStatusDoesNotInventOperationalData() {
+        const window = createTemporaryObject(windowComponent, null)
+        verify(window !== null)
+        window.desktopStatus = ({})
+        compare(window.emulatorItems.length, 0)
+        compare(window.steamItems.length, 0)
+        compare(window.doctorState, "unverified")
+        compare(window.environmentReady, false)
+        window.destroy()
+    }
+
+    function test_portableControlsRespectMinimumMetrics() {
+        const footer = createTemporaryObject(footerComponent, null)
+        verify(footer !== null)
+        verify(footer.compactTextSize >= 12)
+        footer.destroy()
+
+        const harness = createTemporaryObject(navigatorHarnessComponent, null)
+        verify(harness !== null)
+        verify(harness.navigator.minimumTarget >= 48)
+        harness.destroy()
     }
 
     function test_emptyFilterClearsSelection() {

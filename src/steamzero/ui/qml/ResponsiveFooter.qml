@@ -14,6 +14,8 @@ Rectangle {
     property color textColor: "#f2f6fb"
     property color mutedColor: "#9eabba"
     property int targetHeight: 52
+    property int compactTextSize: 12
+    property int textSize: 13
     property var commands: {
         const result = compact
             ? [qsTr("D-PAD  Navegar"), qsTr("A  Selecionar"), qsTr("Esc  Voltar")]
@@ -43,7 +45,7 @@ Rectangle {
                 required property string modelData
                 text: modelData
                 color: index === 0 ? root.mutedColor : root.textColor
-                font.pixelSize: root.compact ? 10 : 13
+                font.pixelSize: root.compact ? root.compactTextSize : root.textSize
                 font.bold: index === 0
                 elide: Text.ElideRight
                 Layout.fillWidth: true

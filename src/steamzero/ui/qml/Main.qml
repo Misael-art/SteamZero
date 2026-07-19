@@ -68,48 +68,21 @@ ApplicationWindow {
     readonly property bool motionReduced: ui.reducedMotion
 
     property var desktopStatus: ({
-        "effectiveProfile": "handheld-desktop",
-        "recommendedProfile": "handheld-desktop",
+        "effectiveProfile": "",
+        "recommendedProfile": "",
+        "manualOverride": null,
         "recoveryRequired": false,
-        "independentRuntime": true,
-        "context": {"deviceKind": "deck-lcd", "displays": [], "capabilities": [], "conflicts": []},
-        "dashboard": {"components": [], "steam": [], "sync": {}, "doctor": {"checks": []}}
+        "independentRuntime": false,
+        "context": {"deviceKind": "unknown", "displays": [], "capabilities": [], "conflicts": []},
+        "dashboard": {
+            "components": [], "steam": [], "sync": {},
+            "doctor": {"state": "unverified", "checks": []}
+        }
     })
-    property var fallbackComponents: [
-        {
-            "id": "dolphin", "name": "Dolphin", "description": "Emulador de Wii e GameCube",
-            "iconName": "dolphin-emu", "systems": ["Wii", "GameCube"], "state": "missing",
-            "statusLabel": "Não instalado", "versionLabel": "—", "targetVersion": "—",
-            "detail": "O status será atualizado quando a bridge local responder.",
-            "blockedReason": "", "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
-        },
-        {
-            "id": "duckstation", "name": "DuckStation", "description": "Emulador de PlayStation",
-            "iconName": "duckstation", "systems": ["PlayStation"], "state": "unsupported",
-            "statusLabel": "Fonte descontinuada", "versionLabel": "—", "targetVersion": "—",
-            "detail": "A origem validada está descontinuada.",
-            "blockedReason": "", "action": {"kind": "detail", "label": "Indisponível", "enabled": false}
-        },
-        {
-            "id": "retroarch", "name": "RetroArch", "description": "Plataforma multi-emulador",
-            "iconName": "retroarch", "systems": ["Múltiplos"], "state": "missing",
-            "statusLabel": "Não instalado", "versionLabel": "—", "targetVersion": "—",
-            "detail": "O status será atualizado quando a bridge local responder.",
-            "blockedReason": "", "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
-        }
-    ]
-    property var fallbackSteam: [
-        {
-            "id": "steam-client", "name": "Cliente Steam", "description": "Cliente oficial e modo Big Picture",
-            "iconName": "steam", "state": "missing", "statusLabel": "Verificando", "versionLabel": "—",
-            "detail": "O estado do Steam será atualizado pela bridge local.",
-            "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
-        }
-    ]
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
-        ? desktopStatus.dashboard.components : fallbackComponents
+        ? desktopStatus.dashboard.components : []
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
-        ? desktopStatus.dashboard.steam : fallbackSteam
+        ? desktopStatus.dashboard.steam : []
     readonly property var filteredEmulatorItems: filterRows(emulatorItems, emulatorFilter)
     readonly property var filteredSteamItems: filterRows(steamItems, steamFilter)
     readonly property bool hasConflicts: desktopStatus.context
@@ -124,7 +97,7 @@ ApplicationWindow {
     readonly property string doctorState: desktopStatus.dashboard && desktopStatus.dashboard.doctor
         ? desktopStatus.dashboard.doctor.state || "unverified" : "unverified"
     readonly property bool environmentReady: !hasConflicts && !desktopStatus.recoveryRequired
-        && doctorState !== "failed"
+        && doctorState === "healthy"
 
     property int sectionIndex: 1
     property int emulatorFilter: 0

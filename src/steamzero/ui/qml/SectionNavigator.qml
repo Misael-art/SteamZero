@@ -14,6 +14,7 @@ Item {
     property color mutedColor: "#9eabba"
     property color accentColor: "#13bdf2"
     property int activeIndex: 0
+    property int minimumTarget: 48
 
     signal menuRequested()
 
@@ -97,8 +98,8 @@ Item {
             id: menuButton
             text: "≡"
             font.pixelSize: 20
-            Layout.minimumWidth: 48
-            Layout.minimumHeight: 48
+            Layout.minimumWidth: root.minimumTarget
+            Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Abrir lista de seções")
             ToolTip.visible: activeFocus || hovered
             ToolTip.text: Accessible.name
@@ -109,8 +110,8 @@ Item {
             id: previousButton
             icon.name: "go-up"
             enabled: root.activeIndex > 0
-            Layout.minimumWidth: 48
-            Layout.minimumHeight: 48
+            Layout.minimumWidth: root.minimumTarget
+            Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Seção anterior")
             ToolTip.visible: activeFocus || hovered
             ToolTip.text: Accessible.name
@@ -124,8 +125,8 @@ Item {
                 text: "●"
                 font.pixelSize: root.activeIndex === index ? 16 : 11
                 palette.buttonText: root.activeIndex === index ? root.accentColor : root.mutedColor
-                Layout.minimumWidth: 48
-                Layout.minimumHeight: 32
+                Layout.minimumWidth: root.minimumTarget
+                Layout.minimumHeight: root.minimumTarget
                 Accessible.name: root.sectionLabel(index)
                 ToolTip.visible: activeFocus || hovered
                 ToolTip.text: Accessible.name
@@ -136,8 +137,8 @@ Item {
             id: nextButton
             icon.name: "go-down"
             enabled: root.activeIndex + 1 < root.sections.length
-            Layout.minimumWidth: 48
-            Layout.minimumHeight: 48
+            Layout.minimumWidth: root.minimumTarget
+            Layout.minimumHeight: root.minimumTarget
             Accessible.name: qsTr("Próxima seção")
             ToolTip.visible: activeFocus || hovered
             ToolTip.text: Accessible.name
