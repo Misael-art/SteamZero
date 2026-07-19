@@ -498,7 +498,13 @@ class KDEWindowEffect:
 
 
 class VirtualKeyboardController:
-    """Ativa no máximo um provider, avançando apenas após falha confirmada."""
+    """Ativa no máximo um provider, avançando apenas após falha confirmada.
+
+    O KWin pode reportar sucesso no ``forceActivate`` sem tornar o teclado
+    realmente visível (p. ex., input method não configurado ou servidor parado).
+    Por isso verificamos ``available`` antes e ``visible`` depois, e avançamos na
+    cadeia quando a ativação não produz efeito observável.
+    """
 
     def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
         self._runner = runner
@@ -512,26 +518,100 @@ class VirtualKeyboardController:
                 if kwin_attempted or self._which("qdbus6") is None:
                     continue
                 kwin_attempted = True
-                result = self._runner(
-                    (
-                        "qdbus6",
-                        "org.kde.KWin",
-                        "/VirtualKeyboard",
-                        "org.kde.kwin.VirtualKeyboard.forceActivate",
-                    ),
-                    3.0,
-                )
-                if result.returncode == 0:
-                    return provider
+                if self._kwin_keyboard_available() or self._start_kwin_keyboard_server():
+                    result = self._runner(
+                        (
+                            "qdbus6",
+                            "org.kde.KWin",
+                            "/VirtualKeyboard",
+                            "org.kde.kwin.VirtualKeyboard.forceActivate",
+                        ),
+                        3.0,
+                    )
+                    if result.returncode == 0 and self._kwin_keyboard_visible():
+                        return provider
             elif provider == "steam" and self._which("steam") is not None:
-                result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+                if self._activate_steam_keyboard():
+                    return provider
+            elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
+                result = self._runner(("wvkbd-mobintl",), 3.0)
                 if result.returncode == 0:
                     return provider
-            # Standalone e KDE Connect ficam visíveis como capacidades, mas não são
-            # iniciados por subprocesso persistente neste coordenador single-shot.
+            elif provider == "onboard" and self._which("onboard") is not None:
+                result = self._runner(("onboard", "--foreground"), 3.0)
+                if result.returncode == 0:
+                    return provider
+            # KDE Connect é visível como capacidade, mas é iniciado em outro
+            # dispositivo (telefone), não por subprocesso neste coordenador.
         raise SteamZeroError(
-            "E-DESKTOP-VERIFY", detail="nenhum provider de teclado aceitou a ativação"
+            "E-DESKTOP-VERIFY", detail="nenhum provider de teclado ficou visível"
         )
+
+    def _kwin_keyboard_available(self) -> bool:
+        return self._kwin_keyboard_property("available") == "true"
+
+    def _kwin_keyboard_visible(self) -> bool:
+        return self._kwin_keyboard_property("visible") == "true"
+
+    def _kwin_keyboard_property(self, name: str) -> str:
+        if self._which("qdbus6") is None:
+            return ""
+        result = self._runner(
+            (
+                "qdbus6",
+                "org.kde.KWin",
+                "/VirtualKeyboard",
+                "org.freedesktop.DBus.Properties.Get",
+                "org.kde.kwin.VirtualKeyboard",
+                name,
+            ),
+            3.0,
+        )
+        return result.stdout.strip().lower() if result.returncode == 0 else ""
+
+    def _start_kwin_keyboard_server(self) -> bool:
+        """Tenta iniciar o servidor Maliit quando o KWin não enxerga teclado."""
+        if self._which("maliit-server") is None or self._process_running("maliit-server"):
+            return False
+        result = self._runner(("maliit-server",), 5.0)
+        # O servidor pode ficar em foreground; consideramos sucesso se não
+        # retornou erro imediato e o teclado ficou disponível logo em seguida.
+        if result.returncode not in {0, 124}:
+            return False
+        return self._kwin_keyboard_available()
+
+    @staticmethod
+    def _process_running(name: str) -> bool:
+        """Verifica se existe um processo executável com o nome dado."""
+        proc = Path("/proc")
+        try:
+            entries = proc.iterdir()
+        except OSError:
+            return False
+        for entry in entries:
+            if not entry.name.isdigit():
+                continue
+            try:
+                comm = (entry / "comm").read_text(encoding="utf-8").strip()
+            except OSError:
+                continue
+            if comm == name:
+                return True
+        return False
+
+    def _activate_steam_keyboard(self) -> bool:
+        if self._which("steam") is None:
+            return False
+        result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+        if result.returncode == 0:
+            return True
+        # Se o Steam não estiver rodando, ``-ifrunning`` falha silenciosamente.
+        # Tenta abrir o Steam (o teclado virtual só aparece dentro do cliente).
+        if result.returncode == 1:
+            launched = self._runner(("steam",), 3.0)
+            if launched.returncode in {0, 124}:
+                return True
+        return False
 
 
 def activate_virtual_keyboard() -> str:

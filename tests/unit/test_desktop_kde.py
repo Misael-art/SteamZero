@@ -103,12 +103,48 @@ def test_display_effect_targets_internal_handheld() -> None:
     assert ("kscreen-doctor", "output.eDP-1.scale.1.35") in calls
 
 
-def test_virtual_keyboard_falls_back_to_steam_after_kwin_failure() -> None:
+def test_virtual_keyboard_uses_kwin_when_it_becomes_visible() -> None:
     calls: list[tuple[str, ...]] = []
 
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         calls.append(tuple(argv))
-        return CommandResult(1 if argv[0] == "qdbus6" else 0, "")
+        if argv[0] == "qdbus6":
+            # available -> visible -> forceActivate
+            if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
+                return CommandResult(0, "true")
+            if "org.freedesktop.DBus.Properties.Get" in argv and "visible" in argv:
+                return CommandResult(0, "true")
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    assert controller.activate(context) == "kwin-maliit"
+    assert [call[0] for call in calls] == ["qdbus6", "qdbus6", "qdbus6"]
+
+
+def test_virtual_keyboard_falls_back_to_steam_when_kwin_does_not_show() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "qdbus6":
+            if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
+                return CommandResult(0, "true")
+            if "org.freedesktop.DBus.Properties.Get" in argv and "visible" in argv:
+                return CommandResult(0, "false")
+            return CommandResult(0, "")
+        if argv[0] == "steam":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
 
     context = DesktopContext(
         "deck-lcd",
@@ -121,7 +157,113 @@ def test_virtual_keyboard_falls_back_to_steam_after_kwin_failure() -> None:
     )
     controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
     assert controller.activate(context) == "steam"
-    assert [call[0] for call in calls] == ["qdbus6", "steam"]
+    assert [call[0] for call in calls] == ["qdbus6", "qdbus6", "qdbus6", "steam"]
+
+
+def test_virtual_keyboard_tries_to_start_maliit_server() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "qdbus6":
+            if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
+                # Fica disponível apenas após o maliit-server ser iniciado.
+                return CommandResult(0, "true" if len(calls) > 2 else "false")
+            if "org.freedesktop.DBus.Properties.Get" in argv and "visible" in argv:
+                return CommandResult(0, "true")
+            return CommandResult(0, "")
+        if argv[0] == "maliit-server":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    assert controller.activate(context) == "kwin-maliit"
+    assert ("maliit-server",) in calls
+
+
+def test_virtual_keyboard_falls_back_to_wvkbd() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "qdbus6":
+            return CommandResult(0, "false")
+        if argv[0] == "wvkbd-mobintl":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard", "wvkbd"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    assert controller.activate(context) == "wvkbd"
+    assert ("wvkbd-mobintl",) in calls
+
+
+def test_virtual_keyboard_skips_maliit_server_when_already_running() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "qdbus6":
+            if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
+                return CommandResult(0, "false")
+            return CommandResult(0, "")
+        if argv[0] == "steam":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard", "steam-keyboard"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    # Simula maliit-server já rodando: não deve tentar iniciá-lo.
+    controller._process_running = lambda _name: True  # type: ignore[method-assign]
+    assert controller.activate(context) == "steam"
+    assert ("maliit-server",) not in calls
+
+
+def test_virtual_keyboard_reports_failure_when_no_provider_works() -> None:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        if argv[0] == "qdbus6":
+            if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
+                return CommandResult(0, "false")
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    context = DesktopContext(
+        "deck-lcd",
+        "wayland",
+        parse_kscreen_outputs(KSCREEN),
+        False,
+        False,
+        False,
+        frozenset({"kwin-virtual-keyboard"}),
+    )
+    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    with pytest.raises(SteamZeroError, match="nenhum provider de teclado ficou visível"):
+        controller.activate(context)
 
 
 def test_context_reports_generic_external_mode_watcher() -> None:
