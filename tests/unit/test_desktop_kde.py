@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
@@ -290,7 +291,6 @@ def test_legacy_watcher_disable_failure_restores_previous_state() -> None:
 DECK_INPUT_DEVICES_WITH_KEYS = """I: Bus=0018 Vendor=28de Product=1205 Version=0100
 N: Name="Valve Software Steam Deck Controller"
 P: Phys=usb-0000:03:00.3-1/input0
-S: Sysfs=/devices/pci0000:00/0000:00:08.1/0000:03:00.3/usb3/3-1/3-1:1.0/0003:28DE:1205.0001/input/input0
 U: Uniq=
 H: Handlers=event0 js0 kbd
 B: PROP=0
@@ -341,9 +341,7 @@ def test_status_reports_deck_input_keys_state(monkeypatch: pytest.MonkeyPatch) -
             return CommandResult(0, "")
         return CommandResult(127, "")
 
-    monkeypatch.setattr(
-        "steamzero.adapters.desktop_kde.detect_deck_input_keys", lambda: True
-    )
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.detect_deck_input_keys", lambda: True)
     present = {"kscreen-doctor", "systemctl"}
     context = LinuxDesktopContext(
         runner=runner,

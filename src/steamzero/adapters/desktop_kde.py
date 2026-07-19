@@ -617,7 +617,14 @@ class KDEShortcutsEffect:
 
     def _read(self, groups: tuple[str, ...], key: str) -> str:
         result = self._runner(
-            ("kreadconfig6", "--file", "kglobalshortcutsrc", *self._group_args(groups), "--key", key),
+            (
+                "kreadconfig6",
+                "--file",
+                "kglobalshortcutsrc",
+                *self._group_args(groups),
+                "--key",
+                key,
+            ),
             3.0,
         )
         return result.stdout.strip() if result.returncode == 0 else ""

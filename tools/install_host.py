@@ -379,9 +379,7 @@ def _sync_user_units(layout: Layout, release_path: Path) -> None:
 def _sync_gamemode_session(layout: Layout, release_path: Path) -> None:
     if not _managed_desktop(layout.gamemode_session):
         raise RuntimeError(f"recusando substituir sessão não gerenciada: {layout.gamemode_session}")
-    if layout.legacy_gamemode_session.exists() and _managed_desktop(
-        layout.legacy_gamemode_session
-    ):
+    if layout.legacy_gamemode_session.exists() and _managed_desktop(layout.legacy_gamemode_session):
         with contextlib.suppress(FileNotFoundError):
             layout.legacy_gamemode_session.unlink()
     executable = release_path / "venv" / "bin" / "steamzero-gamemode-session"

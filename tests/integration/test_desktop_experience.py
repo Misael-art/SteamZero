@@ -4,14 +4,15 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from steamzero.api import contracts
 from steamzero.adapters.desktop_kde import CommandResult
+from steamzero.api import contracts
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain import desktop as desktop_domain
@@ -349,7 +350,9 @@ def test_corrupt_desktop_plan_reports_state_integrity(
         coordinator.apply("corrupt", "token")
 
 
-def test_kde_shortcuts_snapshot_rollback(deck_context: DesktopContext, store: StateStore, tmp_path: Path) -> None:
+def test_kde_shortcuts_snapshot_rollback(
+    deck_context: DesktopContext, store: StateStore, tmp_path: Path
+) -> None:
     calls: list[tuple[str, ...]] = []
     apps_dir = tmp_path / "applications"
 
