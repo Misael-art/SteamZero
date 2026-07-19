@@ -11,7 +11,6 @@ mockado foi adicionado ao runtime.
 | `deck-accessibility-menu-1280x800.png` | preferências visuais acessíveis no rail portátil |
 | `deck-alert-expanded-1280x800.png` | alerta global novo ou bloqueante, com explicação e ação |
 | `deck-alert-compact-1280x800.png` | alerta reconhecido sem duplicar o diagnóstico completo |
-| `deck-accessibility-menu-1280x800.png` | preferências visuais ajustáveis dentro do app |
 | `deck-accessibility-150-1280x800.png` | reflow com tipografia a 150% e rail preservado |
 | `deck-emulators-data-1280x800.png` | lista com estados reais variáveis e ações preservadas |
 | `deck-emulators-empty-1280x800.png` | filtro `Instalados 0`, seleção nula e empty state |
