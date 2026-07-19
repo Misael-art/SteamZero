@@ -12,6 +12,7 @@ mockado foi adicionado ao runtime.
 | `deck-emulators-data-1280x800.png` | lista com estados reais variáveis e ações preservadas |
 | `deck-emulators-empty-1280x800.png` | filtro `Instalados 0`, seleção nula e empty state |
 | `deck-emulator-drawer-1280x800.png` | inspector em drawer sem perder lista/contexto |
+| `deck-error-feedback-1280x800.png` | erro traduzido em impacto e ação de diagnóstico |
 | `deck-loading-1280x800.png` | carregamento indeterminado, bloqueio seguro e contexto preservado |
 | `deck-high-contrast-1280x800.png` | tokens de alto contraste sem filtro visual destrutivo |
 | `deck-section-menu-1280x800.png` | lista semântica, foco visível, dots e footer contextual |

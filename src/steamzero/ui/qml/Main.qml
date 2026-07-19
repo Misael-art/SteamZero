@@ -2608,27 +2608,26 @@ ApplicationWindow {
         }
     }
 
-    Rectangle {
-        visible: root.lastRequest.length > 0
+    FeedbackNotice {
+        message: root.lastRequest
+        error: root.lastRequestIsError
         z: 1000
         width: Math.min(520, root.width - 40)
-        height: feedbackLabel.implicitHeight + 28
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: 20
         anchors.bottomMargin: ui.footerHeight + 14
-        color: root.lastRequestIsError ? "#35171b" : "#102b20"
-        radius: 8
-        border.color: root.lastRequestIsError ? root.redColor : root.greenColor
-        Label {
-            id: feedbackLabel
-            anchors.fill: parent
-            anchors.margins: 14
-            text: root.lastRequest
-            color: root.textColor
-            wrapMode: Text.WordWrap
-            Accessible.name: text
+        surfaceColor: root.lastRequestIsError ? "#35171b" : "#102b20"
+        textColor: root.textColor
+        mutedColor: root.mutedColor
+        successColor: root.greenColor
+        errorColor: root.redColor
+        minimumTarget: ui.targetSize
+        onContextActionRequested: {
+            root.lastRequest = ""
+            root.navigateToSection(5)
         }
+        onDismissRequested: root.lastRequest = ""
     }
 
     LoadingOverlay {

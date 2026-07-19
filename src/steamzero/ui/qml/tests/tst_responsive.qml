@@ -76,6 +76,11 @@ TestCase {
         }
     }
 
+    Component {
+        id: feedbackComponent
+        FeedbackNotice { width: 520 }
+    }
+
     function channelToLinear(channel) {
         const normalized = channel / 255
         return normalized <= 0.04045 ? normalized / 12.92
@@ -199,6 +204,23 @@ TestCase {
         window.pendingRequests = 0
         compare(window.loadingOverlayVisible, false)
         window.destroy()
+    }
+
+    function test_errorFeedbackExplainsImpactAndOffersAction() {
+        const notice = createTemporaryObject(feedbackComponent, null, {
+            "message": "A central local não respondeu",
+            "error": true
+        })
+        verify(notice !== null)
+        compare(notice.displayTitle, "Não foi possível concluir")
+        verify(notice.impactText.indexOf("estado anterior foi preservado") >= 0)
+        compare(notice.hasContextAction, true)
+
+        notice.error = false
+        compare(notice.displayTitle, "Ação concluída")
+        compare(notice.impactText, "")
+        compare(notice.hasContextAction, false)
+        notice.destroy()
     }
 
     function test_accessibilityPreferencesRemainPresentational() {
