@@ -1450,3 +1450,58 @@ Instalação idempotente/preservadora; serviços recarregados.
 **Próximos passos pendentes:** integrar manualmente `codex/ui-emulacao` preservando o
 contrato de rotas Steam da central; teste físico de boot Game Mode e handoff Desktop
 permanecem como gates externos do operador.
+
+## 2026-07-20 — Sessão 34: teclado com toggle e idioma do host, painel auto-oculto e Terminal Ashy
+
+**Contexto:** continuação de sessão interrompida. O trabalho anterior estava não
+commitado na branch `feat/keyboard-panel-ashy`; esta sessão avaliou o diff, corrigiu
+três defeitos reais antes de commitar e atualizou o host com autorização do operador.
+
+**Defeitos corrigidos na avaliação:**
+- Idioma do maliit era "configurado" via `MALIIT_KEYBOARD_LAYOUT`, variável que não
+  existe no binário. O mecanismo real é `gsettings org.maliit.keyboard.maliit
+  active-language`/`enabled-languages` com códigos ISO (`pt`, não `br`); a
+  sincronização agora acontece na ativação/toggle e vale com o servidor já em
+  execução (caso do provider persistente).
+- O script de captura do `KDEPanelEffect` atribuía `p.hiding = 'null'` durante a
+  LEITURA — todo apply corromperia a configuração dos painéis. Leitura e escrita
+  foram separadas em scripts distintos; a leitura é observação pura.
+- `wvkbd` era iniciado com `--hidden` sem SIGUSR2 (ativação "bem-sucedida" com
+  teclado invisível) e com `-l <xkb>` — layer inexistente encerra o processo. Agora
+  só layers conhecidas são passadas (cyrillic/arabic/greek/persian/georgian) e o
+  spawn nasce visível; Onboard não recebe mais `-l` (espera arquivo .onboard, não
+  idioma).
+
+**Itens entregues (item → commit):**
+- Toggle suave de teclado (show/hide via `forceActivate`/`forceDeactivate` do KWin,
+  fallback por sinais), geometria proporcional ao display interno, idioma do host
+  com override manual, `panelAutoHide` por perfil com efeito KDE (capture/apply/
+  verify/restore), endpoints `/keyboard action=toggle`, `/panel/autohide`,
+  `/ashyterm` e CLI `desktop keyboard --toggle --language` → `2ca8fdf`
+- Controles na central QML (alternar teclado, seletor de idioma, switch de painel,
+  botão Terminal Ashy), arquivos compartilhados isolados → `5b61183`
+
+**Gates:** `make check` completo verde no commit instalado — 658 testes, cobertura
+**85.17%** (sem regressão sobre a sessão 33), ruff/format/mypy/boundaries/
+independence OK.
+
+**Release e instalação no host (autorizada pelo operador nesta thread):**
+- Wheel: `dist/steamzero-0.1.0a33-py3-none-any.whl` construído de árvore limpa
+- SHA-256: `d42b5bc11290635401304f6c1fa828d1d55d80dbc2a8b0d46ef7b3209e698e37`
+- Source commit: `5b611834c52b59d3be9edaab2e2119b916d3df25`
+- Release ativa: `0.1.0a33-5b611834c52b`; rollback disponível:
+  `0.1.0a33-69fb7db4dea2` (via `install_host.py rollback`)
+- Preflights: base descende do tip da main, gates verdes, entry points de boot
+  conferidos no wheel, proveniência verificada, estado anterior inspecionado.
+
+**Testes no host real após instalação:**
+- `steamzero --version` → `0.1.0a33`; `doctor --json` ok, 0 operações pendentes
+- `steamzero-core.socket/service` ativos após reload
+- `steamzero desktop keyboard --toggle` alternou o teclado real: `show` →
+  `hide` via kwin-maliit
+- `gsettings … active-language` mudou de `'en'` para `'pt'` (locale pt_BR do
+  host), corrigindo o teclado em inglês observado nas fotos do teste anterior
+
+**Pendências do operador (teste físico):** teclado no Big Picture e no desktop com
+toque, troca manual de idioma pela central, switch de auto-ocultar painel no perfil
+handheld e digitação no Terminal Ashy com o teclado virtual.
