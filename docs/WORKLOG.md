@@ -1517,3 +1517,41 @@ handheld e digitação no Terminal Ashy com o teclado virtual.
 - `codex/ui-emulacao` permanece aberta: exige reconciliação manual do Main.qml
   preservando as rotas Steam (registrado na sessão 33); fora do escopo desta
   normalização.
+
+## 2026-07-20 — Sessão 35: teclado onipresente, conforto do Maliit e retorno ao Game Mode
+
+**Branch:** `feat/keyboard-ux-gamemode` a partir de `a41a5a6` (main).
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Conforto do Maliit (som/háptica/tema) via gsettings | `ea9bf54` | `test_maliit_comfort_*` (4), `test_bridge_keyboard_settings_*` (2) |
+| Atalho global Meta+K com efeito e rollback | `1c664b1` | `test_shortcut_effect_*` (5), coordenador inclui efeito |
+| Gesto de borda inferior (spike, KWin script) | `b48db0d` | `test_edge_gesture_*` (4) |
+| Retorno confirmado ao Game Mode (`/session/select`) | `e36832a` | `test_bridge_session_select_*` (3) |
+| QML: switches de conforto + botão Game Mode | `d79e086` | contrato de sinais preservado; gates verdes |
+
+**Detalhes técnicos:**
+- `apply_maliit_comfort` escreve apenas chaves divergentes, confirma por readback,
+  reverte em divergência e retorna valores anteriores. Testado ao vivo no host:
+  `SuruDark` aplicado e revertido para `Ambiance` com sucesso.
+- `KDEShortcutEffect` publica `steamzero-keyboard-toggle.desktop` (marcado,
+  `X-KDE-GlobalAccel-CommandShortcut=true`) e binding `Meta+K` em
+  `kglobalshortcutsrc`; o kglobalaccel carrega na próxima sessão. Escrita FS
+  pelo port `core.fs` (exigência do gate de fronteiras).
+- Existe no host um artefato manual PRÉ-EXISTENTE sem marcador
+  (`~/.local/share/applications/steamzero-desktop-keyboard.desktop`, Meta+Ctrl+K,
+  sem toggle). Não foi tocado (regra de ownership); operador pode remover.
+- `KDEEdgeGestureEffect` (spike): KWin script marcado com
+  `registerTouchScreenEdge(ElectricBottom)` alternando o teclado via DBus;
+  habilitado em `kwinrc [Plugins]` + reconfigure. Validação física decide
+  permanência.
+- `/session/select`: dois passos com plano efêmero em memória da bridge,
+  allowlist `steam|gamepadui`, readiness degradada responde 409 com causa;
+  execução usa `request_target` + logout Plasma via `org.kde.Shutdown`.
+
+**Gates:** `make check` verde após cada item; final com **677 testes passed**,
+cobertura **85.33%**, ruff/mypy/independence/boundaries OK.
+
+**Limites explícitos:** atalho e gesto exigem nova sessão para o kglobalaccel/KWin
+carregarem; validação física (Meta+K, gesto de borda, som, tema, retorno ao Game
+Mode) é gate do operador após instalação.
