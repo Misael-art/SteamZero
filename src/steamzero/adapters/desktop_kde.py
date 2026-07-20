@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths
+from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
@@ -1180,6 +1180,115 @@ for (var i = 0; i < panels.length; i++) {
         return result.stdout.strip() or None
 
 
+_SHORTCUT_MARKER = "X-SteamZero-Managed=true"
+_SHORTCUT_DESKTOP_TEMPLATE = """[Desktop Entry]
+Type=Application
+Name=Alternar teclado virtual SteamZero
+Exec=steamzero desktop keyboard --toggle
+Icon=input-keyboard-virtual
+NoDisplay=true
+Terminal=false
+X-KDE-GlobalAccel-CommandShortcut=true
+X-SteamZero-Managed=true
+"""
+
+
+class KDEShortcutEffect:
+    """Registra atalho global (Meta+K) para alternar o teclado, com rollback.
+
+    Publica um desktop file próprio (marcado) em escopo de usuário e o binding
+    em ``kglobalshortcutsrc``. O kglobalaccel só carrega o atalho na próxima
+    sessão; a configuração é verificável por readback imediatamente.
+    """
+
+    name = "kde-shortcut"
+    _SERVICE = "steamzero-keyboard-toggle.desktop"
+    _DEFAULT_ENTRY = "Meta+K,Meta+K,Alternar teclado virtual SteamZero"
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        applications_dir: Path | None = None,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._apps_dir = applications_dir or Path.home() / ".local" / "share" / "applications"
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-config" in context.capabilities
+            and self._which("kreadconfig6") is not None
+            and self._which("kwriteconfig6") is not None
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {
+            "shortcutEntry": self._read_entry(),
+            "desktopFilePresent": (self._apps_dir / self._SERVICE).is_file(),
+        }
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self._write_desktop_file()
+        self._write_entry(self._DEFAULT_ENTRY)
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        target = self._apps_dir / self._SERVICE
+        return target.is_file() and self._read_entry() == self._DEFAULT_ENTRY
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        entry = snapshot.get("shortcutEntry")
+        if not snapshot.get("desktopFilePresent"):
+            self._remove_desktop_file()
+        if isinstance(entry, str) and entry:
+            self._write_entry(entry)
+        else:
+            self._delete_entry()
+
+    def _write_desktop_file(self) -> None:
+        target = self._apps_dir / self._SERVICE
+        if target.exists():
+            content = _read_text(target)
+            if _SHORTCUT_MARKER not in content:
+                raise RuntimeError(f"recusando sobrescrever artefato sem marcador: {target}")
+        fs.ensure_dir(target.parent)
+        fs.write_atomic_text(target, _SHORTCUT_DESKTOP_TEMPLATE)
+
+    def _remove_desktop_file(self) -> None:
+        target = self._apps_dir / self._SERVICE
+        if not target.exists():
+            return
+        if _SHORTCUT_MARKER not in _read_text(target):
+            raise RuntimeError(f"recusando remover artefato sem marcador: {target}")
+        fs.remove_file(target)
+
+    def _config_argv(self, *suffix: str) -> tuple[str, ...]:
+        return (
+            "--file",
+            "kglobalshortcutsrc",
+            "--group",
+            "services",
+            "--group",
+            self._SERVICE,
+            "--key",
+            "_launch",
+            *suffix,
+        )
+
+    def _read_entry(self) -> str | None:
+        result = self._runner(("kreadconfig6", *self._config_argv()), 3.0)
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip() or None
+
+    def _write_entry(self, value: str) -> None:
+        self._runner(("kwriteconfig6", *self._config_argv(value)), 3.0)
+
+    def _delete_entry(self) -> None:
+        self._runner(("kwriteconfig6", *self._config_argv("--delete")), 3.0)
+
+
 def input_method_status() -> dict[str, Any]:
     """Estado observável do input method do KWin para a UI."""
     runner = run_command
@@ -1292,6 +1401,7 @@ def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
         KDEDisplayEffect(),
         KDEWindowEffect(),
         KDEPanelEffect(),
+        KDEShortcutEffect(),
     )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()

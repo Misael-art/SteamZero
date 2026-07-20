@@ -1126,3 +1126,102 @@ def test_maliit_comfort_reverts_when_readback_diverges() -> None:
         )
     # Reverteu para o valor anterior após o readback divergente.
     assert ("gsettings", "set", "org.maliit.keyboard.maliit", "theme", "Ambiance") in calls
+
+
+def _shortcut_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "kreadconfig6":
+            return CommandResult(0, store.get("_launch", ""))
+        if argv[0] == "kwriteconfig6":
+            if argv[-1] == "--delete":
+                store.pop("_launch", None)
+            else:
+                store["_launch"] = argv[-1]
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def _shortcut_effect(
+    tmp_path: Path, store: dict[str, str], calls: list[tuple[str, ...]]
+) -> desktop_kde.KDEShortcutEffect:
+    return desktop_kde.KDEShortcutEffect(
+        runner=_shortcut_runner(store, calls),
+        which=lambda command: command if command in {"kreadconfig6", "kwriteconfig6"} else None,
+        applications_dir=tmp_path,
+    )
+
+
+def test_shortcut_effect_available_requires_kde_config(tmp_path: Path) -> None:
+    effect = _shortcut_effect(tmp_path, {}, [])
+    assert effect.available(_minimal_context(frozenset({"kde-config"})))
+    assert not effect.available(_minimal_context(frozenset()))
+
+
+def test_shortcut_effect_apply_writes_marked_artifact_and_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    calls: list[tuple[str, ...]] = []
+    effect = _shortcut_effect(tmp_path, store, calls)
+    context = _minimal_context(frozenset({"kde-config"}))
+    profile = profile_for(PROFILE_HANDHELD, context)
+
+    captured = effect.capture(context)
+    assert captured == {"shortcutEntry": None, "desktopFilePresent": False}
+
+    effect.apply(profile, context)
+    desktop_file = tmp_path / "steamzero-keyboard-toggle.desktop"
+    content = desktop_file.read_text(encoding="utf-8")
+    assert "X-SteamZero-Managed=true" in content
+    assert "Exec=steamzero desktop keyboard --toggle" in content
+    assert "X-KDE-GlobalAccel-CommandShortcut=true" in content
+    assert store["_launch"].startswith("Meta+K,")
+    assert effect.verify(profile, context)
+
+
+def test_shortcut_effect_restore_removes_artifact_and_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    effect = _shortcut_effect(tmp_path, store, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+
+    effect.restore(snapshot)
+    assert not (tmp_path / "steamzero-keyboard-toggle.desktop").exists()
+    assert "_launch" not in store
+
+
+def test_shortcut_effect_restore_preserves_previous_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {"_launch": "Meta+F1,Meta+F1,Antigo"}
+    effect = _shortcut_effect(tmp_path, store, [])
+    (tmp_path / "steamzero-keyboard-toggle.desktop").write_text(
+        "[Desktop Entry]\nX-SteamZero-Managed=true\n", encoding="utf-8"
+    )
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    assert store["_launch"].startswith("Meta+K,")
+
+    effect.restore(snapshot)
+    assert store["_launch"] == "Meta+F1,Meta+F1,Antigo"
+    assert (tmp_path / "steamzero-keyboard-toggle.desktop").exists()
+
+
+def test_shortcut_effect_refuses_unmarked_artifact(tmp_path: Path) -> None:
+    target = tmp_path / "steamzero-keyboard-toggle.desktop"
+    target.write_text("[Desktop Entry]\nExec=outro\n", encoding="utf-8")
+    effect = _shortcut_effect(tmp_path, {}, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect._remove_desktop_file()
+    assert target.read_text(encoding="utf-8") == "[Desktop Entry]\nExec=outro\n"
+
+
+def test_build_desktop_coordinator_includes_shortcut_effect(tmp_path: Path) -> None:
+    coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
+    assert any(isinstance(effect, desktop_kde.KDEShortcutEffect) for effect in coordinator._effects)
