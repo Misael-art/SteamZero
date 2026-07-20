@@ -53,6 +53,8 @@ class CommandResult:
 
 Runner = Callable[[Sequence[str], float], CommandResult]
 Which = Callable[[str], str | None]
+Spawner = Callable[[Sequence[str]], bool]
+Delay = Callable[[float], None]
 
 
 def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
@@ -78,6 +80,27 @@ def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
     except OSError as exc:
         return CommandResult(126, "", f"falha ao executar {argv[0]}: {exc}")
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+def spawn_command(argv: Sequence[str]) -> bool:
+    """Inicia um provider persistente sem matá-lo quando o chamador termina."""
+    if not argv:
+        return False
+    executable = shutil.which(argv[0])
+    if executable is None:
+        return False
+    try:
+        subprocess.Popen(  # noqa: S603
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+    except OSError:
+        return False
+    return True
 
 
 def _command_output(value: str | bytes | None) -> str:
@@ -534,9 +557,9 @@ def _maliit_desktop_file() -> Path | None:
     return None
 
 
-def _process_running(name: str) -> bool:
-    """Verifica se existe um processo executável com o nome dado."""
-    proc = Path("/proc")
+def _process_running(name: str, *, proc: Path = Path("/proc"), uid: int | None = None) -> bool:
+    """Verifica um processo do usuário atual, sem aceitar providers de outra sessão."""
+    expected_uid = os.getuid() if uid is None else uid
     try:
         entries = proc.iterdir()
     except OSError:
@@ -546,9 +569,13 @@ def _process_running(name: str) -> bool:
             continue
         try:
             comm = (entry / "comm").read_text(encoding="utf-8").strip()
+            status = (entry / "status").read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if comm == name:
+        uid_line = next((line for line in status.splitlines() if line.startswith("Uid:")), "")
+        fields = uid_line.split()
+        owner = int(fields[1]) if len(fields) > 1 and fields[1].isdigit() else None
+        if comm == name and owner == expected_uid:
             return True
     return False
 
@@ -592,7 +619,11 @@ class KDEInputMethodEffect:
         self._reconfigure_kwin()
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
-        return _kwin_vk_available(self._runner, self._which)
+        if _kwin_vk_available(self._runner, self._which):
+            return True
+        desktop_file = _maliit_desktop_file()
+        configured = self._read_input_method()
+        return desktop_file is not None and desktop_file.name in configured
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         value = snapshot.get("inputMethod")
@@ -663,9 +694,18 @@ class VirtualKeyboardController:
     cadeia quando a ativação não produz efeito observável.
     """
 
-    def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        spawner: Spawner = spawn_command,
+        delay: Delay = time.sleep,
+    ) -> None:
         self._runner = runner
         self._which = which
+        self._spawner = spawner
+        self._delay = delay
 
     def activate(self, context: DesktopContext) -> str:
         profile = profile_for(automatic_profile(context), context)
@@ -692,12 +732,14 @@ class VirtualKeyboardController:
                 if self._activate_steam_keyboard():
                     return provider
             elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
-                result = self._runner(("wvkbd-mobintl",), 3.0)
-                if result.returncode == 0:
+                if self._spawner(("wvkbd-mobintl",)) and self._wait_for_process(
+                    "wvkbd-mobintl"
+                ):
                     return provider
             elif provider == "onboard" and self._which("onboard") is not None:
-                result = self._runner(("onboard", "--foreground"), 3.0)
-                if result.returncode == 0:
+                if self._spawner(("onboard", "--foreground")) and self._wait_for_process(
+                    "onboard"
+                ):
                     return provider
             # KDE Connect é visível como capacidade, mas é iniciado em outro
             # dispositivo (telefone), não por subprocesso neste coordenador.
@@ -707,14 +749,18 @@ class VirtualKeyboardController:
 
     def _start_kwin_keyboard_server(self) -> bool:
         """Tenta iniciar o servidor Maliit quando o KWin não enxerga teclado."""
-        if self._which("maliit-server") is None or _process_running("maliit-server"):
+        if self._which("maliit-server") is None or any(
+            _process_running(name) for name in ("maliit-server", "maliit-keyboard")
+        ):
             return False
-        result = self._runner(("maliit-server",), 5.0)
-        # O servidor pode ficar em foreground; consideramos sucesso se não
-        # retornou erro imediato e o teclado ficou disponível logo em seguida.
-        if result.returncode not in {0, 124}:
+        if not self._spawner(("maliit-server",)):
             return False
-        return _kwin_vk_available(self._runner, self._which)
+        for attempt in range(10):
+            if _kwin_vk_available(self._runner, self._which):
+                return True
+            if attempt < 9:
+                self._delay(0.25)
+        return False
 
     def _activate_steam_keyboard(self) -> bool:
         if self._which("steam") is None:
@@ -724,14 +770,19 @@ class VirtualKeyboardController:
             result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
             return result.returncode == 0
         # Tenta iniciar o Steam silenciosamente e aguarda o processo subir.
-        launched = self._runner(("steam", "-silent"), 3.0)
-        if launched.returncode not in {0, 124}:
+        if not self._spawner(("steam", "-silent")):
             return False
-        for _ in range(10):
-            time.sleep(0.5)
-            if _process_running("steam"):
-                result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
-                return result.returncode == 0
+        if self._wait_for_process("steam", attempts=10, interval=0.5):
+            result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+            return result.returncode == 0
+        return False
+
+    def _wait_for_process(self, name: str, *, attempts: int = 5, interval: float = 0.2) -> bool:
+        for attempt in range(attempts):
+            if _process_running(name):
+                return True
+            if attempt < attempts - 1:
+                self._delay(interval)
         return False
 
 

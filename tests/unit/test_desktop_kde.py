@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters import desktop_kde
 from steamzero.adapters.desktop_kde import (
     CommandResult,
     KDEDisplayEffect,
@@ -18,6 +19,7 @@ from steamzero.adapters.desktop_kde import (
     VirtualKeyboardController,
     parse_kscreen_outputs,
     run_command,
+    spawn_command,
 )
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, profile_for
@@ -82,6 +84,39 @@ def test_run_command_converts_timeout_to_degraded_result(
     assert "excedeu 3s" in result.stderr
 
 
+def test_spawn_command_detaches_persistent_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def popen(argv: list[str], **kwargs: object) -> object:
+        captured["argv"] = argv
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.shutil.which", lambda _name: "/tool")
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.subprocess.Popen", popen)
+
+    assert spawn_command(("provider", "--foreground")) is True
+    assert captured["argv"] == ["/tool", "--foreground"]
+    assert captured["start_new_session"] is True
+    assert captured["close_fds"] is True
+
+
+def test_process_detection_is_scoped_to_current_user(tmp_path: Path) -> None:
+    other = tmp_path / "101"
+    other.mkdir()
+    (other / "comm").write_text("steam\n", encoding="utf-8")
+    (other / "status").write_text("Name:\tsteam\nUid:\t1001\t1001\t1001\t1001\n", encoding="utf-8")
+
+    assert desktop_kde._process_running("steam", proc=tmp_path, uid=1000) is False
+
+    owned = tmp_path / "102"
+    owned.mkdir()
+    (owned / "comm").write_text("steam\n", encoding="utf-8")
+    (owned / "status").write_text("Name:\tsteam\nUid:\t1000\t1000\t1000\t1000\n", encoding="utf-8")
+
+    assert desktop_kde._process_running("steam", proc=tmp_path, uid=1000) is True
+
+
 def test_display_effect_targets_internal_handheld() -> None:
     calls: list[tuple[str, ...]] = []
 
@@ -132,14 +167,16 @@ def test_input_method_effect_configures_maliit_when_keyboard_not_available(
         lambda: Path("/usr/share/applications/com.github.maliit.keyboard.desktop"),
     )
     calls: list[tuple[str, ...]] = []
+    configured = {"value": ""}
 
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         calls.append(tuple(argv))
         if argv[0] == "qdbus6" and "Properties.Get" in argv and "available" in argv:
             return CommandResult(0, "false")
         if argv[0] == "kreadconfig6":
-            return CommandResult(0, "")
+            return CommandResult(0, configured["value"])
         if argv[0] == "kwriteconfig6":
+            configured["value"] = str(argv[-1])
             return CommandResult(0, "")
         return CommandResult(0, "")
 
@@ -162,7 +199,8 @@ def test_input_method_effect_configures_maliit_when_keyboard_not_available(
     effect.apply(profile_for(PROFILE_HANDHELD, context), context)
 
     assert any(call[0] == "kwriteconfig6" for call in calls)
-    assert effect.verify(profile_for(PROFILE_HANDHELD, context), context) is False
+    assert effect.verify(profile_for(PROFILE_HANDHELD, context), context) is True
+    assert configured["value"].endswith("com.github.maliit.keyboard.desktop")
 
 
 def test_input_method_effect_restores_previous_value() -> None:
@@ -249,17 +287,22 @@ def test_virtual_keyboard_starts_steam_when_not_running(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[tuple[str, ...]] = []
+    spawns: list[tuple[str, ...]] = []
+    running = {"steam": False}
 
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         calls.append(tuple(argv))
         if argv[0] == "qdbus6":
             return CommandResult(0, "false")
         if argv[0] == "steam":
-            # ``-silent`` inicia o cliente; depois ``-ifrunning`` abre o teclado.
-            if "-ifrunning" in argv:
-                return CommandResult(0, "")
             return CommandResult(0, "")
         return CommandResult(127, "")
+
+    def spawner(argv: Sequence[str]) -> bool:
+        spawns.append(tuple(argv))
+        if argv[0] == "steam":
+            running["steam"] = True
+        return True
 
     context = DesktopContext(
         "deck-lcd",
@@ -270,9 +313,6 @@ def test_virtual_keyboard_starts_steam_when_not_running(
         False,
         frozenset({"kwin-virtual-keyboard", "steam-keyboard"}),
     )
-    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
-    # O processo aparece após o ``steam -silent``.
-    running = {"steam": False}
 
     def process_running(name: str) -> bool:
         if name == "steam":
@@ -280,33 +320,36 @@ def test_virtual_keyboard_starts_steam_when_not_running(
         return False
 
     monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", process_running)
-    original_runner = controller._runner
-
-    def counting_runner(argv: Sequence[str], timeout: float) -> CommandResult:
-        if argv[0] == "steam" and "-silent" in argv:
-            running["steam"] = True
-        return original_runner(argv, timeout)
-
-    controller._runner = counting_runner  # type: ignore[method-assign]
+    controller = VirtualKeyboardController(
+        runner=runner,
+        which=lambda command: None if command == "maliit-server" else command,
+        spawner=spawner,
+        delay=lambda _s: None,
+    )
     assert controller.activate(context) == "steam"
-    assert any(call[0] == "steam" and "-silent" in call for call in calls)
+    assert spawns == [("steam", "-silent")]
+    assert ("steam", "-ifrunning", "steam://open/keyboard") in calls
 
 
-def test_virtual_keyboard_tries_to_start_maliit_server() -> None:
+def test_virtual_keyboard_tries_to_start_maliit_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: list[tuple[str, ...]] = []
+    spawns: list[tuple[str, ...]] = []
 
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         calls.append(tuple(argv))
         if argv[0] == "qdbus6":
             if "org.freedesktop.DBus.Properties.Get" in argv and "available" in argv:
-                # Fica disponível apenas após o maliit-server ser iniciado.
-                return CommandResult(0, "true" if len(calls) > 2 else "false")
+                return CommandResult(0, "true" if spawns else "false")
             if "org.freedesktop.DBus.Properties.Get" in argv and "visible" in argv:
                 return CommandResult(0, "true")
             return CommandResult(0, "")
-        if argv[0] == "maliit-server":
-            return CommandResult(0, "")
         return CommandResult(127, "")
+
+    def spawner(argv: Sequence[str]) -> bool:
+        spawns.append(tuple(argv))
+        return True
 
     context = DesktopContext(
         "deck-lcd",
@@ -317,21 +360,27 @@ def test_virtual_keyboard_tries_to_start_maliit_server() -> None:
         False,
         frozenset({"kwin-virtual-keyboard"}),
     )
-    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: False)
+    controller = VirtualKeyboardController(
+        runner=runner, which=lambda command: command, spawner=spawner, delay=lambda _s: None
+    )
     assert controller.activate(context) == "kwin-maliit"
-    assert ("maliit-server",) in calls
+    assert spawns == [("maliit-server",)]
 
 
-def test_virtual_keyboard_falls_back_to_wvkbd() -> None:
+def test_virtual_keyboard_falls_back_to_wvkbd(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, ...]] = []
+    spawns: list[tuple[str, ...]] = []
 
     def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
         calls.append(tuple(argv))
         if argv[0] == "qdbus6":
             return CommandResult(0, "false")
-        if argv[0] == "wvkbd-mobintl":
-            return CommandResult(0, "")
         return CommandResult(127, "")
+
+    def spawner(argv: Sequence[str]) -> bool:
+        spawns.append(tuple(argv))
+        return True
 
     context = DesktopContext(
         "deck-lcd",
@@ -342,9 +391,15 @@ def test_virtual_keyboard_falls_back_to_wvkbd() -> None:
         False,
         frozenset({"kwin-virtual-keyboard", "wvkbd"}),
     )
-    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde._process_running",
+        lambda name: name == "wvkbd-mobintl" and bool(spawns),
+    )
+    controller = VirtualKeyboardController(
+        runner=runner, which=lambda command: command, spawner=spawner, delay=lambda _s: None
+    )
     assert controller.activate(context) == "wvkbd"
-    assert ("wvkbd-mobintl",) in calls
+    assert spawns == [("maliit-server",), ("wvkbd-mobintl",)]
 
 
 def test_virtual_keyboard_skips_maliit_server_when_already_running(
@@ -371,7 +426,9 @@ def test_virtual_keyboard_skips_maliit_server_when_already_running(
         False,
         frozenset({"kwin-virtual-keyboard", "steam-keyboard"}),
     )
-    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    controller = VirtualKeyboardController(
+        runner=runner, which=lambda command: command, spawner=lambda _argv: False
+    )
     # Simula maliit-server já rodando: não deve tentar iniciá-lo.
     monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: True)
     assert controller.activate(context) == "steam"
@@ -395,7 +452,9 @@ def test_virtual_keyboard_reports_failure_when_no_provider_works() -> None:
         False,
         frozenset({"kwin-virtual-keyboard"}),
     )
-    controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
+    controller = VirtualKeyboardController(
+        runner=runner, which=lambda command: command, spawner=lambda _argv: False
+    )
     with pytest.raises(SteamZeroError, match="nenhum provider de teclado ficou visível"):
         controller.activate(context)
 
