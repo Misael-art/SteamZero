@@ -1505,3 +1505,15 @@ independence OK.
 **Pendências do operador (teste físico):** teclado no Big Picture e no desktop com
 toque, troca manual de idioma pela central, switch de auto-ocultar painel no perfil
 handheld e digitação no Terminal Ashy com o teclado virtual.
+
+### Sessão 34 (continuação): normalização na main e release oficial
+
+- Merge `feat/keyboard-panel-ashy` → `main` (`dbd4b60`, sem conflitos); `make check`
+  verde na main (658 testes, cobertura 85.17%). Push de `main` e da branch feita.
+- Release oficial instalada no host: `0.1.0a33-dbd4b6010ff6` (source commit
+  `dbd4b6010ff64c487ad9580a91e8e12e8cfb9790`; wheel byte-idêntico ao da release
+  anterior — build reproduzível). Rollback: `0.1.0a33-5b611834c52b`.
+- Pós-instalação: versão, doctor (0 pendências, 0 checks falhando) e units OK.
+- `codex/ui-emulacao` permanece aberta: exige reconciliação manual do Main.qml
+  preservando as rotas Steam (registrado na sessão 33); fora do escopo desta
+  normalização.
