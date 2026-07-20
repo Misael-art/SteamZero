@@ -43,6 +43,12 @@ def test_classify(dmi: dict[str, str], expected: str) -> None:
     assert classify(dmi) == expected
 
 
+def test_real_adapter_requires_second_signal_for_deck_classification() -> None:
+    dmi = {"sys_vendor": "valve", "product_name": "jupiter", "board_name": "unknown"}
+    assert classify(dmi, {"internal_display_present": "false"}) == "desktop"
+    assert classify(dmi, {"internal_display_present": "true"}) == "deck-lcd"
+
+
 def test_detect_persists_device(store: state.StateStore) -> None:
     mgr = DeviceManager(FakeDevicePort({"sys_vendor": "Valve", "product_name": "Galileo"}), store)
     device = mgr.detect()

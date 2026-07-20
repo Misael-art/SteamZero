@@ -72,3 +72,19 @@ def test_invalid_ref_never_reaches_runner() -> None:
 
     assert error.value.code == "E-API-SCHEMA"
     assert runner.calls == []
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"installed": "false", "ref": REF, "origin": None, "commit": None},
+        {"installed": False, "ref": REF, "origin": "flathub", "commit": COMMIT},
+        {"installed": True, "ref": REF, "origin": None, "commit": COMMIT},
+        {"installed": True, "ref": "--system", "origin": "flathub", "commit": COMMIT},
+    ],
+)
+def test_flatpak_state_rejects_ambiguous_or_inconsistent_snapshots(
+    data: dict[str, object],
+) -> None:
+    with pytest.raises(ValueError):
+        FlatpakState.from_dict(data)

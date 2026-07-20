@@ -22,3 +22,6 @@ Ambiente single-user (Deck) com processos do mesmo UID potencialmente não confi
 3. Sem sistema de contas/senha local no v1 (complexidade sem ameaça correspondente); reavaliar com multi-user (Q9).
 4. Rate limit em ações `mutate-*` por conexão (anti-loop de cliente bugado).
 5. Toda decisão de authz é logada com correlationId (sem dados sensíveis).
+6. `admin.health` usa `pkexec` com argv fixo e não aceita parâmetros. Ações
+   mutáveis são recusadas no cliente antes de iniciar o helper até que o efetor
+   host correspondente tenha plano, verify e rollback certificados.

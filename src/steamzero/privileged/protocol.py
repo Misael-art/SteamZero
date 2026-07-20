@@ -35,6 +35,7 @@ ALLOWED_SYSTEM_UNITS = frozenset({"steamzero-mount.service"})
 _UUID_RE = re.compile(
     r"^(?:[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}|[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})$"
 )
+_ULID_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
 
 
 class ParamError(ValueError):
@@ -70,6 +71,17 @@ def _v_write_sysctl(params: dict[str, Any]) -> None:
         raise ParamError(f"value fora da faixa {lo}..{hi}")
 
 
+def _v_rollback_sysctl(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_sysctl(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-sysctl não aceita parâmetros")
+
+
 def _v_install_udev_rule(params: dict[str, Any]) -> None:
     if params.get("ruleId") not in ALLOWED_UDEV_RULES:
         raise ParamError("ruleId não é uma regra embutida")
@@ -88,6 +100,33 @@ def _v_mount_removable(params: dict[str, Any]) -> None:
         raise ParamError("mode deve ser ro|rw")
 
 
+def _v_health(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("health não aceita parâmetros")
+
+
+def _v_rollback_tdp(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_tdp(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-tdp não aceita parâmetros")
+
+
+def _v_rollback_gpu_clock(params: dict[str, Any]) -> None:
+    operation_id = params.get("operationId")
+    if not isinstance(operation_id, str) or not _ULID_RE.fullmatch(operation_id):
+        raise ParamError("operationId precisa ser ULID")
+
+
+def _v_recover_gpu_clock(params: dict[str, Any]) -> None:
+    if params:
+        raise ParamError("recover-gpu-clock não aceita parâmetros")
+
+
 @dataclass(frozen=True)
 class ActionSpec:
     name: str
@@ -97,9 +136,20 @@ class ActionSpec:
 
 
 ACTIONS: dict[str, ActionSpec] = {
+    "health": ActionSpec("health", _v_health),
     "set-tdp": ActionSpec("set-tdp", _v_set_tdp, frozenset({"watts"})),
+    "rollback-tdp": ActionSpec("rollback-tdp", _v_rollback_tdp, frozenset({"operationId"})),
+    "recover-tdp": ActionSpec("recover-tdp", _v_recover_tdp),
     "set-gpu-clock": ActionSpec("set-gpu-clock", _v_set_gpu_clock, frozenset({"mhz"})),
+    "rollback-gpu-clock": ActionSpec(
+        "rollback-gpu-clock", _v_rollback_gpu_clock, frozenset({"operationId"})
+    ),
+    "recover-gpu-clock": ActionSpec("recover-gpu-clock", _v_recover_gpu_clock),
     "write-sysctl": ActionSpec("write-sysctl", _v_write_sysctl, frozenset({"key", "value"})),
+    "rollback-sysctl": ActionSpec(
+        "rollback-sysctl", _v_rollback_sysctl, frozenset({"operationId"})
+    ),
+    "recover-sysctl": ActionSpec("recover-sysctl", _v_recover_sysctl),
     "install-udev-rule": ActionSpec(
         "install-udev-rule", _v_install_udev_rule, frozenset({"ruleId"})
     ),

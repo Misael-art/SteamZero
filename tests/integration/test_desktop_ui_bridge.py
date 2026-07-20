@@ -87,7 +87,11 @@ class FakeDashboard:
         self.calls: list[tuple[str, ...]] = []
 
     def snapshot(self, _status: dict[str, object]) -> dict[str, object]:
-        return {"components": [{"id": "dolphin"}], "steam": [{"id": "steam-client"}]}
+        return {
+            "components": [{"id": "dolphin"}],
+            "steam": [{"id": "steam-client"}],
+            "steamGameplay": {"games": [{"id": "10"}]},
+        }
 
     def plan_component(self, component_id: str) -> dict[str, object]:
         self.calls.append(("plan", component_id))
@@ -104,6 +108,55 @@ class FakeDashboard:
     def open_steam(self, target: str) -> dict[str, object]:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
+
+    def open_steam_input(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("steam-input", game_id))
+        return {"status": "started", "gameId": game_id}
+
+    def plan_steam_gameplay(
+        self, payload: dict[str, object], _status: dict[str, object]
+    ) -> dict[str, object]:
+        self.calls.append(("gameplay-plan", str(payload["gameId"])))
+        return {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"}
+
+    def apply_steam_gameplay(
+        self,
+        plan_id: str,
+        confirm_token: str,
+        _status: dict[str, object],
+    ) -> dict[str, object]:
+        self.calls.append(("gameplay-apply", plan_id, confirm_token))
+        return {"status": "saved"}
+
+    def recover_steam_gameplay(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("gameplay-recover", game_id))
+        return {"status": "recovered", "gameId": game_id}
+
+    def plan_steam_launch_options(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("launch-options-plan", game_id))
+        return {"planId": "launch-options-plan", "confirmToken": "launch-options-confirm"}
+
+    def apply_steam_launch_options(
+        self, plan_id: str, confirm_token: str, game_id: str
+    ) -> dict[str, object]:
+        self.calls.append(("launch-options-apply", plan_id, confirm_token, game_id))
+        return {"status": "configured", "operationId": "launch-options-operation"}
+
+    def rollback_steam_launch_options(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("launch-options-rollback", operation_id))
+        return {"status": "rolled-back"}
+
+    def plan_lsfg_install(self) -> dict[str, object]:
+        self.calls.append(("lsfg-plan",))
+        return {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"}
+
+    def apply_lsfg_install(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("lsfg-apply", plan_id, confirm_token))
+        return {"status": "installed", "operationId": "lsfg-operation"}
+
+    def rollback_lsfg_install(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("lsfg-rollback", operation_id))
+        return {"status": "rolled-back"}
 
 
 @pytest.fixture
@@ -323,6 +376,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     assert status["dashboard"] == {
         "components": [{"id": "dolphin"}],
         "steam": [{"id": "steam-client"}],
+        "steamGameplay": {"games": [{"id": "10"}]},
     }
 
     planned = request_json(base, token, "/component/plan", {"componentId": "dolphin"})
@@ -335,15 +389,88 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
     request_json(base, token, "/steam/open", {"target": "library"})
+    request_json(base, token, "/steam/input/open", {"gameId": "10"})
+    gameplay_plan = request_json(
+        base,
+        token,
+        "/steam/gameplay/plan",
+        {"gameId": "10"},
+    )
+    assert gameplay_plan["plan"] == {
+        "planId": "gameplay-plan",
+        "confirmToken": "gameplay-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/apply",
+        {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
+    )
+    request_json(base, token, "/steam/gameplay/recover", {"gameId": "10"})
+    launch_options_plan = request_json(
+        base, token, "/steam/gameplay/launch-options/plan", {"gameId": "10"}
+    )
+    assert launch_options_plan["plan"] == {
+        "planId": "launch-options-plan",
+        "confirmToken": "launch-options-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/launch-options/apply",
+        {
+            "planId": "launch-options-plan",
+            "confirmToken": "launch-options-confirm",
+            "gameId": "10",
+        },
+    )
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/launch-options/rollback",
+        {"operationId": "launch-options-operation"},
+    )
+    lsfg_plan = request_json(base, token, "/system/lsfg/plan", {})
+    assert lsfg_plan["plan"] == {
+        "planId": "lsfg-plan",
+        "confirmToken": "lsfg-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/system/lsfg/apply",
+        {"planId": "lsfg-plan", "confirmToken": "lsfg-confirm"},
+    )
+    request_json(
+        base,
+        token,
+        "/system/lsfg/rollback",
+        {"operationId": "lsfg-operation"},
+    )
     assert dashboard.calls == [
         ("plan", "dolphin"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
         ("steam", "library"),
+        ("steam-input", "10"),
+        ("gameplay-plan", "10"),
+        ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
+        ("gameplay-recover", "10"),
+        ("launch-options-plan", "10"),
+        (
+            "launch-options-apply",
+            "launch-options-plan",
+            "launch-options-confirm",
+            "10",
+        ),
+        ("launch-options-rollback", "launch-options-operation"),
+        ("lsfg-plan",),
+        ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
+        ("lsfg-rollback", "lsfg-operation"),
     ]
 
 
-def test_bridge_rechecks_owner_conflict_before_component_apply(
+def test_bridge_rechecks_owner_conflict_before_dashboard_mutations(
     conflicted_dashboard_bridge: tuple[str, str, FakeDashboard],
 ) -> None:
     base, token, dashboard = conflicted_dashboard_bridge
@@ -360,4 +487,16 @@ def test_bridge_rechecks_owner_conflict_before_component_apply(
     payload = json.loads(error.value.read())
     assert payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
     error.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as gameplay_error:
+        request_json(
+            base,
+            token,
+            "/steam/gameplay/apply",
+            {"planId": "stale-plan", "confirmToken": "stale-confirmation"},
+        )
+    assert gameplay_error.value.code == 409
+    gameplay_payload = json.loads(gameplay_error.value.read())
+    assert gameplay_payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
+    gameplay_error.value.close()
     assert dashboard.calls == []

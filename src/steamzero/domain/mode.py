@@ -16,43 +16,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Protocol
 
 from steamzero.core.state import StateStore
+from steamzero.ports import DisplayPort, DisplayProfile
 
 MODES = ("handheld", "docked-tv", "docked-monitor", "desktop", "unknown")
 
 _CURRENT_MODE_ID = "current-mode"
-
-
-@dataclass(frozen=True)
-class DisplayProfile:
-    label: str  # degrau da cadeia (ex.: "target", "no-hdr", "internal")
-    output: str  # internal | external
-    width: int
-    height: int
-    refresh_hz: int
-    hdr: bool
-    vrr: bool
-
-    def as_dict(self) -> dict[str, object]:
-        return {
-            "label": self.label,
-            "output": self.output,
-            "width": self.width,
-            "height": self.height,
-            "refreshHz": self.refresh_hz,
-            "hdr": self.hdr,
-            "vrr": self.vrr,
-        }
-
-
-class DisplayPort(Protocol):
-    """Capacidade de aplicar um perfil de display e confirmar sinal válido."""
-
-    def apply(self, profile: DisplayProfile) -> bool:
-        """Aplica ``profile``; retorna True se há imagem válida na saída."""
-        ...
 
 
 @dataclass(frozen=True)

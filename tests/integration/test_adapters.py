@@ -43,7 +43,14 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[state.Sta
     opened.close()
 
 
-def portable_manifest(version: str, payload: bytes, *, checksum: str | None = None) -> dict:
+def portable_manifest(
+    version: str,
+    payload: bytes,
+    *,
+    checksum: str | None = None,
+    capabilities: list[str] | None = None,
+    end_of_life: bool = False,
+) -> dict:
     source: dict[str, object] = {
         "type": "appimage",
         "version": version,
@@ -54,12 +61,14 @@ def portable_manifest(version: str, payload: bytes, *, checksum: str | None = No
         source["sha256"] = checksum
     else:
         source["sha256"] = hashlib.sha256(payload).hexdigest()
+    if end_of_life:
+        source["endOfLife"] = True
     return {
         "schemaVersion": 1,
         "id": "demo-emulator",
         "kind": "emulator",
         "platforms": ["demo"],
-        "capabilities": ["detect", "status", "install", "update", "verify"],
+        "capabilities": capabilities or ["detect", "status", "install", "update", "verify"],
         "sources": [source],
         "verify": {"smokeTest": ["--version"]},
         "license": "MIT",
@@ -141,6 +150,55 @@ def test_manifest_requires_detect_and_status() -> None:
     assert error.value.code == "E-API-SCHEMA"
 
 
+def test_manifest_rejects_ambiguous_source_priorities() -> None:
+    data = portable_manifest("1.0.0", b"v1")
+    second = dict(data["sources"][0])
+    second["url"] = "https://fixtures.invalid/other.AppImage"
+    data["sources"].append(second)
+
+    with pytest.raises(SteamZeroError) as error:
+        load_manifest(data)
+
+    assert error.value.code == "E-API-SCHEMA"
+
+
+def test_preferred_source_skips_eol_when_active_fallback_exists() -> None:
+    data = portable_manifest("1.0.0", b"v1", end_of_life=True)
+    active = dict(data["sources"][0])
+    active.update(
+        {
+            "version": "2.0.0",
+            "priority": 2,
+            "url": "https://fixtures.invalid/demo-2.0.0.AppImage",
+            "sha256": hashlib.sha256(b"v2").hexdigest(),
+        }
+    )
+    active.pop("endOfLife")
+    data["sources"].append(active)
+
+    manifest = load_manifest(data)
+
+    assert manifest.preferred_source(allow_eol=False).version == "2.0.0"
+    assert manifest.preferred_source().version == "1.0.0"
+
+
+def test_portable_engine_blocks_eol_source_before_fetch_or_write(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    data = portable_manifest("1.0.0", b"v1", end_of_life=True)
+    manifest = load_manifest(data)
+    artifacts = FakeArtifacts({manifest.sources[0].url or "": b"v1"})
+    root = tmp_path / "components"
+    engine = AdapterEngine(store, AdapterRegistry([manifest]), artifacts, root=root)
+
+    with pytest.raises(SteamZeroError) as error:
+        engine.plan_install("demo-emulator")
+
+    assert error.value.code == "E-SUPPLY-UPSTREAM-GONE"
+    assert artifacts.requests == []
+    assert not (root / "demo-emulator").exists()
+
+
 def test_install_is_verified_persisted_and_idempotent(
     store: state.StateStore, tmp_path: Path
 ) -> None:
@@ -160,6 +218,58 @@ def test_install_is_verified_persisted_and_idempotent(
     assert repeated.plan.actions == []
     assert len(artifacts.requests) == 1
     engine.apply(repeated, repeated.plan.confirm_token)
+
+
+def test_update_without_capability_is_blocked_before_fetch(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    root = tmp_path / "components"
+    first, _ = make_engine(store, root, "1.0.0", b"portable-v1")
+    install = first.plan_install("demo-emulator")
+    first.apply(install, install.plan.confirm_token)
+
+    data = portable_manifest(
+        "2.0.0",
+        b"portable-v2",
+        capabilities=["detect", "status", "install", "verify"],
+    )
+    manifest = load_manifest(data)
+    artifacts = FakeArtifacts({manifest.sources[0].url or "": b"portable-v2"})
+    engine = AdapterEngine(store, AdapterRegistry([manifest]), artifacts, root=root)
+
+    with pytest.raises(SteamZeroError) as error:
+        engine.plan_install("demo-emulator")
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    assert artifacts.requests == []
+    assert first.status("demo-emulator")["version"] == "1.0.0"
+
+
+def test_status_rejects_manifest_drift_and_parent_symlink_escape(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    root = tmp_path / "components"
+    engine, _ = make_engine(store, root, "1.0.0", b"portable-v1")
+    prepared = engine.plan_install("demo-emulator")
+    engine.apply(prepared, prepared.plan.confirm_token)
+    current = root / "demo-emulator" / "current.json"
+    metadata = current.read_text(encoding="utf-8").replace(
+        prepared.manifest.manifest_hash, "0" * 64
+    )
+    fs.write_atomic_text(current, metadata)
+    assert engine.status("demo-emulator")["state"] == "degraded"
+
+    outside = tmp_path / "outside"
+    fs.ensure_dir(outside / "1.0.0")
+    fs.write_atomic(outside / "1.0.0" / "payload", b"portable-v1")
+    releases = root / "demo-emulator" / "releases"
+    fs.remove_tree(releases)
+    fs.symlink_atomic(outside, releases)
+    restored = metadata.replace("0" * 64, prepared.manifest.manifest_hash)
+    fs.write_atomic_text(current, restored)
+    status = engine.status("demo-emulator")
+    assert status["state"] == "degraded"
+    assert "escapa" in str(status["detail"])
 
 
 @pytest.mark.rt

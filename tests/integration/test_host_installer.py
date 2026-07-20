@@ -23,6 +23,49 @@ def _layout(tmp_path: Path) -> install_host.Layout:
         / "share"
         / "applications"
         / "org.steamzero.SteamZero.desktop",
+        user_service=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "user"
+        / "steamzero-core.service",
+        user_socket=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "user"
+        / "steamzero-core.socket",
+        gamemode_session=tmp_path
+        / "usr"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
+        legacy_gamemode_session=tmp_path
+        / "usr"
+        / "local"
+        / "share"
+        / "wayland-sessions"
+        / "steamzero-gamemode.desktop",
+        gamemode_boot_unit=tmp_path
+        / "usr"
+        / "local"
+        / "lib"
+        / "systemd"
+        / "system"
+        / "steamzero-gamemode-boot.service",
+        gamemode_command=tmp_path / "usr" / "local" / "bin" / "steamzero-gamemode-session",
+        session_selector_command=tmp_path / "usr" / "local" / "bin" / "steamos-session-select",
+        gamemode_boot_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-gamemode-boot",
+        host_prepare_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-host-prepare",
+        admin_command=tmp_path / "usr" / "local" / "libexec" / "steamzero-admin",
+        polkit_policy=tmp_path
+        / "usr"
+        / "share"
+        / "polkit-1"
+        / "actions"
+        / "io.github.misael-art.steamzero.admin.policy",
     )
 
 
@@ -69,6 +112,32 @@ def test_release_id_rejects_traversal() -> None:
             install_host._release_id(invalid)
 
 
+def test_release_identity_is_canonical_version_plus_exact_commit() -> None:
+    commit = "a" * 40
+    assert install_host._canonical_release("0.1.0a1", commit) == f"0.1.0a1-{commit[:12]}"
+    with pytest.raises(ValueError, match="SHA-1 completo"):
+        install_host._canonical_release("0.1.0a1", "a" * 12)
+
+
+def test_v2_manifest_requires_matching_release_provenance(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    manifest_path = release / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "schemaVersion": 2,
+            "packageVersion": "0.1.0a1",
+            "sourceCommit": "b" * 40,
+            "sourceTreeState": "clean",
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="versão e ao commit"):
+        install_host._verify_release(release)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")
@@ -97,6 +166,98 @@ def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) 
         install_host._activate(layout, "release-b")
 
     assert layout.current.readlink() == Path("releases/release-a")
+
+
+def test_activation_publishes_session_in_effective_sddm_location(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    for name in (
+        "steamzero-gamemode-session",
+        "steamos-session-select",
+        "steamzero-gamemode-boot",
+    ):
+        executable = release / "venv" / "bin" / name
+        executable.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+        executable.chmod(0o755)
+    layout.legacy_gamemode_session.parent.mkdir(parents=True)
+    layout.legacy_gamemode_session.write_text(
+        "[Desktop Entry]\nX-SteamZero-Managed=true\n", encoding="utf-8"
+    )
+
+    install_host._activate(layout, "release-a")
+
+    assert layout.gamemode_session.is_file()
+    assert not layout.legacy_gamemode_session.exists()
+    assert layout.session_selector_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamos-session-select"
+    )
+
+
+def test_activation_refuses_unmanaged_session_selector_without_switching(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.session_selector_command.parent.mkdir(parents=True)
+    layout.session_selector_command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="seletor de sessão não gerenciado"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert layout.session_selector_command.read_text(encoding="utf-8") == "do not replace"
+
+
+def _add_venv_binary(layout: install_host.Layout, name: str, release: str) -> None:
+    binary = layout.releases / release / "venv" / "bin" / name
+    binary.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    binary.chmod(0o755)
+
+
+def test_activation_refuses_release_without_boot_chain_when_direct_boot_active(
+    tmp_path: Path,
+) -> None:
+    """Incidente 2026-07-19: release sem entry points de Game Mode foi ativada
+    com o boot direto instalado e derrubou autologin, sessão e oneshot."""
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.gamemode_boot_unit.parent.mkdir(parents=True)
+    layout.gamemode_boot_unit.write_text(
+        "# SteamZero-Boot-Managed: true\n[Unit]\n", encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimeError, match="boot direto ativo"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert not layout.command.exists()
+
+
+def test_activation_with_boot_chain_proceeds_when_direct_boot_active(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    for name in ("steamzero-gamemode-boot", "steamzero-gamemode-session", "steamos-session-select"):
+        _add_venv_binary(layout, name, "release-a")
+    layout.gamemode_boot_unit.parent.mkdir(parents=True)
+    layout.gamemode_boot_unit.write_text(
+        "# SteamZero-Boot-Managed: true\n[Unit]\n", encoding="utf-8"
+    )
+
+    install_host._activate(layout, "release-a")
+
+    assert layout.current.is_symlink()
+    assert install_host._readlink(layout.current) == "releases/release-a"
+
+
+def test_activation_refuses_broken_session_symlink_without_switching(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    _release(layout, "release-a")
+    layout.gamemode_session.parent.mkdir(parents=True)
+    layout.gamemode_session.symlink_to(tmp_path / "missing-session")
+
+    with pytest.raises(RuntimeError, match="sessão não gerenciada"):
+        install_host._activate(layout, "release-a")
+
+    assert not layout.current.exists()
+    assert layout.gamemode_session.is_symlink()
 
 
 def test_verify_rejects_manifest_directory_mismatch(tmp_path: Path) -> None:
@@ -145,3 +306,58 @@ def test_manager_refuses_unmanaged_regular_file(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="gerenciador não gerenciado"):
         install_host._publish_manager(layout)
+
+
+def test_activation_publishes_and_removes_user_units_by_release_capability(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    modern = _release(layout, "release-modern")
+    core = modern / "venv" / "bin" / "steamzero-core"
+    core.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    core.chmod(0o755)
+    session = modern / "venv" / "bin" / "steamzero-gamemode-session"
+    session.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    session.chmod(0o755)
+    admin = modern / "venv" / "bin" / "steamzero-admin"
+    admin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    admin.chmod(0o755)
+    _release(layout, "release-legacy")
+
+    install_host._activate(layout, "release-modern")
+    assert "ListenStream=%t/steamzero/core.sock" in layout.user_socket.read_text()
+    assert str(layout.current / "venv" / "bin" / "steamzero-core") in (
+        layout.user_service.read_text()
+    )
+    assert "Name=SteamZero Game Mode" in layout.gamemode_session.read_text()
+    assert "phasezero" not in layout.gamemode_session.read_text().casefold()
+    assert layout.gamemode_command.readlink() == (
+        layout.current / "venv" / "bin" / "steamzero-gamemode-session"
+    )
+    assert layout.admin_command.readlink() == (layout.current / "venv" / "bin" / "steamzero-admin")
+    policy = layout.polkit_policy.read_text(encoding="utf-8")
+    assert "io.github.misael-art.steamzero.admin" in policy
+    assert str(layout.admin_command) in policy
+
+    install_host._activate(layout, "release-legacy")
+    assert not layout.user_service.exists()
+    assert not layout.user_socket.exists()
+    assert not layout.gamemode_session.exists()
+    assert not layout.gamemode_command.exists()
+    assert not layout.admin_command.exists()
+    assert not layout.polkit_policy.exists()
+
+
+def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    modern = _release(layout, "release-modern")
+    session = modern / "venv" / "bin" / "steamzero-gamemode-session"
+    session.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    session.chmod(0o755)
+    layout.gamemode_command.parent.mkdir(parents=True)
+    layout.gamemode_command.write_text("do not replace", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="comando não gerenciado"):
+        install_host._activate(layout, "release-modern")
+
+    assert not layout.current.exists()

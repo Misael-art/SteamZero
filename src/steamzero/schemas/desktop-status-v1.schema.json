@@ -5,8 +5,9 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "context", "recommendedProfile", "effectiveProfile", "manualOverride",
-    "current", "recoveryRequired", "independentRuntime"
+    "context", "truthState", "recommendedProfile", "desiredProfile",
+    "appliedProfile", "observedProfile", "effectiveProfile", "manualOverride",
+    "current", "observation", "statusReasons", "recoveryRequired", "independentRuntime"
   ],
   "properties": {
     "context": {
@@ -16,10 +17,42 @@
         "externalKeyboard", "externalMouse", "capabilities", "conflicts"
       ]
     },
+    "truthState": {
+      "enum": ["ready", "stale", "degraded", "unapplied", "recovery-required"]
+    },
     "recommendedProfile": { "enum": ["handheld-desktop", "docked-desktop"] },
-    "effectiveProfile": { "enum": ["handheld-desktop", "docked-desktop", "safe"] },
+    "desiredProfile": { "enum": ["handheld-desktop", "docked-desktop", "safe"] },
+    "appliedProfile": {
+      "type": ["string", "null"],
+      "enum": ["handheld-desktop", "docked-desktop", "safe", null]
+    },
+    "observedProfile": {
+      "type": ["string", "null"],
+      "enum": ["handheld-desktop", "docked-desktop", "safe", null]
+    },
+    "effectiveProfile": {
+      "type": ["string", "null"],
+      "enum": ["handheld-desktop", "docked-desktop", "safe", null]
+    },
     "manualOverride": { "type": ["string", "null"] },
     "current": { "type": ["object", "null"] },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkedEffects", "unavailableEffects", "ambiguousCandidates", "errors"
+      ],
+      "properties": {
+        "checkedEffects": { "type": "array", "items": { "type": "string" } },
+        "unavailableEffects": { "type": "array", "items": { "type": "string" } },
+        "ambiguousCandidates": {
+          "type": "array",
+          "items": { "enum": ["handheld-desktop", "docked-desktop", "safe"] }
+        },
+        "errors": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "statusReasons": { "type": "array", "items": { "type": "string" } },
     "recoveryRequired": { "type": "boolean" },
     "independentRuntime": { "const": true },
     "conflictActions": {

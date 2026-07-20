@@ -5,10 +5,10 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     id: root
-    width: 1280
-    height: 800
-    minimumWidth: 800
-    minimumHeight: 600
+    width: Math.min(1600, Screen.desktopAvailableWidth)
+    height: Math.min(1000, Screen.desktopAvailableHeight)
+    minimumWidth: 1100
+    minimumHeight: 720
     visible: true
     title: qsTr("SteamZero — Central de jogos")
     color: backgroundColor
@@ -40,8 +40,14 @@ ApplicationWindow {
     readonly property color redColor: "#ff6b73"
 
     property var desktopStatus: ({
-        "effectiveProfile": "handheld-desktop",
+        "truthState": "unapplied",
+        "desiredProfile": "handheld-desktop",
+        "appliedProfile": null,
+        "observedProfile": null,
+        "effectiveProfile": null,
         "recommendedProfile": "handheld-desktop",
+        "observation": {"checkedEffects": [], "unavailableEffects": [], "ambiguousCandidates": [], "errors": []},
+        "statusReasons": [],
         "recoveryRequired": false,
         "independentRuntime": true,
         "context": {"deviceKind": "deck-lcd", "displays": [], "capabilities": [], "conflicts": []},
@@ -78,22 +84,53 @@ ApplicationWindow {
             "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
         }
     ]
+    property var fallbackSteamGameplay: ({
+        "games": [],
+        "environment": [
+            {"id": "steam", "name": "Steam", "detail": "Contexto de jogo e runtime", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "mangoapp", "name": "MangoApp", "detail": "Overlay compatível com Gamescope", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
+            {"id": "lsfg", "name": "LSFG-VK", "detail": "Geração de quadros configurada por jogo", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"}
+        ],
+        "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
+        "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
+        "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
+        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+        "launcher": {"state": "unconfigured", "statusLabel": "Selecione um jogo", "launchOption": "", "recoveryRequired": false, "configuration": {"state": "unavailable", "statusLabel": "Configuração Steam indisponível", "managed": false, "lastOperationId": null}},
+        "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
+        "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}
+    })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
         ? desktopStatus.dashboard.steam : fallbackSteam
+    readonly property var steamGameplayData: desktopStatus.dashboard
+        && desktopStatus.dashboard.steamGameplay
+        ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
+    readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
+        ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
+    readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
+        .indexOf(desktopStatus.truthState) >= 0
+    readonly property bool needsAttention: hasConflicts || desktopTruthNeedsAttention
+        || desktopStatus.recoveryRequired
 
     property int sectionIndex: 1
     property int emulatorFilter: 0
     property int steamFilter: 0
+    property string steamArea: "performance"
     property var selectedEmulator: null
     property var selectedSteam: null
     property string selectedProfile: "auto"
     property var currentPlan: null
     property var conflictPlan: null
     property var componentPlan: null
+    property var lsfgPlan: null
+    property string lsfgLastOperationId: ""
     property string apiUrl: ""
     property string apiToken: ""
     property string lastRequest: ""
@@ -118,6 +155,7 @@ ApplicationWindow {
         const apiMarker = args.indexOf("--steamzero-api")
         const tokenMarker = args.indexOf("--steamzero-token")
         const sectionMarker = args.indexOf("--steamzero-section")
+        const steamAreaMarker = args.indexOf("--steamzero-steam-area")
         if (apiMarker >= 0 && apiMarker + 1 < args.length)
             apiUrl = args[apiMarker + 1]
         if (tokenMarker >= 0 && tokenMarker + 1 < args.length)
@@ -127,6 +165,10 @@ ApplicationWindow {
             if (sections[args[sectionMarker + 1]] !== undefined)
                 sectionIndex = sections[args[sectionMarker + 1]]
         }
+        if (steamAreaMarker >= 0 && steamAreaMarker + 1 < args.length
+                && ["performance", "controls", "library", "desktop"]
+                    .indexOf(args[steamAreaMarker + 1]) >= 0)
+            steamArea = args[steamAreaMarker + 1]
         ensureSelections()
         if (desktopStatus.recoveryRequired) {
             recoveryPromptShown = true
@@ -265,6 +307,18 @@ ApplicationWindow {
         return "dialog-information"
     }
 
+    function truthStateLabel(state) {
+        if (state === "ready" || state === "applied")
+            return qsTr("pronto")
+        if (state === "degraded")
+            return qsTr("degradado")
+        if (state === "stale")
+            return qsTr("desatualizado")
+        if (state === "unapplied")
+            return qsTr("não aplicado")
+        return qsTr("desconhecido")
+    }
+
     function brandAsset(iconName) {
         const assets = {
             "dolphin-emu": "../assets/dolphin-emu.svg",
@@ -332,6 +386,13 @@ ApplicationWindow {
         request("POST", "/plan", {"profile": "safe"}, function(response) {
             currentPlan = response.plan
             resetDialog.open()
+        })
+    }
+
+    function beginLsfgInstall() {
+        request("POST", "/system/lsfg/plan", {}, function(response) {
+            lsfgPlan = response.plan
+            lsfgDialog.open()
         })
     }
 
@@ -539,6 +600,100 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: lsfgDialog
+        title: qsTr("Preparar LSFG-VK")
+        modal: true
+        width: Math.min(root.width - 48, 720)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanColor
+            border.width: 2
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("Instalação no usuário, sem sudo, usando somente o release oficial pinado.")
+                color: root.textColor
+                font.pixelSize: 17
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: qsTr("Versão"); color: root.mutedColor; Layout.preferredWidth: 100 }
+                Label { text: root.lsfgPlan ? root.lsfgPlan.version : "—"; color: root.textColor; font.bold: true }
+                Item { Layout.fillWidth: true }
+                Label { text: "G-FULL"; color: root.greenColor; font.bold: true }
+            }
+            TextArea {
+                text: root.lsfgPlan ? root.lsfgPlan.changes.join("\n") : ""
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                color: root.textColor
+                background: Rectangle {
+                    color: root.backgroundColor
+                    radius: 8
+                    border.color: root.borderColor
+                }
+                Layout.fillWidth: true
+                Layout.minimumHeight: 104
+                Accessible.name: qsTr("Arquivos que serão instalados")
+            }
+            Label {
+                text: root.lsfgPlan
+                    ? qsTr("SHA-256 do arquivo: %1").arg(root.lsfgPlan.sha256)
+                    : ""
+                color: root.mutedColor
+                font.family: "monospace"
+                font.pixelSize: 11
+                wrapMode: Text.WrapAnywhere
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Lossless Scaling continua sendo fornecido pela Steam e não é copiado pelo SteamZero.")
+                color: root.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: lsfgDialog.close()
+                }
+                Button {
+                    text: qsTr("Instalar e verificar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: {
+                        if (!root.lsfgPlan)
+                            return
+                        root.request("POST", "/system/lsfg/apply", {
+                            "planId": root.lsfgPlan.planId,
+                            "confirmToken": root.lsfgPlan.confirmToken
+                        }, function(response) {
+                            root.lsfgLastOperationId = response.operationId || ""
+                            root.lsfgPlan = null
+                            lsfgDialog.close()
+                            root.refreshStatus(response.message || qsTr("LSFG-VK preparado"))
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
         id: recoveryDialog
         title: qsTr("Alteração incompleta detectada")
         modal: true
@@ -585,7 +740,7 @@ ApplicationWindow {
             Rectangle {
                 id: sidebar
                 color: root.sidebarColor
-                Layout.preferredWidth: root.width < 980 ? 184 : 228
+                Layout.preferredWidth: root.width < 980 ? 184 : root.width >= 1400 ? 264 : 228
                 Layout.fillHeight: true
                 border.color: root.borderColor
                 border.width: 1
@@ -644,7 +799,7 @@ ApplicationWindow {
                             icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
                             display: AbstractButton.TextBesideIcon
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 48
+                            Layout.minimumHeight: index === 2 && root.sectionIndex === 2 ? 70 : 48
                             leftPadding: 14
                             rightPadding: 12
                             spacing: 12
@@ -679,12 +834,22 @@ ApplicationWindow {
                                     background: Item {}
                                     Layout.preferredWidth: 28
                                 }
-                                Label {
-                                    text: modelData.label
-                                    color: root.sectionIndex === index ? root.cyanColor : root.textColor
-                                    font.pixelSize: 15
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    elide: Text.ElideRight
+                                    spacing: 1
+                                    Label {
+                                        text: modelData.label
+                                        color: root.sectionIndex === index ? root.cyanColor : root.textColor
+                                        font.pixelSize: 15
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        visible: index === 2 && root.sectionIndex === 2
+                                        text: qsTr("Gameplay")
+                                        color: root.cyanColor
+                                        font.pixelSize: 12
+                                    }
                                 }
                             }
                         }
@@ -692,8 +857,10 @@ ApplicationWindow {
 
                     Button {
                         id: attentionButton
-                        visible: root.hasConflicts || root.desktopStatus.recoveryRequired
-                        text: root.hasConflicts ? qsTr("1 ação necessária") : qsTr("Recuperação pendente")
+                        visible: root.needsAttention
+                        text: root.hasConflicts ? qsTr("Conflito do Desktop")
+                            : root.desktopStatus.recoveryRequired ? qsTr("Recuperação pendente")
+                            : qsTr("Estado %1").arg(root.truthStateLabel(root.desktopStatus.truthState))
                         icon.name: "security-high"
                         Layout.fillWidth: true
                         Layout.minimumHeight: 54
@@ -803,7 +970,7 @@ ApplicationWindow {
                     spacing: 0
 
                     Rectangle {
-                        visible: root.hasConflicts
+                        visible: root.hasConflicts || root.desktopTruthNeedsAttention
                         color: "#24180b"
                         border.color: root.amberColor
                         border.width: 1
@@ -832,26 +999,39 @@ ApplicationWindow {
                                 spacing: 2
                                 RowLayout {
                                     Label {
-                                        text: qsTr("Outro serviço controla o Desktop")
+                                        text: root.hasConflicts
+                                            ? qsTr("Outro serviço controla o Desktop")
+                                            : root.desktopStatus.truthState === "stale"
+                                                ? qsTr("Perfil do Desktop desatualizado")
+                                                : root.desktopStatus.truthState === "unapplied"
+                                                    ? qsTr("Nenhum perfil foi aplicado")
+                                                    : qsTr("Observação do Desktop degradada")
                                         color: root.amberColor
                                         font.pixelSize: 17
                                         font.bold: true
                                     }
                                     Label {
-                                        text: "E-DESKTOP-OWNER-CONFLICT"
+                                        text: root.hasConflicts ? "E-DESKTOP-OWNER-CONFLICT"
+                                            : root.truthStateLabel(root.desktopStatus.truthState).toUpperCase()
                                         color: "#d5b47d"
                                         font.pixelSize: 11
                                     }
                                 }
                                 Label {
-                                    text: qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
+                                    text: root.hasConflicts
+                                        ? qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
+                                        : root.desktopStatus.statusReasons.length > 0
+                                            ? root.desktopStatus.statusReasons[0]
+                                            : qsTr("Revise o perfil desejado, aplicado e observado.")
                                     color: root.textColor
                                     font.pixelSize: 13
                                 }
                             }
                             DarkButton {
                                 id: resolveBannerButton
-                                text: qsTr("Resolver agora")
+                                text: root.hasConflicts ? qsTr("Resolver agora")
+                                    : root.desktopStatus.truthState === "degraded"
+                                        ? qsTr("Ver diagnóstico") : qsTr("Revisar perfis")
                                 palette.buttonText: root.textColor
                                 icon.name: "go-next"
                                 Layout.minimumHeight: 48
@@ -862,7 +1042,12 @@ ApplicationWindow {
                                     border.color: resolveBannerButton.activeFocus ? root.cyanColor : "#705127"
                                     border.width: resolveBannerButton.activeFocus ? 2 : 1
                                 }
-                                onClicked: root.beginConflictResolution()
+                                onClicked: {
+                                    if (root.hasConflicts)
+                                        root.beginConflictResolution()
+                                    else
+                                        root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 5 : 3
+                                }
                             }
                         }
                     }
@@ -909,14 +1094,14 @@ ApplicationWindow {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             Label {
-                                                text: root.hasConflicts ? qsTr("Ação necessária") : qsTr("Sistema pronto")
-                                                color: root.hasConflicts ? root.amberColor : root.greenColor
+                                                text: root.needsAttention ? qsTr("Ação necessária") : qsTr("Sistema pronto")
+                                                color: root.needsAttention ? root.amberColor : root.greenColor
                                                 font.pixelSize: 22
                                                 font.bold: true
                                             }
                                             Label {
-                                                text: root.hasConflicts
-                                                    ? qsTr("Libere o controle do Desktop para aplicar configurações.")
+                                                text: root.needsAttention
+                                                    ? qsTr("Revise o estado real do Desktop antes de aplicar configurações.")
                                                     : qsTr("Perfil, display e providers foram verificados.")
                                                 color: root.textColor
                                                 wrapMode: Text.WordWrap
@@ -924,10 +1109,17 @@ ApplicationWindow {
                                             }
                                         }
                                         Button {
-                                            text: root.hasConflicts ? qsTr("Resolver conflito") : qsTr("Ver sistema")
+                                            text: root.hasConflicts ? qsTr("Resolver conflito")
+                                                : root.desktopTruthNeedsAttention ? qsTr("Revisar perfis")
+                                                : qsTr("Ver sistema")
                                             Layout.minimumHeight: 48
                                             Accessible.name: text
-                                            onClicked: root.hasConflicts ? root.beginConflictResolution() : root.sectionIndex = 5
+                                            onClicked: {
+                                                if (root.hasConflicts)
+                                                    root.beginConflictResolution()
+                                                else
+                                                    root.sectionIndex = root.desktopTruthNeedsAttention ? 3 : 5
+                                            }
                                         }
                                     }
                                 }
@@ -1231,8 +1423,151 @@ ApplicationWindow {
                         // Steam
                         RowLayout {
                             spacing: 0
-                            ColumnLayout {
+                            SteamGameplay {
+                                id: steamGameplayPage
+                                gameplay: root.steamGameplayData
+                                desktopStatus: root.desktopStatus
+                                initialArea: root.steamArea
+                                backgroundColor: root.backgroundColor
+                                surfaceColor: root.surfaceColor
+                                raisedColor: root.raisedColor
+                                borderColor: root.borderColor
+                                textColor: root.textColor
+                                mutedColor: root.mutedColor
+                                cyanColor: root.cyanColor
+                                cyanDarkColor: root.cyanDarkColor
+                                greenColor: root.greenColor
+                                amberColor: root.amberColor
+                                redColor: root.redColor
                                 Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                onPlanRequested: function(payload) {
+                                    root.request("POST", "/steam/gameplay/plan", payload, function(response) {
+                                        steamGameplayPage.showPlan(response.plan)
+                                    })
+                                }
+                                onApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/steam/gameplay/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Perfil Steam salvo"))
+                                    })
+                                }
+                                onSystemRequested: root.sectionIndex = 5
+                                onDesktopProfilePlanRequested: function(profile) {
+                                    root.request("POST", "/plan", {"profile": profile}, function(response) {
+                                        steamGameplayPage.showDesktopPlan(response.plan)
+                                    })
+                                }
+                                onDesktopProfileApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function() {
+                                        root.refreshStatus(qsTr("Perfil do Modo Desktop aplicado"))
+                                    })
+                                }
+                                onDesktopSafeResetRequested: root.beginQuickReset()
+                                onDesktopConflictRequested: root.beginConflictResolution()
+                                onDesktopRecoveryRequested: root.request(
+                                    "POST", "/recover", {}, function() {
+                                        root.refreshStatus(qsTr("Estado Desktop seguro restaurado"))
+                                    }
+                                )
+                                onDesktopKeyboardRequested: root.openKeyboard()
+                                onSteamInputRequested: function(gameId) {
+                                    root.request("POST", "/steam/input/open", {
+                                        "gameId": gameId
+                                    }, function() {
+                                        root.notify(qsTr("Configuração Steam Input aberta"), false)
+                                    })
+                                }
+                                onLauncherRecoveryRequested: function(gameId) {
+                                    root.request("POST", "/steam/gameplay/recover", {
+                                        "gameId": gameId
+                                    }, function() {
+                                        root.refreshStatus(qsTr("Estado do lançamento restaurado"))
+                                    })
+                                }
+                                onLaunchOptionsPlanRequested: function(gameId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/plan", {
+                                        "gameId": gameId
+                                    }, function(response) {
+                                        steamGameplayPage.showLaunchOptionsPlan(response.plan)
+                                    })
+                                }
+                                onLaunchOptionsApplyRequested: function(planId, confirmToken, gameId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken,
+                                        "gameId": gameId
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Lançamento configurado"))
+                                    })
+                                }
+                                onLaunchOptionsRollbackRequested: function(operationId) {
+                                    root.request("POST", "/steam/gameplay/launch-options/rollback", {
+                                        "operationId": operationId
+                                    }, function(response) {
+                                        root.refreshStatus(response.message || qsTr("Configuração restaurada"))
+                                    })
+                                }
+                                onMaintenancePlanRequested: function(gameId, categories) {
+                                    root.request("POST", "/steam/maintenance/plan", {
+                                        "gameId": gameId,
+                                        "categories": categories
+                                    }, function(response) {
+                                        steamGameplayPage.showMaintenancePlan(response)
+                                    })
+                                }
+                                onMaintenanceApplyRequested: function(planId, confirmToken, confirmPhrase) {
+                                    root.request("POST", "/steam/maintenance/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken,
+                                        "confirmPhrase": confirmPhrase
+                                    }, function(response) {
+                                        root.refreshStatus(qsTr("%1 liberados com segurança").arg(
+                                            steamGameplayPage.formatBytes(response.freedBytes)
+                                        ))
+                                    })
+                                }
+                                onMaintenanceRecoveryRequested: {
+                                    root.request("POST", "/steam/maintenance/recover", {}, function() {
+                                        root.refreshStatus(qsTr("Limpeza interrompida concluída"))
+                                    })
+                                }
+                                onMediaPlanRequested: function(gameId, accountId, packagePath) {
+                                    root.request("POST", "/steam/media/plan", {
+                                        "gameId": gameId,
+                                        "accountId": accountId,
+                                        "packagePath": packagePath
+                                    }, function(response) {
+                                        steamGameplayPage.showMediaPlan(response)
+                                    })
+                                }
+                                onMediaApplyRequested: function(planId, confirmToken) {
+                                    root.request("POST", "/steam/media/apply", {
+                                        "planId": planId,
+                                        "confirmToken": confirmToken
+                                    }, function(response) {
+                                        steamGameplayPage.mediaLastOperationId = response.operationId || ""
+                                        root.refreshStatus(response.message || qsTr("Pacote de mídia aplicado"))
+                                    })
+                                }
+                                onMediaRollbackRequested: function(operationId) {
+                                    root.request("POST", "/steam/media/rollback", {
+                                        "operationId": operationId
+                                    }, function() {
+                                        steamGameplayPage.mediaLastOperationId = ""
+                                        root.refreshStatus(qsTr("Mídia anterior restaurada"))
+                                    })
+                                }
+                            }
+                            ColumnLayout {
+                                visible: false
+                                Layout.preferredWidth: 0
+                                Layout.fillWidth: false
                                 Layout.fillHeight: true
                                 spacing: 0
                                 ColumnLayout {
@@ -1387,7 +1722,7 @@ ApplicationWindow {
                                 }
                             }
                             Rectangle {
-                                visible: root.width >= 1040
+                                visible: false
                                 color: root.surfaceColor
                                 border.color: root.borderColor
                                 Layout.preferredWidth: 292
@@ -1459,7 +1794,7 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                 }
                                 Label {
-                                    text: qsTr("Perfil atual: %1 · Recomendado: %2").arg(root.desktopStatus.effectiveProfile).arg(root.desktopStatus.recommendedProfile)
+                                    text: qsTr("Aplicado: %1 · Observado: %2 · Desejado: %3").arg(root.desktopStatus.appliedProfile || qsTr("nenhum")).arg(root.desktopStatus.observedProfile || qsTr("incerto")).arg(root.desktopStatus.desiredProfile)
                                     color: root.mutedColor
                                     Layout.leftMargin: 28
                                 }
@@ -1637,6 +1972,118 @@ ApplicationWindow {
                                             Label { text: "E-DESKTOP-OWNER-CONFLICT"; color: root.mutedColor; font.pixelSize: 12 }
                                         }
                                         Button { text: qsTr("Resolver conflito"); Layout.minimumHeight: 48; Accessible.name: text; onClicked: root.beginConflictResolution() }
+                                    }
+                                }
+                                Label {
+                                    text: qsTr("Componentes de gameplay")
+                                    color: root.textColor
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    Layout.leftMargin: 28
+                                }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 8
+                                    border.color: root.lsfgSystemData.state === "ready"
+                                        ? root.greenColor
+                                        : root.lsfgSystemData.state === "degraded"
+                                        ? root.amberColor : root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 116
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 18
+                                        spacing: 16
+                                        ToolButton {
+                                            enabled: false
+                                            icon.name: "view-media-visualization"
+                                            icon.color: root.lsfgSystemData.state === "ready"
+                                                ? root.greenColor : root.cyanColor
+                                            icon.width: 30
+                                            icon.height: 30
+                                            background: Item {}
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 3
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "LSFG-VK"
+                                                    color: root.textColor
+                                                    font.pixelSize: 18
+                                                    font.bold: true
+                                                }
+                                                Label {
+                                                    text: root.lsfgSystemData.statusLabel
+                                                    color: root.lsfgSystemData.state === "ready"
+                                                        ? root.greenColor : root.amberColor
+                                                    font.bold: true
+                                                }
+                                            }
+                                            Label {
+                                                text: root.lsfgSystemData.detail
+                                                color: root.mutedColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                text: root.lsfgSystemData.losslessScalingInstalled
+                                                    ? qsTr("Lossless Scaling detectado na Steam")
+                                                    : qsTr("Requer Lossless Scaling instalado pela Steam")
+                                                color: root.lsfgSystemData.losslessScalingInstalled
+                                                    ? root.greenColor : root.amberColor
+                                                font.pixelSize: 11
+                                            }
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state !== "ready"
+                                                && !root.lsfgSystemData.losslessScalingInstalled
+                                            text: qsTr("Abrir biblioteca")
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: qsTr("Abrir biblioteca Steam para Lossless Scaling")
+                                            onClicked: root.request("POST", "/steam/open", {
+                                                "target": "library"
+                                            }, function() {
+                                                root.notify(qsTr("Biblioteca Steam aberta"), false)
+                                            })
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state !== "ready"
+                                                && root.lsfgSystemData.losslessScalingInstalled
+                                            text: root.lsfgSystemData.state === "degraded"
+                                                ? qsTr("Reparar LSFG-VK") : qsTr("Preparar LSFG-VK")
+                                            enabled: root.lsfgSystemData.installable
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: text
+                                            onClicked: root.beginLsfgInstall()
+                                        }
+                                        Button {
+                                            visible: root.lsfgSystemData.state === "ready"
+                                            text: qsTr("Verificado · %1").arg(
+                                                root.lsfgSystemData.version || "1.0.0"
+                                            )
+                                            enabled: false
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: text
+                                        }
+                                        Button {
+                                            visible: root.lsfgLastOperationId.length > 0
+                                                || Boolean(root.lsfgSystemData.lastOperationId)
+                                            text: qsTr("Desfazer")
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: qsTr("Desfazer última instalação LSFG-VK")
+                                            onClicked: root.request("POST", "/system/lsfg/rollback", {
+                                                "operationId": root.lsfgLastOperationId.length > 0
+                                                    ? root.lsfgLastOperationId
+                                                    : String(root.lsfgSystemData.lastOperationId)
+                                            }, function(response) {
+                                                root.lsfgLastOperationId = ""
+                                                root.refreshStatus(response.message || qsTr("LSFG-VK restaurado"))
+                                            })
+                                        }
                                     }
                                 }
                                 Label { text: qsTr("Diagnóstico"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28 }

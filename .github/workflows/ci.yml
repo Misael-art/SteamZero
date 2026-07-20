@@ -1,54 +1,185 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# CI: roda os gates do DoD em todo PR (docs/08-testing/TEST-STRATEGY.md).
 name: ci
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
 jobs:
-  check:
+  quality:
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install (hash-verified lockfile)
-        run: |
-          python -m pip install --upgrade pip
-          pip install --require-hashes -r requirements-dev.lock
-          pip install --no-deps -e .
-      - name: Format check
+      - name: Dependências verificadas por hash
+        run: python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Checkout sem alterações prévias
+        run: test -z "$(git status --porcelain)"
+      - name: Formatação
         run: ruff format --check src tests tools
       - name: Lint
         run: ruff check src tests tools
-      - name: Boundary lint (MODULE-BOUNDARIES)
+      - name: Fronteiras arquiteturais
         run: python tools/lint_boundaries.py --root src
-      - name: Runtime independence gate (ADR-0019)
+      - name: Independência do PhaseZero
         run: python tools/check_independence.py
-      - name: Type check (mypy --strict)
+      - name: Tipos estritos
         run: mypy
-      - name: Tests
-        run: pytest --cov=steamzero --cov-report=term-missing
-
-  # shellcheck roda quando houver shims bash (nenhum na Fase 1; gate pronto).
-  shellcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: shellcheck (shims bash, se houver)
+      - name: Testes e cobertura
         run: |
-          shopt -s globstar nullglob
-          files=(shims/**/*.sh)
-          if [ ${#files[@]} -eq 0 ]; then echo "sem shims bash — ok"; exit 0; fi
-          sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck "${files[@]}"
+          mkdir -p build
+          pytest \
+            --cov=steamzero \
+            --cov-report=term-missing \
+            --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
+            --cov-report=json:build/coverage-${{ matrix.python-version }}.json
+      - name: Publicar cobertura
+        if: matrix.python-version == '3.14'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-python-3.14
+          path: build/coverage-3.14.*
+          if-no-files-found: error
+          retention-days: 30
+
+  package:
+    name: Wheel limpo, smoke e supply chain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Dependências verificadas por hash
+        run: python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Verificar checkout e construir wheel isolado
+        run: |
+          test -z "$(git status --porcelain)"
+          mkdir -p build
+          python -m pip wheel --no-deps --wheel-dir dist .
+          python tools/release_provenance.py verify-wheel --wheel dist/*.whl
+      - name: Instalar wheel em ambiente vazio e executar smoke
+        run: |
+          python -m venv /tmp/steamzero-smoke
+          /tmp/steamzero-smoke/bin/python -m pip install --require-hashes -r requirements-runtime.lock
+          /tmp/steamzero-smoke/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/steamzero-smoke/bin/python -m pip check
+          /tmp/steamzero-smoke/bin/steamzero --version
+          /tmp/steamzero-smoke/bin/steamzero doctor --json
+          /tmp/steamzero-smoke/bin/python -c "from steamzero import ports; assert ports.DevicePort"
+      - name: Auditar ambiente instalado pelo feed OSV e gerar SBOM
+        run: |
+          site_packages=$(/tmp/steamzero-smoke/bin/python -c "import site; print(site.getsitepackages()[0])")
+          pip-audit --path "$site_packages" --vulnerability-service osv --progress-spinner off --format json --output build/pip-audit.json
+          pip-audit --path "$site_packages" --vulnerability-service osv --progress-spinner off --format cyclonedx-json --output build/sbom.cdx.json
+      - name: Gerar proveniência local e checksums
+        run: |
+          python tools/release_provenance.py create \
+            --wheel dist/*.whl \
+            --sbom build/sbom.cdx.json \
+            --commit "$(git rev-parse HEAD)" \
+            --repository "${{ github.repository }}" \
+            --ref "${{ github.ref }}" \
+            --run-id "${{ github.run_id }}" \
+            --output build/provenance.json
+          sha256sum dist/*.whl build/sbom.cdx.json build/provenance.json > build/SHA256SUMS
+      - name: Atestar proveniência assinada em tags
+        if: >-
+          startsWith(github.ref, 'refs/tags/') &&
+          (github.event.repository.visibility == 'public' ||
+          vars.STEAMZERO_ENABLE_GITHUB_ATTESTATION == 'true')
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: dist/*.whl
+      - name: Atestar SBOM assinada em tags
+        if: >-
+          startsWith(github.ref, 'refs/tags/') &&
+          (github.event.repository.visibility == 'public' ||
+          vars.STEAMZERO_ENABLE_GITHUB_ATTESTATION == 'true')
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: dist/*.whl
+          sbom-path: build/sbom.cdx.json
+      - name: Publicar wheel, auditoria, SBOM e proveniência
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: steamzero-wheel-${{ github.sha }}
+          path: |
+            dist/*.whl
+            build/pip-audit.json
+            build/sbom.cdx.json
+            build/provenance.json
+            build/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+  distro-smoke:
+    name: Smoke ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04
+            image: ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
+          - name: Arch Linux
+            image: archlinux@sha256:212b1e518e94ee9c52be55e8a32da75fcf11e7b5610b80b49479e67880102406
+          - name: Manjaro
+            image: manjarolinux/base@sha256:bbf1f1d746f28e138eea610e140d2f28cbb5b7c5da2fbff034b883527aa604e9
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Python 3.14 portátil
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Identificar distribuição
+        run: cat /etc/os-release
+      - name: Construir e instalar sem editable
+        run: |
+          python -m pip wheel --no-deps --wheel-dir dist .
+          python -m venv /tmp/steamzero-distro
+          /tmp/steamzero-distro/bin/python -m pip install --require-hashes -r requirements-runtime.lock
+          /tmp/steamzero-distro/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/steamzero-distro/bin/python -m pip check
+          /tmp/steamzero-distro/bin/steamzero --version
+          /tmp/steamzero-distro/bin/steamzero doctor --json

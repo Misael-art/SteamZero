@@ -46,6 +46,8 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-SAVES-FLUSH-TIMEOUT` emulador não confirmou flush antes da suspensão; checkpoint anterior usado.
 
 ### SESSION / MODE
+- `E-SESSION-INTERRUPTED` launcher caiu antes de concluir; exige recuperação explícita.
+- `E-SESSION-LAUNCH-FAILED` processo/runtime falhou antes de concluir o lançamento.
 - `E-SESSION-RESUME-DEGRADED` camada X falhou na retomada; reparo aplicado/pendente.
 - `E-MODE-DISPLAY-FALLBACK` fallback de display acionado (registrando em qual degrau parou).
 

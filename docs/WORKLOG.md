@@ -573,3 +573,834 @@ assets e dashboard e exclui `steamzero.ports`. A release imutável
 e `steamzero doctor --json` retornaram `ok`, schema 2 e zero operações pendentes. A cópia
 instalada foi aberta no KDE/Wayland real. O watcher legado permaneceu inativo e não
 registrado no systemd; instalação e runtime não exigem sua presença nem dependem dele.
+
+## 2026-07-15 — Sessão de pesquisa: quadro de funções e proveniência
+
+- Criado `docs/02-research/FUNCTION-PROVENANCE-MATRIX.md`: **262 funções** (camada de usuário + internas do núcleo) em 15 seções, cada uma classificada por proveniência com evidência.
+- Taxonomia de 4 níveis (decidida com o responsável): **INSP** (conceito, implementação independente) · **ADAP** (deriva de artefato concreto — sujeito à licença) · **APRI** (existe no original com falha documentada que corrigimos, citando `arquivo:linha`) · **NOVO** (nenhum dos quatro entrega, citando `GA-xx`).
+- Contagens apuradas por script (não estimadas): NOVO 117 (44,7%) · INSP 104 (39,7%) · APRI 37 (14,1%) · **ADAP 4 (1,5%)**. Citações de origem nas 145 linhas rastreáveis: PhaseZero 93 · RetroDECK 47 · EmuDeck 41 · LinuxToys 11 — confirmando quantitativamente a tese da ROBUSTNESS-SCORE (PZ=execução, RD=plataforma, ED=domínio, LT=forma).
+- **Achado com impacto legal:** apenas 4 funções (templates de config do ED, estrutura `roms/`, banco de hashes de BIOS, perfis Steam Input) são ADAP. **258 das 262 (98,5%) independem da decisão de licença (Q2/ADR-0013)** e todas as 4 têm alternativa documentada — a licença deixa de ser bloqueador de implementação e passa a ser decisão de custo sobre 4 artefatos.
+- Escopo Handheld Desktop (F-HD-01..05, ADR-0019/M10-H), acrescentado durante a implementação, teve a proveniência apurada e entrou como seção 13.5 (SZ-HD-01..12).
+- Verificações de consistência executadas e verdes: cobertura de todos os `F-xx` do FEATURE-CATALOG; zero `GA-xx` órfão; zero ID `SZ-*` duplicado.
+
+## 2026-07-18 — Sessão 31: robustez e resiliência do boot Game Mode
+
+**Evidência física incorporada:** o responsável confirmou que a entrada SteamZero chegou
+diretamente ao Big Picture após o GRUB. Esse caminho funcional foi preservado como baseline;
+nenhuma instalação, regeneração de GRUB ou mutação de `/etc`, `/boot` ou `/usr` foi executada
+nesta sessão.
+
+**Boot e sessão endurecidos:** o script `/etc/grub.d` agora resolve o par kernel/initramfs
+quando o `grub-mkconfig` o executa, acompanhando atualizações sem congelar o nome observado no
+momento do `enable`. O preflight reproduz a precedência efetiva do SDDM, exige que a sessão
+esteja no `SessionDir` visível, valida Steam/Gamescope/fallback Desktop antes de efeitos e
+confirma a presença/ausência da entrada no `grub.cfg`; falha pós-geração restaura os bytes
+anteriores. Symlinks quebrados ou artefatos sem marcador de ownership são recusados.
+
+**Detecção pós-boot e backoff:** cada boot solicitado recebe marcador por `boot_id`; a sessão
+registra início em estado do usuário. Três solicitações consecutivas sem início suspendem o
+autologin e devolvem o host ao greeter. Selecionar a sessão manualmente ou executar `recover`
+zera o backoff. Reexecução do oneshot no mesmo boot é idempotente, e falha ao gravar telemetria
+é registrada sem impedir Gamescope ou o fallback Plasma.
+
+**Instalação e apresentação:** a sessão é publicada em
+`/usr/share/wayland-sessions/steamzero-gamemode.desktop`; uma cópia antiga em `/usr/local` só
+é removida quando possui ownership SteamZero. Links estáveis e Desktop entry participam do
+rollback do instalador. As duas strings BigLinux-específicas do dashboard foram neutralizadas
+em commit próprio, mantendo a decisão por capacidade da ADR-0020.
+
+**Provas:** teste renomeia kernel+initramfs e reexecuta o mesmo script GRUB; cenário completo
+de três falhas→backoff→sessão manual→recuperação; precedência SDDM; EACCES distinto de não
+configurado; rollback por `grub.cfg` inválido; ownership de symlink quebrado; falha de marcador
+sem tela preta; instalação/rollback da sessão. Gate completo: Ruff, formato, fronteiras,
+independência e mypy verdes; **401 passed**. Cobertura integral: **85%**, com `steam_boot` 83%
+e `steam_session` 79%. Wheel `steamzero-0.1.0.dev0` construído e instalado em venv descartável,
+SHA-256 `9b03b2702458a280525329d7f781696e94e81a830c3c6c0956ac092c756e8f03`; entrypoints e
+`status` passaram. Probes read-only no host confirmaram `/usr/share/wayland-sessions` e a
+entrada para `vmlinuz-6.18-x86_64`/UUID real.
+
+**Commits:** `eee14ab` (backend/testes), `28e432e` (instalador/SessionDir) e `e535f3d`
+(P1-1, strings isoladas). Instalação root e novo reboot físico permanecem gates externos.
+
+## 2026-07-18 — Sessão 32: validação física Game Mode → Desktop
+
+**Boot real concluído:** o kernel iniciou com `root=UUID=307f0ecc-3ad9-4619-893d-28454cad339a`
+e `steamzero.gamemode=1`; o oneshot selecionou a sessão gerenciada no `SessionDir` efetivo do
+SDDM. `gamescope-session-plus@steam.service` iniciou Gamescope e o Steam com
+`-gamepadui -steamos3`. O cliente concluiu atualização/verificação e apresentou o Big Picture
+no Steam Deck LCD.
+
+**Handoff real para o Desktop:** o botão nativo registrou `target: plasma` às 20:59:41,
+encerrou Steam e Gamescope de forma ordenada e iniciou os serviços Plasma às 20:59:49. O
+Codex Desktop voltou na sessão KDE às 21:00:43. Para eliminar dependência indireta do seletor
+da distribuição, o instalador publica `/usr/local/bin/steamos-session-select` como link estável
+para o entrypoint SteamZero, sem alterar `/usr/bin` nem `/usr/lib/os-session-select`.
+
+**Falha encontrada no teste físico:** o BigLinux manteve
+`next_entry=steamzero-gamemode` no `grubenv` mesmo após consumir o boot único, por causa da
+combinação com `env_block`. O preparador agora remove exclusivamente esse identificador após
+observar o marcador SteamZero, recusa bloco inseguro ou limpeza ineficaz e deixa seleções
+alheias intactas. A release `0.1.0a33-b075ead` foi instalada mantendo a a32 para rollback;
+`prepare` removeu o valor persistente e `status` confirmou estado `ready`, zero backoff e zero
+falhas consecutivas.
+
+**Provas finais:** testes novos cobrem o seletor nativo `plasma`, publicação/ownership do link,
+limpeza do `next_entry` e recusa quando a variável permanece. Ruff, formato, fronteiras,
+independência e mypy verdes; **407 passed**. Commits desta validação: `d015a40` e `b075ead`.
+
+## 2026-07-18 — Sessão 33: fechamento conservador de rollback e sessão
+
+**Rollback completo:** uma falha durante `disable` agora restaura, além dos arquivos e do
+`grub.cfg`, o estado anterior de habilitação da unidade systemd e recarrega sua definição.
+O teste de regressão injeta uma saída GRUB inválida após o `disable` e prova a recuperação
+dos bytes e do `systemctl enable` original.
+
+**Contenção de sessão:** o launcher verifica `WAYLAND_DISPLAY`/`DISPLAY` antes do fallback
+por dependência. Assim, Steam ou Gamescope ausente nunca provoca um segundo Plasma dentro de
+uma sessão gráfica existente; o override explícito de desenvolvimento permanece disponível.
+
+**Provas desta sessão:** `make check` verde (formato, Ruff, fronteiras, independência, mypy
+estrito e **409 passed**); cobertura **85%** global, `steam_boot` **85%** e `steam_session`
+**81%**. Wheel final instalado com dependências travadas, SHA-256
+`91d440609762925e33577cb292a895c1cca4ab4d18c555dbde3874ed4f56c099`; CLI e os três
+entrypoints de Game Mode passaram no smoke read-only. Commit: `60edfa0`. Nenhuma mutação
+privilegiada, reinstalação host ou reboot físico foi executado nesta sessão.
+## 2026-07-16 — Sessão 11: baseline de confiança e congelamento de features
+
+**Preservação:** o checkout completo foi copiado do microSD para
+`/home/misael/Projects/Port_Steam`, no Btrfs interno, mantendo `.git` e o `ports.py`
+local. Hash do arquivo, `HEAD` e `git fsck --full --strict` foram conferidos; a cópia
+do microSD permaneceu intacta como fallback. O remoto privado/off-host continua
+bloqueado porque não há remoto configurado e o `gh` não está autenticado.
+
+**Baseline histórica corrigida:** antes desta remediação, a execução real foi
+**367 passed / 85%** (4251 statements, 528 misses, 938 branches). O State Store do host
+também prova que não foi apenas read-only: a operação Desktop
+`01KXMDC05NTYS88F5WC8XS8V3T` aplicou `docked-desktop`, capturou KScreen/KWin e chegou
+a `committed`; os eventos `desktop.conflict-released` e `desktop.profile-applied`
+foram persistidos. O relatório deixou de afirmar que nenhum apply ocorreu.
+
+**Arquitetura e verdade Desktop:** `steamzero.ports` passou a ser a única definição de
+seis contratos/DTOs, é empacotado e mantém os imports antigos por reexportação. O status
+Desktop agora separa `recommendedProfile`, `desiredProfile`, `appliedProfile` e
+`observedProfile`; `effectiveProfile` é somente alias temporário do observado. Contexto
+ou desejo divergente retorna `stale`, falha/indisponibilidade de observação retorna
+`degraded`, e um teste reproduz dock→undock após apply real do domínio.
+
+**Versão e proveniência:** a baseline passou de `0.1.0.dev0` para `0.1.0a1`, com uma
+única fonte de versão no pacote. Novas instalações exigem manifesto v2, SHA completo e
+ID canônico `<versão>-<commit[0:12]>`. A auditoria byte a byte das releases antigas foi
+registrada em `RELEASE-LEDGER.md`; releases intermediárias sem árvore Git coincidente
+foram classificadas como não reproduzíveis em vez de receberem um commit inventado.
+
+**CI/supply chain:** backend Hatchling e todas as Actions foram pinados; a matriz cobre
+Python 3.11/3.12/3.14, wheel sem editable, smoke em Ubuntu/Arch/Manjaro por digest,
+cobertura publicada, auditoria `pip-audit` pelo feed OSV, SBOM CycloneDX, checksums e
+proveniência do wheel. A proveniência recusa árvore rastreada suja e commit diferente do
+`HEAD`. Localmente, o wheel `0.1.0a1` foi construído, contém `steamzero.ports`, instalou
+em venv vazio, passou `pip check`/versão/doctor e a auditoria OSV não encontrou
+vulnerabilidades conhecidas. A execução no provedor continua pendente do remoto.
+
+**Gate pós-remediação local:** **372 passed / 85%**, zero falhas/skips/xfails; Ruff,
+fronteiras, independência e mypy verdes. M10 em VM, daemon/reconciliador, transporte
+polkit e matriz física do Deck não foram executados e permanecem bloqueando UI/release
+em `OPERATIONAL-TRUST-GATES.md`.
+
+## 2026-07-16 — Sessão 12: Steam Gameplay no padrão Prontidão do jogo
+
+**Direção visual escolhida:** o terceiro mockup passou a ser a referência da central
+Desktop. A primeira cobertura foi aplicada à área Steam com hierarquia jogo → prontidão
+→ ajustes essenciais → impacto → confirmação, preservando tema azul-preto, foco ciano,
+estados semânticos, sidebar e footer por controle.
+
+**Contrato real e honesto:** `SteamGameplayController` descobre manifests e capas locais,
+observa Steam/Gamescope/Feral GameMode/MangoHud/vkBasalt, memória, tela e limites do Deck.
+Perfis usam token, expiração e fingerprint do ambiente; mudança da biblioteca gera
+`E-TX-STALE-PLAN`, owner concorrente é rechecado no apply e dependência ausente bloqueia
+em vez de simular sucesso. A persistência permanece `desired`, sem afirmar que TDP/GPU
+foram aplicados antes do executor M11.
+
+**UI e gate:** perfis/FPS/MangoHud usam escolhas segmentadas, TDP usa slider contínuo e
+upscaling usa listbox. A revisão mostra alterações, bloqueios e rollback; drivers ausentes
+encaminham apenas a **Abrir Sistema**. A suíte chegou a **377 testes**; Ruff, mypy,
+`qmllint`, fronteiras e independência passaram. A captura Qt/QML em 1600×1000 foi
+comparada ao mockup selecionado.
+
+**Versão:** a árvore passa a `0.1.0a2`; nenhum artefato desta mudança reutiliza a versão
+`0.1.0a1` da baseline.
+
+## 2026-07-17 — Sessão 13: LSFG e Steam Input por jogo
+
+**Perfis por jogo:** o contrato de gameplay passou a aceitar geração de quadros
+Desligada/LSFG 2×/3×/4× e layouts Steam Input allowlisted. A camada LSFG é observada pelo
+manifesto Vulkan em escopos user/local/system; ausência bloqueia o plano e encaminha para Sistema, sem
+download ou aplicação fictícia. Layouts abrem somente `steam://controllerconfig/<appid>`
+com AppID numérico validado.
+
+**Persistência e resiliência:** desempenho continua em `kind=performance`; controles são
+gravados em `kind=controls`, com owner `steam-input`. Os dois perfis usam a nova operação
+atômica `StateStore.save_profiles`: falha em qualquer linha reverte o conjunto inteiro.
+O estado permanece honestamente `desired` até o launcher/reconciliador M11 aplicar e observar.
+
+**Experiência:** a tela escolhida ganhou áreas Desempenho e LSFG/Controles sem mudar a
+hierarquia jogo → escopo → prontidão → revisão. No breakpoint compacto, Ambiente e capacidade
+ficam disponíveis em diálogo em vez de esmagar os ajustes; a ação de revisão permanece fixa.
+
+**Gate:** **382 passed / 85%** (4646 statements, 560 misses, 1092 branches); Ruff,
+mypy estrito, fronteiras, independência, `qmllint` e comparação visual passaram.
+
+**Versão:** a árvore passa a `0.1.0a3`; a instalação automática pinada do LSFG-VK permanece
+como próxima entrega de Sistema porque exige aquisição verificada, staging em streaming e
+rollback de arquivos sob `~/.local`, sem embutir um artefato de ~74 MB no plano transacional.
+
+## 2026-07-17 — Sessão 14: instalação pinada e reversível do LSFG-VK
+
+**Supply chain:** Sistema passou a adquirir exclusivamente `lsfg-vk_noui.zip` da release
+oficial 1.0.0, fixada por URL e SHA-256
+`af5ee1626d9543349245520689da107c3ebc5ef3755086441fbb854173b8e096`. A biblioteca
+extraída também é validada pelo hash
+`de4954bcce6904b62b6c48f1525c7fd78b4c2d7f9a959edf621528d9363ebbfd`. O ZIP aceita
+somente as duas entradas esperadas, rejeita symlinks/excesso de tamanho e normaliza o
+manifesto Vulkan para o caminho user-scoped absoluto.
+
+**Propriedade e transação:** o SteamZero exige a instalação real do Lossless Scaling
+(App 993090 e `Lossless.dll`) antes de preparar a camada; não baixa nem redistribui o
+componente proprietário. Biblioteca e manifesto são gravados sob `~/.local` pelo núcleo
+transacional com plano, confirmToken, verificação pós-apply e rollback G-FULL. Nenhuma
+escrita global, `sudo`, `pacman` ou dependência PhaseZero foi introduzida.
+
+**Experiência e verdade:** Sistema mostra ausente/verificado/reparo necessário, a fonte,
+a dependência proprietária e as ações Preparar/Reparar/Desfazer. Sem a dependência, abre
+somente a biblioteca Steam. A detecção no host real retornou `missing`, dependência ausente
+e `installable=false`; portanto nenhuma mutação foi tentada. A aplicação por jogo continua
+honestamente `desired` até o launcher/reconciliador M11.
+
+**Gate:** **387 passed / 85%** (4839 statements, 601 misses, 1150 branches); Ruff,
+mypy estrito, fronteiras, independência e `qmllint` verdes. A captura
+`/tmp/steamzero-system-lsfg.png` não apresentou diferenças P0/P1/P2.
+
+**Versão:** a árvore passa a `0.1.0a4`; nenhum artefato reutiliza a versão anterior.
+
+## 2026-07-17 — Sessão 15: launcher Steam aplicado e observável
+
+**Execução real:** entrou o entry point `steamzero-launch`, destinado às Launch Options
+`steamzero-launch --appid <id> -- %command%`. A linha é interpretada sem shell e o comando
+recebido da Steam permanece uma lista de argumentos. A política é resolvida por prioridade
+por jogo → contexto portátil/dock → global. Gamescope limita FPS e aplica FSR quando pedido;
+GameMode usa `gamemoderun`; MangoHud usa `mangohud` fora do Gamescope e `--mangoapp` dentro
+dele; LSFG usa somente as variáveis oficiais, a camada observada e o `Lossless.dll` possuído.
+
+**Verdade e lifecycle:** cada execução registra launching→active→exited/failed no State
+Store. `observed` exige PID vivo, marcadores de ambiente do SteamZero e digest do perfil
+atual; PID reutilizado não produz falso positivo. Mudança de perfil durante a execução vira
+`stale` sem matar o jogo. Wrapper interrompido com PID morto exige recuperação explícita.
+Sinais TERM/INT são encaminhados ao filho e nenhuma linha de comando ou ambiente é gravada
+no estado. TDP, clock de GPU e FSR2 interno aparecem como adiados, nunca aplicados.
+
+**Schema:** a migração v3 corrige uma inconformidade anterior: a UI aceitava os escopos
+Global/Portátil/Dock, mas o CHECK SQLite v2 os rejeitava. A migração preserva perfis antigos,
+adiciona os três escopos e o tipo `performance-runtime`.
+
+**Experiência:** a página Prontidão do jogo mostra estado do lançamento, Launch Option
+selecionável e recuperação contextual. A captura `/tmp/steamzero-launcher-runtime.png`
+confirma hierarquia e legibilidade no viewport lógico 1600×1000. A edição automática do
+`localconfig.vdf` permanece bloqueada até existir parser preservador, Steam parada, plano
+confirmado e rollback byte-idêntico.
+
+**Gate:** **411 passed / 85%**; launcher a 94%; Ruff, mypy estrito, fronteiras,
+independência e `qmllint` verdes. Nenhum jogo comercial foi iniciado no host nesta sessão.
+
+**Versão:** a árvore passa a `0.1.0a5`; nenhum artefato reutiliza `0.1.0a4`.
+
+## 2026-07-17 — Sessão 16: Launch Options automáticas e reversíveis
+
+**Edição preservadora:** entrou um parser estrutural de Valve KeyValues que trabalha com
+offsets dos bytes, preserva comentários, ordem, espaçamento e conteúdo não relacionado.
+Ele altera somente `apps/<appid>/LaunchOptions`, rejeita AppID/folha duplicados, blocos
+ambíguos, symlinks e arquivos acima de 16 MiB. Com múltiplas contas, `MostRecent=1`
+seleciona uma única conta sem expor identificadores na API ou na UI.
+
+**Transação e concorrência:** Steam aberta bloqueia plan/apply/rollback. O plano vincula
+AppID, conta, raiz, alvo único, fingerprint e conteúdo esperado; mudança concorrente ou
+plano de outro arquivo falha antes da mutação. A aplicação exige `confirmToken`, verifica
+o valor observado e registra rollback G-FULL byte-idêntico. A configuração é uma ação
+explícita separada do perfil e a substituição de Launch Options existente é revisada.
+
+**Experiência e host:** a faixa Lançamento gerenciado ganhou status e ações Configurar/
+Desfazer. O diálogo informa Steam fechada, substituição e garantia. O QA 1280×800 com
+escala KDE 1,35 encontrou e corrigiu truncamento do rótulo; a captura final é
+`/tmp/steamzero-launch-options-auto.png`. O host retornou `missing`, Steam fechada e
+nenhuma mutação foi realizada.
+
+**Gate:** **426 passed / 85%** (5527 statements, 673 misses, 1386 branches); módulo de
+Launch Options a 80%. Ruff, mypy estrito, fronteiras, independência e `qmllint` verdes.
+
+**Versão:** a árvore passa a `0.1.0a6`; nenhum artefato reutiliza `0.1.0a5`.
+
+## 2026-07-17 — Sessão 17: lifecycle Steam com fonte de verdade única
+
+**Persistência:** a migração v4 adiciona `game_session` com os estados canônicos F-SD-01,
+PID, digest, timestamps, terminal e metadados públicos mínimos. Um índice parcial único
+por owner impede atomicamente dois jogos gerenciados em estados ativos. O domínio de
+sessão e `steamzero-launch` agora compartilham vocabulário, transições e owner.
+
+**Resiliência:** o wrapper registra launching antes do spawn, running com o PID observado,
+closing quando recebeu TERM/INT e closed/failed como terminal. Wrapper morto deixa sessão
+ativa recuperável; outro launch recebe E-TX-LOCKED. Recovery explícito usa
+E-SESSION-INTERRUPTED. Falha de spawn/runtime usa E-SESSION-LAUNCH-FAILED, nunca nome cru
+de exceção. Estados legados active/exited/interrupted continuam legíveis.
+
+**Contrato:** eventos de sessão passaram de `job.state` indevido para `session.state`,
+com `sessionId`/`gameId` no schema. `steamzero session status|recover --game-id APPID`
+expõe o lifecycle sem ampliar a UI Game Mode, preservando o congelamento de G8. Comando e
+ambiente do jogo não entram na tabela, evento ou envelope.
+
+**Host:** inspeção SQLite em `mode=ro` encontrou schema v3, sem `game_session` e sem
+runtime legado ativo. A migração v4 não foi aplicada ao host nesta sessão.
+
+**Gate:** **434 passed / 85%** (5688 statements, 691 misses, 1430 branches); conjunto
+state/session/launcher a 93%. Ruff, mypy estrito, fronteiras e independência verdes.
+
+**Versão:** a árvore passa a `0.1.0a7`; nenhum artefato reutiliza `0.1.0a6`.
+
+## 2026-07-17 — Sessão 18: plano de controle e gestão Steam resiliente
+
+**Daemon/IPC:** entrou `steamzero-core`, user-scoped e socket-activated, com JSON-RPC 2.0
+em socket UNIX 0600, diretório 0700, `SO_PEERCRED`, limite de mensagem/conexão/mutações e
+dispatch por allowlist. A CLI prefere IPC e só cai para in-process antes de conectar; uma
+resposta ambígua nunca repete mutação. O instalador publica units systemd user e valida os
+novos entry points sem abrir TCP ou depender de PhaseZero.
+
+**Gestão Steam:** a área Biblioteca ganhou limpeza real de shader cache com frase
+destrutiva, fingerprint, rename atômico e recovery pós-crash. Compatdata, saves, jogos,
+Workshop e downloads são exclusões invariantes. Pacotes locais de grid/portrait/hero/logo
+passam por magic bytes, conta explícita, transação G-FULL e rollback byte-idêntico.
+
+**Sessão:** `steamzero-gamemode-session` fornece uma entrada SDDM própria, argv fechado de
+Gamescope/Steam e fallback automático para Plasma. O host revelou que a única sessão
+console existente apontava para `/usr/local/lib/phasezero`; a nova sessão não usa esse
+arquivo. Boot direto continua protegido porque GRUB não seleciona sessões gráficas e o
+protocolo snapshot+TTY+console remoto ainda não foi cumprido.
+
+**Versão:** a árvore passa a `0.1.0a8`; manifesto host v3 associa daemon e Session Manager
+ao mesmo wheel/commit.
+
+**Gate local:** **475 passed / 85%** (6582 statements, 806 misses, 1734 branches);
+Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A evidência da
+instalação no host é associada ao commit exato no fechamento operacional desta sessão.
+
+## 2026-07-17 — Sessão 19: fechamento Steam no host real
+
+**Releases honestas:** `0.1.0a8` foi instalada a partir de
+`d2bf3819d12d16f5b5a682db06af3e63c091efcd`, mas o smoke encontrou o entry point da
+sessão somente dentro da release. O instalador passou a publicar e restaurar
+atomicamente `/usr/local/bin/steamzero-gamemode-session`, recusando arquivo alheio; a
+correção foi instalada como `0.1.0a9-e38b3762f144`. Ela não reempacotou `a8`.
+
+**Falha adversa corrigida:** o smoke Qt offscreen do `a9` reproduziu timeout de
+`kscreen-doctor -o` e a exceção derrubava a UI. O runner KDE agora converte timeout em
+`CommandResult(124)` e falha de execução em estado degradável, preservando saída parcial.
+O teste de regressão e o smoke pela fonte passaram; a correção foi lançada como
+`0.1.0a10-1c4527ae3961`, commit
+`1c4527ae39612062742b318b102c33c8b311d918`, wheel SHA-256
+`a8a77ab25fcd3267d9fc2f756a56d63ae3600c9d68e857daf84d462d2b465d91`.
+
+**Host real:** `steamzero doctor` retornou `ok`, schema SQLite v4, integridade `ok` e
+zero operações pendentes. Socket e diretório IPC ficaram `0600/0700`; daemon e socket
+user-scoped estão ativos. O Session Manager observou Steam, Gamescope e fallback Plasma,
+declarou runtime independente e `legacyRuntimeRequired=false`. Nenhum arquivo da sessão
+contém PhaseZero; o watcher legado está `inactive/disabled`. O smoke da UI instalada
+permaneceu ativo por 8 segundos e encerrou somente pelo timeout externo esperado (124).
+
+**Steam e limites reais:** a Steam estava aberta. Inventários de manutenção e mídia
+funcionaram em leitura; a tentativa de planejar limpeza foi corretamente recusada com
+`E-TX-LOCKED`. Nenhum cache, arte, jogo, display, TDP, sessão atual ou GRUB foi mutado.
+Boot direto permanece `gated` até snapshot restaurável, TTY e console remoto comprovados;
+isso é uma garantia de recuperação, não uma função simulada.
+
+**Gate final:** **477 passed**; cobertura combinada exata **84,84%**, exibida como
+**85%** (6594 statements, 805 misses, 1736 branches). Ruff, formato, mypy estrito,
+fronteiras, independência, `qmllint`, wheel provenance, manifesto host v3,
+`systemd-analyze --user verify` e status administrativo passaram.
+
+## 2026-07-17 — Sessão 20: roadmap Steam R1 e observação Linux real
+
+**Roadmap normativo:** `STEAM-SESSION-ROADMAP.md` filtra o catálogo para lifecycle,
+suspend, dock/display, microSD, offline, compatibilidade, desempenho, privilégio,
+Steam Input, frontends, Game Mode UI e validação física. A ordem R1–R10 impede que UI
+ou boot automático avancem antes de estado aplicado/observado e recovery comprovado.
+
+**R1:** entrou `session environment`, disponível por CLI e JSON-RPC allowlisted. O adapter
+combina DMI com painel interno, observa sessão gráfica, bateria/AC, rede, conectores DRM e
+volumes de mountinfo associados a `/dev/disk/by-uuid`. Toda a superfície é read-only e
+tolera fontes ausentes. O contrato `session-environment-v1` congela a saída v1.
+
+**Correção descoberta no host:** o leitor microSD do Deck expõe `mmcblk0` com
+`removable=0`; a primeira sonda classificou `/mnt/sdcard` como interno. A regra passou a
+usar a identidade MMC, mantendo NVMe interno e USB separados. A repetição observou o UUID
+`58D14C064972BE55` como `microsd`, sem montar ou escrever no volume.
+
+**Host:** release `0.1.0a11-11e57d269fb2`, commit
+`11e57d269fb205f5c0258888e1afd56b826ca96c`, wheel SHA-256
+`a8caada99aa4049f56ae05a680d67f698aae94fd4f30898797e8a709f7f64641`.
+O daemon instalado observou Deck LCD com quatro evidências, KDE/Wayland, bateria real,
+rede, eDP-1, estado vivo do DP-1, Btrfs interno, EFI e microSD. Doctor, manifesto v3,
+systemd user e permissões IPC continuaram saudáveis.
+
+**Gate:** **482 passed / 85%** (6845 statements, 845 misses, 1804 branches); Ruff,
+formato, mypy, fronteiras, independência, `qmllint`, provenance e smokes host verdes.
+
+## 2026-07-17 — Sessão 21: reconciliador persistente R2 no host
+
+**R2 incremental:** o daemon user-scoped passou a amostrar o ambiente real a cada cinco
+segundos. Um digest material considera dispositivo, sessão, AC, conectividade, topologia
+de displays e volumes; timestamp, percentual de bateria e espaço livre não criam ruído.
+Snapshot e evento `session.environment` são gravados atomicamente no SQLite v5. A CLI e
+o daemon usam a mesma composição Linux, sem importar ou executar PhaseZero.
+
+**Host:** release `0.1.0a12-105cce61a9a3`, commit
+`105cce61a9a3d471429f3af520537f29f8025f72`, wheel SHA-256
+`72130dd966690ec1e87c1863d9ed1b2a9b35119df0c451d2c7ac9221cdf0a1cd`. O doctor
+instalado retornou schema v5, integridade `ok` e zero operações pendentes. Daemon e
+socket systemd user ficaram ativos; o snapshot persistido observou Deck LCD, KDE
+Wayland, eDP, DP desconectado, Btrfs, EFI e microSD. Após múltiplos ciclos estáveis, a
+contagem permaneceu em um único evento, comprovando a deduplicação no processo real.
+
+**Gate:** **484 passed**. O valor local de cobertura então reportado como 82,88% foi
+posteriormente invalidado: `make check` não renovava `.coverage` e podia ler dados de
+outro processo. Ruff, formato, mypy, fronteiras, independência, `qmllint`, wheel
+provenance, manifesto host e smokes instalados passaram.
+
+## 2026-07-17 — Sessão 22: retomada R2 e fronteira Polkit R3 mínima
+
+**Suspend/resume honesto:** `0.1.0a13-3730f7322c80` adicionou a detecção pós-resume
+pela diferença `CLOCK_BOOTTIME`−`CLOCK_MONOTONIC`, sem alegar um hook pré-suspend.
+O host confirmou ambos os relógios e nenhum falso `session.resume` apareceu em ciclos
+estáveis. Dock→undock e microSD remove→reinsert ganharam cenários determinísticos; a
+execução mutável em VM e o flush pré-suspend continuam pendentes pelos gates R2/R3.
+
+**Polkit mínimo real:** `0.1.0a14-60712ad3972c`, commit
+`60712ad3972cca6b23ecfb19233f7de1076bd471`, wheel SHA-256
+`1231695893f075be48f8d7b70c0424d58ae61b12f1dd14a570b7f06fd20d60fe`. O instalador
+publicou atomicamente `/usr/local/libexec/steamzero-admin` e a policy
+`io.github.misael-art.steamzero.admin`; rollback para release sem a capability remove
+ambos. `pkexec ... --health` executou como UID 0 e retornou protocolo 1,
+`mutationsEnabled=false`. Execução direta sem Polkit retornou `E-PRIV-DENIED`.
+
+**Auditoria e host:** `/var/log/steamzero-admin.log` ficou `root:root 0600` e registrou
+somente action, caller UID, resultado e timestamp. Doctor instalado permaneceu `ok`,
+SQLite v5 íntegro e sem operações pendentes. Nenhum TDP, clock, sysctl, mount, unit,
+display, sessão padrão ou GRUB foi alterado.
+
+**Gate:** **488 passed**. O valor local de 82,14% também pertencia à medição não renovada
+descrita na sessão seguinte e não é uma baseline válida. Ruff, formato, mypy, fronteiras,
+independência, `qmllint` e proveniência do wheel passaram.
+
+## 2026-07-17 — Sessão 23: transporte Polkit, baseline honesta e capabilities AMDGPU
+
+**Baseline corrigida:** `make check` agora apaga dados anteriores, executa a suíte com
+`pytest-cov` e impõe `fail_under=85`. A medição autoritativa de `0.1.0a17` é **503
+passed / 85,09%** (7139 statements, 859 misses, 1874 branches). O cliente Polkit ficou
+com 93%. CI e gate local passam a usar a mesma origem de verdade.
+
+**Falha host e release sucessiva:** `0.1.0a15-ba87f9ee5c44` conectou `admin.health` à
+CLI/RPC, mas o smoke mostrou que `pkexec` originado pelo daemon user-scoped era recusado,
+embora o mesmo fluxo interativo funcionasse no terminal. Nenhuma mutação ocorreu. A
+correção saiu como `0.1.0a16-592dba1628a4`: a ação interativa não é anunciada nas 17
+capabilities RPC e a CLI fala diretamente com o Polkit. Daemon ativo e CLI normal então
+retornaram health `ok` como UID 0.
+
+**Hardware observado:** `0.1.0a17-76d764ad773e`, commit
+`76d764ad773e95c2485d5a88d853513b723c4caa`, wheel SHA-256
+`b511b02df87e75bfb66f04b2d47b99c8e102dbded23a5ab6b6510891071a8376`. O helper leu
+as interfaces reais AMDGPU: `slowPPT` e `fastPPT` convergidos em 15 W, default 15 W,
+range seguro observado 3–29 W e SCLK 200–1600 MHz. `mutationsEnabled=false` e
+`manualWriteEnabled=false`; nenhum valor sysfs foi escrito.
+
+**Host final:** doctor `ok`, SQLite v5 íntegro, zero operações pendentes, daemon ativo,
+manifesto associado ao commit exato e audit root preservado. TDP, GPU, display, mounts,
+sessão padrão e GRUB permaneceram inalterados.
+
+## 2026-07-17 — Sessão 24: motor TDP G-STATE atrás do gate
+
+**Transação privilegiada interna:** `set-tdp` agora possui um motor fechado que descobre
+somente `amdgpu slowPPT/fastPPT`, restringe o pedido ao máximo observado, grava journal
+0600 antes da primeira escrita, aplica as duas rails, verifica e restaura os valores
+anteriores em falha. `rollback-tdp` aceita somente ULID associado; `recover-tdp` restaura
+journals `pending`/`rollback-failed`. O transporte público continua health-only e declara
+`mutationsEnabled=false`.
+
+**Failure injection:** uma prova interrompe o processo imediatamente após escrever
+`slowPPT`. O novo apply foi bloqueado por `E-TX-LOCKED`; recovery restaurou ambas as rails
+e uma segunda recuperação foi `noop`. Também foram cobertos verify divergente, rollback
+idempotente, journal inválido, interface ausente e valor acima da capability.
+
+**Wheel e host:** release `0.1.0a18-1d76d7986330`, commit
+`1d76d7986330053240c9001d64468d112303be88`, wheel SHA-256
+`618718da9c919471a9c5583ba4c449e67acaf6eb35001045d3719d7256dd98b0`. O motor do wheel
+instalado foi executado numa cópia descartável das interfaces reais: 15 W→10 W nas duas
+rails→rollback para 15 W; diretório 0700 e journal 0600. `/sys` real não foi escrito.
+Doctor continuou `ok`, SQLite v5 íntegro, zero pendências e daemon ativo.
+
+**Gate:** **510 passed / 85,03%** (7320 statements, 886 misses, 1924 branches), Ruff,
+formato, mypy, fronteiras, independência, `qmllint` e proveniência verdes. O agente
+Polkit permanece ativo a pedido do responsável; a duração da autorização já concedida
+continua controlada pela policy do sistema e não é ampliada artificialmente.
+
+## 2026-07-17 — Sessão 25: motor GPU SCLK G-STATE atrás do gate
+
+**Transação AMDGPU interna:** `set-gpu-clock` ganhou motor fechado que descobre somente
+`cardN/device/pp_od_clk_voltage` com `OD_SCLK`/`OD_RANGE` válido e o performance level
+associado. O snapshot persiste min/max SCLK e modo anterior em journal root `0600` antes
+da primeira escrita. O apply usa a sequência documentada pelo kernel — `manual`, `s 0`,
+`s 1`, `c` —, verifica os dois clocks e o modo, e restaura tudo em falha. As ações
+`rollback-gpu-clock` e `recover-gpu-clock` aceitam somente ULID/nenhum parâmetro.
+
+**Failure injection e host seguro:** as provas interrompem o motor logo após entrar em
+modo manual, bloqueiam novo apply com `E-TX-LOCKED` e recuperam o snapshot. Também cobrem
+commit recusado, verify divergente, rollback idempotente, journal/snapshot inválidos,
+capability malformada e clock fora do range observado. O wheel instalado foi executado
+somente numa interface descartável: 200–1600 MHz/auto → 800–800 MHz/manual → rollback
+200–1600 MHz/auto; diretório 0700, journal 0600. O `/sys` real não foi escrito.
+
+**Release e operação:** `0.1.0a19-364185ac7d87`, commit
+`364185ac7d8750a1a7a8f920baccb8893205f94c`, wheel SHA-256
+`e58bded9177b60ae20cd453220275008a80cbf2f8dcdbca38140ba6c94a6596c`.
+O primeiro smoke revelou o daemon antigo ainda carregado; `systemctl --user daemon-reload`
+e a reativação do socket fizeram doctor/daemon convergir para `a19`. Doctor ficou `ok`,
+SQLite v5 íntegro, zero pendências, helper UID 0 observou SCLK real 200–1600 MHz e TDP
+15 W, mas declarou `mutationsEnabled=false` e `manualWriteEnabled=false`. O agente Polkit
+oficial permanece ativo conforme solicitado.
+
+**Gate:** **520 passed / 85,08%**, Ruff, formato, mypy estrito, fronteiras,
+independência, `qmllint`, wheel e manifesto host verdes. A certificação mutável em VM
+AMDGPU continua pendente; este incremento não autoriza clock real no host principal.
+
+## 2026-07-17 — Sessão 26: lock interprocesso e motor sysctl gated
+
+**Concorrência real:** os motores TDP, GPU e sysctl passaram a adquirir um lock
+não bloqueante antes de consultar/criar journals. O arquivo fica fora do diretório de
+journals, usa modo 0600, `O_NOFOLLOW` e `flock`; tentativa simultânea ou lock symlink
+é recusado com `E-TX-LOCKED`. Isso fecha a janela em que dois processos poderiam ver
+ausência de pending ao mesmo tempo.
+
+**Sysctl transacional:** `write-sysctl` agora resolve somente paths compilados para
+`vm.swappiness` e `vm.compaction_proactiveness`, valida os ranges já allowlisted,
+persiste snapshot antes da escrita, verifica o valor observado e restaura em falha.
+`rollback-sysctl` aceita ULID e `recover-sysctl` nenhum parâmetro. Failure injection
+cobre queda após escrita, verify divergente, rollback-failed, recovery, interface ausente,
+snapshot inválido, path fora da allowlist e contenção.
+
+**Wheel e host:** release `0.1.0a20-ced9e2157548`, commit
+`ced9e21575485afd337eb70f5ffae9dbcb08b11f`, wheel SHA-256
+`68344159cc2258151c6d6e74e691445cd5f22f1741c89e2cc2b87fb9be1704f0`.
+O wheel instalado executou `swappiness` 60→10→60 numa árvore `/proc/sys` descartável,
+confirmou lock concorrente `E-TX-LOCKED`, state 0700 e journal 0600. O host real foi
+somente lido e permaneceu em `swappiness=30` e `compaction_proactiveness=20`.
+
+Doctor/daemon convergiram para `a20`, SQLite v5 ficou íntegro e sem pendências. O agente
+Polkit oficial permaneceu ativo; a autorização temporária expirou antes do último health
+administrativo e foi honestamente registrada como `E-PRIV-DENIED`. Isso não desativa o
+agente nem implica falha do helper, e nenhuma mutação ocorreu.
+
+**Gate:** **530 passed / 85,14%** (7666 statements, 918 misses, 2016 branches), Ruff,
+formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto v3 verdes.
+O transporte mutável continua fechado até a certificação em VM descartável.
+
+## 2026-07-17 — Sessão 27: identidade de processo no lifecycle Steam
+
+**Falha corrigida:** um PID ativo, porém reutilizado por processo alheio, fazia a sessão
+ficar `stale` sem oferecer recovery e mantinha o índice exclusivo do owner bloqueado.
+O launcher agora confirma `steamzero-launch --appid <jogo>` durante `launching` e exige
+`STEAMZERO_GAME_ID` + digest exatos no ambiente do filho em `running`, `suspending`,
+`suspended`, `resuming` e `closing`. Divergência produz `recoveryRequired=true`; recovery
+altera somente o State Store e nunca sinaliza o PID não reconhecido.
+
+**Wheel e host:** release `0.1.0a21-7e1136cc80ae`, commit
+`7e1136cc80aecf2d5e5c1e5be4c931c25f9c5218`, wheel SHA-256
+`8f53b5429726f99231f197ff35c0a6286ec454322e923c6eb850ab54c7a6f2b4`.
+O wheel instalado lançou `/usr/bin/true` pelo adapter real e observou
+`launching→running→closed`, exit 0 e PID final nulo. Uma sessão sintética apontando para
+o PID vivo do smoke foi reconhecida como reutilização, recuperada, e o processo continuou
+vivo. Um wrapper executável real nomeado `steamzero-launch --appid 10` foi identificado.
+
+Doctor/daemon convergiram para `a21`, SQLite v5 permaneceu íntegro, zero pendências,
+socket, service e agente Polkit ficaram ativos. A tentativa posterior de repetir status
+root não recebeu nova autorização; o manifesto v3 instalado foi verificado em leitura e
+nenhuma mutação privilegiada foi executada nessa etapa.
+
+**Gate:** **541 passed / 85,21%** (7681 statements, 917 misses, 2020 branches), Ruff,
+formato, mypy estrito, fronteiras, independência, `qmllint`, wheel e manifesto verdes.
+
+## 2026-07-17 — Sessão 28: boot Game Mode próprio e Área Modo Desktop
+
+**Causa reproduzida:** a entrada GRUB legada entregava corretamente
+`phasezero.steamos=1` ao kernel e o SDDM selecionava `phasezero-steamos.desktop`, mas o
+launcher exigia `gamescope-session-plus`, ausente no host, e executava
+`startkde-biglinux wayland`. O desvio ocorria depois do GRUB/SDDM e explicava o retorno
+silencioso ao KDE.
+
+**Session Manager independente:** `steamzero-gamemode-boot` passou a gerar entrada
+**SteamZero Game Mode**, reconciliar o SDDM antes do display manager e selecionar somente
+`steamzero-gamemode.desktop`. `Relogin=false`, sessão ausente remove o autologin e retorna
+ao greeter; Steam/Gamescope falhos retornam ao Plasma. A ativação é root-only, atômica,
+regenera o GRUB, preserva o `grub.cfg` durante a transação e possui `disable` reversível.
+O marcador antigo é aceito apenas para migração; não há import, binário ou serviço
+PhaseZero requerido.
+
+**Host agnóstico:** o novo `steamzero-host-prepare` detecta pacman, apt ou dnf, publica
+plano fixo e exige confirmação literal antes de instalar QEMU/libvirt/virt-install,
+UEFI, TPM e rede. A verdade distingue laboratório VM com `virtio-gpu` de hardware Valve:
+clean install/update/rollback pertencem à VM; AMDGPU, TDP, clock, KScreen, dock e suspend
+pertencem ao Deck físico com snapshot e recuperação.
+
+**UI:** a área Steam agora inclui **Modo Desktop** no mesmo seletor contextual de
+Desempenho, Controles e Biblioteca. A tela conserva a direção visual Prontidão e agrupa
+perfil recomendado/desejado/aplicado/observado, entrada/touch/teclado, tela/dock/hotplug,
+sessão/boot, conflito e recovery. Ações chamam os endpoints reais de plano, apply, reset,
+conflito, recuperação e teclado; componentes de Sistema direcionam para Sistema.
+
+**Gate pré-host:** **564 passed / 85,34%** (8025 statements, 945 misses, 2134 branches),
+Ruff, formato, mypy estrito, fronteiras, independência, `qmllint` e documentação verdes.
+Instalação, ativação e evidência pós-reboot permanecem fora deste registro até a release
+imutável ser construída a partir do commit limpo.
+
+## 2026-07-17 — Sessão 29: instalação real, KVM/libvirt e boot Game Mode ativado
+
+**Releases sucessivas e honestas:** o primeiro wheel instalável foi
+`0.1.0a22-7c1084e35707`. O smoke standalone mostrou que a classificação do Deck dependia
+do contexto fornecido pela UI; `a23-f24b59e2c860` passou a ler DMI diretamente. A
+instalação real dos pacotes revelou uma corrida entre a consulta e a ativação da rede
+libvirt; `a24-e5dc9b35e9d4` adicionou rechecagem. O host então expôs alinhamento/localização
+do texto do `virsh`; `a25-2b9f65e54a4b` substituiu o parser por `net-list --name`. Nenhum
+wheel foi republicado sob a mesma versão; commits e hashes completos estão no release
+ledger.
+
+**Laboratório agnóstico no Deck real:** a release `a25` instalou e verificou
+QEMU 11.0.2, libvirt 12.5, virt-install 5.1.0, OVMF, swtpm 0.10.1, dnsmasq e backend nft.
+`libvirtd.service` ficou ativo/habilitado, a rede `default` ativa, persistente e em
+autostart, `misael` pertence ao grupo `libvirt` e `domcapabilities --virttype kvm`
+confirmou KVM x86_64, EFI/OVMF, virtio, TPM emulado e CPU AMD host-passthrough. O snapshot
+classificou `officialDeck=true`, `/dev/kvm` acessível, laboratório VM `ready` e laboratório
+físico AMDGPU/TDP/KScreen `ready`, sem alegar que virtio-gpu equivale ao hardware Valve.
+
+**Boot independente ativado:** `steamzero-gamemode-boot enable` gerou a entrada
+**SteamZero Game Mode** com `steamzero.gamemode=1`, publicou o unit oneshot antes do
+display manager e selecionou `steamzero-gamemode.desktop` no SDDM com `Relogin=false`.
+O unit `phasezero-steamos-boot-prepare.service` ficou desabilitado e a configuração SDDM
+legada foi removida. O launcher instalado confirmou Steam, Gamescope, runtime independente
+e fallback Plasma. O host não foi reiniciado automaticamente; observar Big Picture após
+o próximo reboot continua um gate físico explícito.
+
+**Estado operacional:** o manifesto v4 ativo vincula `0.1.0a25` ao commit
+`2b9f65e54a4b2314cc293c4a20e389f37c40a6f5` e wheel SHA-256
+`fc88b41a9d08996321da8ada10c48f0a694dc6cd52e807ab00fdecb6d21aff47`.
+Doctor retornou `ok`, SQLite v5 íntegro, zero operações pendentes, socket/core ativos e
+agente Polkit oficial ativo. O Desktop reportou honestamente `degraded`: recomendado,
+desejado e aplicado estão em `docked-desktop`, enquanto a observação atual ainda é
+`handheld-desktop`; nenhuma aplicação destrutiva foi feita para mascarar essa divergência.
+
+**Gate final:** **567 passed / 85,27%** (8041 statements, 955 misses, 2138 branches),
+Ruff, formato, mypy estrito, fronteiras, independência e `qmllint` verdes. A UI recebeu a
+Área **Modo Desktop** usando os componentes e tokens existentes; a revisão visual e o
+focus graph completos permanecem, conforme decisão do responsável, para quando todas as
+funções estiverem coesas.
+
+## 2026-07-18 — Sessão 30: incidente de boot diagnosticado, correções e desacoplamento PhaseZero
+
+**Incidente real diagnosticado:** as duas entradas GRUB ("PhaseZero SteamOS Console" e
+"SteamZero Game Mode") falhavam em chegar ao Big Picture. Journal comprovou a causa
+primária: `sddm: Unable to find autologin session entry "steamzero-gamemode.desktop"` —
+a sessão vivia em `/usr/local/share/wayland-sessions`, mas o `/etc/sddm.conf` do
+BigLinux (lido por último na precedência) restringe `SessionDir=/usr/share/wayland-sessions`.
+O boot caía no greeter; o login manual entrava na sessão legada, que degradava para
+Plasma por falta de `gamescope-session-plus`. Causa secundária: `status()` sem
+privilégio engolia `EACCES` e reportava "ativação não executada" com boot direto
+instalado — telemetria falsa durante todo o incidente.
+
+**ADR-0020 (proposto):** arquitetura multi-distro para Arch e derivadas —
+`DisplayManagerPort` (SessionDir efetivo como pré-condição de autologin) e
+`BootEntryPort` (GRUB/systemd-boot/rEFInd/Limine + one-shot), preflight no `enable`,
+verificação pós-boot com backoff e matriz de VMs no laboratório KVM. Capacidade
+detectada, nunca nome de distro; artefato próprio muda de lugar, config alheia
+não é editada.
+
+**Correções (release `a26`, commit `ca88ada`):** sessão movida para
+`/usr/share/wayland-sessions` (instalador remove a cópia legada gerenciada ao
+sincronizar) e `status()` com estado `unknown` + `permissionDenied=true` sob EACCES.
+Verificado no host: sem privilégio `state=unknown/permissionDenied=true`; com
+privilégio `state=ready/configured=true`.
+
+**Desacoplamento PhaseZero (release `a27`, commit `1dc331c`):** decisão do responsável —
+PhaseZero foi somente referência de pesquisa e não faz parte do produto. `prepare()`
+reage apenas a `steamzero.gamemode=1` (marcador alheio = boot normal); `BootLayout`
+perdeu `legacy_sddm_config`/`legacy_unit`; payloads perderam
+`legacyMarker`/`legacyMarkerAccepted`/`legacyRuntimeRequired`; a UI não menciona o
+projeto pesquisado e o contrato de independência passou a exigir a ausência da
+referência. Limpeza externa e explícita do host executada com `bigsudo`: entrada GRUB,
+sessão wayland, unit de boot, scripts `/usr/local/lib/phasezero`, sudoers, drop-in de
+suspend, units de usuário, autostart e tray — `find` em `/etc`, `/usr/local` e
+`~/.config` retorna zero referências; grub.cfg regenerado só com a entrada SteamZero.
+
+**Gates:** 569 passed, Ruff, mypy estrito, fronteiras e independência verdes nas duas
+releases. Manifesto v4 ativo vincula `0.1.0a27` a
+`1dc331c9eea9e61736541b8d0822f0831918561b`. Gate físico pendente: observar Big Picture
+no próximo reboot pela entrada "SteamZero Game Mode".
+
+## 2026-07-19 — Sessão 31: diagnóstico e correção do teclado virtual no Desktop
+
+**Problema reportado:** serviços de experiência Desktop implementados por agente anterior
+não funcionavam; teste real no host mostrou que o teclado virtual não abria.
+
+**Diagnóstico:**
+- A instalação ativa no host é `0.1.0a34-4c495cf92fbe`, enquanto a árvore de trabalho
+  atual (`codex/robustez-boot-resiliencia`) está em `0.1.0a33` (`9fe5213`). A instalação
+  contém uma `KDEShortcutsEffect` que não existe no código fonte atual, evidenciando
+  divergência entre build publicada e branch de desenvolvimento.
+- O comando `qdbus6 org.kde.KWin /VirtualKeyboard forceActivate` retornava sucesso
+  (exit 0), mas a propriedade `available` do KWin era `false` e `visible` permanecia
+  `false`; o `maliit-server` não estava rodando e não se registrava como input method.
+- O código antigo considerava o `forceActivate` com exit 0 como sucesso, mascarando
+  a falha real.
+
+**Correção (commit `b025bb3`):**
+- `VirtualKeyboardController` agora verifica `available` antes de ativar e `visible`
+  depois de ativar via KWin DBus.
+- Se o teclado KWin não estiver disponível, tenta iniciar `maliit-server` (com guarda
+  contra duplicatas via `/proc/<pid>/comm`).
+- Adicionados fallbacks documentados: `steam` (tenta abrir o cliente se não estiver
+  rodando), `wvkbd-mobintl` e `onboard`.
+- Erro final alterado de "aceitou a ativação" para "ficou visível", refletindo a
+  verificação real.
+
+**Gates:** 597 passed, Ruff, mypy estrito, fronteiras e independência verdes.
+
+**Pendência operador:** para que a correção entre em vigor no host, é necessário
+construir e instalar uma nova release a partir desta branch (`0.1.0a33+`). Nenhum
+agente deve executar `install_host.py install` — esta ação é exclusiva do operador
+humano com privilégio, conforme AGENTS.md §1.
+
+## 2026-07-19 — Sessão 31 (continuação): release 0.1.0a33 preparada para instalação
+
+**Artefatos construídos (não commitados — `dist/` está em `.gitignore`):**
+- Wheel: `dist/steamzero-0.1.0a33-py3-none-any.whl`
+- SHA-256: `b207f1022f329fce0bfb07c55cd23d0443496bf2680507a0a3feeb14f7ec0503`
+- Source commit: `8e7f55fef9acc02a552c389c3037f98d0d5b8eb8`
+- Release canônica: `0.1.0a33-8e7f55fef9ac`
+- Wheelhouse runtime: `dist/runtime-wheelhouse/` com 5 dependências verificadas por hash
+- Verificação: `tools/release_provenance.py verify-wheel` identificou projeto, versão e hash corretamente.
+
+**Comando de instalação para o operador humano (requer `bigsudo`):**
+
+```bash
+cd /mnt/sdcard/Projects/Port_Steam
+SOURCE_COMMIT=8e7f55fef9acc02a552c389c3037f98d0d5b8eb8
+bigsudo /usr/bin/python3 tools/install_host.py install \
+  --release "0.1.0a33-${SOURCE_COMMIT:0:12}" \
+  --wheel dist/steamzero-0.1.0a33-py3-none-any.whl \
+  --wheel-sha256 b207f1022f329fce0bfb07c55cd23d0443496bf2680507a0a3feeb14f7ec0503 \
+  --requirements requirements-runtime.lock \
+  --wheelhouse dist/runtime-wheelhouse \
+  --source-commit "$SOURCE_COMMIT"
+```
+
+**Após a instalação:**
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart steamzero-core.socket steamzero-core.service
+steamzero --version
+steamzero doctor --json
+```
+
+Nenhum agente executou `install_host.py install`; a instalação no host permanece como ação exclusiva do operador, conforme AGENTS.md §1.
+
+## 2026-07-19 — Sessão 32: resiliência do teclado virtual — input method KWin, UI e fallback Steam
+
+**Motivação:** após instalar a release `0.1.0a33`, o teclado virtual ainda não aparecia
+porque o KWin não tinha input method configurado e o fallback Steam não iniciava o
+cliente de forma confiável.
+
+**Implementação (commit `6bcf03d`):**
+
+1. **Gerenciamento do input method do KWin (Passo 1):**
+   - Novo `KDEInputMethodEffect` em `desktop_kde.py`.
+   - Verifica se o teclado virtual do KWin está `available` via DBus.
+   - Se não estiver e o Maliit estiver instalado, configura
+     `kwinrc -> Wayland -> InputMethod` para o arquivo `.desktop` do Maliit e
+     reconfigura o KWin.
+   - Captura o valor anterior para rollback seguro.
+   - Adicionado à cadeia de efeitos do coordenador Desktop.
+
+2. **Monitoramento e ações na UI (Passo 2):**
+   - `input_method_status()` retorna `available`, `configured-restart-needed`,
+     `unconfigured` ou `missing`.
+   - Dashboard expõe `inputMethod` no snapshot.
+   - `SteamDesktop.qml` mostra o estado do teclado virtual e botão contextual:
+     - "Abrir teclado" quando disponível
+     - "Reiniciar sessão" quando configurado mas o KWin precisa reiniciar
+     - "Configurar" quando não configurado (dispara plano Desktop auto)
+     - "Ver detalhes" quando indisponível
+
+3. **Fallback Steam mais robusto (Ponto 3):**
+   - Verifica se o processo `steam` está rodando via `/proc`.
+   - Se não estiver, tenta `steam -silent` e aguarda até 5s pelo processo.
+   - Só considera sucesso se o cliente realmente estiver no ar.
+
+4. **Outras melhorias:**
+   - Extração de helpers `_kwin_vk_property`, `_kwin_vk_available`,
+     `_kwin_vk_visible`, `_process_running` e `_maliit_desktop_file`.
+   - Adicionados fallbacks `wvkbd-mobintl` e `onboard`.
+
+**Gates:** 601 passed, Ruff, mypy estrito, fronteiras, independência e `qmllint` verdes.
+
+**Próximo passo operador:** reconstruir e instalar release a partir do commit
+`6bcf03d` para que o `KDEInputMethodEffect` e a UI atualizada entrem em vigor no
+host. A configuração do input method é aplicada automaticamente no próximo
+`desktop apply`; dependendo do KWin, pode ser necessário reiniciar a sessão Plasma
+para o teclado virtual ficar disponível.
+
+## 2026-07-20 — Sessão EM-01: refino resiliente do lifecycle e da conversão
+
+**Isolamento e base:** trabalho realizado exclusivamente na branch
+`codex/refino-emulacao`, criada em `5bdd995` e atualizada sem conflito sobre `b7d4c55`.
+O worktree concorrente de robustez e
+seu `docs/WORKLOG.md` não commitado permaneceram intactos. A base confirmou
+`0.1.0a33`, schema de instalação 4, `--source-commit` e a cadeia `steam_boot` /
+`steam_session`; nenhum artefato de release ou efeito no host foi criado.
+
+**Flatpak concorrente e recuperável (`c79206e`):** apply, rollback e recovery agora
+recarregam plano, operação e deployment depois de adquirir o lock. Isso impede que um
+segundo apply use snapshot/token consumido ou que rollback sobrescreva um deployment
+alterado enquanto aguardava. Snapshots persistidos recusam booleanos ambíguos,
+origin/commit inconsistentes, IDs, refs, timestamps e commits inválidos antes de tocar o
+Flatpak. Testes injetam mudança exatamente na aquisição do lock e comprovam zero mutação.
+
+**Conversão confinada (`bff665c`):** o conversor recebe somente cópia verificada em
+staging, nunca o dump original. Formato/traversal, symlink, destino igual ao original,
+colisão e mudança concorrente são recusados; espaço é checado no staging e no destino;
+publicação usa streaming atômico e hash pós-cópia. Timeout, EIO e ENOSPC limpam staging e
+preservam o original byte-idêntico.
+
+**Capabilities e proveniência (`e211795`):** novas instalações ignoram fontes EOL sem
+alterar a leitura honesta do dashboard; prioridades duplicadas e campos de origens
+misturados são inválidos. Engine portátil e Flatpak recusam install/update não declarado
+antes de fetch/remote/mutação. Metadata portátil divergente do adapter, manifesto ou raiz
+é `degraded`, com versão observada preservada quando segura. O gate completo detectou e
+evitou uma regressão de estado do DuckStation no dashboard compartilhado.
+
+**Gates por item:** baseline bruto teve 587 passes, 9 failures e 5 setup errors, todos
+causados pelo path temporário do Codex exceder o limite AF_UNIX. A repetição controlada
+com `--basetemp` curto passou com **601 testes**. Após cada commit: **608**, **614** e
+**620 passed**; Ruff check, mypy (78 arquivos), independence e boundaries passaram em
+todas as rodadas. Após atualizar a base para `b7d4c55`, o gate final passou com **623
+testes**. O `ruff format --check` dos arquivos alterados passou. A verificação
+global extra aponta três arquivos preexistentes fora do escopo que seriam reformatados:
+`desktop_kde.py`, `steam_boot.py` e `tools/install_host.py`; eles não foram editados.
+
+**Limites explícitos:** instalação dos emuladores em VM/hardware não foi executada;
+DuckStation continua EOL e nenhum manifesto foi promovido sem fonte validada. A aquisição
+do `ResourceLock` central ainda usa read+write sem criação exclusiva entre processos e a
+persistência composta do import de biblioteca ainda não possui transação pública única no
+State Store; ambos exigem mudança fora deste escopo antes de alegar segurança
+cross-process/import plenamente atômica.

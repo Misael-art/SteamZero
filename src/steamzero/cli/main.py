@@ -10,6 +10,7 @@ stderr). Exit codes estáveis (CLI-CONTRACT §Convenções).
 from __future__ import annotations
 
 import json
+import os
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -25,6 +26,7 @@ from steamzero.domain.desktop import ExperienceCoordinator
 if TYPE_CHECKING:
     from steamzero.adapters.flatpak import FlatpakExecutor
     from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.adapters.steam_launcher import SteamGameLauncher
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -46,6 +48,10 @@ Domínios (Fase 1):
   component apply       aplica plano (--plan-id ID --confirm TOKEN)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
+  admin health          verifica helper e autorização Polkit (read-only)
+  session environment    observa sessão, energia, rede, DRM e volumes (read-only)
+  session status         mostra lifecycle persistido (--game-id APPID)
+  session recover        reconhece sessão interrompida (--game-id APPID)
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -223,6 +229,44 @@ def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[
     )
 
 
+def _admin_client() -> Any:
+    from steamzero.privileged.client import AdminClient
+
+    return AdminClient.host()
+
+
+def _cmd_admin_health(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    client = _admin_client()
+    if not client.available():
+        raise SteamZeroError(
+            "E-PRIV-HELPER-MISSING",
+            detail="steamzero-admin ou pkexec não está instalado no host",
+        )
+    response = client.request("health", {})
+    if response.ok:
+        return (
+            build_envelope(
+                "admin",
+                "health",
+                status="ok",
+                data=response.result,
+                correlation_id=correlation_id,
+            ),
+            EXIT_OK,
+        )
+    return (
+        build_envelope(
+            "admin",
+            "health",
+            status="failed",
+            ok=False,
+            error=response.error,
+            correlation_id=correlation_id,
+        ),
+        EXIT_FAILURE,
+    )
+
+
 def _desktop_coordinator() -> ExperienceCoordinator:
     # Import local mantém a CLI mínima e permite substituir a composição nos testes.
     from steamzero.adapters.desktop_kde import build_desktop_coordinator
@@ -230,6 +274,78 @@ def _desktop_coordinator() -> ExperienceCoordinator:
     store = StateStore()
     store.migrate()
     return build_desktop_coordinator(store)
+
+
+def _session_launcher() -> SteamGameLauncher:
+    from steamzero.adapters.steam_launcher import SteamGameLauncher
+
+    return SteamGameLauncher()
+
+
+def _session_environment() -> dict[str, Any]:
+    from steamzero.runtime import observe_session_environment
+
+    return observe_session_environment()
+
+
+def _cmd_session_environment(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    data = _session_environment()
+    session = data.get("session")
+    session_type = session.get("type") if isinstance(session, dict) else "unknown"
+    status = "degraded" if session_type in {None, "", "unknown"} else "ok"
+    return (
+        build_envelope(
+            "session",
+            "environment",
+            status=status,
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_session_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    app_id = _required_flag(args, "--game-id")
+    data = _session_launcher().status(app_id)
+    recovery = bool(data.get("recoveryRequired"))
+    degraded = data.get("state") in {"stale", "degraded"}
+    blockers = (
+        [
+            {
+                "code": "E-SESSION-INTERRUPTED",
+                "message": "A sessão anterior precisa ser recuperada antes de outro launch.",
+            }
+        ]
+        if recovery
+        else []
+    )
+    return (
+        build_envelope(
+            "session",
+            "status",
+            status="blocked" if recovery else "degraded" if degraded else "ok",
+            data=data,
+            blockers=blockers,
+            correlation_id=correlation_id,
+        ),
+        EXIT_BLOCKED if recovery else EXIT_OK,
+    )
+
+
+def _cmd_session_recover(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    app_id = _required_flag(args, "--game-id")
+    data = _session_launcher().recover(app_id)
+    return (
+        build_envelope(
+            "session",
+            "recover",
+            status="ok" if data["status"] == "recovered" else "noop",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
 
 
 def _desktop_blockers(messages: list[str] | tuple[str, ...]) -> list[dict[str, str]]:
@@ -402,6 +518,10 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("component", "apply"): _cmd_component_apply,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
+    ("admin", "health"): _cmd_admin_health,
+    ("session", "environment"): _cmd_session_environment,
+    ("session", "status"): _cmd_session_status,
+    ("session", "recover"): _cmd_session_recover,
     ("desktop", "status"): _cmd_desktop_status,
     ("desktop", "plan"): _cmd_desktop_plan,
     ("desktop", "apply"): _cmd_desktop_apply,
@@ -477,6 +597,12 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write("\n" + _USAGE)
         return EXIT_USAGE
 
+    daemon_result = _try_daemon(domain, action, rest, correlation_id)
+    if daemon_result is not None:
+        env, code = daemon_result
+        _emit(env, json_out=json_out)
+        return code
+
     try:
         env, code = handler(rest, correlation_id)
     except SteamZeroError as exc:
@@ -511,6 +637,42 @@ def main(argv: list[str] | None = None) -> int:
 
     _emit(env, json_out=json_out)
     return code
+
+
+def _try_daemon(
+    domain: str, action: str | None, args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int] | None:
+    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente."""
+    if os.environ.get("STEAMZERO_NO_DAEMON") == "1":
+        return None
+    from steamzero.service.client import CoreProtocolError, CoreUnavailable, invoke
+    from steamzero.service.methods import CLI_METHODS, InvalidParams
+
+    spec = CLI_METHODS.get((domain, action))
+    if spec is None:
+        return None
+    try:
+        params = spec.args_to_params(args, correlation_id)
+    except InvalidParams:
+        # A CLI local pode ter uma opção deliberadamente não exposta pelo daemon.
+        return None
+    try:
+        invocation = invoke(spec.method, params)
+    except CoreUnavailable:
+        return None
+    except CoreProtocolError as exc:
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    return invocation.envelope, invocation.exit_code
 
 
 if __name__ == "__main__":

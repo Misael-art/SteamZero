@@ -13,11 +13,13 @@ import pytest
 from steamzero import CONTRACT_VERSION
 from steamzero.api import contracts
 from steamzero.cli import main as cli
+from steamzero.privileged.protocol import Response
 
 
 @pytest.fixture(autouse=True)
 def state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("STEAMZERO_NO_DAEMON", "1")
     return tmp_path
 
 
@@ -56,6 +58,94 @@ def test_jobs_list_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert env["status"] == "noop"
     assert env["data"]["count"] == 0
     assert code == cli.EXIT_OK
+
+
+def test_admin_health_uses_read_only_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = SimpleNamespace(
+        available=lambda: True,
+        request=lambda action, params: Response(
+            ok=True,
+            result={
+                "healthy": action == "health" and params == {},
+                "protocolVersion": 1,
+                "effectiveUid": 0,
+                "mutationsEnabled": False,
+            },
+        ),
+    )
+    monkeypatch.setattr(cli, "_admin_client", lambda: fake)
+    assert cli.main(["admin", "health", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    contracts.validate(envelope, "envelope-v2.schema.json")
+    assert envelope["data"]["mutationsEnabled"] is False
+
+    from steamzero.service.methods import CLI_METHODS
+
+    assert ("admin", "health") not in CLI_METHODS
+
+
+def test_session_status_and_recovery_use_stable_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FakeSessionLauncher:
+        def status(self, app_id: str) -> dict[str, object]:
+            return {
+                "state": "stale",
+                "statusLabel": "Sessão interrompida",
+                "recoveryRequired": True,
+                "runtime": {"sessionId": "S1", "gameId": app_id, "state": "running"},
+            }
+
+        def recover(self, app_id: str) -> dict[str, object]:
+            return {"status": "recovered", "gameId": app_id}
+
+    monkeypatch.setattr(cli, "_session_launcher", FakeSessionLauncher)
+    assert cli.main(["session", "status", "--game-id", "10", "--json"]) == cli.EXIT_BLOCKED
+    status = json.loads(capsys.readouterr().out)
+    contracts.validate(status, "envelope-v2.schema.json")
+    assert status["blockers"][0]["code"] == "E-SESSION-INTERRUPTED"
+    assert status["data"]["runtime"]["sessionId"] == "S1"
+
+    assert cli.main(["session", "recover", "--game-id", "10", "--json"]) == cli.EXIT_OK
+    recovered = json.loads(capsys.readouterr().out)
+    assert recovered["status"] == "ok"
+    assert recovered["data"] == {"status": "recovered", "gameId": "10"}
+
+
+def test_session_environment_is_read_only_and_validates_contract(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    snapshot = {
+        "schemaVersion": 1,
+        "observedAt": "2026-07-17T00:00:00+00:00",
+        "readOnly": True,
+        "device": {
+            "dmi": {"sys_vendor": "valve"},
+            "signals": {"internal_display_present": "true"},
+            "evidenceCount": 2,
+            "kind": "deck-lcd",
+        },
+        "session": {
+            "id": "3",
+            "type": "wayland",
+            "desktop": "KDE",
+            "waylandDisplay": "wayland-0",
+            "display": None,
+        },
+        "power": {"onAC": False, "batteries": []},
+        "network": {"online": True, "interfaces": []},
+        "displays": [],
+        "volumes": [],
+    }
+    monkeypatch.setattr(cli, "_session_environment", lambda: snapshot)
+
+    assert cli.main(["session", "environment", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    contracts.validate(envelope, "envelope-v2.schema.json")
+    contracts.validate(envelope["data"], "session-environment-v1.schema.json")
+    assert envelope["data"]["readOnly"] is True
 
 
 def test_state_export_json(capsys: pytest.CaptureFixture[str]) -> None:

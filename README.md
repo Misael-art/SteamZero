@@ -36,7 +36,7 @@ Consulte `IMPLEMENTATION-REPORT.md` para evidências e limites.
 |---|---|
 | `docs/00-vision` | visão, princípios, não-objetivos |
 | `docs/01-product` | PRD, personas, jornadas, catálogo de features, critérios de aceitação |
-| `docs/02-research` | repositórios-fonte, matriz de capacidades, inventário, gaps, scores de robustez |
+| `docs/02-research` | repositórios-fonte, matriz de capacidades, inventário, gaps, scores de robustez, **quadro de funções e proveniência** |
 | `docs/03-architecture` | arquitetura, fronteiras, transações, jobs, adapters, privilégio, modos de falha |
 | `docs/04-security` | threat model, requisitos, path safety, supply chain, segredos, política de conteúdo, garantias de rollback |
 | `docs/05-data` | state model, schemas de config/manifests, migrações, formato de backup |

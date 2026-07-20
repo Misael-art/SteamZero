@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-environment-v1.schema.json",
+  "title": "SteamZero Session Environment v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "observedAt", "readOnly", "device", "session",
+    "power", "network", "displays", "volumes"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "readOnly": { "const": true },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dmi", "signals", "evidenceCount", "kind"],
+      "properties": {
+        "dmi": { "type": "object", "additionalProperties": { "type": "string" } },
+        "signals": { "type": "object", "additionalProperties": { "type": "string" } },
+        "evidenceCount": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "kind": { "enum": ["deck-lcd", "deck-oled", "desktop"] }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "desktop", "waylandDisplay", "display"],
+      "properties": {
+        "id": { "type": ["string", "null"] },
+        "type": { "type": "string" },
+        "desktop": { "type": ["string", "null"] },
+        "waylandDisplay": { "type": ["string", "null"] },
+        "display": { "type": ["string", "null"] }
+      }
+    },
+    "power": {
+      "type": "object",
+      "required": ["onAC", "batteries"],
+      "properties": {
+        "onAC": { "type": ["boolean", "null"] },
+        "batteries": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "network": {
+      "type": "object",
+      "required": ["online", "interfaces"],
+      "properties": {
+        "online": { "type": "boolean" },
+        "interfaces": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "displays": { "type": "array", "items": { "type": "object" } },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uuid", "label", "fstype", "role", "mountpoint", "capacity", "free"
+        ],
+        "properties": {
+          "uuid": { "type": "string" },
+          "label": { "type": ["string", "null"] },
+          "fstype": { "type": ["string", "null"] },
+          "role": { "enum": ["internal", "microsd", "usb"] },
+          "mountpoint": { "type": ["string", "null"] },
+          "capacity": { "type": ["integer", "null"], "minimum": 0 },
+          "free": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    }
+  }
+}

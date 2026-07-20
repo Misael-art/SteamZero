@@ -5,6 +5,7 @@ PY := $(VENV)/bin/python
 RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 PYTEST := $(VENV)/bin/pytest
+COVERAGE := $(VENV)/bin/coverage
 
 .PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean
 
@@ -39,10 +40,11 @@ test:
 	$(PYTEST)
 
 cov:
+	$(COVERAGE) erase
 	$(PYTEST) --cov=steamzero --cov-report=term-missing
 
 # Gate completo: ordem barata->cara. Nenhum commit sem `make check` verde.
-check: format-check lint boundaries independence typecheck test
+check: format-check lint boundaries independence typecheck cov
 
 clean:
 	rm -rf .mypy_cache .ruff_cache .pytest_cache .hypothesis htmlcov .coverage

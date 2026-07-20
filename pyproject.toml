@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "steamzero"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "SteamZero — plataforma transacional de jogos e emulação para Steam Deck e Linux (núcleo)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,10 +17,19 @@ dependencies = [
 
 [project.scripts]
 steamzero = "steamzero.cli.main:main"
+steamzero-gamemode-session = "steamzero.adapters.steam_session:main"
+steamzero-gamemode-boot = "steamzero.adapters.steam_boot:main"
+steamos-session-select = "steamzero.adapters.steam_session:select_main"
+steamzero-launch = "steamzero.adapters.steam_launcher:main"
+steamzero-core = "steamzero.service.core:main"
+steamzero-host-prepare = "steamzero.adapters.host_preparation:main"
+steamzero-admin = "steamzero.privileged.helper:main"
+
+[tool.hatch.version]
+path = "src/steamzero/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/steamzero"]
-exclude = ["src/steamzero/ports.py"]
 
 # ---------------------------------------------------------------------------
 # Ruff — lint + format. Enforces SR-02/SR-03 generically (S = flake8-bandit).
@@ -83,3 +92,5 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+precision = 2
+fail_under = 85

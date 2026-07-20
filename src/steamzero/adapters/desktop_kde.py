@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,8 @@ class CommandResult:
 
 Runner = Callable[[Sequence[str], float], CommandResult]
 Which = Callable[[str], str | None]
+Spawner = Callable[[Sequence[str]], bool]
+Delay = Callable[[float], None]
 
 
 def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
@@ -60,15 +63,50 @@ def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
     executable = shutil.which(argv[0])
     if executable is None:
         return CommandResult(127, "", f"comando ausente: {argv[0]}")
-    completed = subprocess.run(  # noqa: S603
-        [executable, *argv[1:]],
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _command_output(exc.stdout)
+        stderr = _command_output(exc.stderr)
+        detail = f"{stderr}\ncomando excedeu {timeout:g}s".strip()
+        return CommandResult(124, stdout, detail)
+    except OSError as exc:
+        return CommandResult(126, "", f"falha ao executar {argv[0]}: {exc}")
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+def spawn_command(argv: Sequence[str]) -> bool:
+    """Inicia um provider persistente sem matá-lo quando o chamador termina."""
+    if not argv:
+        return False
+    executable = shutil.which(argv[0])
+    if executable is None:
+        return False
+    try:
+        subprocess.Popen(  # noqa: S603
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+    except OSError:
+        return False
+    return True
+
+
+def _command_output(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value or ""
 
 
 def parse_kscreen_outputs(text: str) -> tuple[DisplayState, ...]:
@@ -483,12 +521,191 @@ class KDEWindowEffect:
             raise RuntimeError(f"{' '.join(argv)}: {detail}")
 
 
-class VirtualKeyboardController:
-    """Ativa no máximo um provider, avançando apenas após falha confirmada."""
+def _kwin_vk_property(runner: Runner, which: Which, name: str) -> str:
+    if which("qdbus6") is None:
+        return ""
+    result = runner(
+        (
+            "qdbus6",
+            "org.kde.KWin",
+            "/VirtualKeyboard",
+            "org.freedesktop.DBus.Properties.Get",
+            "org.kde.kwin.VirtualKeyboard",
+            name,
+        ),
+        3.0,
+    )
+    return result.stdout.strip().lower() if result.returncode == 0 else ""
+
+
+def _kwin_vk_available(runner: Runner, which: Which) -> bool:
+    return _kwin_vk_property(runner, which, "available") == "true"
+
+
+def _kwin_vk_visible(runner: Runner, which: Which) -> bool:
+    return _kwin_vk_property(runner, which, "visible") == "true"
+
+
+def _maliit_desktop_file() -> Path | None:
+    candidates = (
+        Path("/usr/share/applications/com.github.maliit.keyboard.desktop"),
+        Path("/usr/local/share/applications/com.github.maliit.keyboard.desktop"),
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _process_running(name: str, *, proc: Path = Path("/proc"), uid: int | None = None) -> bool:
+    """Verifica um processo do usuário atual, sem aceitar providers de outra sessão."""
+    expected_uid = os.getuid() if uid is None else uid
+    try:
+        entries = proc.iterdir()
+    except OSError:
+        return False
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            comm = (entry / "comm").read_text(encoding="utf-8").strip()
+            status = (entry / "status").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        uid_line = next((line for line in status.splitlines() if line.startswith("Uid:")), "")
+        fields = uid_line.split()
+        owner = int(fields[1]) if len(fields) > 1 and fields[1].isdigit() else None
+        if comm == name and owner == expected_uid:
+            return True
+    return False
+
+
+class KDEInputMethodEffect:
+    """Configura o input method do KWin quando nenhum está ativo.
+
+    O teclado virtual do KWin só fica disponível quando um input method
+    compatível (Maliit) é publicado no Wayland. Este efeito garante que o
+    Maliit seja o input method padrão quando ele estiver presente no sistema,
+    restaurando o valor anterior no rollback.
+    """
+
+    name = "kde-input-method"
+    _MISSING = "__steamzero_missing__"
 
     def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
         self._runner = runner
         self._which = which
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-config" in context.capabilities
+            and _maliit_desktop_file() is not None
+            and all(
+                self._which(command) is not None
+                for command in ("kreadconfig6", "kwriteconfig6", "qdbus6")
+            )
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        current = self._read_input_method()
+        return {"inputMethod": current if current else self._MISSING}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        if _kwin_vk_available(self._runner, self._which):
+            return
+        if _maliit_desktop_file() is None:
+            raise RuntimeError("Maliit não está instalado como input method do KWin")
+        self._write_input_method(str(_maliit_desktop_file()))
+        self._reconfigure_kwin()
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        if _kwin_vk_available(self._runner, self._which):
+            return True
+        desktop_file = _maliit_desktop_file()
+        configured = self._read_input_method()
+        return desktop_file is not None and desktop_file.name in configured
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        value = snapshot.get("inputMethod")
+        if not isinstance(value, str):
+            raise RuntimeError("snapshot de input method inválido")
+        args = [
+            "kwriteconfig6",
+            "--file",
+            "kwinrc",
+            "--group",
+            "Wayland",
+            "--key",
+            "InputMethod",
+        ]
+        if value == self._MISSING:
+            args.append("--delete")
+        else:
+            args.append(value)
+        self._require_ok(tuple(args))
+        self._reconfigure_kwin()
+
+    def _read_input_method(self) -> str:
+        result = self._runner(
+            (
+                "kreadconfig6",
+                "--file",
+                "kwinrc",
+                "--group",
+                "Wayland",
+                "--key",
+                "InputMethod",
+            ),
+            3.0,
+        )
+        return result.stdout.strip() if result.returncode == 0 else ""
+
+    def _write_input_method(self, path: str) -> None:
+        self._require_ok(
+            (
+                "kwriteconfig6",
+                "--file",
+                "kwinrc",
+                "--group",
+                "Wayland",
+                "--key",
+                "InputMethod",
+                path,
+            )
+        )
+
+    def _reconfigure_kwin(self) -> None:
+        if self._which("qdbus6"):
+            self._runner(("qdbus6", "org.kde.KWin", "/KWin", "reconfigure"), 3.0)
+
+    def _require_ok(self, argv: Sequence[str]) -> None:
+        result = self._runner(argv, 5.0)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "falha sem detalhe"
+            raise RuntimeError(f"{' '.join(argv)}: {detail}")
+
+
+class VirtualKeyboardController:
+    """Ativa no máximo um provider, avançando apenas após falha confirmada.
+
+    O KWin pode reportar sucesso no ``forceActivate`` sem tornar o teclado
+    realmente visível (p. ex., input method não configurado ou servidor parado).
+    Por isso verificamos ``available`` antes e ``visible`` depois, e avançamos na
+    cadeia quando a ativação não produz efeito observável.
+    """
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        spawner: Spawner = spawn_command,
+        delay: Delay = time.sleep,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._spawner = spawner
+        self._delay = delay
 
     def activate(self, context: DesktopContext) -> str:
         profile = profile_for(automatic_profile(context), context)
@@ -498,26 +715,75 @@ class VirtualKeyboardController:
                 if kwin_attempted or self._which("qdbus6") is None:
                     continue
                 kwin_attempted = True
-                result = self._runner(
-                    (
-                        "qdbus6",
-                        "org.kde.KWin",
-                        "/VirtualKeyboard",
-                        "org.kde.kwin.VirtualKeyboard.forceActivate",
-                    ),
-                    3.0,
-                )
-                if result.returncode == 0:
-                    return provider
+                kwin_available = _kwin_vk_available(self._runner, self._which)
+                if kwin_available or self._start_kwin_keyboard_server():
+                    result = self._runner(
+                        (
+                            "qdbus6",
+                            "org.kde.KWin",
+                            "/VirtualKeyboard",
+                            "org.kde.kwin.VirtualKeyboard.forceActivate",
+                        ),
+                        3.0,
+                    )
+                    if result.returncode == 0 and _kwin_vk_visible(self._runner, self._which):
+                        return provider
             elif provider == "steam" and self._which("steam") is not None:
-                result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
-                if result.returncode == 0:
+                if self._activate_steam_keyboard():
                     return provider
-            # Standalone e KDE Connect ficam visíveis como capacidades, mas não são
-            # iniciados por subprocesso persistente neste coordenador single-shot.
+            elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
+                if self._spawner(("wvkbd-mobintl",)) and self._wait_for_process(
+                    "wvkbd-mobintl"
+                ):
+                    return provider
+            elif provider == "onboard" and self._which("onboard") is not None:
+                if self._spawner(("onboard", "--foreground")) and self._wait_for_process(
+                    "onboard"
+                ):
+                    return provider
+            # KDE Connect é visível como capacidade, mas é iniciado em outro
+            # dispositivo (telefone), não por subprocesso neste coordenador.
         raise SteamZeroError(
-            "E-DESKTOP-VERIFY", detail="nenhum provider de teclado aceitou a ativação"
+            "E-DESKTOP-VERIFY", detail="nenhum provider de teclado ficou visível"
         )
+
+    def _start_kwin_keyboard_server(self) -> bool:
+        """Tenta iniciar o servidor Maliit quando o KWin não enxerga teclado."""
+        if self._which("maliit-server") is None or any(
+            _process_running(name) for name in ("maliit-server", "maliit-keyboard")
+        ):
+            return False
+        if not self._spawner(("maliit-server",)):
+            return False
+        for attempt in range(10):
+            if _kwin_vk_available(self._runner, self._which):
+                return True
+            if attempt < 9:
+                self._delay(0.25)
+        return False
+
+    def _activate_steam_keyboard(self) -> bool:
+        if self._which("steam") is None:
+            return False
+        # ``steam -ifrunning`` só funciona quando o cliente já está no ar.
+        if _process_running("steam"):
+            result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+            return result.returncode == 0
+        # Tenta iniciar o Steam silenciosamente e aguarda o processo subir.
+        if not self._spawner(("steam", "-silent")):
+            return False
+        if self._wait_for_process("steam", attempts=10, interval=0.5):
+            result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+            return result.returncode == 0
+        return False
+
+    def _wait_for_process(self, name: str, *, attempts: int = 5, interval: float = 0.2) -> bool:
+        for attempt in range(attempts):
+            if _process_running(name):
+                return True
+            if attempt < attempts - 1:
+                self._delay(interval)
+        return False
 
 
 def activate_virtual_keyboard() -> str:
@@ -525,8 +791,49 @@ def activate_virtual_keyboard() -> str:
     return VirtualKeyboardController().activate(context)
 
 
+def input_method_status() -> dict[str, Any]:
+    """Estado observável do input method do KWin para a UI."""
+    runner = run_command
+    which = shutil.which
+    desktop_file = _maliit_desktop_file()
+    available = _kwin_vk_available(runner, which)
+    configured: str | None = None
+    if which("kreadconfig6"):
+        result = runner(
+            ("kreadconfig6", "--file", "kwinrc", "--group", "Wayland", "--key", "InputMethod"),
+            3.0,
+        )
+        if result.returncode == 0:
+            configured = result.stdout.strip() or None
+
+    if available:
+        state = "available"
+        detail = "Teclado virtual do KWin está ativo."
+    elif desktop_file is None:
+        state = "missing"
+        detail = "Nenhum input method compatível está instalado (Maliit, wvkbd ou onboard)."
+    elif configured and desktop_file.name in configured:
+        state = "configured-restart-needed"
+        detail = "Input method configurado; reinicie a sessão Plasma para ativar."
+    else:
+        state = "unconfigured"
+        detail = "Input method do KWin não está configurado; aplique um perfil Desktop."
+
+    return {
+        "state": state,
+        "detail": detail,
+        "configuredInputMethod": configured,
+        "preferredInputMethod": str(desktop_file) if desktop_file else None,
+        "serverRunning": _process_running("maliit-server") or _process_running("maliit-keyboard"),
+    }
+
+
 def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
-    effects: tuple[DesktopEffectPort, ...] = (KDEDisplayEffect(), KDEWindowEffect())
+    effects: tuple[DesktopEffectPort, ...] = (
+        KDEInputMethodEffect(),
+        KDEDisplayEffect(),
+        KDEWindowEffect(),
+    )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()
     )

@@ -13,38 +13,18 @@ sempre preservando a timeline de saves. O controle do processo/emulador é uma
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any
 
 from steamzero.core import ids
+from steamzero.core.session_state import SESSION_OWNER, VALID_TRANSITIONS
 from steamzero.core.state import StateStore
+from steamzero.ports import SessionPort
 
 if TYPE_CHECKING:
     from steamzero.jobs.manager import JobManager
-
-VALID_TRANSITIONS: dict[str, frozenset[str]] = {
-    "idle": frozenset({"launching"}),
-    "launching": frozenset({"running", "failed"}),
-    "running": frozenset({"suspending", "closing", "failed"}),
-    "suspending": frozenset({"suspended", "failed"}),
-    "suspended": frozenset({"resuming", "closing"}),
-    "resuming": frozenset({"running", "failed"}),
-    "closing": frozenset({"closed", "failed"}),
-    "closed": frozenset(),
-    "failed": frozenset(),
-}
-
-
-class SessionPort(Protocol):
-    """Controle do processo/emulador em execução."""
-
-    def launch(self, game_id: str) -> bool: ...
-    def is_alive(self) -> bool: ...
-    def flush_save(self) -> bool: ...  # ação semântica; True = confirmado a tempo
-    def signal_close(self) -> None: ...  # pedido semântico de sair
-    def terminate(self) -> None: ...  # SIGTERM
-    def kill(self) -> None: ...  # SIGKILL
 
 
 def _now_iso() -> str:
@@ -78,17 +58,23 @@ class SessionManager:
         """True se há jogo em andamento (running/suspended) — usado por JobManager."""
         return self._session is not None and self._session.state in ("running", "suspended")
 
-    def _transition(self, session: Session, new_state: str) -> None:
+    def _transition(self, session: Session, new_state: str, **changes: Any) -> None:
         if new_state not in VALID_TRANSITIONS.get(session.state, frozenset()):
             raise ValueError(f"transição de sessão inválida: {session.state} -> {new_state}")
+        self._store.transition_game_session(session.id, new_state, **changes)
         session.state = new_state
-        self._store.append_event(
-            "job.state", entity=f"session:{session.id}", payload={"state": new_state}
-        )
 
     # -- ciclo --------------------------------------------------------------
     def launch(self, game_id: str) -> Session:
         session = Session(id=ids.new_ulid(), game_id=game_id, state="idle")
+        self._store.create_game_session(
+            {
+                "id": session.id,
+                "game_id": game_id,
+                "state": "idle",
+                "owner": SESSION_OWNER,
+            }
+        )
         self._session = session
         self._transition(session, "launching")
         if not self._port.launch(game_id):
@@ -111,7 +97,15 @@ class SessionManager:
         else:
             session.last_warning = "E-SAVES-FLUSH-TIMEOUT"  # usa checkpoint anterior
             session.checkpoints.append({"ts": _now_iso(), "origin": "pre-flush-fallback"})
-        self._transition(session, "suspended")
+        self._transition(
+            session,
+            "suspended",
+            metadata_json=json.dumps(
+                {"checkpoints": session.checkpoints, "lastWarning": session.last_warning},
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+        )
         return session
 
     def resume(self) -> Session:
@@ -119,9 +113,15 @@ class SessionManager:
         self._transition(session, "resuming")
         if not self._port.is_alive():  # camada quebrada
             session.last_warning = "E-SESSION-RESUME-DEGRADED"
+            self._transition(
+                session,
+                "failed",
+                finished_at=_now_iso(),
+                failure_code=session.last_warning,
+            )
         else:
             session.last_warning = None
-        self._transition(session, "running")
+            self._transition(session, "running")
         return session
 
     def close(self, *, allow_kill: bool = False) -> Session:
@@ -138,7 +138,7 @@ class SessionManager:
                 return session
             self._port.kill()  # SIGKILL confirmado
         session.needs_kill_confirmation = False
-        self._transition(session, "closed")
+        self._transition(session, "closed", finished_at=_now_iso())
         return session
 
     def _require(self) -> Session:

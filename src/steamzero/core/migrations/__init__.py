@@ -11,7 +11,13 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Callable
 
-from steamzero.core.migrations import m0001_baseline, m0002_desktop_experience
+from steamzero.core.migrations import (
+    m0001_baseline,
+    m0002_desktop_experience,
+    m0003_gameplay_runtime,
+    m0004_game_session,
+    m0005_session_environment,
+)
 
 Migration = Callable[[sqlite3.Connection], None]
 
@@ -19,6 +25,9 @@ Migration = Callable[[sqlite3.Connection], None]
 MIGRATIONS: list[tuple[int, Migration]] = [
     (1, m0001_baseline.up),
     (2, m0002_desktop_experience.up),
+    (3, m0003_gameplay_runtime.up),
+    (4, m0004_game_session.up),
+    (5, m0005_session_environment.up),
 ]
 
 LATEST = max(v for v, _ in MIGRATIONS)

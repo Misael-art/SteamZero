@@ -40,6 +40,9 @@ steamzero library rollback --operation-id OP
 steamzero bios status [--platform psx] --json
 steamzero saves timeline <gameId> · steamzero saves restore <gameId> --entry SEQ --confirm T
 steamzero mode apply docked-tv · steamzero mode status --json
+steamzero session environment --json
+steamzero session status --game-id APPID --json
+steamzero session recover --game-id APPID
 steamzero desktop status --json
 steamzero desktop plan --profile auto|handheld|dock|safe
 steamzero desktop apply --plan-id P --confirm TOKEN
@@ -67,3 +70,9 @@ steamzero support bundle --preview
    anterior. `apply` revalida esse snapshot, nunca usa `--system` e não aceita fonte EOL.
 7. Rollback Flatpak tem garantia `G-DEPLOYMENT`: restaura o commit anterior ou remove o
    deployment recém-instalado, sem `--delete-data`; runtimes órfãos podem permanecer para GC.
+8. `session status` expõe o lifecycle persistido sem comando/ambiente. Sessão interrompida
+   retorna exit 4 e `E-SESSION-INTERRUPTED`; `session recover` reconhece o terminal falho
+   antes de liberar outro lançamento gerenciado.
+9. `session environment` é estritamente read-only e observa DMI/painel, sessão gráfica,
+   energia, rede, conectores DRM e volumes montados por UUID. Fonte ausente degrada o
+   campo correspondente; nunca dispara mount, KScreen, systemctl ou ação privilegiada.

@@ -93,12 +93,22 @@ class FlatpakState:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FlatpakState:
-        return cls(
-            installed=bool(data["installed"]),
-            ref=str(data["ref"]),
-            origin=str(data["origin"]) if data.get("origin") is not None else None,
-            commit=str(data["commit"]) if data.get("commit") is not None else None,
-        )
+        installed = data.get("installed")
+        ref = data.get("ref")
+        origin = data.get("origin")
+        commit = data.get("commit")
+        if type(installed) is not bool:
+            raise ValueError("installed deve ser booleano")
+        if not isinstance(ref, str) or not _REF_RE.fullmatch(ref):
+            raise ValueError("ref Flatpak inválido")
+        if installed:
+            if not isinstance(origin, str) or not _REMOTE_RE.fullmatch(origin):
+                raise ValueError("origin Flatpak inválido")
+            if not isinstance(commit, str) or not _COMMIT_RE.fullmatch(commit):
+                raise ValueError("commit Flatpak inválido")
+        elif origin is not None or commit is not None:
+            raise ValueError("deployment ausente não pode declarar origin/commit")
+        return cls(installed=installed, ref=ref, origin=origin, commit=commit)
 
 
 class FlatpakPort(Protocol):
@@ -398,9 +408,6 @@ class FlatpakExecutor:
                 "E-COMPONENT-DEGRADED",
                 detail=f"{ref} pertence ao remote {before.origin}, não a {remote}",
             )
-        self._require_resolvable(remote, ref, source.version)
-        if before.installed and before.commit is not None and before.commit != source.version:
-            self._require_resolvable(remote, ref, before.commit)
         action = (
             "noop"
             if before.installed and before.commit == source.version
@@ -408,6 +415,14 @@ class FlatpakExecutor:
             if before.installed
             else "install"
         )
+        if action != "noop" and action not in manifest.capabilities:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"adapter {adapter_id} não declara capability {action}",
+            )
+        self._require_resolvable(remote, ref, source.version)
+        if before.installed and before.commit is not None and before.commit != source.version:
+            self._require_resolvable(remote, ref, before.commit)
         now = self._utc_now()
         plan = FlatpakPlan(
             plan_id=ids.new_ulid(),
@@ -431,33 +446,39 @@ class FlatpakExecutor:
         return plan
 
     def apply(self, plan_id: str, confirm_token: str) -> FlatpakApplyResult:
+        # A leitura externa ao lock serve apenas para resolver o recurso. Toda
+        # precondição que autoriza efeito é recarregada e revalidada sob o lock.
         plan = self._load_plan(plan_id)
         self._validate_pending(plan, confirm_token)
         manifest, source = self._flatpak_source(plan.adapter_id)
         if self._source_fingerprint(source) != (plan.ref, plan.remote, plan.target_commit):
             raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
-        current = self._flatpak.status(plan.ref)
-        if current != plan.before:
-            raise SteamZeroError("E-TX-STALE-PLAN", detail="deployment mudou após o plano")
-        if plan.action == "noop":
-            self._save_plan(replace(plan, status="applied"))
-            self._persist(manifest, current)
-            return FlatpakApplyResult("", "noop", plan.adapter_id, current.commit)
+        lock_owner = ids.new_ulid()
+        with ResourceLock(f"flatpak:user:{plan.ref}", job_id=lock_owner, lease_seconds=3600):
+            plan = self._load_plan(plan_id)
+            self._validate_pending(plan, confirm_token)
+            manifest, source = self._flatpak_source(plan.adapter_id)
+            if self._source_fingerprint(source) != (plan.ref, plan.remote, plan.target_commit):
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
+            current = self._flatpak.status(plan.ref)
+            if current != plan.before:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="deployment mudou após o plano")
+            if plan.action == "noop":
+                self._save_plan(replace(plan, status="applied"))
+                self._persist(manifest, current)
+                return FlatpakApplyResult("", "noop", plan.adapter_id, current.commit)
 
-        operation = FlatpakOperation(
-            operation_id=ids.new_ulid(),
-            plan_id=plan.plan_id,
-            adapter_id=plan.adapter_id,
-            ref=plan.ref,
-            remote=plan.remote,
-            target_commit=plan.target_commit,
-            before=plan.before,
-            status="applying",
-            started_at=self._utc_now().isoformat(),
-        )
-        with ResourceLock(
-            f"flatpak:user:{plan.ref}", job_id=operation.operation_id, lease_seconds=3600
-        ):
+            operation = FlatpakOperation(
+                operation_id=lock_owner,
+                plan_id=plan.plan_id,
+                adapter_id=plan.adapter_id,
+                ref=plan.ref,
+                remote=plan.remote,
+                target_commit=plan.target_commit,
+                before=plan.before,
+                status="applying",
+                started_at=self._utc_now().isoformat(),
+            )
             self._save_operation(operation)
             try:
                 if not plan.before.installed:
@@ -474,25 +495,30 @@ class FlatpakExecutor:
         return FlatpakApplyResult(operation.operation_id, "ok", plan.adapter_id, plan.target_commit)
 
     def rollback(self, operation_id: str) -> FlatpakApplyResult:
+        # O primeiro load resolve o recurso; status e deployment são recarregados
+        # após adquirir o lock para impedir rollback sobre mudança concorrente.
         operation = self._load_operation(operation_id)
-        manifest = self._registry.get(operation.adapter_id)
-        if operation.status == "rolled-back":
-            state = self._flatpak.status(operation.ref)
-            return FlatpakApplyResult(
-                operation_id, "rolled-back", operation.adapter_id, state.commit
-            )
-        if operation.status != "committed":
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN",
-                detail=f"operação não pode sofrer rollback (status={operation.status})",
-            )
-        current = self._flatpak.status(operation.ref)
-        expected = FlatpakState(True, operation.ref, operation.remote, operation.target_commit)
-        if current != expected:
-            raise SteamZeroError("E-TX-STALE-PLAN", detail="deployment mudou depois da operação")
         with ResourceLock(
             f"flatpak:user:{operation.ref}", job_id=operation.operation_id, lease_seconds=3600
         ):
+            operation = self._load_operation(operation_id)
+            manifest = self._registry.get(operation.adapter_id)
+            if operation.status == "rolled-back":
+                state = self._flatpak.status(operation.ref)
+                return FlatpakApplyResult(
+                    operation_id, "rolled-back", operation.adapter_id, state.commit
+                )
+            if operation.status != "committed":
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN",
+                    detail=f"operação não pode sofrer rollback (status={operation.status})",
+                )
+            current = self._flatpak.status(operation.ref)
+            expected = FlatpakState(True, operation.ref, operation.remote, operation.target_commit)
+            if current != expected:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="deployment mudou depois da operação"
+                )
             rolling_back = replace(operation, status="rolling-back")
             self._save_operation(rolling_back)
             try:
@@ -518,13 +544,20 @@ class FlatpakExecutor:
             operation = self._load_operation_file(entry)
             if operation.status not in {"applying", "rolling-back", "recovery-required"}:
                 continue
-            manifest = self._registry.get(operation.adapter_id)
             try:
                 with ResourceLock(
                     f"flatpak:user:{operation.ref}",
                     job_id=operation.operation_id,
                     lease_seconds=3600,
                 ):
+                    operation = self._load_operation(operation.operation_id)
+                    if operation.status not in {
+                        "applying",
+                        "rolling-back",
+                        "recovery-required",
+                    }:
+                        continue
+                    manifest = self._registry.get(operation.adapter_id)
                     self._restore(operation)
                     final = self._flatpak.status(operation.ref)
                     self._save_operation(replace(operation, status="rolled-back", error=None))
@@ -616,12 +649,7 @@ class FlatpakExecutor:
         self, adapter_id: str, *, allow_eol: bool = False
     ) -> tuple[AdapterManifest, AdapterSource]:
         manifest = self._registry.get(adapter_id)
-        source = manifest.preferred_source("flatpak")
-        if source.end_of_life and not allow_eol:
-            raise SteamZeroError(
-                "E-SUPPLY-UPSTREAM-GONE",
-                detail=f"fonte Flatpak de {adapter_id} está end-of-life",
-            )
+        source = manifest.preferred_source("flatpak", allow_eol=allow_eol)
         _source_ref(source)
         _source_remote(source)
         _require_commit(source.version)
@@ -715,6 +743,8 @@ class FlatpakExecutor:
         if (
             operation.schema_version != 1
             or not ids.is_ulid(operation.operation_id)
+            or not ids.is_ulid(operation.plan_id)
+            or operation.before.ref != operation.ref
             or operation.status
             not in {
                 "applying",
@@ -725,6 +755,18 @@ class FlatpakExecutor:
             }
         ):
             raise SteamZeroError("E-STATE-INTEGRITY", detail="operação Flatpak inválida")
+        try:
+            ids.require_slug(operation.adapter_id)
+            _require_ref(operation.ref)
+            _require_remote(operation.remote)
+            _require_commit(operation.target_commit)
+            started_at = datetime.fromisoformat(operation.started_at)
+            if started_at.tzinfo is None:
+                raise ValueError("startedAt sem timezone")
+        except (SteamZeroError, ValueError) as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"operação Flatpak inválida: {exc}"
+            ) from exc
         return operation
 
     def _utc_now(self) -> datetime:
