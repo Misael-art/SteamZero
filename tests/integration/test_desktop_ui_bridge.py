@@ -592,3 +592,91 @@ def test_bridge_keyboard_settings_requires_known_keys(bridge: tuple[str, str]) -
         request_json(base, token, "/keyboard/settings", {"ignored": "x"})
     assert error.value.code == 400
     error.value.close()
+
+
+_READY_SESSION = {
+    "state": "ready",
+    "statusLabel": "Game Mode disponível",
+    "steam": True,
+    "gamescope": True,
+    "gamescopeSession": True,
+    "desktopFallback": True,
+}
+
+
+def test_bridge_session_select_requires_confirmation_then_switches(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    requested: list[str] = []
+    logouts: list[bool] = []
+
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.session_readiness", lambda: dict(_READY_SESSION)
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.request_target",
+        lambda target: (requested.append(target), {"status": "requested", "target": target})[1],
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.logout_desktop_session",
+        lambda: (logouts.append(True), True)[1],
+    )
+
+    plan = request_json(base, token, "/session/select", {"target": "steam"})
+    assert plan["target"] == "steam"
+    assert plan["planId"] and plan["confirmToken"]
+    assert requested == []  # nada muda sem confirmação
+
+    result = request_json(
+        base,
+        token,
+        "/session/select",
+        {
+            "target": "steam",
+            "planId": str(plan["planId"]),
+            "confirmToken": str(plan["confirmToken"]),
+        },
+    )
+    assert result["status"] == "requested"
+    assert result["logout"] is True
+    assert requested == ["steam"]
+    assert logouts == [True]
+
+
+def test_bridge_session_select_degraded_readiness_conflicts(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.session_readiness",
+        lambda: {"state": "degraded", "statusLabel": "Dependências incompletas"},
+    )
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(base, token, "/session/select", {"target": "steam"})
+    assert error.value.code == 409
+    error.value.close()
+
+
+def test_bridge_session_select_rejects_bad_target_and_token(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.session_readiness", lambda: dict(_READY_SESSION)
+    )
+    with pytest.raises(urllib.error.HTTPError) as bad_target:
+        request_json(base, token, "/session/select", {"target": "shutdown"})
+    assert bad_target.value.code == 400
+    bad_target.value.close()
+
+    plan = request_json(base, token, "/session/select", {"target": "steam"})
+    with pytest.raises(urllib.error.HTTPError) as bad_token:
+        request_json(
+            base,
+            token,
+            "/session/select",
+            {"target": "steam", "planId": str(plan["planId"]), "confirmToken": "errado"},
+        )
+    assert bad_token.value.code == 409
+    bad_token.value.close()

@@ -1426,6 +1426,21 @@ class KDEEdgeGestureEffect:
         self._runner(("qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.reconfigure"), 5.0)
 
 
+def logout_desktop_session(*, runner: Runner = run_command, which: Which = shutil.which) -> bool:
+    """Encerra a sessão Plasma atual via DBus (sem prompt).
+
+    Usado após registrar o alvo de sessão Game Mode: o logout devolve o
+    controle à cadeia de boot, que lê o alvo e sobe a sessão pedida.
+    """
+    if which("qdbus6") is None:
+        return False
+    result = runner(
+        ("qdbus6", "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown.logout"),
+        5.0,
+    )
+    return result.returncode == 0
+
+
 def input_method_status() -> dict[str, Any]:
     """Estado observável do input method do KWin para a UI."""
     runner = run_command

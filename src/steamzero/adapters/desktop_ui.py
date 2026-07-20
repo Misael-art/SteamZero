@@ -22,8 +22,11 @@ from steamzero.adapters.desktop_kde import (
     activate_virtual_keyboard,
     apply_maliit_comfort,
     launch_ashyterm,
+    logout_desktop_session,
     toggle_virtual_keyboard,
 )
+from steamzero.adapters.steam_session import readiness as session_readiness
+from steamzero.adapters.steam_session import request_target
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.domain.desktop import (
     DesktopContext,
@@ -40,6 +43,7 @@ class DesktopControlServer(HTTPServer):
     coordinator: ExperienceCoordinator
     token: str
     dashboard: DesktopDashboard | None
+    session_plans: dict[str, tuple[str, str]]
 
     def __init__(
         self,
@@ -50,6 +54,7 @@ class DesktopControlServer(HTTPServer):
         self.coordinator = coordinator
         self.token = token
         self.dashboard = dashboard
+        self.session_plans = {}
         super().__init__(("127.0.0.1", 0), DesktopControlHandler)
 
 
@@ -256,6 +261,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if not settings:
                 raise ValueError("nenhuma configuração de teclado informada")
             return apply_maliit_comfort(settings)
+        if path == "/session/select":
+            return self._session_select(payload)
         if path == "/ashyterm":
             return launch_ashyterm()
         if path == "/panel/autohide":
@@ -275,6 +282,44 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             effect.apply(replace(prof, panel_auto_hide=enable), ctx)
             return {"status": "ok", "autoHide": enable}
         raise ValueError(f"ação não permitida: {path}")
+
+    _SESSION_TARGETS = frozenset({"steam", "gamepadui"})
+
+    def _session_select(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Retorno confirmado ao Game Mode: plano + token antes de encerrar a sessão."""
+        target = str(payload.get("target", "steam"))
+        if target not in self._SESSION_TARGETS:
+            raise ValueError(f"destino de sessão não permitido: {target}")
+        plan_id = payload.get("planId")
+        confirm = payload.get("confirmToken")
+        plans = self._control_server.session_plans
+        if not plan_id or not confirm:
+            status = session_readiness()
+            if status.get("state") != "ready":
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail=str(status.get("statusLabel", "Game Mode indisponível")),
+                )
+            new_plan_id = secrets.token_urlsafe(8)
+            token = secrets.token_urlsafe(16)
+            plans.clear()
+            plans[new_plan_id] = (token, target)
+            return {
+                "planId": new_plan_id,
+                "confirmToken": token,
+                "target": target,
+                "readiness": status,
+            }
+        stored = plans.pop(str(plan_id), None)
+        if stored is None or not secrets.compare_digest(stored[0], str(confirm)):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="confirmação de troca de sessão inválida ou expirada"
+            )
+        if stored[1] != target:
+            raise SteamZeroError("E-API-SCHEMA", detail="alvo divergente do plano confirmado")
+        result = request_target(target)
+        logged_out = logout_desktop_session()
+        return {**result, "logout": logged_out}
 
     def _context_from_dict(self, context: dict[str, Any]) -> DesktopContext:
         displays = [
