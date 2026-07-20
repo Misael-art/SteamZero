@@ -49,7 +49,8 @@
           "type": "array",
           "items": { "enum": ["handheld-desktop", "docked-desktop", "safe"] }
         },
-        "errors": { "type": "array", "items": { "type": "string" } }
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "resolvedBy": { "enum": ["applied-profile"] }
       }
     },
     "statusReasons": { "type": "array", "items": { "type": "string" } },
