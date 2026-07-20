@@ -732,20 +732,14 @@ class VirtualKeyboardController:
                 if self._activate_steam_keyboard():
                     return provider
             elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
-                if self._spawner(("wvkbd-mobintl",)) and self._wait_for_process(
-                    "wvkbd-mobintl"
-                ):
+                if self._spawner(("wvkbd-mobintl",)) and self._wait_for_process("wvkbd-mobintl"):
                     return provider
             elif provider == "onboard" and self._which("onboard") is not None:
-                if self._spawner(("onboard", "--foreground")) and self._wait_for_process(
-                    "onboard"
-                ):
+                if self._spawner(("onboard", "--foreground")) and self._wait_for_process("onboard"):
                     return provider
             # KDE Connect é visível como capacidade, mas é iniciado em outro
             # dispositivo (telefone), não por subprocesso neste coordenador.
-        raise SteamZeroError(
-            "E-DESKTOP-VERIFY", detail="nenhum provider de teclado ficou visível"
-        )
+        raise SteamZeroError("E-DESKTOP-VERIFY", detail="nenhum provider de teclado ficou visível")
 
     def _start_kwin_keyboard_server(self) -> bool:
         """Tenta iniciar o servidor Maliit quando o KWin não enxerga teclado."""

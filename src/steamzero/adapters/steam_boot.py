@@ -38,7 +38,7 @@ _MANAGED = "# SteamZero-Boot-Managed: true"
 # greeter limpo em vez de lançar sessão quebrada por autologin obsoleto. O grep
 # preserva ownership: arquivo sem marcador nunca é removido.
 _AUTOLOGIN_CLEANUP = (
-    "-/bin/sh -c 'grep -qs \"SteamZero-Boot-Managed\" "
+    '-/bin/sh -c \'grep -qs "SteamZero-Boot-Managed" '
     "/etc/sddm.conf.d/99-steamzero-gamemode.conf && "
     "rm -f /etc/sddm.conf.d/99-steamzero-gamemode.conf; exit 0'"
 )

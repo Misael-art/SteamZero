@@ -59,9 +59,7 @@ class Layout:
     gamemode_session: Path = Path("/usr/share/wayland-sessions/steamzero-gamemode.desktop")
     # Publicado por steam_boot.enable(), fora do ownership do instalador; sua
     # presença indica boot direto ativo e exige a cadeia de binários no venv.
-    gamemode_boot_unit: Path = Path(
-        "/usr/local/lib/systemd/system/steamzero-gamemode-boot.service"
-    )
+    gamemode_boot_unit: Path = Path("/usr/local/lib/systemd/system/steamzero-gamemode-boot.service")
     legacy_gamemode_session: Path = Path(
         "/usr/local/share/wayland-sessions/steamzero-gamemode.desktop"
     )
