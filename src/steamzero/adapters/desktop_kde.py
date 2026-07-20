@@ -9,9 +9,13 @@ aqui (escala de saída e política de maximização) capturam estado para rollba
 
 from __future__ import annotations
 
+import contextlib
+import json
+import locale
 import os
 import re
 import shutil
+import signal
 import subprocess
 import time
 from collections.abc import Callable, Sequence
@@ -546,6 +550,135 @@ def _kwin_vk_visible(runner: Runner, which: Which) -> bool:
     return _kwin_vk_property(runner, which, "visible") == "true"
 
 
+def _kwin_vk_deactivate(runner: Runner, which: Which) -> bool:
+    if which("qdbus6") is None:
+        return False
+    result = runner(
+        (
+            "qdbus6",
+            "org.kde.KWin",
+            "/VirtualKeyboard",
+            "org.kde.kwin.VirtualKeyboard.forceDeactivate",
+        ),
+        3.0,
+    )
+    return result.returncode == 0
+
+
+def _host_locale() -> str:
+    """Retorna o locale do usuário sem falhar quando ele não está configurado."""
+    for key in ("LC_ALL", "LANG"):
+        value = os.environ.get(key)
+        if value:
+            return value.split(".")[0]
+    try:
+        return locale.getlocale()[0] or "en_US"
+    except (AttributeError, ValueError):
+        return "en_US"
+
+
+def _locale_to_xkb_layout(locale_str: str) -> str:
+    """Mapeia locale comum para layout XKB usado por teclados virtuais."""
+    mapping = {
+        "pt_BR": "br",
+        "pt_PT": "pt",
+        "en_US": "us",
+        "en_GB": "gb",
+        "es_ES": "es",
+        "es_AR": "latam",
+        "es_MX": "latam",
+        "de_DE": "de",
+        "de_AT": "de",
+        "fr_FR": "fr",
+        "fr_CA": "ca",
+        "it_IT": "it",
+        "ja_JP": "jp",
+        "ko_KR": "kr",
+        "ru_RU": "ru",
+        "zh_CN": "cn",
+        "zh_TW": "tw",
+        "ar_SA": "ara",
+        "nl_NL": "nl",
+        "pl_PL": "pl",
+        "tr_TR": "tr",
+        "C": "us",
+    }
+    normalized = locale_str.split(".")[0]
+    return mapping.get(normalized, normalized.split("_")[0].lower())
+
+
+# maliit-keyboard identifica idiomas por código ISO (``pt``, ``zh-hans``), não
+# por layout XKB; o mapa cobre os layouts expostos na UI e o resto cai no
+# próprio código (vários códigos XKB coincidem com o ISO, ex.: ``de``, ``fr``).
+_MALIIT_LANGUAGE_BY_LAYOUT = {
+    "br": "pt",
+    "us": "en",
+    "gb": "en",
+    "latam": "es",
+    "ca": "fr",
+    "jp": "ja",
+    "kr": "ko",
+    "cn": "zh-hans",
+    "tw": "zh-hant",
+    "ara": "ar",
+}
+
+
+def _maliit_language_for(layout: str | None) -> str | None:
+    if not layout:
+        return None
+    return _MALIIT_LANGUAGE_BY_LAYOUT.get(layout, layout)
+
+
+def _apply_maliit_language(runner: Runner, which: Which, layout: str | None) -> bool:
+    """Sincroniza o idioma ativo do maliit-keyboard via gsettings.
+
+    O maliit não lê variável de ambiente de layout; o idioma vem de
+    ``org.maliit.keyboard.maliit active-language`` e a mudança vale com o
+    servidor já em execução — cobre o caso de provider persistente.
+    """
+    language = _maliit_language_for(layout)
+    if language is None or which("gsettings") is None:
+        return False
+    schema = "org.maliit.keyboard.maliit"
+    current = runner(("gsettings", "get", schema, "active-language"), 3.0)
+    if current.returncode == 0 and current.stdout.strip().strip("'\"") == language:
+        return True
+    enabled = runner(("gsettings", "get", schema, "enabled-languages"), 3.0)
+    languages = re.findall(r"'([^']+)'", enabled.stdout) if enabled.returncode == 0 else []
+    if language not in languages:
+        languages.append(language)
+        formatted = "[" + ", ".join(f"'{item}'" for item in languages) + "]"
+        runner(("gsettings", "set", schema, "enabled-languages", formatted), 3.0)
+    result = runner(("gsettings", "set", schema, "active-language", language), 3.0)
+    return result.returncode == 0
+
+
+# wvkbd-mobintl aceita apenas layers compiladas; um valor desconhecido em
+# ``-l`` encerra o processo, então só enviamos layers garantidas.
+_WVKBD_LAYER_BY_LAYOUT = {
+    "ru": "cyrillic",
+    "ara": "arabic",
+    "gr": "greek",
+    "ir": "persian",
+    "ge": "georgian",
+}
+
+
+def _keyboard_geometry(context: DesktopContext, *, height_ratio: float = 0.35) -> dict[str, int]:
+    """Calcula geometria proporcional ao display interno conectado."""
+    connected = tuple(display for display in context.displays if display.connected)
+    target = next((display for display in connected if display.internal), None) or next(
+        iter(connected), None
+    )
+    if target is None or target.width is None or target.height is None:
+        return {"width": 1280, "height": 400, "scale": 100}
+    scale = target.scale or 1.0
+    width = int(target.width * scale)
+    height = max(200, int(target.height * scale * height_ratio))
+    return {"width": width, "height": height, "scale": int(scale * 100)}
+
+
 def _maliit_desktop_file() -> Path | None:
     candidates = (
         Path("/usr/share/applications/com.github.maliit.keyboard.desktop"),
@@ -578,6 +711,29 @@ def _process_running(name: str, *, proc: Path = Path("/proc"), uid: int | None =
         if comm == name and owner == expected_uid:
             return True
     return False
+
+
+def _signal_process(name: str, sig: int, *, proc: Path = Path("/proc")) -> None:
+    """Envia um sinal para todos os processos do usuário com o nome dado."""
+    expected_uid = os.getuid()
+    try:
+        entries = proc.iterdir()
+    except OSError:
+        return
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            comm = (entry / "comm").read_text(encoding="utf-8").strip()
+            status = (entry / "status").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        uid_line = next((line for line in status.splitlines() if line.startswith("Uid:")), "")
+        fields = uid_line.split()
+        owner = int(fields[1]) if len(fields) > 1 and fields[1].isdigit() else None
+        if comm == name and owner == expected_uid:
+            with contextlib.suppress(OSError):
+                os.kill(int(entry.name), sig)
 
 
 class KDEInputMethodEffect:
@@ -686,7 +842,7 @@ class KDEInputMethodEffect:
 
 
 class VirtualKeyboardController:
-    """Ativa no máximo um provider, avançando apenas após falha confirmada.
+    """Ativa/oculta no máximo um provider, avançando apenas após falha confirmada.
 
     O KWin pode reportar sucesso no ``forceActivate`` sem tornar o teclado
     realmente visível (p. ex., input method não configurado ou servidor parado).
@@ -707,8 +863,10 @@ class VirtualKeyboardController:
         self._spawner = spawner
         self._delay = delay
 
-    def activate(self, context: DesktopContext) -> str:
+    def activate(self, context: DesktopContext, *, language: str | None = None) -> str:
         profile = profile_for(automatic_profile(context), context)
+        layout = self._effective_layout(language)
+        geometry = _keyboard_geometry(context)
         kwin_attempted = False
         for provider in profile.keyboard_chain:
             if provider in {"plasma-keyboard", "kwin-maliit"}:
@@ -716,7 +874,8 @@ class VirtualKeyboardController:
                     continue
                 kwin_attempted = True
                 kwin_available = _kwin_vk_available(self._runner, self._which)
-                if kwin_available or self._start_kwin_keyboard_server():
+                if kwin_available or self._start_kwin_keyboard_server(layout, geometry):
+                    _apply_maliit_language(self._runner, self._which, layout)
                     result = self._runner(
                         (
                             "qdbus6",
@@ -732,22 +891,57 @@ class VirtualKeyboardController:
                 if self._activate_steam_keyboard():
                     return provider
             elif provider == "wvkbd" and self._which("wvkbd-mobintl") is not None:
-                if self._spawner(("wvkbd-mobintl",)) and self._wait_for_process("wvkbd-mobintl"):
+                if self._process_running("wvkbd-mobintl"):
+                    self._signal_provider("wvkbd-mobintl", signal.SIGUSR2)
+                    return provider
+                if self._spawn_wvkbd(layout, geometry) and self._wait_for_process("wvkbd-mobintl"):
                     return provider
             elif provider == "onboard" and self._which("onboard") is not None:
-                if self._spawner(("onboard", "--foreground")) and self._wait_for_process("onboard"):
+                if self._spawn_onboard(layout, geometry) and self._wait_for_process("onboard"):
                     return provider
             # KDE Connect é visível como capacidade, mas é iniciado em outro
             # dispositivo (telefone), não por subprocesso neste coordenador.
         raise SteamZeroError("E-DESKTOP-VERIFY", detail="nenhum provider de teclado ficou visível")
 
-    def _start_kwin_keyboard_server(self) -> bool:
+    def toggle(self, context: DesktopContext, *, language: str | None = None) -> dict[str, Any]:
+        """Alterna visibilidade do teclado virtual, preferindo o DBus do KWin."""
+        if self._which("qdbus6") is not None and _kwin_vk_available(self._runner, self._which):
+            visible = _kwin_vk_visible(self._runner, self._which)
+            if visible:
+                _kwin_vk_deactivate(self._runner, self._which)
+                return {"action": "hide", "provider": "kwin-maliit"}
+            provider = self.activate(context, language=language)
+            return {"action": "show", "provider": provider}
+
+        running_provider = self._running_provider()
+        if running_provider == "wvkbd" and self._process_running("wvkbd-mobintl"):
+            self._signal_provider("wvkbd-mobintl", signal.SIGUSR1)
+            return {"action": "hide", "provider": "wvkbd"}
+        if running_provider:
+            self._stop_provider(running_provider)
+            return {"action": "hide", "provider": running_provider}
+
+        provider = self.activate(context, language=language)
+        return {"action": "show", "provider": provider}
+
+    def _effective_layout(self, language: str | None) -> str | None:
+        if language:
+            return language
+        host = _host_locale()
+        return _locale_to_xkb_layout(host)
+
+    def _start_kwin_keyboard_server(self, layout: str | None, geometry: dict[str, int]) -> bool:
         """Tenta iniciar o servidor Maliit quando o KWin não enxerga teclado."""
         if self._which("maliit-server") is None or any(
             _process_running(name) for name in ("maliit-server", "maliit-keyboard")
         ):
             return False
-        if not self._spawner(("maliit-server",)):
+        _apply_maliit_language(self._runner, self._which, layout)
+        env = os.environ.copy()
+        scale = geometry.get("scale", 100) / 100.0
+        if scale > 0:
+            env["QT_SCREEN_SCALE_FACTORS"] = f"{scale}"
+        if not spawner_env(("maliit-server",), env):
             return False
         for attempt in range(10):
             if _kwin_vk_available(self._runner, self._which):
@@ -756,20 +950,73 @@ class VirtualKeyboardController:
                 self._delay(0.25)
         return False
 
-    def _activate_steam_keyboard(self) -> bool:
+    def _spawn_wvkbd(self, layout: str | None, geometry: dict[str, int]) -> bool:
+        argv: list[str] = ["wvkbd-mobintl"]
+        layer = _WVKBD_LAYER_BY_LAYOUT.get(layout or "")
+        if layer:
+            argv.extend(("-l", layer))
+        width = geometry.get("width", 0)
+        height = geometry.get("height", 0)
+        if width and height:
+            # A largura do teclado segue a tela; controlamos apenas a altura.
+            height_arg = "-L" if width >= height else "-H"
+            argv.extend((height_arg, str(height)))
+        return self._spawner(tuple(argv))
+
+    def _spawn_onboard(self, layout: str | None, geometry: dict[str, int]) -> bool:
+        # Onboard usa o layout XKB do sistema; ``-l`` espera arquivo .onboard
+        # (aparência), não idioma — por isso não é usado aqui.
+        argv: list[str] = ["onboard", "--foreground"]
+        width = geometry.get("width")
+        height = geometry.get("height")
+        if width and height:
+            argv.extend(("--size", f"{width}x{height}"))
+        return self._spawner(tuple(argv))
+
+    def _activate_steam_keyboard(self, *, open_keyboard: bool = True) -> bool:
         if self._which("steam") is None:
             return False
+        uri = "steam://open/keyboard" if open_keyboard else "steam://close/keyboard"
         # ``steam -ifrunning`` só funciona quando o cliente já está no ar.
         if _process_running("steam"):
-            result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+            result = self._runner(("steam", "-ifrunning", uri), 5.0)
             return result.returncode == 0
         # Tenta iniciar o Steam silenciosamente e aguarda o processo subir.
         if not self._spawner(("steam", "-silent")):
             return False
         if self._wait_for_process("steam", attempts=10, interval=0.5):
-            result = self._runner(("steam", "-ifrunning", "steam://open/keyboard"), 5.0)
+            result = self._runner(("steam", "-ifrunning", uri), 5.0)
             return result.returncode == 0
         return False
+
+    def _running_provider(self) -> str | None:
+        names = {
+            "kwin-maliit": ("maliit-server", "maliit-keyboard"),
+            "wvkbd": ("wvkbd-mobintl",),
+            "onboard": ("onboard",),
+            "steam": ("steam",),
+        }
+        for provider, procs in names.items():
+            if any(self._process_running(name) for name in procs):
+                return provider
+        return None
+
+    def _process_running(self, name: str) -> bool:
+        return _process_running(name)
+
+    def _signal_provider(self, name: str, sig: int) -> None:
+        _signal_process(name, sig)
+
+    def _stop_provider(self, provider: str) -> None:
+        signals_by_provider: dict[str, tuple[str, ...]] = {
+            "kwin-maliit": ("maliit-server", "maliit-keyboard"),
+            "wvkbd": ("wvkbd-mobintl",),
+            "onboard": ("onboard",),
+        }
+        for name in signals_by_provider.get(provider, ()):
+            self._signal_provider(name, signal.SIGTERM)
+        if provider == "steam":
+            self._activate_steam_keyboard(open_keyboard=False)
 
     def _wait_for_process(self, name: str, *, attempts: int = 5, interval: float = 0.2) -> bool:
         for attempt in range(attempts):
@@ -780,9 +1027,98 @@ class VirtualKeyboardController:
         return False
 
 
-def activate_virtual_keyboard() -> str:
+def activate_virtual_keyboard(language: str | None = None) -> str:
     context = LinuxDesktopContext().snapshot()
-    return VirtualKeyboardController().activate(context)
+    return VirtualKeyboardController().activate(context, language=language)
+
+
+class KDEPanelEffect:
+    """Auto-oculta painéis do Plasma para maximizar área útil, com rollback."""
+
+    name = "kde-panel"
+    # A leitura não pode atribuir ``hiding`` — capturar estado deve ser
+    # observação pura, senão todo apply corrompe a configuração dos painéis.
+    _READ_SCRIPT = """
+var result = {};
+var panels = panelIds;
+for (var i = 0; i < panels.length; i++) {
+    result[panels[i]] = panelById(panels[i]).hiding;
+}
+print(JSON.stringify(result));
+"""
+    _WRITE_SCRIPT_TEMPLATE = """
+var panels = panelIds;
+for (var i = 0; i < panels.length; i++) {
+    panelById(panels[i]).hiding = '%s';
+}
+"""
+
+    def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
+        self._runner = runner
+        self._which = which
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-plasma" in context.capabilities
+            and self._which("qdbus6") is not None
+            and self._which("plasmashell") is not None
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {"panelHidingStates": self._read_hiding_states()}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        hiding = "autohide" if profile.panel_auto_hide else "none"
+        self._set_hiding(hiding)
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        expected = "autohide" if profile.panel_auto_hide else "none"
+        states = self._read_hiding_states()
+        if not states:
+            return False
+        return all(state == expected for state in states.values())
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        value = snapshot.get("panelHidingStates")
+        if not isinstance(value, dict):
+            raise RuntimeError("snapshot de painel inválido")
+        for panel_id, hiding in value.items():
+            self._set_panel_hiding(panel_id, str(hiding))
+
+    def _read_hiding_states(self) -> dict[str, str]:
+        result = self._evaluate_script(self._READ_SCRIPT)
+        if result is None:
+            return {}
+        try:
+            parsed = json.loads(result)
+        except json.JSONDecodeError:
+            return {}
+        return {str(key): str(value) for key, value in parsed.items() if isinstance(value, str)}
+
+    def _set_hiding(self, hiding: str) -> None:
+        script = self._WRITE_SCRIPT_TEMPLATE % hiding
+        self._evaluate_script(script)
+
+    def _set_panel_hiding(self, panel_id: str, hiding: str) -> None:
+        script = f"var p = panelById({panel_id}); if (p) p.hiding = '{hiding}';"
+        self._evaluate_script(script)
+
+    def _evaluate_script(self, script: str) -> str | None:
+        if self._which("qdbus6") is None:
+            return None
+        result = self._runner(
+            (
+                "qdbus6",
+                "org.kde.plasmashell",
+                "/PlasmaShell",
+                "org.kde.PlasmaShell.evaluateScript",
+                script,
+            ),
+            5.0,
+        )
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip() or None
 
 
 def input_method_status() -> dict[str, Any]:
@@ -819,7 +1155,76 @@ def input_method_status() -> dict[str, Any]:
         "configuredInputMethod": configured,
         "preferredInputMethod": str(desktop_file) if desktop_file else None,
         "serverRunning": _process_running("maliit-server") or _process_running("maliit-keyboard"),
+        "hostLocale": _host_locale(),
+        "keyboardLayout": _locale_to_xkb_layout(_host_locale()),
     }
+
+
+def toggle_virtual_keyboard(
+    language: str | None = None,
+    *,
+    runner: Runner = run_command,
+    which: Which = shutil.which,
+    spawner: Spawner = spawn_command,
+    delay: Delay = time.sleep,
+) -> dict[str, Any]:
+    context = LinuxDesktopContext(runner=runner, which=which).snapshot()
+    return VirtualKeyboardController(
+        runner=runner, which=which, spawner=spawner, delay=delay
+    ).toggle(context, language=language)
+
+
+def launch_ashyterm(
+    *,
+    which: Which = shutil.which,
+    spawn: Callable[[Sequence[str], dict[str, str]], bool] | None = None,
+) -> dict[str, Any]:
+    """Inicia o Terminal Ashy com ambiente favorável ao teclado virtual."""
+    spawn = spawn or spawner_env
+    executable = which("ashyterm") or which("org.communitybig.ashyterm")
+    desktop_file = Path("/usr/share/applications/org.communitybig.ashyterm.desktop")
+    if executable is None:
+        # Fallback para a desktop entry quando não há binário no PATH
+        if not desktop_file.is_file():
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="Terminal Ashy não encontrado no sistema"
+            )
+        executable = "xdg-open"
+        argv: tuple[str, ...] = (executable, str(desktop_file))
+    else:
+        argv = (executable,)
+
+    env = os.environ.copy()
+    # GTK4/Wayland: usar o input method nativo do compositor quando disponível.
+    env["GTK_IM_MODULE"] = env.get("GTK_IM_MODULE", "wayland")
+    # Garante que o foco em widgets de texto dispare o text-input do Wayland.
+    env["GDK_BACKEND"] = env.get("GDK_BACKEND", "wayland")
+
+    if not spawn(argv, env):
+        raise SteamZeroError("E-DESKTOP-VERIFY", detail="não foi possível iniciar o Terminal Ashy")
+    return {"status": "started", "application": "ashyterm", "command": argv[0]}
+
+
+def spawner_env(argv: Sequence[str], env: dict[str, str]) -> bool:
+    """Inicia provider persistente com ambiente customizado."""
+    if not argv:
+        return False
+    executable = shutil.which(argv[0])
+    if executable is None:
+        return False
+    try:
+        subprocess.Popen(  # noqa: S603
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+            env=env,
+        )
+    except OSError:
+        return False
+    return True
 
 
 def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
@@ -827,6 +1232,7 @@ def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
         KDEInputMethodEffect(),
         KDEDisplayEffect(),
         KDEWindowEffect(),
+        KDEPanelEffect(),
     )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()

@@ -484,15 +484,20 @@ def _cmd_desktop_ui(_args: list[str], correlation_id: str) -> tuple[dict[str, An
 
 
 def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    from steamzero.adapters.desktop_kde import activate_virtual_keyboard
+    from steamzero.adapters.desktop_kde import activate_virtual_keyboard, toggle_virtual_keyboard
 
-    provider = activate_virtual_keyboard()
+    toggle = "--toggle" in _args
+    language = _flag_value(_args, "--language")
+    if toggle:
+        result = toggle_virtual_keyboard(language=language)
+    else:
+        result = {"provider": activate_virtual_keyboard(language=language)}
     return (
         build_envelope(
             "desktop",
             "keyboard",
             status="ok",
-            data={"provider": provider},
+            data=result,
             correlation_id=correlation_id,
         ),
         EXIT_OK,

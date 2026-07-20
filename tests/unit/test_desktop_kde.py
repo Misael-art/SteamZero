@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
+import signal
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -14,15 +15,27 @@ from steamzero.adapters.desktop_kde import (
     CommandResult,
     KDEDisplayEffect,
     KDEInputMethodEffect,
+    KDEPanelEffect,
     LegacyWatcherConflictResolver,
     LinuxDesktopContext,
     VirtualKeyboardController,
+    build_desktop_coordinator,
     parse_kscreen_outputs,
     run_command,
     spawn_command,
 )
+from steamzero.adapters.desktop_kde import (
+    _keyboard_geometry as keyboard_geometry,
+)
+from steamzero.adapters.desktop_kde import (
+    _locale_to_xkb_layout as locale_to_xkb_layout,
+)
+from steamzero.adapters.desktop_kde import (
+    _maliit_language_for as maliit_language_for,
+)
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, profile_for
+from steamzero.core.state import StateStore
+from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, DisplayState, profile_for
 
 KSCREEN = """Output: 1 eDP-1 uuid-a
 \tenabled
@@ -246,7 +259,10 @@ def test_virtual_keyboard_uses_kwin_when_it_becomes_visible() -> None:
     )
     controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
     assert controller.activate(context) == "kwin-maliit"
-    assert [call[0] for call in calls] == ["qdbus6", "qdbus6", "qdbus6"]
+    # A sincronização de idioma (gsettings) acontece entre as chamadas qdbus6.
+    qdbus_calls = [call[0] for call in calls if call[0] == "qdbus6"]
+    assert qdbus_calls == ["qdbus6", "qdbus6", "qdbus6"]
+    assert {call[0] for call in calls} <= {"qdbus6", "gsettings"}
 
 
 def test_virtual_keyboard_falls_back_to_steam_when_kwin_does_not_show(
@@ -280,7 +296,8 @@ def test_virtual_keyboard_falls_back_to_steam_when_kwin_does_not_show(
     )
     controller = VirtualKeyboardController(runner=runner, which=lambda command: command)
     assert controller.activate(context) == "steam"
-    assert [call[0] for call in calls] == ["qdbus6", "qdbus6", "qdbus6", "steam"]
+    non_gsettings = [call[0] for call in calls if call[0] != "gsettings"]
+    assert non_gsettings == ["qdbus6", "qdbus6", "qdbus6", "steam"]
 
 
 def test_virtual_keyboard_starts_steam_when_not_running(
@@ -347,8 +364,8 @@ def test_virtual_keyboard_tries_to_start_maliit_server(
             return CommandResult(0, "")
         return CommandResult(127, "")
 
-    def spawner(argv: Sequence[str]) -> bool:
-        spawns.append(tuple(argv))
+    def spawner_env(argv: tuple[str, ...], env: dict[str, str]) -> bool:
+        spawns.append(argv)
         return True
 
     context = DesktopContext(
@@ -361,10 +378,11 @@ def test_virtual_keyboard_tries_to_start_maliit_server(
         frozenset({"kwin-virtual-keyboard"}),
     )
     monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: False)
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.spawner_env", spawner_env)
     controller = VirtualKeyboardController(
-        runner=runner, which=lambda command: command, spawner=spawner, delay=lambda _s: None
+        runner=runner, which=lambda command: command, delay=lambda _s: None
     )
-    assert controller.activate(context) == "kwin-maliit"
+    assert controller.activate(context, language="us") == "kwin-maliit"
     assert spawns == [("maliit-server",)]
 
 
@@ -398,8 +416,32 @@ def test_virtual_keyboard_falls_back_to_wvkbd(monkeypatch: pytest.MonkeyPatch) -
     controller = VirtualKeyboardController(
         runner=runner, which=lambda command: command, spawner=spawner, delay=lambda _s: None
     )
-    assert controller.activate(context) == "wvkbd"
-    assert spawns == [("maliit-server",), ("wvkbd-mobintl",)]
+    assert controller.activate(context, language="us") == "wvkbd"
+    assert len(spawns) == 1
+    spawn = spawns[0]
+    assert spawn[0] == "wvkbd-mobintl"
+    # Layouts latinos usam a layer padrão; ``-l`` com valor desconhecido
+    # encerraria o wvkbd, e ``--hidden`` deixaria a ativação invisível.
+    assert "--hidden" not in spawn
+    assert "-l" not in spawn
+    assert ("-L" in spawn) != ("-H" in spawn)
+
+
+def test_wvkbd_uses_known_layer_for_cyrillic(monkeypatch: pytest.MonkeyPatch) -> None:
+    spawns: list[tuple[str, ...]] = []
+
+    def spawner(argv: Sequence[str]) -> bool:
+        spawns.append(tuple(argv))
+        return True
+
+    controller = VirtualKeyboardController(
+        runner=lambda _a, _t: CommandResult(127, ""),
+        which=lambda command: command,
+        spawner=spawner,
+        delay=lambda _s: None,
+    )
+    assert controller._spawn_wvkbd("ru", {"width": 1280, "height": 400})
+    assert spawns[0][:3] == ("wvkbd-mobintl", "-l", "cyrillic")
 
 
 def test_virtual_keyboard_skips_maliit_server_when_already_running(
@@ -553,3 +595,462 @@ def test_legacy_watcher_disable_failure_restores_previous_state() -> None:
     assert active is True and enabled is True
     assert ("systemctl", "--user", "enable", LEGACY_WATCHER) in calls
     assert ("systemctl", "--user", "start", LEGACY_WATCHER) in calls
+
+
+def test_keyboard_layout_maps_locale_to_language() -> None:
+    assert locale_to_xkb_layout("pt_BR.UTF-8") == "br"
+    assert locale_to_xkb_layout("en_US.UTF-8") == "us"
+    assert locale_to_xkb_layout("es_ES.UTF-8") == "es"
+    assert locale_to_xkb_layout("de_DE.UTF-8") == "de"
+    assert locale_to_xkb_layout("fr_FR.UTF-8") == "fr"
+    assert locale_to_xkb_layout("ja_JP.UTF-8") == "jp"
+    assert locale_to_xkb_layout("ko_KR.UTF-8") == "kr"
+    assert locale_to_xkb_layout("ru_RU.UTF-8") == "ru"
+    assert locale_to_xkb_layout("zh_CN.UTF-8") == "cn"
+    assert locale_to_xkb_layout("zh_TW.UTF-8") == "tw"
+    assert locale_to_xkb_layout("ar_SA.UTF-8") == "ara"
+    assert locale_to_xkb_layout("nl_NL.UTF-8") == "nl"
+    assert locale_to_xkb_layout("pl_PL.UTF-8") == "pl"
+    assert locale_to_xkb_layout("tr_TR.UTF-8") == "tr"
+    assert locale_to_xkb_layout("C") == "us"
+
+
+def _minimal_context(
+    capabilities: frozenset[str] = frozenset({"kde-plasma"}),
+    displays: tuple[DisplayState, ...] = (),
+) -> DesktopContext:
+    return DesktopContext(
+        device_kind="deck-lcd",
+        session_type="wayland",
+        displays=displays,
+        physical_dock=False,
+        external_keyboard=False,
+        external_mouse=False,
+        capabilities=capabilities,
+        conflicts=(),
+    )
+
+
+def test_keyboard_geometry_computes_scale_from_internal_display() -> None:
+    displays = (
+        DisplayState(
+            name="eDP-1",
+            connected=True,
+            internal=True,
+            width=1280,
+            height=800,
+            scale=1.5,
+            refresh_hz=60.0,
+        ),
+        DisplayState(
+            name="HDMI-1",
+            connected=True,
+            internal=False,
+            width=1920,
+            height=1080,
+            scale=1.0,
+            refresh_hz=60.0,
+        ),
+    )
+    geometry = keyboard_geometry(_minimal_context(displays=displays))
+    assert geometry["scale"] == 150
+    assert geometry["width"] == int(1280 * 1.5)
+    assert geometry["height"] == int(800 * 1.5 * 0.35)
+
+
+def test_keyboard_geometry_falls_back_to_defaults() -> None:
+    geometry = keyboard_geometry(_minimal_context())
+    assert geometry == {"width": 1280, "height": 400, "scale": 100}
+
+
+def _panel_which(commands: set[str]) -> Callable[[str], str | None]:
+    return lambda cmd: cmd if cmd in commands else None
+
+
+def test_panel_effect_available_on_kde() -> None:
+    effect = KDEPanelEffect(which=_panel_which({"qdbus6", "plasmashell"}))
+    assert effect.available(_minimal_context())
+
+
+def test_panel_effect_not_available_without_qdbus6() -> None:
+    effect = KDEPanelEffect(which=lambda _cmd: None)
+    assert not effect.available(_minimal_context())
+
+
+def _eval_script_for_states(script: str, states: dict[str, str]) -> str | None:
+    if "hiding" in script.lower():
+        # Leitura imprime JSON; escrita apenas atribui e não imprime nada.
+        if "JSON.stringify" in script:
+            import json
+
+            return json.dumps(states)
+        return ""
+    return None
+
+
+def test_panel_effect_capture_reads_hiding_states() -> None:
+    states = {"panel1": "autohide", "panel2": "windowsgocanhide"}
+
+    effect = KDEPanelEffect(which=_panel_which({"qdbus6", "plasmashell"}))
+    effect._evaluate_script = lambda script: _eval_script_for_states(script, states)  # type: ignore[method-assign]
+    captured = effect.capture(_minimal_context())
+    assert captured == {"panelHidingStates": states}
+
+
+def test_panel_effect_apply_sets_expected_hiding_state() -> None:
+    evaluated: list[str] = []
+
+    def eval_script(script: str) -> str | None:
+        if "hiding" in script.lower() and "JSON.stringify" not in script:
+            evaluated.append(script.split("'")[1])
+            return ""
+        return None
+
+    effect = KDEPanelEffect(which=_panel_which({"qdbus6", "plasmashell"}))
+    effect._evaluate_script = eval_script  # type: ignore[method-assign]
+    profile = profile_for(PROFILE_HANDHELD, _minimal_context())
+    effect.apply(profile, _minimal_context())
+    assert evaluated == ["autohide"]
+
+
+def test_panel_effect_verify_checks_hiding_state() -> None:
+    states = {"panel1": "autohide", "panel2": "autohide"}
+
+    effect = KDEPanelEffect(which=_panel_which({"qdbus6", "plasmashell"}))
+    effect._evaluate_script = lambda script: _eval_script_for_states(script, states)  # type: ignore[method-assign]
+    profile = profile_for(PROFILE_HANDHELD, _minimal_context())
+    assert effect.verify(profile, _minimal_context())
+
+    states["panel2"] = "windowsgocanhide"
+    assert not effect.verify(profile, _minimal_context())
+
+
+def test_build_desktop_coordinator_includes_kde_panel_effect(
+    tmp_path: Path,
+) -> None:
+    coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
+    assert any(isinstance(effect, KDEPanelEffect) for effect in coordinator._effects)
+
+
+def _is_qdbus_property(argv: Sequence[str], name: str) -> bool:
+    return argv[0] == "qdbus6" and "org.freedesktop.DBus.Properties.Get" in argv and name in argv
+
+
+def test_toggle_virtual_keyboard_launches_deactivate_when_visible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Sequence[str]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(argv)
+        if _is_qdbus_property(argv, "available"):
+            return CommandResult(0, "true")
+        if _is_qdbus_property(argv, "visible"):
+            return CommandResult(0, "true")
+        return CommandResult(0, "")
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: False)
+    context = _minimal_context(frozenset({"kwin-virtual-keyboard"}))
+    controller = VirtualKeyboardController(
+        runner=runner,
+        which=lambda command: command if command == "qdbus6" else None,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    result = controller.toggle(context)
+    assert result["action"] == "hide"
+    assert result["provider"] == "kwin-maliit"
+    assert any(
+        argv[0] == "qdbus6" and "org.kde.kwin.VirtualKeyboard.forceDeactivate" in argv
+        for argv in calls
+    )
+
+
+def test_toggle_virtual_keyboard_launches_activate_when_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Sequence[str]] = []
+    visible_after_activate = {"value": False}
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(argv)
+        if _is_qdbus_property(argv, "available"):
+            return CommandResult(0, "true")
+        if _is_qdbus_property(argv, "visible"):
+            return CommandResult(0, "true" if visible_after_activate["value"] else "false")
+        if argv[0] == "qdbus6" and "org.kde.kwin.VirtualKeyboard.forceActivate" in argv:
+            visible_after_activate["value"] = True
+            return CommandResult(0, "")
+        return CommandResult(0, "")
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: False)
+    context = _minimal_context(frozenset({"kwin-virtual-keyboard"}))
+    controller = VirtualKeyboardController(
+        runner=runner,
+        which=lambda command: command if command == "qdbus6" else None,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    result = controller.toggle(context)
+    assert result["action"] == "show"
+    assert result["provider"] == "kwin-maliit"
+    assert any(
+        argv[0] == "qdbus6" and "org.kde.kwin.VirtualKeyboard.forceActivate" in argv
+        for argv in calls
+    )
+
+
+def test_toggle_virtual_keyboard_hides_wvkbd_with_signal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    signals: list[tuple[str, int]] = []
+
+    def signal_process(name: str, sig: int) -> None:
+        signals.append((name, sig))
+
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde._process_running",
+        lambda name: name == "wvkbd-mobintl",
+    )
+    monkeypatch.setattr("steamzero.adapters.desktop_kde._signal_process", signal_process)
+
+    context = _minimal_context(frozenset({"wvkbd"}))
+    controller = VirtualKeyboardController(
+        runner=lambda _a, _t: CommandResult(127, ""),
+        which=lambda command: command,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    result = controller.toggle(context)
+    assert result == {"action": "hide", "provider": "wvkbd"}
+    assert ("wvkbd-mobintl", signal.SIGUSR1) in signals
+
+
+def test_activate_reuses_wvkbd_and_shows_with_signal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    signals: list[tuple[str, int]] = []
+    spawns: list[tuple[str, ...]] = []
+
+    def signal_process(name: str, sig: int) -> None:
+        signals.append((name, sig))
+
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde._process_running",
+        lambda name: name == "wvkbd-mobintl",
+    )
+    monkeypatch.setattr("steamzero.adapters.desktop_kde._signal_process", signal_process)
+
+    context = _minimal_context(frozenset({"wvkbd"}))
+    controller = VirtualKeyboardController(
+        runner=lambda _a, _t: CommandResult(127, ""),
+        which=lambda command: command,
+        spawner=lambda argv: spawns.append(tuple(argv)) or True,
+        delay=lambda _s: None,
+    )
+    result = controller.activate(context, language="us")
+    assert result == "wvkbd"
+    assert ("wvkbd-mobintl", signal.SIGUSR2) in signals
+    assert not spawns
+
+
+def test_maliit_language_mapping_uses_iso_codes() -> None:
+    assert maliit_language_for("br") == "pt"
+    assert maliit_language_for("us") == "en"
+    assert maliit_language_for("gb") == "en"
+    assert maliit_language_for("cn") == "zh-hans"
+    assert maliit_language_for("tw") == "zh-hant"
+    assert maliit_language_for("jp") == "ja"
+    assert maliit_language_for("ara") == "ar"
+    assert maliit_language_for("de") == "de"
+    assert maliit_language_for(None) is None
+
+
+def test_activate_kwin_maliit_syncs_language_via_gsettings() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if _is_qdbus_property(argv, "available"):
+            return CommandResult(0, "true")
+        if _is_qdbus_property(argv, "visible"):
+            return CommandResult(0, "true")
+        if argv[0] == "gsettings" and argv[1] == "get" and argv[-1] == "active-language":
+            return CommandResult(0, "'en'")
+        if argv[0] == "gsettings" and argv[1] == "get" and argv[-1] == "enabled-languages":
+            return CommandResult(0, "['en']")
+        return CommandResult(0, "")
+
+    context = _minimal_context(frozenset({"kwin-virtual-keyboard"}))
+    controller = VirtualKeyboardController(
+        runner=runner,
+        which=lambda command: command,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    assert controller.activate(context, language="br") == "kwin-maliit"
+    schema = "org.maliit.keyboard.maliit"
+    assert ("gsettings", "set", schema, "enabled-languages", "['en', 'pt']") in calls
+    assert ("gsettings", "set", schema, "active-language", "pt") in calls
+
+
+def test_maliit_language_sync_skips_when_already_active() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if _is_qdbus_property(argv, "available"):
+            return CommandResult(0, "true")
+        if _is_qdbus_property(argv, "visible"):
+            return CommandResult(0, "true")
+        if argv[0] == "gsettings" and argv[1] == "get" and argv[-1] == "active-language":
+            return CommandResult(0, "'pt'")
+        return CommandResult(0, "")
+
+    context = _minimal_context(frozenset({"kwin-virtual-keyboard"}))
+    controller = VirtualKeyboardController(
+        runner=runner,
+        which=lambda command: command,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    assert controller.activate(context, language="br") == "kwin-maliit"
+    assert not any(argv[:2] == ("gsettings", "set") for argv in calls)
+
+
+def test_panel_effect_read_script_does_not_mutate_state() -> None:
+    assert ".hiding = '" not in KDEPanelEffect._READ_SCRIPT
+    assert "JSON.stringify" in KDEPanelEffect._READ_SCRIPT
+
+
+def test_host_locale_prefers_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LC_ALL", "pt_BR.UTF-8")
+    assert desktop_kde._host_locale() == "pt_BR"
+    monkeypatch.delenv("LC_ALL")
+    monkeypatch.setenv("LANG", "de_DE.UTF-8")
+    assert desktop_kde._host_locale() == "de_DE"
+
+
+def test_signal_process_targets_only_current_user(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import os
+
+    uid = os.getuid()
+    mine = tmp_path / "321"
+    mine.mkdir()
+    (mine / "comm").write_text("wvkbd-mobintl\n", encoding="utf-8")
+    (mine / "status").write_text(
+        f"Name:\twvkbd\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\n", encoding="utf-8"
+    )
+    other = tmp_path / "322"
+    other.mkdir()
+    (other / "comm").write_text("wvkbd-mobintl\n", encoding="utf-8")
+    (other / "status").write_text("Name:\twvkbd\nUid:\t0\t0\t0\t0\n", encoding="utf-8")
+
+    killed: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde.os.kill",
+        lambda pid, sig: killed.append((pid, sig)),
+    )
+    desktop_kde._signal_process("wvkbd-mobintl", signal.SIGUSR2, proc=tmp_path)
+    assert killed == [(321, signal.SIGUSR2)]
+
+
+def test_toggle_stops_onboard_when_running(monkeypatch: pytest.MonkeyPatch) -> None:
+    signals: list[tuple[str, int]] = []
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde._process_running", lambda name: name == "onboard"
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_kde._signal_process",
+        lambda name, sig: signals.append((name, sig)),
+    )
+    controller = VirtualKeyboardController(
+        runner=lambda _a, _t: CommandResult(127, ""),
+        which=lambda command: command,
+        spawner=lambda _argv: False,
+        delay=lambda _s: None,
+    )
+    result = controller.toggle(_minimal_context(frozenset({"onboard"})))
+    assert result == {"action": "hide", "provider": "onboard"}
+    assert ("onboard", signal.SIGTERM) in signals
+
+
+def test_spawner_env_passes_custom_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def popen(argv: list[str], **kwargs: object) -> object:
+        captured["argv"] = argv
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.shutil.which", lambda _n: "/tool")
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.subprocess.Popen", popen)
+    assert desktop_kde.spawner_env(("provider",), {"A": "1"}) is True
+    assert captured["env"] == {"A": "1"}
+    assert captured["start_new_session"] is True
+    assert desktop_kde.spawner_env((), {}) is False
+
+
+def test_launch_ashyterm_uses_wayland_input_env() -> None:
+    captured: dict[str, object] = {}
+
+    def spawn(argv: Sequence[str], env: dict[str, str]) -> bool:
+        captured["argv"] = tuple(argv)
+        captured["env"] = env
+        return True
+
+    result = desktop_kde.launch_ashyterm(
+        which=lambda cmd: "/usr/sbin/ashyterm" if cmd == "ashyterm" else None, spawn=spawn
+    )
+    assert result["status"] == "started"
+    assert captured["argv"] == ("/usr/sbin/ashyterm",)
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert "GTK_IM_MODULE" in env
+    assert "GDK_BACKEND" in env
+
+
+def test_launch_ashyterm_error_when_spawn_fails() -> None:
+    with pytest.raises(SteamZeroError):
+        desktop_kde.launch_ashyterm(which=lambda _cmd: "/x", spawn=lambda _a, _e: False)
+
+
+def test_launch_ashyterm_falls_back_to_desktop_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Path, "is_file", lambda _self: True)
+    captured: dict[str, object] = {}
+
+    def spawn(argv: Sequence[str], env: dict[str, str]) -> bool:
+        captured["argv"] = tuple(argv)
+        return True
+
+    result = desktop_kde.launch_ashyterm(which=lambda _cmd: None, spawn=spawn)
+    argv = captured["argv"]
+    assert isinstance(argv, tuple)
+    assert argv[0] == "xdg-open"
+    assert result["command"] == "xdg-open"
+
+
+def test_panel_effect_restore_reapplies_snapshot() -> None:
+    evaluated: list[str] = []
+    effect = KDEPanelEffect(which=_panel_which({"qdbus6", "plasmashell"}))
+    effect._evaluate_script = lambda script: (evaluated.append(script), "")[1]  # type: ignore[method-assign]
+    effect.restore({"panelHidingStates": {"3": "none", "4": "autohide"}})
+    assert any("panelById(3)" in script and "'none'" in script for script in evaluated)
+    assert any("panelById(4)" in script and "'autohide'" in script for script in evaluated)
+
+
+def test_panel_effect_restore_rejects_invalid_snapshot() -> None:
+    effect = KDEPanelEffect()
+    with pytest.raises(RuntimeError):
+        effect.restore({"panelHidingStates": "autohide"})
+
+
+def test_panel_effect_evaluate_script_degrades_without_qdbus() -> None:
+    effect = KDEPanelEffect(which=lambda _c: None)
+    assert effect._evaluate_script("print('x')") is None
+    failing = KDEPanelEffect(runner=lambda _a, _t: CommandResult(1, "boom"), which=lambda c: c)
+    assert failing._evaluate_script("print('x')") is None
+    ok = KDEPanelEffect(runner=lambda _a, _t: CommandResult(0, " out \n"), which=lambda c: c)
+    assert ok._evaluate_script("print('x')") == "out"
