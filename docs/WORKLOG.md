@@ -1404,3 +1404,49 @@ do `ResourceLock` central ainda usa read+write sem criação exclusiva entre pro
 persistência composta do import de biblioteca ainda não possui transação pública única no
 State Store; ambos exigem mudança fora deste escopo antes de alegar segurança
 cross-process/import plenamente atômica.
+
+## 2026-07-20 — Sessão 33: normalização de branches, instalação e testes no host
+
+**Branches normalizadas na main:** merge de `codex/refino-emulacao` (que já continha
+`codex/robustez-boot-resiliencia`) para `main`. O merge adicionou 71 commits de
+robustez de boot, sessão Steam, emulação/Flatpak transacional e Desktop.
+
+**Branch mantida em aberto:** `codex/ui-emulacao` não foi mergeada nesta sessão porque
+apresentou 21 conflitos de conteúdo em `src/steamzero/ui/qml/Main.qml`. A versão da
+branch de UI remove as rotas e componentes Steam (`/steam/gameplay/*`, LSFG, etc.) que
+os testes de runtime (`test_runtime_independence.py`) e o contrato da central exigem.
+A integração desta branch requer reconciliação manual entre o refinamento responsivo da
+UI e as telas `SteamGameplay`/`SteamDesktop` introduzidas pela frente de emulação/boot.
+
+**Formatação prévia:** três arquivos preexistentes fora do escopo imediato
+(`desktop_kde.py`, `steam_boot.py`, `tools/install_host.py`) estavam fora do padrão
+Ruff. Foram formatados em commit dedicado para satisfazer o gate `make check`, sem
+mudança de lógica.
+
+**Gates executados:** `make check` passou com **623 testes passed**, lint/format/mypy
+verdes, fronteiras e independência OK, cobertura **85.17%**.
+
+**Release construída:**
+- Wheel: `dist/steamzero-0.1.0a33-py3-none-any.whl`
+- SHA-256: `d6e434a2965e66cd23ecc4461e159ba97cb27368493565dbd9296f6174a8ff86`
+- Source commit: `69fb7db4dea299c6a4c107bf6c99d3952c2e22a2`
+- Release canônica: `0.1.0a33-69fb7db4dea2`
+- Wheelhouse runtime: `dist/runtime-wheelhouse/` (5 wheels, hashes verificados)
+
+**Instalação no host:** executada com `bigsudo /usr/bin/python3 tools/install_host.py install`
+usando os parâmetros canônicos acima. Release anterior: `0.1.0a33-5bdd99539c2d`.
+Instalação idempotente/preservadora; serviços recarregados.
+
+**Testes no host real:**
+- `steamzero --version` → `0.1.0a33`
+- `steamzero doctor --json` → ok, schema 5, 0 operações pendentes
+- `steamzero desktop status --json` → ok, detectou `deck-lcd`, sessão Wayland, perfil
+  `docked-desktop` aplicado
+- `systemctl --user status steamzero-core.service/socket` → ativos e ouvindo
+  `/run/user/1000/steamzero/core.sock`
+- `bigsudo /usr/local/sbin/steamzero-host status` → instalado, manifesto schema 4,
+  source tree clean
+
+**Próximos passos pendentes:** integrar manualmente `codex/ui-emulacao` preservando o
+contrato de rotas Steam da central; teste físico de boot Game Mode e handoff Desktop
+permanecem como gates externos do operador.
