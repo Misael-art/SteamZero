@@ -1359,3 +1359,48 @@ cliente de forma confiável.
 host. A configuração do input method é aplicada automaticamente no próximo
 `desktop apply`; dependendo do KWin, pode ser necessário reiniciar a sessão Plasma
 para o teclado virtual ficar disponível.
+
+## 2026-07-20 — Sessão EM-01: refino resiliente do lifecycle e da conversão
+
+**Isolamento e base:** trabalho realizado exclusivamente na branch
+`codex/refino-emulacao`, criada em `5bdd995` e atualizada sem conflito sobre `b7d4c55`.
+O worktree concorrente de robustez e
+seu `docs/WORKLOG.md` não commitado permaneceram intactos. A base confirmou
+`0.1.0a33`, schema de instalação 4, `--source-commit` e a cadeia `steam_boot` /
+`steam_session`; nenhum artefato de release ou efeito no host foi criado.
+
+**Flatpak concorrente e recuperável (`c79206e`):** apply, rollback e recovery agora
+recarregam plano, operação e deployment depois de adquirir o lock. Isso impede que um
+segundo apply use snapshot/token consumido ou que rollback sobrescreva um deployment
+alterado enquanto aguardava. Snapshots persistidos recusam booleanos ambíguos,
+origin/commit inconsistentes, IDs, refs, timestamps e commits inválidos antes de tocar o
+Flatpak. Testes injetam mudança exatamente na aquisição do lock e comprovam zero mutação.
+
+**Conversão confinada (`bff665c`):** o conversor recebe somente cópia verificada em
+staging, nunca o dump original. Formato/traversal, symlink, destino igual ao original,
+colisão e mudança concorrente são recusados; espaço é checado no staging e no destino;
+publicação usa streaming atômico e hash pós-cópia. Timeout, EIO e ENOSPC limpam staging e
+preservam o original byte-idêntico.
+
+**Capabilities e proveniência (`e211795`):** novas instalações ignoram fontes EOL sem
+alterar a leitura honesta do dashboard; prioridades duplicadas e campos de origens
+misturados são inválidos. Engine portátil e Flatpak recusam install/update não declarado
+antes de fetch/remote/mutação. Metadata portátil divergente do adapter, manifesto ou raiz
+é `degraded`, com versão observada preservada quando segura. O gate completo detectou e
+evitou uma regressão de estado do DuckStation no dashboard compartilhado.
+
+**Gates por item:** baseline bruto teve 587 passes, 9 failures e 5 setup errors, todos
+causados pelo path temporário do Codex exceder o limite AF_UNIX. A repetição controlada
+com `--basetemp` curto passou com **601 testes**. Após cada commit: **608**, **614** e
+**620 passed**; Ruff check, mypy (78 arquivos), independence e boundaries passaram em
+todas as rodadas. Após atualizar a base para `b7d4c55`, o gate final passou com **623
+testes**. O `ruff format --check` dos arquivos alterados passou. A verificação
+global extra aponta três arquivos preexistentes fora do escopo que seriam reformatados:
+`desktop_kde.py`, `steam_boot.py` e `tools/install_host.py`; eles não foram editados.
+
+**Limites explícitos:** instalação dos emuladores em VM/hardware não foi executada;
+DuckStation continua EOL e nenhum manifesto foi promovido sem fonte validada. A aquisição
+do `ResourceLock` central ainda usa read+write sem criação exclusiva entre processos e a
+persistência composta do import de biblioteca ainda não possui transação pública única no
+State Store; ambos exigem mudança fora deste escopo antes de alegar segurança
+cross-process/import plenamente atômica.
