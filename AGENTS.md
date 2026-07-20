@@ -4,21 +4,39 @@ Regras obrigatórias para qualquer agente (IA ou humano) atuando no SteamZero,
 especialmente em trabalho paralelo. Cada regra existe por causa de um incidente
 real; violar uma delas já quebrou o boot do host em produção.
 
-## 1. Nunca instale no host
+## 1. Instalação no host exige autorização explícita
 
-**Instalar release no host é ação exclusiva do operador humano, com privilégio,
-fora do escopo de qualquer agente.** Nenhum agente executa `install_host.py
-install/rollback`, `steamzero-host`, `bigsudo`, `sudo` ou altera `/opt/steamzero`,
-`/usr/local`, `/etc` ou `/boot`.
+Por padrão, agentes não instalam nem revertem releases no host. A exceção é uma
+autorização explícita do operador, na thread atual, para instalar ou atualizar o
+SteamZero com `bigsudo`. Essa autorização vale somente para a release, branch e
+sessão indicadas; não se transfere para outros agentes ou trabalhos futuros.
+
+Quando autorizado, o agente pode executar exclusivamente `bigsudo
+/usr/bin/python3 tools/install_host.py install/rollback ...` e as verificações
+read-only necessárias. Continua proibido executar `sudo`, usar `bigsudo` para
+comandos arbitrários, chamar `steamzero-host` para mutações ou editar diretamente
+`/opt/steamzero`, `/usr/local`, `/etc` ou `/boot`.
 
 > Incidente 2026-07-19: um agente de UI instalou uma release construída de árvore
 > desatualizada (sem os entry points de Game Mode). O boot direto caiu no greeter
 > por dois dias de trabalho. O preflight do instalador hoje bloqueia essa ativação
 > (`recusando ativar release sem binários exigidos pelo boot direto ativo`), mas o
-> bloqueio é a última linha de defesa — não a permissão para tentar.
+> bloqueio é a última linha de defesa — não substitui os preflights abaixo.
 
-Entregável de agente termina em: código + testes + gates verdes + commit + push.
-Se a tarefa parecer exigir instalação para validar, PARE e reporte ao operador.
+Antes de instalar ou reverter, todos estes preflights são obrigatórios:
+
+- branch e commit de origem identificados, sem base obsoleta;
+- quatro gates da seção 6 verdes no commit que será instalado;
+- wheel e wheelhouse gerados de fonte commitada, com hash e entry points de boot
+  conferidos; nenhuma release é construída de alterações não commitadas;
+- release canônica vinculada ao `--source-commit` completo;
+- inspeção do estado atual e confirmação de que os artefatos tocados têm os
+  marcadores de ownership do SteamZero;
+- plano de rollback conhecido antes da ativação.
+
+O agente nunca contorna falha de preflight. Após a instalação, valida versão,
+doctor, units e sessões de forma read-only. Reinicialização física continua sendo
+ação do operador, depois que o agente declarar o host pronto para o teste.
 
 ## 2. Trabalhe só na sua branch e nos seus arquivos
 
@@ -92,5 +110,6 @@ limpeza no unit, estado `unknown`/`permissionDenied` no `status()`.
 ## 9. Ao terminar
 
 Relatório final com: tabela item→commit→testes que provam; o que ficou fora de
-escopo e por quê; e os passos que exigem o operador (instalação, teste físico
-de boot). Push apenas da SUA branch; nunca force push.
+escopo e por quê; ações de host executadas, release ativa e rollback disponível;
+e os passos que ainda exigem o operador (especialmente teste físico de boot).
+Push apenas da SUA branch; nunca force push.
