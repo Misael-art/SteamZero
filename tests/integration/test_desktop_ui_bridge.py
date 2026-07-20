@@ -566,3 +566,29 @@ def test_bridge_panel_autohide_conflicts_when_unavailable(
         request_json(base, token, "/panel/autohide", {"enable": True})
     assert error.value.code == 409
     error.value.close()
+
+
+def test_bridge_keyboard_settings_endpoint(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    received: list[dict[str, object]] = []
+
+    def fake_comfort(settings: dict[str, object]) -> dict[str, object]:
+        received.append(settings)
+        return {"applied": {"sound": "true"}, "previous": {"sound": "false"}}
+
+    monkeypatch.setattr("steamzero.adapters.desktop_ui.apply_maliit_comfort", fake_comfort)
+    result = request_json(
+        base, token, "/keyboard/settings", {"sound": True, "ignored": "x", "theme": "SuruDark"}
+    )
+    assert result["applied"] == {"sound": "true"}
+    assert received == [{"sound": True, "theme": "SuruDark"}]
+
+
+def test_bridge_keyboard_settings_requires_known_keys(bridge: tuple[str, str]) -> None:
+    base, token = bridge
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(base, token, "/keyboard/settings", {"ignored": "x"})
+    assert error.value.code == 400
+    error.value.close()

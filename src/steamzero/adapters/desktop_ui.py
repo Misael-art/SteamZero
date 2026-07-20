@@ -20,6 +20,7 @@ from steamzero.adapters.desktop_dashboard import DesktopDashboard
 from steamzero.adapters.desktop_kde import (
     KDEPanelEffect,
     activate_virtual_keyboard,
+    apply_maliit_comfort,
     launch_ashyterm,
     toggle_virtual_keyboard,
 )
@@ -246,6 +247,15 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if action == "toggle":
                 return toggle_virtual_keyboard(language=language)
             return {"provider": activate_virtual_keyboard(language=language)}
+        if path == "/keyboard/settings":
+            settings = {
+                name: value
+                for name, value in payload.items()
+                if name in {"sound", "haptic", "theme"} and isinstance(value, bool | str)
+            }
+            if not settings:
+                raise ValueError("nenhuma configuração de teclado informada")
+            return apply_maliit_comfort(settings)
         if path == "/ashyterm":
             return launch_ashyterm()
         if path == "/panel/autohide":

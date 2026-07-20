@@ -1054,3 +1054,75 @@ def test_panel_effect_evaluate_script_degrades_without_qdbus() -> None:
     assert failing._evaluate_script("print('x')") is None
     ok = KDEPanelEffect(runner=lambda _a, _t: CommandResult(0, " out \n"), which=lambda c: c)
     assert ok._evaluate_script("print('x')") == "out"
+
+
+def _comfort_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "gsettings" and argv[1] == "get":
+            return CommandResult(0, store.get(argv[3], ""))
+        if argv[0] == "gsettings" and argv[1] == "set":
+            store[argv[3]] = argv[4]
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def test_maliit_comfort_applies_only_changed_keys() -> None:
+    store = {
+        "key-press-feedback": "false",
+        "key-press-haptic-feedback": "true",
+        "theme": "'Ambiance'",
+    }
+    calls: list[tuple[str, ...]] = []
+    result = desktop_kde.apply_maliit_comfort(
+        {"sound": True, "haptic": True, "theme": "SuruDark"},
+        runner=_comfort_runner(store, calls),
+        which=lambda command: command,
+    )
+    assert result["applied"] == {"sound": "true", "theme": "SuruDark"}
+    assert result["previous"]["sound"] == "false"
+    assert result["previous"]["theme"] == "Ambiance"
+    # háptica já estava correta: nenhum set para a chave dela
+    assert not any(argv[1] == "set" and argv[3] == "key-press-haptic-feedback" for argv in calls)
+    assert store["key-press-feedback"] == "true"
+    assert store["theme"] == "SuruDark"
+
+
+def test_maliit_comfort_rejects_unknown_setting() -> None:
+    with pytest.raises(ValueError, match="desconhecida"):
+        desktop_kde.apply_maliit_comfort(
+            {"volume": True},  # type: ignore[dict-item]
+            runner=lambda _a, _t: CommandResult(0, ""),
+            which=lambda command: command,
+        )
+
+
+def test_maliit_comfort_degrades_without_gsettings() -> None:
+    with pytest.raises(SteamZeroError):
+        desktop_kde.apply_maliit_comfort(
+            {"sound": True},
+            runner=lambda _a, _t: CommandResult(0, ""),
+            which=lambda _command: None,
+        )
+
+
+def test_maliit_comfort_reverts_when_readback_diverges() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "gsettings" and argv[1] == "get":
+            # Sempre devolve o valor antigo: o set "não pegou".
+            return CommandResult(0, "'Ambiance'")
+        return CommandResult(0, "")
+
+    with pytest.raises(SteamZeroError):
+        desktop_kde.apply_maliit_comfort(
+            {"theme": "Inexistente"}, runner=runner, which=lambda command: command
+        )
+    # Reverteu para o valor anterior após o readback divergente.
+    assert ("gsettings", "set", "org.maliit.keyboard.maliit", "theme", "Ambiance") in calls

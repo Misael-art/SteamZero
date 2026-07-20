@@ -630,6 +630,20 @@ def _maliit_language_for(layout: str | None) -> str | None:
     return _MALIIT_LANGUAGE_BY_LAYOUT.get(layout, layout)
 
 
+_MALIIT_SCHEMA = "org.maliit.keyboard.maliit"
+
+
+def _gsettings_get(runner: Runner, key: str) -> str | None:
+    result = runner(("gsettings", "get", _MALIIT_SCHEMA, key), 3.0)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _gsettings_set(runner: Runner, key: str, value: str) -> bool:
+    return runner(("gsettings", "set", _MALIIT_SCHEMA, key, value), 3.0).returncode == 0
+
+
 def _apply_maliit_language(runner: Runner, which: Which, layout: str | None) -> bool:
     """Sincroniza o idioma ativo do maliit-keyboard via gsettings.
 
@@ -640,18 +654,63 @@ def _apply_maliit_language(runner: Runner, which: Which, layout: str | None) -> 
     language = _maliit_language_for(layout)
     if language is None or which("gsettings") is None:
         return False
-    schema = "org.maliit.keyboard.maliit"
-    current = runner(("gsettings", "get", schema, "active-language"), 3.0)
-    if current.returncode == 0 and current.stdout.strip().strip("'\"") == language:
+    current = _gsettings_get(runner, "active-language")
+    if current is not None and current.strip("'\"") == language:
         return True
-    enabled = runner(("gsettings", "get", schema, "enabled-languages"), 3.0)
-    languages = re.findall(r"'([^']+)'", enabled.stdout) if enabled.returncode == 0 else []
+    enabled = _gsettings_get(runner, "enabled-languages")
+    languages = re.findall(r"'([^']+)'", enabled) if enabled is not None else []
     if language not in languages:
         languages.append(language)
         formatted = "[" + ", ".join(f"'{item}'" for item in languages) + "]"
-        runner(("gsettings", "set", schema, "enabled-languages", formatted), 3.0)
-    result = runner(("gsettings", "set", schema, "active-language", language), 3.0)
-    return result.returncode == 0
+        _gsettings_set(runner, "enabled-languages", formatted)
+    return _gsettings_set(runner, "active-language", language)
+
+
+# Conforto de digitação: nomes públicos estáveis → chave gsettings do maliit.
+_MALIIT_COMFORT_KEYS = {
+    "sound": "key-press-feedback",
+    "haptic": "key-press-haptic-feedback",
+    "theme": "theme",
+}
+
+
+def apply_maliit_comfort(
+    settings: dict[str, bool | str],
+    *,
+    runner: Runner = run_command,
+    which: Which = shutil.which,
+) -> dict[str, Any]:
+    """Aplica som/háptica/tema do maliit-keyboard via gsettings.
+
+    Só grava chaves cujo valor difere do atual, confirma por readback e retorna
+    os valores anteriores para o chamador poder desfazer. A mudança vale com o
+    teclado em execução — o QML do maliit observa as chaves.
+    """
+    if which("gsettings") is None:
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail="gsettings indisponível para configurar o teclado"
+        )
+    unknown = sorted(set(settings) - set(_MALIIT_COMFORT_KEYS))
+    if unknown:
+        raise ValueError(f"configuração de teclado desconhecida: {', '.join(unknown)}")
+    previous: dict[str, str] = {}
+    applied: dict[str, str] = {}
+    for name, value in settings.items():
+        key = _MALIIT_COMFORT_KEYS[name]
+        encoded = ("true" if value else "false") if isinstance(value, bool) else str(value)
+        current = (_gsettings_get(runner, key) or "").strip("'\"")
+        previous[name] = current
+        if current == encoded:
+            continue
+        if not _gsettings_set(runner, key, encoded):
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail=f"não foi possível aplicar {key}")
+        confirmed = (_gsettings_get(runner, key) or "").strip("'\"")
+        if confirmed != encoded:
+            # Reverte o que deu para reverter e falha com causa observável.
+            _gsettings_set(runner, key, current)
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail=f"{key} não aceitou o valor {encoded}")
+        applied[name] = encoded
+    return {"applied": applied, "previous": previous}
 
 
 # wvkbd-mobintl aceita apenas layers compiladas; um valor desconhecido em
