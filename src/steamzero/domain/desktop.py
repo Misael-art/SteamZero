@@ -452,6 +452,18 @@ class ExperienceCoordinator:
         recovery_required = bool(recovery and recovery.get("state") == "applying")
         applied = self._applied_profile_id(current)
         observed, observation = self._observe_profile(context)
+        if (
+            observed is None
+            and applied is not None
+            and applied in observation["ambiguousCandidates"]
+        ):
+            # Perfis podem ser observacionalmente idênticos (ex.: docked e safe
+            # com dock: mesmo scale interno, painéis visíveis). Quando TODOS os
+            # candidatos verificaram consistentes com o estado vivo e o perfil
+            # aplicado é um deles, a observação não falsifica a aplicação — o
+            # aplicado permanece como observado, com a resolução registrada.
+            observed = applied
+            observation["resolvedBy"] = "applied-profile"
         reasons: list[str] = []
 
         applied_fingerprint = current.get("contextFingerprint") if current else None
@@ -467,7 +479,7 @@ class ExperienceCoordinator:
             reasons.append("uma ou mais capacidades não puderam ser observadas")
         if observation["unavailableEffects"]:
             reasons.append("uma ou mais capacidades configuráveis estão indisponíveis")
-        if observation["ambiguousCandidates"]:
+        if observation["ambiguousCandidates"] and observed is None:
             reasons.append("o estado observado não identifica um único perfil")
         if context.conflicts:
             reasons.append("há conflito de ownership no Desktop")

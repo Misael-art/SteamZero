@@ -346,3 +346,87 @@ def test_corrupt_desktop_plan_reports_state_integrity(
     coordinator = ExperienceCoordinator(FakeContext(deck_context), (), store)
     with pytest.raises(SteamZeroError, match="E-STATE-INTEGRITY"):
         coordinator.apply("corrupt", "token")
+
+
+class UniformEffect:
+    """Efeito cujo estado esperado é idêntico em todos os perfis (não discrimina)."""
+
+    name = "uniform-effect"
+
+    def available(self, context: DesktopContext) -> bool:
+        return True
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        return None
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return True
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        return None
+
+
+def test_underdetermined_observation_resolves_to_applied_profile(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (UniformEffect(),), store)
+    plan = coordinator.plan("auto")
+    coordinator.apply(plan.plan_id, plan.confirm_token)
+
+    status = coordinator.status()
+    contracts.validate(status, "desktop-status-v1.schema.json")
+    # Todos os perfis verificam consistentes; o aplicado não é falsificável.
+    assert status["observation"]["ambiguousCandidates"] == [
+        "docked-desktop",
+        "handheld-desktop",
+        "safe",
+    ]
+    assert status["observation"]["resolvedBy"] == "applied-profile"
+    assert status["observedProfile"] == status["appliedProfile"] == "handheld-desktop"
+    assert status["truthState"] == "ready"
+    assert "o estado observado não identifica um único perfil" not in status["statusReasons"]
+
+
+class ExcludingEffect:
+    """Após ativado, verifica qualquer perfil exceto o handheld aplicado."""
+
+    name = "excluding-effect"
+
+    def __init__(self) -> None:
+        self.exclude = False
+
+    def available(self, context: DesktopContext) -> bool:
+        return True
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        return None
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return not (self.exclude and profile.profile_id == "handheld-desktop")
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        return None
+
+
+def test_ambiguity_without_applied_candidate_remains_degraded(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    effect = ExcludingEffect()
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    plan = coordinator.plan("auto")
+    coordinator.apply(plan.plan_id, plan.confirm_token)
+    # O estado vivo muda depois da aplicação: agora só docked e safe verificam.
+    effect.exclude = True
+
+    status = coordinator.status()
+    contracts.validate(status, "desktop-status-v1.schema.json")
+    assert status["appliedProfile"] == "handheld-desktop"
+    assert status["observedProfile"] is None
+    assert status["truthState"] == "degraded"
+    assert "o estado observado não identifica um único perfil" in status["statusReasons"]

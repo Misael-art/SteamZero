@@ -1555,3 +1555,11 @@ cobertura **85.33%**, ruff/mypy/independence/boundaries OK.
 **Limites explícitos:** atalho e gesto exigem nova sessão para o kglobalaccel/KWin
 carregarem; validação física (Meta+K, gesto de borda, som, tema, retorno ao Game
 Mode) é gate do operador após instalação.
+
+**Adendo (mesma sessão):** correção da ambiguidade docked/safe na observação
+(`fix(desktop)`): perfis observacionalmente idênticos não degradam mais o status
+quando o aplicado está entre os candidatos consistentes — resolução registrada
+em `observation.resolvedBy` (campo aditivo no schema de status). Ambiguidade que
+exclui o aplicado permanece degradada (teste dedicado). Artefato manual sem
+marcador `steamzero-desktop-keyboard.desktop` (Meta+Ctrl+K) removido do host
+pelo agente com autorização explícita do operador nesta thread.
