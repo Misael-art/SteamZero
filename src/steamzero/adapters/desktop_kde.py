@@ -1289,6 +1289,143 @@ class KDEShortcutEffect:
         self._runner(("kwriteconfig6", *self._config_argv("--delete")), 3.0)
 
 
+_EDGE_SCRIPT_ID = "steamzero-edge-keyboard"
+_EDGE_METADATA = """{
+  "KPlugin": {
+    "Id": "steamzero-edge-keyboard",
+    "Name": "SteamZero Edge Keyboard",
+    "Description": "Desliza da borda inferior alterna o teclado virtual",
+    "ServiceTypes": ["KWin/Script"],
+    "Version": "1.0"
+  },
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js",
+  "X-SteamZero-Managed": true
+}
+"""
+_EDGE_MAIN_JS = """// X-SteamZero-Managed: true
+function steamzeroToggleKeyboard() {
+    callDBus(
+        "org.kde.KWin",
+        "/VirtualKeyboard",
+        "org.freedesktop.DBus.Properties",
+        "Get",
+        "org.kde.kwin.VirtualKeyboard",
+        "visible",
+        function (visible) {
+            var method = visible ? "forceDeactivate" : "forceActivate";
+            callDBus("org.kde.KWin", "/VirtualKeyboard", "org.kde.kwin.VirtualKeyboard", method);
+        }
+    );
+}
+registerTouchScreenEdge(KWin.ElectricBottom, steamzeroToggleKeyboard);
+"""
+
+
+class KDEEdgeGestureEffect:
+    """Gesto de toque na borda inferior alterna o teclado (spike, com rollback).
+
+    Publica um KWin script marcado em escopo de usuário e o habilita em
+    ``kwinrc [Plugins]``. O KWin recarrega scripts no ``reconfigure``; se o
+    gesto se mostrar instável no host, o restore remove tudo.
+    """
+
+    name = "kde-edge-gesture"
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        scripts_dir: Path | None = None,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._scripts_dir = scripts_dir or Path.home() / ".local" / "share" / "kwin" / "scripts"
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-config" in context.capabilities
+            and self._which("kreadconfig6") is not None
+            and self._which("kwriteconfig6") is not None
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {
+            "pluginEnabled": self._read_enabled(),
+            "scriptPresent": self._metadata_path().is_file(),
+        }
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self._write_script()
+        self._write_enabled("true")
+        self._reconfigure()
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return self._metadata_path().is_file() and self._read_enabled() == "true"
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        if not snapshot.get("scriptPresent"):
+            self._remove_script()
+        enabled = snapshot.get("pluginEnabled")
+        if isinstance(enabled, str) and enabled:
+            self._write_enabled(enabled)
+        else:
+            self._delete_enabled()
+        self._reconfigure()
+
+    def _script_root(self) -> Path:
+        return self._scripts_dir / _EDGE_SCRIPT_ID
+
+    def _metadata_path(self) -> Path:
+        return self._script_root() / "metadata.json"
+
+    def _write_script(self) -> None:
+        metadata = self._metadata_path()
+        if metadata.exists() and "X-SteamZero-Managed" not in _read_text(metadata):
+            raise RuntimeError(f"recusando sobrescrever artefato sem marcador: {metadata}")
+        code_dir = self._script_root() / "contents" / "code"
+        fs.ensure_dir(code_dir)
+        fs.write_atomic_text(metadata, _EDGE_METADATA)
+        fs.write_atomic_text(code_dir / "main.js", _EDGE_MAIN_JS)
+
+    def _remove_script(self) -> None:
+        metadata = self._metadata_path()
+        if not metadata.exists():
+            return
+        if "X-SteamZero-Managed" not in _read_text(metadata):
+            raise RuntimeError(f"recusando remover artefato sem marcador: {metadata}")
+        fs.remove_tree(self._script_root())
+
+    def _plugins_argv(self, *suffix: str) -> tuple[str, ...]:
+        return (
+            "--file",
+            "kwinrc",
+            "--group",
+            "Plugins",
+            "--key",
+            f"{_EDGE_SCRIPT_ID}Enabled",
+            *suffix,
+        )
+
+    def _read_enabled(self) -> str | None:
+        result = self._runner(("kreadconfig6", *self._plugins_argv()), 3.0)
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip() or None
+
+    def _write_enabled(self, value: str) -> None:
+        self._runner(("kwriteconfig6", *self._plugins_argv(value)), 3.0)
+
+    def _delete_enabled(self) -> None:
+        self._runner(("kwriteconfig6", *self._plugins_argv("--delete")), 3.0)
+
+    def _reconfigure(self) -> None:
+        if self._which("qdbus6") is None:
+            return
+        self._runner(("qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.reconfigure"), 5.0)
+
+
 def input_method_status() -> dict[str, Any]:
     """Estado observável do input method do KWin para a UI."""
     runner = run_command
@@ -1402,6 +1539,7 @@ def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
         KDEWindowEffect(),
         KDEPanelEffect(),
         KDEShortcutEffect(),
+        KDEEdgeGestureEffect(),
     )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()

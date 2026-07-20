@@ -1225,3 +1225,85 @@ def test_shortcut_effect_refuses_unmarked_artifact(tmp_path: Path) -> None:
 def test_build_desktop_coordinator_includes_shortcut_effect(tmp_path: Path) -> None:
     coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
     assert any(isinstance(effect, desktop_kde.KDEShortcutEffect) for effect in coordinator._effects)
+
+
+def _edge_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "kreadconfig6":
+            return CommandResult(0, store.get("enabled", ""))
+        if argv[0] == "kwriteconfig6":
+            if argv[-1] == "--delete":
+                store.pop("enabled", None)
+            else:
+                store["enabled"] = argv[-1]
+            return CommandResult(0, "")
+        if argv[0] == "qdbus6":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def _edge_effect(
+    tmp_path: Path, store: dict[str, str], calls: list[tuple[str, ...]]
+) -> desktop_kde.KDEEdgeGestureEffect:
+    return desktop_kde.KDEEdgeGestureEffect(
+        runner=_edge_runner(store, calls),
+        which=lambda command: command,
+        scripts_dir=tmp_path,
+    )
+
+
+def test_edge_gesture_apply_installs_script_and_enables_plugin(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    calls: list[tuple[str, ...]] = []
+    effect = _edge_effect(tmp_path, store, calls)
+    context = _minimal_context(frozenset({"kde-config"}))
+    profile = profile_for(PROFILE_HANDHELD, context)
+
+    snapshot = effect.capture(context)
+    assert snapshot == {"pluginEnabled": None, "scriptPresent": False}
+
+    effect.apply(profile, context)
+    metadata = tmp_path / "steamzero-edge-keyboard" / "metadata.json"
+    main_js = tmp_path / "steamzero-edge-keyboard" / "contents" / "code" / "main.js"
+    assert "X-SteamZero-Managed" in metadata.read_text(encoding="utf-8")
+    assert "registerTouchScreenEdge" in main_js.read_text(encoding="utf-8")
+    assert store["enabled"] == "true"
+    assert effect.verify(profile, context)
+    assert any(argv[0] == "qdbus6" and "org.kde.KWin.reconfigure" in argv for argv in calls)
+
+
+def test_edge_gesture_restore_removes_script_and_key(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    effect = _edge_effect(tmp_path, store, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+
+    effect.restore(snapshot)
+    assert not (tmp_path / "steamzero-edge-keyboard").exists()
+    assert "enabled" not in store
+
+
+def test_edge_gesture_refuses_unmarked_script(tmp_path: Path) -> None:
+    root = tmp_path / "steamzero-edge-keyboard"
+    root.mkdir(parents=True)
+    (root / "metadata.json").write_text("{}", encoding="utf-8")
+    effect = _edge_effect(tmp_path, {}, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect._remove_script()
+    assert (root / "metadata.json").read_text(encoding="utf-8") == "{}"
+
+
+def test_build_desktop_coordinator_includes_edge_gesture_effect(tmp_path: Path) -> None:
+    coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
+    assert any(
+        isinstance(effect, desktop_kde.KDEEdgeGestureEffect) for effect in coordinator._effects
+    )
