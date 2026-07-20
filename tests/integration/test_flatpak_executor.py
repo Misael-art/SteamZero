@@ -4,11 +4,14 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator, Sequence
 from pathlib import Path
+from types import TracebackType
 
 import pytest
 
+from steamzero.adapters import flatpak as flatpak_module
 from steamzero.adapters.flatpak import FlatpakExecutor, FlatpakState
 from steamzero.adapters.registry import AdapterRegistry, load_manifest
 from steamzero.api import contracts
@@ -136,6 +139,71 @@ def test_stale_deployment_is_rejected_before_mutation(store: state.StateStore) -
     assert not any(call[0] in {"install", "deploy", "uninstall"} for call in flatpak.calls)
 
 
+def test_apply_revalidates_deployment_after_acquiring_lock(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+
+    class ChangeDeploymentOnEnter:
+        def __enter__(self) -> ChangeDeploymentOnEnter:
+            flatpak.current = FlatpakState(True, REF, "flathub", PREVIOUS)
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: TracebackType | None,
+        ) -> None:
+            return None
+
+    monkeypatch.setattr(
+        flatpak_module, "ResourceLock", lambda *_args, **_kwargs: ChangeDeploymentOnEnter()
+    )
+
+    with pytest.raises(SteamZeroError) as error:
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert error.value.code == "E-TX-STALE-PLAN"
+    assert not any(call[0] in {"install", "deploy", "uninstall"} for call in flatpak.calls)
+
+
+def test_apply_reloads_single_use_plan_after_acquiring_lock(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+
+    class ConsumePlanOnEnter:
+        def __enter__(self) -> ConsumePlanOnEnter:
+            plan_path = paths.plan_path(plan.plan_id)
+            data = json.loads(plan_path.read_text(encoding="utf-8"))
+            data["status"] = "applied"
+            fs.write_atomic_text(plan_path, json.dumps(data, sort_keys=True))
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: TracebackType | None,
+        ) -> None:
+            return None
+
+    monkeypatch.setattr(
+        flatpak_module, "ResourceLock", lambda *_args, **_kwargs: ConsumePlanOnEnter()
+    )
+
+    with pytest.raises(SteamZeroError) as error:
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert error.value.code == "E-TX-STALE-PLAN"
+    assert not any(call[0] in {"install", "deploy", "uninstall"} for call in flatpak.calls)
+
+
 def test_install_apply_and_manual_rollback_preserve_app_data_scope(
     store: state.StateStore,
 ) -> None:
@@ -171,6 +239,41 @@ def test_update_and_rollback_restore_exact_previous_commit(store: state.StateSto
 
     service.rollback(applied.operation_id)
     assert flatpak.current == before
+
+
+@pytest.mark.rt
+def test_manual_rollback_revalidates_after_acquiring_lock(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    applied = service.apply(plan.plan_id, plan.confirm_token)
+    external = FlatpakState(True, REF, "flathub", "c" * 64)
+
+    class ChangeDeploymentOnEnter:
+        def __enter__(self) -> ChangeDeploymentOnEnter:
+            flatpak.current = external
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: TracebackType | None,
+        ) -> None:
+            return None
+
+    monkeypatch.setattr(
+        flatpak_module, "ResourceLock", lambda *_args, **_kwargs: ChangeDeploymentOnEnter()
+    )
+
+    with pytest.raises(SteamZeroError) as error:
+        service.rollback(applied.operation_id)
+
+    assert error.value.code == "E-TX-STALE-PLAN"
+    assert flatpak.current == external
 
 
 @pytest.mark.rt
