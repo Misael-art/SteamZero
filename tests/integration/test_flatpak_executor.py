@@ -81,7 +81,9 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[state.Sta
     opened.close()
 
 
-def manifest(*, end_of_life: bool = False) -> dict[str, object]:
+def manifest(
+    *, end_of_life: bool = False, capabilities: list[str] | None = None
+) -> dict[str, object]:
     source: dict[str, object] = {
         "type": "flatpak",
         "version": TARGET,
@@ -96,7 +98,7 @@ def manifest(*, end_of_life: bool = False) -> dict[str, object]:
         "id": "demo-flatpak",
         "kind": "emulator",
         "platforms": ["demo"],
-        "capabilities": ["detect", "status", "install", "update", "verify"],
+        "capabilities": capabilities or ["detect", "status", "install", "update", "verify"],
         "sources": [source],
         "verify": {"smokeTest": ["--version"]},
         "license": "MIT",
@@ -359,3 +361,16 @@ def test_eol_source_is_blocked_before_remote_or_mutation(store: state.StateStore
 
     assert error.value.code == "E-SUPPLY-UPSTREAM-GONE"
     assert flatpak.calls == []
+
+
+def test_update_without_capability_is_blocked_before_mutation(store: state.StateStore) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    item = load_manifest(manifest(capabilities=["detect", "status", "install", "verify"]))
+    service = FlatpakExecutor(store, AdapterRegistry([item]), flatpak)
+
+    with pytest.raises(SteamZeroError) as error:
+        service.plan_install("demo-flatpak")
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    assert not any(call[0] in {"install", "deploy", "uninstall"} for call in flatpak.calls)

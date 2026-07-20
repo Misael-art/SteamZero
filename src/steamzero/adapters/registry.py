@@ -50,9 +50,19 @@ class AdapterManifest:
     manifest_hash: str
     raw: dict[str, Any]
 
-    def preferred_source(self, source_type: str | None = None) -> AdapterSource:
-        candidates = [s for s in self.sources if source_type is None or s.type == source_type]
+    def preferred_source(
+        self, source_type: str | None = None, *, allow_eol: bool = True
+    ) -> AdapterSource:
+        matching = [s for s in self.sources if source_type is None or s.type == source_type]
+        candidates = (
+            matching if allow_eol else [source for source in matching if not source.end_of_life]
+        )
         if not candidates:
+            if matching:
+                raise SteamZeroError(
+                    "E-SUPPLY-UPSTREAM-GONE",
+                    detail=f"todas as fontes {source_type or 'disponíveis'} de {self.id} estão EOL",
+                )
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
                 detail=f"adapter {self.id} não oferece fonte {source_type!r}",
@@ -95,11 +105,26 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         )
         for source in data["sources"]
     )
+    priorities = [source.priority for source in sources]
+    if len(priorities) != len(set(priorities)):
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail=f"adapter {data['id']} tem prioridades de fonte duplicadas"
+        )
     if any(source.type != "flatpak" and not source.sha256 for source in sources):
         raise SteamZeroError(
             "E-SUPPLY-NO-CHECKSUM", detail=f"adapter {data['id']} tem artefato sem sha256"
         )
     for source in sources:
+        if source.type == "flatpak" and (source.url is not None or source.sha256 is not None):
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"adapter {data['id']} mistura campos Flatpak e portáteis",
+            )
+        if source.type != "flatpak" and (source.ref is not None or source.remote is not None):
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"adapter {data['id']} mistura campos portáteis e Flatpak",
+            )
         if source.type == "flatpak" and not _FLATPAK_COMMIT_RE.fullmatch(source.version):
             raise SteamZeroError(
                 "E-SUPPLY-NO-CHECKSUM",

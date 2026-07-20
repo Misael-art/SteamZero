@@ -52,11 +52,7 @@ class AdapterEngine:
 
     def plan_install(self, adapter_id: str, *, source_type: str | None = None) -> PreparedComponent:
         manifest = self._registry.get(adapter_id)
-        if "install" not in manifest.capabilities:
-            raise SteamZeroError(
-                "E-COMPONENT-DEGRADED", detail=f"adapter {adapter_id} não é instalável"
-            )
-        source = manifest.preferred_source(source_type)
+        source = manifest.preferred_source(source_type, allow_eol=False)
         if source.type == "flatpak":
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
@@ -68,14 +64,18 @@ class AdapterEngine:
             )
 
         status = self.status(adapter_id)
+        operation = "update" if status["state"] != "missing" else "install"
+        if operation not in manifest.capabilities:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"adapter {adapter_id} não declara capability {operation}",
+            )
         if (
             status["state"] == "installed"
             and status.get("version") == source.version
             and status.get("sha256") == source.sha256
         ):
-            plan = transaction.plan_write_files(
-                {}, root=self._root, kind=f"component.{self._operation(adapter_id)}"
-            )
+            plan = transaction.plan_write_files({}, root=self._root, kind=f"component.{operation}")
             return PreparedComponent(manifest, source, plan)
 
         artifact = self._artifacts.fetch(source)
@@ -103,9 +103,7 @@ class AdapterEngine:
 
         files: dict[Path, bytes]
         files = {payload: artifact, current: current_bytes}
-        plan = transaction.plan_write_files(
-            files, root=self._root, kind=f"component.{self._operation(adapter_id)}"
-        )
+        plan = transaction.plan_write_files(files, root=self._root, kind=f"component.{operation}")
         return PreparedComponent(manifest, source, plan)
 
     def apply(
@@ -145,12 +143,19 @@ class AdapterEngine:
             return {"id": adapter_id, "state": "missing"}
         try:
             metadata = json.loads(current.read_text(encoding="utf-8"))
+            if metadata.get("schemaVersion") != 1:
+                raise ValueError("schema de metadata inválido")
+            if metadata.get("adapterId") != manifest.id:
+                raise ValueError("metadata pertence a outro adapter")
             version = str(metadata["version"])
             expected = str(metadata["sha256"])
             origin = str(metadata["origin"])
+            manifest_drift = metadata.get("manifestHash") != manifest.manifest_hash
             if not _SAFE_VERSION.fullmatch(version) or origin not in {"appimage", "native"}:
                 raise ValueError("metadados de origem/versão inválidos")
             payload = self._root / manifest.id / "releases" / version / "payload"
+            if not fs.is_within(self._root, payload):
+                raise ValueError("payload escapa da raiz de componentes")
             actual = self._sha256_file(payload)
         except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
             return {"id": adapter_id, "state": "degraded", "detail": str(exc)}
@@ -163,6 +168,15 @@ class AdapterEngine:
                 "sha256": expected,
                 "detail": "payload ausente ou checksum divergente",
             }
+        if manifest_drift:
+            return {
+                "id": adapter_id,
+                "state": "degraded",
+                "version": version,
+                "origin": origin,
+                "sha256": expected,
+                "detail": "manifesto do deployment divergiu",
+            }
         return {
             "id": adapter_id,
             "state": "installed",
@@ -170,9 +184,6 @@ class AdapterEngine:
             "origin": origin,
             "sha256": expected,
         }
-
-    def _operation(self, adapter_id: str) -> str:
-        return "update" if self.detect(adapter_id) else "install"
 
     def _persist_status(self, adapter_id: str) -> None:
         manifest = self._registry.get(adapter_id)

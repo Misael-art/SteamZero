@@ -408,9 +408,6 @@ class FlatpakExecutor:
                 "E-COMPONENT-DEGRADED",
                 detail=f"{ref} pertence ao remote {before.origin}, não a {remote}",
             )
-        self._require_resolvable(remote, ref, source.version)
-        if before.installed and before.commit is not None and before.commit != source.version:
-            self._require_resolvable(remote, ref, before.commit)
         action = (
             "noop"
             if before.installed and before.commit == source.version
@@ -418,6 +415,14 @@ class FlatpakExecutor:
             if before.installed
             else "install"
         )
+        if action != "noop" and action not in manifest.capabilities:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"adapter {adapter_id} não declara capability {action}",
+            )
+        self._require_resolvable(remote, ref, source.version)
+        if before.installed and before.commit is not None and before.commit != source.version:
+            self._require_resolvable(remote, ref, before.commit)
         now = self._utc_now()
         plan = FlatpakPlan(
             plan_id=ids.new_ulid(),
@@ -644,12 +649,7 @@ class FlatpakExecutor:
         self, adapter_id: str, *, allow_eol: bool = False
     ) -> tuple[AdapterManifest, AdapterSource]:
         manifest = self._registry.get(adapter_id)
-        source = manifest.preferred_source("flatpak")
-        if source.end_of_life and not allow_eol:
-            raise SteamZeroError(
-                "E-SUPPLY-UPSTREAM-GONE",
-                detail=f"fonte Flatpak de {adapter_id} está end-of-life",
-            )
+        source = manifest.preferred_source("flatpak", allow_eol=allow_eol)
         _source_ref(source)
         _source_remote(source)
         _require_commit(source.version)

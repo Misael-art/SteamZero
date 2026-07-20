@@ -108,7 +108,9 @@ def validate_registry_lock(
         )
     for manifest in manifests:
         entry = locked.get(manifest.id)
-        source = manifest.preferred_source()
+        # O lockfile também preserva fontes EOL para status/rollback de releases
+        # já instaladas; novos planos continuam bloqueados pelo registry/engine.
+        source = manifest.preferred_source(allow_eol=True)
         observed = (
             manifest.manifest_hash,
             source.type,
