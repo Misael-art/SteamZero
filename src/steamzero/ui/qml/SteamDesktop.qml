@@ -31,6 +31,9 @@ ColumnLayout {
     signal systemRequested()
     signal ashytermRequested()
     signal panelAutoHideRequested(bool enable)
+    signal keyboardSoundRequested(bool enable)
+    signal keyboardThemeRequested(bool dark)
+    signal gamemodeReturnRequested()
 
     property string selectedKeyboardLayout: ""
 
@@ -163,6 +166,13 @@ ColumnLayout {
                 Layout.minimumHeight: 48
                 Accessible.name: text
                 onClicked: panel.recoveryRequested()
+            }
+            Button {
+                text: qsTr("Voltar ao Game Mode")
+                icon.name: "input-gamepad"
+                Layout.minimumHeight: 48
+                Accessible.name: qsTr("Encerrar o Modo Desktop e voltar ao Game Mode")
+                onClicked: panel.gamemodeReturnRequested()
             }
         }
     }
@@ -315,6 +325,26 @@ ColumnLayout {
                         Layout.preferredWidth: 160
                         Layout.minimumHeight: 40
                         onActivated: panel.selectedKeyboardLayout = currentIndex === 0 ? "" : model[currentIndex]
+                    }
+                }
+                RowLayout {
+                    visible: panel.inputMethod.state === "available"
+                    Layout.fillWidth: true
+                    Label { text: qsTr("Som ao digitar"); color: panel.mutedColor; Layout.fillWidth: true }
+                    Switch {
+                        id: keyboardSoundSwitch
+                        Accessible.name: qsTr("Som ao digitar")
+                        onClicked: panel.keyboardSoundRequested(checked)
+                    }
+                }
+                RowLayout {
+                    visible: panel.inputMethod.state === "available"
+                    Layout.fillWidth: true
+                    Label { text: qsTr("Tema escuro do teclado"); color: panel.mutedColor; Layout.fillWidth: true }
+                    Switch {
+                        id: keyboardThemeSwitch
+                        Accessible.name: qsTr("Tema escuro do teclado")
+                        onClicked: panel.keyboardThemeRequested(checked)
                     }
                 }
                 RowLayout {

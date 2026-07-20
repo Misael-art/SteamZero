@@ -383,6 +383,15 @@ ApplicationWindow {
         })
     }
 
+    property var gamemodePlan: null
+
+    function beginGamemodeReturn() {
+        request("POST", "/session/select", {"target": "steam"}, function(response) {
+            gamemodePlan = response
+            gamemodeDialog.open()
+        })
+    }
+
     function beginQuickReset() {
         request("POST", "/plan", {"profile": "safe"}, function(response) {
             currentPlan = response.plan
@@ -544,6 +553,53 @@ ApplicationWindow {
                             componentDialog.close()
                             root.componentPlan = null
                             root.refreshStatus(qsTr("Componente verificado e pronto"))
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: gamemodeDialog
+        title: qsTr("Voltar ao Game Mode")
+        modal: true
+        width: Math.min(root.width - 48, 620)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.amberColor }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("A sessão desktop será encerrada e o dispositivo volta ao Game Mode. Salve o que estiver aberto antes de confirmar.")
+                color: root.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: gamemodeDialog.close()
+                }
+                Button {
+                    text: qsTr("Encerrar e voltar ao Game Mode")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    enabled: root.gamemodePlan !== null
+                    Accessible.name: text
+                    onClicked: {
+                        root.request("POST", "/session/select", {
+                            "target": root.gamemodePlan.target,
+                            "planId": root.gamemodePlan.planId,
+                            "confirmToken": root.gamemodePlan.confirmToken
+                        }, function(response) {
+                            gamemodeDialog.close()
+                            root.notify(qsTr("Encerrando sessão desktop..."), false)
                         })
                     }
                 }
@@ -1488,6 +1544,17 @@ ApplicationWindow {
                                         root.notify(qsTr("Painel auto-ocultar %1").arg(enable ? qsTr("ativado") : qsTr("desativado")), false)
                                     })
                                 }
+                                onDesktopKeyboardSoundRequested: function(enable) {
+                                    root.request("POST", "/keyboard/settings", {"sound": enable}, function(response) {
+                                        root.notify(qsTr("Som do teclado %1").arg(enable ? qsTr("ativado") : qsTr("desativado")), false)
+                                    })
+                                }
+                                onDesktopKeyboardThemeRequested: function(dark) {
+                                    root.request("POST", "/keyboard/settings", {"theme": dark ? "SuruDark" : "Ambiance"}, function(response) {
+                                        root.notify(qsTr("Tema do teclado: %1").arg(dark ? qsTr("escuro") : qsTr("claro")), false)
+                                    })
+                                }
+                                onDesktopGamemodeReturnRequested: root.beginGamemodeReturn()
                                 onSteamInputRequested: function(gameId) {
                                     root.request("POST", "/steam/input/open", {
                                         "gameId": gameId
