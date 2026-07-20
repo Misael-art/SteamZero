@@ -9,6 +9,7 @@ import json
 import secrets
 import shutil
 import subprocess
+from dataclasses import replace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -16,9 +17,20 @@ from typing import Any, cast
 from urllib.parse import urlparse
 
 from steamzero.adapters.desktop_dashboard import DesktopDashboard
-from steamzero.adapters.desktop_kde import activate_virtual_keyboard
+from steamzero.adapters.desktop_kde import (
+    KDEPanelEffect,
+    activate_virtual_keyboard,
+    launch_ashyterm,
+    toggle_virtual_keyboard,
+)
 from steamzero.core.errors import SteamZeroError, build_error
-from steamzero.domain.desktop import ExperienceCoordinator
+from steamzero.domain.desktop import (
+    DesktopContext,
+    DisplayState,
+    ExperienceCoordinator,
+    automatic_profile,
+    profile_for,
+)
 
 _MAX_BODY = 64 * 1024
 
@@ -229,8 +241,55 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/recover":
             return coordinator.recover()
         if path == "/keyboard":
-            return {"provider": activate_virtual_keyboard()}
+            action = payload.get("action", "activate")
+            language = payload.get("language")
+            if action == "toggle":
+                return toggle_virtual_keyboard(language=language)
+            return {"provider": activate_virtual_keyboard(language=language)}
+        if path == "/ashyterm":
+            return launch_ashyterm()
+        if path == "/panel/autohide":
+            enable = bool(payload.get("enable", True))
+            effect = KDEPanelEffect()
+            status = self._control_server.coordinator.status()
+            context = status.get("context")
+            if not isinstance(context, dict):
+                raise SteamZeroError("E-DESKTOP-VERIFY", detail="contexto Desktop indisponível")
+            ctx = self._context_from_dict(context)
+            if not effect.available(ctx):
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="controle de painel indisponível nesta sessão",
+                )
+            prof = profile_for(automatic_profile(ctx), ctx)
+            effect.apply(replace(prof, panel_auto_hide=enable), ctx)
+            return {"status": "ok", "autoHide": enable}
         raise ValueError(f"ação não permitida: {path}")
+
+    def _context_from_dict(self, context: dict[str, Any]) -> DesktopContext:
+        displays = [
+            DisplayState(
+                name=str(d.get("name", "")),
+                connected=bool(d.get("connected")),
+                internal=bool(d.get("internal")),
+                width=int(d["width"]) if d.get("width") is not None else None,
+                height=int(d["height"]) if d.get("height") is not None else None,
+                refresh_hz=float(d["refreshHz"]) if d.get("refreshHz") is not None else None,
+                scale=float(d["scale"]) if d.get("scale") is not None else None,
+            )
+            for d in context.get("displays", [])
+            if isinstance(d, dict)
+        ]
+        return DesktopContext(
+            device_kind=str(context.get("deviceKind", "unknown")),
+            session_type=str(context.get("sessionType", "unknown")),
+            displays=tuple(displays),
+            physical_dock=bool(context.get("physicalDock")),
+            external_keyboard=bool(context.get("externalKeyboard")),
+            external_mouse=bool(context.get("externalMouse")),
+            capabilities=frozenset(context.get("capabilities", [])),
+            conflicts=tuple(context.get("conflicts", [])),
+        )
 
     def _dashboard(self) -> DesktopDashboard:
         dashboard = self._control_server.dashboard

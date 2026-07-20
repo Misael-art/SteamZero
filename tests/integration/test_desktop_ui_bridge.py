@@ -500,3 +500,69 @@ def test_bridge_rechecks_owner_conflict_before_dashboard_mutations(
     assert gameplay_payload["error"]["code"] == "E-DESKTOP-OWNER-CONFLICT"
     gameplay_error.value.close()
     assert dashboard.calls == []
+
+
+def test_bridge_keyboard_toggle_and_activate(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.toggle_virtual_keyboard",
+        lambda language=None: {"action": "show", "provider": "kwin-maliit", "language": language},
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.activate_virtual_keyboard",
+        lambda language=None: "wvkbd",
+    )
+    toggled = request_json(base, token, "/keyboard", {"action": "toggle", "language": "br"})
+    assert toggled["action"] == "show"
+    assert toggled["language"] == "br"
+    activated = request_json(base, token, "/keyboard", {})
+    assert activated["provider"] == "wvkbd"
+
+
+def test_bridge_launches_ashyterm(bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
+    base, token = bridge
+    monkeypatch.setattr(
+        "steamzero.adapters.desktop_ui.launch_ashyterm",
+        lambda: {"status": "started", "application": "ashyterm"},
+    )
+    result = request_json(base, token, "/ashyterm", {})
+    assert result == {"status": "started", "application": "ashyterm"}
+
+
+def test_bridge_panel_autohide_applies_profile_override(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+    applied: list[bool] = []
+
+    class FakePanelEffect:
+        def available(self, _context: object) -> bool:
+            return True
+
+        def apply(self, profile: object, _context: object) -> None:
+            applied.append(bool(profile.panel_auto_hide))
+
+    monkeypatch.setattr("steamzero.adapters.desktop_ui.KDEPanelEffect", FakePanelEffect)
+    enabled = request_json(base, token, "/panel/autohide", {"enable": True})
+    assert enabled == {"status": "ok", "autoHide": True}
+    disabled = request_json(base, token, "/panel/autohide", {"enable": False})
+    assert disabled == {"status": "ok", "autoHide": False}
+    assert applied == [True, False]
+
+
+def test_bridge_panel_autohide_conflicts_when_unavailable(
+    bridge: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base, token = bridge
+
+    class UnavailablePanelEffect:
+        def available(self, _context: object) -> bool:
+            return False
+
+    monkeypatch.setattr("steamzero.adapters.desktop_ui.KDEPanelEffect", UnavailablePanelEffect)
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(base, token, "/panel/autohide", {"enable": True})
+    assert error.value.code == 409
+    error.value.close()

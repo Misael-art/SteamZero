@@ -29,7 +29,7 @@
       "additionalProperties": false,
       "required": [
         "id", "scale", "touchMode", "maximizeWindows", "panelHeight",
-        "shellActions", "keyboardChain", "preferredInputOwner"
+        "panelAutoHide", "shellActions", "keyboardChain", "preferredInputOwner"
       ],
       "properties": {
         "id": { "enum": ["handheld-desktop", "docked-desktop", "safe"] },
@@ -37,6 +37,7 @@
         "touchMode": { "type": "boolean" },
         "maximizeWindows": { "type": "boolean" },
         "panelHeight": { "type": "integer", "minimum": 40 },
+        "panelAutoHide": { "type": "boolean" },
         "shellActions": { "type": "array", "items": { "type": "string" } },
         "keyboardChain": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "preferredInputOwner": { "enum": ["none", "kde-shortcuts", "inputplumber"] }

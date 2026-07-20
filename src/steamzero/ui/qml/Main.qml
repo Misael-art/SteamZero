@@ -137,10 +137,11 @@ ApplicationWindow {
     property bool lastRequestIsError: false
     property int pendingRequests: 0
     property bool recoveryPromptShown: false
+    property bool keyboardVisible: false
 
     signal planRequested(string profile)
     signal recoveryRequested()
-    signal keyboardRequested()
+    signal keyboardRequested(string language)
 
     function parseArguments() {
         const args = Qt.application.arguments
@@ -396,10 +397,13 @@ ApplicationWindow {
         })
     }
 
-    function openKeyboard() {
-        keyboardRequested()
-        request("POST", "/keyboard", {}, function(response) {
-            notify(qsTr("Teclado aberto por %1").arg(response.provider), false)
+    function openKeyboard(language) {
+        keyboardRequested(language || "")
+        request("POST", "/keyboard", {"action": "toggle", "language": language || ""}, function(response) {
+            keyboardVisible = response.action === "show"
+            notify(qsTr("Teclado %1 por %2").arg(
+                keyboardVisible ? qsTr("aberto") : qsTr("fechado")
+            ).arg(response.provider || "steamzero"), false)
         })
     }
 
@@ -1475,7 +1479,15 @@ ApplicationWindow {
                                         root.refreshStatus(qsTr("Estado Desktop seguro restaurado"))
                                     }
                                 )
-                                onDesktopKeyboardRequested: root.openKeyboard()
+                                onDesktopKeyboardRequested: function(language) { root.openKeyboard(language) }
+                                onDesktopAshytermRequested: root.request("POST", "/ashyterm", {}, function(response) {
+                                    root.notify(qsTr("Terminal Ashy aberto"), false)
+                                })
+                                onDesktopPanelAutoHideRequested: function(enable) {
+                                    root.request("POST", "/panel/autohide", {"enable": enable}, function(response) {
+                                        root.notify(qsTr("Painel auto-ocultar %1").arg(enable ? qsTr("ativado") : qsTr("desativado")), false)
+                                    })
+                                }
                                 onSteamInputRequested: function(gameId) {
                                     root.request("POST", "/steam/input/open", {
                                         "gameId": gameId

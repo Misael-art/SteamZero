@@ -81,3 +81,18 @@ def test_safe_profile_has_no_input_owner() -> None:
     assert profile.preferred_input_owner == "none"
     assert profile.scale == 1.35
     assert not profile.maximize_windows
+
+
+def test_handheld_profile_auto_hides_panel() -> None:
+    profile = profile_for(PROFILE_HANDHELD, context())
+    assert profile.panel_auto_hide is True
+
+
+def test_docked_profile_keeps_panel_visible() -> None:
+    profile = profile_for(PROFILE_DOCKED, context())
+    assert profile.panel_auto_hide is False
+
+
+def test_profile_to_dict_includes_panel_auto_hide() -> None:
+    profile = profile_for(PROFILE_HANDHELD, context())
+    assert profile.to_dict()["panelAutoHide"] is True

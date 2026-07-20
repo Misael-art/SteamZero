@@ -169,6 +169,7 @@ class ExperienceProfile:
     touch_mode: bool
     maximize_windows: bool
     panel_height: int
+    panel_auto_hide: bool
     shell_actions: tuple[str, ...]
     keyboard_chain: tuple[str, ...]
     preferred_input_owner: str
@@ -180,6 +181,7 @@ class ExperienceProfile:
             "touchMode": self.touch_mode,
             "maximizeWindows": self.maximize_windows,
             "panelHeight": self.panel_height,
+            "panelAutoHide": self.panel_auto_hide,
             "shellActions": list(self.shell_actions),
             "keyboardChain": list(self.keyboard_chain),
             "preferredInputOwner": self.preferred_input_owner,
@@ -246,6 +248,7 @@ def profile_for(profile_id: str, context: DesktopContext) -> ExperienceProfile:
             touch_mode=True,
             maximize_windows=True,
             panel_height=48,
+            panel_auto_hide=True,
             shell_actions=("overview", "application-dashboard"),
             keyboard_chain=keyboard_chain,
             preferred_input_owner=preferred_owner,
@@ -257,6 +260,7 @@ def profile_for(profile_id: str, context: DesktopContext) -> ExperienceProfile:
             touch_mode=False,
             maximize_windows=False,
             panel_height=40,
+            panel_auto_hide=False,
             shell_actions=("overview", "application-dashboard"),
             keyboard_chain=keyboard_chain,
             preferred_input_owner=preferred_owner,
@@ -267,6 +271,7 @@ def profile_for(profile_id: str, context: DesktopContext) -> ExperienceProfile:
         touch_mode=True,
         maximize_windows=False,
         panel_height=48,
+        panel_auto_hide=False,
         shell_actions=("overview",),
         keyboard_chain=keyboard_chain,
         preferred_input_owner="none",
@@ -326,6 +331,7 @@ class ExperiencePlan:
                 touch_mode=bool(target["touchMode"]),
                 maximize_windows=bool(target["maximizeWindows"]),
                 panel_height=int(target["panelHeight"]),
+                panel_auto_hide=bool(target.get("panelAutoHide", True)),
                 shell_actions=tuple(target["shellActions"]),
                 keyboard_chain=tuple(target["keyboardChain"]),
                 preferred_input_owner=target["preferredInputOwner"],
@@ -808,6 +814,7 @@ class ExperienceCoordinator:
             f"escala={target.scale}",
             f"touch={'on' if target.touch_mode else 'off'}",
             f"janelas-maximizadas={'on' if target.maximize_windows else 'off'}",
+            f"painel-auto-ocultar={'on' if target.panel_auto_hide else 'off'}",
             f"input-owner={target.preferred_input_owner}",
         )
 
