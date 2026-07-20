@@ -45,12 +45,14 @@ def test_missing_gamescope_falls_back_to_biglinux_desktop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     executed: list[str] = []
+    executed_environment: dict[str, str] = {}
 
-    def fake_exec(_path: str, argv: list[str]) -> None:
+    def fake_exec(_path: str, argv: list[str], environment: dict[str, str]) -> None:
         executed.extend(argv)
+        executed_environment.update(environment)
         raise RuntimeError("exec intercepted")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="intercepted"):
         steam_session.run_session(
             which=_which(
@@ -59,10 +61,14 @@ def test_missing_gamescope_falls_back_to_biglinux_desktop(
                     "startkde-biglinux": "/usr/bin/startkde-biglinux",
                 }
             ),
-            environ={},
+            environ={"DESKTOP_SESSION": "steamzero-gamemode", "GAMESCOPE_FOO": "1"},
             boot_status=_boot_status,
         )
     assert executed == ["/usr/bin/startkde-biglinux", "wayland"]
+    assert executed_environment["DESKTOP_SESSION"] == "plasma"
+    assert executed_environment["XDG_CURRENT_DESKTOP"] == "KDE"
+    assert executed_environment["XDG_SESSION_TYPE"] == "wayland"
+    assert "GAMESCOPE_FOO" not in executed_environment
 
 
 def test_missing_gamescope_session_wrapper_falls_back_to_desktop(
@@ -70,11 +76,11 @@ def test_missing_gamescope_session_wrapper_falls_back_to_desktop(
 ) -> None:
     executed: list[str] = []
 
-    def fake_exec(_path: str, argv: list[str]) -> None:
+    def fake_exec(_path: str, argv: list[str], _environment: dict[str, str]) -> None:
         executed.extend(argv)
         raise RuntimeError("exec intercepted")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="intercepted"):
         steam_session.run_session(
             which=_which(
@@ -89,6 +95,22 @@ def test_missing_gamescope_session_wrapper_falls_back_to_desktop(
         )
 
     assert executed == ["/usr/bin/startplasma-wayland"]
+
+
+def test_desktop_environment_matches_a_direct_kde_login() -> None:
+    direct = {
+        "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+        "DESKTOP_SESSION": "plasma",
+        "KDE_FULL_SESSION": "true",
+        "PATH": "/usr/bin",
+        "XDG_CURRENT_DESKTOP": "KDE",
+        "XDG_SESSION_DESKTOP": "KDE",
+        "XDG_SESSION_TYPE": "wayland",
+    }
+
+    handoff = steam_session._desktop_environment(("/usr/bin/startplasma-wayland",), direct)
+
+    assert handoff == direct
 
 
 def test_session_refuses_to_replace_an_existing_desktop() -> None:
@@ -125,19 +147,22 @@ def test_missing_gamescope_does_not_start_nested_desktop() -> None:
 
 def test_session_uses_distro_gamescope_wrapper_then_falls_back(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     calls: list[list[str]] = []
     executed: list[str] = []
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
     def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(argv)
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    def fake_exec(_path: str, argv: list[str]) -> None:
+    def fake_exec(_path: str, argv: list[str], _environment: dict[str, str]) -> None:
         executed.extend(argv)
         raise RuntimeError("exec intercepted")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="intercepted"):
         steam_session.run_session(
             which=_which(
@@ -156,6 +181,9 @@ def test_session_uses_distro_gamescope_wrapper_then_falls_back(
         )
     assert calls == [["/usr/bin/gamescope-session-plus", "steam"]] * 3
     assert executed == ["/usr/bin/startplasma-wayland"]
+    state = json.loads((tmp_path / "state" / "steamzero" / "gamemode-session.json").read_text())
+    assert state["state"] == "fallback"
+    assert state["attempt"] == 3
 
 
 def test_steam_updater_exit_is_retried_before_explicit_desktop(
@@ -173,11 +201,11 @@ def test_steam_updater_exit_is_retried_before_explicit_desktop(
             steam_session.request_target("desktop", which=lambda _name: None)
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    def fake_exec(_path: str, argv: list[str]) -> None:
+    def fake_exec(_path: str, argv: list[str], _environment: dict[str, str]) -> None:
         executed.extend(argv)
         raise RuntimeError("desktop reached")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="desktop reached"):
         steam_session.run_session(
             which=_which(
@@ -208,6 +236,7 @@ def test_native_big_picture_desktop_request_reaches_desktop(
 ) -> None:
     calls: list[list[str]] = []
     executed: list[str] = []
+    executed_environment: dict[str, str] = {}
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
 
     def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -215,11 +244,12 @@ def test_native_big_picture_desktop_request_reaches_desktop(
         steam_session.request_target("plasma", which=lambda _name: None)
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    def fake_exec(_path: str, argv: list[str]) -> None:
+    def fake_exec(_path: str, argv: list[str], environment: dict[str, str]) -> None:
         executed.extend(argv)
+        executed_environment.update(environment)
         raise RuntimeError("desktop reached")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="desktop reached"):
         steam_session.run_session(
             which=_which(
@@ -231,33 +261,51 @@ def test_native_big_picture_desktop_request_reaches_desktop(
                 }
             ),
             runner=runner,
-            environ={"PATH": "/usr/bin"},
+            environ={
+                "DESKTOP_SESSION": "steamzero-gamemode",
+                "GAMESCOPE_WAYLAND_DISPLAY": "gamescope-0",
+                "PATH": "/usr/bin",
+                "STEAM_GAMEPADUI": "1",
+                "STEAMZERO_GAMEMODE_SESSION": "1",
+                "XDG_CURRENT_DESKTOP": "gamescope",
+            },
             boot_started=lambda: {"state": "started"},
             boot_status=_boot_status,
         )
 
     assert calls == [["/usr/bin/gamescope-session-plus", "steam"]]
     assert executed == ["/usr/bin/startplasma-wayland"]
+    assert executed_environment["DESKTOP_SESSION"] == "plasma"
+    assert executed_environment["KDE_FULL_SESSION"] == "true"
+    assert executed_environment["XDG_CURRENT_DESKTOP"] == "KDE"
+    assert executed_environment["XDG_SESSION_DESKTOP"] == "KDE"
+    assert executed_environment["XDG_SESSION_TYPE"] == "wayland"
+    assert "GAMESCOPE_WAYLAND_DISPLAY" not in executed_environment
+    assert "STEAM_GAMEPADUI" not in executed_environment
+    assert "STEAMZERO_GAMEMODE_SESSION" not in executed_environment
     assert not (tmp_path / "run" / "steamzero" / "gamemode-target").exists()
 
 
 def test_session_marker_failure_is_logged_and_does_not_black_screen(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
 ) -> None:
     calls: list[list[str]] = []
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
     def runner(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(argv)
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    def fake_exec(_path: str, _argv: list[str]) -> None:
+    def fake_exec(_path: str, _argv: list[str], _environment: dict[str, str]) -> None:
         raise RuntimeError("desktop reached")
 
     def failed_marker() -> dict[str, object]:
         raise OSError("state read-only")
 
-    monkeypatch.setattr(steam_session.os, "execv", fake_exec)
+    monkeypatch.setattr(steam_session.os, "execve", fake_exec)
     with pytest.raises(RuntimeError, match="desktop reached"):
         steam_session.run_session(
             which=_which(
