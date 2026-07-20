@@ -44,6 +44,9 @@ Item {
     signal desktopKeyboardRequested(string language)
     signal desktopAshytermRequested()
     signal desktopPanelAutoHideRequested(bool enable)
+    signal desktopKeyboardSoundRequested(bool enable)
+    signal desktopKeyboardThemeRequested(bool dark)
+    signal desktopGamemodeReturnRequested()
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -1563,6 +1566,9 @@ Item {
                 onSystemRequested: page.systemRequested()
                 onAshytermRequested: page.desktopAshytermRequested()
                 onPanelAutoHideRequested: function(enable) { page.desktopPanelAutoHideRequested(enable) }
+                onKeyboardSoundRequested: function(enable) { page.desktopKeyboardSoundRequested(enable) }
+                onKeyboardThemeRequested: function(dark) { page.desktopKeyboardThemeRequested(dark) }
+                onGamemodeReturnRequested: page.desktopGamemodeReturnRequested()
             }
 
         }

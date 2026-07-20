@@ -1054,3 +1054,256 @@ def test_panel_effect_evaluate_script_degrades_without_qdbus() -> None:
     assert failing._evaluate_script("print('x')") is None
     ok = KDEPanelEffect(runner=lambda _a, _t: CommandResult(0, " out \n"), which=lambda c: c)
     assert ok._evaluate_script("print('x')") == "out"
+
+
+def _comfort_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "gsettings" and argv[1] == "get":
+            return CommandResult(0, store.get(argv[3], ""))
+        if argv[0] == "gsettings" and argv[1] == "set":
+            store[argv[3]] = argv[4]
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def test_maliit_comfort_applies_only_changed_keys() -> None:
+    store = {
+        "key-press-feedback": "false",
+        "key-press-haptic-feedback": "true",
+        "theme": "'Ambiance'",
+    }
+    calls: list[tuple[str, ...]] = []
+    result = desktop_kde.apply_maliit_comfort(
+        {"sound": True, "haptic": True, "theme": "SuruDark"},
+        runner=_comfort_runner(store, calls),
+        which=lambda command: command,
+    )
+    assert result["applied"] == {"sound": "true", "theme": "SuruDark"}
+    assert result["previous"]["sound"] == "false"
+    assert result["previous"]["theme"] == "Ambiance"
+    # háptica já estava correta: nenhum set para a chave dela
+    assert not any(argv[1] == "set" and argv[3] == "key-press-haptic-feedback" for argv in calls)
+    assert store["key-press-feedback"] == "true"
+    assert store["theme"] == "SuruDark"
+
+
+def test_maliit_comfort_rejects_unknown_setting() -> None:
+    with pytest.raises(ValueError, match="desconhecida"):
+        desktop_kde.apply_maliit_comfort(
+            {"volume": True},  # type: ignore[dict-item]
+            runner=lambda _a, _t: CommandResult(0, ""),
+            which=lambda command: command,
+        )
+
+
+def test_maliit_comfort_degrades_without_gsettings() -> None:
+    with pytest.raises(SteamZeroError):
+        desktop_kde.apply_maliit_comfort(
+            {"sound": True},
+            runner=lambda _a, _t: CommandResult(0, ""),
+            which=lambda _command: None,
+        )
+
+
+def test_maliit_comfort_reverts_when_readback_diverges() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "gsettings" and argv[1] == "get":
+            # Sempre devolve o valor antigo: o set "não pegou".
+            return CommandResult(0, "'Ambiance'")
+        return CommandResult(0, "")
+
+    with pytest.raises(SteamZeroError):
+        desktop_kde.apply_maliit_comfort(
+            {"theme": "Inexistente"}, runner=runner, which=lambda command: command
+        )
+    # Reverteu para o valor anterior após o readback divergente.
+    assert ("gsettings", "set", "org.maliit.keyboard.maliit", "theme", "Ambiance") in calls
+
+
+def _shortcut_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "kreadconfig6":
+            return CommandResult(0, store.get("_launch", ""))
+        if argv[0] == "kwriteconfig6":
+            if argv[-1] == "--delete":
+                store.pop("_launch", None)
+            else:
+                store["_launch"] = argv[-1]
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def _shortcut_effect(
+    tmp_path: Path, store: dict[str, str], calls: list[tuple[str, ...]]
+) -> desktop_kde.KDEShortcutEffect:
+    return desktop_kde.KDEShortcutEffect(
+        runner=_shortcut_runner(store, calls),
+        which=lambda command: command if command in {"kreadconfig6", "kwriteconfig6"} else None,
+        applications_dir=tmp_path,
+    )
+
+
+def test_shortcut_effect_available_requires_kde_config(tmp_path: Path) -> None:
+    effect = _shortcut_effect(tmp_path, {}, [])
+    assert effect.available(_minimal_context(frozenset({"kde-config"})))
+    assert not effect.available(_minimal_context(frozenset()))
+
+
+def test_shortcut_effect_apply_writes_marked_artifact_and_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    calls: list[tuple[str, ...]] = []
+    effect = _shortcut_effect(tmp_path, store, calls)
+    context = _minimal_context(frozenset({"kde-config"}))
+    profile = profile_for(PROFILE_HANDHELD, context)
+
+    captured = effect.capture(context)
+    assert captured == {"shortcutEntry": None, "desktopFilePresent": False}
+
+    effect.apply(profile, context)
+    desktop_file = tmp_path / "steamzero-keyboard-toggle.desktop"
+    content = desktop_file.read_text(encoding="utf-8")
+    assert "X-SteamZero-Managed=true" in content
+    assert "Exec=steamzero desktop keyboard --toggle" in content
+    assert "X-KDE-GlobalAccel-CommandShortcut=true" in content
+    assert store["_launch"].startswith("Meta+K,")
+    assert effect.verify(profile, context)
+
+
+def test_shortcut_effect_restore_removes_artifact_and_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    effect = _shortcut_effect(tmp_path, store, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+
+    effect.restore(snapshot)
+    assert not (tmp_path / "steamzero-keyboard-toggle.desktop").exists()
+    assert "_launch" not in store
+
+
+def test_shortcut_effect_restore_preserves_previous_binding(tmp_path: Path) -> None:
+    store: dict[str, str] = {"_launch": "Meta+F1,Meta+F1,Antigo"}
+    effect = _shortcut_effect(tmp_path, store, [])
+    (tmp_path / "steamzero-keyboard-toggle.desktop").write_text(
+        "[Desktop Entry]\nX-SteamZero-Managed=true\n", encoding="utf-8"
+    )
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    assert store["_launch"].startswith("Meta+K,")
+
+    effect.restore(snapshot)
+    assert store["_launch"] == "Meta+F1,Meta+F1,Antigo"
+    assert (tmp_path / "steamzero-keyboard-toggle.desktop").exists()
+
+
+def test_shortcut_effect_refuses_unmarked_artifact(tmp_path: Path) -> None:
+    target = tmp_path / "steamzero-keyboard-toggle.desktop"
+    target.write_text("[Desktop Entry]\nExec=outro\n", encoding="utf-8")
+    effect = _shortcut_effect(tmp_path, {}, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect._remove_desktop_file()
+    assert target.read_text(encoding="utf-8") == "[Desktop Entry]\nExec=outro\n"
+
+
+def test_build_desktop_coordinator_includes_shortcut_effect(tmp_path: Path) -> None:
+    coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
+    assert any(isinstance(effect, desktop_kde.KDEShortcutEffect) for effect in coordinator._effects)
+
+
+def _edge_runner(
+    store: dict[str, str], calls: list[tuple[str, ...]]
+) -> Callable[..., CommandResult]:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        if argv[0] == "kreadconfig6":
+            return CommandResult(0, store.get("enabled", ""))
+        if argv[0] == "kwriteconfig6":
+            if argv[-1] == "--delete":
+                store.pop("enabled", None)
+            else:
+                store["enabled"] = argv[-1]
+            return CommandResult(0, "")
+        if argv[0] == "qdbus6":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    return runner
+
+
+def _edge_effect(
+    tmp_path: Path, store: dict[str, str], calls: list[tuple[str, ...]]
+) -> desktop_kde.KDEEdgeGestureEffect:
+    return desktop_kde.KDEEdgeGestureEffect(
+        runner=_edge_runner(store, calls),
+        which=lambda command: command,
+        scripts_dir=tmp_path,
+    )
+
+
+def test_edge_gesture_apply_installs_script_and_enables_plugin(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    calls: list[tuple[str, ...]] = []
+    effect = _edge_effect(tmp_path, store, calls)
+    context = _minimal_context(frozenset({"kde-config"}))
+    profile = profile_for(PROFILE_HANDHELD, context)
+
+    snapshot = effect.capture(context)
+    assert snapshot == {"pluginEnabled": None, "scriptPresent": False}
+
+    effect.apply(profile, context)
+    metadata = tmp_path / "steamzero-edge-keyboard" / "metadata.json"
+    main_js = tmp_path / "steamzero-edge-keyboard" / "contents" / "code" / "main.js"
+    assert "X-SteamZero-Managed" in metadata.read_text(encoding="utf-8")
+    assert "registerTouchScreenEdge" in main_js.read_text(encoding="utf-8")
+    assert store["enabled"] == "true"
+    assert effect.verify(profile, context)
+    assert any(argv[0] == "qdbus6" and "org.kde.KWin.reconfigure" in argv for argv in calls)
+
+
+def test_edge_gesture_restore_removes_script_and_key(tmp_path: Path) -> None:
+    store: dict[str, str] = {}
+    effect = _edge_effect(tmp_path, store, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    snapshot = effect.capture(context)
+    effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+
+    effect.restore(snapshot)
+    assert not (tmp_path / "steamzero-edge-keyboard").exists()
+    assert "enabled" not in store
+
+
+def test_edge_gesture_refuses_unmarked_script(tmp_path: Path) -> None:
+    root = tmp_path / "steamzero-edge-keyboard"
+    root.mkdir(parents=True)
+    (root / "metadata.json").write_text("{}", encoding="utf-8")
+    effect = _edge_effect(tmp_path, {}, [])
+    context = _minimal_context(frozenset({"kde-config"}))
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect.apply(profile_for(PROFILE_HANDHELD, context), context)
+    with pytest.raises(RuntimeError, match="sem marcador"):
+        effect._remove_script()
+    assert (root / "metadata.json").read_text(encoding="utf-8") == "{}"
+
+
+def test_build_desktop_coordinator_includes_edge_gesture_effect(tmp_path: Path) -> None:
+    coordinator = build_desktop_coordinator(StateStore(tmp_path / "state.db"))
+    assert any(
+        isinstance(effect, desktop_kde.KDEEdgeGestureEffect) for effect in coordinator._effects
+    )

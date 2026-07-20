@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths
+from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
@@ -630,6 +630,20 @@ def _maliit_language_for(layout: str | None) -> str | None:
     return _MALIIT_LANGUAGE_BY_LAYOUT.get(layout, layout)
 
 
+_MALIIT_SCHEMA = "org.maliit.keyboard.maliit"
+
+
+def _gsettings_get(runner: Runner, key: str) -> str | None:
+    result = runner(("gsettings", "get", _MALIIT_SCHEMA, key), 3.0)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _gsettings_set(runner: Runner, key: str, value: str) -> bool:
+    return runner(("gsettings", "set", _MALIIT_SCHEMA, key, value), 3.0).returncode == 0
+
+
 def _apply_maliit_language(runner: Runner, which: Which, layout: str | None) -> bool:
     """Sincroniza o idioma ativo do maliit-keyboard via gsettings.
 
@@ -640,18 +654,63 @@ def _apply_maliit_language(runner: Runner, which: Which, layout: str | None) -> 
     language = _maliit_language_for(layout)
     if language is None or which("gsettings") is None:
         return False
-    schema = "org.maliit.keyboard.maliit"
-    current = runner(("gsettings", "get", schema, "active-language"), 3.0)
-    if current.returncode == 0 and current.stdout.strip().strip("'\"") == language:
+    current = _gsettings_get(runner, "active-language")
+    if current is not None and current.strip("'\"") == language:
         return True
-    enabled = runner(("gsettings", "get", schema, "enabled-languages"), 3.0)
-    languages = re.findall(r"'([^']+)'", enabled.stdout) if enabled.returncode == 0 else []
+    enabled = _gsettings_get(runner, "enabled-languages")
+    languages = re.findall(r"'([^']+)'", enabled) if enabled is not None else []
     if language not in languages:
         languages.append(language)
         formatted = "[" + ", ".join(f"'{item}'" for item in languages) + "]"
-        runner(("gsettings", "set", schema, "enabled-languages", formatted), 3.0)
-    result = runner(("gsettings", "set", schema, "active-language", language), 3.0)
-    return result.returncode == 0
+        _gsettings_set(runner, "enabled-languages", formatted)
+    return _gsettings_set(runner, "active-language", language)
+
+
+# Conforto de digitação: nomes públicos estáveis → chave gsettings do maliit.
+_MALIIT_COMFORT_KEYS = {
+    "sound": "key-press-feedback",
+    "haptic": "key-press-haptic-feedback",
+    "theme": "theme",
+}
+
+
+def apply_maliit_comfort(
+    settings: dict[str, bool | str],
+    *,
+    runner: Runner = run_command,
+    which: Which = shutil.which,
+) -> dict[str, Any]:
+    """Aplica som/háptica/tema do maliit-keyboard via gsettings.
+
+    Só grava chaves cujo valor difere do atual, confirma por readback e retorna
+    os valores anteriores para o chamador poder desfazer. A mudança vale com o
+    teclado em execução — o QML do maliit observa as chaves.
+    """
+    if which("gsettings") is None:
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail="gsettings indisponível para configurar o teclado"
+        )
+    unknown = sorted(set(settings) - set(_MALIIT_COMFORT_KEYS))
+    if unknown:
+        raise ValueError(f"configuração de teclado desconhecida: {', '.join(unknown)}")
+    previous: dict[str, str] = {}
+    applied: dict[str, str] = {}
+    for name, value in settings.items():
+        key = _MALIIT_COMFORT_KEYS[name]
+        encoded = ("true" if value else "false") if isinstance(value, bool) else str(value)
+        current = (_gsettings_get(runner, key) or "").strip("'\"")
+        previous[name] = current
+        if current == encoded:
+            continue
+        if not _gsettings_set(runner, key, encoded):
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail=f"não foi possível aplicar {key}")
+        confirmed = (_gsettings_get(runner, key) or "").strip("'\"")
+        if confirmed != encoded:
+            # Reverte o que deu para reverter e falha com causa observável.
+            _gsettings_set(runner, key, current)
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail=f"{key} não aceitou o valor {encoded}")
+        applied[name] = encoded
+    return {"applied": applied, "previous": previous}
 
 
 # wvkbd-mobintl aceita apenas layers compiladas; um valor desconhecido em
@@ -1121,6 +1180,267 @@ for (var i = 0; i < panels.length; i++) {
         return result.stdout.strip() or None
 
 
+_SHORTCUT_MARKER = "X-SteamZero-Managed=true"
+_SHORTCUT_DESKTOP_TEMPLATE = """[Desktop Entry]
+Type=Application
+Name=Alternar teclado virtual SteamZero
+Exec=steamzero desktop keyboard --toggle
+Icon=input-keyboard-virtual
+NoDisplay=true
+Terminal=false
+X-KDE-GlobalAccel-CommandShortcut=true
+X-SteamZero-Managed=true
+"""
+
+
+class KDEShortcutEffect:
+    """Registra atalho global (Meta+K) para alternar o teclado, com rollback.
+
+    Publica um desktop file próprio (marcado) em escopo de usuário e o binding
+    em ``kglobalshortcutsrc``. O kglobalaccel só carrega o atalho na próxima
+    sessão; a configuração é verificável por readback imediatamente.
+    """
+
+    name = "kde-shortcut"
+    _SERVICE = "steamzero-keyboard-toggle.desktop"
+    _DEFAULT_ENTRY = "Meta+K,Meta+K,Alternar teclado virtual SteamZero"
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        applications_dir: Path | None = None,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._apps_dir = applications_dir or Path.home() / ".local" / "share" / "applications"
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-config" in context.capabilities
+            and self._which("kreadconfig6") is not None
+            and self._which("kwriteconfig6") is not None
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {
+            "shortcutEntry": self._read_entry(),
+            "desktopFilePresent": (self._apps_dir / self._SERVICE).is_file(),
+        }
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self._write_desktop_file()
+        self._write_entry(self._DEFAULT_ENTRY)
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        target = self._apps_dir / self._SERVICE
+        return target.is_file() and self._read_entry() == self._DEFAULT_ENTRY
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        entry = snapshot.get("shortcutEntry")
+        if not snapshot.get("desktopFilePresent"):
+            self._remove_desktop_file()
+        if isinstance(entry, str) and entry:
+            self._write_entry(entry)
+        else:
+            self._delete_entry()
+
+    def _write_desktop_file(self) -> None:
+        target = self._apps_dir / self._SERVICE
+        if target.exists():
+            content = _read_text(target)
+            if _SHORTCUT_MARKER not in content:
+                raise RuntimeError(f"recusando sobrescrever artefato sem marcador: {target}")
+        fs.ensure_dir(target.parent)
+        fs.write_atomic_text(target, _SHORTCUT_DESKTOP_TEMPLATE)
+
+    def _remove_desktop_file(self) -> None:
+        target = self._apps_dir / self._SERVICE
+        if not target.exists():
+            return
+        if _SHORTCUT_MARKER not in _read_text(target):
+            raise RuntimeError(f"recusando remover artefato sem marcador: {target}")
+        fs.remove_file(target)
+
+    def _config_argv(self, *suffix: str) -> tuple[str, ...]:
+        return (
+            "--file",
+            "kglobalshortcutsrc",
+            "--group",
+            "services",
+            "--group",
+            self._SERVICE,
+            "--key",
+            "_launch",
+            *suffix,
+        )
+
+    def _read_entry(self) -> str | None:
+        result = self._runner(("kreadconfig6", *self._config_argv()), 3.0)
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip() or None
+
+    def _write_entry(self, value: str) -> None:
+        self._runner(("kwriteconfig6", *self._config_argv(value)), 3.0)
+
+    def _delete_entry(self) -> None:
+        self._runner(("kwriteconfig6", *self._config_argv("--delete")), 3.0)
+
+
+_EDGE_SCRIPT_ID = "steamzero-edge-keyboard"
+_EDGE_METADATA = """{
+  "KPlugin": {
+    "Id": "steamzero-edge-keyboard",
+    "Name": "SteamZero Edge Keyboard",
+    "Description": "Desliza da borda inferior alterna o teclado virtual",
+    "ServiceTypes": ["KWin/Script"],
+    "Version": "1.0"
+  },
+  "X-Plasma-API": "javascript",
+  "X-Plasma-MainScript": "code/main.js",
+  "X-SteamZero-Managed": true
+}
+"""
+_EDGE_MAIN_JS = """// X-SteamZero-Managed: true
+function steamzeroToggleKeyboard() {
+    callDBus(
+        "org.kde.KWin",
+        "/VirtualKeyboard",
+        "org.freedesktop.DBus.Properties",
+        "Get",
+        "org.kde.kwin.VirtualKeyboard",
+        "visible",
+        function (visible) {
+            var method = visible ? "forceDeactivate" : "forceActivate";
+            callDBus("org.kde.KWin", "/VirtualKeyboard", "org.kde.kwin.VirtualKeyboard", method);
+        }
+    );
+}
+registerTouchScreenEdge(KWin.ElectricBottom, steamzeroToggleKeyboard);
+"""
+
+
+class KDEEdgeGestureEffect:
+    """Gesto de toque na borda inferior alterna o teclado (spike, com rollback).
+
+    Publica um KWin script marcado em escopo de usuário e o habilita em
+    ``kwinrc [Plugins]``. O KWin recarrega scripts no ``reconfigure``; se o
+    gesto se mostrar instável no host, o restore remove tudo.
+    """
+
+    name = "kde-edge-gesture"
+
+    def __init__(
+        self,
+        *,
+        runner: Runner = run_command,
+        which: Which = shutil.which,
+        scripts_dir: Path | None = None,
+    ) -> None:
+        self._runner = runner
+        self._which = which
+        self._scripts_dir = scripts_dir or Path.home() / ".local" / "share" / "kwin" / "scripts"
+
+    def available(self, context: DesktopContext) -> bool:
+        return (
+            "kde-config" in context.capabilities
+            and self._which("kreadconfig6") is not None
+            and self._which("kwriteconfig6") is not None
+        )
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {
+            "pluginEnabled": self._read_enabled(),
+            "scriptPresent": self._metadata_path().is_file(),
+        }
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self._write_script()
+        self._write_enabled("true")
+        self._reconfigure()
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return self._metadata_path().is_file() and self._read_enabled() == "true"
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        if not snapshot.get("scriptPresent"):
+            self._remove_script()
+        enabled = snapshot.get("pluginEnabled")
+        if isinstance(enabled, str) and enabled:
+            self._write_enabled(enabled)
+        else:
+            self._delete_enabled()
+        self._reconfigure()
+
+    def _script_root(self) -> Path:
+        return self._scripts_dir / _EDGE_SCRIPT_ID
+
+    def _metadata_path(self) -> Path:
+        return self._script_root() / "metadata.json"
+
+    def _write_script(self) -> None:
+        metadata = self._metadata_path()
+        if metadata.exists() and "X-SteamZero-Managed" not in _read_text(metadata):
+            raise RuntimeError(f"recusando sobrescrever artefato sem marcador: {metadata}")
+        code_dir = self._script_root() / "contents" / "code"
+        fs.ensure_dir(code_dir)
+        fs.write_atomic_text(metadata, _EDGE_METADATA)
+        fs.write_atomic_text(code_dir / "main.js", _EDGE_MAIN_JS)
+
+    def _remove_script(self) -> None:
+        metadata = self._metadata_path()
+        if not metadata.exists():
+            return
+        if "X-SteamZero-Managed" not in _read_text(metadata):
+            raise RuntimeError(f"recusando remover artefato sem marcador: {metadata}")
+        fs.remove_tree(self._script_root())
+
+    def _plugins_argv(self, *suffix: str) -> tuple[str, ...]:
+        return (
+            "--file",
+            "kwinrc",
+            "--group",
+            "Plugins",
+            "--key",
+            f"{_EDGE_SCRIPT_ID}Enabled",
+            *suffix,
+        )
+
+    def _read_enabled(self) -> str | None:
+        result = self._runner(("kreadconfig6", *self._plugins_argv()), 3.0)
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip() or None
+
+    def _write_enabled(self, value: str) -> None:
+        self._runner(("kwriteconfig6", *self._plugins_argv(value)), 3.0)
+
+    def _delete_enabled(self) -> None:
+        self._runner(("kwriteconfig6", *self._plugins_argv("--delete")), 3.0)
+
+    def _reconfigure(self) -> None:
+        if self._which("qdbus6") is None:
+            return
+        self._runner(("qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.reconfigure"), 5.0)
+
+
+def logout_desktop_session(*, runner: Runner = run_command, which: Which = shutil.which) -> bool:
+    """Encerra a sessão Plasma atual via DBus (sem prompt).
+
+    Usado após registrar o alvo de sessão Game Mode: o logout devolve o
+    controle à cadeia de boot, que lê o alvo e sobe a sessão pedida.
+    """
+    if which("qdbus6") is None:
+        return False
+    result = runner(
+        ("qdbus6", "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown.logout"),
+        5.0,
+    )
+    return result.returncode == 0
+
+
 def input_method_status() -> dict[str, Any]:
     """Estado observável do input method do KWin para a UI."""
     runner = run_command
@@ -1233,6 +1553,8 @@ def build_desktop_coordinator(store: StateStore) -> ExperienceCoordinator:
         KDEDisplayEffect(),
         KDEWindowEffect(),
         KDEPanelEffect(),
+        KDEShortcutEffect(),
+        KDEEdgeGestureEffect(),
     )
     return ExperienceCoordinator(
         LinuxDesktopContext(), effects, store, LegacyWatcherConflictResolver()
