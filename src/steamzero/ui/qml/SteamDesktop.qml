@@ -27,8 +27,12 @@ ColumnLayout {
     signal safeResetRequested()
     signal conflictRequested()
     signal recoveryRequested()
-    signal keyboardRequested()
+    signal keyboardRequested(string language)
     signal systemRequested()
+    signal ashytermRequested()
+    signal panelAutoHideRequested(bool enable)
+
+    property string selectedKeyboardLayout: ""
 
     property int profileIndex: 0
     property var reviewedPlan: null
@@ -282,7 +286,7 @@ ColumnLayout {
                             : panel.redColor
                     }
                     Button {
-                        text: panel.inputMethod.state === "available" ? qsTr("Abrir teclado")
+                        text: panel.inputMethod.state === "available" ? qsTr("Alternar teclado")
                             : panel.inputMethod.state === "configured-restart-needed" ? qsTr("Reiniciar sessão")
                             : panel.inputMethod.state === "unconfigured" ? qsTr("Configurar")
                             : qsTr("Ver detalhes")
@@ -291,13 +295,48 @@ ColumnLayout {
                         Accessible.name: text
                         onClicked: {
                             if (panel.inputMethod.state === "available") {
-                                panel.keyboardRequested()
+                                panel.keyboardRequested(panel.selectedKeyboardLayout)
                             } else if (panel.inputMethod.state === "configured-restart-needed") {
                                 panel.systemRequested()
                             } else if (panel.inputMethod.state === "unconfigured") {
                                 panel.profilePlanRequested("auto")
                             }
                         }
+                    }
+                }
+                RowLayout {
+                    visible: panel.inputMethod.state === "available"
+                    Layout.fillWidth: true
+                    Label { text: qsTr("Idioma do teclado"); color: panel.mutedColor; Layout.fillWidth: true }
+                    ComboBox {
+                        id: keyboardLayoutCombo
+                        model: [qsTr("Auto (%1)").arg(panel.inputMethod.keyboardLayout || "us"), "br", "us", "es", "de", "fr", "it", "jp", "ru"]
+                        currentIndex: 0
+                        Layout.preferredWidth: 160
+                        Layout.minimumHeight: 40
+                        onActivated: panel.selectedKeyboardLayout = currentIndex === 0 ? "" : model[currentIndex]
+                    }
+                }
+                RowLayout {
+                    visible: panel.inputMethod.state === "available"
+                    Layout.fillWidth: true
+                    Label { text: qsTr("Ocultar painel ao usar teclado"); color: panel.mutedColor; Layout.fillWidth: true }
+                    Switch {
+                        id: panelAutoHideSwitch
+                        checked: panel.desktopStatus.desiredProfile === "handheld-desktop"
+                        onClicked: panel.panelAutoHideRequested(checked)
+                    }
+                }
+                RowLayout {
+                    visible: panel.inputMethod.state === "available"
+                    Layout.fillWidth: true
+                    Button {
+                        text: qsTr("Abrir Terminal Ashy")
+                        icon.name: "utilities-terminal"
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 44
+                        Accessible.name: text
+                        onClicked: panel.ashytermRequested()
                     }
                 }
                 Label {

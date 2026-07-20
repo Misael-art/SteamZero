@@ -41,7 +41,9 @@ Item {
     signal desktopSafeResetRequested()
     signal desktopConflictRequested()
     signal desktopRecoveryRequested()
-    signal desktopKeyboardRequested()
+    signal desktopKeyboardRequested(string language)
+    signal desktopAshytermRequested()
+    signal desktopPanelAutoHideRequested(bool enable)
 
     property int gameIndex: 0
     property int scopeIndex: 1
@@ -1557,8 +1559,10 @@ Item {
                 onSafeResetRequested: page.desktopSafeResetRequested()
                 onConflictRequested: page.desktopConflictRequested()
                 onRecoveryRequested: page.desktopRecoveryRequested()
-                onKeyboardRequested: page.desktopKeyboardRequested()
+                onKeyboardRequested: function(language) { page.desktopKeyboardRequested(language) }
                 onSystemRequested: page.systemRequested()
+                onAshytermRequested: page.desktopAshytermRequested()
+                onPanelAutoHideRequested: function(enable) { page.desktopPanelAutoHideRequested(enable) }
             }
 
         }
