@@ -4,11 +4,10 @@
 
 Contém apenas fatos verificáveis: identidade, precedência e o requisito
 inequívoco de que a emulação de Switch exige keyset ``prod`` e firmware
-importados pelo usuário. **Fontes de instalação (ref Flatpak/commit, sha256 de
-AppImage) NÃO são embarcadas** porque não podem ser verificadas offline sem
-inventar URL/hash/versão — o que a política proíbe. Enquanto uma fonte pinada e
-validada por um mantenedor não existir, a capacidade de instalação fica
-``unverified`` e o resolver reporta o estado honestamente (LACUNA registrada).
+importados pelo usuário. Fontes de instalação não pertencem a este catálogo:
+quando existentes, ficam no registry de adapters, pinadas por versão e hash.
+Por isso este resolver isolado mantém a capacidade de instalação como
+``unverified``; o controller só a promove após validar registry e lockfile.
 
 A disponibilidade real no host é resolvida por um ``probe`` injetável (read-only);
 sem probe, o estado é ``unverified`` com motivo — nunca uma suposição de sucesso.
@@ -75,12 +74,12 @@ SWITCH_EMULATORS: tuple[SwitchEmulator, ...] = (
         notes="Fork da mesma linhagem. Requer keys prod e firmware do próprio usuário.",
     ),
     SwitchEmulator(
-        id="ryujinx",
-        display_name="Ryujinx",
+        id="ryubing",
+        display_name="Ryubing",
         precedence=3,
         keyset="prod",
         requires_firmware=True,
-        notes="Projeto original descontinuado; sucessores herdam a base. "
+        notes="Fork comunitário ativo da linhagem Ryujinx. "
         "Requer keys prod e firmware do próprio usuário.",
     ),
 )
@@ -119,7 +118,7 @@ class SwitchEmulatorCatalog:
             entry.update(
                 {
                     "installState": install_state,
-                    # Nenhuma fonte pinada validada é embarcada nesta fase.
+                    # Este catálogo não resolve fontes; o registry é o dono desse dado.
                     "sourceState": STATE_UNVERIFIED,
                     "installable": False,
                     "reason": reason,

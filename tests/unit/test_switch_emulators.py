@@ -19,7 +19,7 @@ from steamzero.domain.switch_emulators import (
 def test_catalog_is_ordered_by_precedence() -> None:
     catalog = SwitchEmulatorCatalog()
     ids = [e.id for e in catalog.emulators()]
-    assert ids == ["eden", "citron", "ryujinx"]
+    assert ids == ["eden", "citron", "ryubing"]
     precedences = [e.precedence for e in catalog.emulators()]
     assert precedences == sorted(precedences)
 
@@ -39,7 +39,7 @@ def test_to_dict_declares_requirements() -> None:
 def test_availability_without_probe_is_unverified() -> None:
     entries = SwitchEmulatorCatalog().availability()
     assert {e["installState"] for e in entries} == {STATE_UNVERIFIED}
-    # nenhuma fonte pinada validada é embarcada: nunca instalável nesta fase
+    # o catálogo de domínio não resolve fontes; somente o registry pode promovê-las
     assert all(e["installable"] is False for e in entries)
     assert all(e["sourceState"] == STATE_UNVERIFIED for e in entries)
     assert all(e["reason"] for e in entries)
@@ -47,12 +47,12 @@ def test_availability_without_probe_is_unverified() -> None:
 
 def test_availability_with_probe_reports_real_state() -> None:
     def probe(emulator_id: str) -> bool | None:
-        return {"eden": True, "citron": False, "ryujinx": None}[emulator_id]
+        return {"eden": True, "citron": False, "ryubing": None}[emulator_id]
 
     by_id = {e["id"]: e for e in SwitchEmulatorCatalog().availability(probe=probe)}
     assert by_id["eden"]["installState"] == STATE_INSTALLED
     assert by_id["citron"]["installState"] == STATE_NOT_INSTALLED
-    assert by_id["ryujinx"]["installState"] == STATE_UNVERIFIED
+    assert by_id["ryubing"]["installState"] == STATE_UNVERIFIED
     # mesmo detectado, instalação gerenciada segue indisponível (sem fonte pinada)
     assert by_id["eden"]["installable"] is False
 
@@ -62,7 +62,7 @@ def test_preferred_returns_first_installed_by_precedence() -> None:
     assert catalog.preferred() is None  # sem probe
 
     def probe(emulator_id: str) -> bool | None:
-        return emulator_id in {"citron", "ryujinx"}
+        return emulator_id in {"citron", "ryubing"}
 
     assert catalog.preferred(probe=probe) == "citron"
 

@@ -32,7 +32,7 @@ Window {
                 "state": "ready",
                 "statusLabel": "Pronto",
                 "readiness": {"percent": 75, "title": "Quase pronto", "blockers": []},
-                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready", "iconAsset": "../assets/eden.svg"}],
                 "games": [{"id": "0100", "name": "Jogo de teste"}]
             }]
         })
@@ -62,7 +62,7 @@ Window {
                 "selectedScope": "global",
                 "selectedArea": "overview",
                 "readiness": {"percent": 80, "title": "Pronto", "blockers": []},
-                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready", "iconAsset": "../assets/eden.svg"}],
                 "games": []
             }]
         }

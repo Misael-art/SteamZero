@@ -3,7 +3,7 @@
 """Políticas de runtime Switch: dock/portátil, controles e LSFG (WI-7/WI-8).
 
 O domínio produz configuração genérica e explicável. A tradução para chaves de
-Eden/Citron/Ryujinx cabe ao template validado de cada adapter; assim não se
+Eden/Citron/Ryubing cabe ao template validado de cada adapter; assim não se
 inventam opções específicas. LSFG só recomenda auto-apply quando o jogo optou
 explicitamente, o runtime foi verificado e a amostra está estável perto de 30.
 """

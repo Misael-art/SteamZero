@@ -325,7 +325,7 @@ Item {
         }
         return [
             {"title": qsTr("Keys e firmware"), "icon": "document-encrypt", "state": "unknown", "status": qsTr("Aguardando verificação"), "detail": qsTr("Compatibilidade é conferida antes do lançamento."), "metric": "—", "targetArea": "keysFirmware"},
-            {"title": qsTr("Emuladores"), "icon": "applications-games", "state": emulators.length > 0 ? "ready" : "missing", "status": emulators.length > 0 ? qsTr("%1 detectado(s)").arg(emulators.length) : qsTr("Nenhum verificado"), "detail": qsTr("Eden, Citron e Ryujinx podem expor capacidades diferentes."), "metric": String(emulators.length)},
+            {"title": qsTr("Emuladores"), "icon": "applications-games", "state": emulators.length > 0 ? "ready" : "missing", "status": emulators.length > 0 ? qsTr("%1 detectado(s)").arg(emulators.length) : qsTr("Nenhum verificado"), "detail": qsTr("Eden, Citron e Ryubing podem expor capacidades diferentes."), "metric": String(emulators.length)},
             {"title": qsTr("Biblioteca"), "icon": "folder-games", "state": games.length > 0 ? "ready" : "empty", "status": games.length > 0 ? qsTr("%1 jogo(s)").arg(games.length) : qsTr("Nenhum jogo detectado"), "detail": qsTr("Title ID orienta firmware, update, saves e perfil."), "metric": String(games.length)},
             {"title": qsTr("Modo atual"), "icon": "computer-laptop", "state": "unknown", "status": selectedPlatform.modeLabel || qsTr("Não observado"), "detail": qsTr("Perfis portátil e dock preservam overrides por jogo."), "metric": selectedPlatform.modeShortLabel || "—"}
         ]
@@ -1096,7 +1096,7 @@ Item {
                                     Layout.fillWidth: true
                                     Label { text: qsTr("Nenhum emulador Switch foi verificado"); color: page.textColor; font.bold: true }
                                     Label {
-                                        text: qsTr("A central exibirá Eden, Citron e Ryujinx somente quando o backend confirmar disponibilidade e capacidades.")
+                                        text: qsTr("A central exibirá Eden, Citron e Ryubing somente quando o backend confirmar disponibilidade e capacidades.")
                                         color: page.mutedColor
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
@@ -1119,11 +1119,26 @@ Item {
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.margins: 12
-                                    ModernIcon {
-                                        iconName: modelData.iconKey || "applications-games"
-                                        iconColor: page.stateColor(modelData.state)
+                                    Item {
                                         Layout.preferredWidth: 24
                                         Layout.preferredHeight: 24
+                                        Image {
+                                            id: emulatorLogo
+                                            anchors.fill: parent
+                                            source: emulatorRow.modelData.iconAsset || ""
+                                            fillMode: Image.PreserveAspectFit
+                                            asynchronous: true
+                                            smooth: true
+                                            Accessible.ignored: true
+                                        }
+                                        ModernIcon {
+                                            anchors.fill: parent
+                                            visible: !emulatorRow.modelData.iconAsset
+                                                || emulatorLogo.status === Image.Error
+                                            iconName: emulatorRow.modelData.iconKey
+                                                || "applications-games"
+                                            iconColor: page.stateColor(emulatorRow.modelData.state)
+                                        }
                                     }
                                     ColumnLayout {
                                         Layout.fillWidth: true

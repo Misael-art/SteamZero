@@ -22,6 +22,21 @@ def _apply(controller: EmulationController, plan: dict[str, object]) -> dict[str
     return controller.apply_action(str(plan["planId"]), str(plan["confirmToken"]))
 
 
+def test_switch_emulators_publish_managed_ryubing_with_official_icon(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
+    by_id = {row["id"]: row for row in rows}
+
+    assert set(by_id) == {"eden", "citron", "ryubing"}
+    assert by_id["ryubing"]["sourceState"] == "verified"
+    assert by_id["ryubing"]["targetVersion"] == "1.3.3"
+    assert by_id["ryubing"]["iconAsset"] == "../assets/ryubing.png"
+    assert by_id["ryubing"]["action"]["id"] == "emulator.install:ryubing"
+
+
 def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     roms = tmp_path / "owned-roms"

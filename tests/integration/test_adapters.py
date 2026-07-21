@@ -92,6 +92,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "duckstation",
         "eden",
         "retroarch",
+        "ryubing",
     ]
     assert all(
         {"detect", "status", "install", "verify"} <= item.capabilities for item in registry.list()
@@ -108,6 +109,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "duckstation",
         "eden",
         "retroarch",
+        "ryubing",
     ]
 
 

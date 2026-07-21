@@ -30,7 +30,13 @@ StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
 Spawn = Callable[[Sequence[str]], None]
 
-_MANAGED_EMULATORS = frozenset({"eden", "citron"})
+_MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
+
+_EMULATOR_PRESENTATION = {
+    "eden": ("Eden", "../assets/eden.svg"),
+    "citron": ("Citron", "../assets/citron.svg"),
+    "ryubing": ("Ryubing", "../assets/ryubing.png"),
+}
 _TITLE_ID = re.compile(r"^[0-9A-F]{16}$")
 _FIRMWARE_VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){0,3}$")
 _KEY_LINE = re.compile(r"^\s*([a-z0-9_]+)\s*=\s*([0-9a-fA-F]{32,})\s*$")
@@ -343,7 +349,7 @@ class EmulationController:
         with self._store_factory() as store:
             store.migrate()
             engine = AdapterEngine(store, registry, self._artifacts)
-            for emulator_id, name in (("eden", "Eden"), ("citron", "Citron")):
+            for emulator_id, (name, icon_asset) in _EMULATOR_PRESENTATION.items():
                 manifest = registry.get(emulator_id)
                 status = engine.status(emulator_id)
                 source = manifest.preferred_source("appimage", allow_eol=False)
@@ -376,6 +382,7 @@ class EmulationController:
                         "id": emulator_id,
                         "displayName": name,
                         "name": name,
+                        "iconAsset": icon_asset,
                         "platform": "switch",
                         "state": "ready" if installed else "unavailable",
                         "statusLabel": "Instalado" if installed else "Não instalado",
@@ -390,31 +397,6 @@ class EmulationController:
                         "action": actions[0],
                     }
                 )
-        detected = self._which("ryujinx") is not None
-        rows.append(
-            {
-                "id": "ryujinx",
-                "displayName": "Ryujinx",
-                "name": "Ryujinx",
-                "platform": "switch",
-                "state": "ready" if detected else "unavailable",
-                "statusLabel": "Detectado externamente" if detected else "Fonte descontinuada",
-                "installState": "installed" if detected else "not-installed",
-                "sourceState": "end-of-life",
-                "installable": False,
-                "specialty": (
-                    "Instalação externa detectável; nenhuma fonte não verificada é promovida"
-                ),
-                "capabilities": [],
-                "actions": [],
-                "action": self._action(
-                    "emulator.unavailable:ryujinx",
-                    "Indisponível",
-                    enabled=False,
-                    reason="A fonte original está descontinuada.",
-                ),
-            }
-        )
         return rows
 
     def _requirements(self) -> tuple[dict[str, Any], dict[str, Any]]:

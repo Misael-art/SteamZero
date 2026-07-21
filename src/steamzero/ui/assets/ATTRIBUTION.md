@@ -5,5 +5,14 @@
   versão `26.05.05-0223` distribuída pelo BigLinux.
 - `steamzero-mark.png`: marca original gerada para o SteamZero em 2026-07-16,
   distribuída sob a mesma licença GPL-3.0 do projeto.
+- `eden.svg`: ícone oficial em
+  [`eden-emu/eden`](https://git.eden-emu.dev/eden-emu/eden), arquivo
+  `dist/dev.eden_emu.eden.svg`, distribuído com o projeto GPL-3.0-or-later.
+- `citron.svg`: ícone oficial em
+  [`citron-neo/emulator`](https://github.com/citron-neo/emulator), arquivo
+  `dist/citron.svg`, distribuído com o projeto GPL-3.0-or-later.
+- `ryubing.png`: ícone oficial em
+  [`Ryubing/Assets`](https://github.com/Ryubing/Assets), arquivo
+  `RyujinxApp_64.png`, usado exclusivamente para identificação do produto.
 
 Os nomes e logotipos de produtos permanecem marcas de seus respectivos titulares.
