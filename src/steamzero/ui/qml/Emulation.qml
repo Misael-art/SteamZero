@@ -496,7 +496,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 ComboBox {
-                    visible: page.scopeId() === "emulator"
+                    visible: page.scopeId() === "emulator" && page.width >= 1250
                     model: page.emulators
                     textRole: "name"
                     currentIndex: page.emulatorIndex
@@ -512,7 +512,7 @@ Item {
                 }
 
                 ComboBox {
-                    visible: page.scopeId() === "game"
+                    visible: page.scopeId() === "game" && page.width >= 1250
                     model: page.games
                     textRole: "name"
                     currentIndex: page.gameIndex
@@ -639,6 +639,8 @@ Item {
                             }
                             Label {
                                 text: page.contextTitle()
+                                visible: page.width >= 1250
+                                    || (page.scopeId() !== "emulator" && page.scopeId() !== "game")
                                 color: page.cyanColor
                                 font.bold: true
                                 leftPadding: 10
@@ -650,6 +652,36 @@ Item {
                                     radius: 12
                                     border.color: page.cyanColor
                                 }
+                            }
+                            ComboBox {
+                                visible: page.width < 1250 && page.scopeId() === "emulator"
+                                model: page.emulators
+                                textRole: "name"
+                                currentIndex: page.emulatorIndex
+                                enabled: page.emulators.length > 0
+                                palette.button: page.raisedColor
+                                palette.buttonText: page.textColor
+                                palette.base: page.raisedColor
+                                palette.text: page.textColor
+                                Layout.preferredWidth: 210
+                                Layout.minimumHeight: 42
+                                Accessible.name: qsTr("Selecionar emulador")
+                                onActivated: page.emulatorIndex = currentIndex
+                            }
+                            ComboBox {
+                                visible: page.width < 1250 && page.scopeId() === "game"
+                                model: page.games
+                                textRole: "name"
+                                currentIndex: page.gameIndex
+                                enabled: page.games.length > 0
+                                palette.button: page.raisedColor
+                                palette.buttonText: page.textColor
+                                palette.base: page.raisedColor
+                                palette.text: page.textColor
+                                Layout.preferredWidth: 230
+                                Layout.minimumHeight: 42
+                                Accessible.name: qsTr("Selecionar jogo")
+                                onActivated: page.gameIndex = currentIndex
                             }
                         }
                         Label {
