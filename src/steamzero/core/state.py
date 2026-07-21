@@ -487,6 +487,44 @@ class StateStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # -- keys/firmware (nunca hash completo; só hash_truncated — SR-14) ------
+    def save_firmware_key_item(self, item: dict[str, Any]) -> None:
+        cols = (
+            "id",
+            "kind",
+            "platform_id",
+            "hash_truncated",
+            "state",
+            "keyset",
+            "revision",
+            "version",
+            "relpath",
+            "last_validated",
+        )
+        row = {c: item.get(c) for c in cols}
+        placeholders = ",".join(f":{c}" for c in cols)
+        updates = ",".join(f"{c}=excluded.{c}" for c in cols if c != "id")
+        sql = (
+            f"INSERT INTO firmware_key_item ({','.join(cols)}) VALUES ({placeholders}) "  # noqa: S608
+            f"ON CONFLICT(id) DO UPDATE SET {updates}"
+        )
+        self._conn.execute(sql, row)
+
+    def list_firmware_key_items(
+        self, platform_id: str, *, kind: str | None = None
+    ) -> list[dict[str, Any]]:
+        if kind is None:
+            rows = self._conn.execute(
+                "SELECT * FROM firmware_key_item WHERE platform_id=? ORDER BY relpath",
+                (platform_id,),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM firmware_key_item WHERE platform_id=? AND kind=? ORDER BY relpath",
+                (platform_id, kind),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     # -- saves --------------------------------------------------------------
     def save_save_entry(self, entry: dict[str, Any]) -> None:
         cols = (
