@@ -7,7 +7,7 @@ import pytest
 
 from steamzero.core import fs
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.switch_content import SwitchContentManager
+from steamzero.domain.switch_content import ContentRecord, SwitchContentManager
 
 
 @pytest.fixture
@@ -122,3 +122,110 @@ def test_import_and_migration_reject_symlink_and_traversal(
         manager.plan_import(linked, kind="update")
     with pytest.raises(SteamZeroError):
         SwitchContentManager.plan_migrate_saves(root, root / "target", {"../real.nsp": "x"})
+
+
+def _import(
+    manager: SwitchContentManager,
+    source: Path,
+    *,
+    kind: str,
+    title_id: str,
+    version: str,
+) -> ContentRecord:
+    decision = manager.plan_import(
+        source, kind=kind, title_id=title_id, version=version
+    )
+    assert decision.plan is not None
+    manager.apply_import(decision.plan.plan_id, decision.plan.confirm_token)
+    return decision.record
+
+
+def test_index_survives_restart_and_update_activation_is_exclusive(
+    env: tuple[SwitchContentManager, Path],
+) -> None:
+    manager, root = env
+    first_file = root / "update-1.nsp"
+    second_file = root / "update-2.nsp"
+    first_file.write_bytes(b"update-one")
+    second_file.write_bytes(b"update-two")
+    title_id = "0100000000010000"
+    first = _import(
+        manager, first_file, kind="update", title_id=title_id, version="1.1.0"
+    )
+    second = _import(
+        manager, second_file, kind="update", title_id=title_id, version="1.2.0"
+    )
+
+    restarted = SwitchContentManager(root / "shared")
+    records = restarted.list_records(title_id=title_id, kind="update")
+    assert [record.version for record in records] == ["1.1.0", "1.2.0"]
+    plan = restarted.plan_set_active(first.record_key, active=True)
+    restarted.apply_state(plan.plan_id, plan.confirm_token)
+    plan = restarted.plan_set_active(second.record_key, active=True)
+    restarted.apply_state(plan.plan_id, plan.confirm_token)
+
+    states = {record.version: record.state for record in restarted.list_records(kind="update")}
+    assert states == {"1.1.0": "inactive", "1.2.0": "active"}
+
+
+def test_dlc_can_be_enabled_and_disabled_independently(
+    env: tuple[SwitchContentManager, Path],
+) -> None:
+    manager, root = env
+    dlc_file = root / "dlc.nsp"
+    dlc_file.write_bytes(b"dlc")
+    record = _import(
+        manager,
+        dlc_file,
+        kind="dlc",
+        title_id="0100000000010000",
+        version="pack-a",
+    )
+
+    enable = manager.plan_set_active(record.record_key, active=True)
+    manager.apply_state(enable.plan_id, enable.confirm_token)
+    assert manager.list_records(kind="dlc")[0].state == "active"
+    disable = manager.plan_set_active(record.record_key, active=False)
+    manager.apply_state(disable.plan_id, disable.confirm_token)
+    assert manager.list_records(kind="dlc")[0].state == "inactive"
+
+
+def test_index_recovery_marks_missing_blob_unavailable(
+    env: tuple[SwitchContentManager, Path],
+) -> None:
+    manager, root = env
+    source = root / "update.nsp"
+    source.write_bytes(b"update")
+    record = _import(
+        manager,
+        source,
+        kind="update",
+        title_id="0100000000010000",
+        version="1.0.0",
+    )
+    record.blob.unlink()
+
+    report = manager.integrity_report()
+    assert report["state"] == "attention"
+    plan = manager.plan_recover_index()
+    manager.apply_recovery(plan.plan_id, plan.confirm_token)
+
+    assert manager.list_records(kind="update")[0].state == "unavailable"
+
+
+@pytest.mark.parametrize("fingerprint", [".", ".."])
+def test_shader_fingerprint_rejects_dot_entries(
+    env: tuple[SwitchContentManager, Path], fingerprint: str
+) -> None:
+    _manager, root = env
+    cache = root / "cache"
+    cache.mkdir()
+    (cache / "shader.bin").write_bytes(b"shader")
+
+    with pytest.raises(SteamZeroError):
+        SwitchContentManager.plan_invalidate_shader_cache(
+            cache,
+            ["shader.bin"],
+            title_id="0100000000010000",
+            compatibility_fingerprint=fingerprint,
+        )

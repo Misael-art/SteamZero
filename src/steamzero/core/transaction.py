@@ -378,6 +378,7 @@ def plan_copy_files(
     kind: str = "content.copy",
     ttl_s: int = _DEFAULT_TTL_S,
     requirements_extra: dict[str, Any] | None = None,
+    writes: dict[Path, bytes] | None = None,
 ) -> Plan:
     """Planeja cópias verificadas de arquivos regulares para uma raiz confinada.
 
@@ -422,6 +423,23 @@ def plan_copy_files(
             )
         )
         total_size += size
+
+    for requested_target, content in sorted((writes or {}).items(), key=lambda item: str(item[0])):
+        target = fs.resolve_within(root_r, requested_target)
+        if target in targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
+        targets.add(target)
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(target),
+                new_hash=fs.hash_bytes(content),
+                new_size=len(content),
+                new_content_b64=base64.b64encode(content).decode("ascii"),
+            )
+        )
+        preconditions.append(Precondition(target=str(target), fingerprint=_fingerprint(target)))
+        total_size += len(content)
 
     extra = requirements_extra or {}
     if "spaceBytes" in extra:
