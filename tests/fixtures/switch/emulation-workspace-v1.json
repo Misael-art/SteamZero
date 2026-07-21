@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "truthState": "unverified",
+  "contextLabel": "Nintendo Switch · Global",
+  "platforms": [
+    {
+      "id": "switch",
+      "name": "Nintendo Switch",
+      "shortName": "Switch",
+      "iconKey": "switch",
+      "state": "unverified",
+      "statusLabel": "Verificação pendente",
+      "readiness": {
+        "percent": 35,
+        "title": "Verificação pendente",
+        "detail": "Valide keys e firmware para concluir o diagnóstico de compatibilidade.",
+        "blockers": [
+          "Valide keys e firmware para concluir o diagnóstico de compatibilidade.",
+          "Nenhum emulador Switch foi confirmado como instalado."
+        ]
+      },
+      "scopes": [
+        {"id": "global", "label": "Global", "iconKey": "globe", "enabled": true, "reason": null},
+        {"id": "emulator", "label": "Emulador", "iconKey": "emulator", "enabled": true, "reason": null},
+        {"id": "game", "label": "Por jogo", "iconKey": "gamepad", "enabled": true, "reason": null},
+        {"id": "handheld", "label": "Portátil", "iconKey": "handheld", "enabled": true, "reason": null},
+        {"id": "dock", "label": "Dock", "iconKey": "dock", "enabled": true, "reason": null}
+      ],
+      "selectedScope": "global",
+      "areas": [
+        {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "state": "unverified", "statusLabel": "Resumo do ambiente", "badge": null},
+        {"id": "keysFirmware", "label": "Keys & firmware", "iconKey": "key", "state": "unverified", "statusLabel": "Não verificado", "badge": null},
+        {"id": "updatesDlc", "label": "Updates & DLC", "iconKey": "download", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "graphicsPerformance", "label": "Gráficos & desempenho", "iconKey": "speedometer", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "controls", "label": "Controles", "iconKey": "gamepad", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "saves", "label": "Saves", "iconKey": "save", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "shaderCache", "label": "Shader cache", "iconKey": "sparkles", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "media", "label": "Mídia", "iconKey": "image", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "storage", "label": "Armazenamento", "iconKey": "storage", "state": "planned", "statusLabel": "Planejado", "badge": null},
+        {"id": "advanced", "label": "Avançado", "iconKey": "tune", "state": "attention", "statusLabel": "Uso especializado", "badge": null}
+      ],
+      "selectedArea": "overview",
+      "emulators": [
+        {
+          "id": "eden",
+          "displayName": "Eden",
+          "name": "Eden",
+          "platform": "switch",
+          "state": "unverified",
+          "statusLabel": "Não verificado",
+          "installState": "unverified",
+          "sourceState": "unverified",
+          "installable": false,
+          "capabilities": []
+        }
+      ],
+      "games": [],
+      "requirements": {
+        "keys": {
+          "kind": "keys",
+          "status": "unverified",
+          "required": null,
+          "installed": null,
+          "detail": "Keys ainda não verificadas neste contexto.",
+          "blocksPlay": false
+        },
+        "firmware": {
+          "kind": "firmware",
+          "status": "unverified",
+          "required": null,
+          "installed": null,
+          "detail": "Firmware ainda não verificado neste contexto.",
+          "blocksPlay": false
+        }
+      },
+      "areaData": {
+        "overview": {"cards": [], "primaryAction": null},
+        "keysFirmware": {"cards": [], "primaryAction": null},
+        "updatesDlc": {"cards": [], "primaryAction": null},
+        "graphicsPerformance": {"cards": [], "primaryAction": null},
+        "controls": {"cards": [], "primaryAction": null},
+        "saves": {"cards": [], "primaryAction": null},
+        "shaderCache": {"cards": [], "primaryAction": null},
+        "media": {"cards": [], "primaryAction": null},
+        "storage": {"cards": [], "primaryAction": null},
+        "advanced": {"cards": [], "primaryAction": null}
+      }
+    }
+  ]
+}

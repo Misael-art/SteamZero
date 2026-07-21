@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "emulation-workspace-v1.schema.json",
+  "title": "SteamZero emulation workspace read model v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "truthState", "contextLabel", "platforms"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "truthState": {"$ref": "#/$defs/state"},
+    "contextLabel": {"type": "string", "minLength": 1},
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/platform"}
+    }
+  },
+  "$defs": {
+    "state": {
+      "enum": ["ready", "attention", "blocked", "unavailable", "unverified", "planned"]
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "enabled", "reason", "requiresConfirmation"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-zA-Z0-9.:-]*$"},
+        "label": {"type": "string", "minLength": 1},
+        "enabled": {"type": "boolean"},
+        "reason": {"type": ["string", "null"]},
+        "requiresConfirmation": {"type": "boolean"}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["percent", "title", "detail", "blockers"],
+      "properties": {
+        "percent": {"type": "integer", "minimum": 0, "maximum": 100},
+        "title": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1},
+        "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "iconKey", "enabled", "reason"],
+      "properties": {
+        "id": {"enum": ["global", "emulator", "game", "handheld", "dock"]},
+        "label": {"type": "string", "minLength": 1},
+        "iconKey": {"type": "string", "minLength": 1},
+        "enabled": {"type": "boolean"},
+        "reason": {"type": ["string", "null"]}
+      }
+    },
+    "area": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "iconKey", "state", "statusLabel", "badge"],
+      "properties": {
+        "id": {
+          "enum": [
+            "overview", "keysFirmware", "updatesDlc", "graphicsPerformance",
+            "controls", "saves", "shaderCache", "media", "storage", "advanced"
+          ]
+        },
+        "label": {"type": "string", "minLength": 1},
+        "iconKey": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "statusLabel": {"type": "string", "minLength": 1},
+        "badge": {"type": ["string", "null"]}
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "required", "installed", "detail", "blocksPlay"],
+      "properties": {
+        "kind": {"enum": ["keys", "firmware"]},
+        "status": {"enum": ["ok", "outdated", "missing", "not-required", "unverified"]},
+        "required": {"type": ["string", "null"]},
+        "installed": {"type": ["string", "null"]},
+        "detail": {"type": "string", "minLength": 1},
+        "blocksPlay": {"type": "boolean"}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "state", "detail"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-zA-Z0-9.-]*$"},
+        "label": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "detail": {"type": "string", "minLength": 1}
+      }
+    },
+    "emulator": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id", "displayName", "name", "platform", "state", "statusLabel",
+        "installState", "sourceState", "installable", "capabilities"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "displayName": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "statusLabel": {"type": "string", "minLength": 1},
+        "installState": {"enum": ["installed", "not-installed", "unverified"]},
+        "sourceState": {"enum": ["verified", "unverified", "end-of-life"]},
+        "installable": {"type": "boolean"},
+        "capabilities": {"type": "array", "items": {"$ref": "#/$defs/capability"}}
+      }
+    },
+    "game": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "titleId", "name", "state", "statusLabel"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "titleId": {"type": "string", "pattern": "^[0-9A-F]{16}$"},
+        "name": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "statusLabel": {"type": "string", "minLength": 1},
+        "emulatorId": {"type": ["string", "null"]},
+        "requiresKeys": {"type": ["object", "null"]},
+        "requiresFirmware": {"type": ["object", "null"]}
+      }
+    },
+    "card": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title", "detail", "state", "statusLabel"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "statusLabel": {"type": "string", "minLength": 1},
+        "action": {"$ref": "#/$defs/action"}
+      }
+    },
+    "areaData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cards", "primaryAction"],
+      "properties": {
+        "cards": {"type": "array", "items": {"$ref": "#/$defs/card"}},
+        "primaryAction": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]}
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "shortName", "iconKey", "state", "statusLabel", "readiness",
+        "scopes", "selectedScope", "areas", "selectedArea", "emulators", "games",
+        "requirements", "areaData"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "name": {"type": "string", "minLength": 1},
+        "shortName": {"type": "string", "minLength": 1},
+        "iconKey": {"type": "string", "minLength": 1},
+        "state": {"$ref": "#/$defs/state"},
+        "statusLabel": {"type": "string", "minLength": 1},
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "scopes": {"type": "array", "minItems": 5, "items": {"$ref": "#/$defs/scope"}},
+        "selectedScope": {"enum": ["global", "emulator", "game", "handheld", "dock"]},
+        "areas": {"type": "array", "minItems": 10, "items": {"$ref": "#/$defs/area"}},
+        "selectedArea": {
+          "enum": [
+            "overview", "keysFirmware", "updatesDlc", "graphicsPerformance",
+            "controls", "saves", "shaderCache", "media", "storage", "advanced"
+          ]
+        },
+        "emulators": {"type": "array", "items": {"$ref": "#/$defs/emulator"}},
+        "games": {"type": "array", "items": {"$ref": "#/$defs/game"}},
+        "requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["keys", "firmware"],
+          "properties": {
+            "keys": {"$ref": "#/$defs/requirement"},
+            "firmware": {"$ref": "#/$defs/requirement"}
+          }
+        },
+        "areaData": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/areaData"}
+        }
+      }
+    }
+  }
+}
