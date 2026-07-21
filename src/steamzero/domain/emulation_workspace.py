@@ -120,7 +120,11 @@ def _requirement_payload(
         candidate = dict(value)
         expected = {"kind", "status", "required", "installed", "detail", "blocksPlay"}
         if expected.issubset(candidate):
-            return {key: candidate[key] for key in expected}
+            normalized = {key: candidate[key] for key in expected}
+            # A posição no contrato é autoritativa; nunca aceite firmware
+            # rotulado como keys (ou vice-versa) por um produtor defeituoso.
+            normalized["kind"] = kind
+            return normalized
     label = "Keys" if kind == "keys" else "Firmware"
     return {
         "kind": kind,
@@ -294,7 +298,13 @@ def _area_data(
             str(keys["detail"]),
             _requirement_state(str(keys["status"])),
             _requirement_label(str(keys["status"])),
-            action=_action("keys.import", "Importar keys", enabled=True, confirmation=True),
+            action=_action(
+                "keys.import",
+                "Importar keys",
+                enabled=False,
+                reason="Importação pela interface ainda não está conectada ao serviço.",
+                confirmation=True,
+            ),
             installed=keys["installed"],
             required=keys["required"],
         ),
@@ -304,7 +314,13 @@ def _area_data(
             str(firmware["detail"]),
             _requirement_state(str(firmware["status"])),
             _requirement_label(str(firmware["status"])),
-            action=_action("firmware.import", "Importar firmware", enabled=True, confirmation=True),
+            action=_action(
+                "firmware.import",
+                "Importar firmware",
+                enabled=False,
+                reason="Importação pela interface ainda não está conectada ao serviço.",
+                confirmation=True,
+            ),
             installed=firmware["installed"],
             required=firmware["required"],
         ),
@@ -335,11 +351,21 @@ def _area_data(
                     count=len(games),
                 ),
             ],
-            "primaryAction": _action("platform.scan", "Verificar ambiente", enabled=True),
+            "primaryAction": _action(
+                "platform.scan",
+                "Verificar ambiente",
+                enabled=False,
+                reason="Verificação pela interface ainda não está conectada ao serviço.",
+            ),
         },
         "keysFirmware": {
             "cards": requirement_cards,
-            "primaryAction": _action("requirements.verify", "Validar requisitos", enabled=True),
+            "primaryAction": _action(
+                "requirements.verify",
+                "Validar requisitos",
+                enabled=False,
+                reason="Validação pela interface ainda não está conectada ao serviço.",
+            ),
         },
     }
     labels = {

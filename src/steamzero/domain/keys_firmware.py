@@ -54,7 +54,7 @@ class FirmwareDatabase:
 @dataclass(frozen=True)
 class ImportResult:
     kind: str  # key | firmware
-    status: str  # imported
+    status: str  # imported | revalidated
     revision: int | None
     version: str | None
     hash_truncated: str
@@ -128,10 +128,18 @@ class KeysFirmwareStore:
             )
         revision = int(entry["keyRevision"])
         relpath = f"{self._keys_db.platform}/{self._keys_db.keyset}.keys"
+        existing_id = self._existing_item_id(
+            self._keys_db.platform,
+            kind="key",
+            relpath=relpath,
+            hash_truncated=trunc,
+            revision=revision,
+        )
+        record_id = existing_id or ids.new_ulid()
         self._materialize(provided, sha, relpath, paths.keys_dir())
         self._store.save_firmware_key_item(
             {
-                "id": ids.new_ulid(),
+                "id": record_id,
                 "kind": "key",
                 "platform_id": self._keys_db.platform,
                 "hash_truncated": trunc,
@@ -143,8 +151,16 @@ class KeysFirmwareStore:
                 "last_validated": _now_iso(),
             }
         )
+        status = "revalidated" if existing_id else "imported"
+        self._audit_import(
+            kind="key",
+            platform=self._keys_db.platform,
+            item_id=record_id,
+            status=status,
+            hash_truncated=trunc,
+        )
         self._log.info("keys.import.ok", platform=self._keys_db.platform, hashTruncated=trunc)
-        return ImportResult("key", "imported", revision, None, trunc)
+        return ImportResult("key", status, revision, None, trunc)
 
     def import_firmware(self, provided: Path) -> ImportResult:
         if self._firmware_db is None:
@@ -164,10 +180,18 @@ class KeysFirmwareStore:
             )
         version = str(entry["version"])
         relpath = f"{self._firmware_db.platform}/{version}"
+        existing_id = self._existing_item_id(
+            self._firmware_db.platform,
+            kind="firmware",
+            relpath=relpath,
+            hash_truncated=trunc,
+            version=version,
+        )
+        record_id = existing_id or ids.new_ulid()
         self._materialize(provided, sha, relpath, paths.firmware_dir())
         self._store.save_firmware_key_item(
             {
-                "id": ids.new_ulid(),
+                "id": record_id,
                 "kind": "firmware",
                 "platform_id": self._firmware_db.platform,
                 "hash_truncated": trunc,
@@ -179,10 +203,59 @@ class KeysFirmwareStore:
                 "last_validated": _now_iso(),
             }
         )
+        status = "revalidated" if existing_id else "imported"
+        self._audit_import(
+            kind="firmware",
+            platform=self._firmware_db.platform,
+            item_id=record_id,
+            status=status,
+            hash_truncated=trunc,
+        )
         self._log.info(
             "firmware.import.ok", platform=self._firmware_db.platform, hashTruncated=trunc
         )
-        return ImportResult("firmware", "imported", None, version, trunc)
+        return ImportResult("firmware", status, None, version, trunc)
+
+    def _existing_item_id(
+        self,
+        platform: str,
+        *,
+        kind: str,
+        relpath: str,
+        hash_truncated: str,
+        revision: int | None = None,
+        version: str | None = None,
+    ) -> str | None:
+        """Retorna a identidade estável de um conteúdo já materializado."""
+        for item in self._store.list_firmware_key_items(platform, kind=kind):
+            if (
+                item.get("relpath") == relpath
+                and item.get("hash_truncated") == hash_truncated
+                and item.get("revision") == revision
+                and item.get("version") == version
+            ):
+                return str(item["id"])
+        return None
+
+    def _audit_import(
+        self,
+        *,
+        kind: str,
+        platform: str,
+        item_id: str,
+        status: str,
+        hash_truncated: str,
+    ) -> None:
+        # Um evento por tentativa bem-sucedida, inclusive revalidação idempotente.
+        self._store.append_event(
+            f"{kind}.import.{status}",
+            entity=f"firmware-key:{item_id}",
+            payload={
+                "platform": platform,
+                "status": status,
+                "hashTruncated": hash_truncated,
+            },
+        )
 
     def _materialize(self, provided: Path, sha: str, relpath: str, root: Path) -> None:
         dest = fs.resolve_within(root, root / relpath)
@@ -218,6 +291,14 @@ class KeysFirmwareStore:
     ) -> RequirementCheck:
         installed = self.installed_key_revision(platform)
         req = None if minimum_revision is None else f"rev{minimum_revision}"
+        if minimum_revision is None:
+            return RequirementCheck(
+                "not-required",
+                "keys",
+                None,
+                None if installed is None else f"rev{installed}",
+                "O jogo não declara requisito mínimo de keys.",
+            )
         if installed is None:
             return RequirementCheck(
                 "missing", "keys", req, None, "Nenhum keyset importado para esta plataforma."
@@ -237,6 +318,14 @@ class KeysFirmwareStore:
         self, platform: str, *, minimum_version: str | None
     ) -> RequirementCheck:
         installed = self.installed_firmware_version(platform)
+        if minimum_version is None:
+            return RequirementCheck(
+                "not-required",
+                "firmware",
+                None,
+                installed,
+                "O jogo não declara requisito mínimo de firmware.",
+            )
         if installed is None:
             return RequirementCheck(
                 "missing", "firmware", minimum_version, None, "Nenhum firmware importado."

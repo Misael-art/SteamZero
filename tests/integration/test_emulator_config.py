@@ -71,6 +71,36 @@ def test_schema_rejects_bad_title_id() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("section", "key", "value"),
+    [
+        ("Renderer\n[Injected]", "safe", "value"),
+        ("Renderer", "vsync\nowned", "value"),
+        ("Renderer", "safe", "value\nowned=true"),
+        ("Renderer]", "safe", "value"),
+        ("Renderer", "safe=owned", "value"),
+        ("Renderer", "safe", "value=owned"),
+        ("Renderer", "safe", "value]owned"),
+    ],
+)
+def test_schema_and_renderer_reject_ini_injection(section: str, key: str, value: str) -> None:
+    payload = {
+        "schemaVersion": 1,
+        "platform": "switch",
+        "entries": [
+            {
+                "titleId": "0100000000010000",
+                "settings": {section: {key: value}},
+            }
+        ],
+    }
+    with pytest.raises(ValidationError):
+        contracts.validate(payload, "known-good-profile-v1.schema.json")
+    with pytest.raises(SteamZeroError) as exc:
+        render_ini({section: {key: value}})
+    assert exc.value.code == "E-API-SCHEMA"
+
+
 def test_lookup_prefers_emulator_specific_over_generic() -> None:
     catalog = _catalog()
     generic = catalog.lookup("0100000000010000")
@@ -137,3 +167,15 @@ def test_plan_apply_without_profile_is_degraded(root: Path) -> None:
     with pytest.raises(SteamZeroError) as exc:
         cfg.plan_apply("0100000000010000", {"Core": {}}, config_path=root / "x.ini", root=root)
     assert exc.value.code == "E-COMPONENT-DEGRADED"
+
+
+def test_plan_apply_rejects_config_path_outside_root(root: Path, tmp_path: Path) -> None:
+    cfg = EmulatorConfigurator(_catalog())
+    root.mkdir()
+    with pytest.raises((SteamZeroError, ValueError)):
+        cfg.plan_apply(
+            "0100000000010000",
+            {"Core": {"cpu": "auto"}},
+            config_path=tmp_path / "outside.ini",
+            root=root,
+        )

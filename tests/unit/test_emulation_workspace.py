@@ -80,3 +80,25 @@ def test_invalid_selection_falls_back_to_safe_defaults() -> None:
     platform = payload["platforms"][0]
     assert platform["selectedScope"] == "global"
     assert platform["selectedArea"] == "overview"
+
+
+def test_requirement_kind_is_normalized_and_unwired_actions_are_disabled() -> None:
+    payload = build_switch_workspace(
+        keys={
+            "kind": "firmware",
+            "status": "ok",
+            "required": "rev17",
+            "installed": "rev18",
+            "detail": "Compatível.",
+            "blocksPlay": False,
+        }
+    )
+
+    platform = payload["platforms"][0]
+    assert platform["requirements"]["keys"]["kind"] == "keys"
+    actions = [
+        card["action"]
+        for card in platform["areaData"]["keysFirmware"]["cards"]
+        if "action" in card
+    ]
+    assert actions and all(not action["enabled"] and action["reason"] for action in actions)

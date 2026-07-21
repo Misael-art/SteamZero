@@ -21,11 +21,31 @@
           "settings": {
             "type": "object",
             "minProperties": 1,
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^[^\\[\\]=\\r\\n\\u0000]+$"
+            },
             "additionalProperties": {
               "type": "object",
               "minProperties": 1,
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "pattern": "^[^\\[\\]=\\r\\n\\u0000]+$"
+              },
               "additionalProperties": {
-                "type": ["string", "number", "boolean"]
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "pattern": "^[^\\[\\]=\\r\\n\\u0000]*$"
+                  },
+                  {"type": "number"},
+                  {"type": "boolean"}
+                ]
               }
             }
           }

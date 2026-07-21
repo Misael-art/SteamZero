@@ -120,6 +120,27 @@ def test_import_firmware_matches_hash_and_derives_version(
     assert ks.installed_firmware_version("switch") == "18.0.0"
 
 
+def test_reimport_is_idempotent_and_keeps_audit_events(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
+    provided = _write(tmp_path, "prod.keys", _KEYS_18)
+
+    first = ks.import_keys(provided)
+    second = ks.import_keys(provided)
+
+    assert first.status == "imported"
+    assert second.status == "revalidated"
+    assert len(store.list_firmware_key_items("switch", kind="key")) == 1
+    import_events = [
+        event for event in store.events_since(0) if event["kind"].startswith("key.import")
+    ]
+    assert [event["kind"] for event in import_events] == [
+        "key.import.imported",
+        "key.import.revalidated",
+    ]
+
+
 def test_import_unknown_keys_rejected_without_persistence(
     store: state.StateStore, tmp_path: Path
 ) -> None:
@@ -217,6 +238,16 @@ def test_check_requirement_to_dict_is_deterministic(store: state.StateStore) -> 
     ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
     payload = ks.check_key_requirement("switch", minimum_revision=None).to_dict()
     assert set(payload) == {"status", "kind", "required", "installed", "detail", "blocksPlay"}
+
+
+def test_absent_minimum_requirement_is_not_required(store: state.StateStore) -> None:
+    ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
+
+    keys = ks.check_key_requirement("switch", minimum_revision=None)
+    firmware = ks.check_firmware_requirement("switch", minimum_version=None)
+
+    assert keys.status == "not-required" and not keys.blocks_play
+    assert firmware.status == "not-required" and not firmware.blocks_play
 
 
 def test_parse_firmware_version_rejects_bad_input() -> None:

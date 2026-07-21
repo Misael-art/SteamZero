@@ -15,6 +15,7 @@ domínio permanece agnóstico e testável.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,7 @@ def merge_settings(current: Settings, desired: Settings) -> Settings:
 
 def render_ini(settings: Settings) -> bytes:
     """Serializa settings em INI determinístico (seções e chaves ordenadas)."""
+    _validate_ini_settings(settings)
     lines: list[str] = []
     for section in sorted(settings):
         lines.append(f"[{section}]")
@@ -117,6 +119,41 @@ def _render_value(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     return str(value)
+
+
+def _validate_ini_settings(settings: Settings) -> None:
+    """Recusa nomes/valores que alterariam a estrutura do documento INI."""
+    for section, values in settings.items():
+        _validate_ini_token(section, kind="seção")
+        if not isinstance(values, dict) or not values:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"seção INI vazia: {section!r}")
+        for key, value in values.items():
+            _validate_ini_token(key, kind="chave")
+            if isinstance(value, str):
+                if len(value) > 4096 or any(char in value for char in "[]\r\n\x00="):
+                    raise SteamZeroError(
+                        "E-API-SCHEMA", detail=f"valor INI inseguro para {section}.{key}"
+                    )
+            elif isinstance(value, bool | int):
+                continue
+            elif isinstance(value, float):
+                if not math.isfinite(value):
+                    raise SteamZeroError(
+                        "E-API-SCHEMA", detail=f"número INI inválido para {section}.{key}"
+                    )
+            else:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail=f"tipo INI inválido para {section}.{key}"
+                )
+
+
+def _validate_ini_token(value: Any, *, kind: str) -> None:
+    if (
+        not isinstance(value, str)
+        or not 1 <= len(value) <= 120
+        or any(char in value for char in "[]\r\n\x00=")
+    ):
+        raise SteamZeroError("E-API-SCHEMA", detail=f"{kind} INI insegura: {value!r}")
 
 
 class EmulatorConfigurator:
