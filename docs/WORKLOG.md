@@ -1896,3 +1896,33 @@ coordenada de backend/contrato, fora do escopo desta frente de UI.
 **Host/release:** nenhuma release, instalação, rollback, ação privilegiada ou
 alteração do host foi executada nesta sessão. A release ativa permaneceu a já
 publicada `0.1.0a33-483b962a41db`.
+
+## 2026-07-21 — Sessão 47: biblioteca e jornada Por Jogo
+
+**Branch:** `codex/jornada-por-jogo`, criada da branch própria de UI no commit
+`a72e64b`. Os itens não rastreados já existentes permaneceram intocados; a
+mudança de backend ficou restrita ao scanner solicitado, sem alterar adapters,
+contratos ou serviços de boot/sessão.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Scanner deixa de promover updates e DLCs NSP/NSZ à biblioteca de jogos base, usando Title ID e marcadores explícitos sem descartar conteúdo ambíguo | `177e92f` | `test_scanner_excludes_updates_and_dlc_from_base_game_library`, testes de conteúdo sem Title ID, NRO e suíte completa |
+| Dropdown Por Jogo substituído por biblioteca densa com busca por nome/Title ID, ordenação reversível em cinco campos e seleção por linha | `8631be6` | `testGameLibraryJourney`, `qmllint`, harnesses Qt6 e render offscreen em 1320×760 |
+| Linhas exibem capa segura/fallback Switch, identidade, compatibilidade por emulador, complementos, tamanho/formato, requisitos e ações sem inventar dados ausentes | `8631be6` | harness QML com dados completos e incompletos; render visual responsivo |
+| Painel lateral retrátil reúne performance, conteúdo/mods, saves/cache e ferramentas, encaminhando somente ações já publicadas | `8631be6` | harnesses `check_emulation.qml` e `check_main_emulation.qml` |
+
+**Gates finais:** 837 testes passaram; cobertura 85,06%; Ruff lint/format,
+mypy em 88 arquivos, independence, boundaries, `git diff --check`, `qmllint` e
+os dois harnesses QML offscreen ficaram verdes.
+
+**Degradação honesta:** o backend ainda não publica compatibilidade por jogo,
+região/idiomas, inventário consolidado de complementos, emulador padrão por
+título nem um plano de lançamento do jogo. A UI mostra `—`/“Não avaliado” e
+mantém Play/seletor desabilitados nesses casos, em vez de inferir ou persistir
+estado que Steam/Game Mode ignoraria. Mods também permanecem indisponíveis até
+existir serviço transacional próprio.
+
+**Host/release:** nenhuma release, instalação, rollback, ação privilegiada ou
+alteração do host foi executada nesta sessão. A release ativa permaneceu
+`0.1.0a33-483b962a41db`; a biblioteca instalada só será reclassificada depois
+de uma nova release e uma nova varredura autorizadas pelo operador.
