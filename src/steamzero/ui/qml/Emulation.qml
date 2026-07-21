@@ -365,7 +365,7 @@ Item {
         } else if (action.id === "keys.import" || action.id === "firmware.import") {
             sourceChoiceDialog.open()
         } else if (["content.update.import", "content.dlc.import",
-                    "content.save.import", "content.shader.import"].indexOf(action.id) >= 0) {
+                    "content.save.import", "content.shader.import", "nsz.convert"].indexOf(action.id) >= 0) {
             sourceFileDialog.open()
         } else {
             page.actionRequested(action)
@@ -390,6 +390,13 @@ Item {
         page.actionRequested(request)
         pendingAction = null
         pendingPath = ""
+    }
+
+    function localPath(url) {
+        const value = String(url || "")
+        if (!value.startsWith("file://"))
+            return ""
+        return decodeURIComponent(value.replace(/^file:\/\/(?:localhost)?/, ""))
     }
 
     Dialog {
@@ -446,7 +453,7 @@ Item {
                 ? [qsTr("Firmware e arquivos compactados (*.nca *.zip)"), qsTr("Todos os arquivos (*)")]
                 : [qsTr("Conteúdo Switch (*.nsp *.xci *.nsz *.zip)"), qsTr("Todos os arquivos (*)")]
         onAccepted: {
-            pendingPath = selectedFile.toLocalFile()
+            pendingPath = page.localPath(selectedFile)
             if (pendingAction && (pendingAction.id === "firmware.import"
                     || pendingAction.id === "content.update.import"))
                 versionDialog.open()
@@ -459,7 +466,7 @@ Item {
         id: sourceFolderDialog
         title: qsTr("Selecionar pasta local")
         onAccepted: {
-            pendingPath = selectedFolder.toLocalFile()
+            pendingPath = page.localPath(selectedFolder)
             if (pendingAction && pendingAction.id === "firmware.import")
                 versionDialog.open()
             else

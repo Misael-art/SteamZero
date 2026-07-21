@@ -30,7 +30,7 @@ import json
 import os
 import secrets
 import signal
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -372,7 +372,7 @@ def plan_move_files(
 
 
 def plan_copy_files(
-    copies: dict[Path, Path],
+    copies: Mapping[Path, Path] | Sequence[tuple[Path, Path]],
     *,
     root: Path,
     kind: str = "content.copy",
@@ -391,7 +391,8 @@ def plan_copy_files(
     preconditions: list[Precondition] = []
     targets: set[Path] = set()
     total_size = 0
-    for requested_source, requested_target in copies.items():
+    copy_items = copies.items() if isinstance(copies, Mapping) else copies
+    for requested_source, requested_target in copy_items:
         if requested_source.is_symlink():
             raise SteamZeroError("E-TX-STALE-PLAN", detail="origem de cópia é symlink")
         source = Path(os.path.realpath(requested_source))

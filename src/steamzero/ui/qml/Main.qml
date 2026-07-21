@@ -489,7 +489,7 @@ ApplicationWindow {
             })
             return
         }
-        if (["library.root.add", "keys.import", "firmware.import",
+        if (["library.root.add", "keys.import", "firmware.import", "nsz.install", "nsz.convert",
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover"].indexOf(action.id) >= 0
                 || action.id.indexOf("content.state:") === 0) {

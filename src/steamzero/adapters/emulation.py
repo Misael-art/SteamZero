@@ -11,11 +11,19 @@ import re
 import shutil
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.converters import (
+    NszConverter,
+    NszToolManager,
+    SwitchRomConversionService,
+    ToolRegistry,
+    nsz_tool_manifest,
+)
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.api import contracts
@@ -83,6 +91,7 @@ class EmulationController:
         self._artifacts = artifacts or HttpsArtifactPort()
         self._which = which
         self._spawn = spawn
+        self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
@@ -322,13 +331,29 @@ class EmulationController:
             plan = self._content.plan_set_active(parts[1], active=parts[2] == "on")
         elif action == "storage.recover":
             plan = self._content.plan_recover_index()
+        elif action == "nsz.install":
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="emulation.nsz-install"
+            )
+            self._pending[plan.plan_id] = _PendingMutation("nsz", {})
+        elif action == "nsz.convert":
+            source = Path(self._required_string(payload, "path"))
+            source_format = source.suffix.lstrip(".").casefold()
+            target_format = "nsp" if source_format == "nsz" else "nsz"
+            plan = self._nsz_conversion().plan_convert(source, target_format)
         else:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de emulação não permitida")
         return self._plan_view(plan, action)
 
     def apply_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         plan = transaction.load_plan(plan_id)
-        if plan.kind == "switch-content.import":
+        pending = self._pending.get(plan_id)
+        if pending is not None and pending.kind == "nsz":
+            result = transaction.apply(plan_id, confirm_token)
+            self._nsz.install()
+        elif plan.kind == "library.convert":
+            result = SwitchRomConversionService.apply(plan_id, confirm_token)
+        elif plan.kind == "switch-content.import":
             result = self._content.apply_import(plan_id, confirm_token)
         elif plan.kind == "switch-content.state":
             result = self._content.apply_state(plan_id, confirm_token)
@@ -450,6 +475,15 @@ class EmulationController:
         has_game = bool(games)
         selected_reason = (
             None if has_game else "Adicione diretórios, faça a varredura e selecione um jogo."
+        )
+        nsz = self._nsz.status()
+        nsz_ready = bool(nsz["available"])
+        nsz_reason = (
+            None
+            if not nsz_ready
+            else (
+                None if keys["status"] == "ok" else "Importe prod.keys antes de converter com NSZ."
+            )
         )
         return {
             "overview": {
@@ -663,11 +697,24 @@ class EmulationController:
                         "nsz",
                         "Conversão NSZ",
                         (
-                            "A conversão só é liberada quando uma ferramenta local verificada "
-                            "estiver configurada."
+                            "NSZ é instalado em ambiente privado e pinado por hash; "
+                            "as keys locais continuam necessárias para converter."
                         ),
-                        "attention",
-                        "Ferramenta necessária",
+                        "ready" if nsz_ready and keys["status"] == "ok" else "attention",
+                        (
+                            "Pronto"
+                            if nsz_ready and keys["status"] == "ok"
+                            else "Instalar ferramenta"
+                            if not nsz_ready
+                            else "Aguardando keys"
+                        ),
+                        action=self._action(
+                            "nsz.install" if not nsz_ready else "nsz.convert",
+                            "Instalar ferramenta" if not nsz_ready else "Selecionar arquivo",
+                            enabled=not nsz_ready or keys["status"] == "ok",
+                            reason=nsz_reason,
+                            confirmation=True,
+                        ),
                     ),
                     self._card(
                         "operations",
@@ -688,10 +735,14 @@ class EmulationController:
         roots = self._custom_roots()
         if resolved not in roots:
             roots.append(resolved)
-        data = {"schemaVersion": 1, "roots": [str(root) for root in sorted(roots, key=str)]}
+        ordered_roots = sorted(roots, key=str)
+        data = {"schemaVersion": 1, "roots": [str(root) for root in ordered_roots]}
+        writes = {self._roots_path: json.dumps(data, sort_keys=True, ensure_ascii=False).encode()}
+        writes.update(self._emulator_game_directory_writes(ordered_roots))
+        root = self._compatible_root(writes)
         return transaction.plan_write_files(
-            {self._roots_path: json.dumps(data, sort_keys=True, ensure_ascii=False).encode()},
-            root=paths.config_home(),
+            writes,
+            root=root,
             kind="emulation.library-roots",
         )
 
@@ -709,14 +760,19 @@ class EmulationController:
         revision = self._validate_keys(source)
         digest = fs.hash_file(source, algo="sha256")
         target = paths.keys_dir() / "switch" / f"prod-{digest[:12]}.keys"
-        if target.exists() and fs.hash_file(target, algo="sha256") == digest:
-            plan = transaction.plan_write_files(
-                {}, root=paths.keys_dir(), kind="emulation.keys-import"
-            )
-        else:
-            plan = transaction.plan_copy_files(
-                {source: target}, root=paths.keys_dir(), kind="emulation.keys-import"
-            )
+        projections = (
+            self._key_projection_targets()
+            if paths.data_home().resolve().is_relative_to(Path.home().resolve())
+            else ()
+        )
+        targets = [target, *projections]
+        copies = self._new_copy_targets(source, targets, digest)
+        root = self._compatible_root({candidate: b"" for _, candidate in copies})
+        plan = (
+            transaction.plan_copy_files(copies, root=root, kind="emulation.keys-import")
+            if copies
+            else transaction.plan_write_files({}, root=root, kind="emulation.keys-import")
+        )
         self._pending[plan.plan_id] = _PendingMutation(
             "key",
             {
@@ -736,25 +792,26 @@ class EmulationController:
             raise SteamZeroError(
                 "E-CONTENT-UNSAFE-ARCHIVE", detail="conjunto de firmware fora dos limites"
             )
-        copies: dict[Path, Path] = {}
+        copies: list[tuple[Path, Path]] = []
         for source in candidates:
             digest = fs.hash_file(source, algo="sha256")
-            target = paths.firmware_dir() / "switch" / version / f"{digest}.nca"
-            if not target.exists():
-                copies[source] = target
-            elif target.is_symlink() or fs.hash_file(target, algo="sha256") != digest:
-                raise SteamZeroError("E-CONTENT-FW-INCOMPAT", detail="firmware existente diverge")
+            targets = [
+                paths.firmware_dir() / "switch" / version / f"{digest}.nca",
+                *(
+                    self._firmware_projection_targets(digest)
+                    if paths.data_home().resolve().is_relative_to(Path.home().resolve())
+                    else ()
+                ),
+            ]
+            copies.extend(self._new_copy_targets(source, targets, digest))
         digest_set = hashlib.sha256(
-            "".join(sorted(path.name for path in copies.values())).encode()
+            "".join(sorted(target.name for _, target in copies)).encode()
         ).hexdigest()
+        root = self._compatible_root({target: b"" for _, target in copies})
         plan = (
-            transaction.plan_copy_files(
-                copies, root=paths.firmware_dir(), kind="emulation.firmware-import"
-            )
+            transaction.plan_copy_files(copies, root=root, kind="emulation.firmware-import")
             if copies
-            else transaction.plan_write_files(
-                {}, root=paths.firmware_dir(), kind="emulation.firmware-import"
-            )
+            else transaction.plan_write_files({}, root=root, kind="emulation.firmware-import")
         )
         self._pending[plan.plan_id] = _PendingMutation(
             "firmware", {"version": version, "digest": digest_set, "relpath": f"switch/{version}"}
@@ -849,6 +906,130 @@ class EmulationController:
             ]
         except (OSError, json.JSONDecodeError, AttributeError):
             return []
+
+    @staticmethod
+    def _new_copy_targets(
+        source: Path, targets: Sequence[Path], digest: str
+    ) -> list[tuple[Path, Path]]:
+        copies: list[tuple[Path, Path]] = []
+        seen: set[Path] = set()
+        for target in targets:
+            if target in seen:
+                continue
+            seen.add(target)
+            if not target.exists() and not target.is_symlink():
+                copies.append((source, target))
+                continue
+            if target.is_symlink() or not target.is_file() or fs.hash_file(target) != digest:
+                raise SteamZeroError(
+                    "E-CONTENT-FW-INCOMPAT",
+                    detail=f"arquivo existente diverge: {target}",
+                )
+        return copies
+
+    @staticmethod
+    def _compatible_root(targets: Mapping[Path, bytes]) -> Path:
+        """Usa a home apenas quando todos os alvos pertencem a ela.
+
+        Testes podem redirecionar XDG para um diretório temporário; nesse caso
+        as projeções para consumidores externos são omitidas, sem ampliar a raiz
+        transacional para ``/``.
+        """
+        home = Path.home().resolve()
+        if targets and all(target.is_relative_to(home) for target in targets):
+            return home
+        config_home = paths.config_home().resolve()
+        if targets and all(target.is_relative_to(config_home) for target in targets):
+            return config_home
+        return paths.data_home().resolve()
+
+    @staticmethod
+    def _key_projection_targets() -> tuple[Path, ...]:
+        home = Path.home()
+        return (
+            home / ".switch" / "prod.keys",
+            home / ".local" / "share" / "eden" / "keys" / "prod.keys",
+            home / ".local" / "share" / "citron" / "keys" / "prod.keys",
+            home / "Ryujinx" / "system" / "prod.keys",
+        )
+
+    @staticmethod
+    def _firmware_projection_targets(digest: str) -> tuple[Path, ...]:
+        home = Path.home()
+        filename = f"{digest}.nca"
+        return (
+            home / ".local/share/eden/nand/system/Contents/registered" / filename,
+            home / ".local/share/citron/nand/system/Contents/registered" / filename,
+            home / "Ryujinx" / "bis" / "system" / "Contents" / "registered" / filename,
+        )
+
+    def _emulator_game_directory_writes(self, roots: Sequence[Path]) -> dict[Path, bytes]:
+        home = Path.home()
+        if not self._roots_path.is_relative_to(home.resolve()):
+            return {}
+        writes: dict[Path, bytes] = {}
+        ryubing = home / "Ryujinx" / "Config.json"
+        if ryubing.is_file() and not ryubing.is_symlink():
+            try:
+                data = json.loads(ryubing.read_text(encoding="utf-8"))
+                current = data.get("game_dirs", [])
+                if not isinstance(current, list) or not all(
+                    isinstance(path, str) for path in current
+                ):
+                    raise ValueError("game_dirs inválido")
+                data["game_dirs"] = list(dict.fromkeys([*current, *(str(root) for root in roots)]))
+                writes[ryubing] = json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
+            except (OSError, ValueError, json.JSONDecodeError):
+                pass
+        for name in ("eden", "citron"):
+            config = home / ".config" / name / "qt-config.ini"
+            if config.is_file() and not config.is_symlink():
+                with suppress(OSError, UnicodeError, ValueError):
+                    writes[config] = self._merge_qsettings_game_dirs(
+                        config.read_text(encoding="utf-8"), roots
+                    ).encode()
+        return writes
+
+    @staticmethod
+    def _merge_qsettings_game_dirs(content: str, roots: Sequence[Path]) -> str:
+        section = "[UI]"
+        start = content.find(section)
+        if start < 0:
+            raise ValueError("seção UI ausente")
+        end = content.find("\n[", start + len(section))
+        end = len(content) if end < 0 else end
+        before, ui, after = content[:start], content[start:end], content[end:]
+        existing = re.findall(r"(?m)^Paths\\gamedirs\\\d+\\path=(.+)$", ui)
+        directories = list(dict.fromkeys([*existing, *(str(root) for root in roots)]))
+        lines = [line for line in ui.splitlines() if not line.startswith("Paths\\gamedirs\\")]
+        lines.append(f"Paths\\gamedirs\\size={len(directories)}")
+        for index, directory in enumerate(directories, start=1):
+            lines.extend(
+                (
+                    f"Paths\\gamedirs\\{index}\\path={directory}",
+                    f"Paths\\gamedirs\\{index}\\deep_scan\\default=true",
+                    f"Paths\\gamedirs\\{index}\\deep_scan=true",
+                    f"Paths\\gamedirs\\{index}\\expanded\\default=true",
+                    f"Paths\\gamedirs\\{index}\\expanded=true",
+                )
+            )
+        return before + "\n".join(lines) + after
+
+    def _nsz_conversion(self) -> SwitchRomConversionService:
+        executable = self._nsz.executable
+        registry = ToolRegistry(
+            [nsz_tool_manifest()],
+            which=lambda tool_id: (
+                str(executable) if tool_id == "nsz" and self._nsz.status()["available"] else None
+            ),
+        )
+        converter = NszConverter(
+            which=lambda tool_id: (
+                str(executable) if tool_id == "nsz" and self._nsz.status()["available"] else None
+            ),
+            executable=str(executable),
+        )
+        return SwitchRomConversionService(registry, converter=converter)
 
     def _load_library_cache(self) -> tuple[list[dict[str, Any]], int]:
         if not self._library_cache_path.is_file() or self._library_cache_path.is_symlink():

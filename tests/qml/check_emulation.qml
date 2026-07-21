@@ -69,6 +69,8 @@ Window {
         object.syncPublishedSelection()
         check(object.scopeId() === "emulator", "refresh da mesma plataforma deve preservar escopo local")
         check(object.selectedArea.id === "controls", "refresh deve preservar a área local")
+        check(object.localPath("file:///tmp/keys%20de%20teste.keys") === "/tmp/keys de teste.keys",
+              "URL de arquivo deve chegar ao backend como caminho local")
         object.destroy()
     }
 

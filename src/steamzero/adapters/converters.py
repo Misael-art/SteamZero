@@ -13,9 +13,11 @@ validado; sem manifesto/binário, a conversão fica indisponível com motivo.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,6 +36,30 @@ ToolProbe = Callable[[Sequence[str], float], tuple[int, str]]
 
 # Conversões allowlisted por ferramenta (nunca aceitar par arbitrário).
 _NSZ_CONVERSIONS = frozenset({("nsp", "nsz"), ("nsz", "nsp")})
+_NSZ_VERSION = "4.6.1"
+_NSZ_REQUIREMENTS = (
+    "\n".join(
+        (
+            "nsz==4.6.1 --hash=sha256:"
+            "3b65c3ccc5620d713b7d862191f2f657f1b019ec6173e95ddf274c4e196a714d",
+            "enlighten==1.14.1 --hash=sha256:"
+            "5fbd0c959ca1644034c41bb0ace5db19c9852cf9d721b6103f5f130663c57be8",
+            "blessed==1.47.0 --hash=sha256:"
+            "f4df54a32289b6a3eaca49387b4f6823ba7e04ddb5ffa18f5e1fde44e8b79681",
+            "jinxed==2.1.0 --hash=sha256:"
+            "43b802d18b70e405d410fb66eb2837d1101e7e5ea922e666507bb43f34d11d09",
+            "prefixed==0.9.0 --hash=sha256:"
+            "3cdb74bfc4cf0aba28f3574662b13afdcac27c463dcbef320fe5d03f4c5fbca8",
+            "wcwidth==0.8.2 --hash=sha256:"
+            "d63947694a0539a1d51e01eda7caf800c291020e6cdd7e28ad7b14dd33ad4f85",
+            "pycryptodome==3.23.0 --hash=sha256:"
+            "c8987bd3307a39bc03df5c8e0e3d8be0c4c3518b7f044b0f4c15d1aa78f52575",
+            "zstandard==0.25.0 --hash=sha256:"
+            "e09bb6252b6476d8d56100e8147b803befa9a12cea144bbe629dd508800d1ad0",
+        )
+    )
+    + "\n"
+)
 
 
 def default_runner(argv: Sequence[str], timeout: float) -> int:
@@ -189,6 +215,134 @@ class ToolRegistry:
         return rows
 
 
+class NszToolManager:
+    """Instala NSZ em venv privado, com dependências e hashes fechados.
+
+    Nada é instalado globalmente. O diretório final só é preservado após
+    `pip check`; falhas removem o staging parcial e a UI permanece degradada.
+    """
+
+    def __init__(self, *, runner: Callable[[Sequence[str]], None] | None = None) -> None:
+        self._runner = runner or self._run
+
+    @property
+    def root(self) -> Path:
+        return paths.data_home() / "tools" / "nsz" / _NSZ_VERSION
+
+    @property
+    def executable(self) -> Path:
+        return self.root / "venv" / "bin" / "nsz"
+
+    def status(self) -> dict[str, Any]:
+        executable = self.executable
+        if executable.is_file() and not executable.is_symlink() and os.access(executable, os.X_OK):
+            return {"state": "installed", "available": True, "path": str(executable)}
+        return {
+            "state": "missing",
+            "available": False,
+            "reason": "NSZ ainda não foi instalado para este usuário.",
+        }
+
+    def install(self) -> dict[str, Any]:
+        if self.status()["available"]:
+            return {"status": "already-installed", "path": str(self.executable)}
+        root = self.root
+        if root.exists() or root.is_symlink():
+            fs.remove_tree(root)
+        fs.ensure_dir(root)
+        wheelhouse = root / "wheelhouse"
+        requirements = root / "requirements.lock"
+        fs.write_atomic_text(requirements, _NSZ_REQUIREMENTS)
+        try:
+            fs.ensure_dir(wheelhouse)
+            self._runner(
+                (
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "download",
+                    "--disable-pip-version-check",
+                    "--only-binary=:all:",
+                    "--require-hashes",
+                    "-r",
+                    str(requirements),
+                    "-d",
+                    str(wheelhouse),
+                )
+            )
+            self._runner((sys.executable, "-m", "venv", str(root / "venv")))
+            pip = root / "venv" / "bin" / "pip"
+            self._runner(
+                (
+                    str(pip),
+                    "install",
+                    "--disable-pip-version-check",
+                    "--no-index",
+                    "--only-binary=:all:",
+                    "--require-hashes",
+                    f"--find-links={wheelhouse}",
+                    "-r",
+                    str(requirements),
+                )
+            )
+            self._runner((str(pip), "check"))
+        except Exception as exc:
+            fs.remove_tree(root)
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail=f"instalação NSZ falhou: {exc}"
+            ) from exc
+        if not self.status()["available"]:
+            fs.remove_tree(root)
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="instalação NSZ não publicou binário"
+            )
+        return {"status": "installed", "path": str(self.executable)}
+
+    @staticmethod
+    def _run(argv: Sequence[str]) -> None:
+        try:
+            result = subprocess.run(  # noqa: S603
+                list(argv),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=300,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RuntimeError(str(exc)) from exc
+        if result.returncode != 0:
+            raise RuntimeError(result.stdout[-1000:])
+
+
+def nsz_tool_manifest() -> ToolManifest:
+    """Retorna o manifesto do NSZ instalado pelo gerenciador privado."""
+    return ToolManifest(
+        {
+            "schemaVersion": 1,
+            "id": "nsz",
+            "kind": "converter",
+            "conversions": [
+                {"from": "nsp", "to": "nsz"},
+                {"from": "nsz", "to": "nsp"},
+            ],
+            "smokeTest": ["--version"],
+            "sources": [
+                {
+                    "type": "pip",
+                    "version": _NSZ_VERSION,
+                    "priority": 1,
+                    "url": "https://pypi.org/project/nsz/",
+                    "sha256": "3b65c3ccc5620d713b7d862191f2f657f1b019ec6173e95ddf274c4e196a714d",
+                }
+            ],
+            "license": "MIT",
+            "upstream": "https://github.com/nicoboss/nsz",
+        }
+    )
+
+
 class NszConverter:
     """ConverterPort para NSZ (nsp<->nsz) via argv fixo da ferramenta ``nsz``."""
 
@@ -197,10 +351,12 @@ class NszConverter:
         *,
         runner: CommandRunner = default_runner,
         which: Which = shutil.which,
+        executable: str = "nsz",
         timeout: float = 1800.0,
     ) -> None:
         self._runner = runner
         self._which = which
+        self._executable = executable
         self._timeout = timeout
 
     def convert(self, src: Path, dst: Path, target_format: str) -> bool:
@@ -213,7 +369,7 @@ class NszConverter:
         if self._which("nsz") is None:
             # Gating normalmente ocorre antes; se chegou aqui, degrada em falha limpa.
             return False
-        argv = self._build_argv(src, dst, target_format)
+        argv = self._build_argv(src, dst, target_format, executable=self._executable)
         try:
             rc = self._runner(argv, self._timeout)
         except FileNotFoundError as exc:
@@ -226,12 +382,14 @@ class NszConverter:
         return self._reconcile_output(src, dst, target_format)
 
     @staticmethod
-    def _build_argv(src: Path, dst: Path, target_format: str) -> tuple[str, ...]:
+    def _build_argv(
+        src: Path, dst: Path, target_format: str, *, executable: str = "nsz"
+    ) -> tuple[str, ...]:
         # nsz comprime (-C) para .nsz e descomprime (-D) para .nsp; direcionamos a
         # saída para o diretório do destino confinado. O nome real da saída segue o
         # stem do arquivo de entrada; reconcile_output move para ``dst``.
         mode = "-C" if target_format == "nsz" else "-D"
-        return ("nsz", mode, "-o", str(dst.parent), str(src))
+        return (executable, mode, "-o", str(dst.parent), str(src))
 
     @staticmethod
     def _reconcile_output(src: Path, dst: Path, target_format: str) -> bool:
