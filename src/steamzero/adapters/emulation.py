@@ -1540,7 +1540,10 @@ class EmulationController:
                 home / ".local/share/citron/nand/system/Contents/registered" / filename,
             ),
             "ryubing": (
-                home / ".config/Ryujinx/bis/system/Contents/registered" / filename,
+                home
+                / ".config/Ryujinx/bis/system/Contents/registered"
+                / filename
+                / "00",
             ),
         }[emulator_id]
 

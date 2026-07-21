@@ -132,9 +132,9 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     )
     _apply(controller, firmware_plan)
     assert any((data_home / "citron/nand/system/Contents/registered").glob("*.nca"))
-    assert any(
-        (home / ".config/Ryujinx/bis/system/Contents/registered").glob("*.nca")
-    )
+    ryubing_firmware = home / ".config/Ryujinx/bis/system/Contents/registered"
+    assert any(path.is_file() for path in ryubing_firmware.glob("*.nca/00"))
+    assert not any(path.is_file() for path in ryubing_firmware.glob("*.nca"))
     assert controller._firmware_projection_copies(("ryubing",)) == []  # type: ignore[attr-defined]
 
 
