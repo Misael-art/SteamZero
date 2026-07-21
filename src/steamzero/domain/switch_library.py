@@ -238,6 +238,7 @@ class SwitchLibraryScanner:
         except ValueError:
             relative = Path(path.name)
         searchable = " ".join((*relative.parent.parts, path.stem))
+        parent_markers = " ".join(relative.parent.parts)
         version_match = _SCENE_VERSION_RE.search(searchable)
         version = int(version_match.group(1)) if version_match is not None else None
 
@@ -247,6 +248,14 @@ class SwitchLibraryScanner:
             numeric = int(title_id, 16)
             suffix = numeric & 0xFFF
             if suffix == 0:
+                # Coleções reais costumam separar complementos em diretórios
+                # ``DLC``/``Updates``. Alguns pacotes auxiliares autônomos usam
+                # um application Title ID terminado em 000 e, sem esta
+                # evidência de diretório, poluiriam a biblioteca jogável.
+                if _DLC_CONTENT_IN_NAME_RE.search(parent_markers) is not None:
+                    return "dlc", None, version, "directory"
+                if _UPDATE_CONTENT_IN_NAME_RE.search(parent_markers) is not None:
+                    return "update", None, version, "directory"
                 return "base", None, version, "title-id"
             if suffix == 0x800:
                 return "update", f"{numeric - 0x800:016X}", version, "title-id"

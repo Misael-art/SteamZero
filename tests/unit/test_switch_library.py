@@ -240,6 +240,23 @@ def test_scanner_prefers_base_title_id_over_words_in_game_name(tmp_path: Path) -
     assert {match.path for match in matches} == {game, homebrew}
 
 
+def test_scanner_excludes_standalone_auxiliary_with_base_shaped_title_id(
+    tmp_path: Path,
+) -> None:
+    dlc_dir = tmp_path / "Nintendo Switch (DLC)"
+    dlc_dir.mkdir()
+    standalone = dlc_dir / "Bonus [Standalone DLC] [010050F01BD54000][v0].nsp"
+    standalone.write_bytes(b"auxiliary")
+
+    scanner = SwitchLibraryScanner()
+
+    assert scanner.discover(tmp_path) == []
+    inventory = scanner.inventory(tmp_path)
+    assert len(inventory) == 1
+    assert inventory[0].content_kind == "dlc"
+    assert inventory[0].metadata_source == "directory"
+
+
 def test_scanner_hashes_are_sha256(tmp_path: Path) -> None:
     rom = tmp_path / "game.nsp"
     rom.write_bytes(b"dump-bytes")
