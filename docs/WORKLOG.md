@@ -1771,3 +1771,30 @@ contrato válido.
 `0.1.0a33-5c8c33ddb0dd`. A consulta privilegiada de status do boot não pôde ser
 repetida no fim porque a política local recusou nova autorização; nenhuma
 alteração de boot, reinício ou recuperação foi feita nesta sessão.
+
+## 2026-07-21 — Sessão 42: persistência Switch e fluxo local de NSZ
+
+**Branch:** `codex/correcao-importacao-switch`, criada do commit `832d82b` de
+`main` em worktree isolado. Nenhuma alteração de outra frente foi incorporada.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Conversão segura de URLs `file://` em caminhos locais nos seletores QML de keys, firmware e diretórios | `b4d85e8` | `check_emulation.qml`, `test_emulation_controller.py` |
+| Projeção auditável de `prod.keys`, firmware e diretórios de jogos para Citron, Ryubing e NSZ já presentes, sem criar configuração de emulador ausente | `b4d85e8` | `test_emulation_controller.py` |
+| Instalação privada, hash-pinned e reversível de NSZ; seleção e conversão confirmável NSP↔NSZ após keys válidas | `b4d85e8` | `test_emulation_controller.py`, `test_nsz_converter.py`, `test_nsz_conversion.py` |
+
+**Gates finais:** 829 testes passaram; cobertura 85,02%; Ruff format/lint,
+mypy em 88 arquivos, `make independence boundaries` e `git diff --check`
+verdes. O `qmllint` completou sem erro, mantendo apenas avisos preexistentes de
+acesso não qualificado do QML.
+
+**Decisões conservadoras:** a ferramenta NSZ permanece em venv privado do
+usuário, com wheels binários e hashes fixados; qualquer falha remove o estado
+parcial. Keys e firmware continuam exclusivamente escolhidos pelo usuário e
+nunca são buscados da rede. Configurações de Citron/Ryubing só são atualizadas
+quando o respectivo arquivo já existe e é regular.
+
+**Host/release:** nenhum merge em `main`, wheel/release, instalação, rollback,
+ação privilegiada ou alteração do host foi executada nesta sessão. A validação
+física no host e uma eventual publicação exigem autorização explícita do
+operador e os preflights usuais.
