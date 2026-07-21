@@ -1986,3 +1986,34 @@ ativos, doctor aprovou todos os checks e Game Mode permaneceu `ready`. Nenhum
 reboot, mudança de boot ou arquivo de outra frente foi alterado.
 
 **Rollback:** `0.1.0a33-043e290a184f` foi preservada como release anterior.
+
+## 2026-07-21 — Sessão 50: lançamento Switch resiliente e catálogo consolidado
+
+**Branch:** `codex/lancamento-steam-roms`. A branch continua descendendo de
+`main` (`74f2984`). Os caminhos não rastreados `.worktrees/` e
+`docs/12-roadmap/EMULATOR-PORTING-DIRECTIVE.md`, pertencentes a outras frentes,
+permaneceram intocados.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Scanner separa jogo-base, update e DLC por Title ID, versão e fallback nominal; cache legado também é filtrado antes da UI | `e9834c0` | `test_scanner_excludes_updates_and_dlc_from_base_game_library`, `test_scanner_excludes_scene_version_above_zero_without_title_id`, `test_library_groups_updates_and_dlcs_under_unique_base` |
+| Lançamento revalida ROM-base, preserva caminhos com espaços sem shell, usa flags específicas de Eden/Citron/Ryubing e desativa a interceptação do AppImageLauncher | `e9834c0` | `test_game_preference_launch_delete_and_rollback`, `test_detached_spawn_disables_appimage_launcher_and_preserves_argv` |
+| Keys globais são verificadas fisicamente nos emuladores; reparo transacional projeta `prod.keys` e `title.keys` opcional, sem sobrescrever divergências | `e9834c0` | `test_imports_project_to_switch_consumers_and_save_game_directories`, `test_keys_import_projects_optional_title_keys` |
+| Preparação confirmada desativa verificações interativas de update nos três emuladores | `e9834c0` | `test_runtime_prepare_mutes_interactive_update_checks` |
+| UI mantém lista e painel no mesmo jogo/emulador, compacta badges, qualifica metadados pendentes e melhora contraste das ações | `83c1f7d` | `qmllint src/steamzero/ui/qml/Emulation.qml` e suíte completa |
+
+**Gates:** 849 testes passaram com `TMPDIR=/tmp/szg.u7HfRZ`; Ruff, mypy em 89
+arquivos, independence, boundaries, `git diff --check` e `qmllint` ficaram
+verdes. A primeira execução teve somente 14 erros/falhas `AF_UNIX path too
+long` causados pelo diretório temporário do Codex; a repetição na raiz curta
+passou sem mudar código ou testes.
+
+**Validação no host, somente leitura:** o cache de 178 arquivos foi reduzido a
+16 jogos-base; 19 updates e 143 DLCs deixaram de ser promovidos a jogos. Eden e
+Ryubing possuem `prod.keys` idêntica à cópia global; Citron foi corretamente
+marcado como não sincronizado, fazendo a prontidão deixar de declarar 100%.
+
+**Host/release:** nenhuma release, instalação, rollback ou alteração
+privilegiada foi executada nesta sessão. A release ativa permaneceu
+`0.1.0a33-dbb824b4ce54`; o operador ainda precisa autorizar explicitamente uma
+nova release/instalação antes do teste funcional desta correção.
