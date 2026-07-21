@@ -26,6 +26,10 @@ from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 _TITLE_ID_IN_NAME_RE = re.compile(r"(?<![0-9A-Fa-f])([0-9A-Fa-f]{16})(?![0-9A-Fa-f])")
+_AUXILIARY_CONTENT_IN_NAME_RE = re.compile(
+    r"(?:^|[\s._\-\[\]()])(?:dlc|update|updates|patch|add[\s._-]?on)(?:$|[\s._\-\[\]()])",
+    re.IGNORECASE,
+)
 _SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "xcz", "nro"})
 _BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 
@@ -130,11 +134,14 @@ class SwitchLibraryScanner:
             fmt = self._format_of(path.name)
             if fmt is None:
                 continue
+            title_id = self._title_id_from_path(path, root)
+            if not self._is_base_game(path, root, fmt, title_id):
+                continue
             results.append(
                 SwitchRomCandidate(
                     path=path,
                     format=fmt,
-                    title_id=self._title_id_from_path(path, root),
+                    title_id=title_id,
                 )
             )
         return results
@@ -156,6 +163,33 @@ class SwitchLibraryScanner:
     def _format_of(self, name: str) -> str | None:
         ext = Path(name).suffix.lstrip(".").lower()
         return ext if ext in self._formats else None
+
+    @classmethod
+    def _is_base_game(
+        cls,
+        path: Path,
+        root: Path,
+        fmt: str,
+        title_id: str | None,
+    ) -> bool:
+        """Recusa conteúdo auxiliar quando a evidência é inequívoca.
+
+        Updates e DLCs distribuídos como NSP/NSZ compartilham a extensão dos
+        jogos. Um Title ID de aplicação base termina em ``000``; updates usam
+        ``800`` e conteúdo adicional usa outro sufixo. Sem Title ID, somente
+        marcadores explícitos no nome/caminho relativo são usados para evitar
+        esconder dumps legítimos por heurística ampla.
+        """
+        if fmt not in {"nsp", "nsz"}:
+            return True
+        if title_id is not None:
+            return title_id.endswith("000")
+        try:
+            relative = path.relative_to(root)
+        except ValueError:
+            relative = Path(path.name)
+        searchable = " ".join((*relative.parent.parts, path.stem))
+        return _AUXILIARY_CONTENT_IN_NAME_RE.search(searchable) is None
 
     @staticmethod
     def _title_id_from_name(name: str) -> str | None:

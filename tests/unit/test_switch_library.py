@@ -165,7 +165,7 @@ def test_scanner_lists_only_allowed_formats(tmp_path: Path) -> None:
 
 
 def test_scanner_finds_title_id_in_parent_directory(tmp_path: Path) -> None:
-    game_dir = tmp_path / "Library" / "Example [0100ABCDEF123456]"
+    game_dir = tmp_path / "Library" / "Example [0100ABCDEF123000]"
     game_dir.mkdir(parents=True)
     rom = game_dir / "base.nsp"
     rom.write_bytes(b"owned-game")
@@ -173,7 +173,46 @@ def test_scanner_finds_title_id_in_parent_directory(tmp_path: Path) -> None:
     match = SwitchLibraryScanner().scan(tmp_path)[0]
 
     assert match.path == rom
-    assert match.title_id == "0100ABCDEF123456"
+    assert match.title_id == "0100ABCDEF123000"
+
+
+def test_scanner_excludes_updates_and_dlc_from_base_game_library(tmp_path: Path) -> None:
+    base = tmp_path / "Example [0100ABCDEF123000].nsp"
+    update = tmp_path / "Example Update [0100ABCDEF123800].nsp"
+    dlc = tmp_path / "Example DLC [0100ABCDEF123001].nsz"
+    base.write_bytes(b"base")
+    update.write_bytes(b"update")
+    dlc.write_bytes(b"dlc")
+
+    matches = SwitchLibraryScanner().discover(tmp_path)
+
+    assert [match.path for match in matches] == [base]
+
+
+def test_scanner_excludes_named_auxiliary_content_without_title_id(tmp_path: Path) -> None:
+    base = tmp_path / "Example Game.nsp"
+    update = tmp_path / "Example Game Update v1.2.0.nsp"
+    dlc_dir = tmp_path / "DLC"
+    dlc_dir.mkdir()
+    dlc = dlc_dir / "Bonus Pack.nsp"
+    base.write_bytes(b"base")
+    update.write_bytes(b"update")
+    dlc.write_bytes(b"dlc")
+
+    matches = SwitchLibraryScanner().discover(tmp_path)
+
+    assert [match.path for match in matches] == [base]
+
+
+def test_scanner_prefers_base_title_id_over_words_in_game_name(tmp_path: Path) -> None:
+    game = tmp_path / "The Update Story [0100ABCDEF123000].nsp"
+    homebrew = tmp_path / "Updater Homebrew.nro"
+    game.write_bytes(b"base")
+    homebrew.write_bytes(b"homebrew")
+
+    matches = SwitchLibraryScanner().discover(tmp_path)
+
+    assert {match.path for match in matches} == {game, homebrew}
 
 
 def test_scanner_hashes_are_sha256(tmp_path: Path) -> None:
@@ -185,7 +224,7 @@ def test_scanner_hashes_are_sha256(tmp_path: Path) -> None:
 
 
 def test_discovery_does_not_hash_full_rom(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    rom = tmp_path / "Game [0100ABCDEF123456].nsp"
+    rom = tmp_path / "Game [0100ABCDEF123000].nsp"
     rom.write_bytes(b"owned-game")
 
     def reject_hash(*_args: object, **_kwargs: object) -> str:
@@ -196,7 +235,7 @@ def test_discovery_does_not_hash_full_rom(monkeypatch, tmp_path: Path) -> None: 
 
     assert len(candidates) == 1
     assert candidates[0].path == rom
-    assert candidates[0].title_id == "0100ABCDEF123456"
+    assert candidates[0].title_id == "0100ABCDEF123000"
 
 
 # --- SwitchMediaMatcher -----------------------------------------------------

@@ -148,7 +148,7 @@ def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) 
     controller = _controller(monkeypatch, tmp_path)
     roms = tmp_path / "owned-roms"
     roms.mkdir()
-    (roms / "Example [0100ABCDEF123456].nsp").write_bytes(b"owned-game")
+    (roms / "Example [0100ABCDEF123000].nsp").write_bytes(b"owned-game")
 
     root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
     applied = _apply(controller, root_plan)
@@ -158,7 +158,7 @@ def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) 
     assert scanned["games"] == 1
     workspace = controller.snapshot({"context": {"physicalDock": False}})
     platform = workspace["platforms"][0]
-    assert platform["games"][0]["titleId"] == "0100ABCDEF123456"
+    assert platform["games"][0]["titleId"] == "0100ABCDEF123000"
     assert str(roms.resolve()) in platform["areaData"]["media"]["cards"][0]["detail"]
 
     keys = tmp_path / "prod.keys"
