@@ -508,7 +508,7 @@ Item {
                         checked: page.scopeIndex === index
                         enabled: modelData.enabled !== false
                         Layout.preferredWidth: Math.max(112, implicitWidth + 12)
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: 48
                         Accessible.name: qsTr("Aplicar no escopo %1").arg(text)
                         Accessible.description: modelData.reason || ""
                         onClicked: page.scopeIndex = index
@@ -551,7 +551,7 @@ Item {
                     palette.base: page.raisedColor
                     palette.text: page.textColor
                     Layout.preferredWidth: 220
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: 48
                     Accessible.name: qsTr("Selecionar emulador")
                     onActivated: page.emulatorIndex = currentIndex
                 }
@@ -567,7 +567,7 @@ Item {
                     palette.base: page.raisedColor
                     palette.text: page.textColor
                     Layout.preferredWidth: 250
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: 48
                     Accessible.name: qsTr("Selecionar jogo")
                     onActivated: page.gameIndex = currentIndex
                 }
@@ -614,7 +614,7 @@ Item {
                             required property int index
                             required property var modelData
                             width: ListView.view.width
-                            height: 46
+                            height: 48
                             text: modelData.label
                             icon.name: page.visualIcon(modelData.icon || modelData.iconKey)
                             icon.color: checked ? page.cyanColor : page.mutedColor
@@ -709,7 +709,7 @@ Item {
                                 palette.base: page.raisedColor
                                 palette.text: page.textColor
                                 Layout.preferredWidth: 210
-                                Layout.minimumHeight: 42
+                                Layout.minimumHeight: 48
                                 Accessible.name: qsTr("Selecionar emulador")
                                 onActivated: page.emulatorIndex = currentIndex
                             }
@@ -724,7 +724,7 @@ Item {
                                 palette.base: page.raisedColor
                                 palette.text: page.textColor
                                 Layout.preferredWidth: 230
-                                Layout.minimumHeight: 42
+                                Layout.minimumHeight: 48
                                 Accessible.name: qsTr("Selecionar jogo")
                                 onActivated: page.gameIndex = currentIndex
                             }
@@ -873,7 +873,7 @@ Item {
                                             || Boolean(modelData.action && modelData.action.enabled)
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
-                                        Layout.minimumHeight: 40
+                                        Layout.minimumHeight: 48
                                         Accessible.name: text
                                         Accessible.description: modelData.action
                                             ? modelData.action.reason || "" : ""
@@ -974,7 +974,7 @@ Item {
                                         enabled: !modelData.action || modelData.action.enabled !== false
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
-                                        Layout.minimumHeight: 42
+                                        Layout.minimumHeight: 48
                                         Accessible.name: qsTr("%1: %2").arg(text).arg(modelData.name)
                                         onClicked: {
                                             page.emulatorIndex = index
@@ -1116,7 +1116,7 @@ Item {
                         palette.button: page.raisedColor
                         palette.buttonText: page.textColor
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: 48
                         Accessible.name: text
                         onClicked: page.systemRequested()
                     }
