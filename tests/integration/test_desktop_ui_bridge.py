@@ -105,6 +105,30 @@ class FakeDashboard:
         self.calls.append(("launch", component_id))
         return {"status": "started"}
 
+    def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
+        self.calls.append(("emulation-emulator-plan", emulator_id, action))
+        return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
+
+    def apply_emulation_emulator(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("emulation-emulator-apply", plan_id, confirm_token))
+        return {"status": "committed"}
+
+    def launch_emulation_emulator(self, emulator_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-emulator-launch", emulator_id))
+        return {"status": "started"}
+
+    def plan_emulation_action(self, payload: dict[str, object]) -> dict[str, object]:
+        self.calls.append(("emulation-action-plan", str(payload["actionId"])))
+        return {"planId": "emulation-plan", "confirmToken": "emulation-confirm"}
+
+    def apply_emulation_action(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("emulation-action-apply", plan_id, confirm_token))
+        return {"status": "committed"}
+
+    def scan_emulation_library(self) -> dict[str, object]:
+        self.calls.append(("emulation-library-scan",))
+        return {"status": "scanned", "games": 2}
+
     def open_steam(self, target: str) -> dict[str, object]:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
@@ -388,6 +412,40 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "component-plan", "confirmToken": "confirm"},
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
+    emulator_plan = request_json(
+        base,
+        token,
+        "/emulation/emulator/plan",
+        {"emulatorId": "eden", "action": "install"},
+    )
+    assert emulator_plan["plan"] == {
+        "planId": "emulator-plan",
+        "confirmToken": "emulator-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/emulation/emulator/apply",
+        {"planId": "emulator-plan", "confirmToken": "emulator-confirm"},
+    )
+    request_json(base, token, "/emulation/emulator/launch", {"emulatorId": "eden"})
+    emulation_plan = request_json(
+        base,
+        token,
+        "/emulation/action/plan",
+        {"actionId": "storage.recover"},
+    )
+    assert emulation_plan["plan"] == {
+        "planId": "emulation-plan",
+        "confirmToken": "emulation-confirm",
+    }
+    request_json(
+        base,
+        token,
+        "/emulation/action/apply",
+        {"planId": "emulation-plan", "confirmToken": "emulation-confirm"},
+    )
+    request_json(base, token, "/emulation/library/scan", {})
     request_json(base, token, "/steam/open", {"target": "library"})
     request_json(base, token, "/steam/input/open", {"gameId": "10"})
     gameplay_plan = request_json(
@@ -451,6 +509,12 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("plan", "dolphin"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
+        ("emulation-emulator-plan", "eden", "install"),
+        ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
+        ("emulation-emulator-launch", "eden"),
+        ("emulation-action-plan", "storage.recover"),
+        ("emulation-action-apply", "emulation-plan", "emulation-confirm"),
+        ("emulation-library-scan",),
         ("steam", "library"),
         ("steam-input", "10"),
         ("gameplay-plan", "10"),

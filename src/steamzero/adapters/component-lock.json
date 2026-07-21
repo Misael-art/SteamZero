@@ -2,6 +2,17 @@
   "schemaVersion": 1,
   "components": [
     {
+      "id": "citron",
+      "manifestHash": "0b711b5b3df671856b5b63ca2d228456d22798fc0d2a3d4b12146cc4001ce877",
+      "source": {
+        "type": "appimage",
+        "version": "2026.04.27-0237a9b88",
+        "priority": 1,
+        "url": "https://github.com/citron-neo/emulator/releases/download/2026-04-27/citron_nightly-0237a9b88-linux-x86_64.AppImage",
+        "sha256": "bf62002fd0f892ae1c25b8776461e5da59717ece016a9e50db207019ea6ea123"
+      }
+    },
+    {
       "id": "dolphin",
       "manifestHash": "f092a59c858b62376c1fdbcc09883955d5e0892cf5fa9b54cf8bb7ddef94ecfb",
       "source": {
@@ -22,6 +33,17 @@
         "ref": "org.duckstation.DuckStation",
         "remote": "flathub",
         "endOfLife": true
+      }
+    },
+    {
+      "id": "eden",
+      "manifestHash": "e2c69031a4c00ef8e850b05b4989720ed180d4f632bd6e420a0bd8b2ca3a7d5b",
+      "source": {
+        "type": "appimage",
+        "version": "0.2.1-steamdeck",
+        "priority": 1,
+        "url": "https://stable.eden-emu.dev/v0.2.1/Eden-Linux-v0.2.1-steamdeck-clang-pgo.AppImage",
+        "sha256": "5cc5b358ac6449b40021b20ba2430b4d12302737db15c8cbe5b46ce9aab85ce5"
       }
     },
     {

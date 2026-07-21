@@ -57,6 +57,10 @@ def _switch_manifest(**overrides: Any) -> dict[str, Any]:
 def test_existing_bundled_manifests_still_load_without_new_fields() -> None:
     registry = AdapterRegistry.bundled()
     for manifest in registry.list():
+        if manifest.id in {"eden", "citron"}:
+            assert manifest.requires_keys is not None
+            assert manifest.requires_firmware is not None
+            continue
         assert manifest.requires_keys is None
         assert manifest.requires_firmware is None
 

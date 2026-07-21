@@ -25,6 +25,7 @@ from steamzero.core import fs, transaction
 from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
+_TITLE_ID_IN_NAME_RE = re.compile(r"(?<![0-9A-Fa-f])([0-9A-Fa-f]{16})(?![0-9A-Fa-f])")
 _SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "nro"})
 _BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 
@@ -126,7 +127,7 @@ class SwitchLibraryScanner:
                     path=path,
                     sha256=sha,
                     format=fmt,
-                    title_id=None,
+                    title_id=self._title_id_from_name(path.stem),
                     canonical_name=None,
                     region=None,
                 )
@@ -136,6 +137,11 @@ class SwitchLibraryScanner:
     def _format_of(self, name: str) -> str | None:
         ext = Path(name).suffix.lstrip(".").lower()
         return ext if ext in self._formats else None
+
+    @staticmethod
+    def _title_id_from_name(name: str) -> str | None:
+        match = _TITLE_ID_IN_NAME_RE.search(name)
+        return match.group(1).upper() if match is not None else None
 
 
 class SwitchMediaMatcher:

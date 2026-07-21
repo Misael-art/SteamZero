@@ -7,10 +7,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import urlparse
 
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
 from steamzero.core import fs, paths, transaction
@@ -18,12 +21,56 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 
 _SAFE_VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
+_MAX_ARTIFACT_BYTES = 512 * 1024 * 1024
 
 
 class ArtifactPort(Protocol):
     """Porta injetável de aquisição; adapters nunca acessam rede diretamente."""
 
     def fetch(self, source: AdapterSource) -> bytes: ...
+
+
+class HttpsArtifactPort:
+    """Aquisição HTTPS limitada; autenticidade é confirmada pelo SHA-256 pinado."""
+
+    def __init__(self, *, max_bytes: int = _MAX_ARTIFACT_BYTES) -> None:
+        self._max_bytes = max_bytes
+
+    def fetch(self, source: AdapterSource) -> bytes:
+        if source.url is None or urlparse(source.url).scheme != "https":
+            raise SteamZeroError("E-SUPPLY-REMOTE-FAILED", detail="fonte portátil exige URL HTTPS")
+        request = urllib.request.Request(  # noqa: S310 - URL HTTPS validada acima
+            source.url,
+            headers={"User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60.0) as response:  # noqa: S310
+                if urlparse(response.geturl()).scheme != "https":
+                    raise SteamZeroError(
+                        "E-SUPPLY-REMOTE-FAILED", detail="redirect não HTTPS recusado"
+                    )
+                declared = response.headers.get("Content-Length")
+                if declared is not None and int(declared) > self._max_bytes:
+                    raise SteamZeroError(
+                        "E-SUPPLY-REMOTE-FAILED", detail="artefato excede o limite de tamanho"
+                    )
+                chunks: list[bytes] = []
+                received = 0
+                while chunk := response.read(1 << 20):
+                    received += len(chunk)
+                    if received > self._max_bytes:
+                        raise SteamZeroError(
+                            "E-SUPPLY-REMOTE-FAILED",
+                            detail="artefato excedeu o limite durante o download",
+                        )
+                    chunks.append(chunk)
+        except SteamZeroError:
+            raise
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            raise SteamZeroError(
+                "E-SUPPLY-REMOTE-FAILED", detail=f"falha ao baixar fonte verificada: {exc}"
+            ) from exc
+        return b"".join(chunks)
 
 
 @dataclass(frozen=True)
@@ -50,7 +97,13 @@ class AdapterEngine:
         self._root = root or paths.data_home() / "components"
         fs.ensure_dir(self._root)
 
-    def plan_install(self, adapter_id: str, *, source_type: str | None = None) -> PreparedComponent:
+    def plan_install(
+        self,
+        adapter_id: str,
+        *,
+        source_type: str | None = None,
+        force: bool = False,
+    ) -> PreparedComponent:
         manifest = self._registry.get(adapter_id)
         source = manifest.preferred_source(source_type, allow_eol=False)
         if source.type == "flatpak":
@@ -71,7 +124,8 @@ class AdapterEngine:
                 detail=f"adapter {adapter_id} não declara capability {operation}",
             )
         if (
-            status["state"] == "installed"
+            not force
+            and status["state"] == "installed"
             and status.get("version") == source.version
             and status.get("sha256") == source.sha256
         ):
@@ -85,6 +139,22 @@ class AdapterEngine:
                 "E-SUPPLY-CHECKSUM",
                 detail=f"checksum divergente para {adapter_id} {source.version}",
             )
+
+        cache_root = paths.data_home() / "downloads" / "components"
+        fs.ensure_dir(cache_root)
+        cached_artifact = cache_root / source.sha256
+        if cached_artifact.exists() or cached_artifact.is_symlink():
+            if (
+                cached_artifact.is_symlink()
+                or not cached_artifact.is_file()
+                or self._sha256_file(cached_artifact) != source.sha256
+            ):
+                raise SteamZeroError(
+                    "E-SUPPLY-CHECKSUM",
+                    detail="cache local do artefato diverge do checksum publicado",
+                )
+        else:
+            fs.write_atomic(cached_artifact, artifact, mode=0o600)
 
         component_root = self._root / manifest.id
         payload = component_root / "releases" / source.version / "payload"
@@ -101,9 +171,49 @@ class AdapterEngine:
             metadata, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode()
 
-        files: dict[Path, bytes]
-        files = {payload: artifact, current: current_bytes}
-        plan = transaction.plan_write_files(files, root=self._root, kind=f"component.{operation}")
+        if payload.exists() or payload.is_symlink():
+            if self._sha256_file(payload) != source.sha256:
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="payload existente diverge; remova o deployment antes de reinstalar",
+                )
+            plan = transaction.plan_write_files(
+                {current: current_bytes}, root=self._root, kind=f"component.{operation}"
+            )
+        else:
+            plan = transaction.plan_copy_files(
+                {cached_artifact: payload},
+                root=self._root,
+                kind=f"component.{operation}",
+                writes={current: current_bytes},
+            )
+        return PreparedComponent(manifest, source, plan)
+
+    def plan_uninstall(self, adapter_id: str) -> PreparedComponent:
+        manifest = self._registry.get(adapter_id)
+        if "uninstall" not in manifest.capabilities:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"adapter {adapter_id} não declara capability uninstall",
+            )
+        status = self.status(adapter_id)
+        if status["state"] == "missing":
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="emulador já está ausente")
+        version = status.get("version")
+        if not isinstance(version, str) or not _SAFE_VERSION.fullmatch(version):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail="deployment atual não pode ser removido com segurança",
+            )
+        source = manifest.preferred_source("appimage", allow_eol=True)
+        current = self._root / manifest.id / "current.json"
+        payload = self._root / manifest.id / "releases" / version / "payload"
+        plan = transaction.plan_write_files(
+            {},
+            root=self._root,
+            kind="component.uninstall",
+            removals={current, payload},
+        )
         return PreparedComponent(manifest, source, plan)
 
     def apply(
@@ -115,8 +225,14 @@ class AdapterEngine:
     ) -> transaction.ApplyResult:
         def verify_component() -> None:
             status = self.status(prepared.manifest.id)
+            if prepared.plan.kind == "component.uninstall":
+                if status["state"] != "missing":
+                    raise RuntimeError("componente continuou detectável após desinstalação")
+                return
             if status["state"] != "installed" or status.get("version") != prepared.source.version:
                 raise RuntimeError("componente ativado não corresponde ao plano")
+            if prepared.source.type == "appimage":
+                fs.set_mode(self.payload_path(prepared.manifest.id), 0o700)
             if smoke is not None:
                 smoke()
 
@@ -130,11 +246,22 @@ class AdapterEngine:
 
     def rollback(self, adapter_id: str, operation_id: str) -> transaction.RollbackResult:
         result = transaction.rollback(operation_id, reason="component-manual")
+        if self.status(adapter_id)["state"] == "installed":
+            source = self._registry.get(adapter_id).preferred_source(allow_eol=True)
+            if source.type == "appimage":
+                fs.set_mode(self.payload_path(adapter_id), 0o700)
         self._persist_status(adapter_id)
         return result
 
     def detect(self, adapter_id: str) -> bool:
         return self.status(adapter_id)["state"] == "installed"
+
+    def payload_path(self, adapter_id: str) -> Path:
+        status = self.status(adapter_id)
+        version = status.get("version")
+        if status["state"] != "installed" or not isinstance(version, str):
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="emulador não instalado")
+        return self._root / adapter_id / "releases" / version / "payload"
 
     def status(self, adapter_id: str) -> dict[str, object]:
         manifest = self._registry.get(adapter_id)

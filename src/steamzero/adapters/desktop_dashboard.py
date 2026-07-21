@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.desktop_kde import input_method_status
+from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
@@ -228,7 +229,8 @@ class DesktopDashboard:
         doctor_runner: DoctorRunner = run_doctor,
         steam: SteamDesktopController | None = None,
         gameplay: SteamGameplayController | None = None,
-        emulation_builder: EmulationBuilder = build_switch_workspace,
+        emulation_builder: EmulationBuilder | None = None,
+        emulation: EmulationController | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
     ) -> None:
@@ -241,6 +243,12 @@ class DesktopDashboard:
             which=which, store_factory=store_factory
         )
         self._emulation_builder = emulation_builder
+        self._emulation = emulation or EmulationController(
+            store_factory=store_factory,
+            registry_factory=registry_factory,
+            which=which,
+            spawn=spawn,
+        )
         self._which = which
         self._spawn = spawn
 
@@ -256,6 +264,7 @@ class DesktopDashboard:
                 components = [
                     self._component_row(manifest, executor, conflicts=bool(conflicts))
                     for manifest in registry.list()
+                    if manifest.id in _COMPONENT_LABELS
                 ]
                 queue = store.list_sync_queue()
                 sync = {
@@ -270,7 +279,9 @@ class DesktopDashboard:
                 }
         except Exception as exc:
             components = [
-                self._degraded_component_row(manifest, exc) for manifest in registry.list()
+                self._degraded_component_row(manifest, exc)
+                for manifest in registry.list()
+                if manifest.id in _COMPONENT_LABELS
             ]
             sync["detail"] = "Não foi possível ler a fila de sincronização."
 
@@ -317,9 +328,12 @@ class DesktopDashboard:
             }
 
         try:
-            emulation = self._emulation_builder(
-                probe=lambda emulator_id: self._which(emulator_id) is not None
-            )
+            if self._emulation_builder is not None:
+                emulation = self._emulation_builder(
+                    probe=lambda emulator_id: self._which(emulator_id) is not None
+                )
+            else:
+                emulation = self._emulation.snapshot(desktop_status)
         except Exception:
             # Um provider defeituoso não derruba o dashboard. O builder padrão
             # sem probe produz estado unverified e mantém a navegação disponível.
@@ -334,6 +348,24 @@ class DesktopDashboard:
             "inputMethod": im_status,
             "emulation": emulation,
         }
+
+    def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
+        return self._emulation.plan_emulator(emulator_id, action)
+
+    def apply_emulation_emulator(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.apply_emulator(plan_id, confirm_token)
+
+    def launch_emulation_emulator(self, emulator_id: str) -> dict[str, Any]:
+        return self._emulation.launch_emulator(emulator_id)
+
+    def plan_emulation_action(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._emulation.plan_action(payload)
+
+    def apply_emulation_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.apply_action(plan_id, confirm_token)
+
+    def scan_emulation_library(self) -> dict[str, Any]:
+        return self._emulation.scan_library()
 
     def plan_steam_gameplay(
         self, payload: dict[str, Any], desktop_status: dict[str, Any]

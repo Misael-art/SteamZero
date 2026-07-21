@@ -127,7 +127,12 @@ def test_steam_input_opens_only_numeric_game_configuration() -> None:
         controller.open_controller_config("1091500;shutdown")
 
 
-def test_dashboard_snapshot_keeps_eol_component_honest(tmp_path: Path) -> None:
+def test_dashboard_snapshot_keeps_eol_component_honest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
     flatpak = FakeFlatpak()
     steam = SteamDesktopController(
         which=lambda _command: None,
@@ -159,14 +164,18 @@ def test_dashboard_snapshot_keeps_eol_component_honest(tmp_path: Path) -> None:
     assert platform["id"] == "switch"
     refresh = platform["areaData"]["overview"]["primaryAction"]
     assert refresh == {
-        "id": "emulation.refresh",
-        "label": "Verificar ambiente",
+        "id": "library.scan",
+        "label": "Varrer biblioteca",
         "enabled": True,
         "reason": None,
         "requiresConfirmation": False,
     }
     imports = [card["action"] for card in platform["areaData"]["keysFirmware"]["cards"]]
-    assert all(not action["enabled"] and action["reason"] for action in imports)
+    assert {action["id"] for action in imports} == {"keys.import", "firmware.import"}
+    assert all(action["enabled"] and action["requiresConfirmation"] for action in imports)
+    eden = platform["emulators"][0]
+    assert eden["sourceState"] == "verified"
+    assert eden["action"]["id"] == "emulator.install:eden"
 
 
 def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) -> None:

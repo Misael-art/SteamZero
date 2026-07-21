@@ -2,7 +2,12 @@
 # Copyright (C) 2026 SteamZero contributors
 """Adapters declarativos e engine transacional de componentes."""
 
-from steamzero.adapters.engine import AdapterEngine, ArtifactPort, PreparedComponent
+from steamzero.adapters.engine import (
+    AdapterEngine,
+    ArtifactPort,
+    HttpsArtifactPort,
+    PreparedComponent,
+)
 from steamzero.adapters.flatpak import (
     FlatpakApplyResult,
     FlatpakCLI,
@@ -32,6 +37,7 @@ __all__ = [
     "FlatpakPlan",
     "FlatpakPort",
     "FlatpakState",
+    "HttpsArtifactPort",
     "LockedComponent",
     "LockedSource",
     "PreparedComponent",

@@ -157,6 +157,32 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/component/launch":
             return self._dashboard().launch_component(self._required_string(payload, "componentId"))
+        if path == "/emulation/emulator/plan":
+            return {
+                "plan": self._dashboard().plan_emulation_emulator(
+                    self._required_string(payload, "emulatorId"),
+                    self._required_string(payload, "action"),
+                )
+            }
+        if path == "/emulation/emulator/apply":
+            self._require_desktop_without_conflicts()
+            return self._dashboard().apply_emulation_emulator(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/emulation/emulator/launch":
+            return self._dashboard().launch_emulation_emulator(
+                self._required_string(payload, "emulatorId")
+            )
+        if path == "/emulation/action/plan":
+            return {"plan": self._dashboard().plan_emulation_action(payload)}
+        if path == "/emulation/action/apply":
+            return self._dashboard().apply_emulation_action(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/emulation/library/scan":
+            return self._dashboard().scan_emulation_library()
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
         if path == "/steam/input/open":

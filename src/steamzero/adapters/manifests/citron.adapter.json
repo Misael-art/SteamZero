@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "citron",
+  "kind": "emulator",
+  "platforms": ["switch"],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "uninstall",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "appimage",
+      "version": "2026.04.27-0237a9b88",
+      "priority": 1,
+      "url": "https://github.com/citron-neo/emulator/releases/download/2026-04-27/citron_nightly-0237a9b88-linux-x86_64.AppImage",
+      "sha256": "bf62002fd0f892ae1c25b8776461e5da59717ece016a9e50db207019ea6ea123"
+    }
+  ],
+  "configFormat": "ini",
+  "verify": {"smokeTest": ["--appimage-version"]},
+  "requiresKeys": {"platform": "switch", "keyset": "prod"},
+  "requiresFirmware": {"platform": "switch"},
+  "license": "GPL-3.0-or-later",
+  "upstream": "https://github.com/citron-neo/emulator",
+  "notes": "AppImage x86_64 publicado em release verificado e fixado por SHA-256."
+}

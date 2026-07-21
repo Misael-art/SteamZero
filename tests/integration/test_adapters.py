@@ -84,11 +84,13 @@ def make_engine(
     return AdapterEngine(store, AdapterRegistry([manifest]), artifacts, root=root), artifacts
 
 
-def test_bundled_registry_loads_three_core_adapters() -> None:
+def test_bundled_registry_loads_verified_emulation_adapters() -> None:
     registry = AdapterRegistry.bundled()
     assert [manifest.id for manifest in registry.list()] == [
+        "citron",
         "dolphin",
         "duckstation",
+        "eden",
         "retroarch",
     ]
     assert all(
@@ -100,7 +102,13 @@ def test_bundled_registry_loads_three_core_adapters() -> None:
 def test_bundled_registry_is_locked_without_manifest_drift() -> None:
     registry = AdapterRegistry.bundled()
     locked = validate_registry_lock(registry.list())
-    assert [item.id for item in locked.components] == ["dolphin", "duckstation", "retroarch"]
+    assert [item.id for item in locked.components] == [
+        "citron",
+        "dolphin",
+        "duckstation",
+        "eden",
+        "retroarch",
+    ]
 
 
 def test_lockfile_manifest_drift_is_rejected() -> None:
@@ -206,6 +214,8 @@ def test_install_is_verified_persisted_and_idempotent(
     engine, artifacts = make_engine(store, root, "1.0.0", b"portable-v1")
 
     prepared = engine.plan_install("demo-emulator")
+    payload_action = next(action for action in prepared.plan.actions if action.kind == "copy")
+    assert payload_action.new_content_b64 == ""
     result = engine.apply(prepared, prepared.plan.confirm_token)
 
     assert result.status == "ok"
@@ -218,6 +228,42 @@ def test_install_is_verified_persisted_and_idempotent(
     assert repeated.plan.actions == []
     assert len(artifacts.requests) == 1
     engine.apply(repeated, repeated.plan.confirm_token)
+
+
+def test_repair_fetches_again_and_uninstall_preserves_rollback(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    root = tmp_path / "components"
+    data = portable_manifest(
+        "1.0.0",
+        b"portable-v1",
+        capabilities=[
+            "detect",
+            "status",
+            "install",
+            "update",
+            "verify",
+            "repair",
+            "uninstall",
+        ],
+    )
+    manifest = load_manifest(data)
+    artifacts = FakeArtifacts({manifest.sources[0].url or "": b"portable-v1"})
+    engine = AdapterEngine(store, AdapterRegistry([manifest]), artifacts, root=root)
+    install = engine.plan_install("demo-emulator")
+    engine.apply(install, install.plan.confirm_token)
+
+    repair = engine.plan_install("demo-emulator", force=True)
+    engine.apply(repair, repair.plan.confirm_token)
+    assert len(artifacts.requests) == 2
+
+    removal = engine.plan_uninstall("demo-emulator")
+    removed = engine.apply(removal, removal.plan.confirm_token)
+    assert engine.status("demo-emulator")["state"] == "missing"
+
+    engine.rollback("demo-emulator", removed.operation_id)
+    assert engine.status("demo-emulator")["state"] == "installed"
+    assert engine.payload_path("demo-emulator").stat().st_mode & 0o111
 
 
 def test_update_without_capability_is_blocked_before_fetch(
