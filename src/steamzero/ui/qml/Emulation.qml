@@ -34,6 +34,10 @@ Item {
     property string synchronizedPlatformId: ""
     property var pendingAction: null
     property string pendingPath: ""
+    property string gameSearchText: ""
+    property string gameSortKey: "name"
+    property bool gameSortAscending: true
+    property bool gameDetailsOpen: true
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -221,6 +225,137 @@ Item {
 
     function isEmulatorOverview() {
         return scopeId() === "emulator" && selectedArea.id === "overview"
+    }
+
+    function isGameLibrary() {
+        return scopeId() === "game" && selectedArea.id === "overview"
+    }
+
+    function selectScope(index) {
+        scopeIndex = normalizedIndex(index, scopes)
+        if (scopeId() === "game" || scopeId() === "emulator")
+            areaIndex = areaIndexById("overview")
+        if (scopeId() === "game")
+            gameDetailsOpen = true
+    }
+
+    function filteredGames() {
+        const query = gameSearchText.trim().toLocaleLowerCase()
+        const rows = games.filter(function(game) {
+            if (query === "")
+                return true
+            return String(game.name || "").toLocaleLowerCase().indexOf(query) >= 0
+                || String(game.titleId || "").toLocaleLowerCase().indexOf(query) >= 0
+        })
+        rows.sort(function(left, right) {
+            let leftValue
+            let rightValue
+            if (gameSortKey === "size") {
+                leftValue = Number(left.size || 0)
+                rightValue = Number(right.size || 0)
+            } else {
+                leftValue = String(left[gameSortKey] || "").toLocaleLowerCase()
+                rightValue = String(right[gameSortKey] || "").toLocaleLowerCase()
+            }
+            let comparison = 0
+            if (leftValue < rightValue)
+                comparison = -1
+            else if (leftValue > rightValue)
+                comparison = 1
+            if (comparison === 0)
+                comparison = String(left.name || "").localeCompare(String(right.name || ""))
+            return gameSortAscending ? comparison : -comparison
+        })
+        return rows
+    }
+
+    function setGameSort(key) {
+        if (gameSortKey === key)
+            gameSortAscending = !gameSortAscending
+        else {
+            gameSortKey = key
+            gameSortAscending = true
+        }
+    }
+
+    function selectGame(game) {
+        if (!game)
+            return
+        const index = games.findIndex(function(candidate) {
+            return candidate.id === game.id && candidate.path === game.path
+        })
+        if (index >= 0)
+            gameIndex = index
+        gameDetailsOpen = true
+    }
+
+    function formatBytes(value) {
+        const bytes = Number(value || 0)
+        if (!isFinite(bytes) || bytes <= 0)
+            return qsTr("Tamanho não publicado")
+        const gib = bytes / (1024 * 1024 * 1024)
+        if (gib >= 1)
+            return qsTr("%1 GB").arg(gib.toFixed(gib >= 10 ? 1 : 2))
+        const mib = bytes / (1024 * 1024)
+        return qsTr("%1 MB").arg(mib.toFixed(mib >= 10 ? 0 : 1))
+    }
+
+    function compatibilityState(game, emulatorId) {
+        const compatibility = game && game.compatibility ? game.compatibility : {}
+        const value = compatibility[emulatorId]
+        return value && value.state ? String(value.state) : String(value || "unknown")
+    }
+
+    function compatibilityLabel(state) {
+        const labels = {
+            "perfect": qsTr("Perfeito"), "compatible": qsTr("Perfeito"),
+            "playable": qsTr("Jogável"), "broken": qsTr("Quebrado"),
+            "failed": qsTr("Quebrado"), "unknown": qsTr("Não avaliado")
+        }
+        return labels[state] || qsTr("Não avaliado")
+    }
+
+    function compatibilityColor(state) {
+        if (state === "perfect" || state === "compatible")
+            return greenColor
+        if (state === "playable")
+            return amberColor
+        if (state === "broken" || state === "failed")
+            return redColor
+        return mutedColor
+    }
+
+    function gameFeatures(game) {
+        return [
+            {"icon": "document-save", "label": game.saveState || qsTr("Save —")},
+            {"icon": "extension", "label": game.modsCount !== undefined
+                ? qsTr("Mods %1").arg(game.modsCount) : qsTr("Mods —")},
+            {"icon": "package-x-generic", "label": game.dlcCount !== undefined
+                ? qsTr("DLC %1").arg(game.dlcCount) : qsTr("DLC —")},
+            {"icon": "system-software-update", "label": game.updateVersion
+                ? qsTr("Update %1").arg(game.updateVersion) : qsTr("Update —")},
+            {"icon": "applications-graphics", "label": game.shaderCount !== undefined
+                ? qsTr("Shaders %1").arg(game.shaderCount) : qsTr("Shaders —")}
+        ]
+    }
+
+    function gameEmulatorIndex(game) {
+        if (!game || !game.emulatorId)
+            return -1
+        return emulators.findIndex(function(emulator) { return emulator.id === game.emulatorId })
+    }
+
+    function gamePlayAction(game) {
+        if (game && game.playAction)
+            return game.playAction
+        return {
+            "id": "game.play.unavailable", "label": qsTr("Jogar"), "enabled": false,
+            "reason": qsTr("O serviço ainda não publicou um plano de lançamento para este jogo.")
+        }
+    }
+
+    function openGameArea(areaId) {
+        areaIndex = areaIndexById(areaId)
     }
 
     function areaDataById(id) {
@@ -850,7 +985,7 @@ Item {
                         Layout.minimumHeight: 48
                         Accessible.name: qsTr("Aplicar no escopo %1").arg(text)
                         Accessible.description: modelData.reason || ""
-                        onClicked: page.scopeIndex = index
+                        onClicked: page.selectScope(index)
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.backgroundColor
                             border.color: parent.checked || parent.activeFocus
@@ -895,21 +1030,6 @@ Item {
                     onActivated: page.emulatorIndex = currentIndex
                 }
 
-                ComboBox {
-                    visible: page.scopeId() === "game" && page.width >= 1250
-                    model: page.games
-                    textRole: "name"
-                    currentIndex: page.gameIndex
-                    enabled: page.games.length > 0
-                    palette.button: page.raisedColor
-                    palette.buttonText: page.textColor
-                    palette.base: page.raisedColor
-                    palette.text: page.textColor
-                    Layout.preferredWidth: 250
-                    Layout.minimumHeight: 48
-                    Accessible.name: qsTr("Selecionar jogo")
-                    onActivated: page.gameIndex = currentIndex
-                }
             }
         }
 
@@ -921,6 +1041,7 @@ Item {
             spacing: 0
 
             Rectangle {
+                visible: !page.isGameLibrary()
                 Layout.preferredWidth: page.width < 1180 ? 184 : 216
                 Layout.fillHeight: true
                 color: page.sidebarColor || page.surfaceColor
@@ -1006,6 +1127,365 @@ Item {
                     spacing: 16
 
                     ColumnLayout {
+                        visible: page.isGameLibrary()
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.topMargin: 16
+                        spacing: 10
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: qsTr("Biblioteca por jogo")
+                                    color: page.textColor
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                }
+                                Label {
+                                    text: qsTr("%1 de %2 jogo(s) • selecione uma linha para abrir os ajustes")
+                                        .arg(page.filteredGames().length).arg(page.games.length)
+                                    color: page.mutedColor
+                                    font.pixelSize: 12
+                                }
+                            }
+                            TextField {
+                                id: gameSearchField
+                                placeholderText: qsTr("Buscar por nome ou Title ID")
+                                text: page.gameSearchText
+                                color: page.textColor
+                                placeholderTextColor: page.mutedColor
+                                selectByMouse: true
+                                Layout.preferredWidth: Math.min(360, contentScroll.width * 0.38)
+                                Layout.minimumHeight: 44
+                                Accessible.name: qsTr("Buscar jogos")
+                                onTextChanged: page.gameSearchText = text
+                                background: Rectangle {
+                                    color: page.surfaceColor
+                                    border.color: gameSearchField.activeFocus
+                                        ? page.cyanColor : page.borderColor
+                                    border.width: gameSearchField.activeFocus ? 2 : 1
+                                    radius: 7
+                                }
+                            }
+                            Button {
+                                text: qsTr("Varrer")
+                                icon.name: "view-refresh"
+                                palette.button: page.raisedColor
+                                palette.buttonText: page.textColor
+                                Layout.minimumHeight: 44
+                                Accessible.name: qsTr("Varrer biblioteca novamente")
+                                onClicked: page.dispatchAction({
+                                    "id": "library.scan", "label": text, "enabled": true
+                                })
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Label {
+                                text: qsTr("Ordenar por")
+                                color: page.mutedColor
+                                font.bold: true
+                                Layout.rightMargin: 4
+                            }
+                            Repeater {
+                                model: [
+                                    {"key": "name", "label": qsTr("Nome")},
+                                    {"key": "titleId", "label": qsTr("Title ID")},
+                                    {"key": "size", "label": qsTr("Tamanho")},
+                                    {"key": "format", "label": qsTr("Formato")},
+                                    {"key": "state", "label": qsTr("Estado")}
+                                ]
+                                delegate: Button {
+                                    required property var modelData
+                                    text: modelData.label + (page.gameSortKey === modelData.key
+                                        ? (page.gameSortAscending ? "  ↑" : "  ↓") : "")
+                                    checkable: true
+                                    checked: page.gameSortKey === modelData.key
+                                    palette.button: checked ? page.cyanDarkColor : page.raisedColor
+                                    palette.buttonText: page.textColor
+                                    Layout.minimumHeight: 38
+                                    Accessible.name: qsTr("Ordenar por %1").arg(modelData.label)
+                                    onClicked: page.setGameSort(modelData.key)
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                            Label {
+                                text: qsTr("Dados ausentes aparecem como —")
+                                color: page.mutedColor
+                                font.pixelSize: 11
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 34
+                            color: page.surfaceColor
+                            border.color: page.borderColor
+                            radius: 6
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                spacing: 10
+                                Label { text: qsTr("CAPA"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 86 }
+                                Label { text: qsTr("JOGO • COMPATIBILIDADE • COMPLEMENTOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.fillWidth: true }
+                                Label { visible: contentScroll.width >= 760; text: qsTr("REQUISITOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 118 }
+                                Label { visible: contentScroll.width >= 760; text: qsTr("EMULADOR"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 126 }
+                                Label { text: qsTr("AÇÃO"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 112 }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: page.filteredGames().length === 0
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 120
+                            color: page.surfaceColor
+                            border.color: page.borderColor
+                            radius: 8
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                ModernIcon {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 28
+                                    height: 28
+                                    iconName: "edit-find"
+                                    iconColor: page.mutedColor
+                                }
+                                Label {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: page.games.length === 0
+                                        ? qsTr("Nenhum jogo base foi encontrado")
+                                        : qsTr("Nenhum jogo corresponde à busca")
+                                    color: page.textColor
+                                    font.bold: true
+                                }
+                                Label {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: page.games.length === 0
+                                        ? qsTr("Adicione uma pasta ou faça uma nova varredura.")
+                                        : qsTr("Tente outro nome ou Title ID.")
+                                    color: page.mutedColor
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            model: page.filteredGames()
+                            delegate: Rectangle {
+                                id: gameRow
+                                required property var modelData
+                                readonly property bool selected: page.selectedGame.id === modelData.id
+                                    && page.selectedGame.path === modelData.path
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 150
+                                color: selected ? "#10283a" : page.surfaceColor
+                                border.color: selected ? page.cyanColor : page.borderColor
+                                border.width: selected ? 2 : 1
+                                radius: 8
+
+                                TapHandler {
+                                    acceptedButtons: Qt.LeftButton
+                                    onTapped: page.selectGame(gameRow.modelData)
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 10
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 86
+                                        Layout.preferredHeight: 66
+                                        color: page.raisedColor
+                                        border.color: page.borderColor
+                                        radius: 6
+                                        clip: true
+                                        Image {
+                                            id: gameBanner
+                                            anchors.fill: parent
+                                            source: gameRow.modelData.bannerAsset || ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            visible: String(source) !== "" && status === Image.Ready
+                                        }
+                                        SwitchPlatformMark {
+                                            anchors.centerIn: parent
+                                            width: 42
+                                            height: 42
+                                            visible: !gameBanner.visible
+                                            cutoutColor: page.raisedColor
+                                        }
+                                        Label {
+                                            anchors.right: parent.right
+                                            anchors.bottom: parent.bottom
+                                            rightPadding: 4
+                                            bottomPadding: 2
+                                            text: String(gameRow.modelData.format || "—").toUpperCase()
+                                            color: page.textColor
+                                            font.pixelSize: 9
+                                            font.bold: true
+                                            background: Rectangle { color: "#aa071019"; radius: 3 }
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 260
+                                        spacing: 4
+                                        Label {
+                                            text: gameRow.modelData.name || qsTr("Jogo sem nome")
+                                            color: page.textColor
+                                            font.pixelSize: 15
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: qsTr("Title ID: %1%2")
+                                                .arg(gameRow.modelData.titleId || qsTr("não identificado"))
+                                                .arg(gameRow.modelData.version
+                                                    ? qsTr(" • versão %1").arg(gameRow.modelData.version) : "")
+                                            color: gameRow.modelData.identityVerified === false
+                                                ? page.amberColor : page.mutedColor
+                                            font.pixelSize: 11
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 5
+                                            Repeater {
+                                                model: page.emulators
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    readonly property string compatibility: page.compatibilityState(
+                                                        gameRow.modelData, modelData.id)
+                                                    Layout.preferredWidth: compatibilityText.implicitWidth + 16
+                                                    Layout.preferredHeight: 22
+                                                    color: "transparent"
+                                                    border.color: page.compatibilityColor(compatibility)
+                                                    radius: 10
+                                                    Label {
+                                                        id: compatibilityText
+                                                        anchors.centerIn: parent
+                                                        text: modelData.name + " • "
+                                                            + page.compatibilityLabel(parent.compatibility)
+                                                        color: page.compatibilityColor(parent.compatibility)
+                                                        font.pixelSize: 9
+                                                        font.bold: true
+                                                    }
+                                                }
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                        }
+                                        Flow {
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: childrenRect.height
+                                            spacing: 5
+                                            Repeater {
+                                                model: page.gameFeatures(gameRow.modelData)
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    width: featureRow.implicitWidth + 12
+                                                    height: 22
+                                                    color: page.backgroundColor
+                                                    border.color: page.borderColor
+                                                    radius: 5
+                                                    Row {
+                                                        id: featureRow
+                                                        anchors.centerIn: parent
+                                                        spacing: 4
+                                                        ModernIcon { width: 13; height: 13; iconName: modelData.icon; iconColor: page.mutedColor }
+                                                        Label { text: modelData.label; color: page.mutedColor; font.pixelSize: 9 }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        visible: contentScroll.width >= 760
+                                        Layout.preferredWidth: 118
+                                        spacing: 4
+                                        Label { text: page.formatBytes(gameRow.modelData.size); color: page.textColor; font.bold: true }
+                                        Label { text: String(gameRow.modelData.format || "—").toUpperCase(); color: page.mutedColor; font.pixelSize: 11 }
+                                        Label {
+                                            text: gameRow.modelData.requiresFirmware
+                                                && gameRow.modelData.requiresFirmware.required
+                                                ? qsTr("FW ≥ %1").arg(gameRow.modelData.requiresFirmware.required)
+                                                : qsTr("FW mínimo —")
+                                            color: page.mutedColor
+                                            font.pixelSize: 10
+                                        }
+                                        Label {
+                                            text: gameRow.modelData.region || qsTr("Região —")
+                                            color: page.mutedColor
+                                            font.pixelSize: 10
+                                        }
+                                    }
+
+                                    ComboBox {
+                                        visible: contentScroll.width >= 760
+                                        model: page.emulators
+                                        textRole: "name"
+                                        currentIndex: page.gameEmulatorIndex(gameRow.modelData)
+                                        displayText: currentIndex >= 0 ? currentText : qsTr("Não definido")
+                                        enabled: false
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.mutedColor
+                                        palette.base: page.raisedColor
+                                        palette.text: page.mutedColor
+                                        Layout.preferredWidth: 126
+                                        Layout.minimumHeight: 40
+                                        Accessible.name: qsTr("Emulador padrão de %1").arg(gameRow.modelData.name)
+                                        Accessible.description: qsTr("A preferência por jogo ainda não é publicada pelo serviço.")
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.preferredWidth: 112
+                                        spacing: 5
+                                        Button {
+                                            readonly property var playAction: page.gamePlayAction(gameRow.modelData)
+                                            text: playAction.label
+                                            icon.name: "media-playback-start"
+                                            enabled: playAction.enabled === true
+                                            palette.button: enabled ? page.cyanDarkColor : page.raisedColor
+                                            palette.buttonText: enabled ? page.textColor : page.mutedColor
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: 40
+                                            Accessible.description: playAction.reason || ""
+                                            onClicked: {
+                                                page.selectGame(gameRow.modelData)
+                                                page.dispatchAction(playAction)
+                                            }
+                                        }
+                                        Button {
+                                            text: qsTr("Ajustes")
+                                            icon.name: "configure"
+                                            palette.button: page.raisedColor
+                                            palette.buttonText: page.textColor
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: 40
+                                            onClicked: page.selectGame(gameRow.modelData)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.preferredHeight: 8 }
+                    }
+
+                    ColumnLayout {
+                        visible: !page.isGameLibrary()
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
@@ -1078,6 +1558,7 @@ Item {
                     }
 
                     Rectangle {
+                        visible: !page.isGameLibrary()
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
@@ -1133,7 +1614,7 @@ Item {
                     }
 
                     GridLayout {
-                        visible: !page.isEmulatorOverview()
+                        visible: !page.isEmulatorOverview() && !page.isGameLibrary()
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
@@ -1365,13 +1846,16 @@ Item {
             }
 
             Rectangle {
-                visible: page.width >= 1120
-                Layout.preferredWidth: 286
+                visible: page.isGameLibrary()
+                    ? page.gameDetailsOpen && page.width >= 900 : page.width >= 1120
+                Layout.preferredWidth: page.isGameLibrary()
+                    ? (page.width < 1200 ? 340 : 360) : 286
                 Layout.fillHeight: true
                 color: page.surfaceColor
                 border.color: page.borderColor
 
                 ColumnLayout {
+                    visible: !page.isGameLibrary()
                     anchors.fill: parent
                     anchors.margins: 18
                     spacing: 12
@@ -1488,6 +1972,272 @@ Item {
                         Layout.minimumHeight: 48
                         Accessible.name: text
                         onClicked: page.systemRequested()
+                    }
+                }
+
+                ScrollView {
+                    id: gamePanelScroll
+                    visible: page.isGameLibrary()
+                    anchors.fill: parent
+                    clip: true
+                    contentWidth: availableWidth
+                    leftPadding: 16
+                    rightPadding: 16
+                    topPadding: 14
+                    bottomPadding: 14
+
+                    ColumnLayout {
+                        width: gamePanelScroll.availableWidth
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: qsTr("AJUSTES DO JOGO")
+                                    color: page.mutedColor
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.letterSpacing: 1
+                                }
+                                Label {
+                                    text: page.selectedGame.name
+                                    color: page.textColor
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                    wrapMode: Text.WordWrap
+                                    maximumLineCount: 3
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            ToolButton {
+                                icon.name: "window-close"
+                                icon.color: page.textColor
+                                Accessible.name: qsTr("Fechar ajustes do jogo")
+                                onClicked: page.gameDetailsOpen = false
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("Title ID: %1").arg(
+                                page.selectedGame.titleId || qsTr("não identificado"))
+                            color: page.mutedColor
+                            font.pixelSize: 11
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+
+                        Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+                            Label { text: qsTr("Emulador para este jogo"); color: page.textColor; font.bold: true }
+                            ComboBox {
+                                model: page.emulators
+                                textRole: "name"
+                                currentIndex: page.gameEmulatorIndex(page.selectedGame)
+                                displayText: currentIndex >= 0 ? currentText : qsTr("Não definido")
+                                enabled: false
+                                palette.button: page.raisedColor
+                                palette.buttonText: page.mutedColor
+                                palette.base: page.raisedColor
+                                palette.text: page.mutedColor
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 42
+                                Accessible.description: qsTr("A preferência persistente ainda não é publicada pelo serviço.")
+                            }
+                            Label {
+                                text: qsTr("O seletor será habilitado quando o backend publicar a preferência usada pelo Play.")
+                                color: page.amberColor
+                                font.pixelSize: 10
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: performancePanel.implicitHeight + 24
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 8
+                            ColumnLayout {
+                                id: performancePanel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    ModernIcon { iconName: "speedometer"; iconColor: page.cyanColor; Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+                                    Label { text: qsTr("Performance e upscaling"); color: page.textColor; font.bold: true; Layout.fillWidth: true }
+                                }
+                                Label {
+                                    text: qsTr("LSFG-VK: %1").arg(page.selectedGame.lsfgMode || qsTr("não configurado"))
+                                    color: page.mutedColor
+                                }
+                                Label {
+                                    text: qsTr("Upscaler: %1").arg(page.selectedGame.upscaler || qsTr("não configurado"))
+                                    color: page.mutedColor
+                                }
+                                Button {
+                                    text: qsTr("Configurar gráficos e fluidez")
+                                    icon.name: "go-next"
+                                    palette.button: page.raisedColor
+                                    palette.buttonText: page.textColor
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 42
+                                    onClicked: page.openGameArea("graphicsPerformance")
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: contentPanel.implicitHeight + 24
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 8
+                            ColumnLayout {
+                                id: contentPanel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    ModernIcon { iconName: "package-x-generic"; iconColor: page.cyanColor; Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+                                    Label { text: qsTr("Conteúdo e modding"); color: page.textColor; font.bold: true; Layout.fillWidth: true }
+                                }
+                                Label {
+                                    text: qsTr("Updates: %1 • DLCs: %2 • Mods: %3")
+                                        .arg(page.selectedGame.updateVersion || "—")
+                                        .arg(page.selectedGame.dlcCount !== undefined
+                                            ? page.selectedGame.dlcCount : "—")
+                                        .arg(page.selectedGame.modsCount !== undefined
+                                            ? page.selectedGame.modsCount : "—")
+                                    color: page.mutedColor
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Button {
+                                        text: qsTr("Updates e DLC")
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 42
+                                        onClicked: page.openGameArea("updatesDlc")
+                                    }
+                                    Button {
+                                        text: qsTr("Mods")
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 42
+                                        enabled: false
+                                        Accessible.description: qsTr("Gerenciador de mods ainda não publicado.")
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: preservationPanel.implicitHeight + 24
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 8
+                            ColumnLayout {
+                                id: preservationPanel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    ModernIcon { iconName: "document-save"; iconColor: page.cyanColor; Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+                                    Label { text: qsTr("Saves e shader cache"); color: page.textColor; font.bold: true; Layout.fillWidth: true }
+                                }
+                                Label {
+                                    text: qsTr("Save: %1 • Shaders: %2")
+                                        .arg(page.selectedGame.saveState || "—")
+                                        .arg(page.selectedGame.shaderCount !== undefined
+                                            ? page.selectedGame.shaderCount : "—")
+                                    color: page.mutedColor
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Button {
+                                        text: qsTr("Backup e restaurar")
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 42
+                                        onClicked: page.openGameArea("saves")
+                                    }
+                                    Button {
+                                        text: qsTr("Cache")
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 42
+                                        onClicked: page.openGameArea("shaderCache")
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: toolsPanel.implicitHeight + 24
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 8
+                            ColumnLayout {
+                                id: toolsPanel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    ModernIcon { iconName: "configure"; iconColor: page.cyanColor; Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+                                    Label { text: qsTr("Disco e integridade"); color: page.textColor; font.bold: true; Layout.fillWidth: true }
+                                }
+                                Button {
+                                    text: qsTr("Converter NSP → NSZ")
+                                    icon.name: "document-export"
+                                    palette.button: page.raisedColor
+                                    palette.buttonText: page.textColor
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 42
+                                    onClicked: page.openGameArea("advanced")
+                                }
+                                Button {
+                                    text: qsTr("Revisar nome e metadados")
+                                    icon.name: "edit-rename"
+                                    palette.button: page.raisedColor
+                                    palette.buttonText: page.textColor
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 42
+                                    onClicked: page.openGameArea("media")
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("Ações mutáveis continuam sujeitas a preview, confirmação e rollback.")
+                            color: page.mutedColor
+                            font.pixelSize: 10
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
                     }
                 }
             }

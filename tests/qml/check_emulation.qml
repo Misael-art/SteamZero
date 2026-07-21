@@ -128,6 +128,46 @@ Window {
         object.destroy()
     }
 
+    function testGameLibraryJourney() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "selectedScope": "game",
+                "selectedArea": "overview",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "games": [
+                    {"id": "b", "path": "/roms/b.nsp", "name": "Zelda", "titleId": "010000000000B000", "size": 20, "format": "nsp", "state": "ready", "statusLabel": "NSP"},
+                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ"}
+                ]
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        check(object.isGameLibrary(), "escopo Por jogo deve abrir a biblioteca estruturada")
+        check(object.filteredGames()[0].name === "Mario", "ordenação inicial deve usar o nome")
+        object.gameSearchText = "zelda"
+        check(object.filteredGames().length === 1, "busca deve filtrar pelo nome")
+        check(object.filteredGames()[0].id === "b", "busca deve preservar o jogo correspondente")
+        object.gameSearchText = "010000000000A000"
+        check(object.filteredGames()[0].id === "a", "busca deve aceitar Title ID")
+        object.gameSearchText = ""
+        object.setGameSort("size")
+        check(object.filteredGames()[0].id === "a", "ordenação crescente deve aceitar tamanho")
+        object.setGameSort("size")
+        check(object.filteredGames()[0].id === "b", "segunda seleção deve inverter a ordenação")
+        object.selectGame(object.games[1])
+        check(object.selectedGame.id === "a", "seleção da linha deve atualizar o painel do jogo")
+        check(object.compatibilityState(object.selectedGame, "eden") === "unknown",
+              "compatibilidade ausente não pode ser inventada")
+        check(object.gamePlayAction(object.selectedGame).enabled === false,
+              "Jogar deve ficar bloqueado sem plano publicado")
+        object.destroy()
+    }
+
     Component {
         id: pageComponent
         Emulation {
@@ -152,6 +192,7 @@ Window {
         testHierarchy()
         testSafeFallback()
         testBackendArea()
+        testGameLibraryJourney()
         if (failures === 0)
             console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
         Qt.exit(failures === 0 ? 0 : 1)
