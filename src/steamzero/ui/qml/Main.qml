@@ -499,7 +499,7 @@ ApplicationWindow {
             })
             return
         }
-        if (["library.root.add", "keys.import", "firmware.import", "nsz.install", "nsz.convert",
+        if (["library.root.add", "keys.import", "keys.repair", "firmware.import", "nsz.install", "nsz.convert",
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
                 "game.steam.set", "steam.shortcuts.sync"].indexOf(action.id) >= 0

@@ -28,6 +28,10 @@ Main {
         check(lastRequest.indexOf("não reconhecida") >= 0,
               "action id fora da allowlist deve ser recusado")
 
+        performEmulationAction({"id": "keys.repair", "enabled": true})
+        check(lastRequest.indexOf("Bridge local indisponível") >= 0,
+              "keys.repair deve ser encaminhada ao plano de emulação")
+
         performEmulationAction({"id": "emulation.refresh", "enabled": true})
         check(lastRequest.indexOf("Bridge local indisponível") >= 0,
               "refresh deve usar somente o GET /status existente")
