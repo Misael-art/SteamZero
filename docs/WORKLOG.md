@@ -2017,3 +2017,33 @@ marcado como não sincronizado, fazendo a prontidão deixar de declarar 100%.
 privilegiada foi executada nesta sessão. A release ativa permaneceu
 `0.1.0a33-dbb824b4ce54`; o operador ainda precisa autorizar explicitamente uma
 nova release/instalação antes do teste funcional desta correção.
+
+## 2026-07-21 — Sessão 51: release do catálogo Switch e filtro auxiliar final
+
+**Branch:** `codex/lancamento-steam-roms`. A branch permanece descendente de
+`main` (`74f2984`). Os caminhos não rastreados `.worktrees/` e
+`docs/12-roadmap/EMULATOR-PORTING-DIRECTIVE.md`, pertencentes a outras frentes,
+permaneceram intocados.
+
+| Item | Commit/release | Testes que provam |
+|---|---|---|
+| Release inicial do lançamento resiliente e dos ajustes Por Jogo | `0.1.0a33-90f581e01fea` | manifesto v4, entry points de boot, doctor e snapshot real do dashboard |
+| Pacotes auxiliares autônomos com Title ID terminado em `000` deixam de aparecer como jogos quando estão em diretório explícito de DLC/update | `a8aa074` | `test_scanner_excludes_standalone_auxiliary_with_base_shaped_title_id` e suíte completa |
+| Release final instalada a partir de árvore limpa | `0.1.0a33-a8aa074d81a3` | wheel SHA-256 `b58a5ba927255a628889b1c29ef53bd7617000e28df0b2963ef3e36633a2dc76`, provenance e conteúdo do wheel conferidos |
+| UI instalada carrega o dashboard completo sem falha QML | `0.1.0a33-a8aa074d81a3` | smoke offscreen por 10 segundos, encerrado apenas pelo timeout intencional e sem saída de erro |
+
+**Gates:** 850 testes passaram com `TMPDIR=/tmp`; Ruff, mypy em 89 arquivos,
+independence, boundaries e `git diff --check` ficaram verdes. O teste unitário
+do scanner passou isoladamente antes da suíte completa.
+
+**Host:** o instalador transacional ativou `0.1.0a33-a8aa074d81a3`, originada
+da árvore limpa `a8aa074d81a3d88ac5fb9fb75bbad97ed496dab2`. Serviço e socket do
+core ficaram ativos após `daemon-reload`/restart, e o doctor aprovou os quatro
+checks. O snapshot consumido pela UI expôs 15 jogos-base, nenhum conteúdo
+auxiliar, nomes limpos e três emuladores instalados; a prontidão ficou
+honestamente em 35% e bloqueada até sincronizar as keys do Citron.
+
+**Rollback:** `0.1.0a33-90f581e01fea` foi preservada como release anterior. O
+teste físico de seleção de emulador, sincronização das keys e lançamento de uma
+ROM própria continua a cargo do operador; nenhum reboot ou mudança de boot foi
+executado.
