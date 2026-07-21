@@ -1962,3 +1962,27 @@ anterior. A integração externa de mídia ficou fora do runtime porque não há
 pública oficial documentada; a próxima etapa depende de validação de termos e
 licença. Resta ao operador testar a jornada visual, o lançamento real de ROMs e
 a importação dos atalhos com a Steam totalmente encerrada.
+
+## 2026-07-21 — Sessão 49: bootstrap resiliente da central QML
+
+**Branch:** `codex/lancamento-steam-roms`. Os caminhos não rastreados de outras
+frentes permaneceram intocados.
+
+| Item | Commit/release | Evidência |
+|---|---|---|
+| Diagnóstico da falha pós-reboot | `dbb824b` | journal da sessão mostrou `E-INTERNAL-UNEXPECTED: [Errno 7] Argument list too long: /usr/sbin/qml6`; core, doctor e SQLite estavam íntegros |
+| Snapshot removido dos argumentos do processo e carregado assincronamente pela bridge HTTP | `dbb824b` | teste impede `--steamzero-status`, limita argv a menos de 4 KiB e prova que `coordinator.status()` não é chamado antes do spawn |
+| Degradação inicial segura da UI | `dbb824b` | QML inicia com o read model fallback existente e chama `refreshStatus()` somente após URL/token da bridge estarem disponíveis |
+| Release corretiva | `0.1.0a33-dbb824b4ce54` | wheel SHA-256 `fe15d855edc6122a4bc42e1cbbf4cefda97e68dc726058fa6630072f265c3655`, manifesto v4 e árvore clean |
+
+**Gates:** 843 testes, Ruff, mypy em 89 arquivos, independence, boundaries,
+`qmllint`, harness QML e smoke offscreen com o snapshot real do host ficaram
+verdes. O smoke permaneceu ativo até o timeout intencional de oito segundos,
+sem E2BIG, traceback ou falha do aplicativo.
+
+**Host:** `0.1.0a33-dbb824b4ce54` foi ativada, o serviço core do usuário foi
+reiniciado e passou a executar o Python dessa release. Socket e serviço ficaram
+ativos, doctor aprovou todos os checks e Game Mode permaneceu `ready`. Nenhum
+reboot, mudança de boot ou arquivo de outra frente foi alterado.
+
+**Rollback:** `0.1.0a33-043e290a184f` foi preservada como release anterior.
