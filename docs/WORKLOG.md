@@ -1824,3 +1824,23 @@ configuração de boot.
 **Rollback:** release anterior preservada e registrada no manifesto:
 `0.1.0a33-832d82be8e22`. O teste físico da UI, seleção de arquivo e conversão
 NSZ no host continua sendo a próxima etapa do operador.
+
+## 2026-07-21 — Sessão 44: diálogo de firmware e descoberta da biblioteca
+
+**Branch:** `codex/correcao-dialogo-scan-switch`, criada do tip `74f2984` de
+`main`. Os itens não rastreados já existentes permaneceram intocados.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Diálogo de confirmação com altura confinada, preview formatado e barras de rolagem para imports grandes de firmware | `4f0a01f` | harnesses Qt6 offscreen, `qmllint` e testes transacionais |
+| Descoberta rápida de NSP/NSZ/XCI/XCZ/NRO sem hash integral durante o inventário, mantendo hash completo nas operações de integridade | `4f0a01f` | `test_switch_library.py`, `test_emulation_controller.py` |
+| Jogos sem Title ID visíveis como não verificados; Title ID procurado também nas pastas-pai; ações dependentes de identidade bloqueadas com explicação | `4f0a01f` | `test_switch_library.py`, `test_emulation_workspace.py`, `test_emulation_controller.py` |
+| Inclusão de `~/emulation/roms` e varredura automática após confirmar um novo diretório | `4f0a01f` | `test_emulation_controller.py` e prova read-only de 178 NSP identificados no diretório real |
+
+**Gates finais:** 834 testes passaram, cobertura 85,03%; Ruff, mypy em 88
+arquivos, independence, boundaries, `git diff --check`, `qmllint` e os dois
+harnesses QML offscreen verdes.
+
+**Host/release:** nenhuma release, instalação, rollback, ação privilegiada ou
+alteração de dados do host foi executada. A correção permanece somente nesta
+branch até autorização explícita para integração e publicação.
