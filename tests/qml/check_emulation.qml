@@ -51,6 +51,24 @@ Window {
         check(object.contextTitle() === "Modo portátil", "escopo portátil deve ser explícito")
         object.scopeIndex = 4
         check(object.contextTitle() === "Modo dock", "escopo dock deve ser explícito")
+
+        object.scopeIndex = 1
+        object.areaIndex = object.areaIndexById("controls")
+        object.emulation = {
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "selectedScope": "global",
+                "selectedArea": "overview",
+                "readiness": {"percent": 80, "title": "Pronto", "blockers": []},
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "games": []
+            }]
+        }
+        object.syncPublishedSelection()
+        check(object.scopeId() === "emulator", "refresh da mesma plataforma deve preservar escopo local")
+        check(object.selectedArea.id === "controls", "refresh deve preservar a área local")
         object.destroy()
     }
 

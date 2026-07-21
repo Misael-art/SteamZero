@@ -30,6 +30,7 @@ Item {
     property int areaIndex: 0
     property int emulatorIndex: 0
     property int gameIndex: 0
+    property string synchronizedPlatformId: ""
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -110,6 +111,14 @@ Item {
     }
 
     function syncPublishedSelection() {
+        const platformId = String(selectedPlatform.id || "")
+        if (synchronizedPlatformId !== "" && synchronizedPlatformId === platformId) {
+            scopeIndex = normalizedIndex(scopeIndex, scopes)
+            areaIndex = normalizedIndex(areaIndex, areas)
+            emulatorIndex = normalizedIndex(emulatorIndex, emulators)
+            gameIndex = normalizedIndex(gameIndex, games)
+            return
+        }
         const scope = selectedPlatform.selectedScope || "global"
         const publishedScope = scopes.findIndex(function(item) { return item.id === scope })
         scopeIndex = publishedScope >= 0 ? publishedScope : 0
@@ -118,6 +127,7 @@ Item {
         areaIndex = publishedArea >= 0 ? publishedArea : 0
         emulatorIndex = normalizedIndex(emulatorIndex, emulators)
         gameIndex = normalizedIndex(gameIndex, games)
+        synchronizedPlatformId = platformId
     }
 
     onSelectedPlatformChanged: Qt.callLater(syncPublishedSelection)
