@@ -2069,3 +2069,16 @@ adicionados nem incluídos neste commit.
 **Host/release:** nenhuma instalação, release ou ação privilegiada foi executada
 nesta sessão. A release ativa permaneceu `0.1.0a33-a8aa074d81a3`; uma nova
 ativação requer autorização explícita do operador em turno próprio.
+
+## 2026-07-21 — Sessão 53: roteamento do reparo de keys
+
+**Branch:** `codex/lancamento-steam-roms`. Os arquivos concorrentes da frente de
+scraping/backend permaneceram intocados e fora do commit.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| A ação publicada `keys.repair` passa pela allowlist da central e abre o plano transacional em vez de cair no erro “ação não reconhecida” | `50b2a86` | `check_main_emulation.qml`, `qmllint Main.qml` e 16 testes de `test_desktop_ui_bridge.py` |
+
+**Host/release:** nenhuma instalação ou ação privilegiada foi executada. A
+captura recebida ainda corresponde à release ativa
+`0.1.0a33-a8aa074d81a3`, anterior a esta correção e ao commit `ec79604`.
