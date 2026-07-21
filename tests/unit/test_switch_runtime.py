@@ -43,6 +43,16 @@ def test_requested_players_degrades_to_available_controllers() -> None:
     assert "Solicitados 4" in profile.warnings[0]
 
 
+def test_no_controller_never_creates_phantom_player() -> None:
+    profile = resolve_switch_runtime_profile(
+        "dock", connected_controllers=0, built_in_controller=False
+    )
+
+    assert profile.detected_controllers == 0
+    assert profile.active_players == 0
+    assert "Nenhum controle" in profile.warnings[0]
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

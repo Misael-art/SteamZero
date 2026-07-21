@@ -119,7 +119,7 @@ def test_import_and_migration_reject_symlink_and_traversal(
     linked = root / "linked.nsp"
     linked.symlink_to(source)
     with pytest.raises(SteamZeroError):
-        manager.plan_import(linked, kind="update")
+        manager.plan_import(linked, kind="mod")
     with pytest.raises(SteamZeroError):
         SwitchContentManager.plan_migrate_saves(root, root / "target", {"../real.nsp": "x"})
 
@@ -190,6 +190,19 @@ def test_dlc_can_be_enabled_and_disabled_independently(
     assert manager.list_records(kind="dlc")[0].state == "inactive"
 
 
+def test_update_and_dlc_require_title_id(
+    env: tuple[SwitchContentManager, Path],
+) -> None:
+    manager, root = env
+    source = root / "content.nsp"
+    source.write_bytes(b"content")
+
+    for kind in ("update", "dlc"):
+        with pytest.raises(SteamZeroError) as exc:
+            manager.plan_import(source, kind=kind)
+        assert exc.value.code == "E-API-SCHEMA"
+
+
 def test_index_recovery_marks_missing_blob_unavailable(
     env: tuple[SwitchContentManager, Path],
 ) -> None:
@@ -211,6 +224,9 @@ def test_index_recovery_marks_missing_blob_unavailable(
     manager.apply_recovery(plan.plan_id, plan.confirm_token)
 
     assert manager.list_records(kind="update")[0].state == "unavailable"
+    with pytest.raises(SteamZeroError) as exc:
+        manager.plan_set_active(record.record_key, active=True)
+    assert exc.value.code == "E-CONTENT-INCOMPLETE"
 
 
 @pytest.mark.parametrize("fingerprint", [".", ".."])

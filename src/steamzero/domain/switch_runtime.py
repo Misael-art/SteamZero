@@ -66,7 +66,7 @@ def resolve_switch_runtime_profile(
     if not 0 <= connected_controllers <= 32:
         raise SteamZeroError("E-API-SCHEMA", detail="número de controles fora do limite")
     detected = connected_controllers + (1 if built_in_controller else 0)
-    available_players = min(max(detected, 1), 4)
+    available_players = min(detected, 4)
     if requested_players is None:
         active_players = available_players
     elif not 1 <= requested_players <= 4:
@@ -77,6 +77,8 @@ def resolve_switch_runtime_profile(
         active_players = requested_players
 
     warnings: list[str] = []
+    if detected == 0:
+        warnings.append("Nenhum controle detectado; jogadores ativos permanecem em zero.")
     if detected > 4:
         warnings.append("Mais de quatro controles detectados; somente quatro serão ativados.")
     if requested_players is not None and requested_players > available_players:

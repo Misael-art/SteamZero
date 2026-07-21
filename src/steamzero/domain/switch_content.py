@@ -77,6 +77,10 @@ class SwitchContentManager:
     ) -> ContentImportDecision:
         normalized_kind = _validate_kind(kind)
         normalized_title = _validate_title_id(title_id)
+        if normalized_kind in {"update", "dlc"} and normalized_title is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"titleId é obrigatório para {normalized_kind}"
+            )
         if source.is_symlink() or not source.is_file():
             raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="conteúdo não é arquivo regular")
         source = source.resolve(strict=True)
@@ -196,6 +200,17 @@ class SwitchContentManager:
         if selected["kind"] not in {"update", "dlc"}:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail="somente updates e DLC podem ser ativados"
+            )
+        selected_record = self._record_from_entry(selected)
+        if (
+            selected_record.state == "unavailable"
+            or selected_record.blob.is_symlink()
+            or not selected_record.blob.is_file()
+            or fs.hash_file(selected_record.blob, algo="sha256") != selected_record.sha256
+        ):
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail="conteúdo ausente ou corrompido não pode ser ativado",
             )
         if active and selected["kind"] == "update":
             for entry in index["records"]:
