@@ -486,6 +486,14 @@ ApplicationWindow {
             })
             return
         }
+        if (action.id.indexOf("emulator.stop:") === 0) {
+            const emulatorId = action.id.split(":")[1]
+            request("POST", "/emulation/emulator/stop", {"emulatorId": emulatorId},
+                    function() {
+                refreshStatus(qsTr("Emulador encerrado"))
+            })
+            return
+        }
         if (action.id.indexOf("emulator.install:") === 0
                 || action.id.indexOf("emulator.update:") === 0
                 || action.id.indexOf("emulator.uninstall:") === 0) {
@@ -760,7 +768,11 @@ ApplicationWindow {
                     text: qsTr("Cancelar")
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
-                    onClicked: emulationDialog.close()
+                    onClicked: {
+                        emulationPage.cancelPendingEmulatorSelection()
+                        root.emulationPlan = null
+                        emulationDialog.close()
+                    }
                 }
                 Button {
                     text: qsTr("Aplicar com rollback")

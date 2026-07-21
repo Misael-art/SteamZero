@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
         "[UI]\nPaths\\gamedirs\\size=1\nPaths\\gamedirs\\1\\path=/existing\n",
         encoding="utf-8",
     )
-    ryubing_config = home / "Ryujinx" / "Config.json"
+    ryubing_config = home / ".config" / "Ryujinx" / "Config.json"
     ryubing_config.parent.mkdir(parents=True)
     ryubing_config.write_text('{"version":70,"game_dirs":[]}\n', encoding="utf-8")
     roms = home / "Games" / "Switch"
@@ -93,9 +94,11 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     for target in (
         home / ".switch" / "prod.keys",
         data_home / "citron" / "keys" / "prod.keys",
+        home / ".config" / "Ryujinx" / "system" / "prod.keys",
         home / "Ryujinx" / "system" / "prod.keys",
     ):
         assert target.read_text(encoding="utf-8") == keys.read_text(encoding="utf-8")
+    assert controller._key_projection_copies("ryubing") == []  # type: ignore[attr-defined]
 
     citron_data_key = data_home / "citron" / "keys" / "prod.keys"
     citron_config_key = config_home / "citron" / "keys" / "prod.keys"
@@ -129,7 +132,10 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     )
     _apply(controller, firmware_plan)
     assert any((data_home / "citron/nand/system/Contents/registered").glob("*.nca"))
-    assert any((home / "Ryujinx/bis/system/Contents/registered").glob("*.nca"))
+    assert any(
+        (home / ".config/Ryujinx/bis/system/Contents/registered").glob("*.nca")
+    )
+    assert controller._firmware_projection_copies(("ryubing",)) == []  # type: ignore[attr-defined]
 
 
 def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
@@ -207,6 +213,7 @@ def test_keys_import_projects_optional_title_keys(monkeypatch, tmp_path: Path) -
         home / ".local/share/eden/keys/title.keys",
         home / ".local/share/citron/keys/title.keys",
         home / ".config/citron/keys/title.keys",
+        home / ".config/Ryujinx/system/title.keys",
         home / "Ryujinx/system/title.keys",
     ):
         assert target.read_text(encoding="utf-8") == title_content
@@ -415,10 +422,13 @@ def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
 ) -> None:  # type: ignore[no-untyped-def]
     observed: dict[str, object] = {}
 
+    class FakeProcess:
+        pid = 1234
+
     def fake_popen(argv, **kwargs):  # type: ignore[no-untyped-def]
         observed["argv"] = argv
         observed["env"] = kwargs["env"]
-        return object()
+        return FakeProcess()
 
     monkeypatch.setattr(emulation.subprocess, "Popen", fake_popen)
     emulation._spawn_detached(
@@ -430,7 +440,55 @@ def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
         "-g",
         "/home/test/Game With Spaces.nsp",
     ]
-    assert observed["env"]["APPIMAGELAUNCHER_DISABLE"] == "1"  # type: ignore[index]
+    assert observed["env"]["APPIMAGELAUNCHER_DISABLE"] == "true"  # type: ignore[index]
+
+
+def test_stop_emulator_signals_only_managed_process_group(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    payload = tmp_path / "ryubing.AppImage"
+    signaled: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.AdapterEngine.payload_path",
+        lambda _self, _emulator_id: payload,
+    )
+    monkeypatch.setattr(controller, "_managed_process_groups", lambda _payload: {4321})
+    monkeypatch.setattr(
+        emulation.os,
+        "killpg",
+        lambda process_group, requested_signal: signaled.append(
+            (process_group, requested_signal)
+        ),
+    )
+
+    result = controller.stop_emulator("ryubing")
+
+    assert result["status"] == "stopping"
+    assert result["processGroups"] == 1
+    assert signaled == [(4321, emulation.signal.SIGTERM)]
+
+
+def test_launch_argv_uses_explicit_appimage_bypass(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    bypass = tmp_path / "appimagelauncher-binfmt-bypass"
+    bypass.write_bytes(b"executable")
+    bypass.chmod(0o700)
+    controller = EmulationController(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        which=lambda command: str(bypass)
+        if command == "appimagelauncher-binfmt-bypass"
+        else None,
+    )
+    payload = tmp_path / "Eden.AppImage"
+    rom = tmp_path / "Game With Spaces.nsp"
+
+    assert controller._launch_argv("eden", payload, rom) == (  # type: ignore[attr-defined]
+        str(bypass),
+        str(payload),
+        "-f",
+        "-g",
+        str(rom),
+    )
 
 
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -444,10 +502,13 @@ def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: 
         config = home / ".config" / name / "qt-config.ini"
         config.parent.mkdir(parents=True)
         config.write_text(
-            "[UI]\ncheck_for_updates_on_start=true\nenable_auto_update_check=true\n",
+            "[UI]\ncheck_for_updates_on_start\\default=true\n"
+            "check_for_updates_on_start=true\n"
+            "enable_auto_update_check\\default=true\n"
+            "enable_auto_update_check=true\n",
             encoding="utf-8",
         )
-    ryubing = home / "Ryujinx" / "Config.json"
+    ryubing = home / ".config" / "Ryujinx" / "Config.json"
     ryubing.parent.mkdir(parents=True)
     ryubing.write_text('{"check_updates_on_start":true}\n', encoding="utf-8")
 
@@ -458,6 +519,9 @@ def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: 
         home / ".config/eden/qt-config.ini"
     ).read_text(encoding="utf-8")
     assert "enable_auto_update_check=false" in (
+        home / ".config/citron/qt-config.ini"
+    ).read_text(encoding="utf-8")
+    assert "enable_auto_update_check\\default=false" in (
         home / ".config/citron/qt-config.ini"
     ).read_text(encoding="utf-8")
     assert '"check_updates_on_start": false' in ryubing.read_text(encoding="utf-8")
@@ -471,6 +535,37 @@ def test_library_discovers_existing_lowercase_emulation_root(monkeypatch, tmp_pa
     controller = _controller(monkeypatch, tmp_path)
 
     assert str(root.resolve()) in controller.library_roots()
+
+
+def test_firmware_folder_is_not_registered_as_game_directory(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home"
+    default_root = home / "emulation" / "roms"
+    firmware = default_root / "switch" / "Firmware"
+    firmware.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local/share"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    eden = home / ".config/eden/qt-config.ini"
+    eden.parent.mkdir(parents=True)
+    eden.write_text("[UI]\nPaths\\gamedirs\\size=0\n", encoding="utf-8")
+    ryubing = home / ".config/Ryujinx/Config.json"
+    ryubing.parent.mkdir(parents=True)
+    ryubing.write_text('{"game_dirs":[]}\n', encoding="utf-8")
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(firmware)}),
+    )
+
+    assert str(default_root) in eden.read_text(encoding="utf-8")
+    assert str(firmware) not in eden.read_text(encoding="utf-8")
+    configured = json.loads(ryubing.read_text(encoding="utf-8"))["game_dirs"]
+    assert str(default_root) in configured
+    assert str(firmware) not in configured
 
 
 def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

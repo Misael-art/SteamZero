@@ -358,6 +358,9 @@ class DesktopDashboard:
     def launch_emulation_emulator(self, emulator_id: str) -> dict[str, Any]:
         return self._emulation.launch_emulator(emulator_id)
 
+    def stop_emulation_emulator(self, emulator_id: str) -> dict[str, Any]:
+        return self._emulation.stop_emulator(emulator_id)
+
     def launch_emulation_game(self, game_id: str) -> dict[str, Any]:
         return self._emulation.launch_game(game_id)
 

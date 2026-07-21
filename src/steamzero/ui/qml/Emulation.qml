@@ -163,6 +163,11 @@ Item {
         }
     }
 
+    function cancelPendingEmulatorSelection() {
+        pendingEmulatorGameId = ""
+        pendingEmulatorId = ""
+    }
+
     onSelectedPlatformChanged: Qt.callLater(syncPublishedSelection)
     onGamesChanged: Qt.callLater(syncGameSelection)
     Component.onCompleted: syncPublishedSelection()
@@ -378,6 +383,14 @@ Item {
     }
 
     function gamePlayAction(game) {
+        if (game && pendingEmulatorGameId === game.id) {
+            return {
+                "id": "game.play.pending-emulator",
+                "label": qsTr("Confirmar emulador"),
+                "enabled": false,
+                "reason": qsTr("Aplique ou cancele a troca de emulador antes de jogar.")
+            }
+        }
         if (game && game.playAction)
             return game.playAction
         return {

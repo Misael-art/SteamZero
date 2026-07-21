@@ -163,6 +163,10 @@ class FakeDashboard:
         self.calls.append(("emulation-emulator-launch", emulator_id))
         return {"status": "started"}
 
+    def stop_emulation_emulator(self, emulator_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-emulator-stop", emulator_id))
+        return {"status": "stopping"}
+
     def launch_emulation_game(self, game_id: str) -> dict[str, object]:
         self.calls.append(("emulation-game-launch", game_id))
         return {"status": "started", "gameId": game_id}
@@ -483,6 +487,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "emulator-plan", "confirmToken": "emulator-confirm"},
     )
     request_json(base, token, "/emulation/emulator/launch", {"emulatorId": "eden"})
+    request_json(base, token, "/emulation/emulator/stop", {"emulatorId": "eden"})
     request_json(base, token, "/emulation/game/launch", {"gameId": "game-1"})
     emulation_plan = request_json(
         base,
@@ -573,6 +578,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("emulation-emulator-plan", "eden", "install"),
         ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
         ("emulation-emulator-launch", "eden"),
+        ("emulation-emulator-stop", "eden"),
         ("emulation-game-launch", "game-1"),
         ("emulation-action-plan", "storage.recover"),
         ("emulation-action-apply", "emulation-plan", "emulation-confirm"),

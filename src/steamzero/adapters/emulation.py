@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
@@ -37,7 +38,7 @@ from steamzero.domain.switch_library import SwitchLibraryScanner
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
-Spawn = Callable[[Sequence[str]], None]
+Spawn = Callable[[Sequence[str]], int | None]
 
 _MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
 
@@ -60,15 +61,16 @@ class _PendingMutation:
     metadata: Mapping[str, Any]
 
 
-def _spawn_detached(argv: Sequence[str]) -> None:
-    subprocess.Popen(  # noqa: S603
+def _spawn_detached(argv: Sequence[str]) -> int:
+    process = subprocess.Popen(  # noqa: S603
         list(argv),
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
-        env={**os.environ, "APPIMAGELAUNCHER_DISABLE": "1"},
+        env={**os.environ, "APPIMAGELAUNCHER_DISABLE": "true"},
     )
+    return process.pid
 
 
 class EmulationController:
@@ -98,6 +100,7 @@ class EmulationController:
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
+        self._running_pids: dict[str, int] = {}
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
 
     @property
@@ -229,8 +232,30 @@ class EmulationController:
             store.migrate()
             engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
             payload = engine.payload_path(emulator_id)
-        self._spawn((str(payload),))
-        return {"status": "started", "emulatorId": emulator_id}
+        if self._managed_process_groups(payload):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
+            )
+        pid = self._spawn(self._appimage_argv(payload))
+        if isinstance(pid, int) and pid > 1:
+            self._running_pids[emulator_id] = pid
+        return {"status": "started", "emulatorId": emulator_id, "pid": pid}
+
+    def stop_emulator(self, emulator_id: str) -> dict[str, Any]:
+        self._require_managed_emulator(emulator_id)
+        with self._store_factory() as store:
+            store.migrate()
+            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
+            payload = engine.payload_path(emulator_id)
+        groups = self._managed_process_groups(payload)
+        for process_group in groups:
+            os.killpg(process_group, signal.SIGTERM)
+        self._running_pids.pop(emulator_id, None)
+        return {
+            "status": "stopping" if groups else "not-running",
+            "emulatorId": emulator_id,
+            "processGroups": len(groups),
+        }
 
     def launch_game(self, game_id: str) -> dict[str, Any]:
         game = self._current_game(game_id)
@@ -259,12 +284,19 @@ class EmulationController:
                 detail="updates e DLCs não podem ser iniciados; selecione a ROM base",
             )
         self._require_key_projection(emulator_id)
-        self._spawn(self._launch_argv(emulator_id, payload, rom))
+        if self._managed_process_groups(payload):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
+            )
+        pid = self._spawn(self._launch_argv(emulator_id, payload, rom))
+        if isinstance(pid, int) and pid > 1:
+            self._running_pids[emulator_id] = pid
         return {
             "status": "started",
             "gameId": game_id,
             "emulatorId": emulator_id,
             "name": str(game["name"]),
+            "pid": pid,
         }
 
     def library_roots(self) -> list[str]:
@@ -581,6 +613,14 @@ class EmulationController:
                         )
                     ]
                 )
+                if installed and self._managed_process_groups(engine.payload_path(emulator_id)):
+                    actions.append(
+                        self._action(
+                            f"emulator.stop:{emulator_id}",
+                            "Fechar",
+                            confirmation=False,
+                        )
+                    )
                 rows.append(
                     {
                         "id": emulator_id,
@@ -953,7 +993,7 @@ class EmulationController:
         ordered_roots = sorted(roots, key=str)
         data = {"schemaVersion": 1, "roots": [str(root) for root in ordered_roots]}
         writes = {self._roots_path: json.dumps(data, sort_keys=True, ensure_ascii=False).encode()}
-        writes.update(self._emulator_game_directory_writes(ordered_roots))
+        writes.update(self._emulator_game_directory_writes(self._configured_game_roots(resolved)))
         root = self._compatible_root(writes)
         return transaction.plan_write_files(
             writes,
@@ -1055,10 +1095,19 @@ class EmulationController:
 
     def _plan_runtime_prepare(self) -> transaction.Plan:
         writes = self._runtime_config_writes()
+        copies: list[tuple[Path, Path]] = []
+        for emulator_id in _MANAGED_EMULATORS:
+            copies.extend(self._key_projection_copies(emulator_id))
+        copies.extend(self._firmware_projection_copies(tuple(_MANAGED_EMULATORS)))
+        if copies:
+            return transaction.plan_copy_files(
+                copies,
+                root=Path.home(),
+                kind="emulation.runtime-prepare",
+                writes=writes,
+            )
         return transaction.plan_write_files(
-            writes,
-            root=Path.home(),
-            kind="emulation.runtime-prepare",
+            writes, root=Path.home(), kind="emulation.runtime-prepare"
         )
 
     def _plan_firmware(self, selected: Path, version: str) -> transaction.Plan:
@@ -1226,7 +1275,11 @@ class EmulationController:
             if not target.exists() and not target.is_symlink():
                 copies.append((source, target))
                 continue
-            if target.is_symlink() or not target.is_file() or fs.hash_file(target) != digest:
+            if (
+                target.is_symlink()
+                or not target.is_file()
+                or fs.hash_file(target, algo="sha256") != digest
+            ):
                 raise SteamZeroError(
                     "E-CONTENT-FW-INCOMPAT",
                     detail=f"arquivo existente diverge: {target}",
@@ -1257,6 +1310,7 @@ class EmulationController:
             home / ".local" / "share" / "eden" / "keys" / "prod.keys",
             home / ".local" / "share" / "citron" / "keys" / "prod.keys",
             home / ".config" / "citron" / "keys" / "prod.keys",
+            home / ".config" / "Ryujinx" / "system" / "prod.keys",
             home / "Ryujinx" / "system" / "prod.keys",
         )
 
@@ -1268,6 +1322,7 @@ class EmulationController:
             home / ".local/share/eden/keys/title.keys",
             home / ".local/share/citron/keys/title.keys",
             home / ".config/citron/keys/title.keys",
+            home / ".config/Ryujinx/system/title.keys",
             home / "Ryujinx/system/title.keys",
         )
 
@@ -1280,7 +1335,10 @@ class EmulationController:
                 home / ".local/share/citron/keys/prod.keys",
                 home / ".config/citron/keys/prod.keys",
             ),
-            "ryubing": (home / "Ryujinx/system/prod.keys",),
+            "ryubing": (
+                home / ".config/Ryujinx/system/prod.keys",
+                home / "Ryujinx/system/prod.keys",
+            ),
         }[emulator_id]
 
     @staticmethod
@@ -1292,7 +1350,10 @@ class EmulationController:
                 home / ".local/share/citron/keys/title.keys",
                 home / ".config/citron/keys/title.keys",
             ),
-            "ryubing": (home / "Ryujinx/system/title.keys",),
+            "ryubing": (
+                home / ".config/Ryujinx/system/title.keys",
+                home / "Ryujinx/system/title.keys",
+            ),
         }[emulator_id]
 
     def _key_projection_copies(self, emulator_id: str) -> list[tuple[Path, Path]]:
@@ -1320,6 +1381,41 @@ class EmulationController:
                     title_digest,
                 )
             )
+        return copies
+
+    def _firmware_projection_copies(
+        self, emulator_ids: Sequence[str]
+    ) -> list[tuple[Path, Path]]:
+        """Recupera o firmware central para os diretórios reais dos consumidores."""
+        with self._store_factory() as store:
+            store.migrate()
+            rows = store.list_firmware_key_items("switch", kind="firmware")
+        ranked = sorted(
+            rows,
+            key=lambda row: (
+                self._version_tuple(str(row.get("version") or "0")),
+                str(row.get("last_validated") or ""),
+            ),
+            reverse=True,
+        )
+        if not ranked or not isinstance(ranked[0].get("relpath"), str):
+            return []
+        root = paths.firmware_dir() / str(ranked[0]["relpath"])
+        try:
+            sources = [
+                source
+                for source in root.glob("*.nca")
+                if source.is_file() and not source.is_symlink()
+            ]
+        except OSError:
+            return []
+        copies: list[tuple[Path, Path]] = []
+        for source in sources:
+            digest = fs.hash_file(source, algo="sha256")
+            targets: list[Path] = []
+            for emulator_id in emulator_ids:
+                targets.extend(self._emulator_firmware_targets(emulator_id, digest))
+            copies.extend(self._new_copy_targets(source, targets, digest))
         return copies
 
     def _current_key_source(self) -> Path:
@@ -1380,43 +1476,99 @@ class EmulationController:
                 ),
             )
 
+    def _appimage_argv(self, payload: Path, *arguments: str) -> tuple[str, ...]:
+        """Contorna interceptadores de integração sem depender de diálogo GUI."""
+        detected = self._which("appimagelauncher-binfmt-bypass")
+        fallback = Path("/usr/lib/appimagelauncher/binfmt-bypass")
+        bypass = Path(detected) if detected else fallback
+        if detected is None and self._which is not shutil.which:
+            return (str(payload), *arguments)
+        if bypass.is_file() and not bypass.is_symlink() and os.access(bypass, os.X_OK):
+            return (str(bypass), str(payload), *arguments)
+        return (str(payload), *arguments)
+
     @staticmethod
-    def _launch_argv(emulator_id: str, payload: Path, rom: Path) -> tuple[str, ...]:
+    def _managed_process_groups(payload: Path) -> set[int]:
+        """Encontra somente grupos do usuário cujo argv contém o payload exato."""
+        expected = os.fsencode(str(payload))
+        groups: set[int] = set()
+        try:
+            entries = tuple(Path("/proc").iterdir())
+        except OSError:
+            return groups
+        for entry in entries:
+            if not entry.name.isdigit():
+                continue
+            pid = int(entry.name)
+            try:
+                if entry.stat().st_uid != os.getuid():
+                    continue
+                argv = (entry / "cmdline").read_bytes().split(b"\0")
+                if expected not in argv:
+                    continue
+                process_group = os.getpgid(pid)
+                if process_group > 1:
+                    groups.add(process_group)
+            except (OSError, ProcessLookupError):
+                continue
+        return groups
+
+    def _launch_argv(self, emulator_id: str, payload: Path, rom: Path) -> tuple[str, ...]:
         """Monta argv sem shell; cada caminho permanece um argumento atômico."""
         if emulator_id in {"eden", "citron"}:
-            return (str(payload), "-f", "-g", str(rom))
+            return self._appimage_argv(payload, "-f", "-g", str(rom))
         if emulator_id == "ryubing":
-            return (str(payload), "-f", "--hide-updates", str(rom))
+            return self._appimage_argv(payload, "-f", "--hide-updates", str(rom))
         raise SteamZeroError("E-API-SCHEMA", detail="emulador não permitido")
 
     @staticmethod
     def _firmware_projection_targets(digest: str) -> tuple[Path, ...]:
+        targets: list[Path] = []
+        for emulator_id in ("eden", "citron", "ryubing"):
+            targets.extend(EmulationController._emulator_firmware_targets(emulator_id, digest))
+        return tuple(targets)
+
+    @staticmethod
+    def _emulator_firmware_targets(emulator_id: str, digest: str) -> tuple[Path, ...]:
         home = Path.home()
         filename = f"{digest}.nca"
-        return (
-            home / ".local/share/eden/nand/system/Contents/registered" / filename,
-            home / ".local/share/citron/nand/system/Contents/registered" / filename,
-            home / "Ryujinx" / "bis" / "system" / "Contents" / "registered" / filename,
-        )
+        return {
+            "eden": (
+                home / ".local/share/eden/nand/system/Contents/registered" / filename,
+            ),
+            "citron": (
+                home / ".local/share/citron/nand/system/Contents/registered" / filename,
+            ),
+            "ryubing": (
+                home / ".config/Ryujinx/bis/system/Contents/registered" / filename,
+            ),
+        }[emulator_id]
 
     def _emulator_game_directory_writes(self, roots: Sequence[Path]) -> dict[Path, bytes]:
         home = Path.home()
         if not self._roots_path.is_relative_to(home.resolve()):
             return {}
         writes: dict[Path, bytes] = {}
-        ryubing = home / "Ryujinx" / "Config.json"
-        if ryubing.is_file() and not ryubing.is_symlink():
-            try:
-                data = json.loads(ryubing.read_text(encoding="utf-8"))
-                current = data.get("game_dirs", [])
-                if not isinstance(current, list) or not all(
-                    isinstance(path, str) for path in current
-                ):
-                    raise ValueError("game_dirs inválido")
-                data["game_dirs"] = list(dict.fromkeys([*current, *(str(root) for root in roots)]))
-                writes[ryubing] = json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
-            except (OSError, ValueError, json.JSONDecodeError):
-                pass
+        for ryubing in (
+            home / ".config/Ryujinx/Config.json",
+            home / "Ryujinx/Config.json",
+        ):
+            if ryubing.is_file() and not ryubing.is_symlink():
+                try:
+                    data = json.loads(ryubing.read_text(encoding="utf-8"))
+                    current = data.get("game_dirs", [])
+                    if not isinstance(current, list) or not all(
+                        isinstance(path, str) for path in current
+                    ):
+                        raise ValueError("game_dirs inválido")
+                    data["game_dirs"] = list(
+                        dict.fromkeys([*current, *(str(root) for root in roots)])
+                    )
+                    writes[ryubing] = (
+                        json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
+                    )
+                except (OSError, ValueError, json.JSONDecodeError):
+                    pass
         for name in ("eden", "citron"):
             config = home / ".config" / name / "qt-config.ini"
             if config.is_file() and not config.is_symlink():
@@ -1426,35 +1578,48 @@ class EmulationController:
                     ).encode()
         return writes
 
-    @staticmethod
-    def _runtime_config_writes() -> dict[Path, bytes]:
-        """Desativa somente verificações interativas no boot dos emuladores."""
+    def _configured_game_roots(self, *extra: Path) -> tuple[Path, ...]:
+        roots = [*(Path(raw) for raw in self.library_roots()), *extra]
+        filtered: list[Path] = []
+        seen: set[Path] = set()
+        for root in roots:
+            if root.name.casefold() in {"firmware", "keys"} or root in seen:
+                continue
+            seen.add(root)
+            filtered.append(root)
+        return tuple(filtered)
+
+    def _runtime_config_writes(self) -> dict[Path, bytes]:
+        """Registra ROMs e desativa verificações interativas no boot."""
         home = Path.home()
-        writes: dict[Path, bytes] = {}
+        writes = self._emulator_game_directory_writes(self._configured_game_roots())
         for name in ("eden", "citron"):
             config = home / ".config" / name / "qt-config.ini"
             if not config.is_file() or config.is_symlink():
                 continue
             try:
-                content = config.read_text(encoding="utf-8")
+                content = writes.get(config, config.read_bytes()).decode("utf-8")
             except (OSError, UnicodeError):
                 continue
             updated = re.sub(
-                r"(?m)^(check_for_updates_on_start|enable_auto_update_check)=true$",
-                r"\1=false",
+                r"(?m)^(check_for_updates_on_start|enable_auto_update_check)(\\default)?=true$",
+                r"\1\2=false",
                 content,
             )
-            if updated != content:
-                writes[config] = updated.encode()
-        ryubing = home / "Ryujinx" / "Config.json"
-        if ryubing.is_file() and not ryubing.is_symlink():
+            writes[config] = updated.encode()
+        for ryubing in (
+            home / ".config/Ryujinx/Config.json",
+            home / "Ryujinx/Config.json",
+        ):
+            if not ryubing.is_file() or ryubing.is_symlink():
+                continue
             try:
-                data = json.loads(ryubing.read_text(encoding="utf-8"))
-                if data.get("check_updates_on_start") is not False:
-                    data["check_updates_on_start"] = False
-                    writes[ryubing] = (
-                        json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
-                    )
+                raw = writes.get(ryubing, ryubing.read_bytes())
+                data = json.loads(raw.decode("utf-8"))
+                data["check_updates_on_start"] = False
+                writes[ryubing] = (
+                    json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
+                )
             except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
                 pass
         return writes
@@ -1551,8 +1716,13 @@ class EmulationController:
             separators=(",", ":"),
         ).encode()
         writes = {self._game_settings_path: content}
+        if key_emulator_id is not None:
+            writes.update(self._runtime_config_writes())
         copies = (
-            self._key_projection_copies(key_emulator_id)
+            [
+                *self._key_projection_copies(key_emulator_id),
+                *self._firmware_projection_copies((key_emulator_id,)),
+            ]
             if key_emulator_id is not None
             else []
         )

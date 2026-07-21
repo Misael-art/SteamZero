@@ -165,6 +165,13 @@ Window {
               "compatibilidade ausente não pode ser inventada")
         check(object.gamePlayAction(object.selectedGame).enabled === true,
               "Jogar deve consumir a ação publicada pelo backend")
+        object.pendingEmulatorGameId = object.selectedGame.id
+        object.pendingEmulatorId = "eden"
+        check(object.gamePlayAction(object.selectedGame).enabled === false,
+              "Jogar deve bloquear enquanto a troca de emulador não foi confirmada")
+        object.cancelPendingEmulatorSelection()
+        check(object.gamePlayAction(object.selectedGame).enabled === true,
+              "cancelar a troca deve restaurar a ação persistida")
         check(object.steamSelectedCount() === 1, "seleção Steam deve ser contada")
         check(object.steamPublishedCount() === 1, "atalho Steam publicado deve ser contado")
         object.destroy()
