@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "platform": "switch",
+  "source": "local-import",
+  "entries": [
+    {
+      "sha256": "407e01a088abfb4daeb53c96b57ec82cbe2ccf41ed57cd1486c19c989e7e21a1",
+      "name": "Synthetic Adventure (USA)",
+      "titleId": "0100000000010000",
+      "region": "USA"
+    },
+    {
+      "sha256": "0c42879741ebe20f6f2c465628fb6cbeaf82365ff2ecd83a548011b6c4dec581",
+      "name": "Synthetic Racer (Europe)",
+      "titleId": "0100000000020000",
+      "region": "Europe"
+    }
+  ]
+}

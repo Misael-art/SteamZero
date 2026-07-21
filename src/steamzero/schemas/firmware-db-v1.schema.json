@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "firmware-db-v1.schema.json",
+  "title": "Banco de hashes de firmware — só hashes/metadados, nunca conteúdo",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "platform", "entries"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "platform": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "sha256"],
+        "properties": {
+          "version": {"type": "string", "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){0,3}$"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 64}
+        }
+      }
+    }
+  }
+}

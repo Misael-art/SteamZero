@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "platform": "switch",
+  "keyset": "prod",
+  "entries": [
+    {
+      "sha256": "d3c2b9a3066abd6385b978fa182de608ea3a98fcd08e5c85ea0dc2bd3c5c05bb",
+      "keyRevision": 16,
+      "label": "synthetic-prod-16"
+    },
+    {
+      "sha256": "306a1530d59fcef36f002182d91aee3909c8ba4707f66cd0965eaf71ae55766f",
+      "keyRevision": 18,
+      "label": "synthetic-prod-18"
+    }
+  ]
+}
