@@ -215,6 +215,36 @@ Item {
         return scopes.length > 0 && scopeIndex < scopes.length ? scopes[scopeIndex].id : "global"
     }
 
+    function isGlobalOverview() {
+        return scopeId() === "global" && selectedArea.id === "overview"
+    }
+
+    function isEmulatorOverview() {
+        return scopeId() === "emulator" && selectedArea.id === "overview"
+    }
+
+    function areaDataById(id) {
+        const allData = selectedPlatform.areaData || {}
+        return allData[id] || {}
+    }
+
+    function areaCard(areaId, cardId) {
+        const data = areaDataById(areaId)
+        const publishedCards = data.cards || []
+        for (let index = 0; index < publishedCards.length; index += 1) {
+            if (publishedCards[index].id === cardId)
+                return publishedCards[index]
+        }
+        return null
+    }
+
+    function installedEmulatorCount() {
+        return emulators.filter(function(emulator) {
+            return emulator.installState === "installed"
+                || emulator.state === "installed" || emulator.state === "ready"
+        }).length
+    }
+
     function contextTitle() {
         if (scopeId() === "emulator")
             return selectedEmulator.name
@@ -228,6 +258,10 @@ Item {
     }
 
     function areaTitle(id) {
+        if (id === "overview" && scopeId() === "global")
+            return qsTr("Painel da plataforma")
+        if (id === "overview" && scopeId() === "emulator")
+            return qsTr("Gerenciar emulador")
         const titles = {
             "overview": qsTr("Prontidão da plataforma"),
             "keysFirmware": qsTr("Keys, firmware e compatibilidade"),
@@ -244,6 +278,10 @@ Item {
     }
 
     function areaDescription(id) {
+        if (id === "overview" && scopeId() === "global")
+            return qsTr("Diagnóstico dos requisitos globais para abrir jogos com segurança.")
+        if (id === "overview" && scopeId() === "emulator")
+            return qsTr("Instale, abra, atualize ou remova o emulador selecionado.")
         const descriptions = {
             "overview": qsTr("Veja o que já está pronto e a ordem segura para começar a jogar."),
             "keysFirmware": qsTr("Importe arquivos próprios e antecipe incompatibilidades antes de abrir um jogo."),
@@ -332,12 +370,120 @@ Item {
     }
 
     function cards() {
+        if (isGlobalOverview())
+            return overviewCards()
         if (areaData.cards && areaData.cards.length > 0)
             return areaData.cards
         return defaultCards(selectedArea.id)
     }
 
+    function overviewCards() {
+        const publishedKeys = areaCard("keysFirmware", "keys") || ({
+            "state": "unknown", "statusLabel": qsTr("Não verificadas"),
+            "detail": qsTr("Importe suas keys para validar a plataforma.")
+        })
+        const publishedFirmware = areaCard("keysFirmware", "firmware") || ({
+            "state": "unknown", "statusLabel": qsTr("Não verificado"),
+            "detail": qsTr("Importe seu firmware para validar a plataforma.")
+        })
+        const publishedLibrary = areaCard("overview", "library")
+            || areaCard("overview", "games") || ({
+                "state": games.length > 0 ? "ready" : "attention",
+                "statusLabel": qsTr("%1 jogo(s)").arg(games.length),
+                "detail": qsTr("Nenhum diretório monitorado.")
+            })
+        const overviewData = areaDataById("overview")
+        const scanAction = overviewData.primaryAction || ({
+            "id": "library.scan", "label": qsTr("Varrer"), "enabled": false,
+            "reason": qsTr("A varredura ainda não foi publicada pelo serviço.")
+        })
+        const installed = installedEmulatorCount()
+        const emulatorName = selectedEmulator.id ? selectedEmulator.name
+            : qsTr("Nenhum selecionado")
+        return [
+            {
+                "id": "health-keys", "title": qsTr("Keys"),
+                "icon": "document-encrypt", "state": publishedKeys.state,
+                "statusLabel": publishedKeys.statusLabel || publishedKeys.status,
+                "detail": publishedKeys.detail,
+                "actions": publishedKeys.action ? [publishedKeys.action] : [{
+                    "label": qsTr("Gerenciar Keys"), "targetArea": "keysFirmware",
+                    "enabled": true
+                }]
+            },
+            {
+                "id": "health-firmware", "title": qsTr("Firmware"),
+                "icon": "media-flash", "state": publishedFirmware.state,
+                "statusLabel": publishedFirmware.statusLabel || publishedFirmware.status,
+                "detail": publishedFirmware.detail,
+                "actions": publishedFirmware.action ? [publishedFirmware.action] : [{
+                    "label": qsTr("Gerenciar firmware"), "targetArea": "keysFirmware",
+                    "enabled": true
+                }]
+            },
+            {
+                "id": "health-library", "title": qsTr("Biblioteca e ROMs"),
+                "icon": "folder-games", "state": publishedLibrary.state,
+                "statusLabel": publishedLibrary.statusLabel || publishedLibrary.status,
+                "detail": publishedLibrary.detail,
+                "metric": String(games.length),
+                "actions": [
+                    publishedLibrary.action || ({
+                        "label": qsTr("Adicionar pasta"), "targetArea": "media",
+                        "enabled": true
+                    }),
+                    scanAction,
+                    {"label": qsTr("Revisar nomes"), "targetArea": "media", "enabled": true}
+                ]
+            },
+            {
+                "id": "health-emulator", "title": qsTr("Emulador principal"),
+                "icon": "applications-games",
+                "state": installed > 0 ? "attention" : "missing",
+                "statusLabel": qsTr("Padrão não definido"),
+                "detail": qsTr("%1 instalado(s). Em foco: %2. O serviço ainda não publica a preferência usada pelo Play.")
+                    .arg(installed).arg(emulatorName),
+                "metric": String(installed),
+                "actions": [{
+                    "label": qsTr("Escolher e gerenciar"), "targetScope": "emulator",
+                    "enabled": emulators.length > 0,
+                    "reason": emulators.length > 0 ? "" : qsTr("Nenhum emulador foi publicado.")
+                }]
+            }
+        ]
+    }
+
+    function cardActions(card) {
+        if (card.actions && card.actions.length > 0)
+            return card.actions
+        if (card.action)
+            return [card.action]
+        if (card.targetArea)
+            return [{"label": qsTr("Abrir área"), "targetArea": card.targetArea, "enabled": true}]
+        return []
+    }
+
+    function dispatchCardAction(action) {
+        if (!action)
+            return
+        if (action.targetScope) {
+            const target = scopes.findIndex(function(scope) { return scope.id === action.targetScope })
+            if (target >= 0) {
+                scopeIndex = target
+                areaIndex = areaIndexById("overview")
+            }
+            return
+        }
+        if (action.targetArea) {
+            areaIndex = areaIndexById(action.targetArea)
+            return
+        }
+        dispatchAction(action)
+    }
+
     function primaryAction() {
+        if (isEmulatorOverview() && selectedEmulator.action)
+            return selectedEmulator.action
         if (areaData.primaryAction)
             return areaData.primaryAction
         return {
@@ -935,7 +1081,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
-                        Layout.minimumHeight: readinessRow.implicitHeight + 28
+                        Layout.preferredHeight: 64
+                        Layout.minimumHeight: 64
                         color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
                         border.color: page.readinessPercent() >= 80
                             ? page.greenColor : page.amberColor
@@ -946,15 +1093,15 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.margins: 14
-                            spacing: 12
+                            anchors.margins: 10
+                            spacing: 10
 
                             ModernIcon {
                                 iconName: page.stateIcon(page.selectedPlatform.state)
                                 iconColor: page.readinessPercent() >= 80
                                     ? page.greenColor : page.amberColor
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -964,12 +1111,13 @@ Item {
                                     color: page.readinessPercent() >= 80
                                         ? page.greenColor : page.amberColor
                                     font.bold: true
-                                    font.pixelSize: 16
+                                    font.pixelSize: 14
                                 }
                                 Label {
                                     text: page.readiness.detail || ""
                                     color: page.mutedColor
-                                    wrapMode: Text.WordWrap
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
                                     Layout.fillWidth: true
                                 }
                             }
@@ -977,7 +1125,7 @@ Item {
                                 from: 0
                                 to: 100
                                 value: page.readinessPercent()
-                                Layout.preferredWidth: contentScroll.width < 680 ? 120 : 190
+                                Layout.preferredWidth: contentScroll.width < 680 ? 90 : 130
                                 Accessible.name: qsTr("Prontidão da plataforma")
                                 Accessible.description: qsTr("%1 por cento").arg(page.readinessPercent())
                             }
@@ -985,6 +1133,7 @@ Item {
                     }
 
                     GridLayout {
+                        visible: !page.isEmulatorOverview()
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
@@ -999,7 +1148,9 @@ Item {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 250
-                                Layout.minimumHeight: cardColumn.implicitHeight + 28
+                                Layout.preferredHeight: page.isGlobalOverview()
+                                    ? 184 : cardColumn.implicitHeight + 28
+                                Layout.minimumHeight: Layout.preferredHeight
                                 color: page.surfaceColor
                                 border.color: page.stateColor(modelData.state)
                                 border.width: 1
@@ -1054,27 +1205,35 @@ Item {
                                         color: page.mutedColor
                                         font.pixelSize: 12
                                         wrapMode: Text.WordWrap
+                                        maximumLineCount: page.isGlobalOverview() ? 2 : 4
+                                        elide: Text.ElideRight
                                         Layout.fillWidth: true
                                     }
-                                    Button {
-                                        visible: Boolean(modelData.targetArea)
-                                            || Boolean(modelData.action)
-                                        text: modelData.action && modelData.action.label
-                                            ? modelData.action.label : qsTr("Abrir área")
-                                        icon.name: "go-next"
-                                        enabled: Boolean(modelData.targetArea)
-                                            || Boolean(modelData.action && modelData.action.enabled)
-                                        palette.button: page.raisedColor
-                                        palette.buttonText: page.textColor
-                                        Layout.minimumHeight: 48
-                                        Accessible.name: text
-                                        Accessible.description: modelData.action
-                                            ? modelData.action.reason || "" : ""
-                                        onClicked: {
-                                            if (modelData.targetArea)
-                                                page.areaIndex = page.areaIndexById(modelData.targetArea)
-                                            else if (modelData.action)
-                                                page.dispatchAction(modelData.action)
+
+                                    Item { Layout.fillHeight: true }
+
+                                    RowLayout {
+                                        visible: page.cardActions(modelData).length > 0
+                                        Layout.fillWidth: true
+                                        spacing: 6
+
+                                        Repeater {
+                                            model: page.cardActions(modelData)
+                                            delegate: Button {
+                                                required property var modelData
+                                                text: modelData.label || qsTr("Abrir área")
+                                                icon.name: "go-next"
+                                                enabled: modelData.enabled !== false
+                                                palette.button: page.raisedColor
+                                                palette.buttonText: page.textColor
+                                                Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                Layout.maximumWidth: 190
+                                                Layout.minimumHeight: 40
+                                                Accessible.name: text
+                                                Accessible.description: modelData.reason || ""
+                                                onClicked: page.dispatchCardAction(modelData)
+                                            }
                                         }
                                     }
                                 }
@@ -1083,14 +1242,14 @@ Item {
                     }
 
                     ColumnLayout {
-                        visible: page.selectedArea.id === "overview"
+                        visible: page.isEmulatorOverview()
                         Layout.fillWidth: true
                         Layout.leftMargin: 22
                         Layout.rightMargin: 22
                         spacing: 8
 
                         Label {
-                            text: qsTr("Emuladores desta plataforma")
+                            text: qsTr("Manutenção do emulador selecionado")
                             color: page.textColor
                             font.pixelSize: 18
                             font.bold: true
@@ -1126,10 +1285,9 @@ Item {
                         }
 
                         Repeater {
-                            model: page.emulators
+                            model: page.emulators.length > 0 ? [page.selectedEmulator] : []
                             delegate: Rectangle {
                                 id: emulatorRow
-                                required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 72
@@ -1193,10 +1351,7 @@ Item {
                                                 Layout.minimumHeight: 48
                                                 Accessible.name: qsTr("%1: %2").arg(text)
                                                     .arg(emulatorRow.modelData.name)
-                                                onClicked: {
-                                                    page.emulatorIndex = emulatorRow.index
-                                                    page.dispatchAction(modelData)
-                                                }
+                                                onClicked: page.dispatchAction(modelData)
                                             }
                                         }
                                     }
