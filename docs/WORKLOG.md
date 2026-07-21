@@ -1844,3 +1844,28 @@ harnesses QML offscreen verdes.
 **Host/release:** nenhuma release, instalação, rollback, ação privilegiada ou
 alteração de dados do host foi executada. A correção permanece somente nesta
 branch até autorização explícita para integração e publicação.
+
+## 2026-07-21 — Sessão 45: publicação das correções Switch no host
+
+**Branch:** `codex/correcao-dialogo-scan-switch`; fonte publicada no commit
+`483b962a41db09a03f92cb87d5f8bc952e041270`, sem merge em `main`. Os itens não
+rastreados já existentes permaneceram intocados.
+
+| Item | Commit/release | Evidência |
+|---|---|---|
+| Gate completo da fonte publicada | `483b962` | 834 testes, cobertura 85,06%, Ruff, mypy em 88 arquivos, independence e boundaries verdes |
+| Wheel e wheelhouse reproduzíveis | `0.1.0a33-483b962a41db` | wheel SHA-256 `c9d6b8dd9d9c772e76a20aa75500732a3804b2d0b60523a61a879f3e1297dd9c`; entry points de boot e 5 wheels runtime hash-pinned conferidos |
+| Instalação transacional e ativação | `0.1.0a33-483b962a41db` | manifesto v4, árvore `clean`, commit completo e vínculo `/opt/steamzero/current` confirmados |
+
+**Validação pós-instalação:** `steamzero --version` retornou `0.1.0a33`; doctor
+aprovou Python, layout, integridade SQLite e zero operações pendentes;
+`steamzero-core.socket` e `steamzero-core.service` estavam ativos; Game Mode
+reportou `ready`, runtime independente e fallback Desktop; `desktop status`
+retornou contrato válido sem erros de observação. A consulta não privilegiada
+do boot degradou para `unknown`/`permissionDenied`, conforme o contrato, sem
+bloquear a sessão ou o fallback.
+
+**Rollback:** a release anterior `0.1.0a33-c4372c12b7ad` foi preservada e
+registrada no manifesto. Nenhum reboot nem alteração adicional de boot foi
+executado; resta ao operador apenas o teste físico da UI e da biblioteca no
+host.
