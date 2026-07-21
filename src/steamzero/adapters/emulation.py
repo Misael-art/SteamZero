@@ -1561,8 +1561,13 @@ class EmulationController:
                         isinstance(path, str) for path in current
                     ):
                         raise ValueError("game_dirs inválido")
+                    retained = [
+                        path
+                        for path in current
+                        if Path(path).name.casefold() not in {"firmware", "keys"}
+                    ]
                     data["game_dirs"] = list(
-                        dict.fromkeys([*current, *(str(root) for root in roots)])
+                        dict.fromkeys([*retained, *(str(root) for root in roots)])
                     )
                     writes[ryubing] = (
                         json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
@@ -1633,7 +1638,11 @@ class EmulationController:
         end = content.find("\n[", start + len(section))
         end = len(content) if end < 0 else end
         before, ui, after = content[:start], content[start:end], content[end:]
-        existing = re.findall(r"(?m)^Paths\\gamedirs\\\d+\\path=(.+)$", ui)
+        existing = [
+            path
+            for path in re.findall(r"(?m)^Paths\\gamedirs\\\d+\\path=(.+)$", ui)
+            if Path(path).name.casefold() not in {"firmware", "keys"}
+        ]
         directories = list(dict.fromkeys([*existing, *(str(root) for root in roots)]))
         lines = [line for line in ui.splitlines() if not line.startswith("Paths\\gamedirs\\")]
         lines.append(f"Paths\\gamedirs\\size={len(directories)}")

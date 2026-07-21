@@ -551,10 +551,18 @@ def test_firmware_folder_is_not_registered_as_game_directory(
     controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
     eden = home / ".config/eden/qt-config.ini"
     eden.parent.mkdir(parents=True)
-    eden.write_text("[UI]\nPaths\\gamedirs\\size=0\n", encoding="utf-8")
+    eden.write_text(
+        "[UI]\nPaths\\gamedirs\\size=2\n"
+        f"Paths\\gamedirs\\1\\path={firmware}\n"
+        f"Paths\\gamedirs\\2\\path={default_root / 'keys'}\n",
+        encoding="utf-8",
+    )
     ryubing = home / ".config/Ryujinx/Config.json"
     ryubing.parent.mkdir(parents=True)
-    ryubing.write_text('{"game_dirs":[]}\n', encoding="utf-8")
+    ryubing.write_text(
+        json.dumps({"game_dirs": [str(firmware), str(default_root / "keys")]}) + "\n",
+        encoding="utf-8",
+    )
 
     _apply(
         controller,
