@@ -510,8 +510,13 @@ ApplicationWindow {
         if (["library.root.add", "keys.import", "keys.repair", "firmware.import", "nsz.install", "nsz.convert",
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
+                "mod.import", "cheat.import",
                 "game.steam.set", "steam.shortcuts.sync"].indexOf(action.id) >= 0
                 || action.id.indexOf("content.state:") === 0
+                || action.id.indexOf("mod.state:") === 0
+                || action.id.indexOf("mod.remove:") === 0
+                || action.id.indexOf("cheat.state:") === 0
+                || action.id.indexOf("cheat.remove:") === 0
                 || action.id.indexOf("game.delete:") === 0) {
             const payload = {
                 "actionId": action.id,

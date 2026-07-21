@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
 from steamzero.adapters.converters import (
     NszConverter,
     NszToolManager,
@@ -26,15 +27,19 @@ from steamzero.adapters.converters import (
     nsz_tool_manifest,
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
+from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.registry import AdapterRegistry
+from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
+from steamzero.domain.switch_mods import InstalledMod, ModType
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
@@ -53,6 +58,8 @@ _KEY_LINE = re.compile(r"^\s*([a-z0-9_]+)\s*=\s*([0-9a-fA-F]{32,})\s*$")
 _MASTER_KEY = re.compile(r"^master_key_([0-9a-f]{2})$")
 _MAX_IMPORT_FILES = 10_000
 _MAX_IMPORT_BYTES = 2 * 1024**3
+_MAX_MOD_BYTES = 512 * 1024**2
+_BUILD_ID = re.compile(r"^[0-9A-Fa-f]{16,64}$")
 
 
 @dataclass(frozen=True)
@@ -162,6 +169,7 @@ class EmulationController:
                 "overview": "Estado verificado",
                 "keysFirmware": "Importação local",
                 "updatesDlc": "Gestão por jogo",
+                "modsCheats": "Conteúdo por jogo",
                 "graphicsPerformance": "Perfil observado",
                 "controls": f"{controllers} controle(s)",
                 "saves": "Backup local",
@@ -325,6 +333,7 @@ class EmulationController:
 
     def scan_library(self) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
+        emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
         auxiliary: list[Any] = []
         unidentified = 0
@@ -353,10 +362,15 @@ class EmulationController:
                     unidentified += 1
                 stable_id = hashlib.sha256(str(match.path).encode()).hexdigest()[:24]
                 banner_asset, media_source = self._cover_asset(match.title_id)
+                cached_title = (
+                    emulator_cache.find_title(match.title_id)
+                    if match.title_id is not None
+                    else None
+                )
                 discovered[str(match.path)] = {
                     "id": stable_id,
                     "titleId": match.title_id,
-                    "name": scanner.clean_display_name(match.path),
+                    "name": cached_title or scanner.clean_display_name(match.path),
                     "state": "ready" if identity_verified else "unverified",
                     "statusLabel": (
                         match.format.upper()
@@ -370,7 +384,7 @@ class EmulationController:
                     "format": match.format,
                     "identityVerified": identity_verified,
                     "contentKind": "base",
-                    "metadataSource": match.metadata_source,
+                    "metadataSource": "emulator-cache" if cached_title else match.metadata_source,
                     "version": f"v{match.version}" if match.version is not None else None,
                     "updateCount": 0,
                     "updateVersion": None,
@@ -506,6 +520,18 @@ class EmulationController:
             if not isinstance(selected, bool):
                 raise SteamZeroError("E-API-SCHEMA", detail="campo booleano obrigatório: selected")
             plan = self._plan_game_setting(game_id, "steamSelected", selected)
+        elif action == "mod.import":
+            plan = self._plan_mod_import(payload)
+        elif action == "cheat.import":
+            plan = self._plan_cheat_import(payload)
+        elif action.startswith("mod.state:"):
+            plan = self._plan_mod_state(action)
+        elif action.startswith("cheat.state:"):
+            plan = self._plan_cheat_state(action)
+        elif action.startswith("mod.remove:"):
+            plan = self._plan_extra_remove(action, kind="mod")
+        elif action.startswith("cheat.remove:"):
+            plan = self._plan_extra_remove(action, kind="cheat")
         elif action == "steam.shortcuts.sync":
             settings = self._load_game_settings(strict=True)
             games, _unidentified = self._load_library_cache()
@@ -549,14 +575,15 @@ class EmulationController:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence à emulação")
         pending = self._pending.pop(plan_id, None)
         if pending is not None:
-            self._persist_import(pending)
+            if pending.kind in {"key", "firmware"}:
+                self._persist_import(pending)
+            elif pending.kind.startswith(("mod", "cheat")):
+                self._persist_extra(pending)
         response: dict[str, Any] = {
             "status": result.status,
             "operationId": result.operation_id,
         }
-        if plan.kind == "emulation.library-roots" or plan.kind.startswith(
-            "emulation.game-delete:"
-        ):
+        if plan.kind == "emulation.library-roots" or plan.kind.startswith("emulation.game-delete:"):
             response["library"] = self.scan_library()
         return response
 
@@ -655,9 +682,7 @@ class EmulationController:
         key_revision = max(revisions) if revisions else None
         firmware_version = max(versions, key=self._version_tuple) if versions else None
         installed_emulators = [
-            str(row["id"])
-            for row in emulators
-            if row.get("installState") == "installed"
+            str(row["id"]) for row in emulators if row.get("installState") == "installed"
         ]
         missing_projections = [
             emulator_id
@@ -665,11 +690,7 @@ class EmulationController:
             if not self._key_projection_valid(emulator_id)
         ]
         key_status = (
-            "missing"
-            if key_revision is None
-            else "unverified"
-            if missing_projections
-            else "ok"
+            "missing" if key_revision is None else "unverified" if missing_projections else "ok"
         )
         key = {
             "kind": "keys",
@@ -839,6 +860,39 @@ class EmulationController:
                 ],
                 "primaryAction": self._action("library.scan", "Atualizar jogos"),
             },
+            "modsCheats": {
+                "cards": [
+                    self._card(
+                        "mods",
+                        "Mods instalados",
+                        "Importe uma pasta ou ZIP local; cada mudança é revisada antes de aplicar.",
+                        "ready",
+                        str(sum(int(game.get("modsCount", 0)) for game in games)),
+                        action=self._action(
+                            "mod.import",
+                            "Importar mod",
+                            enabled=has_game,
+                            reason=selected_reason,
+                            confirmation=True,
+                        ),
+                    ),
+                    self._card(
+                        "cheats",
+                        "Cheats Atmosphere",
+                        "Arquivos são vinculados ao Title ID, Build ID e emulador do jogo.",
+                        "ready",
+                        str(sum(int(game.get("cheatsCount", 0)) for game in games)),
+                        action=self._action(
+                            "cheat.import",
+                            "Importar cheat",
+                            enabled=has_game,
+                            reason=selected_reason,
+                            confirmation=True,
+                        ),
+                    ),
+                ],
+                "primaryAction": self._action("emulation.refresh", "Atualizar inventário"),
+            },
             "graphicsPerformance": {
                 "cards": [
                     self._card(
@@ -917,9 +971,23 @@ class EmulationController:
                     self._card(
                         "identified",
                         "Identificação",
-                        "A varredura usa Title ID no nome; DAT local continua opcional.",
+                        (
+                            "A varredura combina conteúdo base, Title ID e metadados "
+                            "já gerados pelos emuladores."
+                        ),
                         "ready" if games else "attention",
                         f"{len(games)}",
+                    ),
+                    self._card(
+                        "media-pipeline",
+                        "Pipeline de capas",
+                        (
+                            "Prioridade: mídia escolhida pelo usuário, cache canônico, cache do "
+                            "emulador e ícone seguro de fallback. Provedores remotos exigem "
+                            "credenciais próprias antes de serem habilitados."
+                        ),
+                        "ready" if any(game.get("bannerAsset") for game in games) else "attention",
+                        f"{sum(bool(game.get('bannerAsset')) for game in games)} capa(s)",
                     ),
                 ],
                 "primaryAction": self._action("library.scan", "Varrer agora"),
@@ -983,6 +1051,246 @@ class EmulationController:
             },
         }
 
+    def _plan_mod_import(self, payload: Mapping[str, Any]) -> transaction.Plan:
+        game, emulator_id = self._extra_context(payload)
+        title_id = str(game["titleId"])
+        selected = Path(self._required_string(payload, "path"))
+        files, source_root = self._selected_mod_tree(selected)
+        mod_id = ids.new_ulid()
+        mod_name = self._safe_extra_name(selected.stem if selected.is_file() else selected.name)
+        target_dir = self._mod_install_dir(emulator_id, title_id, mod_name, mod_id)
+        copies = [(source, target_dir / source.relative_to(source_root)) for source in files]
+        root = self._extra_transaction_root(target_dir)
+        plan = transaction.plan_copy_files(copies, root=root, kind="emulation.mod-import")
+        self._pending[plan.plan_id] = _PendingMutation(
+            "mod-install",
+            {
+                "id": mod_id,
+                "gameId": str(game["id"]),
+                "titleId": title_id,
+                "name": mod_name,
+                "emulatorId": emulator_id,
+                "installPath": str(target_dir),
+            },
+        )
+        return plan
+
+    def _plan_cheat_import(self, payload: Mapping[str, Any]) -> transaction.Plan:
+        game, emulator_id = self._extra_context(payload)
+        selected = Path(self._required_string(payload, "path"))
+        if selected.is_symlink() or not selected.is_file() or selected.suffix.casefold() != ".txt":
+            raise SteamZeroError("E-CHEAT-CODE-INVALID", detail="selecione um arquivo .txt regular")
+        if selected.stat().st_size > 4 * 1024**2:
+            raise SteamZeroError("E-CHEAT-CODE-INVALID", detail="arquivo de cheat excede 4 MiB")
+        build_id = selected.stem.upper()
+        if _BUILD_ID.fullmatch(build_id) is None:
+            raise SteamZeroError(
+                "E-CHEAT-BUILD-ID-MISMATCH",
+                detail="nomeie o arquivo com o Build ID hexadecimal (16 a 64 dígitos)",
+            )
+        try:
+            codes = tuple(selected.read_text(encoding="utf-8").splitlines())
+        except (OSError, UnicodeError) as exc:
+            raise SteamZeroError("E-CHEAT-CODE-INVALID", detail="arquivo ilegível") from exc
+        has_code = any(
+            re.match(r"^[0-9A-Fa-f]{8}(?:\s+[0-9A-Fa-f]{8})+", line.strip())
+            for line in codes
+        )
+        if not has_code or not validate_cheat_codes(codes):
+            raise SteamZeroError(
+                "E-CHEAT-CODE-INVALID", detail="nenhum código Atmosphere válido foi encontrado"
+            )
+        title_id = str(game["titleId"])
+        target = self._cheat_dir(emulator_id, title_id) / f"{build_id}.txt"
+        plan = transaction.plan_copy_files(
+            [(selected, target)],
+            root=self._extra_transaction_root(target),
+            kind="emulation.cheat-import",
+        )
+        cheat_id = ids.new_ulid()
+        self._pending[plan.plan_id] = _PendingMutation(
+            "cheat-install",
+            {
+                "id": cheat_id,
+                "gameId": str(game["id"]),
+                "titleId": title_id,
+                "name": selected.stem,
+                "buildId": build_id,
+                "emulatorId": emulator_id,
+                "installPath": str(target),
+                "codeCount": sum(
+                    1
+                    for line in codes
+                    if line.strip() and not line.lstrip().startswith(("//", "#", "["))
+                ),
+            },
+        )
+        return plan
+
+    def _plan_mod_state(self, action: str) -> transaction.Plan:
+        parts = action.split(":")
+        if len(parts) != 3 or parts[2] not in {"on", "off"}:
+            raise SteamZeroError("E-API-SCHEMA", detail="ação de mod inválida")
+        mod = self._extra_record("mod", parts[1])
+        if not isinstance(mod, InstalledMod) or not mod.install_path or not mod.emulator_id:
+            raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="mod instalado não encontrado")
+        source_dir = Path(mod.install_path)
+        if parts[2] == "off":
+            target_dir = self._disabled_mod_dir(mod.emulator_id, mod.title_id, mod.id)
+            new_state = "inactive"
+        else:
+            target_dir = self._mod_install_dir(mod.emulator_id, mod.title_id, mod.name, mod.id)
+            new_state = "active"
+        moves = self._tree_moves(source_dir, target_dir)
+        plan = transaction.plan_move_files(
+            moves,
+            root=self._extra_transaction_root(target_dir),
+            kind="emulation.mod-state",
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "mod-state", {"id": mod.id, "state": new_state, "installPath": str(target_dir)}
+        )
+        return plan
+
+    def _plan_cheat_state(self, action: str) -> transaction.Plan:
+        parts = action.split(":")
+        if len(parts) != 3 or parts[2] not in {"on", "off"}:
+            raise SteamZeroError("E-API-SCHEMA", detail="ação de cheat inválida")
+        cheat = self._extra_record("cheat", parts[1])
+        if not isinstance(cheat, InstalledCheat) or not cheat.install_path:
+            raise SteamZeroError("E-CHEAT-INSTALL-FAILED", detail="cheat instalado não encontrado")
+        source = Path(cheat.install_path)
+        if parts[2] == "off":
+            target = source.with_name(source.name + ".disabled")
+            state, enabled = "inactive", False
+        else:
+            if not source.name.endswith(".disabled"):
+                raise SteamZeroError("E-CHEAT-INSTALL-FAILED", detail="cheat já está ativo")
+            target = source.with_name(source.name.removesuffix(".disabled"))
+            state, enabled = "active", True
+        plan = transaction.plan_move_files(
+            {source: target},
+            root=self._extra_transaction_root(target),
+            kind="emulation.cheat-state",
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "cheat-state",
+            {"id": cheat.id, "state": state, "enabled": enabled, "installPath": str(target)},
+        )
+        return plan
+
+    def _plan_extra_remove(self, action: str, *, kind: str) -> transaction.Plan:
+        record_id = action.split(":", 1)[1] if ":" in action else ""
+        record = self._extra_record(kind, record_id)
+        install_path = getattr(record, "install_path", None)
+        if not isinstance(install_path, str):
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="conteúdo instalado não encontrado")
+        source = Path(install_path)
+        removals = set(fs.iter_files(source)) if source.is_dir() else {source}
+        if not removals:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="conteúdo já está ausente")
+        plan = transaction.plan_write_files(
+            {},
+            root=self._extra_transaction_root(source),
+            removals=removals,
+            kind=f"emulation.{kind}-remove",
+        )
+        self._pending[plan.plan_id] = _PendingMutation(f"{kind}-remove", {"id": record_id})
+        return plan
+
+    def _extra_context(self, payload: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
+        game = self._current_game(self._required_string(payload, "gameId"))
+        if not isinstance(game.get("titleId"), str):
+            raise SteamZeroError("E-MOD-TITLE-ID-NOT-FOUND", detail="Title ID não identificado")
+        settings = self._settings_for_game(game, self._load_game_settings(strict=True))
+        emulator_id = settings.get("emulatorId")
+        if not isinstance(emulator_id, str):
+            raise SteamZeroError(
+                "E-MOD-EMULATOR-NOT-FOUND", detail="defina o emulador deste jogo primeiro"
+            )
+        self._require_managed_emulator(emulator_id)
+        requested = self._optional_string(payload, "emulatorId")
+        if requested and requested != emulator_id:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="o emulador mudou; atualize a tela e tente novamente"
+            )
+        return game, emulator_id
+
+    def _selected_mod_tree(self, selected: Path) -> tuple[list[Path], Path]:
+        if selected.is_symlink() or not selected.exists():
+            raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="origem local inválida")
+        if selected.is_file() and selected.suffix.casefold() == ".zip":
+            files = safezip.extract_safe(selected, ids.new_ulid())
+            if not files:
+                raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="ZIP de mod vazio")
+            source_root = Path(os.path.commonpath([str(path.parent) for path in files]))
+        elif selected.is_dir():
+            source_root = selected.resolve(strict=True)
+            files = list(fs.iter_files(source_root))
+        else:
+            raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="selecione uma pasta ou ZIP de mod")
+        total = sum(path.stat().st_size for path in files)
+        if not files or len(files) > _MAX_IMPORT_FILES or total > _MAX_MOD_BYTES:
+            raise SteamZeroError(
+                "E-MOD-INSTALL-FAILED", detail="mod vazio ou fora dos limites de segurança"
+            )
+        if any(path.is_symlink() or not path.is_file() for path in files):
+            raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="mod contém origem insegura")
+        return files, source_root
+
+    @staticmethod
+    def _tree_moves(source_dir: Path, target_dir: Path) -> dict[Path, Path]:
+        if source_dir.is_symlink() or not source_dir.is_dir():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="diretório do mod não está acessível")
+        moves = {
+            source: target_dir / source.relative_to(source_dir)
+            for source in fs.iter_files(source_dir)
+        }
+        if not moves:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="mod não contém arquivos")
+        return moves
+
+    @staticmethod
+    def _safe_extra_name(value: str) -> str:
+        return re.sub(r"[^A-Za-z0-9 _.-]", "_", value).strip(" .")[:80] or "mod"
+
+    @staticmethod
+    def _real_emulator_roots() -> bool:
+        return paths.data_home().resolve().is_relative_to(Path.home().resolve())
+
+    def _mod_base(self, emulator_id: str) -> Path:
+        if not self._real_emulator_roots():
+            return paths.data_home() / "emulators" / emulator_id / "mods"
+        home = Path.home()
+        return {
+            "eden": home / ".local/share/eden/load",
+            "citron": home / ".local/share/citron/load",
+            "ryubing": home / ".config/Ryujinx/mods/contents",
+        }[emulator_id]
+
+    def _mod_install_dir(self, emulator_id: str, title_id: str, name: str, mod_id: str) -> Path:
+        directory = f"{self._safe_extra_name(name)}-{mod_id[:8]}"
+        return self._mod_base(emulator_id) / title_id / directory
+
+    @staticmethod
+    def _disabled_mod_dir(emulator_id: str, title_id: str, mod_id: str) -> Path:
+        return paths.data_home() / "switch-mods-disabled" / emulator_id / title_id / mod_id
+
+    def _cheat_dir(self, emulator_id: str, title_id: str) -> Path:
+        return self._mod_base(emulator_id) / title_id / "cheats"
+
+    @staticmethod
+    def _extra_transaction_root(target: Path) -> Path:
+        home = Path.home().resolve()
+        return home if target.is_relative_to(home) else paths.data_home().resolve()
+
+    def _extra_record(self, kind: str, record_id: str) -> InstalledMod | InstalledCheat | None:
+        with self._store_factory() as store:
+            store.migrate()
+            if kind == "mod":
+                return StateStoreModsAdapter(store.adapter_connection()).get_by_id(record_id)
+            return StateStoreCheatsAdapter(store.adapter_connection()).get_by_id(record_id)
+
     def _plan_root_add(self, selected: Path) -> transaction.Plan:
         if selected.is_symlink() or not selected.is_dir():
             raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="diretório de ROMs inválido")
@@ -1022,9 +1330,7 @@ class EmulationController:
         )
         targets = [target, *projections]
         copies = self._new_copy_targets(source, targets, digest)
-        title_sources = [
-            path for path in candidates if path.name.casefold() == "title.keys"
-        ]
+        title_sources = [path for path in candidates if path.name.casefold() == "title.keys"]
         if len(title_sources) > 1:
             raise SteamZeroError(
                 "E-CONTENT-KEYS-INCOMPAT", detail="mais de um arquivo title.keys encontrado"
@@ -1033,9 +1339,7 @@ class EmulationController:
             title_source = title_sources[0]
             self._validate_title_keys(title_source)
             title_digest = fs.hash_file(title_source, algo="sha256")
-            title_target = (
-                paths.keys_dir() / "switch" / f"title-{title_digest[:12]}.keys"
-            )
+            title_target = paths.keys_dir() / "switch" / f"title-{title_digest[:12]}.keys"
             title_targets = [
                 title_target,
                 *(
@@ -1044,9 +1348,7 @@ class EmulationController:
                     else ()
                 ),
             ]
-            copies.extend(
-                self._new_copy_targets(title_source, title_targets, title_digest)
-            )
+            copies.extend(self._new_copy_targets(title_source, title_targets, title_digest))
         root = self._compatible_root({candidate: b"" for _, candidate in copies})
         plan = (
             transaction.plan_copy_files(copies, root=root, kind="emulation.keys-import")
@@ -1086,12 +1388,8 @@ class EmulationController:
                 )
             )
         if not copies:
-            return transaction.plan_write_files(
-                {}, root=Path.home(), kind="emulation.keys-repair"
-            )
-        return transaction.plan_copy_files(
-            copies, root=Path.home(), kind="emulation.keys-repair"
-        )
+            return transaction.plan_write_files({}, root=Path.home(), kind="emulation.keys-repair")
+        return transaction.plan_copy_files(copies, root=Path.home(), kind="emulation.keys-repair")
 
     def _plan_runtime_prepare(self) -> transaction.Plan:
         writes = self._runtime_config_writes()
@@ -1204,9 +1502,7 @@ class EmulationController:
         try:
             lines = source.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeError) as exc:
-            raise SteamZeroError(
-                "E-CONTENT-KEYS-INCOMPAT", detail="title.keys ilegível"
-            ) from exc
+            raise SteamZeroError("E-CONTENT-KEYS-INCOMPAT", detail="title.keys ilegível") from exc
         names: set[str] = set()
         for line in lines:
             stripped = line.strip()
@@ -1223,9 +1519,7 @@ class EmulationController:
                 )
             names.add(match.group(1))
         if not names:
-            raise SteamZeroError(
-                "E-CONTENT-KEYS-INCOMPAT", detail="title.keys está vazio"
-            )
+            raise SteamZeroError("E-CONTENT-KEYS-INCOMPAT", detail="title.keys está vazio")
 
     def _persist_import(self, pending: _PendingMutation) -> None:
         metadata = pending.metadata
@@ -1246,6 +1540,75 @@ class EmulationController:
                     "last_validated": datetime.now(UTC).isoformat(),
                 }
             )
+
+    def _persist_extra(self, pending: _PendingMutation) -> None:
+        metadata = pending.metadata
+        with self._store_factory() as store:
+            store.migrate()
+            mods = StateStoreModsAdapter(store.adapter_connection())
+            cheats = StateStoreCheatsAdapter(store.adapter_connection())
+            if pending.kind in {"mod-install", "cheat-install"}:
+                game = self._current_game(str(metadata["gameId"]))
+                store.save_platform({"id": "switch", "name": "Nintendo Switch"})
+                store.save_game(
+                    {
+                        "id": str(game["id"]),
+                        "platform_id": "switch",
+                        "title": str(game["name"]),
+                        "canonical_path_id": str(game["path"]),
+                        "state": "ready",
+                    }
+                )
+            if pending.kind == "mod-install":
+                mods.save_installed_mod(
+                    InstalledMod(
+                        id=str(metadata["id"]),
+                        game_id=str(metadata["gameId"]),
+                        catalog_id=None,
+                        title_id=str(metadata["titleId"]),
+                        build_id=None,
+                        name=str(metadata["name"]),
+                        mod_type=ModType.OTHER,
+                        source="local-user",
+                        version=None,
+                        state="active",
+                        install_path=str(metadata["installPath"]),
+                        emulator_id=str(metadata["emulatorId"]),
+                    )
+                )
+            elif pending.kind == "cheat-install":
+                cheats.save_installed_cheat(
+                    InstalledCheat(
+                        id=str(metadata["id"]),
+                        game_id=str(metadata["gameId"]),
+                        title_id=str(metadata["titleId"]),
+                        build_id=str(metadata["buildId"]),
+                        name=str(metadata["name"]),
+                        cheat_type=CheatType.OTHER,
+                        source="local-user",
+                        version=None,
+                        state="active",
+                        install_path=str(metadata["installPath"]),
+                        emulator_id=str(metadata["emulatorId"]),
+                        code_count=int(metadata["codeCount"]),
+                        enabled=True,
+                    )
+                )
+            elif pending.kind == "mod-state":
+                mods.update_location_state(
+                    str(metadata["id"]), str(metadata["state"]), str(metadata["installPath"])
+                )
+            elif pending.kind == "cheat-state":
+                cheats.update_location_state(
+                    str(metadata["id"]),
+                    str(metadata["state"]),
+                    str(metadata["installPath"]),
+                    enabled=bool(metadata["enabled"]),
+                )
+            elif pending.kind == "mod-remove":
+                mods.remove_installed_mod(str(metadata["id"]))
+            elif pending.kind == "cheat-remove":
+                cheats.remove_installed_cheat(str(metadata["id"]))
 
     def _custom_roots(self) -> list[Path]:
         if not self._roots_path.is_file() or self._roots_path.is_symlink():
@@ -1368,9 +1731,7 @@ class EmulationController:
         except SteamZeroError:
             return []
         digest = fs.hash_file(source, algo="sha256")
-        copies = self._new_copy_targets(
-            source, self._emulator_key_targets(emulator_id), digest
-        )
+        copies = self._new_copy_targets(source, self._emulator_key_targets(emulator_id), digest)
         title_source = self._current_title_key_source()
         if title_source is not None:
             title_digest = fs.hash_file(title_source, algo="sha256")
@@ -1383,9 +1744,7 @@ class EmulationController:
             )
         return copies
 
-    def _firmware_projection_copies(
-        self, emulator_ids: Sequence[str]
-    ) -> list[tuple[Path, Path]]:
+    def _firmware_projection_copies(self, emulator_ids: Sequence[str]) -> list[tuple[Path, Path]]:
         """Recupera o firmware central para os diretórios reais dos consumidores."""
         with self._store_factory() as store:
             store.migrate()
@@ -1533,18 +1892,9 @@ class EmulationController:
         home = Path.home()
         filename = f"{digest}.nca"
         return {
-            "eden": (
-                home / ".local/share/eden/nand/system/Contents/registered" / filename,
-            ),
-            "citron": (
-                home / ".local/share/citron/nand/system/Contents/registered" / filename,
-            ),
-            "ryubing": (
-                home
-                / ".config/Ryujinx/bis/system/Contents/registered"
-                / filename
-                / "00",
-            ),
+            "eden": (home / ".local/share/eden/nand/system/Contents/registered" / filename,),
+            "citron": (home / ".local/share/citron/nand/system/Contents/registered" / filename,),
+            "ryubing": (home / ".config/Ryujinx/bis/system/Contents/registered" / filename / "00",),
         }[emulator_id]
 
     def _emulator_game_directory_writes(self, roots: Sequence[Path]) -> dict[Path, bytes]:
@@ -1625,9 +1975,7 @@ class EmulationController:
                 raw = writes.get(ryubing, ryubing.read_bytes())
                 data = json.loads(raw.decode("utf-8"))
                 data["check_updates_on_start"] = False
-                writes[ryubing] = (
-                    json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
-                )
+                writes[ryubing] = json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
             except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
                 pass
         return writes
@@ -1738,9 +2086,7 @@ class EmulationController:
             if key_emulator_id is not None
             else []
         )
-        root = self._compatible_root(
-            {**writes, **{target: b"" for _source, target in copies}}
-        )
+        root = self._compatible_root({**writes, **{target: b"" for _source, target in copies}})
         if copies:
             return transaction.plan_copy_files(
                 copies,
@@ -1784,11 +2130,18 @@ class EmulationController:
     ) -> list[dict[str, Any]]:
         settings = self._load_game_settings(strict=False)
         published = self._shortcuts.managed_game_ids()
-        installed = {
-            str(row["id"])
-            for row in emulators
-            if row.get("installState") == "installed"
-        }
+        installed = {str(row["id"]) for row in emulators if row.get("installState") == "installed"}
+        extras: dict[str, tuple[list[InstalledMod], list[InstalledCheat]]] = {}
+        with self._store_factory() as store:
+            store.migrate()
+            mod_store = StateStoreModsAdapter(store.adapter_connection())
+            cheat_store = StateStoreCheatsAdapter(store.adapter_connection())
+            for raw in games:
+                candidate_id = str(raw.get("id", ""))
+                extras[candidate_id] = (
+                    mod_store.list_installed(candidate_id),
+                    cheat_store.list_installed(candidate_id),
+                )
         enriched: list[dict[str, Any]] = []
         for raw in games:
             game = dict(raw)
@@ -1811,6 +2164,7 @@ class EmulationController:
                 play_reason = "Importe e valide o firmware antes de jogar."
             else:
                 play_reason = None
+            mods, cheats = extras.get(game_id, ([], []))
             game.update(
                 {
                     "emulatorId": emulator_id,
@@ -1825,6 +2179,45 @@ class EmulationController:
                     "deleteAction": self._action(
                         f"game.delete:{game_id}", "Excluir ROM", confirmation=True
                     ),
+                    "modsCount": len(mods),
+                    "cheatsCount": len(cheats),
+                    "mods": [
+                        {
+                            "id": mod.id,
+                            "name": mod.name,
+                            "state": mod.state,
+                            "emulatorId": mod.emulator_id,
+                            "stateAction": self._action(
+                                f"mod.state:{mod.id}:{'off' if mod.state == 'active' else 'on'}",
+                                "Desativar" if mod.state == "active" else "Ativar",
+                                confirmation=True,
+                            ),
+                            "removeAction": self._action(
+                                f"mod.remove:{mod.id}", "Remover", confirmation=True
+                            ),
+                        }
+                        for mod in mods
+                    ],
+                    "cheats": [
+                        {
+                            "id": cheat.id,
+                            "name": cheat.name,
+                            "buildId": cheat.build_id,
+                            "state": cheat.state,
+                            "enabled": cheat.enabled,
+                            "codeCount": cheat.code_count,
+                            "emulatorId": cheat.emulator_id,
+                            "stateAction": self._action(
+                                f"cheat.state:{cheat.id}:{'off' if cheat.enabled else 'on'}",
+                                "Desativar" if cheat.enabled else "Ativar",
+                                confirmation=True,
+                            ),
+                            "removeAction": self._action(
+                                f"cheat.remove:{cheat.id}", "Remover", confirmation=True
+                            ),
+                        }
+                        for cheat in cheats
+                    ],
                 }
             )
             enriched.append(game)
@@ -1939,6 +2332,16 @@ class EmulationController:
                             return candidate.resolve(strict=True).as_uri(), source
                     except OSError:
                         continue
+        cached = EmulatorCacheReader(paths.data_home()).find_icon(title_id)
+        if cached is not None:
+            try:
+                if (
+                    not cached.is_symlink()
+                    and cached.stat().st_size <= 16 * 1024 * 1024
+                ):
+                    return cached.resolve(strict=True).as_uri(), "emulator-cache"
+            except OSError:
+                pass
         return "", "fallback"
 
     @staticmethod

@@ -46,6 +46,7 @@ Item {
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
         {"id": "keysFirmware", "label": qsTr("Keys e firmware"), "icon": "document-encrypt"},
         {"id": "updatesDlc", "label": qsTr("Updates e DLC"), "icon": "download"},
+        {"id": "modsCheats", "label": qsTr("Mods e cheats"), "icon": "extension"},
         {"id": "graphicsPerformance", "label": qsTr("Gráficos e fluidez"), "icon": "video-display"},
         {"id": "controls", "label": qsTr("Controles"), "icon": "input-gaming"},
         {"id": "saves", "label": qsTr("Saves"), "icon": "document-save"},
@@ -454,6 +455,7 @@ Item {
             "overview": qsTr("Prontidão da plataforma"),
             "keysFirmware": qsTr("Keys, firmware e compatibilidade"),
             "updatesDlc": qsTr("Updates e conteúdo adicional"),
+            "modsCheats": qsTr("Mods e cheats por jogo"),
             "graphicsPerformance": qsTr("Gráficos, fluidez e perfis"),
             "controls": qsTr("Controles e mudança de modo"),
             "saves": qsTr("Saves e migração"),
@@ -474,6 +476,7 @@ Item {
             "overview": qsTr("Veja o que já está pronto e a ordem segura para começar a jogar."),
             "keysFirmware": qsTr("Importe arquivos próprios e antecipe incompatibilidades antes de abrir um jogo."),
             "updatesDlc": qsTr("Acompanhe a versão ativa de cada jogo e escolha updates ou DLC sem perder o original."),
+            "modsCheats": qsTr("Importe, ative e remova conteúdo local vinculado ao Title ID e ao emulador escolhido."),
             "graphicsPerformance": qsTr("Aplique perfis conhecidos bons, alternância dock/portátil e geração de quadros quando suportada."),
             "controls": qsTr("Configure até quatro jogadores e adapte o layout automaticamente ao modo de uso."),
             "saves": qsTr("Proteja, restaure e migre progresso entre emuladores com verificação."),
@@ -498,6 +501,12 @@ Item {
                 {"title": qsTr("Update ativo"), "icon": "system-software-update", "state": "unknown", "status": qsTr("Nenhum jogo selecionado"), "detail": qsTr("Instale, alterne e reverta patches fornecidos pelo usuário."), "metric": "—"},
                 {"title": qsTr("Conteúdo adicional"), "icon": "package-x-generic", "state": "unknown", "status": qsTr("Nenhum DLC catalogado"), "detail": qsTr("Ativação por título com inventário e origem auditável."), "metric": "0"},
                 {"title": qsTr("Versão efetiva"), "icon": "view-refresh", "state": "unknown", "status": qsTr("Aguardando leitura"), "detail": qsTr("Compara jogo base, update escolhido e conteúdo habilitado."), "metric": "—"}
+            ]
+        }
+        if (id === "modsCheats") {
+            return [
+                {"title": qsTr("Mods locais"), "icon": "extension", "state": "unknown", "status": qsTr("Nenhum mod inventariado"), "detail": qsTr("Pastas e ZIPs são validados e instalados no emulador deste jogo."), "metric": "0"},
+                {"title": qsTr("Cheats Atmosphere"), "icon": "applications-development", "state": "unknown", "status": qsTr("Nenhum cheat inventariado"), "detail": qsTr("O nome do arquivo deve ser o Build ID para impedir associação ao jogo errado."), "metric": "0"}
             ]
         }
         if (id === "graphicsPerformance") {
@@ -560,9 +569,48 @@ Item {
     function cards() {
         if (isGlobalOverview())
             return overviewCards()
+        if (selectedArea.id === "modsCheats" && scopeId() === "game")
+            return gameExtraCards()
         if (areaData.cards && areaData.cards.length > 0)
             return areaData.cards
         return defaultCards(selectedArea.id)
+    }
+
+    function gameExtraCards() {
+        const result = []
+        const published = areaData.cards || []
+        for (let i = 0; i < published.length; ++i)
+            result.push(published[i])
+        const mods = selectedGame.mods || []
+        for (let m = 0; m < mods.length; ++m) {
+            const mod = mods[m]
+            result.push({
+                "id": "installed-mod-" + mod.id,
+                "title": mod.name,
+                "icon": "extension",
+                "state": mod.state === "active" ? "ready" : "attention",
+                "statusLabel": mod.state === "active" ? qsTr("Ativo") : qsTr("Inativo"),
+                "detail": qsTr("Mod local em %1").arg(mod.emulatorId || qsTr("emulador não definido")),
+                "metric": qsTr("Mod"),
+                "actions": [mod.stateAction, mod.removeAction]
+            })
+        }
+        const cheats = selectedGame.cheats || []
+        for (let c = 0; c < cheats.length; ++c) {
+            const cheat = cheats[c]
+            result.push({
+                "id": "installed-cheat-" + cheat.id,
+                "title": cheat.name,
+                "icon": "applications-development",
+                "state": cheat.enabled ? "ready" : "attention",
+                "statusLabel": cheat.enabled ? qsTr("Ativo") : qsTr("Inativo"),
+                "detail": qsTr("Build ID %1 • %2 código(s)")
+                    .arg(cheat.buildId || qsTr("não identificado")).arg(cheat.codeCount || 0),
+                "metric": qsTr("Cheat"),
+                "actions": [cheat.stateAction, cheat.removeAction]
+            })
+        }
+        return result
     }
 
     function overviewCards() {
@@ -695,7 +743,7 @@ Item {
         }
         pendingAction = action
         if (["content.update.import", "content.dlc.import",
-             "content.save.import", "content.shader.import"].indexOf(action.id) >= 0
+             "content.save.import", "content.shader.import", "mod.import", "cheat.import"].indexOf(action.id) >= 0
                 && !(selectedGame.titleId || "")) {
             page.actionRequested({
                 "id": action.id,
@@ -709,10 +757,12 @@ Item {
         }
         if (action.id === "library.root.add") {
             sourceFolderDialog.open()
-        } else if (action.id === "keys.import" || action.id === "firmware.import") {
+        } else if (action.id === "keys.import" || action.id === "firmware.import"
+                || action.id === "mod.import") {
             sourceChoiceDialog.open()
         } else if (["content.update.import", "content.dlc.import",
-                    "content.save.import", "content.shader.import", "nsz.convert"].indexOf(action.id) >= 0) {
+                    "content.save.import", "content.shader.import", "nsz.convert",
+                    "cheat.import"].indexOf(action.id) >= 0) {
             sourceFileDialog.open()
         } else {
             page.actionRequested(action)
@@ -730,7 +780,8 @@ Item {
             "requiresConfirmation": true,
             "path": pendingPath,
             "titleId": selectedGame.titleId || "",
-            "emulatorId": selectedEmulator.id || ""
+            "emulatorId": selectedGame.emulatorId || "",
+            "gameId": selectedGame.id || ""
         }
         if (version !== undefined && version !== null && String(version).trim() !== "")
             request.version = String(version).trim()
@@ -798,6 +849,10 @@ Item {
             ? [qsTr("Keys e arquivos compactados (*.keys *.zip)"), qsTr("Todos os arquivos (*)")]
             : pendingAction && pendingAction.id === "firmware.import"
                 ? [qsTr("Firmware e arquivos compactados (*.nca *.zip)"), qsTr("Todos os arquivos (*)")]
+                : pendingAction && pendingAction.id === "mod.import"
+                    ? [qsTr("Pacotes de mod (*.zip)"), qsTr("Todos os arquivos (*)")]
+                    : pendingAction && pendingAction.id === "cheat.import"
+                        ? [qsTr("Cheats Atmosphere (*.txt)"), qsTr("Todos os arquivos (*)")]
                 : [qsTr("Conteúdo Switch (*.nsp *.xci *.nsz *.zip)"), qsTr("Todos os arquivos (*)")]
         onAccepted: {
             pendingPath = page.localPath(selectedFile)
@@ -2267,7 +2322,7 @@ Item {
                                         onClicked: page.openGameArea("updatesDlc")
                                     }
                                     Button {
-                                        text: qsTr("Mods")
+                                        text: qsTr("Mods e cheats")
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
@@ -2278,8 +2333,9 @@ Item {
                                                 ? page.cyanColor : page.borderColor
                                             radius: 6
                                         }
-                                        enabled: false
-                                        Accessible.description: qsTr("Gerenciador de mods ainda não publicado.")
+                                        enabled: page.selectedGame.id !== ""
+                                        Accessible.description: qsTr("Gerenciar conteúdo local deste jogo.")
+                                        onClicked: page.openGameArea("modsCheats")
                                     }
                                 }
                             }

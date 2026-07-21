@@ -336,6 +336,10 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 "reason": None,
                 "requiresConfirmation": True,
             },
+            "modsCount": 0,
+            "cheatsCount": 0,
+            "mods": [],
+            "cheats": [],
         }
     ]
 
@@ -443,9 +447,7 @@ def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
     assert observed["env"]["APPIMAGELAUNCHER_DISABLE"] == "true"  # type: ignore[index]
 
 
-def test_stop_emulator_signals_only_managed_process_group(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_stop_emulator_signals_only_managed_process_group(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     payload = tmp_path / "ryubing.AppImage"
     signaled: list[tuple[int, int]] = []
@@ -457,9 +459,7 @@ def test_stop_emulator_signals_only_managed_process_group(
     monkeypatch.setattr(
         emulation.os,
         "killpg",
-        lambda process_group, requested_signal: signaled.append(
-            (process_group, requested_signal)
-        ),
+        lambda process_group, requested_signal: signaled.append((process_group, requested_signal)),
     )
 
     result = controller.stop_emulator("ryubing")
@@ -475,9 +475,7 @@ def test_launch_argv_uses_explicit_appimage_bypass(monkeypatch, tmp_path: Path) 
     bypass.chmod(0o700)
     controller = EmulationController(
         store_factory=lambda: StateStore(tmp_path / "state.db"),
-        which=lambda command: str(bypass)
-        if command == "appimagelauncher-binfmt-bypass"
-        else None,
+        which=lambda command: str(bypass) if command == "appimagelauncher-binfmt-bypass" else None,
     )
     payload = tmp_path / "Eden.AppImage"
     rom = tmp_path / "Game With Spaces.nsp"
@@ -515,12 +513,12 @@ def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: 
     plan = controller.plan_action({"actionId": "runtime.prepare"})
     _apply(controller, plan)
 
-    assert "check_for_updates_on_start=false" in (
-        home / ".config/eden/qt-config.ini"
-    ).read_text(encoding="utf-8")
-    assert "enable_auto_update_check=false" in (
-        home / ".config/citron/qt-config.ini"
-    ).read_text(encoding="utf-8")
+    assert "check_for_updates_on_start=false" in (home / ".config/eden/qt-config.ini").read_text(
+        encoding="utf-8"
+    )
+    assert "enable_auto_update_check=false" in (home / ".config/citron/qt-config.ini").read_text(
+        encoding="utf-8"
+    )
     assert "enable_auto_update_check\\default=false" in (
         home / ".config/citron/qt-config.ini"
     ).read_text(encoding="utf-8")
@@ -537,9 +535,7 @@ def test_library_discovers_existing_lowercase_emulation_root(monkeypatch, tmp_pa
     assert str(root.resolve()) in controller.library_roots()
 
 
-def test_firmware_folder_is_not_registered_as_game_directory(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_firmware_folder_is_not_registered_as_game_directory(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     default_root = home / "emulation" / "roms"
     firmware = default_root / "switch" / "Firmware"
@@ -602,3 +598,84 @@ def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> 
     active_card = next(card for card in cards if str(card["id"]).startswith("content-"))
     assert active_card["statusLabel"] == "Ativo"
     assert active_card["action"]["label"] == "Desativar"
+
+
+def _configured_game(controller: EmulationController, tmp_path: Path) -> tuple[str, str]:
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    title_id = "0100ABCDEF123000"
+    (roms / f"Example [{title_id}][v0].nsp").write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game_id = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["id"]
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.set", "gameId": game_id, "emulatorId": "eden"}
+        ),
+    )
+    return game_id, title_id
+
+
+def test_mod_import_toggle_and_remove_are_transactional(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    mod_source = tmp_path / "60 FPS"
+    (mod_source / "exefs").mkdir(parents=True)
+    (mod_source / "exefs" / "main.pchtxt").write_text("@nsobid-test", encoding="utf-8")
+
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "mod.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(mod_source),
+            }
+        ),
+    )
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["modsCount"] == 1
+    mod = game["mods"][0]
+    assert mod["state"] == "active"
+
+    _apply(controller, controller.plan_action({"actionId": mod["stateAction"]["id"]}))
+    mod = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["mods"][0]
+    assert mod["state"] == "inactive"
+
+    _apply(controller, controller.plan_action({"actionId": mod["stateAction"]["id"]}))
+    mod = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["mods"][0]
+    assert mod["state"] == "active"
+    _apply(controller, controller.plan_action({"actionId": mod["removeAction"]["id"]}))
+    assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["mods"] == []
+
+
+def test_cheat_import_toggle_and_remove_use_build_id(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    cheat_source = tmp_path / "0123456789ABCDEF.txt"
+    cheat_source.write_text("[Infinite health]\n04000000 12345678 00000001\n", encoding="utf-8")
+
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "cheat.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(cheat_source),
+            }
+        ),
+    )
+    cheat = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"][0]
+    assert cheat["buildId"] == "0123456789ABCDEF"
+    assert cheat["enabled"] is True
+
+    _apply(controller, controller.plan_action({"actionId": cheat["stateAction"]["id"]}))
+    cheat = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"][0]
+    assert cheat["enabled"] is False
+    _apply(controller, controller.plan_action({"actionId": cheat["removeAction"]["id"]}))
+    assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"] == []

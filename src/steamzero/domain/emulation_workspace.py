@@ -28,6 +28,7 @@ _AREA_DEFS = (
     ("overview", "Visão geral", "dashboard"),
     ("keysFirmware", "Keys & firmware", "key"),
     ("updatesDlc", "Updates & DLC", "download"),
+    ("modsCheats", "Mods & cheats", "extension"),
     ("graphicsPerformance", "Gráficos & desempenho", "speedometer"),
     ("controls", "Controles", "gamepad"),
     ("saves", "Saves", "save"),
@@ -367,6 +368,10 @@ def _area_data(
     }
     labels = {
         "updatesDlc": ("Updates & DLC", "Instale, ative e audite conteúdo do próprio usuário."),
+        "modsCheats": (
+            "Mods & cheats",
+            "Conteúdo local associado ao Title ID, Build ID e emulador do jogo.",
+        ),
         "graphicsPerformance": (
             "Gráficos & desempenho",
             "Perfis por jogo, dock/portátil e frame generation.",
