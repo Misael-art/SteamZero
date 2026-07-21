@@ -2144,3 +2144,45 @@ layout correto. A release anterior `0.1.0a33-3aeb81866b0d` permanece disponível
 a operação de migração também possui rollback independente. Nenhum reboot nem
 ajuste de boot foi executado; o teste prolongado em Game Mode permanece com o
 operador.
+
+## 2026-07-21 — Sessão 56: serviços Switch integrados à jornada por jogo
+
+**Branch:** `codex/integracao-backend-ui-switch`, em worktree isolado a partir
+de `6958b7c`. A árvore concorrente em `codex/lancamento-steam-roms`, inclusive
+seus arquivos não commitados, permaneceu intocada.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Serviços de scraping, mods, cheats e metadados com migrações 7→9 | `5e5e2b1` | 222 testes dirigidos dos serviços/migrações e suíte completa |
+| Containers NSP/HFS0 validados por limites; extração de intervalo passa a ser streaming e atômica | `5e5e2b1` | `test_switch_rom_metadata.py`, Ruff e mypy |
+| Caminhos consumidores normalizados para Eden, Citron e Ryubing; cheats inativos continuam inventariados | `5e5e2b1` | `test_switch_mods.py` e `test_switch_cheats.py` |
+| Controller publica inventário por jogo e aplica importação, ativação, desativação e remoção sob plano confirmado | `3ad7bdd` | `test_mod_import_toggle_and_remove_are_transactional` e `test_cheat_import_toggle_and_remove_use_build_id` |
+| QML expõe “Mods e cheats”, usa o emulador efetivo do jogo e reaproveita títulos/capas dos caches locais | `3ad7bdd` | `qmllint`, contrato do workspace e testes de controller/CLI |
+
+**Gates:** 1063 testes passaram usando base temporária curta; Ruff, mypy em 118
+arquivos, independence, boundaries, `git diff --check` e `qmllint` ficaram
+verdes. A primeira execução sob o caminho temporário longo encontrou apenas o
+limite `AF_UNIX path too long`; a repetição suportada passou sem mudança em
+código ou teste.
+
+**Host/release:** a release `0.1.0a33-3ad7bdd3a780`, originada da árvore limpa
+`3ad7bdd3a780be29c9f54497627fee67106f3131`, foi ativada pelo instalador
+transacional. Wheel SHA-256
+`6223cd5354fddef7cfd5d71a45dc4265fb35a15ab74ec7245c80860f2fa82dd7`;
+cinco wheels runtime e os entry points de boot foram conferidos. Serviço e
+socket ficaram ativos, doctor aprovou quatro checks e o State Store migrou para
+schema 9. O smoke QML offscreen permaneceu estável até o timeout intencional e
+não deixou processo órfão.
+
+**Validação funcional:** o snapshot consumido pelo dashboard publicou onze
+áreas, incluindo `modsCheats`, 15 jogos-base e os três emuladores instalados. O
+inventário atual tem zero mods e zero cheats porque nenhum conteúdo do usuário
+foi importado automaticamente; a primeira importação deve ser escolhida e
+confirmada pelo operador. Provedores remotos permanecem opt-in e só são
+habilitados com credenciais próprias; mídia local e cache de emulador funcionam
+sem rede.
+
+**Rollback:** `0.1.0a33-af41841b118e` foi preservada como release anterior.
+Nenhum reboot nem alteração de boot foi executado; o teste físico de importação
+de um mod/cheat próprio e o uso prolongado em Game Mode permanecem com o
+operador.
