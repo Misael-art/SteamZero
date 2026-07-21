@@ -2047,3 +2047,25 @@ honestamente em 35% e bloqueada até sincronizar as keys do Citron.
 teste físico de seleção de emulador, sincronização das keys e lançamento de uma
 ROM própria continua a cargo do operador; nenhum reboot ou mudança de boot foi
 executado.
+
+## 2026-07-21 — Sessão 52: seleção jogável e keys por emulador
+
+**Branch:** `codex/lancamento-steam-roms`. Os arquivos simultâneos da frente de
+scraping e os caminhos não rastreados de outras frentes permaneceram intocados.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Preferências antigas voltam a resolver após a migração do ID de fingerprint de 16 caracteres para o ID estável de 24 | `ec79604` | `test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator` e snapshot real com as escolhas Eden restauradas |
+| Play passa a validar keys somente no emulador escolhido, sem Citron bloquear Eden/Ryubing | `ec79604` | regressão de gate por emulador e snapshot real com `playAction.enabled=true` |
+| Escolher Citron projeta as keys centrais nos diretórios consumidores no mesmo plano confirmado | `ec79604` | `test_imports_project_to_switch_consumers_and_save_game_directories` |
+| Aba Emulador lista Eden, Citron e Ryubing em vez de somente o selecionado | `ec79604` | harness `check_emulation.qml` e `qmllint` |
+
+**Gates:** 851 testes passaram; Ruff, mypy, independence, boundaries,
+`git diff --check`, `qmllint` e o harness QML ficaram verdes para esta correção.
+Depois disso, arquivos concorrentes ainda não commitados da frente de scraping
+apareceram no worktree com 21 avisos próprios de Ruff; eles não foram editados,
+adicionados nem incluídos neste commit.
+
+**Host/release:** nenhuma instalação, release ou ação privilegiada foi executada
+nesta sessão. A release ativa permaneceu `0.1.0a33-a8aa074d81a3`; uma nova
+ativação requer autorização explícita do operador em turno próprio.
