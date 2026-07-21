@@ -38,6 +38,9 @@ Item {
     property string gameSortKey: "name"
     property bool gameSortAscending: true
     property bool gameDetailsOpen: true
+    property string selectedGameId: ""
+    property string pendingEmulatorGameId: ""
+    property string pendingEmulatorId: ""
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -124,6 +127,7 @@ Item {
             areaIndex = normalizedIndex(areaIndex, areas)
             emulatorIndex = normalizedIndex(emulatorIndex, emulators)
             gameIndex = normalizedIndex(gameIndex, games)
+            syncGameSelection()
             return
         }
         const scope = selectedPlatform.selectedScope || "global"
@@ -135,9 +139,31 @@ Item {
         emulatorIndex = normalizedIndex(emulatorIndex, emulators)
         gameIndex = normalizedIndex(gameIndex, games)
         synchronizedPlatformId = platformId
+        syncGameSelection()
+    }
+
+    function syncGameSelection() {
+        if (games.length === 0) {
+            gameIndex = 0
+            selectedGameId = ""
+            return
+        }
+        const published = games.findIndex(function(game) { return game.id === selectedGameId })
+        gameIndex = published >= 0 ? published : normalizedIndex(gameIndex, games)
+        selectedGameId = String(games[gameIndex].id || "")
+        if (pendingEmulatorGameId !== "") {
+            const pendingGame = games.find(function(game) {
+                return game.id === pendingEmulatorGameId
+            })
+            if (pendingGame && pendingGame.emulatorId === pendingEmulatorId) {
+                pendingEmulatorGameId = ""
+                pendingEmulatorId = ""
+            }
+        }
     }
 
     onSelectedPlatformChanged: Qt.callLater(syncPublishedSelection)
+    onGamesChanged: Qt.callLater(syncGameSelection)
     Component.onCompleted: syncPublishedSelection()
 
     function moveVerticalFocus(forward) {
@@ -286,6 +312,7 @@ Item {
         })
         if (index >= 0)
             gameIndex = index
+        selectedGameId = String(game.id || "")
         gameDetailsOpen = true
     }
 
@@ -340,9 +367,13 @@ Item {
     }
 
     function gameEmulatorIndex(game) {
-        if (!game || !game.emulatorId)
+        if (!game)
             return -1
-        return emulators.findIndex(function(emulator) { return emulator.id === game.emulatorId })
+        const emulatorId = pendingEmulatorGameId === game.id
+            ? pendingEmulatorId : game.emulatorId
+        if (!emulatorId)
+            return -1
+        return emulators.findIndex(function(emulator) { return emulator.id === emulatorId })
     }
 
     function gamePlayAction(game) {
@@ -1241,7 +1272,7 @@ Item {
                             }
                             Item { Layout.fillWidth: true }
                             Label {
-                                text: qsTr("Dados ausentes aparecem como —")
+                                text: qsTr("Metadados ausentes ficam marcados para nova varredura")
                                 color: page.mutedColor
                                 font.pixelSize: 11
                             }
@@ -1260,7 +1291,7 @@ Item {
                                 spacing: 10
                                 Label { text: qsTr("CAPA"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 86 }
                                 Label { text: qsTr("JOGO • COMPATIBILIDADE • COMPLEMENTOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.fillWidth: true }
-                                Label { visible: contentScroll.width >= 760; text: qsTr("REQUISITOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 118 }
+                                Label { visible: contentScroll.width >= 760; text: qsTr("REQUISITOS"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignLeft; Layout.preferredWidth: 118 }
                                 Label { visible: contentScroll.width >= 760; text: qsTr("EMULADOR"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 126 }
                                 Label { text: qsTr("AÇÃO"); color: page.mutedColor; font.pixelSize: 10; font.bold: true; Layout.preferredWidth: 112 }
                             }
@@ -1392,7 +1423,7 @@ Item {
                                                     required property var modelData
                                                     readonly property string compatibility: page.compatibilityState(
                                                         gameRow.modelData, modelData.id)
-                                                    Layout.preferredWidth: compatibilityText.implicitWidth + 16
+                                                    Layout.preferredWidth: compatibilityText.implicitWidth + 14
                                                     Layout.preferredHeight: 22
                                                     color: "transparent"
                                                     border.color: page.compatibilityColor(compatibility)
@@ -1400,12 +1431,15 @@ Item {
                                                     Label {
                                                         id: compatibilityText
                                                         anchors.centerIn: parent
-                                                        text: modelData.name + " • "
-                                                            + page.compatibilityLabel(parent.compatibility)
+                                                        text: "● " + modelData.name
                                                         color: page.compatibilityColor(parent.compatibility)
                                                         font.pixelSize: 9
                                                         font.bold: true
                                                     }
+                                                    ToolTip.visible: compatibilityHover.hovered
+                                                    ToolTip.text: modelData.name + ": "
+                                                        + page.compatibilityLabel(parent.compatibility)
+                                                    HoverHandler { id: compatibilityHover }
                                                 }
                                             }
                                             Item { Layout.fillWidth: true }
@@ -1463,13 +1497,16 @@ Item {
                                             text: gameRow.modelData.requiresFirmware
                                                 && gameRow.modelData.requiresFirmware.required
                                                 ? qsTr("FW ≥ %1").arg(gameRow.modelData.requiresFirmware.required)
-                                                : qsTr("FW mínimo —")
-                                            color: page.mutedColor
+                                                : qsTr("FW em análise")
+                                            color: gameRow.modelData.requiresFirmware
+                                                && gameRow.modelData.requiresFirmware.required
+                                                ? page.mutedColor : page.amberColor
                                             font.pixelSize: 10
                                         }
                                         Label {
-                                            text: gameRow.modelData.region || qsTr("Região —")
-                                            color: page.mutedColor
+                                            text: gameRow.modelData.region || qsTr("Região em análise")
+                                            color: gameRow.modelData.region
+                                                ? page.mutedColor : page.amberColor
                                             font.pixelSize: 10
                                         }
                                     }
@@ -1491,6 +1528,8 @@ Item {
                                         Accessible.description: qsTr("Define qual emulador será usado pelo botão Jogar e pelo atalho da Steam.")
                                         onActivated: {
                                             page.selectGame(gameRow.modelData)
+                                            page.pendingEmulatorGameId = gameRow.modelData.id
+                                            page.pendingEmulatorId = page.emulators[currentIndex].id
                                             page.dispatchAction({
                                                 "id": "game.emulator.set",
                                                 "label": qsTr("Definir emulador do jogo"),
@@ -2102,14 +2141,18 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 42
                                 Accessible.description: qsTr("Preferência persistente usada pelo lançamento direto e pela Steam.")
-                                onActivated: page.dispatchAction({
-                                    "id": "game.emulator.set",
-                                    "label": qsTr("Definir emulador do jogo"),
-                                    "enabled": true,
-                                    "requiresConfirmation": true,
-                                    "gameId": page.selectedGame.id,
-                                    "emulatorId": page.emulators[currentIndex].id
-                                })
+                                onActivated: {
+                                    page.pendingEmulatorGameId = page.selectedGame.id
+                                    page.pendingEmulatorId = page.emulators[currentIndex].id
+                                    page.dispatchAction({
+                                        "id": "game.emulator.set",
+                                        "label": qsTr("Definir emulador do jogo"),
+                                        "enabled": true,
+                                        "requiresConfirmation": true,
+                                        "gameId": page.selectedGame.id,
+                                        "emulatorId": page.emulators[currentIndex].id
+                                    })
+                                }
                             }
                             Label {
                                 text: qsTr("Esta escolha controla o Play direto e o atalho publicado na Steam.")
@@ -2152,6 +2195,12 @@ Item {
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 42
+                                    background: Rectangle {
+                                        color: page.raisedColor
+                                        border.color: parent.hovered || parent.activeFocus
+                                            ? page.cyanColor : page.borderColor
+                                        radius: 6
+                                    }
                                     onClicked: page.openGameArea("graphicsPerformance")
                                 }
                             }
@@ -2193,6 +2242,12 @@ Item {
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
                                         Layout.minimumHeight: 42
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
                                         onClicked: page.openGameArea("updatesDlc")
                                     }
                                     Button {
@@ -2201,6 +2256,12 @@ Item {
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
                                         Layout.minimumHeight: 42
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
                                         enabled: false
                                         Accessible.description: qsTr("Gerenciador de mods ainda não publicado.")
                                     }
@@ -2240,6 +2301,12 @@ Item {
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
                                         Layout.minimumHeight: 42
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
                                         onClicked: page.openGameArea("saves")
                                     }
                                     Button {
@@ -2248,6 +2315,12 @@ Item {
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
                                         Layout.minimumHeight: 42
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
                                         onClicked: page.openGameArea("shaderCache")
                                     }
                                 }
@@ -2278,6 +2351,12 @@ Item {
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 42
+                                    background: Rectangle {
+                                        color: page.raisedColor
+                                        border.color: parent.hovered || parent.activeFocus
+                                            ? page.cyanColor : page.borderColor
+                                        radius: 6
+                                    }
                                     onClicked: page.openGameArea("advanced")
                                 }
                                 Button {
@@ -2287,6 +2366,12 @@ Item {
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 42
+                                    background: Rectangle {
+                                        color: page.raisedColor
+                                        border.color: parent.hovered || parent.activeFocus
+                                            ? page.cyanColor : page.borderColor
+                                        radius: 6
+                                    }
                                     onClicked: page.openGameArea("media")
                                 }
                                 Button {
