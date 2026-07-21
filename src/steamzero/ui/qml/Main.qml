@@ -180,6 +180,7 @@ ApplicationWindow {
     property var currentPlan: null
     property var conflictPlan: null
     property var componentPlan: null
+    property var emulationPlan: null
     property var lsfgPlan: null
     property string lsfgLastOperationId: ""
     property string apiUrl: ""
@@ -457,8 +458,52 @@ ApplicationWindow {
                 ? action.reason : qsTr("Esta ação de emulação ainda não está disponível."), true)
             return
         }
-        if (action.id === "emulation.refresh") {
+        if (action.id === "emulation.refresh" || action.id === "requirements.verify") {
             refreshStatus(qsTr("Ambiente de emulação verificado"))
+            return
+        }
+        if (action.id === "library.scan") {
+            request("POST", "/emulation/library/scan", {}, function(response) {
+                refreshStatus(qsTr("Biblioteca atualizada: %1 jogo(s)").arg(response.games))
+            })
+            return
+        }
+        if (action.id.indexOf("emulator.launch:") === 0) {
+            const emulatorId = action.id.split(":")[1]
+            request("POST", "/emulation/emulator/launch", {"emulatorId": emulatorId},
+                    function(response) {
+                notify(qsTr("Emulador aberto"), false)
+            })
+            return
+        }
+        if (action.id.indexOf("emulator.install:") === 0
+                || action.id.indexOf("emulator.update:") === 0
+                || action.id.indexOf("emulator.uninstall:") === 0) {
+            const parts = action.id.split(":")
+            const lifecycleAction = parts[0].split(".")[1]
+            request("POST", "/emulation/emulator/plan", {
+                "emulatorId": parts[1], "action": lifecycleAction
+            }, function(response) {
+                emulationPlan = response.plan
+                emulationDialog.open()
+            })
+            return
+        }
+        if (["library.root.add", "keys.import", "firmware.import",
+                "content.update.import", "content.dlc.import", "content.save.import",
+                "content.shader.import", "storage.recover"].indexOf(action.id) >= 0
+                || action.id.indexOf("content.state:") === 0) {
+            const payload = {
+                "actionId": action.id,
+                "path": action.path || "",
+                "titleId": action.titleId || "",
+                "emulatorId": action.emulatorId || "",
+                "version": action.version || ""
+            }
+            request("POST", "/emulation/action/plan", payload, function(response) {
+                emulationPlan = response.plan
+                emulationDialog.open()
+            })
             return
         }
         notify(action.reason || qsTr("Ação de emulação não reconhecida; nada foi alterado."), true)
@@ -646,6 +691,67 @@ ApplicationWindow {
                             componentDialog.close()
                             root.componentPlan = null
                             root.refreshStatus(qsTr("Componente verificado e pronto"))
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: emulationDialog
+        title: qsTr("Revisar operação de emulação")
+        modal: true
+        width: Math.min(root.width - 48, 720)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.cyanDarkColor }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("Confira a origem, os arquivos afetados e a garantia de rollback antes de aplicar.")
+                color: root.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextArea {
+                text: root.emulationPlan ? root.emulationPlan.preview : ""
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                color: root.textColor
+                background: Rectangle { color: root.backgroundColor; radius: 8; border.color: root.borderColor }
+                Layout.fillWidth: true
+                Layout.minimumHeight: 150
+                Accessible.name: qsTr("Prévia da operação de emulação")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: emulationDialog.close()
+                }
+                Button {
+                    text: qsTr("Aplicar com rollback")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        if (!root.emulationPlan)
+                            return
+                        const emulatorLifecycle = String(root.emulationPlan.action)
+                            .indexOf("emulator.") === 0
+                        const endpoint = emulatorLifecycle
+                            ? "/emulation/emulator/apply" : "/emulation/action/apply"
+                        root.request("POST", endpoint, {
+                            "planId": root.emulationPlan.planId,
+                            "confirmToken": root.emulationPlan.confirmToken
+                        }, function(response) {
+                            emulationDialog.close()
+                            root.emulationPlan = null
+                            root.refreshStatus(qsTr("Operação aplicada e verificada"))
                         })
                     }
                 }

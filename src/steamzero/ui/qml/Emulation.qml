@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import QtQuick.Window
 
 Item {
@@ -31,6 +32,8 @@ Item {
     property int emulatorIndex: 0
     property int gameIndex: 0
     property string synchronizedPlatformId: ""
+    property var pendingAction: null
+    property string pendingPath: ""
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -349,6 +352,166 @@ Item {
     function areaIndexById(id) {
         const index = areas.findIndex(function(area) { return area.id === id })
         return index >= 0 ? index : 0
+    }
+
+    function dispatchAction(action) {
+        if (!action || action.enabled !== true) {
+            page.actionRequested(action)
+            return
+        }
+        pendingAction = action
+        if (action.id === "library.root.add") {
+            sourceFolderDialog.open()
+        } else if (action.id === "keys.import" || action.id === "firmware.import") {
+            sourceChoiceDialog.open()
+        } else if (["content.update.import", "content.dlc.import",
+                    "content.save.import", "content.shader.import"].indexOf(action.id) >= 0) {
+            sourceFileDialog.open()
+        } else {
+            page.actionRequested(action)
+        }
+    }
+
+    function submitSelectedSource(version) {
+        if (!pendingAction || pendingPath === "")
+            return
+        const request = {
+            "id": pendingAction.id,
+            "label": pendingAction.label,
+            "enabled": true,
+            "reason": null,
+            "requiresConfirmation": true,
+            "path": pendingPath,
+            "titleId": selectedGame.titleId || "",
+            "emulatorId": selectedEmulator.id || ""
+        }
+        if (version !== undefined && version !== null && String(version).trim() !== "")
+            request.version = String(version).trim()
+        page.actionRequested(request)
+        pendingAction = null
+        pendingPath = ""
+    }
+
+    Dialog {
+        id: sourceChoiceDialog
+        title: qsTr("Escolher origem local")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.NoButton
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: qsTr("Selecione um arquivo real, um ZIP ou uma pasta. O conteúdo será validado antes da importação.")
+                color: page.textColor
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: 480
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Arquivo ou ZIP")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        sourceChoiceDialog.close()
+                        sourceFileDialog.open()
+                    }
+                }
+                Button {
+                    text: qsTr("Pasta")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        sourceChoiceDialog.close()
+                        sourceFolderDialog.open()
+                    }
+                }
+            }
+            Button {
+                text: qsTr("Cancelar")
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+                onClicked: sourceChoiceDialog.close()
+            }
+        }
+    }
+
+    FileDialog {
+        id: sourceFileDialog
+        title: qsTr("Selecionar conteúdo local")
+        fileMode: FileDialog.OpenFile
+        nameFilters: pendingAction && pendingAction.id === "keys.import"
+            ? [qsTr("Keys e arquivos compactados (*.keys *.zip)"), qsTr("Todos os arquivos (*)")]
+            : pendingAction && pendingAction.id === "firmware.import"
+                ? [qsTr("Firmware e arquivos compactados (*.nca *.zip)"), qsTr("Todos os arquivos (*)")]
+                : [qsTr("Conteúdo Switch (*.nsp *.xci *.nsz *.zip)"), qsTr("Todos os arquivos (*)")]
+        onAccepted: {
+            pendingPath = selectedFile.toLocalFile()
+            if (pendingAction && (pendingAction.id === "firmware.import"
+                    || pendingAction.id === "content.update.import"))
+                versionDialog.open()
+            else
+                submitSelectedSource("")
+        }
+    }
+
+    FolderDialog {
+        id: sourceFolderDialog
+        title: qsTr("Selecionar pasta local")
+        onAccepted: {
+            pendingPath = selectedFolder.toLocalFile()
+            if (pendingAction && pendingAction.id === "firmware.import")
+                versionDialog.open()
+            else
+                submitSelectedSource("")
+        }
+    }
+
+    Dialog {
+        id: versionDialog
+        title: pendingAction && pendingAction.id === "firmware.import"
+            ? qsTr("Versão do firmware") : qsTr("Versão do update")
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.NoButton
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: pendingAction && pendingAction.id === "firmware.import"
+                    ? qsTr("Informe a versão exibida pela origem do seu firmware, por exemplo 18.1.0.")
+                    : qsTr("Informe a versão do update para que ela apareça no inventário.")
+                color: page.textColor
+                wrapMode: Text.WordWrap
+                Layout.preferredWidth: 440
+            }
+            TextField {
+                id: versionField
+                placeholderText: qsTr("Ex.: 18.1.0")
+                color: page.textColor
+                Layout.fillWidth: true
+                Accessible.name: qsTr("Versão do conteúdo")
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: versionDialog.close()
+                }
+                Button {
+                    text: qsTr("Continuar")
+                    enabled: versionField.text.trim().length > 0
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        versionDialog.close()
+                        submitSelectedSource(versionField.text)
+                        versionField.text = ""
+                    }
+                }
+            }
+        }
     }
 
     ColumnLayout {
@@ -891,7 +1054,7 @@ Item {
                                             if (modelData.targetArea)
                                                 page.areaIndex = page.areaIndexById(modelData.targetArea)
                                             else if (modelData.action)
-                                                page.actionRequested(modelData.action)
+                                                page.dispatchAction(modelData.action)
                                         }
                                     }
                                 }
@@ -945,6 +1108,7 @@ Item {
                         Repeater {
                             model: page.emulators
                             delegate: Rectangle {
+                                id: emulatorRow
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
@@ -978,21 +1142,26 @@ Item {
                                         color: page.stateColor(modelData.state)
                                         font.bold: true
                                     }
-                                    Button {
-                                        text: modelData.action && modelData.action.label
-                                            ? modelData.action.label : qsTr("Detalhes")
-                                        enabled: !modelData.action || modelData.action.enabled !== false
-                                        palette.button: page.raisedColor
-                                        palette.buttonText: page.textColor
-                                        Layout.minimumHeight: 48
-                                        Accessible.name: qsTr("%1: %2").arg(text).arg(modelData.name)
-                                        onClicked: {
-                                            page.emulatorIndex = index
-                                            if (modelData.action)
-                                                page.componentActionRequested(modelData)
-                                            else {
-                                                page.scopeIndex = 1
-                                                page.areaIndex = page.areaIndexById("advanced")
+                                    RowLayout {
+                                        spacing: 6
+                                        Repeater {
+                                            model: modelData.actions && modelData.actions.length > 0
+                                                ? modelData.actions : [modelData.action]
+                                            delegate: Button {
+                                                required property var modelData
+                                                text: modelData && modelData.label
+                                                    ? modelData.label : qsTr("Detalhes")
+                                                enabled: Boolean(modelData)
+                                                    && modelData.enabled !== false
+                                                palette.button: page.raisedColor
+                                                palette.buttonText: page.textColor
+                                                Layout.minimumHeight: 48
+                                                Accessible.name: qsTr("%1: %2").arg(text)
+                                                    .arg(emulatorRow.modelData.name)
+                                                onClicked: {
+                                                    page.emulatorIndex = emulatorRow.index
+                                                    page.dispatchAction(modelData)
+                                                }
                                             }
                                         }
                                     }
@@ -1116,7 +1285,7 @@ Item {
                         Layout.minimumHeight: 48
                         Accessible.name: text
                         Accessible.description: page.primaryAction().reason || ""
-                        onClicked: page.actionRequested(page.primaryAction())
+                        onClicked: page.dispatchAction(page.primaryAction())
                     }
                     Button {
                         visible: page.selectedPlatform.state === "degraded"
