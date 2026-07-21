@@ -1747,3 +1747,27 @@ continuam exclusivamente locais e fornecidos pelo usuário.
 rollback ou ação privilegiada foi executada. A release ativa e o rollback do
 host não foram modificados; publicação no host exige um novo fluxo de release
 explicitamente autorizado e todos os preflights do repositório.
+
+## 2026-07-21 — Sessão 41: integração e release do Ryubing no host
+
+**Branch de origem:** `codex/correcao-instalacao-emuladores`; integração
+fast-forward em `main` no commit `e8acfd8ffa13a4f8e13ff739bf7c924addca067b`.
+Os dois itens não rastreados já existentes no worktree de `main` não foram
+alterados.
+
+| Item | Commit/release | Evidência |
+|---|---|---|
+| Gate completo da fonte integrada | `e8acfd8` | 826 testes, cobertura 85,11%, Ruff format/lint, mypy, independence e boundaries verdes |
+| Wheel reproduzível e wheelhouse runtime pinado | `0.1.0a33-e8acfd8ffa13` | wheel SHA-256 `6ff8a13b3b90399579524fd91bd31ab07a2ad9854fadf847406fc3a2a454bca7`; 5 wheels runtime verificados por lock/hash |
+| Instalação transacional e ativação | `0.1.0a33-e8acfd8ffa13` | manifesto v4 íntegro, source commit completo e estado `clean` |
+
+**Validação pós-instalação:** `steamzero --version` retornou `0.1.0a33`;
+doctor aprovou Python, layout, integridade SQLite e zero operações pendentes;
+`steamzero-core.socket` e `steamzero-core.service` estavam ativos; Game Mode
+reportou `ready` com fallback Desktop; `steamzero desktop status --json` retornou
+contrato válido.
+
+**Rollback:** release anterior preservada:
+`0.1.0a33-5c8c33ddb0dd`. A consulta privilegiada de status do boot não pôde ser
+repetida no fim porque a política local recusou nova autorização; nenhuma
+alteração de boot, reinício ou recuperação foi feita nesta sessão.
