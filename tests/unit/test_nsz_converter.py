@@ -135,9 +135,7 @@ def test_registry_probe_exception_degrades(nsz_manifest: ToolManifest) -> None:
     def broken_probe(_argv: Any, _timeout: float) -> tuple[int, str]:
         raise OSError("probe offline")
 
-    registry = ToolRegistry(
-        [nsz_manifest], which=lambda _tool: "/bin/nsz", probe=broken_probe
-    )
+    registry = ToolRegistry([nsz_manifest], which=lambda _tool: "/bin/nsz", probe=broken_probe)
 
     assert registry.status("nsz")["state"] == "unverified"
     assert not registry.available("nsz")
@@ -260,9 +258,7 @@ def test_nsz_converter_reconciles_real_output_name(tmp_path: Path) -> None:
 # --- SwitchRomConversionService (gating) ------------------------------------
 
 
-def test_service_gates_unsupported_conversion(
-    nsz_manifest: ToolManifest, tmp_path: Path
-) -> None:
+def test_service_gates_unsupported_conversion(nsz_manifest: ToolManifest, tmp_path: Path) -> None:
     registry = _verified_registry(nsz_manifest)
     service = SwitchRomConversionService(registry)
     src = tmp_path / "game.xci"
@@ -281,7 +277,6 @@ def test_service_gates_missing_tool(nsz_manifest: ToolManifest, tmp_path: Path) 
         service.plan_convert(src, "nsz")
     assert exc.value.code == "E-COMPONENT-DEGRADED"
     assert "não encontrada" in exc.value.detail
-
 
 
 def test_service_loads_manifest_from_json(nsz_manifest: ToolManifest, tmp_path: Path) -> None:

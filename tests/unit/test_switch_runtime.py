@@ -35,9 +35,7 @@ def test_dock_uses_safe_resolution_and_caps_four_players() -> None:
 
 
 def test_requested_players_degrades_to_available_controllers() -> None:
-    profile = resolve_switch_runtime_profile(
-        "dock", connected_controllers=2, requested_players=4
-    )
+    profile = resolve_switch_runtime_profile("dock", connected_controllers=2, requested_players=4)
 
     assert profile.active_players == 2
     assert "Solicitados 4" in profile.warnings[0]

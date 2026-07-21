@@ -97,8 +97,6 @@ def test_requirement_kind_is_normalized_and_unwired_actions_are_disabled() -> No
     platform = payload["platforms"][0]
     assert platform["requirements"]["keys"]["kind"] == "keys"
     actions = [
-        card["action"]
-        for card in platform["areaData"]["keysFirmware"]["cards"]
-        if "action" in card
+        card["action"] for card in platform["areaData"]["keysFirmware"]["cards"] if "action" in card
     ]
     assert actions and all(not action["enabled"] and action["reason"] for action in actions)

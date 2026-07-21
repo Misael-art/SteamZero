@@ -125,9 +125,7 @@ def test_nsz_to_nsp_conversion_preserves_original(env: Path, nsz_tool: ToolManif
     assert fs.hash_file(src) == before
 
 
-def test_conversion_fails_safe_when_tool_returns_error(
-    env: Path, nsz_tool: ToolManifest
-) -> None:
+def test_conversion_fails_safe_when_tool_returns_error(env: Path, nsz_tool: ToolManifest) -> None:
     src = env / "dump.nsp"
     src.write_bytes(b"original-nsp-bytes")
     before = fs.hash_file(src)
@@ -159,9 +157,7 @@ def test_conversion_gated_when_tool_missing(env: Path, nsz_tool: ToolManifest) -
     assert "não encontrada" in exc.value.detail
 
 
-def test_conversion_idempotent_and_rejects_collision(
-    env: Path, nsz_tool: ToolManifest
-) -> None:
+def test_conversion_idempotent_and_rejects_collision(env: Path, nsz_tool: ToolManifest) -> None:
     src = env / "dump.nsp"
     src.write_bytes(b"original-nsp-bytes")
     before = fs.hash_file(src)
@@ -188,9 +184,7 @@ def test_conversion_requires_token_and_revalidates_source(
     src.write_bytes(b"original")
     service = SwitchRomConversionService(
         _registry(nsz_tool),
-        converter=NszConverter(
-            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
-        ),
+        converter=NszConverter(runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"),
     )
     plan = service.plan_convert(src, "nsz")
     destination = paths.roms_dir() / "converted" / "dump.nsz"
@@ -217,9 +211,7 @@ def test_conversion_cancel_and_expiry_clean_preview_idempotently(
     src.write_bytes(b"original")
     service = SwitchRomConversionService(
         _registry(nsz_tool),
-        converter=NszConverter(
-            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
-        ),
+        converter=NszConverter(runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"),
     )
     cancelled = service.plan_convert(src, "nsz")
     assert service.cancel(cancelled.plan_id, cancelled.confirm_token)["status"] == "aborted"
@@ -241,9 +233,7 @@ def test_conversion_rollback_refuses_foreign_modified_output(
     src.write_bytes(b"original")
     service = SwitchRomConversionService(
         _registry(nsz_tool),
-        converter=NszConverter(
-            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
-        ),
+        converter=NszConverter(runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"),
     )
     plan = service.plan_convert(src, "nsz")
     applied = service.apply(plan.plan_id, plan.confirm_token)

@@ -174,9 +174,7 @@ def _readiness(
     blockers: list[str] = []
     requirement_states = {str(value["status"]) for value in requirements.values()}
     if "missing" in requirement_states:
-        blockers.append(
-            "Importe keys e firmware próprios antes de iniciar jogos que os exigem."
-        )
+        blockers.append("Importe keys e firmware próprios antes de iniciar jogos que os exigem.")
     if "outdated" in requirement_states:
         blockers.append(
             "Atualize keys ou firmware para atender aos requisitos do jogo selecionado."

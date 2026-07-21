@@ -168,9 +168,7 @@ def test_import_degrades_when_db_absent(store: state.StateStore, tmp_path: Path)
 # -- SR-14: segredo nunca vaza --------------------------------------------
 
 
-def test_import_never_leaks_full_hash_or_key_name(
-    store: state.StateStore, tmp_path: Path
-) -> None:
+def test_import_never_leaks_full_hash_or_key_name(store: state.StateStore, tmp_path: Path) -> None:
     logger = _RecordingLogger()
     ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db(), logger=logger)  # type: ignore[arg-type]
     full = _sha(_KEYS_18)
@@ -197,9 +195,7 @@ def test_installed_revision_is_maximum(store: state.StateStore, tmp_path: Path) 
     assert ks.installed_key_revision("switch") == 18
 
 
-def test_installed_firmware_is_maximum_version(
-    store: state.StateStore, tmp_path: Path
-) -> None:
+def test_installed_firmware_is_maximum_version(store: state.StateStore, tmp_path: Path) -> None:
     ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
     ks.import_firmware(_write(tmp_path, "f16", _FW_16))
     ks.import_firmware(_write(tmp_path, "f18", _FW_18))
@@ -259,9 +255,7 @@ def test_parse_firmware_version_rejects_bad_input() -> None:
 # -- linking / path traversal ---------------------------------------------
 
 
-def test_plan_link_keys_rejects_path_traversal(
-    store: state.StateStore, tmp_path: Path
-) -> None:
+def test_plan_link_keys_rejects_path_traversal(store: state.StateStore, tmp_path: Path) -> None:
     ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
     ks.import_keys(_write(tmp_path, "prod.keys", _KEYS_18))
     with pytest.raises((SteamZeroError, ValueError)):
@@ -270,14 +264,10 @@ def test_plan_link_keys_rejects_path_traversal(
         )
 
 
-def test_plan_link_keys_missing_source_is_reported(
-    store: state.StateStore, tmp_path: Path
-) -> None:
+def test_plan_link_keys_missing_source_is_reported(store: state.StateStore, tmp_path: Path) -> None:
     ks = KeysFirmwareStore(store, keys_db=_keys_db(), firmware_db=_firmware_db())
     with pytest.raises(SteamZeroError) as exc:
-        ks.plan_link_keys(
-            "switch", consumer_root=tmp_path / "emu", consumer_relpath="prod.keys"
-        )
+        ks.plan_link_keys("switch", consumer_root=tmp_path / "emu", consumer_relpath="prod.keys")
     assert exc.value.code == "E-CONTENT-KEYS-MISSING"
 
 

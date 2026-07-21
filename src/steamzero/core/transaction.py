@@ -651,9 +651,7 @@ def _validate_plan_paths(plan: Plan) -> None:
             if action.kind == "move":
                 fs.resolve_within(root, Path(action.source))
             elif Path(action.source).is_symlink() or not Path(action.source).is_file():
-                raise SteamZeroError(
-                    "E-TX-STALE-PLAN", detail=f"origem de {action.kind} inválida"
-                )
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem de {action.kind} inválida")
 
 
 def _preflight_space(plan: Plan) -> None:

@@ -86,9 +86,7 @@ def test_manifest_parses_key_and_firmware_requirements() -> None:
 
 def test_key_requirement_platform_must_be_declared() -> None:
     with pytest.raises(SteamZeroError) as exc:
-        load_manifest(
-            _switch_manifest(requiresKeys={"platform": "psx", "keyset": "prod"})
-        )
+        load_manifest(_switch_manifest(requiresKeys={"platform": "psx", "keyset": "prod"}))
     assert "requiresKeys" in exc.value.detail
 
 
@@ -108,9 +106,7 @@ def test_manifest_rejects_unknown_keyset() -> None:
 def test_manifest_rejects_extra_field_in_key_requirement() -> None:
     with pytest.raises(SteamZeroError):
         load_manifest(
-            _switch_manifest(
-                requiresKeys={"platform": "switch", "keyset": "prod", "blob": "AAAA"}
-            )
+            _switch_manifest(requiresKeys={"platform": "switch", "keyset": "prod", "blob": "AAAA"})
         )
 
 

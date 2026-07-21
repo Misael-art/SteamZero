@@ -20,9 +20,7 @@ from steamzero.core import fs, transaction
 from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID = re.compile(r"^[0-9A-F]{16}$")
-_KINDS = frozenset(
-    {"update", "dlc", "mod", "shader-cache", "save", "keys", "firmware"}
-)
+_KINDS = frozenset({"update", "dlc", "mod", "shader-cache", "save", "keys", "firmware"})
 
 
 @dataclass(frozen=True)
@@ -144,9 +142,7 @@ class SwitchContentManager:
             )
         return ContentImportDecision("planned", record, plan)
 
-    def apply_import(
-        self, plan_id: str, confirm_token: str
-    ) -> transaction.ApplyResult:
+    def apply_import(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
         if plan.kind != "switch-content.import" or Path(plan.root) != self._root:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence ao store Switch")
@@ -198,9 +194,7 @@ class SwitchContentManager:
         if selected is None:
             raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="conteúdo não catalogado")
         if selected["kind"] not in {"update", "dlc"}:
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail="somente updates e DLC podem ser ativados"
-            )
+            raise SteamZeroError("E-API-SCHEMA", detail="somente updates e DLC podem ser ativados")
         selected_record = self._record_from_entry(selected)
         if (
             selected_record.state == "unavailable"
@@ -336,9 +330,7 @@ class SwitchContentManager:
                     "version",
                 ),
                 _safe_label(
-                    str(entry["emulatorId"])
-                    if entry.get("emulatorId") is not None
-                    else None,
+                    str(entry["emulatorId"]) if entry.get("emulatorId") is not None else None,
                     "emulatorId",
                 ),
                 state,
@@ -415,14 +407,10 @@ class SwitchContentManager:
             source = cache_root / relative
             target = cache_root / ".invalidated" / title / fingerprint / relative
             moves[source] = target
-        return transaction.plan_move_files(
-            moves, root=cache_root, kind="switch-shader.invalidate"
-        )
+        return transaction.plan_move_files(moves, root=cache_root, kind="switch-shader.invalidate")
 
     @staticmethod
-    def apply_shader_invalidation(
-        plan_id: str, confirm_token: str
-    ) -> transaction.ApplyResult:
+    def apply_shader_invalidation(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
         if plan.kind != "switch-shader.invalidate":
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é invalidação de shader")
@@ -444,14 +432,10 @@ class SwitchContentManager:
                     "E-CONTENT-UNSAFE-PATH", detail=f"save de origem inválido: {source_name}"
                 )
             copies[source] = target_root / target_rel
-        return transaction.plan_copy_files(
-            copies, root=target_root, kind="switch-saves.migrate"
-        )
+        return transaction.plan_copy_files(copies, root=target_root, kind="switch-saves.migrate")
 
     @staticmethod
-    def apply_save_migration(
-        plan_id: str, confirm_token: str
-    ) -> transaction.ApplyResult:
+    def apply_save_migration(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
         if plan.kind != "switch-saves.migrate":
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é migração de saves")

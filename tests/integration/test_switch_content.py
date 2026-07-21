@@ -75,16 +75,8 @@ def test_shader_invalidation_is_reversible(env: tuple[SwitchContentManager, Path
         title_id="0100000000010000",
         compatibility_fingerprint="driver-1_emu-2",
     )
-    applied = SwitchContentManager.apply_shader_invalidation(
-        plan.plan_id, plan.confirm_token
-    )
-    invalidated = (
-        cache
-        / ".invalidated"
-        / "0100000000010000"
-        / "driver-1_emu-2"
-        / "pipeline.bin"
-    )
+    applied = SwitchContentManager.apply_shader_invalidation(plan.plan_id, plan.confirm_token)
+    invalidated = cache / ".invalidated" / "0100000000010000" / "driver-1_emu-2" / "pipeline.bin"
     assert invalidated.read_bytes() == b"shader"
     SwitchContentManager.rollback(applied.operation_id)
     assert shader.read_bytes() == b"shader"
@@ -132,9 +124,7 @@ def _import(
     title_id: str,
     version: str,
 ) -> ContentRecord:
-    decision = manager.plan_import(
-        source, kind=kind, title_id=title_id, version=version
-    )
+    decision = manager.plan_import(source, kind=kind, title_id=title_id, version=version)
     assert decision.plan is not None
     manager.apply_import(decision.plan.plan_id, decision.plan.confirm_token)
     return decision.record
@@ -149,12 +139,8 @@ def test_index_survives_restart_and_update_activation_is_exclusive(
     first_file.write_bytes(b"update-one")
     second_file.write_bytes(b"update-two")
     title_id = "0100000000010000"
-    first = _import(
-        manager, first_file, kind="update", title_id=title_id, version="1.1.0"
-    )
-    second = _import(
-        manager, second_file, kind="update", title_id=title_id, version="1.2.0"
-    )
+    first = _import(manager, first_file, kind="update", title_id=title_id, version="1.1.0")
+    second = _import(manager, second_file, kind="update", title_id=title_id, version="1.2.0")
 
     restarted = SwitchContentManager(root / "shared")
     records = restarted.list_records(title_id=title_id, kind="update")

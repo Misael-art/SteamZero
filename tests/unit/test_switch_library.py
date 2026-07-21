@@ -253,9 +253,7 @@ def test_organizer_avoids_existing_casefold_collision(tmp_path: Path) -> None:
     rom = tmp_path / "old.nsp"
     rom.write_bytes(b"dump")
     (tmp_path / "synthetic adventure.NSP").write_bytes(b"foreign")
-    match = replace(
-        SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure"
-    )
+    match = replace(SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure")
 
     preview = SwitchLibraryOrganizer().preview_rename(tmp_path, [match])
 
@@ -285,9 +283,7 @@ def test_organizer_rejects_source_outside_root_and_symlink(tmp_path: Path) -> No
 def test_organizer_plan_apply_and_rollback(tmp_path: Path) -> None:
     rom = tmp_path / "old.nsp"
     rom.write_bytes(b"dump")
-    match = replace(
-        SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure"
-    )
+    match = replace(SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure")
     organizer = SwitchLibraryOrganizer()
 
     plan = organizer.plan_rename(tmp_path, [match])
@@ -303,13 +299,9 @@ def test_organizer_plan_apply_and_rollback(tmp_path: Path) -> None:
 def test_organizer_rejects_collision_suffix_without_counter(tmp_path: Path) -> None:
     rom = tmp_path / "old.nsp"
     rom.write_bytes(b"dump")
-    match = replace(
-        SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure"
-    )
+    match = replace(SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure")
 
     with pytest.raises(SteamZeroError) as exc:
-        SwitchLibraryOrganizer().preview_rename(
-            tmp_path, [match], collision_suffix=" duplicate"
-        )
+        SwitchLibraryOrganizer().preview_rename(tmp_path, [match], collision_suffix=" duplicate")
 
     assert exc.value.code == "E-API-SCHEMA"

@@ -165,10 +165,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(tmp_path: Path) -> None:
         "reason": None,
         "requiresConfirmation": False,
     }
-    imports = [
-        card["action"]
-        for card in platform["areaData"]["keysFirmware"]["cards"]
-    ]
+    imports = [card["action"] for card in platform["areaData"]["keysFirmware"]["cards"]]
     assert all(not action["enabled"] and action["reason"] for action in imports)
 
 

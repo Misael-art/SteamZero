@@ -213,9 +213,7 @@ class SwitchLibraryOrganizer:
         *,
         collision_suffix: str = " ({n})",
     ) -> transaction.Plan:
-        moves = self.preview_rename(
-            root, matches, collision_suffix=collision_suffix
-        )
+        moves = self.preview_rename(root, matches, collision_suffix=collision_suffix)
         return transaction.plan_move_files(moves, root=root, kind="switch-library.rename")
 
     @staticmethod
