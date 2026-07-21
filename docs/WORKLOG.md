@@ -1869,3 +1869,30 @@ bloquear a sessão ou o fallback.
 registrada no manifesto. Nenhum reboot nem alteração adicional de boot foi
 executado; resta ao operador apenas o teste físico da UI e da biblioteca no
 host.
+
+## 2026-07-21 — Sessão 46: painel executivo da plataforma Switch
+
+**Branch:** `codex/painel-controle-emulacao`, criada da branch própria de
+correção Switch no commit `0bbde6d`. Os itens não rastreados já existentes e os
+arquivos de adapters, domínio e contratos permaneceram intocados.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Visão Geral Global convertida em painel de Keys, firmware, biblioteca/ROMs e emulador principal, com cards simétricos e ações rápidas | `34cc48d` | `qmllint`, harness `check_emulation.qml` e render Qt6 offscreen em 1320×760 |
+| Banner de prontidão compacto e ações alinhadas no rodapé dos cards | `34cc48d` | inspeção visual do render offscreen e harness Qt6 |
+| Manutenção detalhada removida do resumo Global e exibida apenas no escopo Emulador para o item selecionado | `34cc48d` | `check_emulation.qml`, `check_main_emulation.qml` e render responsivo |
+| Atalhos de adicionar/varrer biblioteca e revisar nomes integrados às ações já publicadas | `34cc48d` | harnesses QML e validação do despacho allowlisted existente |
+
+**Gates finais:** 834 testes passaram; cobertura 85,05%; Ruff lint/format,
+mypy em 88 arquivos, independence, boundaries, `git diff --check`, `qmllint` e
+os dois harnesses QML offscreen ficaram verdes.
+
+**Lacuna preservada:** o payload atual não publica nem persiste o emulador
+padrão usado pelo Play no Steam/Game Mode. A UI identifica isso explicitamente
+como “Padrão não definido” e direciona à gestão dos emuladores, sem fingir uma
+preferência local que o runtime ignoraria. A implementação real exige mudança
+coordenada de backend/contrato, fora do escopo desta frente de UI.
+
+**Host/release:** nenhuma release, instalação, rollback, ação privilegiada ou
+alteração do host foi executada nesta sessão. A release ativa permaneceu a já
+publicada `0.1.0a33-483b962a41db`.
