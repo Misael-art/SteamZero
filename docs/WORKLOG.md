@@ -1926,3 +1926,39 @@ existir serviço transacional próprio.
 alteração do host foi executada nesta sessão. A release ativa permaneceu
 `0.1.0a33-483b962a41db`; a biblioteca instalada só será reclassificada depois
 de uma nova release e uma nova varredura autorizadas pelo operador.
+
+## 2026-07-21 — Sessão 48: lançamento e publicação seletiva de jogos
+
+**Branch:** `codex/lancamento-steam-roms`, baseada na linha atual de emulação;
+`origin/main` (`74f2984`) foi confirmado como ancestral. Os caminhos não
+rastreados `.worktrees/` e `docs/12-roadmap/EMULATOR-PORTING-DIRECTIVE.md`, de
+outras frentes, permaneceram intocados.
+
+| Item | Commit/release | Testes que provam |
+|---|---|---|
+| Preferência persistente de emulador, lançamento direto sem shell, validação de ROM/raiz/fingerprint e CLI local para atalhos | `807e05e` | `test_game_preference_launch_delete_and_rollback`, `test_emulation_launch_cli_uses_local_controller` |
+| Seleção e sincronização de atalhos locais na Steam, preservando entradas externas e recusando Steam aberta/VDF ambíguo | `807e05e` | `test_sync_preserves_foreign_entries_and_removes_only_managed`, corpus de codec/corrupção e bridge HTTP |
+| Exclusão de ROM com G-FULL e rollback limitado por journal às operações `emulation.game-delete` | `807e05e` | exclusão, nova varredura, restauração byte a byte e recusa de rollback de outro kind |
+| Jornada Por Jogo com seletor funcional, Play, marcação/sincronização Steam e exclusão confirmada | `043e290` | `qmllint`, `check_emulation.qml`, `check_main_emulation.qml` e harness Qt6 offscreen |
+| Plano resiliente de provider de mídia, condicionado a API/licença oficiais e fallback local | `043e290` | revisão documental com gates G1–G10; nenhum scraping foi introduzido no runtime |
+| Build e ativação do commit funcional | `0.1.0a33-043e290a184f` | wheel SHA-256 `c15b9bf7313d1e790e8059190c2c3291de774fc18b2b28922917e6314d851051`, manifesto v4 e entry points de boot conferidos |
+
+**Gates finais:** 842 testes passaram com `TMPDIR=/tmp`; Ruff, mypy em 89
+arquivos, independence, boundaries, `git diff --check`, `qmllint` e os dois
+harnesses QML ficaram verdes. A primeira execução da suíte no diretório
+temporário longo do Codex teve somente falhas `AF_UNIX path too long`; a
+reexecução no `/tmp` curto passou integralmente sem alteração de teste ou de
+código.
+
+**Host:** o instalador transacional ativou `0.1.0a33-043e290a184f`, originada da
+árvore limpa `043e290a184fe45e06c0513a073e6e34a0d5eaac`. O serviço core do usuário
+foi reiniciado após `daemon-reload` para abandonar o processo da release antiga;
+socket e serviço ficaram ativos, o executável resolveu para a release nova,
+doctor aprovou os quatro checks e o Game Mode permaneceu `ready` com fallback
+Desktop. Nenhum reboot nem ajuste de boot foi executado.
+
+**Rollback:** `0.1.0a33-483b962a41db` foi preservada e registrada como release
+anterior. A integração externa de mídia ficou fora do runtime porque não há API
+pública oficial documentada; a próxima etapa depende de validação de termos e
+licença. Resta ao operador testar a jornada visual, o lançamento real de ROMs e
+a importação dos atalhos com a Steam totalmente encerrada.
