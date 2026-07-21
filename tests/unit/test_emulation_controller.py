@@ -13,6 +13,9 @@ from steamzero.core.state import StateStore
 
 
 def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
@@ -148,9 +151,10 @@ def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) 
     (roms / "Example [0100ABCDEF123456].nsp").write_bytes(b"owned-game")
 
     root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
-    _apply(controller, root_plan)
-    scanned = controller.scan_library()
+    applied = _apply(controller, root_plan)
+    scanned = applied["library"]
 
+    assert isinstance(scanned, dict)
     assert scanned["games"] == 1
     workspace = controller.snapshot({"context": {"physicalDock": False}})
     platform = workspace["platforms"][0]
@@ -179,6 +183,49 @@ def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) 
     assert requirements["keys"]["status"] == "ok"
     assert requirements["keys"]["installed"] == "rev1"
     assert requirements["firmware"]["installed"] == "18.1.0"
+
+
+def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "owned-roms"
+    nested = roms / "My Games"
+    nested.mkdir(parents=True)
+    game = nested / "Example Game.xcz"
+    game.write_bytes(b"owned-game")
+
+    root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
+    applied = _apply(controller, root_plan)
+    scanned = applied["library"]
+
+    assert isinstance(scanned, dict)
+    assert scanned["games"] == 1
+    assert scanned["unidentified"] == 1
+    published = controller.snapshot({"context": {}})["platforms"][0]["games"]
+    assert published == [
+        {
+            "id": published[0]["id"],
+            "titleId": None,
+            "name": "Example Game",
+            "state": "unverified",
+            "statusLabel": "XCZ · Title ID não identificado",
+            "emulatorId": None,
+            "path": str(game),
+            "fingerprint": published[0]["fingerprint"],
+            "size": len(b"owned-game"),
+            "format": "xcz",
+            "identityVerified": False,
+        }
+    ]
+
+
+def test_library_discovers_existing_lowercase_emulation_root(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home"
+    root = home / "emulation" / "roms"
+    root.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    controller = _controller(monkeypatch, tmp_path)
+
+    assert str(root.resolve()) in controller.library_roots()
 
 
 def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

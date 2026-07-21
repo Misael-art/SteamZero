@@ -541,13 +541,25 @@ def plan_symlink_files(
 
 
 def _render_preview(kind: str, actions: list[FileAction], guarantee: str) -> str:
-    lines = [f"Operação: {kind}", f"Garantia de rollback: {guarantee}", "Arquivos:"]
-    lines.extend(
-        f"  - {a.source} -> {a.target} ({a.new_size} bytes)"
-        if a.kind in {"move", "copy", "symlink"}
-        else f"  - {a.target} ({a.new_size} bytes)"
-        for a in actions
-    )
+    total_size = sum(action.new_size for action in actions)
+    lines = [
+        f"Operação: {kind}",
+        f"Garantia de rollback: {guarantee}",
+        f"Arquivos afetados: {len(actions)} · {total_size} bytes no total",
+        "",
+    ]
+    for index, action in enumerate(actions, start=1):
+        label = {
+            "copy": "Copiar",
+            "move": "Mover",
+            "symlink": "Vincular",
+            "delete": "Remover",
+        }.get(action.kind, "Gravar")
+        lines.append(f"{index}. {label} · {action.new_size} bytes")
+        if action.source:
+            lines.append(f"   Origem: {action.source}")
+        lines.append(f"   Destino: {action.target}")
+        lines.append("")
     return "\n".join(lines)
 
 

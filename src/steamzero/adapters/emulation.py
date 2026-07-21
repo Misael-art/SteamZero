@@ -227,7 +227,9 @@ class EmulationController:
         candidates = [
             paths.roms_dir(),
             Path.home() / "Emulation" / "roms",
+            Path.home() / "emulation" / "roms",
             Path.home() / "Games" / "ROMs",
+            Path.home() / "Games" / "roms",
             Path.home() / "ROMs",
             Path.home() / "roms",
         ]
@@ -253,24 +255,38 @@ class EmulationController:
         for raw_root in self.library_roots():
             root = Path(raw_root)
             try:
-                matches = scanner.scan(root)
+                matches = scanner.discover(root)
             except (OSError, SteamZeroError) as exc:
                 errors.append(f"{root}: {exc}")
                 continue
             for match in matches:
-                if match.title_id is None:
-                    unidentified += 1
+                try:
+                    stat = match.path.stat()
+                except OSError as exc:
+                    errors.append(f"{match.path}: {exc}")
                     continue
-                discovered[match.sha256] = {
-                    "id": match.sha256[:16],
+                fingerprint = hashlib.sha256(
+                    f"{match.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+                ).hexdigest()
+                identity_verified = match.title_id is not None
+                if not identity_verified:
+                    unidentified += 1
+                discovered[fingerprint] = {
+                    "id": fingerprint[:16],
                     "titleId": match.title_id,
-                    "name": match.canonical_name or match.path.stem,
-                    "state": "ready",
-                    "statusLabel": match.format.upper(),
+                    "name": match.path.stem,
+                    "state": "ready" if identity_verified else "unverified",
+                    "statusLabel": (
+                        match.format.upper()
+                        if identity_verified
+                        else f"{match.format.upper()} · Title ID não identificado"
+                    ),
                     "emulatorId": None,
                     "path": str(match.path),
-                    "sha256": match.sha256,
+                    "fingerprint": fingerprint,
+                    "size": stat.st_size,
                     "format": match.format,
+                    "identityVerified": identity_verified,
                 }
         game_rows = sorted(discovered.values(), key=lambda game: str(game["name"]).casefold())
         payload = {
@@ -366,7 +382,13 @@ class EmulationController:
         pending = self._pending.pop(plan_id, None)
         if pending is not None:
             self._persist_import(pending)
-        return {"status": result.status, "operationId": result.operation_id}
+        response: dict[str, Any] = {
+            "status": result.status,
+            "operationId": result.operation_id,
+        }
+        if plan.kind == "emulation.library-roots":
+            response["library"] = self.scan_library()
+        return response
 
     def _emulator_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
@@ -1040,11 +1062,16 @@ class EmulationController:
             unidentified = int(data.get("unidentified", 0))
             if data.get("schemaVersion") != 1 or not isinstance(games, list):
                 return [], 0
-            valid = [
-                game
-                for game in games
-                if isinstance(game, dict) and _TITLE_ID.fullmatch(str(game.get("titleId", "")))
-            ]
+            valid = []
+            for game in games:
+                if not isinstance(game, dict):
+                    continue
+                title_id = game.get("titleId")
+                if title_id is not None and _TITLE_ID.fullmatch(str(title_id)) is None:
+                    continue
+                if not all(isinstance(game.get(field), str) for field in ("id", "name", "state")):
+                    continue
+                valid.append(game)
             return valid, max(0, unidentified)
         except (OSError, ValueError, json.JSONDecodeError):
             return [], 0

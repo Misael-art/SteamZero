@@ -153,14 +153,27 @@ def test_scanner_lists_only_allowed_formats(tmp_path: Path) -> None:
     (tmp_path / "game.nsp").write_bytes(b"nsp")
     (tmp_path / "game.nsz").write_bytes(b"nsz")
     (tmp_path / "game.xci").write_bytes(b"xci")
+    (tmp_path / "game.xcz").write_bytes(b"xcz")
     (tmp_path / "homebrew.nro").write_bytes(b"nro")
     (tmp_path / "readme.txt").write_bytes(b"txt")
     (tmp_path / "image.png").write_bytes(b"png")
 
     matches = SwitchLibraryScanner().scan(tmp_path)
     formats = {m.format for m in matches}
-    assert formats == {"nsp", "nsz", "xci", "nro"}
-    assert len(matches) == 4
+    assert formats == {"nsp", "nsz", "xci", "xcz", "nro"}
+    assert len(matches) == 5
+
+
+def test_scanner_finds_title_id_in_parent_directory(tmp_path: Path) -> None:
+    game_dir = tmp_path / "Library" / "Example [0100ABCDEF123456]"
+    game_dir.mkdir(parents=True)
+    rom = game_dir / "base.nsp"
+    rom.write_bytes(b"owned-game")
+
+    match = SwitchLibraryScanner().scan(tmp_path)[0]
+
+    assert match.path == rom
+    assert match.title_id == "0100ABCDEF123456"
 
 
 def test_scanner_hashes_are_sha256(tmp_path: Path) -> None:
@@ -169,6 +182,21 @@ def test_scanner_hashes_are_sha256(tmp_path: Path) -> None:
     matches = SwitchLibraryScanner().scan(tmp_path)
     assert len(matches) == 1
     assert matches[0].sha256 == fs.hash_file(rom, algo="sha256")
+
+
+def test_discovery_does_not_hash_full_rom(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    rom = tmp_path / "Game [0100ABCDEF123456].nsp"
+    rom.write_bytes(b"owned-game")
+
+    def reject_hash(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("discovery must not hash ROM content")
+
+    monkeypatch.setattr(fs, "hash_file", reject_hash)
+    candidates = SwitchLibraryScanner().discover(tmp_path)
+
+    assert len(candidates) == 1
+    assert candidates[0].path == rom
+    assert candidates[0].title_id == "0100ABCDEF123456"
 
 
 # --- SwitchMediaMatcher -----------------------------------------------------

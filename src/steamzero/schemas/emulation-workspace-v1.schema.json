@@ -122,7 +122,7 @@
       "required": ["id", "titleId", "name", "state", "statusLabel"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
-        "titleId": {"type": "string", "pattern": "^[0-9A-F]{16}$"},
+        "titleId": {"type": ["string", "null"], "pattern": "^[0-9A-F]{16}$"},
         "name": {"type": "string", "minLength": 1},
         "state": {"$ref": "#/$defs/state"},
         "statusLabel": {"type": "string", "minLength": 1},

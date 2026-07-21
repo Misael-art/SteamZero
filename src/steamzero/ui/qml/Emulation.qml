@@ -360,6 +360,19 @@ Item {
             return
         }
         pendingAction = action
+        if (["content.update.import", "content.dlc.import",
+             "content.save.import", "content.shader.import"].indexOf(action.id) >= 0
+                && !(selectedGame.titleId || "")) {
+            page.actionRequested({
+                "id": action.id,
+                "label": action.label,
+                "enabled": false,
+                "reason": qsTr("Este arquivo foi reconhecido como jogo, mas o Title ID ainda não foi identificado. Renomeie o arquivo ou uma pasta-pai incluindo o Title ID de 16 dígitos e faça uma nova varredura."),
+                "requiresConfirmation": true
+            })
+            pendingAction = null
+            return
+        }
         if (action.id === "library.root.add") {
             sourceFolderDialog.open()
         } else if (action.id === "keys.import" || action.id === "firmware.import") {

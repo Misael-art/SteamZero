@@ -703,6 +703,7 @@ ApplicationWindow {
         title: qsTr("Revisar operação de emulação")
         modal: true
         width: Math.min(root.width - 48, 720)
+        height: Math.min(root.height - 48, 720)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
@@ -715,16 +716,28 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
-            TextArea {
-                text: root.emulationPlan ? root.emulationPlan.preview : ""
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.WrapAnywhere
-                color: root.textColor
-                background: Rectangle { color: root.backgroundColor; radius: 8; border.color: root.borderColor }
+            ScrollView {
+                id: emulationPreviewScroll
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.minimumHeight: 150
-                Accessible.name: qsTr("Prévia da operação de emulação")
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+                background: Rectangle {
+                    color: root.backgroundColor
+                    radius: 8
+                    border.color: root.borderColor
+                }
+                TextArea {
+                    text: root.emulationPlan ? root.emulationPlan.preview : ""
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.WrapAnywhere
+                    color: root.textColor
+                    background: null
+                    Accessible.name: qsTr("Prévia da operação de emulação")
+                }
             }
             RowLayout {
                 Layout.fillWidth: true

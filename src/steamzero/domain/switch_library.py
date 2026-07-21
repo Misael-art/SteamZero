@@ -3,7 +3,7 @@
 """Biblioteca/mídia de Switch: scan, DAT local, matching e rename seguro (WI-5).
 
 Apenas formatos allowlisted são considerados (``.nsp``, ``.nsz``, ``.xci``,
-``.nro``). O DAT é importado localmente e validado contra o schema; nenhuma base
+``.xcz``, ``.nro``). O DAT é importado localmente e validado contra o schema; nenhuma base
 é redistribuída. O matching é por hash sha256; o preview de rename resolve
 colisões sem escrever no disco.
 """
@@ -26,7 +26,7 @@ from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 _TITLE_ID_IN_NAME_RE = re.compile(r"(?<![0-9A-Fa-f])([0-9A-Fa-f]{16})(?![0-9A-Fa-f])")
-_SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "nro"})
+_SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "xcz", "nro"})
 _BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 
 
@@ -108,31 +108,50 @@ class SwitchRomMatch:
         }
 
 
+@dataclass(frozen=True)
+class SwitchRomCandidate:
+    """Arquivo reconhecido por extensão, antes do hash integral opcional."""
+
+    path: Path
+    format: str
+    title_id: str | None
+
+
 class SwitchLibraryScanner:
     """Scan read-only de dumps Switch (AC-LB-01)."""
 
     def __init__(self, *, formats: frozenset[str] = _SWITCH_FORMATS) -> None:
         self._formats = formats
 
-    def scan(self, root: Path) -> list[SwitchRomMatch]:
-        """Lista arquivos Switch com hash sha256 (não escreve em disco)."""
-        results: list[SwitchRomMatch] = []
+    def discover(self, root: Path) -> list[SwitchRomCandidate]:
+        """Descobre jogos por metadados baratos, sem ler dumps inteiros."""
+        results: list[SwitchRomCandidate] = []
         for path in fs.iter_files(root):
             fmt = self._format_of(path.name)
             if fmt is None:
                 continue
-            sha = fs.hash_file(path, algo="sha256")
             results.append(
-                SwitchRomMatch(
+                SwitchRomCandidate(
                     path=path,
-                    sha256=sha,
                     format=fmt,
-                    title_id=self._title_id_from_name(path.stem),
-                    canonical_name=None,
-                    region=None,
+                    title_id=self._title_id_from_path(path, root),
                 )
             )
         return results
+
+    def scan(self, root: Path) -> list[SwitchRomMatch]:
+        """Lista arquivos Switch com hash sha256 integral (não escreve em disco)."""
+        return [
+            SwitchRomMatch(
+                path=candidate.path,
+                sha256=fs.hash_file(candidate.path, algo="sha256"),
+                format=candidate.format,
+                title_id=candidate.title_id,
+                canonical_name=None,
+                region=None,
+            )
+            for candidate in self.discover(root)
+        ]
 
     def _format_of(self, name: str) -> str | None:
         ext = Path(name).suffix.lstrip(".").lower()
@@ -142,6 +161,27 @@ class SwitchLibraryScanner:
     def _title_id_from_name(name: str) -> str | None:
         match = _TITLE_ID_IN_NAME_RE.search(name)
         return match.group(1).upper() if match is not None else None
+
+    @classmethod
+    def _title_id_from_path(cls, path: Path, root: Path) -> str | None:
+        """Procura a identidade no arquivo e nas pastas dentro da raiz.
+
+        Bibliotecas reais frequentemente usam ``<Title ID>/<nome>.nsp``. A
+        busca nunca sobe acima da raiz selecionada e não interpreta conteúdo
+        protegido quando a identidade não está disponível no nome.
+        """
+        from_name = cls._title_id_from_name(path.stem)
+        if from_name is not None:
+            return from_name
+        try:
+            relative_parent = path.relative_to(root).parent
+        except ValueError:
+            return None
+        for part in reversed(relative_parent.parts):
+            from_parent = cls._title_id_from_name(part)
+            if from_parent is not None:
+                return from_parent
+        return None
 
 
 class SwitchMediaMatcher:

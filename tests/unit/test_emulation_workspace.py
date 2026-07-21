@@ -54,6 +54,26 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     assert platform["emulators"][0]["state"] == "ready"
 
 
+def test_workspace_accepts_visible_game_with_unverified_identity() -> None:
+    payload = build_switch_workspace(
+        games=[
+            {
+                "id": "hash-prefix",
+                "titleId": None,
+                "name": "Jogo sem Title ID no nome",
+                "state": "unverified",
+                "statusLabel": "NSP · Title ID não identificado",
+                "emulatorId": None,
+            }
+        ]
+    )
+
+    contracts.validate(payload, "emulation-workspace-v1.schema.json")
+    game = payload["platforms"][0]["games"][0]
+    assert game["titleId"] is None
+    assert game["state"] == "unverified"
+
+
 def test_versioned_golden_fixture_is_valid_and_complete() -> None:
     fixture = Path("tests/fixtures/switch/emulation-workspace-v1.json")
     payload = json.loads(fixture.read_text(encoding="utf-8"))
