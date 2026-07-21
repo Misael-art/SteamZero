@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters import desktop_ui
 from steamzero.adapters.desktop_ui import DesktopControlServer
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
@@ -80,6 +81,51 @@ class ConflictResolver:
 class BrokenContext:
     def snapshot(self) -> DesktopContext:
         raise RuntimeError("falha inesperada simulada")
+
+
+def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    argv: list[str] = []
+
+    class Coordinator:
+        def status(self) -> dict[str, object]:
+            raise AssertionError("status deve ser obtido pela bridge após o QML iniciar")
+
+    class Server:
+        server_port = 43210
+        timeout = 0.0
+
+        def __init__(self, *_args: object) -> None:
+            pass
+
+        def handle_request(self) -> None:
+            raise AssertionError("processo de teste já terminou")
+
+        def server_close(self) -> None:
+            pass
+
+    class Process:
+        returncode = 0
+
+        def poll(self) -> int:
+            return 0
+
+    def popen(command: list[str], **_kwargs: object) -> Process:
+        argv.extend(command)
+        return Process()
+
+    monkeypatch.setattr(desktop_ui.shutil, "which", lambda _name: "/usr/bin/qml6")
+    monkeypatch.setattr(desktop_ui, "DesktopDashboard", lambda: object())
+    monkeypatch.setattr(desktop_ui, "DesktopControlServer", Server)
+    monkeypatch.setattr(desktop_ui.subprocess, "Popen", popen)
+
+    assert desktop_ui.launch_desktop_ui(Coordinator()) == 0  # type: ignore[arg-type]
+    assert "--steamzero-status" not in argv
+    assert argv[0] == "/usr/bin/qml6"
+    assert "--steamzero-api" in argv
+    assert "--steamzero-token" in argv
+    assert sum(len(value) for value in argv) < 4096
 
 
 class FakeDashboard:

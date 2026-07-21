@@ -223,6 +223,8 @@ ApplicationWindow {
                     .indexOf(args[steamAreaMarker + 1]) >= 0)
             steamArea = args[steamAreaMarker + 1]
         ensureSelections()
+        if (apiUrl !== "" && apiToken !== "")
+            Qt.callLater(function() { refreshStatus("") })
         if (desktopStatus.recoveryRequired) {
             recoveryPromptShown = true
             Qt.callLater(recoveryDialog.open)

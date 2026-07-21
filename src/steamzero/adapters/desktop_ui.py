@@ -426,8 +426,6 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
     dashboard = DesktopDashboard()
     server = DesktopControlServer(coordinator, token, dashboard)
     server.timeout = 0.2
-    initial_status = coordinator.status()
-    initial_status["dashboard"] = dashboard.snapshot(initial_status)
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/Main.qml")
     try:
         with importlib.resources.as_file(resource) as qml_path:
@@ -436,8 +434,6 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
                     executable,
                     str(qml_path),
                     "--",
-                    "--steamzero-status",
-                    json.dumps(initial_status, separators=(",", ":"), ensure_ascii=False),
                     "--steamzero-api",
                     f"http://127.0.0.1:{server.server_port}",
                     "--steamzero-token",
