@@ -23,11 +23,13 @@ from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain.emulation_workspace import build_switch_workspace
 
 Spawn = Callable[[Sequence[str]], None]
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
 DoctorRunner = Callable[[], tuple[dict[str, Any], list[dict[str, str]]]]
+EmulationBuilder = Callable[..., dict[str, Any]]
 
 _COMPONENT_LABELS: dict[str, tuple[str, str, str]] = {
     "dolphin": ("Dolphin", "Emulador de Wii e GameCube", "dolphin-emu"),
@@ -226,6 +228,7 @@ class DesktopDashboard:
         doctor_runner: DoctorRunner = run_doctor,
         steam: SteamDesktopController | None = None,
         gameplay: SteamGameplayController | None = None,
+        emulation_builder: EmulationBuilder = build_switch_workspace,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
     ) -> None:
@@ -237,6 +240,7 @@ class DesktopDashboard:
         self._gameplay = gameplay or SteamGameplayController(
             which=which, store_factory=store_factory
         )
+        self._emulation_builder = emulation_builder
         self._which = which
         self._spawn = spawn
 
@@ -312,6 +316,15 @@ class DesktopDashboard:
                 "serverRunning": False,
             }
 
+        try:
+            emulation = self._emulation_builder(
+                probe=lambda emulator_id: self._which(emulator_id) is not None
+            )
+        except Exception:
+            # Um provider defeituoso não derruba o dashboard. O builder padrão
+            # sem probe produz estado unverified e mantém a navegação disponível.
+            emulation = build_switch_workspace()
+
         return {
             "components": components,
             "steam": self._steam.rows(desktop_status),
@@ -319,6 +332,7 @@ class DesktopDashboard:
             "sync": sync,
             "doctor": doctor,
             "inputMethod": im_status,
+            "emulation": emulation,
         }
 
     def plan_steam_gameplay(

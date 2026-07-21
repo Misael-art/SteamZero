@@ -41,6 +41,14 @@ def bios_dir() -> Path:
     return data_home() / "bios"
 
 
+def keys_dir() -> Path:
+    return data_home() / "keys"
+
+
+def firmware_dir() -> Path:
+    return data_home() / "firmware"
+
+
 def saves_dir() -> Path:
     return data_home() / "saves"
 

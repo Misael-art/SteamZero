@@ -1563,3 +1563,38 @@ em `observation.resolvedBy` (campo aditivo no schema de status). Ambiguidade que
 exclui o aplicado permanece degradada (teste dedicado). Artefato manual sem
 marcador `steamzero-desktop-keyboard.desktop` (Meta+Ctrl+K) removido do host
 pelo agente com autorização explícita do operador nesta thread.
+
+## 2026-07-20 — Sessão 37: backend Switch e contrato multiplaforma de emulação
+
+**Branch:** `codex/backend-emulacao-switch` a partir de `af69698` (main).
+
+| Item | Commit(s) | Testes que provam |
+|---|---|---|
+| WI-0 schema keys/firmware/tool/DAT e ADR de domínios dedicados | `26f6fdf` | `test_switch_schemas.py` |
+| WI-1 import local auditado, linking e compatibilidade por jogo | `eb3252d`, `02cc290` | `test_keys_firmware.py` |
+| WI-2 catálogo Eden/Citron/Ryujinx com disponibilidade honesta | `fa8286f` | `test_switch_emulators.py` |
+| WI-3 perfis conhecidos bons, diff/plan/apply/rollback e INI endurecido | `5951401`, `02cc290` | `test_emulator_config.py` |
+| WI-4 NSZ com smoke/version, confirmação, cleanup e rollback por hash | `5b1ff2f`, `4d7e290`, `89d7a75` | `test_nsz_converter.py`, `test_nsz_conversion.py` |
+| WI-5 DAT local, matching e rename transacional sem colisão | `383a851`, `4d7e290`, `89d7a75` | `test_switch_library.py` |
+| WI-6 blobs compartilhados, updates/DLC persistentes, shader e saves | `24d6914`, `52dea7a`, `c0ecb83` | `test_switch_content.py`, `test_transaction_copy.py` |
+| WI-7 dock/portátil e até quatro jogadores sem controles fantasmas | `fe7c285`, `c0ecb83` | `test_switch_runtime.py` |
+| WI-8 recomendação LSFG 30→60 somente com opt-in e evidência estável | `fe7c285` | `test_switch_runtime.py` |
+| WI-9 read model v1, golden, CLI/RPC e `dashboard.emulation` | `45387a8`, `e97529c`, `e2959ae` | `test_emulation_workspace.py`, `test_cli_emulation.py`, `test_desktop_dashboard.py` |
+
+**Gates finais:** 822 testes passaram; Ruff, mypy, independence e boundaries
+verdes. O pytest completo foi executado fora do sandbox porque a suíte de
+integração exige sockets locais; nenhuma permissão de host ou privilégio foi
+usada pelo produto testado.
+
+**Decisões e limites:** nenhuma fonte de instalação de emulador foi inventada;
+Eden/Citron/Ryujinx permanecem `unverified` até pin verificável. DAT é somente
+import local do usuário e não é redistribuído. A UI habilita apenas
+`emulation.refresh` (GET `/status`); import, verify, conversão e rename continuam
+desabilitados na bridge até existirem rotas mutáveis allowlisted completas.
+Templates específicos por emulador ainda precisam de validação com os binários
+reais; o domínio entrega perfil genérico sem inventar chaves de configuração.
+
+**Host/release:** nenhuma instalação, build de wheel, alteração de serviço ou
+ação privilegiada foi executada; release ativa e rollback do host não foram
+alterados. Teste físico com dumps próprios, ferramentas pinadas e dock/controladores
+reais permanece ação do operador após integração da branch.

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "platform": "switch",
+  "entries": [
+    {
+      "version": "16.1.0",
+      "sha256": "1996e82bddb0534b46f1bfd0f8c2cf91b058d0700a64ecb3cbdd05d02d4dc4f3",
+      "label": "synthetic-fw-16"
+    },
+    {
+      "version": "18.0.0",
+      "sha256": "b10097cfaf87364796d885880c8e85698976589543fc5a81a01f59a0dfffea7d",
+      "label": "synthetic-fw-18"
+    }
+  ]
+}

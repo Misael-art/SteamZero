@@ -154,6 +154,22 @@ def test_dashboard_snapshot_keeps_eol_component_honest(tmp_path: Path) -> None:
     assert duckstation["action"]["enabled"] is False
     assert snapshot["doctor"]["state"] == "healthy"
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
+    assert snapshot["emulation"]["schemaVersion"] == 1
+    platform = snapshot["emulation"]["platforms"][0]
+    assert platform["id"] == "switch"
+    refresh = platform["areaData"]["overview"]["primaryAction"]
+    assert refresh == {
+        "id": "emulation.refresh",
+        "label": "Verificar ambiente",
+        "enabled": True,
+        "reason": None,
+        "requiresConfirmation": False,
+    }
+    imports = [
+        card["action"]
+        for card in platform["areaData"]["keysFirmware"]["cards"]
+    ]
+    assert all(not action["enabled"] and action["reason"] for action in imports)
 
 
 def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) -> None:
@@ -230,6 +246,31 @@ def test_gameplay_failure_degrades_only_steam_section(tmp_path: Path) -> None:
     assert snapshot["steamGameplay"]["truthState"] == "degraded"
     assert snapshot["doctor"]["state"] == "healthy"
     assert len(snapshot["components"]) == 3
+
+
+def test_emulation_builder_failure_degrades_only_emulation_section(tmp_path: Path) -> None:
+    def broken_builder(**_kwargs: object) -> dict[str, object]:
+        raise OSError("provider de emulação indisponível")
+
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        emulation_builder=broken_builder,
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+    )
+
+    snapshot = dashboard.snapshot(_status())
+
+    assert snapshot["emulation"]["truthState"] == "unverified"
+    assert snapshot["doctor"]["state"] == "healthy"
 
 
 def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path) -> None:

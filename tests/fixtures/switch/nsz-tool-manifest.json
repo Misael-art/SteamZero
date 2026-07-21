@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "nsz",
+  "kind": "converter",
+  "conversions": [
+    {
+      "from": "nsp",
+      "to": "nsz"
+    },
+    {
+      "from": "nsz",
+      "to": "nsp"
+    }
+  ],
+  "sources": [
+    {
+      "type": "pip",
+      "version": "4.6.1",
+      "priority": 1,
+      "ref": "nsz",
+      "sha256": "bd3ce7049640d3547fd36d538aec9dde611136416844f8e0f5e7d52659c7a9fc"
+    }
+  ],
+  "smokeTest": [
+    "--version"
+  ],
+  "license": "MIT",
+  "upstream": "https://example.invalid/synthetic-nsz",
+  "notes": "Fixture sintética: hash/versão/URL são placeholders para teste, não fonte real."
+}

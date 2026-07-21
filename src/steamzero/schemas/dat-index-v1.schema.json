@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dat-index-v1.schema.json",
+  "title": "Índice DAT (nome canônico por hash) — importação local, nunca redistribuído",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "platform", "source", "entries"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "platform": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "source": {"const": "local-import"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "name"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "titleId": {"type": "string", "pattern": "^[0-9A-Fa-f]{16}$"},
+          "region": {"type": "string", "minLength": 1, "maxLength": 32}
+        }
+      }
+    }
+  }
+}

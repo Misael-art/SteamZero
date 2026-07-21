@@ -35,6 +35,23 @@ class AdapterSource:
 
 
 @dataclass(frozen=True)
+class KeyRequirement:
+    """Requisito de keyset declarado por um adapter (nunca conteúdo de key)."""
+
+    platform: str
+    keyset: str
+    minimum_key_revision: int | None = None
+
+
+@dataclass(frozen=True)
+class FirmwareRequirement:
+    """Requisito de firmware declarado por um adapter."""
+
+    platform: str
+    minimum_version: str | None = None
+
+
+@dataclass(frozen=True)
 class AdapterManifest:
     schema_version: int
     id: str
@@ -49,6 +66,8 @@ class AdapterManifest:
     requires: tuple[str, ...]
     manifest_hash: str
     raw: dict[str, Any]
+    requires_keys: KeyRequirement | None = None
+    requires_firmware: FirmwareRequirement | None = None
 
     def preferred_source(
         self, source_type: str | None = None, *, allow_eol: bool = True
@@ -140,12 +159,18 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
                 "E-API-SCHEMA", detail=f"adapter {data['id']} tem origem Flatpak inválida"
             )
 
+    platforms = tuple(data["platforms"])
+    requires_keys = _parse_key_requirement(data.get("requiresKeys"), data["id"], platforms)
+    requires_firmware = _parse_firmware_requirement(
+        data.get("requiresFirmware"), data["id"], platforms
+    )
+
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return AdapterManifest(
         schema_version=data["schemaVersion"],
         id=data["id"],
         kind=data["kind"],
-        platforms=tuple(data["platforms"]),
+        platforms=platforms,
         capabilities=capabilities,
         sources=sources,
         license=data["license"],
@@ -155,7 +180,44 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         requires=tuple(data.get("requires", ())),
         manifest_hash=hashlib.sha256(canonical.encode()).hexdigest(),
         raw=data,
+        requires_keys=requires_keys,
+        requires_firmware=requires_firmware,
     )
+
+
+def _parse_key_requirement(
+    value: Any, adapter_id: str, platforms: tuple[str, ...]
+) -> KeyRequirement | None:
+    if value is None:
+        return None
+    _require_declared_platform(value["platform"], adapter_id, platforms, "requiresKeys")
+    return KeyRequirement(
+        platform=value["platform"],
+        keyset=value["keyset"],
+        minimum_key_revision=value.get("minimumKeyRevision"),
+    )
+
+
+def _parse_firmware_requirement(
+    value: Any, adapter_id: str, platforms: tuple[str, ...]
+) -> FirmwareRequirement | None:
+    if value is None:
+        return None
+    _require_declared_platform(value["platform"], adapter_id, platforms, "requiresFirmware")
+    return FirmwareRequirement(
+        platform=value["platform"],
+        minimum_version=value.get("minimumVersion"),
+    )
+
+
+def _require_declared_platform(
+    platform: str, adapter_id: str, platforms: tuple[str, ...], field: str
+) -> None:
+    if platform not in platforms:
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=f"adapter {adapter_id}: {field}.platform {platform!r} não está em platforms",
+        )
 
 
 class AdapterRegistry:

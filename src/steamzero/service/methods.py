@@ -127,6 +127,7 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("desktop.apply", "desktop", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("desktop.reset", "desktop", "reset", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("desktop.recover", "desktop", "recover", mutation=True),
+    MethodSpec("emulation.workspace", "emulation", "workspace"),
 )
 
 METHODS = {spec.method: spec for spec in METHOD_SPECS}

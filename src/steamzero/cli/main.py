@@ -22,6 +22,7 @@ from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.desktop import ExperienceCoordinator
+from steamzero.domain.emulation_workspace import build_switch_workspace
 
 if TYPE_CHECKING:
     from steamzero.adapters.flatpak import FlatpakExecutor
@@ -59,6 +60,7 @@ Domínios (Fase 1):
   desktop recover        restaura snapshot de operação interrompida
   desktop keyboard       abre o primeiro teclado virtual funcional
   desktop ui             abre a central Qt/QML opcional
+  emulation workspace    read model da central de emulação Switch
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -483,6 +485,24 @@ def _cmd_desktop_ui(_args: list[str], correlation_id: str) -> tuple[dict[str, An
     )
 
 
+def _cmd_emulation_workspace(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    import shutil
+
+    workspace = build_switch_workspace(
+        probe=lambda emulator_id: shutil.which(emulator_id) is not None,
+    )
+    return (
+        build_envelope(
+            "emulation",
+            "workspace",
+            status=workspace["truthState"],
+            data=workspace,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     from steamzero.adapters.desktop_kde import activate_virtual_keyboard, toggle_virtual_keyboard
 
@@ -534,6 +554,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("desktop", "recover"): _cmd_desktop_recover,
     ("desktop", "keyboard"): _cmd_desktop_keyboard,
     ("desktop", "ui"): _cmd_desktop_ui,
+    ("emulation", "workspace"): _cmd_emulation_workspace,
 }
 
 
