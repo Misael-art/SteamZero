@@ -105,6 +105,57 @@ ApplicationWindow {
     })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
+    readonly property var emulationData: desktopStatus.dashboard
+        && desktopStatus.dashboard.emulation
+        ? desktopStatus.dashboard.emulation : ({
+            "schemaVersion": 1,
+            "truthState": "degraded",
+            "contextLabel": root.deviceSummary(),
+            "platforms": [
+                {
+                    "id": "switch",
+                    "name": qsTr("Nintendo Switch"),
+                    "shortName": qsTr("Switch"),
+                    "iconKey": "switch",
+                    "state": "degraded",
+                    "statusLabel": qsTr("Backend Switch ainda não conectado"),
+                    "modeLabel": desktopStatus.context && desktopStatus.context.displays
+                        && desktopStatus.context.displays.length > 1
+                        ? qsTr("Dock detectado") : qsTr("Modo portátil ou desktop"),
+                    "modeShortLabel": desktopStatus.context && desktopStatus.context.displays
+                        && desktopStatus.context.displays.length > 1 ? qsTr("Dock") : qsTr("Portátil"),
+                    "readiness": {
+                        "percent": 0,
+                        "title": qsTr("Conectando a plataforma Switch"),
+                        "detail": qsTr("A apresentação está pronta; keys, firmware, emuladores e jogos ainda precisam ser publicados pela bridge local."),
+                        "blockers": [
+                            qsTr("Keys e firmware ainda não verificados"),
+                            qsTr("Nenhum emulador Switch confirmado")
+                        ]
+                    },
+                    "emulators": [],
+                    "games": []
+                },
+                root.legacyPlatform(
+                    "nintendo-classic",
+                    qsTr("Nintendo Wii e GameCube"),
+                    "input-gaming",
+                    ["Wii", "GameCube"]
+                ),
+                root.legacyPlatform(
+                    "playstation",
+                    qsTr("PlayStation"),
+                    "applications-games",
+                    ["PlayStation"]
+                ),
+                root.legacyPlatform(
+                    "multi",
+                    qsTr("Multi-sistema"),
+                    "folder-games",
+                    ["Múltiplos"]
+                )
+            ]
+        })
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
         ? desktopStatus.dashboard.steam : fallbackSteam
     readonly property var steamGameplayData: desktopStatus.dashboard
@@ -274,6 +325,35 @@ ApplicationWindow {
                 return ["installed", "available", "running"].indexOf(row.state) >= 0
             })
         return rows
+    }
+
+    function legacyPlatform(id, name, iconKey, systems) {
+        const rows = emulatorItems.filter(function(row) {
+            const rowSystems = row.systems || []
+            return systems.some(function(system) { return rowSystems.indexOf(system) >= 0 })
+        })
+        const ready = readyCount(rows)
+        const total = rows.length
+        const percent = total > 0 ? Math.round(ready * 100 / total) : 0
+        return {
+            "id": id,
+            "name": name,
+            "shortName": name,
+            "iconKey": iconKey,
+            "state": ready > 0 ? "ready" : total > 0 ? "degraded" : "empty",
+            "statusLabel": ready > 0
+                ? qsTr("%1 de %2 emulador(es) pronto(s)").arg(ready).arg(total)
+                : total > 0 ? qsTr("Requer atenção") : qsTr("Nenhum emulador catalogado"),
+            "readiness": {
+                "percent": percent,
+                "title": ready > 0 ? qsTr("Plataforma parcialmente pronta")
+                    : qsTr("Emuladores ainda não preparados"),
+                "detail": qsTr("A compatibilidade detalhada desta plataforma será incorporada de forma incremental."),
+                "blockers": ready > 0 ? [] : [qsTr("Nenhum emulador instalado ou disponível")]
+            },
+            "emulators": rows,
+            "games": []
+        }
     }
 
     function attentionCount(rows) {
@@ -845,7 +925,7 @@ ApplicationWindow {
                         id: navRepeater
                         model: [
                             {"label": qsTr("Visão geral"), "icon": "view-dashboard"},
-                            {"label": qsTr("Emuladores"), "icon": "input-gaming"},
+                            {"label": qsTr("Emulação"), "icon": "input-gaming"},
                             {"label": qsTr("Steam"), "icon": "steam"},
                             {"label": qsTr("Perfis"), "icon": "preferences-system"},
                             {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
@@ -1223,7 +1303,37 @@ ApplicationWindow {
                         // Emuladores
                         RowLayout {
                             spacing: 0
+                            Emulation {
+                                id: emulationPage
+                                emulation: root.emulationData
+                                backgroundColor: root.backgroundColor
+                                sidebarColor: root.sidebarColor
+                                surfaceColor: root.surfaceColor
+                                raisedColor: root.raisedColor
+                                borderColor: root.borderColor
+                                textColor: root.textColor
+                                mutedColor: root.mutedColor
+                                cyanColor: root.cyanColor
+                                cyanDarkColor: root.cyanDarkColor
+                                greenColor: root.greenColor
+                                amberColor: root.amberColor
+                                redColor: root.redColor
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                onComponentActionRequested: function(component) {
+                                    root.selectedEmulator = component
+                                    root.performRowAction(component)
+                                }
+                                onActionRequested: function(action) {
+                                    const reason = action && action.reason
+                                        ? action.reason
+                                        : qsTr("A bridge local ainda não publicou esta ação.")
+                                    root.notify(reason, true)
+                                }
+                                onSystemRequested: root.sectionIndex = 5
+                            }
                             ColumnLayout {
+                                visible: false
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 spacing: 0
@@ -1422,7 +1532,7 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                visible: root.width >= 1040
+                                visible: false
                                 color: root.surfaceColor
                                 border.color: root.borderColor
                                 Layout.preferredWidth: 292
