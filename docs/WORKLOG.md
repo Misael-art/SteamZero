@@ -1563,3 +1563,44 @@ em `observation.resolvedBy` (campo aditivo no schema de status). Ambiguidade que
 exclui o aplicado permanece degradada (teste dedicado). Artefato manual sem
 marcador `steamzero-desktop-keyboard.desktop` (Meta+Ctrl+K) removido do host
 pelo agente com autorização explícita do operador nesta thread.
+
+## 2026-07-20 — Sessão 36: central de emulação Switch orientada por capacidades
+
+**Branch:** `codex/ui-emulacao-switch`, criada do tip `af69698` da main. Escopo
+restrito a `src/steamzero/ui/qml/`, apresentação e harnesses QML; nenhum adapter,
+domínio, contrato de payload, artefato de host ou release foi alterado.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Central por plataforma com escopos Global/Emulador/Por jogo/Portátil/Dock e áreas especializadas | `a0808f7` | `check_emulation.qml`, `qmllint` e carregamento Qt6 offscreen |
+| Integração da central à navegação e ao snapshot `dashboard.emulation` | `a0e340e` | `check_main_emulation.qml` e carregamento integral de `Main.qml` |
+| Responsividade dos seletores em telas compactas | `2ddfe69` | harnesses em 1440×900 e 980×900; inspeção visual offscreen |
+| Alinhamento ao contrato versionado Switch v1 | `219bf0f` | fixture/fallback do contrato e ambos os harnesses Qt6 |
+| Allowlist conservadora: somente `emulation.refresh`; mutações sem rota ficam desabilitadas com causa | `24c05bb` | teste QML de ação permitida, desconhecida e indisponível |
+| Alvos interativos mínimos de 48 px e ícones vetoriais modernos | `8808d5d` | `qmllint`, harnesses e inspeção visual nas duas larguras |
+| Preservação de plataforma/escopo/área durante refresh do mesmo payload | `c20f0e9` | regressão dedicada em `check_emulation.qml` |
+
+**Resultado funcional:** a antiga lista rasa de emuladores tornou-se uma central
+de emulação guiada por plataforma. Nintendo Switch possui marca visual própria,
+readiness, contexto de emulador/jogo, especialidades por emulador e as áreas
+Keys & Firmware, Updates & DLC, Gráficos, Controles, Saves, Shader cache, Mídia,
+Armazenamento e Avançado. Estados `blocked`, `attention`, `unverified`, `planned`
+e `ready` são apresentados sem fabricar disponibilidade; o fallback mantém a UI
+navegável se o provider estiver ausente ou incompleto.
+
+**Gates finais da branch UI:** 679 testes Python passaram (330 unitários, 236 de
+integração, 103 de segurança/failure injection e 10 golden), Ruff verde, mypy
+verde em 78 arquivos, independence/boundaries verdes, `qmllint` verde e os
+harnesses Qt6 `check_emulation.qml`/`check_main_emulation.qml` com exit 0. A
+branch backend independente foi revisada em separado com 822 testes e os quatro
+gates verdes; seus commits e entregáveis constam exclusivamente na Sessão 37
+daquela branch.
+
+**Ações de host/release:** nenhuma. Não houve build de wheel, instalação,
+rollback, `bigsudo`, reinício de serviço ou push durante a implementação.
+
+**Limites e próximos passos:** importações, instalação e demais mutações seguem
+desabilitadas na UI até existirem rotas completas de plan/apply/rollback. Fontes
+Eden/Citron/Ryujinx permanecem `unverified`; DAT é somente local do usuário.
+Após integração das branches, ainda cabe ao operador validar navegação por
+gamepad e legibilidade no Deck físico em modo portátil e dock.
