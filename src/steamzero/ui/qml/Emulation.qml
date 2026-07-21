@@ -109,6 +109,20 @@ Item {
         gameIndex = 0
     }
 
+    function syncPublishedSelection() {
+        const scope = selectedPlatform.selectedScope || "global"
+        const publishedScope = scopes.findIndex(function(item) { return item.id === scope })
+        scopeIndex = publishedScope >= 0 ? publishedScope : 0
+        const area = selectedPlatform.selectedArea || "overview"
+        const publishedArea = areas.findIndex(function(item) { return item.id === area })
+        areaIndex = publishedArea >= 0 ? publishedArea : 0
+        emulatorIndex = normalizedIndex(emulatorIndex, emulators)
+        gameIndex = normalizedIndex(gameIndex, games)
+    }
+
+    onSelectedPlatformChanged: Qt.callLater(syncPublishedSelection)
+    Component.onCompleted: syncPublishedSelection()
+
     function moveVerticalFocus(forward) {
         const hostWindow = page.Window.window
         const active = hostWindow ? hostWindow.activeFocusItem : null
@@ -130,7 +144,7 @@ Item {
         if (["ready", "installed", "available", "healthy", "compatible", "active"]
                 .indexOf(state) >= 0)
             return greenColor
-        if (["attention", "degraded", "missing", "blocked", "stale", "incompatible"]
+        if (["attention", "degraded", "missing", "blocked", "stale", "incompatible", "unavailable"]
                 .indexOf(state) >= 0)
             return amberColor
         if (["failed", "error", "corrupt"].indexOf(state) >= 0)
@@ -142,12 +156,41 @@ Item {
         if (["ready", "installed", "available", "healthy", "compatible", "active"]
                 .indexOf(state) >= 0)
             return "dialog-ok-apply"
-        if (["attention", "degraded", "missing", "blocked", "stale", "incompatible"]
+        if (["attention", "degraded", "missing", "blocked", "stale", "incompatible", "unavailable"]
                 .indexOf(state) >= 0)
             return "dialog-warning"
         if (["failed", "error", "corrupt"].indexOf(state) >= 0)
             return "dialog-error"
         return "dialog-information"
+    }
+
+    function visualIcon(key) {
+        const icons = {
+            "dashboard": "view-dashboard",
+            "key": "document-encrypt",
+            "emulator": "applications-games",
+            "gamepad": "input-gaming",
+            "handheld": "computer-laptop",
+            "dock": "video-display",
+            "save": "document-save",
+            "sparkles": "applications-graphics",
+            "image": "image-x-generic",
+            "storage": "drive-harddisk",
+            "tune": "configure"
+        }
+        return icons[key] || key || "dialog-information"
+    }
+
+    function cardMetric(card) {
+        if (card.metric !== undefined && card.metric !== null)
+            return String(card.metric)
+        if (card.count !== undefined && card.count !== null)
+            return String(card.count)
+        if (card.installed !== undefined && card.installed !== null)
+            return String(card.installed)
+        if (card.required !== undefined && card.required !== null)
+            return String(card.required)
+        return "—"
     }
 
     function readinessPercent() {
@@ -463,9 +506,11 @@ Item {
                         icon.color: checked ? page.cyanColor : page.mutedColor
                         checkable: true
                         checked: page.scopeIndex === index
+                        enabled: modelData.enabled !== false
                         Layout.preferredWidth: Math.max(112, implicitWidth + 12)
                         Layout.minimumHeight: 44
                         Accessible.name: qsTr("Aplicar no escopo %1").arg(text)
+                        Accessible.description: modelData.reason || ""
                         onClicked: page.scopeIndex = index
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.backgroundColor
@@ -477,7 +522,7 @@ Item {
                         contentItem: RowLayout {
                             spacing: 8
                             ModernIcon {
-                                iconName: modelData.icon || "applications-games"
+                                iconName: page.visualIcon(modelData.icon || modelData.iconKey)
                                 iconColor: parent.parent.checked ? page.cyanColor : page.mutedColor
                                 Layout.preferredWidth: 19
                                 Layout.preferredHeight: 19
@@ -571,7 +616,7 @@ Item {
                             width: ListView.view.width
                             height: 46
                             text: modelData.label
-                            icon.name: modelData.icon || "applications-games"
+                            icon.name: page.visualIcon(modelData.icon || modelData.iconKey)
                             icon.color: checked ? page.cyanColor : page.mutedColor
                             display: AbstractButton.TextBesideIcon
                             checkable: true
@@ -591,7 +636,7 @@ Item {
                             contentItem: RowLayout {
                                 spacing: 10
                                 ModernIcon {
-                                    iconName: modelData.icon || "applications-games"
+                                    iconName: page.visualIcon(modelData.icon || modelData.iconKey)
                                     iconColor: parent.parent.checked ? page.cyanColor : page.mutedColor
                                     Layout.preferredWidth: 20
                                     Layout.preferredHeight: 20
@@ -778,7 +823,10 @@ Item {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         ModernIcon {
-                                            iconName: modelData.icon || page.stateIcon(modelData.state)
+                                            iconName: page.visualIcon(
+                                                modelData.icon || modelData.iconKey
+                                                    || page.stateIcon(modelData.state)
+                                            )
                                             iconColor: page.stateColor(modelData.state)
                                             Layout.preferredWidth: 24
                                             Layout.preferredHeight: 24
@@ -795,13 +843,14 @@ Item {
                                                 Layout.fillWidth: true
                                             }
                                             Label {
-                                                text: modelData.status || qsTr("Estado desconhecido")
+                                                text: modelData.status || modelData.statusLabel
+                                                    || qsTr("Estado desconhecido")
                                                 color: page.stateColor(modelData.state)
                                                 font.pixelSize: 12
                                             }
                                         }
                                         Label {
-                                            text: modelData.metric || "—"
+                                            text: page.cardMetric(modelData)
                                             color: page.textColor
                                             font.pixelSize: 18
                                             font.bold: true
@@ -820,10 +869,14 @@ Item {
                                         text: modelData.action && modelData.action.label
                                             ? modelData.action.label : qsTr("Abrir área")
                                         icon.name: "go-next"
+                                        enabled: Boolean(modelData.targetArea)
+                                            || Boolean(modelData.action && modelData.action.enabled)
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.minimumHeight: 40
                                         Accessible.name: text
+                                        Accessible.description: modelData.action
+                                            ? modelData.action.reason || "" : ""
                                         onClicked: {
                                             if (modelData.targetArea)
                                                 page.areaIndex = page.areaIndexById(modelData.targetArea)

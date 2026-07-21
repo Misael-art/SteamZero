@@ -73,15 +73,17 @@ Window {
                 "id": "switch",
                 "name": "Nintendo Switch",
                 "state": "degraded",
+                "selectedScope": "emulator",
+                "selectedArea": "keysFirmware",
                 "readiness": {"percent": 20, "title": "Preparação", "blockers": ["Keys"]},
                 "areaData": {
                     "keysFirmware": {
                         "cards": [{
                             "title": "Firmware",
                             "state": "compatible",
-                            "status": "18.0.1",
+                            "statusLabel": "18.0.1",
                             "detail": "Validado",
-                            "metric": "18.0.1"
+                            "count": 2
                         }],
                         "primaryAction": {
                             "id": "keys-import",
@@ -95,9 +97,12 @@ Window {
         })
         if (!object)
             return
-        object.areaIndex = object.areaIndexById("keysFirmware")
+        object.syncPublishedSelection()
+        check(object.scopeId() === "emulator", "seleção de escopo publicada deve ser restaurada")
+        check(object.selectedArea.id === "keysFirmware", "seleção de área publicada deve ser restaurada")
         check(object.cards().length === 1, "cards do backend devem substituir o fallback")
-        check(object.cards()[0].status === "18.0.1", "status do backend deve ser preservado")
+        check(object.cards()[0].statusLabel === "18.0.1", "status do backend deve ser preservado")
+        check(object.cardMetric(object.cards()[0]) === "2", "contagem do backend deve ser apresentada")
         check(object.primaryAction().id === "keys-import", "ação versionada deve ser consumida")
         check(object.primaryAction().enabled === true, "capacidade confirmada pode liberar a ação")
         object.destroy()
