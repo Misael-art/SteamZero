@@ -1798,3 +1798,29 @@ quando o respectivo arquivo já existe e é regular.
 ação privilegiada ou alteração do host foi executada nesta sessão. A validação
 física no host e uma eventual publicação exigem autorização explícita do
 operador e os preflights usuais.
+
+## 2026-07-21 — Sessão 43: integração e publicação da persistência Switch
+
+**Integração:** `codex/correcao-importacao-switch` foi integrada por
+fast-forward em `main`: `832d82b` → `c4372c1`. Os dois itens não rastreados já
+existentes no worktree principal permaneceram intocados.
+
+| Item | Commit/release | Evidência |
+|---|---|---|
+| Gate completo da fonte integrada | `c4372c1` | 829 testes, cobertura 85,02%, Ruff format/lint, mypy, independence e boundaries verdes |
+| Wheel reproduzível e wheelhouse runtime hash-pinado | `0.1.0a33-c4372c12b7ad` | wheel SHA-256 `9580a9573181c0818a8dde3b0f47b21b02a537c887e7cbde3089509d17f1bbef`; 5 wheels runtime verificados pelo lock |
+| Instalação transacional e ativação | `0.1.0a33-c4372c12b7ad` | manifesto v4, commit completo e estado de fonte `clean` conferidos pelo instalador |
+
+**Nota do gate:** o primeiro uso do `tmp_path` padrão falhou somente porque o
+prefixo temporário do Codex excede o limite de socket AF_UNIX. O gate foi
+repetido com `--basetemp=/tmp/sz-pytest`, sem mudar código, e terminou verde.
+
+**Validação pós-instalação:** `steamzero --version` retornou `0.1.0a33`; doctor
+OK, schema 6 e zero operações pendentes; `steamzero-core.socket` e
+`steamzero-core.service` ativos; `desktop status` retornou contrato válido;
+Game Mode disponível com fallback Desktop. Não houve reboot ou alteração de
+configuração de boot.
+
+**Rollback:** release anterior preservada e registrada no manifesto:
+`0.1.0a33-832d82be8e22`. O teste físico da UI, seleção de arquivo e conversão
+NSZ no host continua sendo a próxima etapa do operador.
