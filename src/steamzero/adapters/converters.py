@@ -13,6 +13,7 @@ validado; sem manifesto/binário, a conversão fica indisponível com motivo.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from collections.abc import Callable, Sequence
@@ -20,14 +21,15 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.api import contracts
-from steamzero.core import fs
+from steamzero.core import fs, ids, paths, transaction
 from steamzero.core.errors import SteamZeroError
-from steamzero.domain.convert import ConversionManager, ConvertResult
+from steamzero.domain.convert import ConversionManager
 from steamzero.ports import ConversionTimeout
 
 Which = Callable[[str], str | None]
 #: Executa argv com timeout; retorna returncode. Levanta ConversionTimeout no estouro.
 CommandRunner = Callable[[Sequence[str], float], int]
+ToolProbe = Callable[[Sequence[str], float], tuple[int, str]]
 
 # Conversões allowlisted por ferramenta (nunca aceitar par arbitrário).
 _NSZ_CONVERSIONS = frozenset({("nsp", "nsz"), ("nsz", "nsp")})
@@ -51,6 +53,23 @@ def default_runner(argv: Sequence[str], timeout: float) -> int:
     return completed.returncode
 
 
+def default_tool_probe(argv: Sequence[str], timeout: float) -> tuple[int, str]:
+    """Executa smoke test allowlisted e limita a saída usada na validação."""
+    try:
+        completed = subprocess.run(  # noqa: S603
+            list(argv),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            check=False,
+            text=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, str(exc)[:240]
+    return completed.returncode, completed.stdout[:4096]
+
+
 class ToolManifest:
     """Manifesto de ferramenta de conversão (tool-manifest-v1)."""
 
@@ -61,6 +80,8 @@ class ToolManifest:
             (c["from"], c["to"]) for c in data["conversions"]
         )
         self.smoke_test: tuple[str, ...] = tuple(data.get("smokeTest", ()))
+        sources = sorted(data["sources"], key=lambda item: int(item["priority"]))
+        self.expected_version: str = str(sources[0]["version"])
 
     @classmethod
     def from_path(cls, path: Path) -> ToolManifest:
@@ -74,12 +95,73 @@ class ToolManifest:
 class ToolRegistry:
     """Resolve disponibilidade de ferramentas sem inventar suporte."""
 
-    def __init__(self, manifests: Sequence[ToolManifest], *, which: Which = shutil.which) -> None:
+    def __init__(
+        self,
+        manifests: Sequence[ToolManifest],
+        *,
+        which: Which = shutil.which,
+        probe: ToolProbe = default_tool_probe,
+        probe_timeout: float = 5.0,
+    ) -> None:
         self._manifests = tuple(manifests)
         self._which = which
+        self._probe = probe
+        self._probe_timeout = probe_timeout
 
     def available(self, tool_id: str) -> bool:
-        return self._which(tool_id) is not None
+        return bool(self.status(tool_id)["available"])
+
+    def status(self, tool_id: str) -> dict[str, Any]:
+        manifest = next((item for item in self._manifests if item.id == tool_id), None)
+        if manifest is None:
+            return {"available": False, "state": "unverified", "reason": "manifesto ausente"}
+        executable = self._which(tool_id)
+        if executable is None:
+            return {
+                "available": False,
+                "state": "missing",
+                "reason": f"ferramenta {tool_id} não encontrada no host",
+            }
+        if not manifest.smoke_test:
+            return {
+                "available": False,
+                "state": "unverified",
+                "reason": f"ferramenta {tool_id} não declara smoke test",
+            }
+        try:
+            returncode, output = self._probe(
+                (executable, *manifest.smoke_test), self._probe_timeout
+            )
+        except Exception as exc:
+            return {
+                "available": False,
+                "state": "unverified",
+                "reason": f"probe de {tool_id} indisponível: {str(exc)[:160]}",
+            }
+        if returncode != 0:
+            return {
+                "available": False,
+                "state": "degraded",
+                "reason": f"smoke test de {tool_id} falhou (status {returncode})",
+            }
+        version_pattern = re.compile(
+            rf"(?<![A-Za-z0-9]){re.escape(manifest.expected_version)}(?![A-Za-z0-9])"
+        )
+        if version_pattern.search(output) is None:
+            return {
+                "available": False,
+                "state": "incompatible",
+                "reason": (
+                    f"versão de {tool_id} não corresponde ao manifesto "
+                    f"({manifest.expected_version})"
+                ),
+            }
+        return {
+            "available": True,
+            "state": "verified",
+            "reason": None,
+            "version": manifest.expected_version,
+        }
 
     def converter_tool(self, from_fmt: str, to_fmt: str) -> ToolManifest | None:
         return next(
@@ -91,17 +173,16 @@ class ToolRegistry:
         """Lista as conversões conhecidas com disponibilidade real (dados p/ UI)."""
         rows: list[dict[str, Any]] = []
         for manifest in self._manifests:
-            present = self.available(manifest.id)
+            status = self.status(manifest.id)
             for from_fmt, to_fmt in sorted(manifest.conversions):
                 rows.append(
                     {
                         "tool": manifest.id,
                         "from": from_fmt,
                         "to": to_fmt,
-                        "available": present,
-                        "reason": None
-                        if present
-                        else f"ferramenta {manifest.id} não encontrada no host",
+                        "available": status["available"],
+                        "state": status["state"],
+                        "reason": status["reason"],
                     }
                 )
         return rows
@@ -178,9 +259,9 @@ class SwitchRomConversionService:
         self._registry = registry
         self._converter = converter or NszConverter()
 
-    def convert(
+    def plan_convert(
         self, src: Path, target_format: str, *, dest_dir: Path | None = None
-    ) -> ConvertResult:
+    ) -> transaction.Plan:
         from_fmt = src.suffix.lstrip(".").lower()
         tool = self._registry.converter_tool(from_fmt, target_format)
         if tool is None:
@@ -188,9 +269,57 @@ class SwitchRomConversionService:
                 "E-COMPONENT-DEGRADED",
                 detail=f"nenhuma ferramenta suporta {from_fmt}->{target_format}",
             )
-        if not self._registry.available(tool.id):
+        tool_status = self._registry.status(tool.id)
+        if not tool_status["available"]:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
-                detail=f"ferramenta {tool.id} não está instalada no host",
+                detail=str(tool_status["reason"]),
             )
-        return ConversionManager(self._converter).convert(src, target_format, dest_dir=dest_dir)
+        if src.is_symlink() or not src.is_file():
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem não é arquivo regular")
+        source = src.resolve(strict=True)
+        source_hash = fs.hash_file(source)
+        destination_root = (dest_dir or (paths.roms_dir() / "converted")).resolve(strict=False)
+        destination = fs.resolve_within(
+            destination_root, destination_root / f"{source.stem}.{target_format}"
+        )
+        preview_root = paths.staging_for(f"conversion-plan-{ids.new_ulid()}")
+        try:
+            converted = ConversionManager(self._converter).convert(
+                source, target_format, dest_dir=preview_root
+            )
+            return transaction.plan_copy_files(
+                {converted.dest: destination},
+                root=destination_root,
+                kind="library.convert",
+                requirements_extra={
+                    "inputPath": str(source),
+                    "inputHash": source_hash,
+                    "tool": tool.id,
+                    "toolVersion": tool.expected_version,
+                    "previewRoot": str(preview_root),
+                },
+            )
+        except Exception:
+            fs.remove_tree(preview_root)
+            raise
+
+    @staticmethod
+    def apply(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        plan = transaction.load_plan(plan_id)
+        if plan.kind != "library.convert":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de conversão")
+        source = Path(str(plan.requirements.get("inputPath", "")))
+        expected = str(plan.requirements.get("inputHash", ""))
+        if source.is_symlink() or not source.is_file() or fs.hash_file(source) != expected:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="origem mudou desde o preview")
+        result = transaction.apply(plan_id, confirm_token)
+        preview_root = Path(str(plan.requirements.get("previewRoot", "")))
+        if preview_root.name.startswith("conversion-plan-"):
+            confined = fs.resolve_within(paths.staging_dir(), preview_root)
+            fs.remove_tree(confined)
+        return result
+
+    @staticmethod
+    def rollback(operation_id: str) -> transaction.RollbackResult:
+        return transaction.rollback(operation_id, reason="library-convert")

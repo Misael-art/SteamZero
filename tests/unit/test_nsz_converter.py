@@ -24,6 +24,14 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.ports import ConversionTimeout
 
 
+def _verified_registry(manifest: ToolManifest) -> ToolRegistry:
+    return ToolRegistry(
+        [manifest],
+        which=lambda _tool: "/usr/bin/nsz",
+        probe=lambda _argv, _timeout: (0, "nsz 4.6.1"),
+    )
+
+
 @pytest.fixture
 def nsz_manifest() -> ToolManifest:
     return ToolManifest(
@@ -72,14 +80,14 @@ def test_tool_manifest_exposes_smoke_test(nsz_manifest: ToolManifest) -> None:
 
 
 def test_registry_returns_tool_when_supported(nsz_manifest: ToolManifest) -> None:
-    registry = ToolRegistry([nsz_manifest], which=lambda _tool: "/usr/bin/nsz")
+    registry = _verified_registry(nsz_manifest)
     tool = registry.converter_tool("nsp", "nsz")
     assert tool is not None
     assert tool.id == "nsz"
 
 
 def test_registry_returns_none_when_unsupported(nsz_manifest: ToolManifest) -> None:
-    registry = ToolRegistry([nsz_manifest], which=lambda _tool: "/usr/bin/nsz")
+    registry = _verified_registry(nsz_manifest)
     assert registry.converter_tool("xci", "nsp") is None
 
 
@@ -95,10 +103,44 @@ def test_registry_reports_availability_with_reason(nsz_manifest: ToolManifest) -
 def test_registry_reports_available_when_binary_present(
     nsz_manifest: ToolManifest,
 ) -> None:
-    registry = ToolRegistry([nsz_manifest], which=lambda tool: f"/bin/{tool}")
+    registry = ToolRegistry(
+        [nsz_manifest],
+        which=lambda tool: f"/bin/{tool}",
+        probe=lambda _argv, _timeout: (0, "nsz 4.6.1"),
+    )
     rows = registry.conversions()
     assert all(row["available"] is True for row in rows)
     assert all(row["reason"] is None for row in rows)
+
+
+def test_registry_rejects_failed_smoke_and_wrong_version(nsz_manifest: ToolManifest) -> None:
+    failed = ToolRegistry(
+        [nsz_manifest],
+        which=lambda _tool: "/bin/nsz",
+        probe=lambda _argv, _timeout: (2, "broken"),
+    )
+    incompatible = ToolRegistry(
+        [nsz_manifest],
+        which=lambda _tool: "/bin/nsz",
+        probe=lambda _argv, _timeout: (0, "nsz 3.0.0"),
+    )
+
+    assert failed.status("nsz")["state"] == "degraded"
+    assert incompatible.status("nsz")["state"] == "incompatible"
+    assert not failed.available("nsz")
+    assert not incompatible.available("nsz")
+
+
+def test_registry_probe_exception_degrades(nsz_manifest: ToolManifest) -> None:
+    def broken_probe(_argv: Any, _timeout: float) -> tuple[int, str]:
+        raise OSError("probe offline")
+
+    registry = ToolRegistry(
+        [nsz_manifest], which=lambda _tool: "/bin/nsz", probe=broken_probe
+    )
+
+    assert registry.status("nsz")["state"] == "unverified"
+    assert not registry.available("nsz")
 
 
 # --- NszConverter -----------------------------------------------------------
@@ -221,11 +263,11 @@ def test_nsz_converter_reconciles_real_output_name(tmp_path: Path) -> None:
 def test_service_gates_unsupported_conversion(
     nsz_manifest: ToolManifest, tmp_path: Path
 ) -> None:
-    registry = ToolRegistry([nsz_manifest], which=lambda _tool: "/usr/bin/nsz")
+    registry = _verified_registry(nsz_manifest)
     service = SwitchRomConversionService(registry)
     src = tmp_path / "game.xci"
     with pytest.raises(SteamZeroError) as exc:
-        service.convert(src, "nsp")
+        service.plan_convert(src, "nsp")
     assert exc.value.code == "E-COMPONENT-DEGRADED"
     assert "nenhuma ferramenta" in exc.value.detail
 
@@ -236,9 +278,9 @@ def test_service_gates_missing_tool(nsz_manifest: ToolManifest, tmp_path: Path) 
     src = tmp_path / "game.nsp"
     src.write_bytes(b"fake")
     with pytest.raises(SteamZeroError) as exc:
-        service.convert(src, "nsz")
+        service.plan_convert(src, "nsz")
     assert exc.value.code == "E-COMPONENT-DEGRADED"
-    assert "não está instalada" in exc.value.detail
+    assert "não encontrada" in exc.value.detail
 
 
 

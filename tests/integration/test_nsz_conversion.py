@@ -24,6 +24,14 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.domain.convert import ConversionManager
 
 
+def _registry(tool: ToolManifest, *, present: bool = True) -> ToolRegistry:
+    return ToolRegistry(
+        [tool],
+        which=(lambda _tool: "/usr/bin/nsz") if present else (lambda _tool: None),
+        probe=lambda _argv, _timeout: (0, "nsz 4.6.1"),
+    )
+
+
 @pytest.fixture
 def nsz_tool() -> ToolManifest:
     return ToolManifest(
@@ -79,17 +87,22 @@ def test_nsp_to_nsz_conversion_preserves_original(env: Path, nsz_tool: ToolManif
     src.write_bytes(b"original-nsp-bytes")
     before = fs.hash_file(src)
 
-    registry = ToolRegistry([nsz_tool], which=lambda _tool: "/usr/bin/nsz")
+    registry = _registry(nsz_tool)
     converter = NszConverter(runner=_fake_runner(b"compressed-nsz"), which=lambda _tool: "/bin/nsz")
     service = SwitchRomConversionService(registry, converter=converter)
 
-    result = service.convert(src, "nsz")
+    plan = service.plan_convert(src, "nsz")
+    destination = paths.roms_dir() / "converted" / "dump.nsz"
+    assert not destination.exists()
+    applied = service.apply(plan.plan_id, plan.confirm_token)
 
-    assert result.dest.exists()
-    assert result.dest.suffix == ".nsz"
-    assert result.dest.read_bytes() == b"compressed-nsz"
+    assert destination.exists()
+    assert destination.read_bytes() == b"compressed-nsz"
     assert fs.hash_file(src) == before
     assert not any(paths.staging_dir().iterdir())
+    service.rollback(applied.operation_id)
+    assert not destination.exists()
+    assert fs.hash_file(src) == before
 
 
 def test_nsz_to_nsp_conversion_preserves_original(env: Path, nsz_tool: ToolManifest) -> None:
@@ -97,17 +110,18 @@ def test_nsz_to_nsp_conversion_preserves_original(env: Path, nsz_tool: ToolManif
     src.write_bytes(b"compressed-nsz-bytes")
     before = fs.hash_file(src)
 
-    registry = ToolRegistry([nsz_tool], which=lambda _tool: "/usr/bin/nsz")
+    registry = _registry(nsz_tool)
     converter = NszConverter(
         runner=_fake_runner(b"decompressed-nsp"), which=lambda _tool: "/bin/nsz"
     )
     service = SwitchRomConversionService(registry, converter=converter)
 
-    result = service.convert(src, "nsp")
+    plan = service.plan_convert(src, "nsp")
+    service.apply(plan.plan_id, plan.confirm_token)
+    destination = paths.roms_dir() / "converted" / "dump.nsp"
 
-    assert result.dest.exists()
-    assert result.dest.suffix == ".nsp"
-    assert result.dest.read_bytes() == b"decompressed-nsp"
+    assert destination.exists()
+    assert destination.read_bytes() == b"decompressed-nsp"
     assert fs.hash_file(src) == before
 
 
@@ -118,12 +132,12 @@ def test_conversion_fails_safe_when_tool_returns_error(
     src.write_bytes(b"original-nsp-bytes")
     before = fs.hash_file(src)
 
-    registry = ToolRegistry([nsz_tool], which=lambda _tool: "/usr/bin/nsz")
+    registry = _registry(nsz_tool)
     converter = NszConverter(runner=_fake_runner(None), which=lambda _tool: "/bin/nsz")
     service = SwitchRomConversionService(registry, converter=converter)
 
     with pytest.raises(SteamZeroError) as exc:
-        service.convert(src, "nsz")
+        service.plan_convert(src, "nsz")
 
     assert exc.value.code == "E-CONVERT-FAILED"
     assert fs.hash_file(src) == before
@@ -135,14 +149,14 @@ def test_conversion_gated_when_tool_missing(env: Path, nsz_tool: ToolManifest) -
     src = env / "dump.nsp"
     src.write_bytes(b"original-nsp-bytes")
 
-    registry = ToolRegistry([nsz_tool], which=lambda _tool: None)
+    registry = _registry(nsz_tool, present=False)
     service = SwitchRomConversionService(registry)
 
     with pytest.raises(SteamZeroError) as exc:
-        service.convert(src, "nsz")
+        service.plan_convert(src, "nsz")
 
     assert exc.value.code == "E-COMPONENT-DEGRADED"
-    assert "não está instalada" in exc.value.detail
+    assert "não encontrada" in exc.value.detail
 
 
 def test_conversion_idempotent_and_rejects_collision(
@@ -152,18 +166,68 @@ def test_conversion_idempotent_and_rejects_collision(
     src.write_bytes(b"original-nsp-bytes")
     before = fs.hash_file(src)
 
-    registry = ToolRegistry([nsz_tool], which=lambda _tool: "/usr/bin/nsz")
+    registry = _registry(nsz_tool)
     converter = NszConverter(runner=_fake_runner(b"compressed-nsz"), which=lambda _tool: "/bin/nsz")
     service = SwitchRomConversionService(registry, converter=converter)
 
-    service.convert(src, "nsz")
+    plan = service.plan_convert(src, "nsz")
+    service.apply(plan.plan_id, plan.confirm_token)
 
     # Segunda conversão do mesmo arquivo colide com o destino já existente
     with pytest.raises(SteamZeroError) as exc:
-        service.convert(src, "nsz")
+        service.plan_convert(src, "nsz")
 
     assert exc.value.code == "E-TX-STALE-PLAN"
     assert fs.hash_file(src) == before
+
+
+def test_conversion_requires_token_and_revalidates_source(
+    env: Path, nsz_tool: ToolManifest
+) -> None:
+    src = env / "dump.nsp"
+    src.write_bytes(b"original")
+    service = SwitchRomConversionService(
+        _registry(nsz_tool),
+        converter=NszConverter(
+            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
+        ),
+    )
+    plan = service.plan_convert(src, "nsz")
+    destination = paths.roms_dir() / "converted" / "dump.nsz"
+
+    with pytest.raises(SteamZeroError) as exc:
+        service.apply(plan.plan_id, "wrong")
+    assert exc.value.code == "E-TX-CONFIRM-REQUIRED"
+    assert not destination.exists()
+
+    src.write_bytes(b"changed")
+    with pytest.raises(SteamZeroError) as exc:
+        service.apply(plan.plan_id, plan.confirm_token)
+    assert exc.value.code == "E-TX-STALE-PLAN"
+    assert not destination.exists()
+
+
+def test_conversion_rollback_refuses_foreign_modified_output(
+    env: Path, nsz_tool: ToolManifest
+) -> None:
+    src = env / "dump.nsp"
+    src.write_bytes(b"original")
+    service = SwitchRomConversionService(
+        _registry(nsz_tool),
+        converter=NszConverter(
+            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
+        ),
+    )
+    plan = service.plan_convert(src, "nsz")
+    applied = service.apply(plan.plan_id, plan.confirm_token)
+    destination = paths.roms_dir() / "converted" / "dump.nsz"
+    destination.write_bytes(b"user-modified")
+
+    with pytest.raises(SteamZeroError) as exc:
+        service.rollback(applied.operation_id)
+
+    assert exc.value.code == "E-TX-ROLLBACK-FAILED"
+    assert destination.read_bytes() == b"user-modified"
 
 
 def test_conversion_manager_directly_with_nsz_port(env: Path, nsz_tool: ToolManifest) -> None:

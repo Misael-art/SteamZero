@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,11 +21,12 @@ from typing import Any
 from jsonschema import ValidationError
 
 from steamzero.api import contracts
-from steamzero.core import fs
+from steamzero.core import fs, transaction
 from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID_RE = re.compile(r"^[0-9A-Fa-f]{16}$")
 _SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "nro"})
+_BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 
 
 def _validate_title_id(value: str) -> str:
@@ -45,9 +47,16 @@ class DatIndex:
             raise SteamZeroError("E-API-SCHEMA", detail=f"DAT inválido: {exc}") from exc
         self.platform: str = data["platform"]
         self.entries: tuple[dict[str, Any], ...] = tuple(data["entries"])
-        self._by_sha256: dict[str, dict[str, Any]] = {
-            entry["sha256"]: entry for entry in self.entries
-        }
+        self._by_sha256: dict[str, dict[str, Any]] = {}
+        for entry in self.entries:
+            _validate_canonical_name(str(entry["name"]))
+            previous = self._by_sha256.get(entry["sha256"])
+            if previous is not None and previous != entry:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"hash DAT duplicado com metadados divergentes: {entry['sha256'][:12]}…",
+                )
+            self._by_sha256[entry["sha256"]] = entry
 
     @classmethod
     def from_path(cls, path: Path) -> DatIndex:
@@ -159,9 +168,9 @@ class SwitchMediaMatcher:
 
 
 class SwitchLibraryOrganizer:
-    """Preview de renomeio canônico sem colisão (não muta disco)."""
+    """Preview e rename transacional canônico, sem colisão."""
 
-    def plan_rename(
+    def preview_rename(
         self,
         root: Path,
         matches: Sequence[SwitchRomMatch],
@@ -172,19 +181,49 @@ class SwitchLibraryOrganizer:
 
         Arquivos sem nome canônico (não constam no DAT) ficam de fora do plano.
         """
-        used_names: set[str] = set()
+        root_resolved = root.resolve(strict=True)
+        used_names = {entry.name.casefold() for entry in root_resolved.iterdir()}
+        seen_sources: set[Path] = set()
         plan: dict[Path, Path] = {}
         for rom in matches:
             if rom.canonical_name is None:
                 continue
+            if rom.path.is_symlink() or not rom.path.is_file():
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem de rename inválida")
+            source = fs.resolve_within(root_resolved, rom.path)
+            if source in seen_sources:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem duplicada: {source}")
+            seen_sources.add(source)
+            own_name = source.name.casefold()
+            used_names.discard(own_name)
             target_name = self._unique_name(
                 root, rom.canonical_name, rom.format, used_names, collision_suffix
             )
-            target = fs.resolve_within(root, root / target_name)
-            if target.resolve() != rom.path.resolve():
-                plan[rom.path] = target
-            used_names.add(target.name)
+            target = fs.resolve_within(root_resolved, root_resolved / target_name)
+            if target != source:
+                plan[source] = target
+            used_names.add(target.name.casefold())
         return plan
+
+    def plan_rename(
+        self,
+        root: Path,
+        matches: Sequence[SwitchRomMatch],
+        *,
+        collision_suffix: str = " ({n})",
+    ) -> transaction.Plan:
+        moves = self.preview_rename(
+            root, matches, collision_suffix=collision_suffix
+        )
+        return transaction.plan_move_files(moves, root=root, kind="switch-library.rename")
+
+    @staticmethod
+    def apply(plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        return transaction.apply(plan_id, confirm_token)
+
+    @staticmethod
+    def rollback(operation_id: str) -> transaction.RollbackResult:
+        return transaction.rollback(operation_id, reason="switch-library-rename")
 
     @staticmethod
     def _unique_name(
@@ -200,11 +239,23 @@ class SwitchLibraryOrganizer:
         # Remove extensão eventualmente presente no nome canônico para aplicar fmt.
         stem = Path(base).stem
         candidate = f"{stem}.{fmt}"
-        if candidate not in used_names:
+        if candidate.casefold() not in used_names:
             return candidate
         n = 2
         while True:
             candidate = f"{stem}{collision_suffix.format(n=n)}.{fmt}"
-            if candidate not in used_names:
+            if candidate.casefold() not in used_names:
                 return candidate
             n += 1
+
+
+def _validate_canonical_name(value: str) -> None:
+    if any(
+        unicodedata.category(char) == "Cc" or unicodedata.bidirectional(char) in _BIDI_CONTROLS
+        for char in value
+    ):
+        raise SteamZeroError("E-API-SCHEMA", detail="nome canônico DAT contém controle invisível")
+    # A entrada representa somente um nome, nunca um caminho.
+    fs.validate_relative_entry(value)
+    if len(Path(value).parts) != 1:
+        raise SteamZeroError("E-API-SCHEMA", detail="nome canônico DAT não pode conter diretório")
