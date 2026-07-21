@@ -179,7 +179,7 @@ def test_scanner_finds_title_id_in_parent_directory(tmp_path: Path) -> None:
 def test_scanner_excludes_updates_and_dlc_from_base_game_library(tmp_path: Path) -> None:
     base = tmp_path / "Example [0100ABCDEF123000].nsp"
     update = tmp_path / "Example Update [0100ABCDEF123800].nsp"
-    dlc = tmp_path / "Example DLC [0100ABCDEF123001].nsz"
+    dlc = tmp_path / "Example DLC [0100ABCDEF124001].nsz"
     base.write_bytes(b"base")
     update.write_bytes(b"update")
     dlc.write_bytes(b"dlc")
@@ -187,6 +187,14 @@ def test_scanner_excludes_updates_and_dlc_from_base_game_library(tmp_path: Path)
     matches = SwitchLibraryScanner().discover(tmp_path)
 
     assert [match.path for match in matches] == [base]
+
+    inventory = SwitchLibraryScanner().inventory(tmp_path)
+    by_path = {item.path: item for item in inventory}
+    assert by_path[base].content_kind == "base"
+    assert by_path[update].content_kind == "update"
+    assert by_path[update].parent_title_id == "0100ABCDEF123000"
+    assert by_path[dlc].content_kind == "dlc"
+    assert by_path[dlc].parent_title_id == "0100ABCDEF123000"
 
 
 def test_scanner_excludes_named_auxiliary_content_without_title_id(tmp_path: Path) -> None:
@@ -202,6 +210,23 @@ def test_scanner_excludes_named_auxiliary_content_without_title_id(tmp_path: Pat
     matches = SwitchLibraryScanner().discover(tmp_path)
 
     assert [match.path for match in matches] == [base]
+
+
+def test_scanner_excludes_scene_version_above_zero_without_title_id(tmp_path: Path) -> None:
+    base = tmp_path / "Example Game [v0].nsp"
+    update = tmp_path / "Example Game [v131072].nsp"
+    base.write_bytes(b"base")
+    update.write_bytes(b"update")
+
+    matches = SwitchLibraryScanner().discover(tmp_path)
+
+    assert [match.path for match in matches] == [base]
+
+
+def test_scanner_cleans_terminal_scene_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "Ultra Street Fighter II [01007330027EE000][v0].nsp"
+
+    assert SwitchLibraryScanner.clean_display_name(path) == "Ultra Street Fighter II"
 
 
 def test_scanner_prefers_base_title_id_over_words_in_game_name(tmp_path: Path) -> None:

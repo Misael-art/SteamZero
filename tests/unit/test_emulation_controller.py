@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters import emulation
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
 from steamzero.core.errors import SteamZeroError
@@ -96,6 +97,17 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     ):
         assert target.read_text(encoding="utf-8") == keys.read_text(encoding="utf-8")
 
+    citron_data_key = data_home / "citron" / "keys" / "prod.keys"
+    citron_config_key = config_home / "citron" / "keys" / "prod.keys"
+    citron_data_key.unlink()
+    citron_config_key.unlink()
+    assert controller._key_projection_valid("citron") is False  # type: ignore[attr-defined]
+    repair = controller.plan_action({"actionId": "keys.repair"})
+    _apply(controller, repair)
+    assert controller._key_projection_valid("citron") is True  # type: ignore[attr-defined]
+    assert citron_data_key.read_bytes() == keys.read_bytes()
+    assert citron_config_key.read_bytes() == keys.read_bytes()
+
     firmware = home / "firmware.nca"
     firmware.write_bytes(b"owned-firmware")
     firmware_plan = controller.plan_action(
@@ -119,6 +131,37 @@ def test_nsz_manifest_is_valid_and_failed_install_leaves_no_partial_tool(
     with pytest.raises(SteamZeroError, match="instalação NSZ falhou"):
         manager.install()
     assert not manager.root.exists()
+
+
+def test_keys_import_projects_optional_title_keys(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local/share"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    source = home / "owned-keys"
+    source.mkdir(parents=True)
+    (source / "prod.keys").write_text(
+        "master_key_00 = " + "01" * 16 + "\n"
+        "master_key_01 = " + "02" * 16 + "\n"
+        "header_key = " + "03" * 16 + "\n"
+        "titlekek_00 = " + "04" * 16 + "\n",
+        encoding="utf-8",
+    )
+    title_content = "a" * 32 + " = " + "b" * 32 + "\n"
+    (source / "title.keys").write_text(title_content, encoding="utf-8")
+
+    _apply(controller, controller.plan_action({"actionId": "keys.import", "path": str(source)}))
+
+    for target in (
+        home / ".switch/title.keys",
+        home / ".local/share/eden/keys/title.keys",
+        home / ".local/share/citron/keys/title.keys",
+        home / ".config/citron/keys/title.keys",
+        home / "Ryujinx/system/title.keys",
+    ):
+        assert target.read_text(encoding="utf-8") == title_content
 
 
 def test_nsz_private_install_is_idempotent_after_verified_publication(
@@ -214,6 +257,14 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "size": len(b"owned-game"),
             "format": "xcz",
             "identityVerified": False,
+            "contentKind": "base",
+            "metadataSource": "format",
+            "version": None,
+            "updateCount": 0,
+            "updateVersion": None,
+            "dlcCount": 0,
+            "bannerAsset": "",
+            "mediaSource": "fallback",
             "steamSelected": False,
             "steamPublished": False,
             "playAction": {
@@ -232,6 +283,28 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             },
         }
     ]
+
+
+def test_library_groups_updates_and_dlcs_under_unique_base(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    (roms / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"base")
+    (roms / "Example [0100ABCDEF123800][v131072].nsp").write_bytes(b"update")
+    (roms / "Example [DLC Pack] [0100ABCDEF124001][v0].nsp").write_bytes(b"dlc")
+
+    applied = _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+
+    assert applied["library"]["games"] == 1
+    assert applied["library"]["ignoredAuxiliary"] == 2
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["name"] == "Example"
+    assert game["updateCount"] == 1
+    assert game["updateVersion"] == "v131072"
+    assert game["dlcCount"] == 1
 
 
 def test_game_preference_launch_delete_and_rollback(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -258,9 +331,17 @@ def test_game_preference_launch_delete_and_rollback(monkeypatch, tmp_path: Path)
         "steamzero.adapters.emulation.AdapterEngine.payload_path",
         lambda _self, emulator_id: tmp_path / f"{emulator_id}.AppImage",
     )
+    monkeypatch.setattr(controller, "_require_key_projection", lambda _emulator_id: None)
     result = controller.launch_game(game_id)
     assert result["emulatorId"] == "ryubing"
-    assert launched == [(str(tmp_path / "ryubing.AppImage"), str(rom))]
+    assert launched == [
+        (
+            str(tmp_path / "ryubing.AppImage"),
+            "-f",
+            "--hide-updates",
+            str(rom),
+        )
+    ]
 
     delete_plan = controller.plan_action({"actionId": "game.delete", "gameId": game_id})
     deleted = _apply(controller, delete_plan)
@@ -279,6 +360,59 @@ def test_game_preference_launch_delete_and_rollback(monkeypatch, tmp_path: Path)
     applied_foreign = _apply(controller, foreign)
     with pytest.raises(SteamZeroError, match="não pertence à exclusão"):
         controller.rollback_action(str(applied_foreign["operationId"]))
+
+
+def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
+    monkeypatch,
+) -> None:  # type: ignore[no-untyped-def]
+    observed: dict[str, object] = {}
+
+    def fake_popen(argv, **kwargs):  # type: ignore[no-untyped-def]
+        observed["argv"] = argv
+        observed["env"] = kwargs["env"]
+        return object()
+
+    monkeypatch.setattr(emulation.subprocess, "Popen", fake_popen)
+    emulation._spawn_detached(
+        ("/home/test/Emulator.AppImage", "-g", "/home/test/Game With Spaces.nsp")
+    )
+
+    assert observed["argv"] == [
+        "/home/test/Emulator.AppImage",
+        "-g",
+        "/home/test/Game With Spaces.nsp",
+    ]
+    assert observed["env"]["APPIMAGELAUNCHER_DISABLE"] == "1"  # type: ignore[index]
+
+
+def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local/share"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    for name in ("eden", "citron"):
+        config = home / ".config" / name / "qt-config.ini"
+        config.parent.mkdir(parents=True)
+        config.write_text(
+            "[UI]\ncheck_for_updates_on_start=true\nenable_auto_update_check=true\n",
+            encoding="utf-8",
+        )
+    ryubing = home / "Ryujinx" / "Config.json"
+    ryubing.parent.mkdir(parents=True)
+    ryubing.write_text('{"check_updates_on_start":true}\n', encoding="utf-8")
+
+    plan = controller.plan_action({"actionId": "runtime.prepare"})
+    _apply(controller, plan)
+
+    assert "check_for_updates_on_start=false" in (
+        home / ".config/eden/qt-config.ini"
+    ).read_text(encoding="utf-8")
+    assert "enable_auto_update_check=false" in (
+        home / ".config/citron/qt-config.ini"
+    ).read_text(encoding="utf-8")
+    assert '"check_updates_on_start": false' in ryubing.read_text(encoding="utf-8")
 
 
 def test_library_discovers_existing_lowercase_emulation_root(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

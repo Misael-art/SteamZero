@@ -30,6 +30,19 @@ _AUXILIARY_CONTENT_IN_NAME_RE = re.compile(
     r"(?:^|[\s._\-\[\]()])(?:dlc|update|updates|patch|add[\s._-]?on)(?:$|[\s._\-\[\]()])",
     re.IGNORECASE,
 )
+_UPDATE_CONTENT_IN_NAME_RE = re.compile(
+    r"(?:^|[\s._\-\[\]()])(?:upd|update|updates|patch)(?:$|[\s._\-\[\]()])",
+    re.IGNORECASE,
+)
+_DLC_CONTENT_IN_NAME_RE = re.compile(
+    r"(?:^|[\s._\-\[\]()])(?:dlc|add[\s._-]?on)(?:$|[\s._\-\[\]()])",
+    re.IGNORECASE,
+)
+_SCENE_VERSION_RE = re.compile(r"(?<![A-Za-z0-9])v([0-9]+)(?![A-Za-z0-9])", re.IGNORECASE)
+_TRAILING_METADATA_RE = re.compile(
+    r"(?:\s*\[(?:[0-9A-Fa-f]{16}|v[0-9]+)\]\s*)+$",
+    re.IGNORECASE,
+)
 _SWITCH_FORMATS = frozenset({"nsp", "nsz", "xci", "xcz", "nro"})
 _BIDI_CONTROLS = frozenset({"LRE", "RLE", "LRO", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI"})
 
@@ -119,6 +132,10 @@ class SwitchRomCandidate:
     path: Path
     format: str
     title_id: str | None
+    content_kind: str = "base"
+    parent_title_id: str | None = None
+    version: int | None = None
+    metadata_source: str = "fallback"
 
 
 class SwitchLibraryScanner:
@@ -129,19 +146,35 @@ class SwitchLibraryScanner:
 
     def discover(self, root: Path) -> list[SwitchRomCandidate]:
         """Descobre jogos por metadados baratos, sem ler dumps inteiros."""
+        return [candidate for candidate in self.inventory(root) if candidate.content_kind == "base"]
+
+    def inventory(self, root: Path) -> list[SwitchRomCandidate]:
+        """Classifica jogos e complementos sem transformar auxiliares em jogos.
+
+        O Title ID é a evidência estrutural primária. Quando ele não está
+        disponível (por exemplo, antes da importação das keys), diretório, nome
+        e versão de cena fornecem um fallback conservador. Conteúdo auxiliar
+        permanece no inventário para associação ao jogo base, mas nunca é
+        retornado por :meth:`discover`.
+        """
         results: list[SwitchRomCandidate] = []
         for path in fs.iter_files(root):
             fmt = self._format_of(path.name)
             if fmt is None:
                 continue
             title_id = self._title_id_from_path(path, root)
-            if not self._is_base_game(path, root, fmt, title_id):
-                continue
+            kind, parent_title_id, version, source = self.classify(
+                path, root=root, fmt=fmt, title_id=title_id
+            )
             results.append(
                 SwitchRomCandidate(
                     path=path,
                     format=fmt,
                     title_id=title_id,
+                    content_kind=kind,
+                    parent_title_id=parent_title_id,
+                    version=version,
+                    metadata_source=source,
                 )
             )
         return results
@@ -180,16 +213,67 @@ class SwitchLibraryScanner:
         marcadores explícitos no nome/caminho relativo são usados para evitar
         esconder dumps legítimos por heurística ampla.
         """
-        if fmt not in {"nsp", "nsz"}:
-            return True
-        if title_id is not None:
-            return title_id.endswith("000")
+        kind, _parent, _version, _source = cls.classify(
+            path, root=root, fmt=fmt, title_id=title_id
+        )
+        return kind == "base"
+
+    @classmethod
+    def classify(
+        cls,
+        path: Path,
+        *,
+        root: Path,
+        fmt: str,
+        title_id: str | None,
+    ) -> tuple[str, str | None, int | None, str]:
+        """Retorna ``kind``, parent, versão e fonte da decisão.
+
+        Updates oficiais usam o Title ID da aplicação base acrescido de
+        ``0x800``. DLCs ocupam a faixa seguinte de ``0x1000``. A matemática só
+        é aplicada a NSP/NSZ, formatos que podem carregar conteúdo instalável.
+        """
         try:
             relative = path.relative_to(root)
         except ValueError:
             relative = Path(path.name)
         searchable = " ".join((*relative.parent.parts, path.stem))
-        return _AUXILIARY_CONTENT_IN_NAME_RE.search(searchable) is None
+        version_match = _SCENE_VERSION_RE.search(searchable)
+        version = int(version_match.group(1)) if version_match is not None else None
+
+        if fmt not in {"nsp", "nsz"}:
+            return "base", None, version, "format"
+        if title_id is not None:
+            numeric = int(title_id, 16)
+            suffix = numeric & 0xFFF
+            if suffix == 0:
+                return "base", None, version, "title-id"
+            if suffix == 0x800:
+                return "update", f"{numeric - 0x800:016X}", version, "title-id"
+            parent = (numeric & ~0xFFF) - 0x1000
+            if parent >= 0:
+                return "dlc", f"{parent:016X}", version, "title-id"
+
+        if _DLC_CONTENT_IN_NAME_RE.search(searchable) is not None:
+            return "dlc", None, version, "name"
+        if _UPDATE_CONTENT_IN_NAME_RE.search(searchable) is not None or (
+            version is not None and version > 0
+        ):
+            return "update", None, version, "name"
+        return "base", None, version, "fallback"
+
+    @staticmethod
+    def clean_display_name(path: Path) -> str:
+        """Remove somente metadados de cena terminais, preservando o título."""
+        cleaned = _TRAILING_METADATA_RE.sub("", path.stem).strip(" ._-[]()")
+        return cleaned or path.stem
+
+    @staticmethod
+    def association_key(path: Path) -> str:
+        """Chave nominal conservadora para complemento sem parent ID resolvível."""
+        title = path.stem.split("[", 1)[0]
+        title = _AUXILIARY_CONTENT_IN_NAME_RE.sub(" ", title)
+        return "".join(character for character in title.casefold() if character.isalnum())
 
     @staticmethod
     def _title_id_from_name(name: str) -> str | None:

@@ -67,6 +67,7 @@ def _spawn_detached(argv: Sequence[str]) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
+        env={**os.environ, "APPIMAGELAUNCHER_DISABLE": "1"},
     )
 
 
@@ -114,9 +115,9 @@ class EmulationController:
     def snapshot(self, desktop_status: Mapping[str, Any]) -> dict[str, Any]:
         emulator_rows = self._emulator_rows()
         games, unidentified = self._load_library_cache()
-        games = self._enrich_games(games, emulator_rows)
         roots = self.library_roots()
-        key_status, firmware_status = self._requirements()
+        key_status, firmware_status = self._requirements(emulator_rows)
+        games = self._enrich_games(games, emulator_rows, key_status, firmware_status)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -246,7 +247,19 @@ class EmulationController:
             engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
             payload = engine.payload_path(emulator_id)
         rom = Path(str(game["path"]))
-        self._spawn((str(payload), str(rom)))
+        classification = SwitchLibraryScanner.classify(
+            rom,
+            root=self._root_for_game(rom.resolve(strict=True)),
+            fmt=str(game.get("format", rom.suffix.lstrip(".").casefold())),
+            title_id=str(game["titleId"]) if game.get("titleId") else None,
+        )
+        if classification[0] != "base" or game.get("contentKind", "base") != "base":
+            raise SteamZeroError(
+                "E-CONTENT-FW-INCOMPAT",
+                detail="updates e DLCs não podem ser iniciados; selecione a ROM base",
+            )
+        self._require_key_projection(emulator_id)
+        self._spawn(self._launch_argv(emulator_id, payload, rom))
         return {
             "status": "started",
             "gameId": game_id,
@@ -281,16 +294,20 @@ class EmulationController:
     def scan_library(self) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
         discovered: dict[str, dict[str, Any]] = {}
+        auxiliary: list[Any] = []
         unidentified = 0
         errors: list[str] = []
         for raw_root in self.library_roots():
             root = Path(raw_root)
             try:
-                matches = scanner.discover(root)
+                matches = scanner.inventory(root)
             except (OSError, SteamZeroError) as exc:
                 errors.append(f"{root}: {exc}")
                 continue
             for match in matches:
+                if match.content_kind != "base":
+                    auxiliary.append(match)
+                    continue
                 try:
                     stat = match.path.stat()
                 except OSError as exc:
@@ -303,10 +320,11 @@ class EmulationController:
                 if not identity_verified:
                     unidentified += 1
                 stable_id = hashlib.sha256(str(match.path).encode()).hexdigest()[:24]
+                banner_asset, media_source = self._cover_asset(match.title_id)
                 discovered[str(match.path)] = {
                     "id": stable_id,
                     "titleId": match.title_id,
-                    "name": match.path.stem,
+                    "name": scanner.clean_display_name(match.path),
                     "state": "ready" if identity_verified else "unverified",
                     "statusLabel": (
                         match.format.upper()
@@ -319,13 +337,57 @@ class EmulationController:
                     "size": stat.st_size,
                     "format": match.format,
                     "identityVerified": identity_verified,
+                    "contentKind": "base",
+                    "metadataSource": match.metadata_source,
+                    "version": f"v{match.version}" if match.version is not None else None,
+                    "updateCount": 0,
+                    "updateVersion": None,
+                    "dlcCount": 0,
+                    "bannerAsset": banner_asset,
+                    "mediaSource": media_source,
                 }
+        by_title_id = {
+            str(game["titleId"]): game
+            for game in discovered.values()
+            if isinstance(game.get("titleId"), str)
+        }
+        by_name: dict[str, list[dict[str, Any]]] = {}
+        for game in discovered.values():
+            key = scanner.association_key(Path(str(game["path"])))
+            if key:
+                by_name.setdefault(key, []).append(game)
+        associated_content: set[tuple[str, str]] = set()
+        for item in auxiliary:
+            parent = by_title_id.get(str(item.parent_title_id))
+            if parent is None:
+                name_matches = by_name.get(scanner.association_key(item.path), [])
+                if len(name_matches) == 1:
+                    parent = name_matches[0]
+            if parent is None:
+                continue
+            identity = item.title_id or str(item.path)
+            content_key = (item.content_kind, identity)
+            if content_key in associated_content:
+                continue
+            associated_content.add(content_key)
+            if item.content_kind == "update":
+                parent["updateCount"] = int(parent["updateCount"]) + 1
+                if item.version is not None:
+                    current = parent.get("updateVersionNumber")
+                    if not isinstance(current, int) or item.version > current:
+                        parent["updateVersionNumber"] = item.version
+                        parent["updateVersion"] = f"v{item.version}"
+            elif item.content_kind == "dlc":
+                parent["dlcCount"] = int(parent["dlcCount"]) + 1
+        for game in discovered.values():
+            game.pop("updateVersionNumber", None)
         game_rows = sorted(discovered.values(), key=lambda game: str(game["name"]).casefold())
         payload = {
             "schemaVersion": 1,
             "games": game_rows,
             "unidentified": unidentified,
             "errors": errors[:20],
+            "ignoredAuxiliary": len(auxiliary),
         }
         fs.write_atomic_text(
             self._library_cache_path,
@@ -336,6 +398,7 @@ class EmulationController:
             "games": len(game_rows),
             "unidentified": unidentified,
             "errors": errors[:20],
+            "ignoredAuxiliary": len(auxiliary),
         }
 
     def plan_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -344,6 +407,10 @@ class EmulationController:
             plan = self._plan_root_add(Path(self._required_string(payload, "path")))
         elif action == "keys.import":
             plan = self._plan_keys(Path(self._required_string(payload, "path")))
+        elif action == "keys.repair":
+            plan = self._plan_key_repair()
+        elif action == "runtime.prepare":
+            plan = self._plan_runtime_prepare()
         elif action == "firmware.import":
             plan = self._plan_firmware(
                 Path(self._required_string(payload, "path")),
@@ -531,7 +598,9 @@ class EmulationController:
                 )
         return rows
 
-    def _requirements(self) -> tuple[dict[str, Any], dict[str, Any]]:
+    def _requirements(
+        self, emulators: Sequence[Mapping[str, Any]]
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         with self._store_factory() as store:
             store.migrate()
             keys = store.list_firmware_key_items("switch", kind="key")
@@ -540,15 +609,38 @@ class EmulationController:
         versions = [str(row["version"]) for row in firmwares if row.get("version")]
         key_revision = max(revisions) if revisions else None
         firmware_version = max(versions, key=self._version_tuple) if versions else None
+        installed_emulators = [
+            str(row["id"])
+            for row in emulators
+            if row.get("installState") == "installed"
+        ]
+        missing_projections = [
+            emulator_id
+            for emulator_id in installed_emulators
+            if not self._key_projection_valid(emulator_id)
+        ]
+        key_status = (
+            "missing"
+            if key_revision is None
+            else "unverified"
+            if missing_projections
+            else "ok"
+        )
         key = {
             "kind": "keys",
-            "status": "ok" if key_revision is not None else "missing",
+            "status": key_status,
             "required": None,
             "installed": f"rev{key_revision}" if key_revision is not None else None,
-            "detail": "Keys próprias validadas localmente."
-            if key_revision is not None
-            else "Importe seu arquivo prod.keys.",
-            "blocksPlay": key_revision is None,
+            "detail": (
+                "Keys próprias validadas e disponíveis nos emuladores instalados."
+                if key_status == "ok"
+                else (
+                    "Sincronize as keys com: " + ", ".join(missing_projections) + "."
+                    if key_revision is not None
+                    else "Importe seu arquivo prod.keys."
+                )
+            ),
+            "blocksPlay": key_status != "ok",
         }
         firmware = {
             "kind": "firmware",
@@ -625,7 +717,13 @@ class EmulationController:
                         "ready" if keys["status"] == "ok" else "blocked",
                         str(keys["installed"] or "Ausentes"),
                         action=self._action(
-                            "keys.import", "Importar arquivo/pasta/ZIP", confirmation=True
+                            "keys.repair" if keys["status"] == "unverified" else "keys.import",
+                            (
+                                "Sincronizar com emuladores"
+                                if keys["status"] == "unverified"
+                                else "Importar arquivo/pasta/ZIP"
+                            ),
+                            confirmation=True,
                         ),
                     ),
                     self._card(
@@ -829,6 +927,11 @@ class EmulationController:
                         "Instalações e imports usam preview, confirmação e rollback.",
                         "ready",
                         "Auditável",
+                        action=self._action(
+                            "runtime.prepare",
+                            "Preparar lançamento direto",
+                            confirmation=True,
+                        ),
                     ),
                 ],
                 "primaryAction": self._action("emulation.refresh", "Atualizar diagnóstico"),
@@ -874,6 +977,31 @@ class EmulationController:
         )
         targets = [target, *projections]
         copies = self._new_copy_targets(source, targets, digest)
+        title_sources = [
+            path for path in candidates if path.name.casefold() == "title.keys"
+        ]
+        if len(title_sources) > 1:
+            raise SteamZeroError(
+                "E-CONTENT-KEYS-INCOMPAT", detail="mais de um arquivo title.keys encontrado"
+            )
+        if title_sources:
+            title_source = title_sources[0]
+            self._validate_title_keys(title_source)
+            title_digest = fs.hash_file(title_source, algo="sha256")
+            title_target = (
+                paths.keys_dir() / "switch" / f"title-{title_digest[:12]}.keys"
+            )
+            title_targets = [
+                title_target,
+                *(
+                    self._title_key_projection_targets()
+                    if paths.data_home().resolve().is_relative_to(Path.home().resolve())
+                    else ()
+                ),
+            ]
+            copies.extend(
+                self._new_copy_targets(title_source, title_targets, title_digest)
+            )
         root = self._compatible_root({candidate: b"" for _, candidate in copies})
         plan = (
             transaction.plan_copy_files(copies, root=root, kind="emulation.keys-import")
@@ -889,6 +1017,44 @@ class EmulationController:
             },
         )
         return plan
+
+    def _plan_key_repair(self) -> transaction.Plan:
+        source = self._current_key_source()
+        digest = fs.hash_file(source, algo="sha256")
+        copies: list[tuple[Path, Path]] = []
+        for target in self._key_projection_targets():
+            if not target.exists() and not target.is_symlink():
+                copies.append((source, target))
+                continue
+            if target.is_file() and fs.hash_file(target, algo="sha256") == digest:
+                continue
+            raise SteamZeroError(
+                "E-CONTENT-KEYS-INCOMPAT",
+                detail=f"key existente diverge; revise manualmente antes de substituir: {target}",
+            )
+        title_source = self._current_title_key_source()
+        if title_source is not None:
+            title_digest = fs.hash_file(title_source, algo="sha256")
+            copies.extend(
+                self._new_copy_targets(
+                    title_source, self._title_key_projection_targets(), title_digest
+                )
+            )
+        if not copies:
+            return transaction.plan_write_files(
+                {}, root=Path.home(), kind="emulation.keys-repair"
+            )
+        return transaction.plan_copy_files(
+            copies, root=Path.home(), kind="emulation.keys-repair"
+        )
+
+    def _plan_runtime_prepare(self) -> transaction.Plan:
+        writes = self._runtime_config_writes()
+        return transaction.plan_write_files(
+            writes,
+            root=Path.home(),
+            kind="emulation.runtime-prepare",
+        )
 
     def _plan_firmware(self, selected: Path, version: str) -> transaction.Plan:
         if not _FIRMWARE_VERSION.fullmatch(version):
@@ -979,6 +1145,34 @@ class EmulationController:
             )
         return max(revisions)
 
+    @staticmethod
+    def _validate_title_keys(source: Path) -> None:
+        try:
+            lines = source.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            raise SteamZeroError(
+                "E-CONTENT-KEYS-INCOMPAT", detail="title.keys ilegível"
+            ) from exc
+        names: set[str] = set()
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            match = _KEY_LINE.fullmatch(line)
+            if match is None or re.fullmatch(r"[0-9a-f]{32}", match.group(1)) is None:
+                raise SteamZeroError(
+                    "E-CONTENT-KEYS-INCOMPAT", detail="entrada inválida em title.keys"
+                )
+            if match.group(1) in names:
+                raise SteamZeroError(
+                    "E-CONTENT-KEYS-INCOMPAT", detail="Title ID duplicado em title.keys"
+                )
+            names.add(match.group(1))
+        if not names:
+            raise SteamZeroError(
+                "E-CONTENT-KEYS-INCOMPAT", detail="title.keys está vazio"
+            )
+
     def _persist_import(self, pending: _PendingMutation) -> None:
         metadata = pending.metadata
         with self._store_factory() as store:
@@ -1057,8 +1251,99 @@ class EmulationController:
             home / ".switch" / "prod.keys",
             home / ".local" / "share" / "eden" / "keys" / "prod.keys",
             home / ".local" / "share" / "citron" / "keys" / "prod.keys",
+            home / ".config" / "citron" / "keys" / "prod.keys",
             home / "Ryujinx" / "system" / "prod.keys",
         )
+
+    @staticmethod
+    def _title_key_projection_targets() -> tuple[Path, ...]:
+        home = Path.home()
+        return (
+            home / ".switch" / "title.keys",
+            home / ".local/share/eden/keys/title.keys",
+            home / ".local/share/citron/keys/title.keys",
+            home / ".config/citron/keys/title.keys",
+            home / "Ryujinx/system/title.keys",
+        )
+
+    @staticmethod
+    def _emulator_key_targets(emulator_id: str) -> tuple[Path, ...]:
+        home = Path.home()
+        return {
+            "eden": (home / ".local/share/eden/keys/prod.keys",),
+            "citron": (
+                home / ".local/share/citron/keys/prod.keys",
+                home / ".config/citron/keys/prod.keys",
+            ),
+            "ryubing": (home / "Ryujinx/system/prod.keys",),
+        }[emulator_id]
+
+    def _current_key_source(self) -> Path:
+        with self._store_factory() as store:
+            store.migrate()
+            rows = store.list_firmware_key_items("switch", kind="key")
+        ranked = sorted(
+            rows,
+            key=lambda row: (int(row.get("revision") or -1), str(row.get("last_validated") or "")),
+            reverse=True,
+        )
+        for row in ranked:
+            relpath = row.get("relpath")
+            if not isinstance(relpath, str):
+                continue
+            candidate = paths.keys_dir() / relpath
+            if candidate.is_file() and not candidate.is_symlink():
+                return candidate
+        raise SteamZeroError(
+            "E-CONTENT-KEYS-INCOMPAT",
+            detail="a key catalogada não está disponível; importe prod.keys novamente",
+        )
+
+    @staticmethod
+    def _current_title_key_source() -> Path | None:
+        root = paths.keys_dir() / "switch"
+        try:
+            candidates = [
+                path
+                for path in root.glob("title-*.keys")
+                if path.is_file() and not path.is_symlink()
+            ]
+            return max(candidates, key=lambda path: path.stat().st_mtime_ns, default=None)
+        except OSError:
+            return None
+
+    def _key_projection_valid(self, emulator_id: str) -> bool:
+        try:
+            source = self._current_key_source()
+            digest = fs.hash_file(source, algo="sha256")
+        except (OSError, SteamZeroError):
+            return False
+        for target in self._emulator_key_targets(emulator_id):
+            try:
+                if target.is_file() and fs.hash_file(target, algo="sha256") == digest:
+                    return True
+            except OSError:
+                continue
+        return False
+
+    def _require_key_projection(self, emulator_id: str) -> None:
+        if not self._key_projection_valid(emulator_id):
+            raise SteamZeroError(
+                "E-CONTENT-KEYS-INCOMPAT",
+                detail=(
+                    f"prod.keys não está sincronizada com {emulator_id}; "
+                    "use Sincronizar com emuladores em Keys e firmware"
+                ),
+            )
+
+    @staticmethod
+    def _launch_argv(emulator_id: str, payload: Path, rom: Path) -> tuple[str, ...]:
+        """Monta argv sem shell; cada caminho permanece um argumento atômico."""
+        if emulator_id in {"eden", "citron"}:
+            return (str(payload), "-f", "-g", str(rom))
+        if emulator_id == "ryubing":
+            return (str(payload), "-f", "--hide-updates", str(rom))
+        raise SteamZeroError("E-API-SCHEMA", detail="emulador não permitido")
 
     @staticmethod
     def _firmware_projection_targets(digest: str) -> tuple[Path, ...]:
@@ -1095,6 +1380,39 @@ class EmulationController:
                     writes[config] = self._merge_qsettings_game_dirs(
                         config.read_text(encoding="utf-8"), roots
                     ).encode()
+        return writes
+
+    @staticmethod
+    def _runtime_config_writes() -> dict[Path, bytes]:
+        """Desativa somente verificações interativas no boot dos emuladores."""
+        home = Path.home()
+        writes: dict[Path, bytes] = {}
+        for name in ("eden", "citron"):
+            config = home / ".config" / name / "qt-config.ini"
+            if not config.is_file() or config.is_symlink():
+                continue
+            try:
+                content = config.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            updated = re.sub(
+                r"(?m)^(check_for_updates_on_start|enable_auto_update_check)=true$",
+                r"\1=false",
+                content,
+            )
+            if updated != content:
+                writes[config] = updated.encode()
+        ryubing = home / "Ryujinx" / "Config.json"
+        if ryubing.is_file() and not ryubing.is_symlink():
+            try:
+                data = json.loads(ryubing.read_text(encoding="utf-8"))
+                if data.get("check_updates_on_start") is not False:
+                    data["check_updates_on_start"] = False
+                    writes[ryubing] = (
+                        json.dumps(data, indent=2, ensure_ascii=False).encode() + b"\n"
+                    )
+            except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+                pass
         return writes
 
     @staticmethod
@@ -1190,7 +1508,11 @@ class EmulationController:
         )
 
     def _enrich_games(
-        self, games: list[dict[str, Any]], emulators: list[dict[str, Any]]
+        self,
+        games: list[dict[str, Any]],
+        emulators: list[dict[str, Any]],
+        keys: Mapping[str, Any],
+        firmware: Mapping[str, Any],
     ) -> list[dict[str, Any]]:
         settings = self._load_game_settings(strict=False)
         published = self._shortcuts.managed_game_ids()
@@ -1205,7 +1527,18 @@ class EmulationController:
             game_id = str(game["id"])
             selected = settings.get(game_id, {})
             emulator_id = selected.get("emulatorId")
-            ready = isinstance(emulator_id, str) and emulator_id in installed
+            emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
+            keys_ready = keys.get("status") == "ok"
+            firmware_ready = firmware.get("status") == "ok"
+            ready = emulator_ready and keys_ready and firmware_ready
+            if not emulator_ready:
+                play_reason = "Selecione um emulador instalado para este jogo."
+            elif not keys_ready:
+                play_reason = "Sincronize prod.keys com os emuladores instalados."
+            elif not firmware_ready:
+                play_reason = "Importe e valide o firmware antes de jogar."
+            else:
+                play_reason = None
             game.update(
                 {
                     "emulatorId": emulator_id,
@@ -1215,11 +1548,7 @@ class EmulationController:
                         f"game.launch:{game_id}",
                         "Jogar",
                         enabled=ready,
-                        reason=(
-                            None
-                            if ready
-                            else "Selecione um emulador instalado para este jogo."
-                        ),
+                        reason=play_reason,
                     ),
                     "deleteAction": self._action(
                         f"game.delete:{game_id}", "Excluir ROM", confirmation=True
@@ -1282,10 +1611,63 @@ class EmulationController:
                     continue
                 if not all(isinstance(game.get(field), str) for field in ("id", "name", "state")):
                     continue
-                valid.append(game)
+                path_value = game.get("path")
+                if not isinstance(path_value, str):
+                    continue
+                candidate_path = Path(path_value)
+                candidate_root = next(
+                    (
+                        Path(root)
+                        for root in self.library_roots()
+                        if candidate_path.is_relative_to(Path(root))
+                    ),
+                    candidate_path.parent,
+                )
+                fmt = str(game.get("format", candidate_path.suffix.lstrip(".").casefold()))
+                kind, _parent, _version, _source = SwitchLibraryScanner.classify(
+                    candidate_path,
+                    root=candidate_root,
+                    fmt=fmt,
+                    title_id=str(title_id) if title_id is not None else None,
+                )
+                if kind != "base" or game.get("contentKind", "base") != "base":
+                    continue
+                normalized = dict(game)
+                normalized["contentKind"] = "base"
+                normalized["name"] = SwitchLibraryScanner.clean_display_name(candidate_path)
+                valid.append(normalized)
             return valid, max(0, unidentified)
         except (OSError, ValueError, json.JSONDecodeError):
             return [], 0
+
+    @staticmethod
+    def _cover_asset(title_id: str | None) -> tuple[str, str]:
+        if title_id is None:
+            return "", "fallback"
+        home = Path.home()
+        roots = (
+            (paths.data_home() / "media/switch/custom", "custom"),
+            (paths.data_home() / "cache/covers", "scraped"),
+            (home / ".local/share/eden/icons", "emulator-cache"),
+            (home / ".local/share/citron/icons", "emulator-cache"),
+            (home / "Ryujinx/games" / title_id, "emulator-cache"),
+        )
+        names = (title_id, title_id.casefold(), "icon")
+        suffixes = (".png", ".jpg", ".jpeg", ".webp")
+        for root, source in roots:
+            for name in names:
+                for suffix in suffixes:
+                    candidate = root / f"{name}{suffix}"
+                    try:
+                        if (
+                            candidate.is_file()
+                            and not candidate.is_symlink()
+                            and candidate.stat().st_size <= 16 * 1024 * 1024
+                        ):
+                            return candidate.resolve(strict=True).as_uri(), source
+                    except OSError:
+                        continue
+        return "", "fallback"
 
     @staticmethod
     def _physical_dock(status: Mapping[str, Any]) -> bool:
