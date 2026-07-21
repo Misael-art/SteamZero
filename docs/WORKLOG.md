@@ -2102,3 +2102,45 @@ timeout intencional e não deixou processo órfão. Nenhum reboot ou ajuste de b
 foi executado.
 
 **Rollback:** `0.1.0a33-a8aa074d81a3` foi preservada como release anterior.
+
+## 2026-07-21 — Sessão 55: lançamento determinístico Eden/Ryubing
+
+**Branch:** `codex/correcao-launch-emulacao`, criada em worktree isolado a
+partir de `1cc2845`. A árvore concorrente do agente em
+`codex/lancamento-steam-roms` permaneceu intocada.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Seleção confirmada passa a ser a única usada pelo Play; seleção pendente bloqueia o lançamento | `6cd3ce0` | testes de controller, bridge e harness QML |
+| AppImages usam bypass explícito e ambiente sem integração interativa; caminhos permanecem argumentos atômicos | `6cd3ce0` | `test_launch_argv_uses_explicit_appimage_bypass` e ensaios reais Eden/Ryubing sem popup |
+| Keys, firmware, diretórios de ROM e flags de atualização são projetados nos diretórios reais de Eden, Citron e Ryubing | `6cd3ce0`, `3aeb818`, `af41841` | testes unitários de import/runtime; hashes e configurações conferidos no host |
+| Diretórios especiais herdados deixam a biblioteca dos emuladores | `3aeb818` | `test_firmware_folder_is_not_registered_as_game_directory` |
+| Firmware do Ryubing adota o layout nativo fragmentado `<hash>.nca/00` | `af41841` | regressão de projeção e log real com firmware `22.5.0` e `Application Loaded` |
+| Encerramento sinaliza somente grupos do payload gerenciado | `6cd3ce0` | teste de isolamento de process group e encerramento real de Eden/Ryubing |
+
+**Gates:** 854 testes passaram em diretório temporário curto; Ruff, mypy em 89
+arquivos, independence, boundaries, `git diff --check`, `qmllint` e harnesses
+QML ficaram verdes. A execução inicial no caminho temporário longo encontrou
+somente `AF_UNIX path too long`; a repetição suportada em `/tmp` passou sem
+alterar código ou teste.
+
+**Host/release:** a release final `0.1.0a33-af41841b118e`, originada da árvore
+limpa `af41841b118efe4d70614bcc62259470e5d48439`, foi ativada pelo instalador
+transacional. Wheel SHA-256
+`9c4999a9ee90c275b835927bd8d5543536a20ad4aa706e94a93f917dd7096e88`;
+cinco wheels runtime e entry points de boot foram conferidos. Serviço/socket
+ficaram ativos e o doctor aprovou quatro checks.
+
+**Validação funcional:** Eden iniciou a ROM base de Demon Slayer com Title ID
+`0100AD80208A8000`; Ryubing reconheceu firmware `22.5.0`, carregou o mesmo NSP
+base e registrou `Application Loaded`. Ambos encerraram sem processos geridos
+remanescentes. Nenhuma janela AppImageLauncher/KDialog permaneceu aberta. A
+preferência final do jogo foi restaurada para Eden, com Play habilitado.
+
+**Migração e rollback:** 238 projeções planas do firmware Ryubing, todas
+validadas por SHA-256, foram removidas pela operação transacional
+`01KY399E68XFBHH6XHPMD5RANH` com garantia `G-FULL`, antes da reprojeção no
+layout correto. A release anterior `0.1.0a33-3aeb81866b0d` permanece disponível;
+a operação de migração também possui rollback independente. Nenhum reboot nem
+ajuste de boot foi executado; o teste prolongado em Game Mode permanece com o
+operador.
