@@ -235,7 +235,7 @@ class EmulationController:
     def launch_game(self, game_id: str) -> dict[str, Any]:
         game = self._current_game(game_id)
         settings = self._load_game_settings(strict=True)
-        game_settings = settings.get(game_id, {})
+        game_settings = self._settings_for_game(game, settings)
         emulator_id = game_settings.get("emulatorId")
         if not isinstance(emulator_id, str):
             raise SteamZeroError(
@@ -461,7 +461,12 @@ class EmulationController:
             self._current_game(game_id)
             emulator_id = self._required_string(payload, "emulatorId")
             self._require_managed_emulator(emulator_id)
-            plan = self._plan_game_setting(game_id, "emulatorId", emulator_id)
+            plan = self._plan_game_setting(
+                game_id,
+                "emulatorId",
+                emulator_id,
+                key_emulator_id=emulator_id,
+            )
         elif action == "game.steam.set":
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
@@ -475,7 +480,7 @@ class EmulationController:
             selected = [
                 self._current_game(str(game["id"]))
                 for game in games
-                if settings.get(str(game["id"]), {}).get("steamSelected") is True
+                if self._settings_for_game(game, settings).get("steamSelected") is True
             ]
             plan = self._shortcuts.plan(selected)
         elif action == "game.delete":
@@ -1278,6 +1283,45 @@ class EmulationController:
             "ryubing": (home / "Ryujinx/system/prod.keys",),
         }[emulator_id]
 
+    @staticmethod
+    def _emulator_title_key_targets(emulator_id: str) -> tuple[Path, ...]:
+        home = Path.home()
+        return {
+            "eden": (home / ".local/share/eden/keys/title.keys",),
+            "citron": (
+                home / ".local/share/citron/keys/title.keys",
+                home / ".config/citron/keys/title.keys",
+            ),
+            "ryubing": (home / "Ryujinx/system/title.keys",),
+        }[emulator_id]
+
+    def _key_projection_copies(self, emulator_id: str) -> list[tuple[Path, Path]]:
+        """Projeta as keys centrais ao consumidor escolhido no mesmo plano.
+
+        A preferência do jogo e os arquivos requeridos são confirmados juntos;
+        assim o botão Jogar nunca depende de uma segunda jornada manual. Alvos
+        divergentes continuam bloqueados para não sobrescrever dados externos.
+        """
+        try:
+            source = self._current_key_source()
+        except SteamZeroError:
+            return []
+        digest = fs.hash_file(source, algo="sha256")
+        copies = self._new_copy_targets(
+            source, self._emulator_key_targets(emulator_id), digest
+        )
+        title_source = self._current_title_key_source()
+        if title_source is not None:
+            title_digest = fs.hash_file(title_source, algo="sha256")
+            copies.extend(
+                self._new_copy_targets(
+                    title_source,
+                    self._emulator_title_key_targets(emulator_id),
+                    title_digest,
+                )
+            )
+        return copies
+
     def _current_key_source(self) -> Path:
         with self._store_factory() as store:
             store.migrate()
@@ -1490,7 +1534,12 @@ class EmulationController:
             return {}
 
     def _plan_game_setting(
-        self, game_id: str, key: str, value: str | bool
+        self,
+        game_id: str,
+        key: str,
+        value: str | bool,
+        *,
+        key_emulator_id: str | None = None,
     ) -> transaction.Plan:
         settings = self._load_game_settings(strict=True)
         updated = {current: dict(raw) for current, raw in settings.items()}
@@ -1501,11 +1550,48 @@ class EmulationController:
             ensure_ascii=False,
             separators=(",", ":"),
         ).encode()
+        writes = {self._game_settings_path: content}
+        copies = (
+            self._key_projection_copies(key_emulator_id)
+            if key_emulator_id is not None
+            else []
+        )
+        root = self._compatible_root(
+            {**writes, **{target: b"" for _source, target in copies}}
+        )
+        if copies:
+            return transaction.plan_copy_files(
+                copies,
+                root=root,
+                kind=f"emulation.game-settings:{game_id}",
+                writes=writes,
+            )
         return transaction.plan_write_files(
-            {self._game_settings_path: content},
-            root=paths.config_home(),
+            writes,
+            root=root,
             kind=f"emulation.game-settings:{game_id}",
         )
+
+    @staticmethod
+    def _settings_for_game(
+        game: Mapping[str, Any], settings: Mapping[str, dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Resolve preferências canônicas e IDs legados sem exigir nova escolha.
+
+        As primeiras versões usavam os 16 primeiros caracteres do fingerprint
+        como ID. O ID atual é derivado do caminho e tem 24 caracteres; aceitar
+        o alias antigo preserva seleção de emulador e publicação Steam depois
+        de uma nova varredura ou atualização do runtime.
+        """
+        game_id = game.get("id")
+        fingerprint = game.get("fingerprint")
+        candidates = [game_id]
+        if isinstance(fingerprint, str) and len(fingerprint) >= 16:
+            candidates.append(fingerprint[:16])
+        for candidate in candidates:
+            if isinstance(candidate, str) and candidate in settings:
+                return dict(settings[candidate])
+        return {}
 
     def _enrich_games(
         self,
@@ -1525,16 +1611,20 @@ class EmulationController:
         for raw in games:
             game = dict(raw)
             game_id = str(game["id"])
-            selected = settings.get(game_id, {})
+            selected = self._settings_for_game(game, settings)
             emulator_id = selected.get("emulatorId")
             emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
-            keys_ready = keys.get("status") == "ok"
+            keys_ready = bool(
+                emulator_ready
+                and isinstance(emulator_id, str)
+                and self._key_projection_valid(emulator_id)
+            )
             firmware_ready = firmware.get("status") == "ok"
             ready = emulator_ready and keys_ready and firmware_ready
             if not emulator_ready:
                 play_reason = "Selecione um emulador instalado para este jogo."
             elif not keys_ready:
-                play_reason = "Sincronize prod.keys com os emuladores instalados."
+                play_reason = f"Sincronize prod.keys com {emulator_id}."
             elif not firmware_ready:
                 play_reason = "Importe e valide o firmware antes de jogar."
             else:

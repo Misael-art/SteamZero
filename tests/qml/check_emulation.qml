@@ -170,6 +170,31 @@ Window {
         object.destroy()
     }
 
+    function testEmulatorMaintenanceListsEveryManagedEmulator() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "selectedScope": "emulator",
+                "selectedArea": "overview",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [
+                    {"id": "eden", "name": "Eden", "state": "ready"},
+                    {"id": "citron", "name": "Citron", "state": "ready"},
+                    {"id": "ryubing", "name": "Ryubing", "state": "ready"}
+                ],
+                "games": []
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        check(object.emulatorMaintenanceCount === 3,
+              "a aba Emulador deve exibir os três emuladores")
+        object.destroy()
+    }
+
     Component {
         id: pageComponent
         Emulation {
@@ -195,6 +220,7 @@ Window {
         testSafeFallback()
         testBackendArea()
         testGameLibraryJourney()
+        testEmulatorMaintenanceListsEveryManagedEmulator()
         if (failures === 0)
             console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
         Qt.exit(failures === 0 ? 0 : 1)

@@ -86,6 +86,7 @@ Item {
         ? selectedPlatform.areas : defaultAreas
     readonly property var emulators: selectedPlatform.emulators || []
     readonly property var games: selectedPlatform.games || []
+    readonly property int emulatorMaintenanceCount: emulatorMaintenanceRepeater.count
     readonly property var selectedEmulator: emulators.length > 0 && emulatorIndex < emulators.length
         ? emulators[emulatorIndex] : ({
             "id": "", "name": qsTr("Nenhum emulador verificado"), "state": "unsupported",
@@ -1822,7 +1823,7 @@ Item {
                         spacing: 8
 
                         Label {
-                            text: qsTr("Manutenção do emulador selecionado")
+                            text: qsTr("Emuladores desta plataforma")
                             color: page.textColor
                             font.pixelSize: 18
                             font.bold: true
@@ -1858,7 +1859,9 @@ Item {
                         }
 
                         Repeater {
-                            model: page.emulators.length > 0 ? [page.selectedEmulator] : []
+                            id: emulatorMaintenanceRepeater
+                            objectName: "emulatorMaintenanceRepeater"
+                            model: page.emulators
                             delegate: Rectangle {
                                 id: emulatorRow
                                 required property var modelData

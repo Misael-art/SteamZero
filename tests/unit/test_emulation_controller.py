@@ -102,6 +102,20 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     citron_data_key.unlink()
     citron_config_key.unlink()
     assert controller._key_projection_valid("citron") is False  # type: ignore[attr-defined]
+
+    rom = roms / "Example [0100ABCDEF123000][v0].nsp"
+    rom.write_bytes(b"owned-game")
+    controller.scan_library()
+    game_id = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["id"]
+    selection = controller.plan_action(
+        {"actionId": "game.emulator.set", "gameId": game_id, "emulatorId": "citron"}
+    )
+    assert str(citron_data_key) in str(selection["preview"])
+    _apply(controller, selection)
+    assert controller._key_projection_valid("citron") is True  # type: ignore[attr-defined]
+
+    citron_data_key.unlink()
+    citron_config_key.unlink()
     repair = controller.plan_action({"actionId": "keys.repair"})
     _apply(controller, repair)
     assert controller._key_projection_valid("citron") is True  # type: ignore[attr-defined]
@@ -116,6 +130,40 @@ def test_imports_project_to_switch_consumers_and_save_game_directories(
     _apply(controller, firmware_plan)
     assert any((data_home / "citron/nand/system/Contents/registered").glob("*.nca"))
     assert any((home / "Ryujinx/bis/system/Contents/registered").glob("*.nca"))
+
+
+def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    fingerprint = "9b75526e806dd370" + "a" * 48
+    current_id = "0fd1b7954e6eaf474f5e8c8c"
+    settings_path = controller._game_settings_path  # type: ignore[attr-defined]
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        '{"schemaVersion":1,"games":{"9b75526e806dd370":'
+        '{"emulatorId":"eden","steamSelected":true}}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        controller,
+        "_key_projection_valid",
+        lambda emulator_id: emulator_id == "eden",
+    )
+
+    enriched = controller._enrich_games(  # type: ignore[attr-defined]
+        [{"id": current_id, "fingerprint": fingerprint}],
+        [
+            {"id": "eden", "installState": "installed"},
+            {"id": "citron", "installState": "installed"},
+        ],
+        {"status": "unverified"},
+        {"status": "ok"},
+    )
+
+    assert enriched[0]["emulatorId"] == "eden"
+    assert enriched[0]["steamSelected"] is True
+    assert enriched[0]["playAction"]["enabled"] is True
 
 
 def test_nsz_manifest_is_valid_and_failed_install_leaves_no_partial_tool(
