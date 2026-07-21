@@ -451,6 +451,19 @@ ApplicationWindow {
         }
     }
 
+    function performEmulationAction(action) {
+        if (!action || action.enabled !== true) {
+            notify(action && action.reason
+                ? action.reason : qsTr("Esta ação de emulação ainda não está disponível."), true)
+            return
+        }
+        if (action.id === "emulation.refresh") {
+            refreshStatus(qsTr("Ambiente de emulação verificado"))
+            return
+        }
+        notify(action.reason || qsTr("Ação de emulação não reconhecida; nada foi alterado."), true)
+    }
+
     function beginConflictResolution() {
         if (!desktopStatus.conflictActions || desktopStatus.conflictActions.length === 0) {
             notify(qsTr("Este conflito não possui correção automática allowlisted"), true)
@@ -1325,10 +1338,7 @@ ApplicationWindow {
                                     root.performRowAction(component)
                                 }
                                 onActionRequested: function(action) {
-                                    const reason = action && action.reason
-                                        ? action.reason
-                                        : qsTr("A bridge local ainda não publicou esta ação.")
-                                    root.notify(reason, true)
+                                    root.performEmulationAction(action)
                                 }
                                 onSystemRequested: root.sectionIndex = 5
                             }
