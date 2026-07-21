@@ -1716,3 +1716,34 @@ adicionais explícitos, preservando a independência de runtime.
 rollback ou ação privilegiada no host foi executada nesta sessão. A release
 ativa continuou `0.1.0a33-5c8c33ddb0dd`; a instalação desta correção exige um
 novo fluxo de release autorizado e os preflights obrigatórios do repositório.
+
+## 2026-07-21 — Sessão 40: Ryubing gerenciado e identidade visual dos emuladores
+
+**Branch:** `codex/correcao-instalacao-emuladores`, mantendo o worktree isolado
+da Sessão 39. Nenhum arquivo ou commit das outras frentes foi alterado.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Substituição do Ryujinx descontinuado pelo Ryubing 1.3.3 com AppImage oficial x86-64, versão e SHA-256 fixados, lockfile, smoke, instalação, atualização, abertura, desinstalação e rollback | `bb85481` | `test_adapters.py`, `test_emulation_controller.py`, `test_switch_emulators.py`, `test_switch_schemas.py` |
+| Logos oficiais de Eden, Citron e Ryubing nas linhas de instalação/manutenção, com fallback seguro para o ícone do sistema e atribuição | `bb85481` | `check_emulation.qml`, `qmllint` e inspeção renderizada dos ativos |
+
+**Gates finais:** 826 testes passaram; Ruff verde; mypy sem erros em 88
+arquivos; independence e boundaries verdes; `qmllint` terminou com código zero.
+A suíte completa foi executada fora do sandbox somente porque os testes de
+integração exigem sockets Unix/HTTP locais efêmeros.
+
+**Verificação de fornecimento:** o AppImage oficial foi obtido de
+`git.ryujinx.app`, teve SHA-256
+`b4511f46612276bb8490d7c30a017622854be75a06c1ca7a9728b71862d4822a`
+conferido e o smoke `--appimage-version` terminou com código zero, mantendo a
+integração automática do AppImageLauncher desabilitada durante a validação.
+
+**Decisões conservadoras:** `ryubing.net` não foi usado como fonte. A identidade
+e os artefatos foram vinculados ao domínio `ryujinx.app` controlado pela
+organização oficial verificada do projeto. Keys, firmware e conteúdo do Switch
+continuam exclusivamente locais e fornecidos pelo usuário.
+
+**Host/release:** nenhuma instalação, build de wheel, alteração de serviço,
+rollback ou ação privilegiada foi executada. A release ativa e o rollback do
+host não foram modificados; publicação no host exige um novo fluxo de release
+explicitamente autorizado e todos os preflights do repositório.
