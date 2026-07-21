@@ -1684,3 +1684,35 @@ pendentes; `steamzero-core.socket/service` ativos após daemon-reload/restart;
 workspace Switch v1 exposto com estado honesto `unverified`; QML empacotado
 carregou offscreen por seis segundos sem erro. O teste visual/físico final da
 central, navegação por gamepad, portátil e dock permanece com o operador.
+
+## 2026-07-20 — Sessão 39: correções funcionais da central Switch
+
+**Branch:** `codex/correcao-instalacao-emuladores`, criada do tip `5890bb7` de
+`origin/main`. O trabalho permaneceu no worktree isolado desta branch; arquivos
+não rastreados e worktrees das outras frentes não foram tocados.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Instalação, atualização, abertura e desinstalação de Eden/Citron com fonte HTTPS pinada, checksum, smoke test, confirmação e rollback | `d4044d1` | `test_adapters.py`, `test_desktop_ui_bridge.py` |
+| Diretórios adicionais de ROMs, descoberta de caminhos locais compatíveis, varredura e identificação de Title ID | `d4044d1` | `test_emulation_controller.py`, `test_switch_library.py` |
+| Importação local de keys e firmware por arquivo, pasta ou ZIP seguro, com versão e estado persistidos | `d4044d1` | `test_emulation_controller.py` e validações de archive/transação existentes |
+| Importação e ativação/desativação de updates e DLC; backups de save, shader cache e reconciliação de storage | `d4044d1` | `test_emulation_controller.py`, `test_switch_content.py` |
+| Seletores QML, ações por emulador, preview e confirmação das operações | `6927858` | `qmllint`, `check_emulation.qml`, `check_main_emulation.qml` |
+
+**Gates finais:** 825 testes passaram; Ruff lint e format-check verdes; mypy em
+88 arquivos; independence e boundaries verdes. Os dois harnesses QML passaram
+com Qt6 offscreen. Os AppImages pinados de Eden e Citron tiveram hash conferido
+e o smoke `--appimage-version` retornou código zero com a integração automática
+do host explicitamente desabilitada durante a verificação.
+
+**Decisões conservadoras:** Ryujinx permanece sem instalação gerenciada porque
+a origem original está descontinuada; uma instalação externa pode ser detectada,
+mas nenhuma fonte substituta não verificada é promovida. Keys, firmware, ROMs,
+updates, DLC, saves e caches são exclusivamente conteúdo local selecionado pelo
+usuário. A descoberta padrão usa diretórios genéricos existentes e caminhos
+adicionais explícitos, preservando a independência de runtime.
+
+**Host/release:** nenhuma instalação, build de wheel, alteração de serviço,
+rollback ou ação privilegiada no host foi executada nesta sessão. A release
+ativa continuou `0.1.0a33-5c8c33ddb0dd`; a instalação desta correção exige um
+novo fluxo de release autorizado e os preflights obrigatórios do repositório.
