@@ -476,6 +476,14 @@ ApplicationWindow {
             })
             return
         }
+        if (action.id.indexOf("game.launch:") === 0) {
+            const gameId = action.id.split(":")[1]
+            request("POST", "/emulation/game/launch", {"gameId": gameId},
+                    function(response) {
+                notify(qsTr("Jogo iniciado com %1").arg(response.emulatorId), false)
+            })
+            return
+        }
         if (action.id.indexOf("emulator.install:") === 0
                 || action.id.indexOf("emulator.update:") === 0
                 || action.id.indexOf("emulator.uninstall:") === 0) {
@@ -491,14 +499,19 @@ ApplicationWindow {
         }
         if (["library.root.add", "keys.import", "firmware.import", "nsz.install", "nsz.convert",
                 "content.update.import", "content.dlc.import", "content.save.import",
-                "content.shader.import", "storage.recover"].indexOf(action.id) >= 0
-                || action.id.indexOf("content.state:") === 0) {
+                "content.shader.import", "storage.recover", "game.emulator.set",
+                "game.steam.set", "steam.shortcuts.sync"].indexOf(action.id) >= 0
+                || action.id.indexOf("content.state:") === 0
+                || action.id.indexOf("game.delete:") === 0) {
             const payload = {
                 "actionId": action.id,
                 "path": action.path || "",
                 "titleId": action.titleId || "",
                 "emulatorId": action.emulatorId || "",
-                "version": action.version || ""
+                "version": action.version || "",
+                "gameId": action.gameId || (action.id.indexOf("game.delete:") === 0
+                    ? action.id.split(":")[1] : ""),
+                "selected": action.selected === true
             }
             request("POST", "/emulation/action/plan", payload, function(response) {
                 emulationPlan = response.plan

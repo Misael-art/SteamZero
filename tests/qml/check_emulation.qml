@@ -139,8 +139,8 @@ Window {
                 "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
                 "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
                 "games": [
-                    {"id": "b", "path": "/roms/b.nsp", "name": "Zelda", "titleId": "010000000000B000", "size": 20, "format": "nsp", "state": "ready", "statusLabel": "NSP"},
-                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ"}
+                    {"id": "b", "path": "/roms/b.nsp", "name": "Zelda", "titleId": "010000000000B000", "size": 20, "format": "nsp", "state": "ready", "statusLabel": "NSP", "steamSelected": true, "steamPublished": true},
+                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ", "playAction": {"id": "game.launch:a", "label": "Jogar", "enabled": true}}
                 ]
             }]
         })
@@ -163,8 +163,10 @@ Window {
         check(object.selectedGame.id === "a", "seleção da linha deve atualizar o painel do jogo")
         check(object.compatibilityState(object.selectedGame, "eden") === "unknown",
               "compatibilidade ausente não pode ser inventada")
-        check(object.gamePlayAction(object.selectedGame).enabled === false,
-              "Jogar deve ficar bloqueado sem plano publicado")
+        check(object.gamePlayAction(object.selectedGame).enabled === true,
+              "Jogar deve consumir a ação publicada pelo backend")
+        check(object.steamSelectedCount() === 1, "seleção Steam deve ser contada")
+        check(object.steamPublishedCount() === 1, "atalho Steam publicado deve ser contado")
         object.destroy()
     }
 

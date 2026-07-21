@@ -354,6 +354,14 @@ Item {
         }
     }
 
+    function steamSelectedCount() {
+        return games.filter(function(game) { return game.steamSelected === true }).length
+    }
+
+    function steamPublishedCount() {
+        return games.filter(function(game) { return game.steamPublished === true }).length
+    }
+
     function openGameArea(areaId) {
         areaIndex = areaIndexById(areaId)
     }
@@ -1173,6 +1181,22 @@ Item {
                                 }
                             }
                             Button {
+                                text: qsTr("Sincronizar Steam (%1)").arg(page.steamSelectedCount())
+                                icon.name: "steam"
+                                enabled: page.steamSelectedCount() > 0
+                                    || page.steamPublishedCount() > 0
+                                palette.button: enabled ? page.cyanDarkColor : page.raisedColor
+                                palette.buttonText: enabled ? page.textColor : page.mutedColor
+                                Layout.minimumHeight: 44
+                                Accessible.description: qsTr("A Steam deve estar fechada; somente jogos marcados serão sincronizados.")
+                                onClicked: page.dispatchAction({
+                                    "id": "steam.shortcuts.sync",
+                                    "label": text,
+                                    "enabled": true,
+                                    "requiresConfirmation": true
+                                })
+                            }
+                            Button {
                                 text: qsTr("Varrer")
                                 icon.name: "view-refresh"
                                 palette.button: page.raisedColor
@@ -1409,6 +1433,24 @@ Item {
                                                 }
                                             }
                                         }
+                                        CheckBox {
+                                            text: gameRow.modelData.steamPublished
+                                                ? qsTr("Publicado na Steam") : qsTr("Incluir na Steam")
+                                            checked: gameRow.modelData.steamSelected === true
+                                            palette.windowText: checked ? page.cyanColor : page.mutedColor
+                                            Accessible.description: qsTr("Marca este jogo para a próxima sincronização da biblioteca Steam.")
+                                            onClicked: {
+                                                page.selectGame(gameRow.modelData)
+                                                page.dispatchAction({
+                                                    "id": "game.steam.set",
+                                                    "label": checked ? qsTr("Marcar para Steam") : qsTr("Desmarcar da Steam"),
+                                                    "enabled": true,
+                                                    "requiresConfirmation": true,
+                                                    "gameId": gameRow.modelData.id,
+                                                    "selected": checked
+                                                })
+                                            }
+                                        }
                                     }
 
                                     ColumnLayout {
@@ -1438,15 +1480,26 @@ Item {
                                         textRole: "name"
                                         currentIndex: page.gameEmulatorIndex(gameRow.modelData)
                                         displayText: currentIndex >= 0 ? currentText : qsTr("Não definido")
-                                        enabled: false
+                                        enabled: page.emulators.length > 0
                                         palette.button: page.raisedColor
-                                        palette.buttonText: page.mutedColor
+                                        palette.buttonText: page.textColor
                                         palette.base: page.raisedColor
-                                        palette.text: page.mutedColor
+                                        palette.text: page.textColor
                                         Layout.preferredWidth: 126
                                         Layout.minimumHeight: 40
                                         Accessible.name: qsTr("Emulador padrão de %1").arg(gameRow.modelData.name)
-                                        Accessible.description: qsTr("A preferência por jogo ainda não é publicada pelo serviço.")
+                                        Accessible.description: qsTr("Define qual emulador será usado pelo botão Jogar e pelo atalho da Steam.")
+                                        onActivated: {
+                                            page.selectGame(gameRow.modelData)
+                                            page.dispatchAction({
+                                                "id": "game.emulator.set",
+                                                "label": qsTr("Definir emulador do jogo"),
+                                                "enabled": true,
+                                                "requiresConfirmation": true,
+                                                "gameId": gameRow.modelData.id,
+                                                "emulatorId": page.emulators[currentIndex].id
+                                            })
+                                        }
                                     }
 
                                     ColumnLayout {
@@ -2041,18 +2094,26 @@ Item {
                                 textRole: "name"
                                 currentIndex: page.gameEmulatorIndex(page.selectedGame)
                                 displayText: currentIndex >= 0 ? currentText : qsTr("Não definido")
-                                enabled: false
+                                enabled: page.emulators.length > 0
                                 palette.button: page.raisedColor
-                                palette.buttonText: page.mutedColor
+                                palette.buttonText: page.textColor
                                 palette.base: page.raisedColor
-                                palette.text: page.mutedColor
+                                palette.text: page.textColor
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 42
-                                Accessible.description: qsTr("A preferência persistente ainda não é publicada pelo serviço.")
+                                Accessible.description: qsTr("Preferência persistente usada pelo lançamento direto e pela Steam.")
+                                onActivated: page.dispatchAction({
+                                    "id": "game.emulator.set",
+                                    "label": qsTr("Definir emulador do jogo"),
+                                    "enabled": true,
+                                    "requiresConfirmation": true,
+                                    "gameId": page.selectedGame.id,
+                                    "emulatorId": page.emulators[currentIndex].id
+                                })
                             }
                             Label {
-                                text: qsTr("O seletor será habilitado quando o backend publicar a preferência usada pelo Play.")
-                                color: page.amberColor
+                                text: qsTr("Esta escolha controla o Play direto e o atalho publicado na Steam.")
+                                color: page.mutedColor
                                 font.pixelSize: 10
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -2227,6 +2288,17 @@ Item {
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 42
                                     onClicked: page.openGameArea("media")
+                                }
+                                Button {
+                                    text: qsTr("Excluir ROM…")
+                                    icon.name: "edit-delete"
+                                    enabled: Boolean(page.selectedGame.deleteAction)
+                                    palette.button: page.raisedColor
+                                    palette.buttonText: page.redColor
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 42
+                                    Accessible.description: qsTr("A remoção exige confirmação e mantém backup transacional para rollback.")
+                                    onClicked: page.dispatchAction(page.selectedGame.deleteAction)
                                 }
                             }
                         }
