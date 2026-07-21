@@ -1639,3 +1639,48 @@ reais; o domínio entrega perfil genérico sem inventar chaves de configuração
 ação privilegiada foi executada; release ativa e rollback do host não foram
 alterados. Teste físico com dumps próprios, ferramentas pinadas e dock/controladores
 reais permanece ação do operador após integração da branch.
+
+## 2026-07-20 — Sessão 38: integração, release e instalação da central de emulação
+
+**Integração:** branch `codex/integracao-emulacao-switch` criada do tip
+`af69698` de `origin/main`. Backend e UI foram mesclados em commits explícitos;
+o único conflito foi o apêndice concorrente de `docs/WORKLOG.md`, resolvido
+preservando integralmente e em ordem as Sessões 36 e 37. O gate de formatação
+apontou 13 arquivos do backend e a normalização determinística foi isolada em
+`5c8c33d`. O mesmo commit foi promovido por fast-forward para `main`, sem force
+push.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Merge do backend Switch WI-0..WI-9 | merge pai de `21ceb27` | suíte integrada e contratos golden |
+| Merge da UI e resolução preservadora do WORKLOG | `21ceb27` | harnesses `check_emulation.qml` e `check_main_emulation.qml` |
+| Normalização requerida pelo format gate | `5c8c33d` | Ruff format/check, Ruff lint, mypy, independence e boundaries |
+
+**Gates do commit instalado:** 822 testes passaram; cobertura consolidada
+**85.72%** (limiar 85%); Ruff lint/format, mypy em 87 arquivos, independence e
+boundaries verdes; `qmllint` e os dois harnesses Qt6 com exit 0. O `make check`
+foi também executado: a ferramenta encerrou sua emissão longa durante o pytest,
+então a mesma coleta de cobertura foi concluída em grupos sequenciais com
+`--cov-append` e relatório único acima do limiar.
+
+**Release construída de árvore limpa:**
+- Source commit: `5c8c33ddb0dd6f869cdbeca93c46656446cc9dc4`
+- Release canônica: `0.1.0a33-5c8c33ddb0dd`
+- Wheel: `steamzero-0.1.0a33-py3-none-any.whl`
+- SHA-256: `eb4cdce1ff7f86803670db1b3e4364e927d3e17db6b51aeafac50245884ce2d7`
+- Wheelhouse: 5 wheels binários verificados por hash; entry points de CLI,
+  core, sessão, launcher e boot conferidos antes da ativação.
+
+**Instalação autorizada pelo operador nesta thread:** executada exclusivamente
+com `bigsudo /usr/bin/python3 tools/install_host.py install` e argumentos
+canônicos. Release anterior e rollback disponível:
+`0.1.0a33-af69698d58b0`. Nenhuma configuração de terceiro, reboot ou ativação de
+boot foi realizada.
+
+**Validação pós-instalação:** manifesto v4 íntegro e source tree `clean`;
+`steamzero --version` retornou `0.1.0a33`; doctor OK, schema 6 e zero operações
+pendentes; `steamzero-core.socket/service` ativos após daemon-reload/restart;
+`desktop status` OK no host real; Game Mode disponível com fallback Desktop;
+workspace Switch v1 exposto com estado honesto `unverified`; QML empacotado
+carregou offscreen por seis segundos sem erro. O teste visual/físico final da
+central, navegação por gamepad, portátil e dock permanece com o operador.
