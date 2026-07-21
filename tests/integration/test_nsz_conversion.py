@@ -205,6 +205,33 @@ def test_conversion_requires_token_and_revalidates_source(
         service.apply(plan.plan_id, plan.confirm_token)
     assert exc.value.code == "E-TX-STALE-PLAN"
     assert not destination.exists()
+    assert not any(
+        path.name.startswith("conversion-plan-") for path in paths.staging_dir().iterdir()
+    )
+
+
+def test_conversion_cancel_and_expiry_clean_preview_idempotently(
+    env: Path, nsz_tool: ToolManifest
+) -> None:
+    src = env / "dump.nsp"
+    src.write_bytes(b"original")
+    service = SwitchRomConversionService(
+        _registry(nsz_tool),
+        converter=NszConverter(
+            runner=_fake_runner(b"compressed"), which=lambda _tool: "/bin/nsz"
+        ),
+    )
+    cancelled = service.plan_convert(src, "nsz")
+    assert service.cancel(cancelled.plan_id, cancelled.confirm_token)["status"] == "aborted"
+    assert service.cancel(cancelled.plan_id, cancelled.confirm_token)["status"] == "aborted"
+
+    expired = service.plan_convert(src, "nsz", ttl_s=-1)
+    with pytest.raises(SteamZeroError) as exc:
+        service.apply(expired.plan_id, expired.confirm_token)
+    assert exc.value.code == "E-TX-CONFIRM-REQUIRED"
+    assert not any(
+        path.name.startswith("conversion-plan-") for path in paths.staging_dir().iterdir()
+    )
 
 
 def test_conversion_rollback_refuses_foreign_modified_output(

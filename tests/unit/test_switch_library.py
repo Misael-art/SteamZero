@@ -298,3 +298,18 @@ def test_organizer_plan_apply_and_rollback(tmp_path: Path) -> None:
     organizer.rollback(applied.operation_id)
     assert rom.read_bytes() == b"dump"
     assert not renamed.exists()
+
+
+def test_organizer_rejects_collision_suffix_without_counter(tmp_path: Path) -> None:
+    rom = tmp_path / "old.nsp"
+    rom.write_bytes(b"dump")
+    match = replace(
+        SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure"
+    )
+
+    with pytest.raises(SteamZeroError) as exc:
+        SwitchLibraryOrganizer().preview_rename(
+            tmp_path, [match], collision_suffix=" duplicate"
+        )
+
+    assert exc.value.code == "E-API-SCHEMA"

@@ -423,8 +423,12 @@ def plan_copy_files(
         )
         total_size += size
 
-    requirements = {"spaceBytes": 2 * total_size + _SPACE_MARGIN}
-    requirements.update(requirements_extra or {})
+    extra = requirements_extra or {}
+    if "spaceBytes" in extra:
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="requirements_extra não pode substituir spaceBytes"
+        )
+    requirements = {**extra, "spaceBytes": 2 * total_size + _SPACE_MARGIN}
     now = _now()
     plan = Plan(
         plan_id=ids.new_ulid(),
@@ -530,6 +534,18 @@ def _render_preview(kind: str, actions: list[FileAction], guarantee: str) -> str
 
 def preview(plan: Plan) -> str:
     return plan.preview
+
+
+def abort(plan_id: str, confirm_token: str) -> Plan:
+    """Aborta plano pendente sem tocar nos alvos; operação idempotente."""
+    plan = load_plan(plan_id)
+    if confirm_token != plan.confirm_token:
+        raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken ausente ou incorreto")
+    if plan.status == "applied":
+        raise SteamZeroError("E-TX-STALE-PLAN", detail="plano já aplicado")
+    if plan.status != "aborted":
+        _mark_plan(plan, "aborted")
+    return plan
 
 
 # ===========================================================================

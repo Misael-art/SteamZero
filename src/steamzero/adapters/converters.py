@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -260,7 +261,12 @@ class SwitchRomConversionService:
         self._converter = converter or NszConverter()
 
     def plan_convert(
-        self, src: Path, target_format: str, *, dest_dir: Path | None = None
+        self,
+        src: Path,
+        target_format: str,
+        *,
+        dest_dir: Path | None = None,
+        ttl_s: int = 3600,
     ) -> transaction.Plan:
         from_fmt = src.suffix.lstrip(".").lower()
         tool = self._registry.converter_tool(from_fmt, target_format)
@@ -292,6 +298,7 @@ class SwitchRomConversionService:
                 {converted.dest: destination},
                 root=destination_root,
                 kind="library.convert",
+                ttl_s=ttl_s,
                 requirements_extra={
                     "inputPath": str(source),
                     "inputHash": source_hash,
@@ -309,16 +316,37 @@ class SwitchRomConversionService:
         plan = transaction.load_plan(plan_id)
         if plan.kind != "library.convert":
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de conversão")
+        if datetime.now(UTC) > datetime.fromisoformat(plan.expires_at):
+            SwitchRomConversionService.cancel(plan_id, confirm_token)
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
         source = Path(str(plan.requirements.get("inputPath", "")))
         expected = str(plan.requirements.get("inputHash", ""))
         if source.is_symlink() or not source.is_file() or fs.hash_file(source) != expected:
+            SwitchRomConversionService.cancel(plan_id, confirm_token)
             raise SteamZeroError("E-TX-STALE-PLAN", detail="origem mudou desde o preview")
         result = transaction.apply(plan_id, confirm_token)
-        preview_root = Path(str(plan.requirements.get("previewRoot", "")))
-        if preview_root.name.startswith("conversion-plan-"):
-            confined = fs.resolve_within(paths.staging_dir(), preview_root)
-            fs.remove_tree(confined)
+        SwitchRomConversionService._cleanup_preview(plan)
         return result
+
+    @staticmethod
+    def cancel(plan_id: str, confirm_token: str) -> dict[str, str]:
+        plan = transaction.load_plan(plan_id)
+        if plan.kind != "library.convert":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de conversão")
+        transaction.abort(plan_id, confirm_token)
+        SwitchRomConversionService._cleanup_preview(plan)
+        return {"planId": plan_id, "status": "aborted"}
+
+    @staticmethod
+    def _cleanup_preview(plan: transaction.Plan) -> None:
+        preview_root = Path(str(plan.requirements.get("previewRoot", "")))
+        staging_root = paths.staging_dir().resolve(strict=False)
+        if not preview_root.name.startswith("conversion-plan-"):
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão inválido")
+        confined = fs.resolve_within(staging_root, preview_root)
+        if confined.parent != staging_root:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="staging de conversão não é direto")
+        fs.remove_tree(confined)
 
     @staticmethod
     def rollback(operation_id: str) -> transaction.RollbackResult:

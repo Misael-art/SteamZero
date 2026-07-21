@@ -181,6 +181,7 @@ class SwitchLibraryOrganizer:
 
         Arquivos sem nome canônico (não constam no DAT) ficam de fora do plano.
         """
+        _validate_collision_suffix(collision_suffix)
         root_resolved = root.resolve(strict=True)
         used_names = {entry.name.casefold() for entry in root_resolved.iterdir()}
         seen_sources: set[Path] = set()
@@ -242,11 +243,12 @@ class SwitchLibraryOrganizer:
         if candidate.casefold() not in used_names:
             return candidate
         n = 2
-        while True:
+        while n <= 10_000:
             candidate = f"{stem}{collision_suffix.format(n=n)}.{fmt}"
             if candidate.casefold() not in used_names:
                 return candidate
             n += 1
+        raise SteamZeroError("E-TX-STALE-PLAN", detail="limite de colisões de rename excedido")
 
 
 def _validate_canonical_name(value: str) -> None:
@@ -259,3 +261,16 @@ def _validate_canonical_name(value: str) -> None:
     fs.validate_relative_entry(value)
     if len(Path(value).parts) != 1:
         raise SteamZeroError("E-API-SCHEMA", detail="nome canônico DAT não pode conter diretório")
+
+
+def _validate_collision_suffix(value: str) -> None:
+    if (
+        value.count("{n}") != 1
+        or len(value) > 64
+        or any(ord(char) < 0x20 for char in value)
+        or "/" in value
+        or "\\" in value
+        or value.replace("{n}", "").find("{") >= 0
+        or value.replace("{n}", "").find("}") >= 0
+    ):
+        raise SteamZeroError("E-API-SCHEMA", detail="collision_suffix precisa conter {n}")
