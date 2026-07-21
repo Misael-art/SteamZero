@@ -352,10 +352,9 @@ def _area_data(
                 ),
             ],
             "primaryAction": _action(
-                "platform.scan",
+                "emulation.refresh",
                 "Verificar ambiente",
-                enabled=False,
-                reason="Verificação pela interface ainda não está conectada ao serviço.",
+                enabled=True,
             ),
         },
         "keysFirmware": {
