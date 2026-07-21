@@ -2082,3 +2082,23 @@ scraping/backend permaneceram intocados e fora do commit.
 **Host/release:** nenhuma instalação ou ação privilegiada foi executada. A
 captura recebida ainda corresponde à release ativa
 `0.1.0a33-a8aa074d81a3`, anterior a esta correção e ao commit `ec79604`.
+
+## 2026-07-21 — Sessão 54: ativação da seleção jogável e reparo de keys
+
+**Branch:** `codex/lancamento-steam-roms`. A release foi materializada por
+`git archive` do commit publicado `36b34164e00ef3c4b807ba39c25e03fc88621f1e`,
+sem incorporar os arquivos concorrentes ainda não commitados no worktree.
+
+| Item | Release/evidência |
+|---|---|
+| Release ativada | `0.1.0a33-36b34164e00e`, manifesto v4 e árvore `clean` |
+| Artefato | wheel SHA-256 `2b8802d9be057f985ceba1071fc87bf521ed527eea7fea294808b123470e1a36`; entry points de boot e QML conferidos |
+| Gates | 851 testes, Ruff, mypy em 89 arquivos, independence, boundaries, `qmllint` e dois harnesses QML verdes |
+| Estado funcional | três emuladores instalados; preferências Eden/Ryubing recuperadas; `playAction.enabled=true`; `keys.repair` presente na UI instalada |
+
+**Host:** serviço e socket do core ficaram ativos após `daemon-reload`/restart;
+doctor aprovou os quatro checks, o smoke offscreen permaneceu estável até o
+timeout intencional e não deixou processo órfão. Nenhum reboot ou ajuste de boot
+foi executado.
+
+**Rollback:** `0.1.0a33-a8aa074d81a3` foi preservada como release anterior.
