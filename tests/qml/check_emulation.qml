@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import QtQuick
+import QtQuick.Window
+import "../../src/steamzero/ui/qml"
+
+Window {
+    id: harness
+    visible: false
+    width: 1400
+    height: 900
+    property int failures: 0
+
+    function check(condition, message) {
+        if (condition)
+            return
+        failures += 1
+        console.error("FAIL: " + message)
+    }
+
+    function makePage(payload) {
+        const object = pageComponent.createObject(harness, {"emulation": payload})
+        check(object !== null, "Emulation.qml deve ser instanciável")
+        return object
+    }
+
+    function testHierarchy() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "iconKey": "switch",
+                "state": "ready",
+                "statusLabel": "Pronto",
+                "readiness": {"percent": 75, "title": "Quase pronto", "blockers": []},
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "games": [{"id": "0100", "name": "Jogo de teste"}]
+            }]
+        })
+        if (!object)
+            return
+        check(object.selectedPlatform.id === "switch", "Switch deve ser a plataforma inicial")
+        check(object.readinessPercent() === 75, "prontidão deve ser normalizada")
+        check(object.scopes.length === 5, "devem existir cinco escopos")
+        check(object.areas.length === 10, "devem existir dez áreas especializadas")
+        object.scopeIndex = 1
+        check(object.scopeId() === "emulator", "escopo Emulador deve ser selecionável")
+        check(object.contextTitle() === "Eden", "emulador deve definir o contexto")
+        object.scopeIndex = 2
+        check(object.contextTitle() === "Jogo de teste", "jogo deve definir o contexto")
+        object.scopeIndex = 3
+        check(object.contextTitle() === "Modo portátil", "escopo portátil deve ser explícito")
+        object.scopeIndex = 4
+        check(object.contextTitle() === "Modo dock", "escopo dock deve ser explícito")
+        object.destroy()
+    }
+
+    function testSafeFallback() {
+        const object = makePage({})
+        if (!object)
+            return
+        check(object.selectedPlatform.id === "switch", "fallback deve permanecer na plataforma Switch")
+        check(object.readinessPercent() === 0, "fallback não pode alegar prontidão")
+        check(object.emulators.length === 0, "fallback não pode inventar emulador")
+        check(object.games.length === 0, "fallback não pode inventar jogo")
+        check(object.primaryAction().enabled === false, "ação sem backend deve ficar bloqueada")
+        check(object.primaryAction().requiresConfirmation === true, "ação mutável deve exigir confirmação")
+        object.destroy()
+    }
+
+    function testBackendArea() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "degraded",
+                "readiness": {"percent": 20, "title": "Preparação", "blockers": ["Keys"]},
+                "areaData": {
+                    "keysFirmware": {
+                        "cards": [{
+                            "title": "Firmware",
+                            "state": "compatible",
+                            "status": "18.0.1",
+                            "detail": "Validado",
+                            "metric": "18.0.1"
+                        }],
+                        "primaryAction": {
+                            "id": "keys-import",
+                            "label": "Importar",
+                            "enabled": true,
+                            "requiresConfirmation": true
+                        }
+                    }
+                }
+            }]
+        })
+        if (!object)
+            return
+        object.areaIndex = object.areaIndexById("keysFirmware")
+        check(object.cards().length === 1, "cards do backend devem substituir o fallback")
+        check(object.cards()[0].status === "18.0.1", "status do backend deve ser preservado")
+        check(object.primaryAction().id === "keys-import", "ação versionada deve ser consumida")
+        check(object.primaryAction().enabled === true, "capacidade confirmada pode liberar a ação")
+        object.destroy()
+    }
+
+    Component {
+        id: pageComponent
+        Emulation {
+            width: 1360
+            height: 820
+            backgroundColor: "#071019"
+            sidebarColor: "#09131d"
+            surfaceColor: "#0d1924"
+            raisedColor: "#122131"
+            borderColor: "#2a3a49"
+            textColor: "#f2f6fb"
+            mutedColor: "#9eabba"
+            cyanColor: "#13bdf2"
+            cyanDarkColor: "#0a5f85"
+            greenColor: "#59d35d"
+            amberColor: "#ff9f1a"
+            redColor: "#ff6b73"
+        }
+    }
+
+    Component.onCompleted: {
+        testHierarchy()
+        testSafeFallback()
+        testBackendArea()
+        if (failures === 0)
+            console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
+        Qt.exit(failures === 0 ? 0 : 1)
+    }
+}
