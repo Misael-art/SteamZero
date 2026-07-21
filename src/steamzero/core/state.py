@@ -71,6 +71,15 @@ class StateStore:
     def path(self) -> Path:
         return self._path
 
+    def adapter_connection(self) -> sqlite3.Connection:
+        """Return the migrated store connection to repository adapters.
+
+        Domain repositories share the store transaction and pragmas instead of
+        opening competing SQLite writers.  Callers must keep the ``StateStore``
+        context alive and must never close the returned connection.
+        """
+        return self._conn
+
     @property
     def user_version(self) -> int:
         row = self._conn.execute("PRAGMA user_version").fetchone()

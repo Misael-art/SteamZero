@@ -145,6 +145,47 @@ def copy_file_atomic(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
     _fsync_dir(parent)
 
 
+def copy_file_range_atomic(
+    src: Path,
+    dest: Path,
+    *,
+    offset: int,
+    length: int,
+    mode: int = _FILE_MODE,
+) -> None:
+    """Copia um intervalo regular sem carregar containers grandes na memória."""
+    if offset < 0 or length < 0 or src.is_symlink() or not src.is_file():
+        raise SteamZeroError("E-STORAGE-IO", detail="intervalo de cópia inválido")
+    if offset + length > src.stat().st_size:
+        raise SteamZeroError("E-STORAGE-IO", detail="intervalo excede o arquivo de origem")
+    parent = ensure_dir(dest.parent)
+    tmp = parent / f".{dest.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    dst_fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        src_fd = os.open(src, os.O_RDONLY)
+        try:
+            os.lseek(src_fd, offset, os.SEEK_SET)
+            remaining = length
+            while remaining:
+                chunk = os.read(src_fd, min(_CHUNK, remaining))
+                if not chunk:
+                    raise SteamZeroError(
+                        "E-STORAGE-IO", detail="origem terminou antes do intervalo"
+                    )
+                _write_all(dst_fd, chunk)
+                remaining -= len(chunk)
+        finally:
+            os.close(src_fd)
+        os.fsync(dst_fd)
+    except BaseException:
+        _silent_unlink(tmp)
+        raise
+    finally:
+        os.close(dst_fd)
+    os.replace(tmp, dest)
+    _fsync_dir(parent)
+
+
 def move_file(src: Path, dest: Path) -> None:
     """Move ``src`` para ``dest`` pela porta central de escrita.
 
