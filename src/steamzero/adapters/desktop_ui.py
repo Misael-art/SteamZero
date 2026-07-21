@@ -174,12 +174,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().launch_emulation_emulator(
                 self._required_string(payload, "emulatorId")
             )
+        if path == "/emulation/game/launch":
+            return self._dashboard().launch_emulation_game(
+                self._required_string(payload, "gameId")
+            )
         if path == "/emulation/action/plan":
             return {"plan": self._dashboard().plan_emulation_action(payload)}
         if path == "/emulation/action/apply":
             return self._dashboard().apply_emulation_action(
                 self._required_string(payload, "planId"),
                 self._required_string(payload, "confirmToken"),
+            )
+        if path == "/emulation/action/rollback":
+            return self._dashboard().rollback_emulation_action(
+                self._required_string(payload, "operationId")
             )
         if path == "/emulation/library/scan":
             return self._dashboard().scan_emulation_library()

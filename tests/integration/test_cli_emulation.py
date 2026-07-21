@@ -46,3 +46,22 @@ def test_emulation_workspace_cli_emits_versioned_envelope(
         "advanced",
     }
     assert captured.err == ""
+
+
+def test_emulation_launch_cli_uses_local_controller(
+    monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:  # type: ignore[no-untyped-def]
+    launched: list[str] = []
+
+    class FakeController:
+        def launch_game(self, game_id: str) -> dict[str, str]:
+            launched.append(game_id)
+            return {"status": "started", "gameId": game_id, "emulatorId": "ryubing"}
+
+    monkeypatch.setattr("steamzero.adapters.emulation.EmulationController", FakeController)
+    code = main(["emulation", "launch", "--game-id", "game-1", "--json"])
+    envelope = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert launched == ["game-1"]
+    assert envelope["data"]["emulatorId"] == "ryubing"

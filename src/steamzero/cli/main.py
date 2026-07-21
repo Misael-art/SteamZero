@@ -61,6 +61,7 @@ Domínios (Fase 1):
   desktop keyboard       abre o primeiro teclado virtual funcional
   desktop ui             abre a central Qt/QML opcional
   emulation workspace    read model da central de emulação Switch
+  emulation launch       abre um jogo escaneado (--game-id ID)
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -503,6 +504,23 @@ def _cmd_emulation_workspace(_args: list[str], correlation_id: str) -> tuple[dic
     )
 
 
+def _cmd_emulation_launch(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.emulation import EmulationController
+
+    game_id = _flag_value(args, "--game-id")
+    if game_id is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --game-id <id>")
+    data = EmulationController().launch_game(game_id)
+    return (
+        build_envelope(
+            "emulation",
+            "launch",
+            status="ok",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
 def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     from steamzero.adapters.desktop_kde import activate_virtual_keyboard, toggle_virtual_keyboard
 
@@ -555,6 +573,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("desktop", "keyboard"): _cmd_desktop_keyboard,
     ("desktop", "ui"): _cmd_desktop_ui,
     ("emulation", "workspace"): _cmd_emulation_workspace,
+    ("emulation", "launch"): _cmd_emulation_launch,
 }
 
 

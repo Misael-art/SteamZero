@@ -117,6 +117,10 @@ class FakeDashboard:
         self.calls.append(("emulation-emulator-launch", emulator_id))
         return {"status": "started"}
 
+    def launch_emulation_game(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-game-launch", game_id))
+        return {"status": "started", "gameId": game_id}
+
     def plan_emulation_action(self, payload: dict[str, object]) -> dict[str, object]:
         self.calls.append(("emulation-action-plan", str(payload["actionId"])))
         return {"planId": "emulation-plan", "confirmToken": "emulation-confirm"}
@@ -124,6 +128,10 @@ class FakeDashboard:
     def apply_emulation_action(self, plan_id: str, confirm_token: str) -> dict[str, object]:
         self.calls.append(("emulation-action-apply", plan_id, confirm_token))
         return {"status": "committed"}
+
+    def rollback_emulation_action(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-action-rollback", operation_id))
+        return {"status": "rolled-back"}
 
     def scan_emulation_library(self) -> dict[str, object]:
         self.calls.append(("emulation-library-scan",))
@@ -429,6 +437,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "emulator-plan", "confirmToken": "emulator-confirm"},
     )
     request_json(base, token, "/emulation/emulator/launch", {"emulatorId": "eden"})
+    request_json(base, token, "/emulation/game/launch", {"gameId": "game-1"})
     emulation_plan = request_json(
         base,
         token,
@@ -444,6 +453,12 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         token,
         "/emulation/action/apply",
         {"planId": "emulation-plan", "confirmToken": "emulation-confirm"},
+    )
+    request_json(
+        base,
+        token,
+        "/emulation/action/rollback",
+        {"operationId": "emulation-operation"},
     )
     request_json(base, token, "/emulation/library/scan", {})
     request_json(base, token, "/steam/open", {"target": "library"})
@@ -512,8 +527,10 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("emulation-emulator-plan", "eden", "install"),
         ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
         ("emulation-emulator-launch", "eden"),
+        ("emulation-game-launch", "game-1"),
         ("emulation-action-plan", "storage.recover"),
         ("emulation-action-apply", "emulation-plan", "emulation-confirm"),
+        ("emulation-action-rollback", "emulation-operation"),
         ("emulation-library-scan",),
         ("steam", "library"),
         ("steam-input", "10"),

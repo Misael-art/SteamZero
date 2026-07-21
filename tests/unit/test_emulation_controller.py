@@ -214,8 +214,71 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "size": len(b"owned-game"),
             "format": "xcz",
             "identityVerified": False,
+            "steamSelected": False,
+            "steamPublished": False,
+            "playAction": {
+                "id": f"game.launch:{published[0]['id']}",
+                "label": "Jogar",
+                "enabled": False,
+                "reason": "Selecione um emulador instalado para este jogo.",
+                "requiresConfirmation": False,
+            },
+            "deleteAction": {
+                "id": f"game.delete:{published[0]['id']}",
+                "label": "Excluir ROM",
+                "enabled": True,
+                "reason": None,
+                "requiresConfirmation": True,
+            },
         }
     ]
+
+
+def test_game_preference_launch_delete_and_rollback(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    launched: list[tuple[str, ...]] = []
+    controller = _controller(monkeypatch, tmp_path)
+    controller._spawn = lambda argv: launched.append(tuple(argv))  # type: ignore[attr-defined]
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    rom = roms / "Example [0100ABCDEF123000].nsp"
+    rom.write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game_id = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["id"]
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.set", "gameId": game_id, "emulatorId": "ryubing"}
+        ),
+    )
+
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.AdapterEngine.payload_path",
+        lambda _self, emulator_id: tmp_path / f"{emulator_id}.AppImage",
+    )
+    result = controller.launch_game(game_id)
+    assert result["emulatorId"] == "ryubing"
+    assert launched == [(str(tmp_path / "ryubing.AppImage"), str(rom))]
+
+    delete_plan = controller.plan_action({"actionId": "game.delete", "gameId": game_id})
+    deleted = _apply(controller, delete_plan)
+    assert not rom.exists()
+    assert deleted["library"]["games"] == 0
+    restored = controller.rollback_action(str(deleted["operationId"]))
+    assert restored["status"] == "rolled-back"
+    assert rom.read_bytes() == b"owned-game"
+    assert restored["library"]["games"] == 1
+
+    restored_game_id = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["id"]
+    assert restored_game_id == game_id
+    foreign = controller.plan_action(
+        {"actionId": "game.emulator.set", "gameId": restored_game_id, "emulatorId": "eden"}
+    )
+    applied_foreign = _apply(controller, foreign)
+    with pytest.raises(SteamZeroError, match="não pertence à exclusão"):
+        controller.rollback_action(str(applied_foreign["operationId"]))
 
 
 def test_library_discovers_existing_lowercase_emulation_root(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

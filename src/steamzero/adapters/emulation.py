@@ -26,8 +26,9 @@ from steamzero.adapters.converters import (
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.registry import AdapterRegistry
+from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
-from steamzero.core import fs, ids, paths, safezip, transaction
+from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
@@ -85,12 +86,14 @@ class EmulationController:
         artifacts: HttpsArtifactPort | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
+        shortcuts: SteamShortcutManager | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
         self._artifacts = artifacts or HttpsArtifactPort()
         self._which = which
         self._spawn = spawn
+        self._shortcuts = shortcuts or SteamShortcutManager()
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
@@ -104,9 +107,14 @@ class EmulationController:
     def _library_cache_path(self) -> Path:
         return paths.data_home() / "emulation-library-cache-v1.json"
 
+    @property
+    def _game_settings_path(self) -> Path:
+        return paths.config_home() / "emulation-games-v1.json"
+
     def snapshot(self, desktop_status: Mapping[str, Any]) -> dict[str, Any]:
         emulator_rows = self._emulator_rows()
         games, unidentified = self._load_library_cache()
+        games = self._enrich_games(games, emulator_rows)
         roots = self.library_roots()
         key_status, firmware_status = self._requirements()
         content = self._content.list_records()
@@ -223,6 +231,29 @@ class EmulationController:
         self._spawn((str(payload),))
         return {"status": "started", "emulatorId": emulator_id}
 
+    def launch_game(self, game_id: str) -> dict[str, Any]:
+        game = self._current_game(game_id)
+        settings = self._load_game_settings(strict=True)
+        game_settings = settings.get(game_id, {})
+        emulator_id = game_settings.get("emulatorId")
+        if not isinstance(emulator_id, str):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED", detail="defina o emulador padrão deste jogo"
+            )
+        self._require_managed_emulator(emulator_id)
+        with self._store_factory() as store:
+            store.migrate()
+            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
+            payload = engine.payload_path(emulator_id)
+        rom = Path(str(game["path"]))
+        self._spawn((str(payload), str(rom)))
+        return {
+            "status": "started",
+            "gameId": game_id,
+            "emulatorId": emulator_id,
+            "name": str(game["name"]),
+        }
+
     def library_roots(self) -> list[str]:
         candidates = [
             paths.roms_dir(),
@@ -271,8 +302,9 @@ class EmulationController:
                 identity_verified = match.title_id is not None
                 if not identity_verified:
                     unidentified += 1
-                discovered[fingerprint] = {
-                    "id": fingerprint[:16],
+                stable_id = hashlib.sha256(str(match.path).encode()).hexdigest()[:24]
+                discovered[str(match.path)] = {
+                    "id": stable_id,
                     "titleId": match.title_id,
                     "name": match.path.stem,
                     "state": "ready" if identity_verified else "unverified",
@@ -357,6 +389,36 @@ class EmulationController:
             source_format = source.suffix.lstrip(".").casefold()
             target_format = "nsp" if source_format == "nsz" else "nsz"
             plan = self._nsz_conversion().plan_convert(source, target_format)
+        elif action == "game.emulator.set":
+            game_id = self._required_string(payload, "gameId")
+            self._current_game(game_id)
+            emulator_id = self._required_string(payload, "emulatorId")
+            self._require_managed_emulator(emulator_id)
+            plan = self._plan_game_setting(game_id, "emulatorId", emulator_id)
+        elif action == "game.steam.set":
+            game_id = self._required_string(payload, "gameId")
+            self._current_game(game_id)
+            selected = payload.get("selected")
+            if not isinstance(selected, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="campo booleano obrigatório: selected")
+            plan = self._plan_game_setting(game_id, "steamSelected", selected)
+        elif action == "steam.shortcuts.sync":
+            settings = self._load_game_settings(strict=True)
+            games, _unidentified = self._load_library_cache()
+            selected = [
+                self._current_game(str(game["id"]))
+                for game in games
+                if settings.get(str(game["id"]), {}).get("steamSelected") is True
+            ]
+            plan = self._shortcuts.plan(selected)
+        elif action == "game.delete":
+            game_id = self._required_string(payload, "gameId")
+            game = self._current_game(game_id)
+            source = Path(str(game["path"])).resolve(strict=True)
+            root = self._root_for_game(source)
+            plan = transaction.plan_write_files(
+                {}, root=root, removals={source}, kind=f"emulation.game-delete:{game_id}"
+            )
         else:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de emulação não permitida")
         return self._plan_view(plan, action)
@@ -375,6 +437,8 @@ class EmulationController:
             result = self._content.apply_state(plan_id, confirm_token)
         elif plan.kind == "switch-content.recover":
             result = self._content.apply_recovery(plan_id, confirm_token)
+        elif plan.kind == "steam.shortcuts.sync":
+            result = self._shortcuts.apply(plan_id, confirm_token)
         elif plan.kind.startswith("emulation."):
             result = transaction.apply(plan_id, confirm_token)
         else:
@@ -386,9 +450,30 @@ class EmulationController:
             "status": result.status,
             "operationId": result.operation_id,
         }
-        if plan.kind == "emulation.library-roots":
+        if plan.kind == "emulation.library-roots" or plan.kind.startswith(
+            "emulation.game-delete:"
+        ):
             response["library"] = self.scan_library()
         return response
+
+    def rollback_action(self, operation_id: str) -> dict[str, Any]:
+        if not ids.is_ulid(operation_id):
+            raise SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
+        records = journal.read_records(operation_id)
+        begins = [record for record in records if record.get("type") == "operation.begin"]
+        if len(begins) != 1 or not str(begins[0].get("kind", "")).startswith(
+            "emulation.game-delete:"
+        ):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="operação não pertence à exclusão de ROM"
+            )
+        result = transaction.rollback(operation_id, reason="emulation-user-request")
+        return {
+            "status": result.status,
+            "operationId": result.operation_id,
+            "restored": result.restored,
+            "library": self.scan_library(),
+        }
 
     def _emulator_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
@@ -1052,6 +1137,132 @@ class EmulationController:
             executable=str(executable),
         )
         return SwitchRomConversionService(registry, converter=converter)
+
+    def _load_game_settings(self, *, strict: bool) -> dict[str, dict[str, Any]]:
+        path = self._game_settings_path
+        if not path.exists():
+            return {}
+        try:
+            if path.is_symlink() or not path.is_file() or path.stat().st_size > 1024 * 1024:
+                raise ValueError("arquivo ausente, symlink ou grande demais")
+            data = json.loads(path.read_text(encoding="utf-8"))
+            games = data.get("games")
+            if data.get("schemaVersion") != 1 or not isinstance(games, dict):
+                raise ValueError("schema inválido")
+            parsed: dict[str, dict[str, Any]] = {}
+            for game_id, raw in games.items():
+                if not isinstance(game_id, str) or not isinstance(raw, dict):
+                    raise ValueError("entrada inválida")
+                allowed = {"emulatorId", "steamSelected"}
+                if set(raw).difference(allowed):
+                    raise ValueError("campo desconhecido")
+                emulator_id = raw.get("emulatorId")
+                selected = raw.get("steamSelected")
+                if emulator_id is not None and emulator_id not in _MANAGED_EMULATORS:
+                    raise ValueError("emulador inválido")
+                if selected is not None and not isinstance(selected, bool):
+                    raise ValueError("seleção Steam inválida")
+                parsed[game_id] = dict(raw)
+            return parsed
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+            if strict:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY", detail="preferências por jogo estão corrompidas"
+                ) from exc
+            return {}
+
+    def _plan_game_setting(
+        self, game_id: str, key: str, value: str | bool
+    ) -> transaction.Plan:
+        settings = self._load_game_settings(strict=True)
+        updated = {current: dict(raw) for current, raw in settings.items()}
+        updated.setdefault(game_id, {})[key] = value
+        content = json.dumps(
+            {"schemaVersion": 1, "games": updated},
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode()
+        return transaction.plan_write_files(
+            {self._game_settings_path: content},
+            root=paths.config_home(),
+            kind=f"emulation.game-settings:{game_id}",
+        )
+
+    def _enrich_games(
+        self, games: list[dict[str, Any]], emulators: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        settings = self._load_game_settings(strict=False)
+        published = self._shortcuts.managed_game_ids()
+        installed = {
+            str(row["id"])
+            for row in emulators
+            if row.get("installState") == "installed"
+        }
+        enriched: list[dict[str, Any]] = []
+        for raw in games:
+            game = dict(raw)
+            game_id = str(game["id"])
+            selected = settings.get(game_id, {})
+            emulator_id = selected.get("emulatorId")
+            ready = isinstance(emulator_id, str) and emulator_id in installed
+            game.update(
+                {
+                    "emulatorId": emulator_id,
+                    "steamSelected": selected.get("steamSelected") is True,
+                    "steamPublished": game_id in published,
+                    "playAction": self._action(
+                        f"game.launch:{game_id}",
+                        "Jogar",
+                        enabled=ready,
+                        reason=(
+                            None
+                            if ready
+                            else "Selecione um emulador instalado para este jogo."
+                        ),
+                    ),
+                    "deleteAction": self._action(
+                        f"game.delete:{game_id}", "Excluir ROM", confirmation=True
+                    ),
+                }
+            )
+            enriched.append(game)
+        return enriched
+
+    def _current_game(self, game_id: str) -> dict[str, Any]:
+        games, _unidentified = self._load_library_cache()
+        matches = [game for game in games if game.get("id") == game_id]
+        if len(matches) != 1:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="jogo não encontrado na biblioteca")
+        game = matches[0]
+        try:
+            source = Path(str(game["path"]))
+            if source.is_symlink() or not source.is_file():
+                raise OSError("arquivo não é regular")
+            resolved = source.resolve(strict=True)
+            self._root_for_game(resolved)
+            stat = resolved.stat()
+            fingerprint = hashlib.sha256(
+                f"{source}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+            ).hexdigest()
+        except OSError as exc:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="arquivo do jogo mudou ou não está acessível"
+            ) from exc
+        if fingerprint != game.get("fingerprint"):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="arquivo do jogo mudou; faça uma nova varredura"
+            )
+        return game
+
+    def _root_for_game(self, source: Path) -> Path:
+        roots = [Path(value).resolve(strict=True) for value in self.library_roots()]
+        matches = [root for root in roots if source.is_relative_to(root)]
+        if not matches:
+            raise SteamZeroError(
+                "E-CONTENT-UNSAFE-PATH", detail="ROM está fora das bibliotecas permitidas"
+            )
+        return max(matches, key=lambda root: len(root.parts))
 
     def _load_library_cache(self) -> tuple[list[dict[str, Any]], int]:
         if not self._library_cache_path.is_file() or self._library_cache_path.is_symlink():

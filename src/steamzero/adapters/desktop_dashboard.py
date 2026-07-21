@@ -358,11 +358,17 @@ class DesktopDashboard:
     def launch_emulation_emulator(self, emulator_id: str) -> dict[str, Any]:
         return self._emulation.launch_emulator(emulator_id)
 
+    def launch_emulation_game(self, game_id: str) -> dict[str, Any]:
+        return self._emulation.launch_game(game_id)
+
     def plan_emulation_action(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._emulation.plan_action(payload)
 
     def apply_emulation_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._emulation.apply_action(plan_id, confirm_token)
+
+    def rollback_emulation_action(self, operation_id: str) -> dict[str, Any]:
+        return self._emulation.rollback_action(operation_id)
 
     def scan_emulation_library(self) -> dict[str, Any]:
         return self._emulation.scan_library()
