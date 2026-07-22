@@ -213,9 +213,7 @@ class SwitchLibraryScanner:
         marcadores explícitos no nome/caminho relativo são usados para evitar
         esconder dumps legítimos por heurística ampla.
         """
-        kind, _parent, _version, _source = cls.classify(
-            path, root=root, fmt=fmt, title_id=title_id
-        )
+        kind, _parent, _version, _source = cls.classify(path, root=root, fmt=fmt, title_id=title_id)
         return kind == "base"
 
     @classmethod

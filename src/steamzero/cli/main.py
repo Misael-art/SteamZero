@@ -521,6 +521,8 @@ def _cmd_emulation_launch(args: list[str], correlation_id: str) -> tuple[dict[st
         ),
         EXIT_OK,
     )
+
+
 def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     from steamzero.adapters.desktop_kde import activate_virtual_keyboard, toggle_virtual_keyboard
 

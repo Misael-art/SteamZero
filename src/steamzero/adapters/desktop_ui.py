@@ -179,9 +179,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "emulatorId")
             )
         if path == "/emulation/game/launch":
-            return self._dashboard().launch_emulation_game(
-                self._required_string(payload, "gameId")
-            )
+            return self._dashboard().launch_emulation_game(self._required_string(payload, "gameId"))
         if path == "/emulation/action/plan":
             return {"plan": self._dashboard().plan_emulation_action(payload)}
         if path == "/emulation/action/apply":
