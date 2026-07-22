@@ -193,6 +193,15 @@
           }
         },
         "defaultEmulatorId": {"type": ["string", "null"]},
+        "globalSettings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defaultEmulatorId": {"type": "string"},
+            "autoPublishSteam": {"type": "boolean"},
+            "preferNativeNca": {"type": "boolean"}
+          }
+        },
         "areaData": {
           "type": "object",
           "additionalProperties": {"$ref": "#/$defs/areaData"}

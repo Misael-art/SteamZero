@@ -88,6 +88,7 @@ Item {
         ? selectedPlatform.areas : defaultAreas
     readonly property var emulators: selectedPlatform.emulators || []
     readonly property var games: selectedPlatform.games || []
+    readonly property var globalSettings: selectedPlatform.globalSettings || ({})
     readonly property int emulatorMaintenanceCount: emulatorMaintenanceRepeater.count
     readonly property var selectedEmulator: emulators.length > 0 && emulatorIndex < emulators.length
         ? emulators[emulatorIndex] : ({
@@ -1161,7 +1162,12 @@ Item {
                     Layout.preferredWidth: 220
                     Layout.minimumHeight: 48
                     Accessible.name: qsTr("Selecionar emulador")
-                    onActivated: page.emulatorIndex = currentIndex
+                    onActivated: {
+                        page.emulatorIndex = currentIndex
+                        const emulator = page.emulators[currentIndex]
+                        if (emulator && emulator.id !== page.selectedPlatform.defaultEmulatorId)
+                            page.actionRequested({"id": "game.emulator.default", "label": qsTr("Definir como padrão da plataforma"), "enabled": true, "emulatorId": emulator.id})
+                    }
                 }
 
             }
@@ -1717,7 +1723,12 @@ Item {
                                 Layout.preferredWidth: 210
                                 Layout.minimumHeight: 48
                                 Accessible.name: qsTr("Selecionar emulador")
-                                onActivated: page.emulatorIndex = currentIndex
+                                onActivated: {
+                                    page.emulatorIndex = currentIndex
+                                    const emulator = page.emulators[currentIndex]
+                                    if (emulator && emulator.id !== page.selectedPlatform.defaultEmulatorId)
+                                        page.actionRequested({"id": "game.emulator.default", "label": qsTr("Definir como padrão da plataforma"), "enabled": true, "emulatorId": emulator.id})
+                                }
                             }
                             ComboBox {
                                 visible: page.width < 1250 && page.scopeId() === "game"
@@ -2816,9 +2827,10 @@ Item {
                                         spacing: 8
                                         CheckBox {
                                             id: steamAutoPubCheck
-                                            checked: false
+                                            checked: page.globalSettings.autoPublishSteam === true
                                             Accessible.name: qsTr("Publicar automaticamente na Steam")
                                             Layout.preferredWidth: 20
+                                            onClicked: page.actionRequested({"id": "emulation.global.set-auto-publish-steam", "label": qsTr("Atualizar publicação automática"), "enabled": true, "value": checked})
                                         }
                                         Label {
                                             text: qsTr("Publicar automaticamente na Steam")
@@ -2839,9 +2851,10 @@ Item {
                                         spacing: 8
                                         CheckBox {
                                             id: preferNcaCheck
-                                            checked: true
+                                            checked: page.globalSettings.preferNativeNca !== false
                                             Accessible.name: qsTr("Preferir extração NCA nativa")
                                             Layout.preferredWidth: 20
+                                            onClicked: page.actionRequested({"id": "emulation.global.set-prefer-native-nca", "label": qsTr("Atualizar preferência NCA"), "enabled": true, "value": checked})
                                         }
                                         Label {
                                             text: qsTr("Preferir extração NCA nativa como fallback de mídia")

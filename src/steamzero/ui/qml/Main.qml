@@ -530,7 +530,9 @@ ApplicationWindow {
                 || action.id.indexOf("game.media.publish-steam:") === 0
                 || action.id.indexOf("game.media.unpublish-steam:") === 0
                 || action.id === "game.emulator.default"
-                || action.id === "game.emulator.clear_default") {
+                || action.id === "game.emulator.clear_default"
+                || action.id === "emulation.global.set-auto-publish-steam"
+                || action.id === "emulation.global.set-prefer-native-nca") {
             const payload = {
                 "actionId": action.id,
                 "path": action.path || "",
@@ -539,7 +541,8 @@ ApplicationWindow {
                 "version": action.version || "",
                 "gameId": action.gameId || (action.id.indexOf("game.delete:") === 0
                     ? action.id.split(":")[1] : ""),
-                "selected": action.selected === true
+                "selected": action.selected === true,
+                "value": action.value === true
             }
             request("POST", "/emulation/action/plan", payload, function(response) {
                 emulationPlan = response.plan

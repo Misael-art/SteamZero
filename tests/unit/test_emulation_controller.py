@@ -172,6 +172,39 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     assert enriched[0]["playAction"]["enabled"] is True
 
 
+def test_global_emulator_and_media_preferences_are_persisted(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.default", "emulatorId": "citron"}
+        ),
+    )
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "emulation.global.set-auto-publish-steam", "value": True}
+        ),
+    )
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "emulation.global.set-prefer-native-nca", "value": False}
+        ),
+    )
+
+    platform = controller.snapshot({"context": {}})["platforms"][0]
+    assert platform["defaultEmulatorId"] == "citron"
+    assert platform["globalSettings"] == {
+        "defaultEmulatorId": "citron",
+        "autoPublishSteam": True,
+        "preferNativeNca": False,
+    }
+
+
 def test_nsz_manifest_is_valid_and_failed_install_leaves_no_partial_tool(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

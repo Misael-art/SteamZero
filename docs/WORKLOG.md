@@ -2295,3 +2295,21 @@ Rollback continua: `0.1.0a33-3ad7bdd3a780`.
 Rollback: `0.1.0a33-3ad7bdd3a780`.
 
 **Fora de escopo:** Testes offscreen QML, smoke end-to-end.
+
+## 2026-07-22 — Sessão: preferências globais de emulação e mídia
+
+**Branch:** `codex/midia-switch-scraping-ui`.
+
+| Item | Commit | Testes que provam |
+|------|--------|-------------------|
+| padrão global de emulador acionado pelo seletor QML | pendente | `test_global_emulator_and_media_preferences_are_persisted` |
+| preferências de auto-publicação e extração NCA persistidas com plan/apply | pendente | `test_global_emulator_and_media_preferences_are_persisted` |
+| contrato de workspace ampliado sem dados implícitos no QML | pendente | schema + teste do controller |
+
+**Gates:** teste focado (28 passed); ruff OK; mypy 129 arquivos OK;
+independence/boundaries OK. A suíte completa está bloqueada antes dos testes
+desta mudança: `test_core_service` tenta criar socket AF_UNIX em um `tmp_path`
+maior que o limite do kernel (`AF_UNIX path too long`).
+
+**Host/release:** nenhuma ação de host, release ou instalação executada. A
+autorização explícita exigida para `bigsudo` não foi fornecida nesta sessão.

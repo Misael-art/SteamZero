@@ -223,6 +223,9 @@ class EmulationController:
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
         platform["defaultEmulatorId"] = global_settings.get("defaultEmulatorId")
+        # These preferences are published with the workspace so QML never has to
+        # invent an optimistic value for a durable setting.
+        platform["globalSettings"] = global_settings
         platform["areaData"] = self._area_data(
             emulator_rows,
             games,
@@ -603,6 +606,14 @@ class EmulationController:
             plan = self._plan_global_setting("defaultEmulatorId", emulator_id)
         elif action == "game.emulator.clear_default":
             plan = self._plan_global_setting("defaultEmulatorId", None)
+        elif action == "emulation.global.set-auto-publish-steam":
+            plan = self._plan_global_setting(
+                "autoPublishSteam", self._required_bool(payload, "value")
+            )
+        elif action == "emulation.global.set-prefer-native-nca":
+            plan = self._plan_global_setting(
+                "preferNativeNca", self._required_bool(payload, "value")
+            )
         elif action == "game.emulator.set":
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
@@ -2576,11 +2587,15 @@ class EmulationController:
             if data.get("schemaVersion") != 1 or not isinstance(data.get("settings"), dict):
                 return {}
             parsed: dict[str, Any] = {}
-            allowed = {"defaultEmulatorId"}
+            allowed = {"defaultEmulatorId", "autoPublishSteam", "preferNativeNca"}
             for key in allowed:
                 value = data["settings"].get(key)
                 if value is not None:
                     if key == "defaultEmulatorId" and value not in _MANAGED_EMULATORS:
+                        continue
+                    if key in {"autoPublishSteam", "preferNativeNca"} and not isinstance(
+                        value, bool
+                    ):
                         continue
                     parsed[key] = value
             return parsed
@@ -3092,6 +3107,13 @@ class EmulationController:
             return None
         if not isinstance(value, str) or len(value) > 256:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo inválido: {key}")
+        return value
+
+    @staticmethod
+    def _required_bool(payload: Mapping[str, Any], key: str) -> bool:
+        value = payload.get(key)
+        if not isinstance(value, bool):
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo booleano obrigatório: {key}")
         return value
 
     @classmethod
