@@ -41,7 +41,7 @@ Window {
         check(object.selectedPlatform.id === "switch", "Switch deve ser a plataforma inicial")
         check(object.readinessPercent() === 75, "prontidão deve ser normalizada")
         check(object.scopes.length === 5, "devem existir cinco escopos")
-        check(object.areas.length === 10, "devem existir dez áreas especializadas")
+        check(object.areas.length === 11, "devem existir onze áreas especializadas")
         object.scopeIndex = 1
         check(object.scopeId() === "emulator", "escopo Emulador deve ser selecionável")
         check(object.contextTitle() === "Eden", "emulador deve definir o contexto")
@@ -202,6 +202,30 @@ Window {
         object.destroy()
     }
 
+    function testResponsiveProfiles() {
+        const object = makePage({})
+        if (!object)
+            return
+        object.width = 1208
+        object.height = 650
+        check(object.compactLayout, "Deck deve ativar o perfil compacto")
+        check(!object.showAreaSidebar, "Deck deve substituir a sub-sidebar de áreas")
+        check(!object.showContextPanel, "Deck não deve disputar largura com contexto lateral")
+
+        object.width = 1656
+        object.height = 950
+        check(!object.compactLayout, "Full HD deve preservar o perfil desktop")
+        check(object.showAreaSidebar, "Full HD deve manter navegação de áreas")
+        check(object.showContextPanel, "Full HD deve aproveitar o painel contextual")
+
+        object.width = 2296
+        object.height = 950
+        check(object.ultrawideLayout, "21:9 deve ativar contenção ultrawide")
+        check(object.contentMaxWidth === 1400,
+              "conteúdo ultrawide deve limitar-se a 1400 px")
+        object.destroy()
+    }
+
     Component {
         id: pageComponent
         Emulation {
@@ -228,6 +252,7 @@ Window {
         testBackendArea()
         testGameLibraryJourney()
         testEmulatorMaintenanceListsEveryManagedEmulator()
+        testResponsiveProfiles()
         if (failures === 0)
             console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
         Qt.exit(failures === 0 ? 0 : 1)

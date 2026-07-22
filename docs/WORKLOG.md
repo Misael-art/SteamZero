@@ -2313,3 +2313,25 @@ maior que o limite do kernel (`AF_UNIX path too long`).
 
 **Host/release:** nenhuma ação de host, release ou instalação executada. A
 autorização explícita exigida para `bigsudo` não foi fornecida nesta sessão.
+
+## 2026-07-22 — Sessão: layout responsivo Deck, Full HD e ultrawide
+
+**Branch:** `codex/midia-switch-scraping-ui`.
+
+| Item | Commit | Testes que provam |
+|------|--------|-------------------|
+| shell 1280×800 com sidebar de 72 px e banner/rodapé compactos | este commit | `check_main_emulation.qml`; captura offscreen do shell |
+| Emulação compacta sem sub-sidebar, com área selecionável e CTA fixo | este commit | `check_emulation.qml`; captura 1208×696 |
+| Steam Gameplay em uma coluna compacta com ações sempre visíveis | este commit | captura 1208×696 com fixture realista |
+| Full HD preserva grid e contexto | este commit | captura 1656×954 |
+| ultrawide limita conteúdo a 1400 px e preserva painel contextual | este commit | checks QML e capturas 2296×954 |
+
+**QA visual:** comparações combinadas das capturas fornecidas com as renderizações
+offscreen em `design-qa.md`; resultado final `passed`, sem P0/P1/P2 restante.
+
+**Gates:** 1127 testes passaram; `qmllint`, ruff e mypy verdes;
+independence/boundaries OK. As capturas usaram Qt offscreen, backend gráfico
+software e fixtures sem rede.
+
+**Host/release:** nenhuma ação de host, build de release ou instalação. O teste
+físico de foco, hover e legibilidade no painel do Deck permanece com o operador.

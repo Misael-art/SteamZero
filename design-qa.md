@@ -189,3 +189,90 @@ final result: passed
   e os testes de contrato da UI passaram.
 
 final result: passed
+
+---
+
+# Responsive Design QA — SteamZero
+
+## Evidence
+
+- Source visual truth:
+  - `/run/user/1000/codex-desktop/tmp/codex-clipboard-7fbfe836-1604-48c8-813c-4899f44ed4ec.png`
+  - `/run/user/1000/codex-desktop/tmp/codex-clipboard-e57c7577-f337-4615-a5e1-0fe763760f92.png`
+  - `/run/user/1000/codex-desktop/tmp/codex-clipboard-5d797c2a-67de-4668-97d0-b799e13ca450.png`
+- Implementation screenshots:
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-1280x800-shell.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-1280x800-emulation.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-1280x800-steam.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-1920x1080-emulation.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-2560x1080-shell.png`
+- Combined comparisons:
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/compare-deck-emulation.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/compare-deck-steam.png`
+  - `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/compare-ultrawide-emulation.png`
+
+The source screenshots include native window chrome. Implementation captures contain the
+application-owned QML content only. All captures use device scale factor 1. The component
+captures normalize the inner application viewport after the global sidebar/banner/footer:
+1208×696 for Deck, 1656×954 for Full HD, and 2296×954 for ultrawide.
+
+## State and interactions checked
+
+- Compact global navigation and tooltip-backed icon-only mode.
+- Compact Emulation area selector replacing the static sub-sidebar.
+- Global, emulator, game, handheld, and dock scope controls.
+- Sticky primary action in Emulation and sticky review/apply controls in Steam Gameplay.
+- One-column compact content and desktop/ultrawide contextual panels.
+- Full HD standard navigation, two-column card grid, and context panel.
+- Ultrawide 1400 px content cap with a separate context/status column.
+
+## Full-view comparison
+
+The compact implementation removes the two simultaneous text sidebars visible in the
+source, reduces top chrome, keeps the scope/area controls above the fold, and reserves the
+bottom edge for the active CTA. No horizontal overflow or hidden CTA is visible at the Deck
+viewport. The ultrawide implementation preserves the original hierarchy while preventing
+forms and cards from stretching across the full 21:9 canvas.
+
+## Focused-region comparison
+
+Focused comparison was performed on the navigation/header/action regions and the Steam
+Gameplay settings/footer region. Icons continue to use the existing theme and supplied
+SteamZero/Switch assets; no placeholder or generated imagery was introduced. The action
+regions remain keyboard controls with accessible names and visible focus borders.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing font family and weights are preserved; compact titles step
+  down without truncating the screen title. Secondary copy uses elision only where the same
+  context remains available through the selected area or accessible description.
+- Spacing and layout rhythm: compact gutters are 12 px, desktop gutters are 20–28 px, cards
+  stack at compact size, and ultrawide content is capped at 1400 px.
+- Colors and visual tokens: existing background, surface, cyan, green, amber, red, border,
+  and focus tokens are unchanged.
+- Image quality and asset fidelity: existing raster/vector assets are reused at their native
+  aspect ratio. No image was stretched or replaced.
+- Copy and content: application copy is unchanged except for responsive presentation.
+- Accessibility: primary tap targets remain at least 40 px; global compact navigation exposes
+  its text through accessible names and hover/focus tooltips.
+
+## Comparison history
+
+1. First compact capture found a P1: hiding the context panel also hid Emulation's primary
+   action. Fix: added a compact sticky action footer bound to `primaryAction()`.
+2. Second compact capture found a P2: secondary system buttons rendered truncated text in the
+   72 px sidebar. Fix: removed those duplicate shortcuts from compact mode; their destinations
+   remain available in the primary navigation.
+3. Post-fix captures show the primary action continuously visible, no clipped sidebar labels,
+   no horizontal overflow, and contained ultrawide controls.
+
+## Findings
+
+No actionable P0, P1, or P2 findings remain for the requested responsive breakpoints.
+
+## Follow-up polish
+
+- P3: verify the exact system icon glyphs under the production KDE icon theme; the offscreen
+  software renderer uses its fallback theme for capture.
+
+final result: passed

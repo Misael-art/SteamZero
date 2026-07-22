@@ -38,6 +38,13 @@ ApplicationWindow {
     readonly property color amberColor: "#ff9f1a"
     readonly property color greenColor: "#59d35d"
     readonly property color redColor: "#ff6b73"
+    readonly property bool compactLayout: width <= 1366 || height <= 850
+    readonly property bool ultrawideLayout: width >= 2200
+    readonly property int responsiveGutter: compactLayout ? 12 : 28
+    readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1920
+    readonly property int navigationWidth: compactLayout ? 72
+        : width >= 1400 ? 264 : 228
+    property alias responsiveShell: appShell
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -1204,6 +1211,7 @@ ApplicationWindow {
     }
 
     ColumnLayout {
+        id: appShell
         anchors.fill: parent
         spacing: 0
 
@@ -1215,29 +1223,30 @@ ApplicationWindow {
             Rectangle {
                 id: sidebar
                 color: root.sidebarColor
-                Layout.preferredWidth: root.width < 980 ? 184 : root.width >= 1400 ? 264 : 228
+                Layout.preferredWidth: root.navigationWidth
                 Layout.fillHeight: true
                 border.color: root.borderColor
                 border.width: 1
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 8
+                    anchors.margins: root.compactLayout ? 7 : 14
+                    spacing: root.compactLayout ? 5 : 8
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 72
+                        Layout.minimumHeight: root.compactLayout ? 54 : 72
                         Image {
                             source: "../assets/steamzero-mark.png"
-                            sourceSize.width: 48
-                            sourceSize.height: 48
+                            sourceSize.width: root.compactLayout ? 40 : 48
+                            sourceSize.height: root.compactLayout ? 40 : 48
                             fillMode: Image.PreserveAspectFit
-                            Layout.preferredWidth: 48
-                            Layout.preferredHeight: 48
+                            Layout.preferredWidth: root.compactLayout ? 40 : 48
+                            Layout.preferredHeight: root.compactLayout ? 40 : 48
                             Accessible.name: qsTr("Marca SteamZero")
                         }
                         ColumnLayout {
+                            visible: !root.compactLayout
                             spacing: 0
                             Label {
                                 text: "STEAMZERO"
@@ -1274,11 +1283,14 @@ ApplicationWindow {
                             icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
                             display: AbstractButton.TextBesideIcon
                             Layout.fillWidth: true
-                            Layout.minimumHeight: index === 2 && root.sectionIndex === 2 ? 70 : 48
-                            leftPadding: 14
-                            rightPadding: 12
-                            spacing: 12
+                            Layout.minimumHeight: root.compactLayout ? 48
+                                : index === 2 && root.sectionIndex === 2 ? 70 : 48
+                            leftPadding: root.compactLayout ? 5 : 14
+                            rightPadding: root.compactLayout ? 5 : 12
+                            spacing: root.compactLayout ? 0 : 12
                             Accessible.name: text
+                            ToolTip.visible: root.compactLayout && hovered
+                            ToolTip.text: modelData.label
                             KeyNavigation.up: index > 0 ? navRepeater.itemAt(index - 1) : quickResetButton
                             KeyNavigation.down: index + 1 < navRepeater.count
                                 ? navRepeater.itemAt(index + 1) : attentionButton
@@ -1299,7 +1311,7 @@ ApplicationWindow {
                                 }
                             }
                             contentItem: RowLayout {
-                                spacing: 12
+                                spacing: root.compactLayout ? 0 : 12
                                 ToolButton {
                                     enabled: false
                                     icon.name: modelData.icon
@@ -1308,8 +1320,10 @@ ApplicationWindow {
                                     icon.height: 24
                                     background: Item {}
                                     Layout.preferredWidth: 28
+                                    Layout.alignment: Qt.AlignHCenter
                                 }
                                 ColumnLayout {
+                                    visible: !root.compactLayout
                                     Layout.fillWidth: true
                                     spacing: 1
                                     Label {
@@ -1338,7 +1352,7 @@ ApplicationWindow {
                             : qsTr("Estado %1").arg(root.truthStateLabel(root.desktopStatus.truthState))
                         icon.name: "security-high"
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 54
+                        Layout.minimumHeight: root.compactLayout ? 48 : 54
                         Accessible.name: text
                         KeyNavigation.up: navRepeater.itemAt(navRepeater.count - 1)
                         KeyNavigation.down: quickResetButton
@@ -1352,6 +1366,7 @@ ApplicationWindow {
                                 background: Item {}
                             }
                             ColumnLayout {
+                                visible: !root.compactLayout
                                 spacing: 1
                                 Label { text: attentionButton.text; color: root.amberColor; font.bold: true }
                                 Label { text: qsTr("Requer sua atenção"); color: root.mutedColor; font.pixelSize: 12 }
@@ -1362,6 +1377,7 @@ ApplicationWindow {
                     Item { Layout.fillHeight: true }
 
                     Label {
+                        visible: !root.compactLayout
                         text: qsTr("AÇÕES DO SISTEMA")
                         color: root.mutedColor
                         font.pixelSize: 11
@@ -1369,11 +1385,16 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: quickResetButton
+                        visible: !root.compactLayout
                         text: qsTr("Quick Reset")
                         icon.name: "edit-undo"
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
                         Layout.minimumHeight: 48
+                        display: root.compactLayout ? AbstractButton.IconOnly
+                            : AbstractButton.TextBesideIcon
+                        ToolTip.visible: root.compactLayout && hovered
+                        ToolTip.text: text
                         Accessible.name: text
                         background: Rectangle {
                             color: quickResetButton.activeFocus ? root.raisedColor : root.surfaceColor
@@ -1387,11 +1408,16 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: cloudSyncButton
+                        visible: !root.compactLayout
                         text: qsTr("Cloud Sync")
                         icon.name: "folder-cloud"
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
                         Layout.minimumHeight: 48
+                        display: root.compactLayout ? AbstractButton.IconOnly
+                            : AbstractButton.TextBesideIcon
+                        ToolTip.visible: root.compactLayout && hovered
+                        ToolTip.text: text
                         Accessible.name: text
                         background: Rectangle {
                             color: cloudSyncButton.activeFocus ? root.raisedColor : root.surfaceColor
@@ -1405,11 +1431,16 @@ ApplicationWindow {
                     }
                     DarkButton {
                         id: doctorButton
+                        visible: !root.compactLayout
                         text: qsTr("steamzero doctor")
                         icon.name: "tools-report-bug"
                         palette.buttonText: root.textColor
                         Layout.fillWidth: true
                         Layout.minimumHeight: 48
+                        display: root.compactLayout ? AbstractButton.IconOnly
+                            : AbstractButton.TextBesideIcon
+                        ToolTip.visible: root.compactLayout && hovered
+                        ToolTip.text: text
                         Accessible.name: text
                         background: Rectangle {
                             color: doctorButton.activeFocus ? root.raisedColor : root.surfaceColor
@@ -1422,6 +1453,7 @@ ApplicationWindow {
                         onClicked: root.sectionIndex = 5
                     }
                     RowLayout {
+                        visible: !root.compactLayout
                         Layout.fillWidth: true
                         Label {
                             text: root.desktopStatus.independentRuntime
@@ -1451,22 +1483,24 @@ ApplicationWindow {
                         border.width: 1
                         radius: 8
                         Layout.fillWidth: true
-                        Layout.leftMargin: 14
-                        Layout.rightMargin: 14
-                        Layout.topMargin: 12
-                        Layout.preferredHeight: 72
+                        Layout.maximumWidth: root.ultrawideLayout ? 1400 : -1
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.leftMargin: root.compactLayout ? 8 : 14
+                        Layout.rightMargin: root.compactLayout ? 8 : 14
+                        Layout.topMargin: root.compactLayout ? 7 : 12
+                        Layout.preferredHeight: root.compactLayout ? 60 : 72
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 18
-                            anchors.rightMargin: 14
-                            spacing: 12
+                            anchors.leftMargin: root.compactLayout ? 10 : 18
+                            anchors.rightMargin: root.compactLayout ? 8 : 14
+                            spacing: root.compactLayout ? 7 : 12
                             ToolButton {
                                 enabled: false
                                 icon.name: "dialog-warning"
                                 icon.color: root.amberColor
-                                icon.width: 30
-                                icon.height: 30
+                                icon.width: root.compactLayout ? 22 : 30
+                                icon.height: root.compactLayout ? 22 : 30
                                 background: Item {}
                             }
                             ColumnLayout {
@@ -1482,10 +1516,11 @@ ApplicationWindow {
                                                     ? qsTr("Nenhum perfil foi aplicado")
                                                     : qsTr("Observação do Desktop degradada")
                                         color: root.amberColor
-                                        font.pixelSize: 17
+                                        font.pixelSize: root.compactLayout ? 14 : 17
                                         font.bold: true
                                     }
                                     Label {
+                                        visible: !root.compactLayout
                                         text: root.hasConflicts ? "E-DESKTOP-OWNER-CONFLICT"
                                             : root.truthStateLabel(root.desktopStatus.truthState).toUpperCase()
                                         color: "#d5b47d"
@@ -1499,7 +1534,9 @@ ApplicationWindow {
                                             ? root.desktopStatus.statusReasons[0]
                                             : qsTr("Revise o perfil desejado, aplicado e observado.")
                                     color: root.textColor
-                                    font.pixelSize: 13
+                                    font.pixelSize: root.compactLayout ? 11 : 13
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
                                 }
                             }
                             DarkButton {
@@ -1509,7 +1546,7 @@ ApplicationWindow {
                                         ? qsTr("Ver diagnóstico") : qsTr("Revisar perfis")
                                 palette.buttonText: root.textColor
                                 icon.name: "go-next"
-                                Layout.minimumHeight: 48
+                                Layout.minimumHeight: root.compactLayout ? 42 : 48
                                 Accessible.name: text
                                 background: Rectangle {
                                     color: resolveBannerButton.activeFocus ? "#3b2b18" : "#201a13"
@@ -1537,41 +1574,42 @@ ApplicationWindow {
                             clip: true
                             contentWidth: availableWidth
                             ColumnLayout {
-                                width: parent.width
-                                spacing: 18
+                                width: Math.min(parent.width, root.contentMaxWidth)
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: root.compactLayout ? 12 : 18
                                 anchors.margins: 28
                                 Label {
                                     text: qsTr("Visão geral")
                                     color: root.textColor
-                                    font.pixelSize: 30
+                                    font.pixelSize: root.compactLayout ? 24 : 30
                                     font.bold: true
-                                    Layout.topMargin: 24
-                                    Layout.leftMargin: 28
+                                    Layout.topMargin: root.compactLayout ? 12 : 24
+                                    Layout.leftMargin: root.responsiveGutter
                                 }
                                 Label {
                                     text: root.deviceSummary()
                                     color: root.mutedColor
                                     font.pixelSize: 15
-                                    Layout.leftMargin: 28
+                                    Layout.leftMargin: root.responsiveGutter
                                 }
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    Layout.leftMargin: 28
-                                    Layout.rightMargin: 28
-                                    Layout.minimumHeight: 124
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    Layout.minimumHeight: root.compactLayout ? 96 : 124
                                     color: root.surfaceColor
                                     radius: 10
                                     border.color: root.borderColor
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 20
-                                        spacing: 22
+                                        anchors.margins: root.compactLayout ? 12 : 20
+                                        spacing: root.compactLayout ? 12 : 22
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: root.needsAttention ? qsTr("Ação necessária") : qsTr("Sistema pronto")
                                                 color: root.needsAttention ? root.amberColor : root.greenColor
-                                                font.pixelSize: 22
+                                                font.pixelSize: root.compactLayout ? 18 : 22
                                                 font.bold: true
                                             }
                                             Label {
@@ -1603,7 +1641,7 @@ ApplicationWindow {
                                     color: root.textColor
                                     font.pixelSize: 20
                                     font.bold: true
-                                    Layout.leftMargin: 28
+                                    Layout.leftMargin: root.responsiveGutter
                                 }
                                 Repeater {
                                     model: [
@@ -1616,9 +1654,9 @@ ApplicationWindow {
                                         text: modelData.title
                                         icon.name: modelData.icon
                                         Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 66
+                                        Layout.leftMargin: root.responsiveGutter
+                                        Layout.rightMargin: root.responsiveGutter
+                                        Layout.minimumHeight: root.compactLayout ? 58 : 66
                                         Accessible.name: qsTr("%1: %2").arg(modelData.title).arg(modelData.detail)
                                         onClicked: root.sectionIndex = modelData.target
                                         contentItem: RowLayout {
@@ -2674,17 +2712,17 @@ ApplicationWindow {
             color: "#080d13"
             border.color: root.borderColor
             Layout.fillWidth: true
-            Layout.preferredHeight: 54
+            Layout.preferredHeight: root.compactLayout ? 44 : 54
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 24
+                anchors.leftMargin: root.compactLayout ? 12 : 20
+                anchors.rightMargin: root.compactLayout ? 12 : 20
+                spacing: root.compactLayout ? 12 : 24
                 Label { text: qsTr("STEAM  MENU"); color: root.mutedColor; font.bold: true }
                 Item { Layout.fillWidth: true }
-                Label { text: qsTr("D-PAD  NAVEGAR"); color: root.mutedColor }
+                Label { visible: !root.compactLayout; text: qsTr("D-PAD  NAVEGAR"); color: root.mutedColor }
                 Label { text: qsTr("A  SELECIONAR"); color: root.textColor }
-                Label { text: qsTr("X  AÇÃO DE CONTEXTO"); color: root.textColor }
+                Label { visible: !root.compactLayout; text: qsTr("X  AÇÃO DE CONTEXTO"); color: root.textColor }
                 Label { text: qsTr("B  VOLTAR"); color: root.textColor }
             }
         }
@@ -2698,7 +2736,7 @@ ApplicationWindow {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: 20
-        anchors.bottomMargin: 68
+        anchors.bottomMargin: root.compactLayout ? 54 : 68
         color: root.lastRequestIsError ? "#35171b" : "#102b20"
         radius: 8
         border.color: root.lastRequestIsError ? root.redColor : root.greenColor

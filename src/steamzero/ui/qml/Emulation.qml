@@ -42,6 +42,14 @@ Item {
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
     property string steamUserId: ""
+    readonly property bool compactLayout: width <= 1296 || height <= 720
+    readonly property bool ultrawideLayout: width >= 1900
+    readonly property int responsiveGutter: compactLayout ? 12 : 22
+    readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
+    readonly property bool showAreaSidebar: !isGameLibrary() && !compactLayout
+    readonly property bool showContextPanel: isGameLibrary()
+        ? gameDetailsOpen && !compactLayout && width >= 900
+        : !compactLayout && width >= 1500
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -956,21 +964,21 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 142
+            Layout.preferredHeight: page.compactLayout ? 104 : 142
             color: page.backgroundColor
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 26
-                anchors.rightMargin: 24
-                anchors.topMargin: 18
-                anchors.bottomMargin: 14
-                spacing: 18
+                anchors.leftMargin: page.compactLayout ? 14 : 26
+                anchors.rightMargin: page.compactLayout ? 14 : 24
+                anchors.topMargin: page.compactLayout ? 10 : 18
+                anchors.bottomMargin: page.compactLayout ? 10 : 14
+                spacing: page.compactLayout ? 12 : 18
 
                 Rectangle {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 84
-                    radius: 18
+                    Layout.preferredWidth: page.compactLayout ? 60 : 84
+                    Layout.preferredHeight: page.compactLayout ? 60 : 84
+                    radius: page.compactLayout ? 13 : 18
                     color: page.raisedColor
                     border.color: page.selectedPlatform.state === "ready"
                         ? page.greenColor : page.cyanColor
@@ -980,8 +988,8 @@ Item {
                         visible: page.selectedPlatform.iconKey === "switch"
                             || page.selectedPlatform.id === "switch"
                         anchors.centerIn: parent
-                        width: 62
-                        height: 62
+                        width: page.compactLayout ? 44 : 62
+                        height: page.compactLayout ? 44 : 62
                         cutoutColor: page.raisedColor
                     }
 
@@ -989,8 +997,8 @@ Item {
                         visible: page.selectedPlatform.iconKey !== "switch"
                             && page.selectedPlatform.id !== "switch"
                         anchors.centerIn: parent
-                        width: 44
-                        height: 44
+                        width: page.compactLayout ? 34 : 44
+                        height: page.compactLayout ? 34 : 44
                         iconName: page.selectedPlatform.iconKey || "applications-games"
                         iconColor: page.cyanColor
                     }
@@ -1003,17 +1011,18 @@ Item {
                     Label {
                         text: qsTr("Emulação")
                         color: page.mutedColor
-                        font.pixelSize: 12
+                        font.pixelSize: page.compactLayout ? 10 : 12
                         font.bold: true
                         font.letterSpacing: 1.2
                     }
                     Label {
                         text: page.selectedPlatform.name || qsTr("Plataforma")
                         color: page.textColor
-                        font.pixelSize: 29
+                        font.pixelSize: page.compactLayout ? 23 : 29
                         font.bold: true
                     }
                     Label {
+                        visible: !page.compactLayout
                         text: qsTr("Uma central para preparar, jogar e preservar sua biblioteca com segurança.")
                         color: page.mutedColor
                         font.pixelSize: 14
@@ -1021,6 +1030,7 @@ Item {
                         Layout.fillWidth: true
                     }
                     Label {
+                        visible: !page.compactLayout
                         text: page.emulation && page.emulation.contextLabel
                             ? page.emulation.contextLabel : qsTr("Dados locais • sem downloads automáticos de conteúdo")
                         color: page.mutedColor
@@ -1047,8 +1057,8 @@ Item {
                         palette.text: page.textColor
                         palette.highlight: page.cyanDarkColor
                         palette.highlightedText: page.textColor
-                        Layout.preferredWidth: 220
-                        Layout.minimumHeight: 48
+                        Layout.preferredWidth: page.compactLayout ? 180 : 220
+                        Layout.minimumHeight: page.compactLayout ? 42 : 48
                         Accessible.name: qsTr("Selecionar plataforma de emulação")
                         onActivated: {
                             page.platformIndex = currentIndex
@@ -1058,8 +1068,8 @@ Item {
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: 150
-                    Layout.preferredHeight: 72
+                    Layout.preferredWidth: page.compactLayout ? 112 : 150
+                    Layout.preferredHeight: page.compactLayout ? 62 : 72
                     radius: 10
                     color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
                     border.color: page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
@@ -1071,7 +1081,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: page.readinessPercent() + "%"
                             color: page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
-                            font.pixelSize: 24
+                            font.pixelSize: page.compactLayout ? 20 : 24
                             font.bold: true
                         }
                         Label {
@@ -1089,20 +1099,20 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 68
+            Layout.preferredHeight: page.compactLayout ? 58 : 68
             color: page.surfaceColor
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                spacing: 10
+                anchors.leftMargin: page.compactLayout ? 12 : 24
+                anchors.rightMargin: page.compactLayout ? 12 : 24
+                spacing: page.compactLayout ? 6 : 10
 
                 Label {
                     text: qsTr("Escopo")
                     color: page.mutedColor
                     font.bold: true
-                    Layout.rightMargin: 4
+                    Layout.rightMargin: page.compactLayout ? 0 : 4
                 }
 
                 Repeater {
@@ -1116,8 +1126,10 @@ Item {
                         checkable: true
                         checked: page.scopeIndex === index
                         enabled: modelData.enabled !== false
-                        Layout.preferredWidth: Math.max(112, implicitWidth + 12)
-                        Layout.minimumHeight: 48
+                        Layout.fillWidth: page.compactLayout
+                        Layout.preferredWidth: page.compactLayout ? -1
+                            : Math.max(112, implicitWidth + 12)
+                        Layout.minimumHeight: page.compactLayout ? 42 : 48
                         Accessible.name: qsTr("Aplicar no escopo %1").arg(text)
                         Accessible.description: modelData.reason || ""
                         onClicked: page.selectScope(index)
@@ -1129,12 +1141,12 @@ Item {
                             radius: 7
                         }
                         contentItem: RowLayout {
-                            spacing: 8
+                            spacing: page.compactLayout ? 4 : 8
                             ModernIcon {
                                 iconName: page.visualIcon(modelData.icon || modelData.iconKey)
                                 iconColor: parent.parent.checked ? page.cyanColor : page.mutedColor
-                                Layout.preferredWidth: 19
-                                Layout.preferredHeight: 19
+                                Layout.preferredWidth: page.compactLayout ? 17 : 19
+                                Layout.preferredHeight: page.compactLayout ? 17 : 19
                             }
                             Label {
                                 text: modelData.label
@@ -1176,12 +1188,50 @@ Item {
         Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
 
         RowLayout {
+            visible: page.compactLayout && !page.isGameLibrary()
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 7
+            Layout.bottomMargin: 7
+            spacing: 8
+            Label {
+                text: qsTr("Área")
+                color: page.mutedColor
+                font.bold: true
+            }
+            ComboBox {
+                model: page.areas
+                textRole: "label"
+                currentIndex: page.areaIndex
+                Layout.fillWidth: true
+                Layout.minimumHeight: 42
+                Accessible.name: qsTr("Selecionar área de emulação")
+                onActivated: page.areaIndex = currentIndex
+            }
+            Label {
+                text: page.contextTitle()
+                color: page.cyanColor
+                font.bold: true
+                elide: Text.ElideRight
+                Layout.maximumWidth: 220
+            }
+        }
+
+        Rectangle {
+            visible: page.compactLayout && !page.isGameLibrary()
+            color: page.borderColor
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+        }
+
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
 
             Rectangle {
-                visible: !page.isGameLibrary()
+                visible: page.showAreaSidebar
                 Layout.preferredWidth: page.width < 1180 ? 184 : 216
                 Layout.fillHeight: true
                 color: page.sidebarColor || page.surfaceColor
@@ -1263,15 +1313,16 @@ Item {
                 background: Rectangle { color: page.backgroundColor }
 
                 ColumnLayout {
-                    width: contentScroll.availableWidth
+                    width: Math.min(contentScroll.availableWidth, page.contentMaxWidth)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 16
 
                     ColumnLayout {
                         visible: page.isGameLibrary()
                         Layout.fillWidth: true
-                        Layout.leftMargin: 18
-                        Layout.rightMargin: 18
-                        Layout.topMargin: 16
+                        Layout.leftMargin: page.compactLayout ? 12 : 18
+                        Layout.rightMargin: page.compactLayout ? 12 : 18
+                        Layout.topMargin: page.compactLayout ? 10 : 16
                         spacing: 10
 
                         RowLayout {
@@ -1680,9 +1731,9 @@ Item {
                     ColumnLayout {
                         visible: !page.isGameLibrary()
                         Layout.fillWidth: true
-                        Layout.leftMargin: 22
-                        Layout.rightMargin: 22
-                        Layout.topMargin: 20
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        Layout.topMargin: page.compactLayout ? 12 : 20
                         spacing: 5
 
                         RowLayout {
@@ -1690,14 +1741,14 @@ Item {
                             Label {
                                 text: page.areaTitle(page.selectedArea.id)
                                 color: page.textColor
-                                font.pixelSize: 24
+                                font.pixelSize: page.compactLayout ? 21 : 24
                                 font.bold: true
                                 Layout.fillWidth: true
                             }
                             Label {
                                 text: page.contextTitle()
-                                visible: page.width >= 1250
-                                    || (page.scopeId() !== "emulator" && page.scopeId() !== "game")
+                                visible: !page.compactLayout && (page.width >= 1250
+                                    || (page.scopeId() !== "emulator" && page.scopeId() !== "game"))
                                 color: page.cyanColor
                                 font.bold: true
                                 leftPadding: 10
@@ -1758,10 +1809,10 @@ Item {
                     Rectangle {
                         visible: !page.isGameLibrary()
                         Layout.fillWidth: true
-                        Layout.leftMargin: 22
-                        Layout.rightMargin: 22
-                        Layout.preferredHeight: 64
-                        Layout.minimumHeight: 64
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        Layout.preferredHeight: page.compactLayout ? 56 : 64
+                        Layout.minimumHeight: Layout.preferredHeight
                         color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
                         border.color: page.readinessPercent() >= 80
                             ? page.greenColor : page.amberColor
@@ -1814,9 +1865,9 @@ Item {
                     GridLayout {
                         visible: !page.isEmulatorOverview() && !page.isGameLibrary()
                         Layout.fillWidth: true
-                        Layout.leftMargin: 22
-                        Layout.rightMargin: 22
-                        columns: contentScroll.width >= 760 ? 2 : 1
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        columns: page.compactLayout ? 1 : contentScroll.width >= 760 ? 2 : 1
                         columnSpacing: 12
                         rowSpacing: 12
 
@@ -1828,7 +1879,8 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 250
                                 Layout.preferredHeight: page.isGlobalOverview()
-                                    ? 184 : cardColumn.implicitHeight + 28
+                                    ? (page.compactLayout ? 144 : 184)
+                                    : cardColumn.implicitHeight + (page.compactLayout ? 20 : 28)
                                 Layout.minimumHeight: Layout.preferredHeight
                                 color: page.surfaceColor
                                 border.color: page.stateColor(modelData.state)
@@ -1840,8 +1892,8 @@ Item {
                                     anchors.left: parent.left
                                     anchors.right: parent.right
                                     anchors.top: parent.top
-                                    anchors.margins: 14
-                                    spacing: 8
+                                    anchors.margins: page.compactLayout ? 10 : 14
+                                    spacing: page.compactLayout ? 6 : 8
 
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -2046,8 +2098,7 @@ Item {
             }
 
             Rectangle {
-                visible: page.isGameLibrary()
-                    ? page.gameDetailsOpen && page.width >= 900 : page.width >= 1120
+                visible: page.showContextPanel
                 Layout.preferredWidth: page.isGameLibrary()
                     ? (page.width < 1200 ? 340 : 360) : 286
                 Layout.fillHeight: true
@@ -2881,6 +2932,45 @@ Item {
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: page.compactLayout && !page.isGameLibrary()
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 58 : 0
+            color: page.backgroundColor
+            border.color: page.borderColor
+            z: 4
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.topMargin: 6
+                anchors.bottomMargin: 6
+                Label {
+                    text: page.primaryAction().reason || page.areaDescription(page.selectedArea.id)
+                    color: page.primaryAction().enabled === false
+                        ? page.mutedColor : page.cyanColor
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+                Button {
+                    text: page.primaryAction().label
+                    enabled: page.primaryAction().enabled !== false
+                    Layout.preferredWidth: 250
+                    Layout.minimumHeight: 46
+                    Accessible.name: text
+                    Accessible.description: page.primaryAction().reason || ""
+                    onClicked: page.dispatchAction(page.primaryAction())
+                    background: Rectangle {
+                        color: parent.enabled ? page.cyanDarkColor : page.raisedColor
+                        border.color: parent.activeFocus ? page.textColor : page.cyanColor
+                        border.width: parent.activeFocus ? 2 : 1
+                        radius: 7
                     }
                 }
             }

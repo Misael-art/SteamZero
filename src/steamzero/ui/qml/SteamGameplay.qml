@@ -69,6 +69,11 @@ Item {
     property var mediaPlan: null
     property string mediaPackagePath: ""
     property string mediaLastOperationId: ""
+    readonly property bool compactLayout: width <= 1296 || height <= 720
+    readonly property bool ultrawideLayout: width >= 1900
+    readonly property int responsiveGutter: compactLayout ? 12 : 20
+    readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
+    readonly property bool showSupplementaryPanels: !compactLayout && width >= 1240
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -609,15 +614,16 @@ Item {
         contentWidth: availableWidth
 
         ColumnLayout {
-            width: gameplayScroll.availableWidth
-            spacing: 14
+            width: Math.min(gameplayScroll.availableWidth, page.contentMaxWidth)
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: page.compactLayout ? 9 : 14
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
-                Layout.topMargin: 18
-                spacing: 18
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
+                Layout.topMargin: page.compactLayout ? 10 : 18
+                spacing: page.compactLayout ? 10 : 18
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
@@ -625,7 +631,7 @@ Item {
                         text: page.workspaceIndex === 3
                             ? qsTr("Experiência no Modo Desktop") : qsTr("Prontidão do jogo")
                         color: page.textColor
-                        font.pixelSize: 28
+                        font.pixelSize: page.compactLayout ? 23 : 28
                         font.bold: true
                     }
                     Label {
@@ -648,8 +654,9 @@ Item {
                     currentIndex: page.gameIndex
                     enabled: page.games.length > 0
                     visible: page.workspaceIndex !== 3
-                    Layout.preferredWidth: Math.min(360, page.width * 0.3)
-                    Layout.minimumHeight: 48
+                    Layout.preferredWidth: page.compactLayout ? 280
+                        : Math.min(360, page.width * 0.3)
+                    Layout.minimumHeight: page.compactLayout ? 42 : 48
                     Accessible.name: qsTr("Selecionar jogo")
                     onActivated: page.gameIndex = currentIndex
                     contentItem: RowLayout {
@@ -678,8 +685,8 @@ Item {
             RowLayout {
                 visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
                 spacing: 0
                 Label {
                     text: qsTr("Escopo")
@@ -694,8 +701,9 @@ Item {
                         text: modelData
                         checkable: true
                         checked: page.scopeIndex === index
-                        Layout.preferredWidth: 116
-                        Layout.minimumHeight: 44
+                        Layout.fillWidth: page.compactLayout
+                        Layout.preferredWidth: page.compactLayout ? -1 : 116
+                        Layout.minimumHeight: page.compactLayout ? 40 : 44
                         Accessible.name: text
                         onClicked: page.scopeIndex = index
                         background: Rectangle {
@@ -710,8 +718,8 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
                 spacing: 0
                 Label {
                     text: qsTr("Área")
@@ -729,8 +737,10 @@ Item {
                         text: modelData
                         checkable: true
                         checked: page.workspaceIndex === index
-                        Layout.preferredWidth: index === 0 ? 174 : index === 3 ? 142 : 126
-                        Layout.minimumHeight: 44
+                        Layout.fillWidth: page.compactLayout
+                        Layout.preferredWidth: page.compactLayout ? -1
+                            : index === 0 ? 174 : index === 3 ? 142 : 126
+                        Layout.minimumHeight: page.compactLayout ? 40 : 44
                         Accessible.name: qsTr("Abrir área %1").arg(text)
                         onClicked: page.workspaceIndex = index
                         background: Rectangle {
@@ -748,9 +758,10 @@ Item {
             Rectangle {
                 visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
-                Layout.minimumHeight: launcherColumn.implicitHeight + 24
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
+                Layout.minimumHeight: launcherColumn.implicitHeight
+                    + (page.compactLayout ? 16 : 24)
                 color: page.launcher.state === "observed" ? "#0c2a21"
                     : page.launcher.state === "stale" || page.launcher.state === "degraded"
                     ? "#24180b" : page.surfaceColor
@@ -763,8 +774,8 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.margins: 12
-                    spacing: 7
+                    anchors.margins: page.compactLayout ? 8 : 12
+                    spacing: page.compactLayout ? 4 : 7
                     RowLayout {
                         Layout.fillWidth: true
                         Label {
@@ -856,21 +867,21 @@ Item {
             Rectangle {
                 visible: page.workspaceIndex !== 3
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
-                Layout.minimumHeight: 82
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
+                Layout.minimumHeight: page.compactLayout ? 64 : 82
                 color: "#0c2a21"
                 border.color: page.gameplay && page.gameplay.readiness && page.gameplay.readiness.percent >= 80
                     ? page.greenColor : page.amberColor
                 radius: 8
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 16
+                    anchors.margins: page.compactLayout ? 10 : 16
                     Label {
                         text: page.gameplay && page.gameplay.readiness
                             ? page.gameplay.readiness.percent + "%" : "—"
                         color: page.greenColor
-                        font.pixelSize: 25
+                        font.pixelSize: page.compactLayout ? 21 : 25
                         font.bold: true
                     }
                     ColumnLayout {
@@ -880,7 +891,7 @@ Item {
                             text: page.gameplay && page.gameplay.readiness
                                 ? page.gameplay.readiness.title : qsTr("Verificando ambiente")
                             color: page.greenColor
-                            font.pixelSize: 18
+                            font.pixelSize: page.compactLayout ? 15 : 18
                             font.bold: true
                         }
                         Label {
@@ -911,13 +922,13 @@ Item {
                 visible: page.workspaceIndex === 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
-                spacing: 12
+                Layout.leftMargin: page.responsiveGutter
+                Layout.rightMargin: page.responsiveGutter
+                spacing: page.compactLayout ? 8 : 12
 
                 ColumnLayout {
                     id: environmentColumn
-                    visible: page.width >= 1240
+                    visible: page.showSupplementaryPanels
                     Layout.preferredWidth: 290
                     Layout.alignment: Qt.AlignTop
                     spacing: 10
@@ -1005,16 +1016,16 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 500
-                    Layout.minimumHeight: 464
+                    Layout.minimumWidth: page.compactLayout ? 0 : 500
+                    Layout.minimumHeight: page.compactLayout ? 430 : 464
                     Layout.alignment: Qt.AlignTop
                     color: page.surfaceColor
                     border.color: page.borderColor
                     radius: 8
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 14
-                        spacing: 7
+                        anchors.margins: page.compactLayout ? 10 : 14
+                        spacing: page.compactLayout ? 5 : 7
                         Label { text: qsTr("Ajustes essenciais"); color: page.textColor; font.pixelSize: 17; font.bold: true }
                         RowLayout {
                             Layout.fillWidth: true
@@ -1028,7 +1039,7 @@ Item {
                                     checkable: true
                                     checked: page.profileIndex === index
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 68
+                                    Layout.minimumHeight: page.compactLayout ? 56 : 68
                                     Accessible.name: text.replace("\n", " ")
                                     onClicked: page.choosePerformance(index)
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 6 }
@@ -1179,6 +1190,7 @@ Item {
                 }
 
                 Rectangle {
+                    visible: !page.compactLayout
                     Layout.preferredWidth: page.width < 1240 ? 232 : 250
                     Layout.minimumHeight: 464
                     Layout.alignment: Qt.AlignTop
@@ -1580,21 +1592,21 @@ Item {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         visible: page.workspaceIndex < 2
-        height: visible ? 78 : 0
+        height: visible ? (page.compactLayout ? 62 : 78) : 0
         color: page.backgroundColor
         border.color: page.borderColor
         z: 3
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 20
-            anchors.rightMargin: 20
-            anchors.topMargin: 10
-            anchors.bottomMargin: 14
-            spacing: 12
+            anchors.leftMargin: page.responsiveGutter
+            anchors.rightMargin: page.responsiveGutter
+            anchors.topMargin: page.compactLayout ? 7 : 10
+            anchors.bottomMargin: page.compactLayout ? 7 : 14
+            spacing: page.compactLayout ? 8 : 12
             Button {
                 text: qsTr("Restaurar perfil seguro")
                 Layout.fillWidth: true
-                Layout.minimumHeight: 54
+                Layout.minimumHeight: page.compactLayout ? 46 : 54
                 Accessible.name: text
                 onClicked: page.planRequested(page.safePayload())
             }
@@ -1602,7 +1614,7 @@ Item {
                 text: qsTr("Revisar e aplicar perfil")
                 enabled: page.games.length > 0
                 Layout.fillWidth: true
-                Layout.minimumHeight: 54
+                Layout.minimumHeight: page.compactLayout ? 46 : 54
                 Accessible.name: text
                 onClicked: page.planRequested(page.payload())
                 background: Rectangle {

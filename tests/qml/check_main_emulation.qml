@@ -15,6 +15,18 @@ Main {
     }
 
     function runChecks() {
+        width = 1280
+        height = 800
+        check(compactLayout, "1280x800 deve ativar o shell compacto")
+        check(navigationWidth === 72, "sidebar compacta deve ocupar 72 px")
+        width = 1920
+        height = 1080
+        check(!compactLayout, "1920x1080 deve usar o shell desktop")
+        width = 2560
+        height = 1080
+        check(ultrawideLayout, "2560x1080 deve ativar o perfil ultrawide")
+        check(contentMaxWidth === 1400, "conteúdo ultrawide deve ser contido")
+
         performEmulationAction({
             "id": "future.mutation",
             "enabled": false,
