@@ -528,7 +528,9 @@ ApplicationWindow {
                 || action.id.indexOf("game.media.select:") === 0
                 || action.id.indexOf("game.media.clear:") === 0
                 || action.id.indexOf("game.media.publish-steam:") === 0
-                || action.id.indexOf("game.media.unpublish-steam:") === 0) {
+                || action.id.indexOf("game.media.unpublish-steam:") === 0
+                || action.id === "game.emulator.default"
+                || action.id === "game.emulator.clear_default") {
             const payload = {
                 "actionId": action.id,
                 "path": action.path || "",
@@ -1127,8 +1129,30 @@ ApplicationWindow {
                                 })
                             }
                         }
+                        Button {
+                            visible: credentialDialog.providers[modelData].configured
+                            text: qsTr("Revogar")
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 32
+                            palette.button: root.raisedColor
+                            palette.buttonText: root.textColor
+                            onClicked: {
+                                root.request("POST", "/scraping/credential/delete", {
+                                    "provider": modelData
+                                }, function(resp) {
+                                    credentialDialog.refresh()
+                                })
+                            }
+                        }
                     }
                 }
+            }
+            Label {
+                text: qsTr("Obtenha sua chave em: https://www.steamgriddb.com/profile/preferences")
+                color: root.mutedColor
+                font.pixelSize: 10
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
             }
             Button {
                 Layout.fillWidth: true

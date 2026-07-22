@@ -2273,3 +2273,25 @@ Rollback continua: `0.1.0a33-3ad7bdd3a780`.
 
 **Fora de escopo (QML journey):** display de candidatos, navegação, seleção,
 área global de mídia, publicação Steam. Serão feitos na sequência.
+
+## 2026-07-22 — Sessão: grid de candidatos, steam publish, release corretiva
+
+**Branch:** `codex/midia-switch-scraping-ui`.
+
+**Resolução:**
+
+| Item | Detalhe |
+|------|---------|
+| Candidate grid gallery | `Flow` + `Repeater` em `Emulation.qml` (60px tiles, click to select) |
+| steamUserId field | `TextField` na media panel, persistent na sessão |
+| Publish/unpublish buttons | Conectados a `game.media.publish-steam:` / `unpublish-steam:` |
+| Snapshot `mediaCandidates` | Array de candidatos exposto sempre no snapshot |
+| Snapshot `mediaErrors` | Erros por provedor expostos no snapshot |
+| Release corretiva | `0.1.0a33-d4ea3bee353d` instalada, substituiu `0.1.0a33-89a03614d272` |
+
+**Gates:** 1126 passed; ruff OK; mypy 129 OK; independence OK.
+
+**Host:** Release `0.1.0a33-d4ea3bee353d` ativa. steamzero-core.service restarted. Doctor: ok.
+Rollback: `0.1.0a33-3ad7bdd3a780`.
+
+**Fora de escopo:** Testes offscreen QML, smoke end-to-end.

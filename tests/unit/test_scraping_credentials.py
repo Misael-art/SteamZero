@@ -179,7 +179,7 @@ class TestMediaSearchJobHandlerErrors:
             pipeline=None,  # type: ignore[arg-type]
             providers=[],
         )
-        ctrl._media_manager = mgr
+        ctrl._media_manager = lambda _store: mgr
         job = ctrl._jobs.create(
             "media.search",
             params={

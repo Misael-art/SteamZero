@@ -1461,7 +1461,7 @@ Item {
                                         Image {
                                             id: gameBanner
                                             anchors.fill: parent
-                                            source: gameRow.modelData.bannerAsset || ""
+                                            source: gameRow.modelData.coverUrl || gameRow.modelData.bannerAsset || ""
                                             fillMode: Image.PreserveAspectCrop
                                             asynchronous: true
                                             visible: String(source) !== "" && status === Image.Ready

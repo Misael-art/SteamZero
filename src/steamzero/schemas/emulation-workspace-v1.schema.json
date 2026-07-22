@@ -128,7 +128,10 @@
         "statusLabel": {"type": "string", "minLength": 1},
         "emulatorId": {"type": ["string", "null"]},
         "requiresKeys": {"type": ["object", "null"]},
-        "requiresFirmware": {"type": ["object", "null"]}
+        "requiresFirmware": {"type": ["object", "null"]},
+        "coverUrl": {"type": ["string", "null"]},
+        "mediaSource": {"type": ["string", "null"]},
+        "mediaKind": {"type": ["string", "null"]}
       }
     },
     "card": {
@@ -189,6 +192,7 @@
             "firmware": {"$ref": "#/$defs/requirement"}
           }
         },
+        "defaultEmulatorId": {"type": ["string", "null"]},
         "areaData": {
           "type": "object",
           "additionalProperties": {"$ref": "#/$defs/areaData"}

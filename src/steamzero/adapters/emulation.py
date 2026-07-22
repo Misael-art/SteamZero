@@ -219,8 +219,10 @@ class EmulationController:
             firmware=firmware_status,
             games=games,
         )
+        global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
+        platform["defaultEmulatorId"] = global_settings.get("defaultEmulatorId")
         platform["areaData"] = self._area_data(
             emulator_rows,
             games,
@@ -341,7 +343,7 @@ class EmulationController:
     def launch_game(self, game_id: str) -> dict[str, Any]:
         game = self._current_game(game_id)
         settings = self._load_game_settings(strict=True)
-        game_settings = self._settings_for_game(game, settings)
+        game_settings = self._settings_for_game_with_global(game, settings)
         emulator_id = game_settings.get("emulatorId")
         if not isinstance(emulator_id, str):
             raise SteamZeroError(
@@ -380,6 +382,12 @@ class EmulationController:
             "pid": pid,
         }
 
+    _SPECIAL_ROOT_NAMES = frozenset({
+        "firmware", "keys", "bios", "saves", "cache", "media",
+        "screenshots", "mods", "cheats", "dlc", "updates", "patches",
+        "shader", "nand", "system",
+    })
+
     def library_roots(self) -> list[str]:
         candidates = [
             paths.roms_dir(),
@@ -400,9 +408,22 @@ class EmulationController:
                 continue
             if resolved in seen or resolved.is_symlink() or not resolved.is_dir():
                 continue
+            if resolved.name.casefold() in self._SPECIAL_ROOT_NAMES:
+                continue
+            parent = resolved.parent
+            if (
+                parent.name.casefold() == "roms"
+                and resolved.name.casefold() in self._SPECIAL_ROOT_NAMES
+            ):
+                continue
             seen.add(resolved)
             result.append(str(resolved))
-        return result
+        # Compact parent/child: keep only topmost ancestors
+        compacted: list[str] = []
+        for r in sorted(result, key=len):
+            if not any(Path(c) != Path(r) and Path(r).is_relative_to(Path(c)) for c in result):
+                compacted.append(r)
+        return compacted
 
     def scan_library(self) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
@@ -463,6 +484,7 @@ class EmulationController:
                     "updateVersion": None,
                     "dlcCount": 0,
                     "bannerAsset": banner_asset,
+                    "coverUrl": banner_asset,
                     "mediaSource": media_source,
                 }
         by_title_id = {
@@ -575,6 +597,12 @@ class EmulationController:
             source_format = source.suffix.lstrip(".").casefold()
             target_format = "nsp" if source_format == "nsz" else "nsz"
             plan = self._nsz_conversion().plan_convert(source, target_format)
+        elif action == "game.emulator.default":
+            emulator_id = self._required_string(payload, "emulatorId")
+            self._require_managed_emulator(emulator_id)
+            plan = self._plan_global_setting("defaultEmulatorId", emulator_id)
+        elif action == "game.emulator.clear_default":
+            plan = self._plan_global_setting("defaultEmulatorId", None)
         elif action == "game.emulator.set":
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
@@ -626,6 +654,15 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
             title_id = str(game.get("titleId", ""))
+            if not title_id:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="Title ID é necessário para busca de mídia",
+                )
+            if not self._is_credential_configured("steamgriddb"):
+                raise SteamZeroError(
+                    "E-SCRAPE-CREDENTIAL-MISSING",
+                    detail="Configure a chave de API do SteamGridDB em Global → Mídia.",
+                )
             plan = transaction.plan_write_files(
                 {}, root=paths.data_home(),
                 kind=f"media.search:{game_id}",
@@ -795,7 +832,11 @@ class EmulationController:
                     created_by="ui",
                 )
                 response["jobId"] = job.id
-                self._jobs.run(job.id)
+                try:
+                    self._jobs.run(job.id)
+                except SteamZeroError as exc:
+                    response["error"] = exc.code
+                    response["errorDetail"] = str(exc.detail)
             elif pending.kind == "media-select":
                 self._apply_media_select(pending)
             elif pending.kind == "media-clear":
@@ -838,6 +879,9 @@ class EmulationController:
             "updatedAt": job.updated_at,
         }
 
+    def _is_credential_configured(self, provider: str) -> bool:
+        return self._secret_store.retrieve(provider, "api_key") is not None
+
     def credential_status(self) -> dict[str, Any]:
         configured = self._secret_store.retrieve("steamgriddb", "api_key") is not None
         return {"steamgriddb": {"configured": configured}}
@@ -849,6 +893,9 @@ class EmulationController:
     def delete_credential(self, provider: str) -> dict[str, Any]:
         self._secret_store.delete(provider, "api_key")
         return {"provider": provider, "configured": False}
+
+    def revoke_credential(self, provider: str) -> dict[str, Any]:
+        return self.delete_credential(provider)
 
     def test_credential(self, provider: str) -> dict[str, Any]:
         secret = self._secret_store.retrieve(provider, "api_key")
@@ -1260,11 +1307,32 @@ class EmulationController:
                         "Pipeline de capas",
                         (
                             "Prioridade: mídia escolhida pelo usuário, cache canônico, cache do "
-                            "emulador e ícone seguro de fallback. Provedores remotos exigem "
-                            "credenciais próprias antes de serem habilitados."
+                            "emulador e ícone seguro de fallback."
                         ),
                         "ready" if any(game.get("bannerAsset") for game in games) else "attention",
                         f"{sum(bool(game.get('bannerAsset')) for game in games)} capa(s)",
+                    ),
+                    self._card(
+                        "credential",
+                        "SteamGridDB",
+                        (
+                            "Configure sua chave de API para buscar capas"
+                            " automaticamente."
+                            if not self._is_credential_configured("steamgriddb")
+                            else "Credencial configurada. Teste a conexão."
+                        ),
+                        "ready"
+                        if self._is_credential_configured("steamgriddb")
+                        else "attention",
+                        "Configurado"
+                        if self._is_credential_configured("steamgriddb")
+                        else "Não configurado",
+                        action=self._action(
+                            "open-credential-dialog",
+                            "Configurar chave"
+                            if not self._is_credential_configured("steamgriddb")
+                            else "Gerenciar",
+                        ),
                     ),
                 ],
                 "primaryAction": self._action("library.scan", "Varrer agora"),
@@ -1479,7 +1547,7 @@ class EmulationController:
         game = self._current_game(self._required_string(payload, "gameId"))
         if not isinstance(game.get("titleId"), str):
             raise SteamZeroError("E-MOD-TITLE-ID-NOT-FOUND", detail="Title ID não identificado")
-        settings = self._settings_for_game(game, self._load_game_settings(strict=True))
+        settings = self._settings_for_game_with_global(game, self._load_game_settings(strict=True))
         emulator_id = settings.get("emulatorId")
         if not isinstance(emulator_id, str):
             raise SteamZeroError(
@@ -1896,18 +1964,23 @@ class EmulationController:
     def _media_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         store = StateStore()
         store.migrate()
-        conn = store.adapter_connection()
-        api_key = self._get_provider_api_key("steamgriddb")
-        provider = SteamGridDbAdapter(api_key=api_key)
-        pipeline = MediaPipeline(
-            media_root=paths.media_dir(),
-            providers=[provider],
-        )
-        mgr = GameMediaManager(
-            store=StateStoreGameMediaAdapter(conn),
-            pipeline=pipeline,
-            providers=[provider],
-        )
+        mgr = self._media_manager(store)
+        params = job.params
+        game_id = params["game_id"]
+        title_id = params["title_id"]
+
+        if not self._is_credential_configured("steamgriddb"):
+            state = mgr._store.load(game_id) or GameMediaState(
+                game_id=game_id, title_id=title_id, title=params["title"],
+            )
+            state.metadata_state = "error"
+            state.errors = {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"}
+            state.reason = "Configure a chave de API do SteamGridDB"
+            mgr._store.save(state)
+            return {
+                "candidate_count": 0,
+                "provider_errors": {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"},
+            }
         params = job.params
         game_id = params["game_id"]
         title_id = params["title_id"]
@@ -1930,6 +2003,9 @@ class EmulationController:
         for idx, provider_item in enumerate(mgr._providers):
             ctx.safepoint()
             try:
+                if not self._is_credential_configured(provider_item.name):
+                    provider_errors[provider_item.name] = "E-SCRAPE-CREDENTIAL-MISSING"
+                    continue
                 results = provider_item.search(identity, kinds)
                 all_candidates.extend(results)
             except SteamZeroError as exc:
@@ -1961,6 +2037,9 @@ class EmulationController:
             state.metadata_state = "candidates-found"
         elif provider_errors:
             state.metadata_state = "error"
+            state.reason = "; ".join(
+                f"{p}={e}" for p, e in provider_errors.items()
+            )
         else:
             state.metadata_state = "no-results"
         state.selected_candidate_idx = -1
@@ -2484,6 +2563,44 @@ class EmulationController:
         )
         return SwitchRomConversionService(registry, converter=converter)
 
+    @property
+    def _global_settings_path(self) -> Path:
+        return paths.config_home() / "emulation-global-v1.json"
+
+    def _load_global_settings(self) -> dict[str, Any]:
+        path = self._global_settings_path
+        if not path.is_file() or path.is_symlink():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("schemaVersion") != 1 or not isinstance(data.get("settings"), dict):
+                return {}
+            parsed: dict[str, Any] = {}
+            allowed = {"defaultEmulatorId"}
+            for key in allowed:
+                value = data["settings"].get(key)
+                if value is not None:
+                    if key == "defaultEmulatorId" and value not in _MANAGED_EMULATORS:
+                        continue
+                    parsed[key] = value
+            return parsed
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def _plan_global_setting(self, key: str, value: str | bool | None) -> transaction.Plan:
+        settings = self._load_global_settings()
+        if value is None:
+            settings.pop(key, None)
+        else:
+            settings[key] = value
+        content = json.dumps(
+            {"schemaVersion": 1, "settings": settings},
+            sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+        ).encode()
+        writes = {self._global_settings_path: content}
+        root = self._compatible_root(writes)
+        return transaction.plan_write_files(writes, root=root, kind="emulation.global-settings")
+
     def _load_game_settings(self, *, strict: bool) -> dict[str, dict[str, Any]]:
         path = self._game_settings_path
         if not path.exists():
@@ -2570,6 +2687,12 @@ class EmulationController:
         o alias antigo preserva seleção de emulador e publicação Steam depois
         de uma nova varredura ou atualização do runtime.
         """
+        return EmulationController._resolve_settings(game, settings)
+
+    @classmethod
+    def _resolve_settings(
+        cls, game: Mapping[str, Any], settings: Mapping[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         game_id = game.get("id")
         fingerprint = game.get("fingerprint")
         candidates = [game_id]
@@ -2579,6 +2702,17 @@ class EmulationController:
             if isinstance(candidate, str) and candidate in settings:
                 return dict(settings[candidate])
         return {}
+
+    def _settings_for_game_with_global(
+        self, game: Mapping[str, Any], settings: Mapping[str, dict[str, Any]]
+    ) -> dict[str, Any]:
+        result = self._resolve_settings(game, settings)
+        if "emulatorId" not in result:
+            global_settings = self._load_global_settings()
+            default_emu = global_settings.get("defaultEmulatorId")
+            if default_emu is not None:
+                result["emulatorId"] = default_emu
+        return result
 
     def _media_manager(self, store: StateStore) -> GameMediaManager:
         conn = store.adapter_connection()
@@ -2619,7 +2753,7 @@ class EmulationController:
             for raw in games:
                 game = dict(raw)
                 game_id = str(game["id"])
-                selected = self._settings_for_game(game, settings)
+                selected = self._settings_for_game_with_global(game, settings)
                 emulator_id = selected.get("emulatorId")
                 emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
                 keys_ready = bool(
