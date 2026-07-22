@@ -59,7 +59,10 @@ ApplicationWindow {
         "recoveryRequired": false,
         "independentRuntime": true,
         "context": {"deviceKind": "deck-lcd", "displays": [], "capabilities": [], "conflicts": []},
-        "dashboard": {"components": [], "steam": [], "sync": {}, "doctor": {"checks": []}}
+        "dashboard": {
+            "components": [], "steam": [], "sync": {}, "doctor": {"checks": []},
+            "uiContracts": {"schemaVersion": 1, "states": [], "actions": [], "byId": {}}
+        }
     })
     property var fallbackComponents: [
         {
@@ -67,7 +70,8 @@ ApplicationWindow {
             "iconName": "dolphin-emu", "systems": ["Wii", "GameCube"], "state": "missing",
             "statusLabel": "Não instalado", "versionLabel": "—", "targetVersion": "—",
             "detail": "O status será atualizado quando a bridge local responder.",
-            "blockedReason": "", "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
+            "blockedReason": "", "action": {"kind": "detail", "label": "Bridge indisponível", "enabled": false,
+                "reason": "A bridge local ainda não publicou uma ação operacional."}
         },
         {
             "id": "duckstation", "name": "DuckStation", "description": "Emulador de PlayStation",
@@ -81,7 +85,8 @@ ApplicationWindow {
             "iconName": "retroarch", "systems": ["Múltiplos"], "state": "missing",
             "statusLabel": "Não instalado", "versionLabel": "—", "targetVersion": "—",
             "detail": "O status será atualizado quando a bridge local responder.",
-            "blockedReason": "", "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
+            "blockedReason": "", "action": {"kind": "detail", "label": "Bridge indisponível", "enabled": false,
+                "reason": "A bridge local ainda não publicou uma ação operacional."}
         }
     ]
     property var fallbackSteam: [
@@ -89,7 +94,8 @@ ApplicationWindow {
             "id": "steam-client", "name": "Cliente Steam", "description": "Cliente oficial e modo Big Picture",
             "iconName": "steam", "state": "missing", "statusLabel": "Verificando", "versionLabel": "—",
             "detail": "O estado do Steam será atualizado pela bridge local.",
-            "action": {"kind": "detail", "label": "Ver detalhes", "enabled": true}
+            "action": {"kind": "detail", "label": "Bridge indisponível", "enabled": false,
+                "reason": "A bridge local ainda não publicou uma ação operacional."}
         }
     ]
     property var fallbackSteamGameplay: ({
@@ -171,6 +177,9 @@ ApplicationWindow {
         ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
+    readonly property var uiContracts: desktopStatus.dashboard
+        && desktopStatus.dashboard.uiContracts
+        ? desktopStatus.dashboard.uiContracts : ({"actions": [], "byId": {}})
     readonly property bool hasConflicts: desktopStatus.context
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
     readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
@@ -299,7 +308,25 @@ ApplicationWindow {
         xhr.send(JSON.stringify(payload || {}))
     }
 
+    function backendAction(actionId) {
+        const actions = uiContracts && uiContracts.byId ? uiContracts.byId : {}
+        return actions[actionId] || null
+    }
+
+    function requestAction(actionId, payload, callback) {
+        const action = backendAction(actionId)
+        if (!action || action.applicability !== "applicable" || action.enabled !== true
+                || !action.endpoint || !action.method) {
+            notify(action && action.reason
+                ? action.reason
+                : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId), true)
+            return
+        }
+        request(action.method, action.endpoint, payload, callback)
+    }
+
     function refreshStatus(message) {
+        // /status é o único bootstrap: ele entrega o próprio catálogo de contratos.
         request("GET", "/status", {}, function(response) {
             desktopStatus = response
             currentPlan = null
@@ -444,16 +471,16 @@ ApplicationWindow {
             return
         const kind = row.action.kind
         if (kind === "component-plan") {
-            request("POST", "/component/plan", {"componentId": row.id}, function(response) {
+            requestAction("component.plan", {"componentId": row.id}, function(response) {
                 componentPlan = response.plan
                 componentDialog.open()
             })
         } else if (kind === "component-launch") {
-            request("POST", "/component/launch", {"componentId": row.id}, function(response) {
+            requestAction("component.launch", {"componentId": row.id}, function(response) {
                 notify(qsTr("%1 foi aberto").arg(row.name), false)
             })
         } else if (kind === "steam-open") {
-            request("POST", "/steam/open", {"target": row.action.target}, function(response) {
+            requestAction("steam.open", {"target": row.action.target}, function(response) {
                 notify(qsTr("Steam aberto com segurança"), false)
                 refreshStatus("")
             })
@@ -478,14 +505,14 @@ ApplicationWindow {
             return
         }
         if (action.id === "library.scan") {
-            request("POST", "/emulation/library/scan", {}, function(response) {
+            requestAction("library.scan", {}, function(response) {
                 refreshStatus(qsTr("Biblioteca atualizada: %1 jogo(s)").arg(response.games))
             })
             return
         }
         if (action.id.indexOf("emulator.launch:") === 0) {
             const emulatorId = action.id.split(":")[1]
-            request("POST", "/emulation/emulator/launch", {"emulatorId": emulatorId},
+            requestAction("emulator.launch", {"emulatorId": emulatorId},
                     function(response) {
                 notify(qsTr("Emulador aberto"), false)
             })
@@ -493,7 +520,7 @@ ApplicationWindow {
         }
         if (action.id.indexOf("game.launch:") === 0) {
             const gameId = action.id.split(":")[1]
-            request("POST", "/emulation/game/launch", {"gameId": gameId},
+            requestAction("game.launch", {"gameId": gameId},
                     function(response) {
                 notify(qsTr("Jogo iniciado com %1").arg(response.emulatorId), false)
             })
@@ -501,7 +528,7 @@ ApplicationWindow {
         }
         if (action.id.indexOf("emulator.stop:") === 0) {
             const emulatorId = action.id.split(":")[1]
-            request("POST", "/emulation/emulator/stop", {"emulatorId": emulatorId},
+            requestAction("emulator.stop", {"emulatorId": emulatorId},
                     function() {
                 refreshStatus(qsTr("Emulador encerrado"))
             })
@@ -512,7 +539,7 @@ ApplicationWindow {
                 || action.id.indexOf("emulator.uninstall:") === 0) {
             const parts = action.id.split(":")
             const lifecycleAction = parts[0].split(".")[1]
-            request("POST", "/emulation/emulator/plan", {
+            requestAction("emulator.plan", {
                 "emulatorId": parts[1], "action": lifecycleAction
             }, function(response) {
                 emulationPlan = response.plan
@@ -552,7 +579,7 @@ ApplicationWindow {
                 "selected": action.selected === true,
                 "value": action.value === true
             }
-            request("POST", "/emulation/action/plan", payload, function(response) {
+            requestAction("emulation.action.plan", payload, function(response) {
                 emulationPlan = response.plan
                 emulationDialog.open()
             })
@@ -567,7 +594,7 @@ ApplicationWindow {
             return
         }
         const action = desktopStatus.conflictActions[0]
-        request("POST", "/conflict/plan", {"actionId": action.actionId}, function(response) {
+        requestAction("desktop.conflict.plan", {"actionId": action.actionId}, function(response) {
             conflictPlan = response.plan
             conflictDialog.open()
         })
@@ -576,21 +603,21 @@ ApplicationWindow {
     property var gamemodePlan: null
 
     function beginGamemodeReturn() {
-        request("POST", "/session/select", {"target": "steam"}, function(response) {
+        requestAction("session.select", {"target": "steam"}, function(response) {
             gamemodePlan = response
             gamemodeDialog.open()
         })
     }
 
     function beginQuickReset() {
-        request("POST", "/plan", {"profile": "safe"}, function(response) {
+        requestAction("desktop.profile.plan", {"profile": "safe"}, function(response) {
             currentPlan = response.plan
             resetDialog.open()
         })
     }
 
     function beginLsfgInstall() {
-        request("POST", "/system/lsfg/plan", {}, function(response) {
+        requestAction("lsfg.plan", {}, function(response) {
             lsfgPlan = response.plan
             lsfgDialog.open()
         })
@@ -598,7 +625,7 @@ ApplicationWindow {
 
     function openKeyboard(language) {
         keyboardRequested(language || "")
-        request("POST", "/keyboard", {"action": "toggle", "language": language || ""}, function(response) {
+        requestAction("keyboard.toggle", {"action": "toggle", "language": language || ""}, function(response) {
             keyboardVisible = response.action === "show"
             notify(qsTr("Teclado %1 por %2").arg(
                 keyboardVisible ? qsTr("aberto") : qsTr("fechado")
@@ -674,7 +701,7 @@ ApplicationWindow {
                     onClicked: {
                         if (!root.conflictPlan)
                             return
-                        root.request("POST", "/conflict/apply", {
+                        root.requestAction("desktop.conflict.apply", {
                             "planId": root.conflictPlan.planId,
                             "confirmToken": root.conflictPlan.confirmToken
                         }, function(response) {
@@ -736,7 +763,7 @@ ApplicationWindow {
                     onClicked: {
                         if (!root.componentPlan)
                             return
-                        root.request("POST", "/component/apply", {
+                        root.requestAction("component.apply", {
                             "planId": root.componentPlan.planId,
                             "confirmToken": root.componentPlan.confirmToken
                         }, function(response) {
@@ -812,9 +839,9 @@ ApplicationWindow {
                             return
                         const emulatorLifecycle = String(root.emulationPlan.action)
                             .indexOf("emulator.") === 0
-                        const endpoint = emulatorLifecycle
-                            ? "/emulation/emulator/apply" : "/emulation/action/apply"
-                        root.request("POST", endpoint, {
+                        const actionId = emulatorLifecycle
+                            ? "emulator.apply" : "emulation.action.apply"
+                        root.requestAction(actionId, {
                             "planId": root.emulationPlan.planId,
                             "confirmToken": root.emulationPlan.confirmToken
                         }, function(response) {
@@ -861,7 +888,7 @@ ApplicationWindow {
                     enabled: root.gamemodePlan !== null
                     Accessible.name: text
                     onClicked: {
-                        root.request("POST", "/session/select", {
+                        root.requestAction("session.select", {
                             "target": root.gamemodePlan.target,
                             "planId": root.gamemodePlan.planId,
                             "confirmToken": root.gamemodePlan.confirmToken
@@ -914,7 +941,7 @@ ApplicationWindow {
                     enabled: root.currentPlan !== null && root.currentPlan.blockers.length === 0
                     Accessible.name: text
                     onClicked: {
-                        root.request("POST", "/reset", {
+                        root.requestAction("desktop.profile.reset", {
                             "planId": root.currentPlan.planId,
                             "confirmToken": root.currentPlan.confirmToken
                         }, function(response) {
@@ -1006,7 +1033,7 @@ ApplicationWindow {
                     onClicked: {
                         if (!root.lsfgPlan)
                             return
-                        root.request("POST", "/system/lsfg/apply", {
+                        root.requestAction("lsfg.apply", {
                             "planId": root.lsfgPlan.planId,
                             "confirmToken": root.lsfgPlan.confirmToken
                         }, function(response) {
@@ -1036,7 +1063,7 @@ ApplicationWindow {
         property string saveResult: ""
 
         function refresh() {
-            root.request("POST", "/scraping/credential/status", {}, function(resp) {
+            root.requestAction("credential.status", {}, function(resp) {
                 credentialDialog.providers = resp.providers || []
                 credentialDialog.testResult = ""
                 credentialDialog.saveResult = ""
@@ -1120,7 +1147,7 @@ ApplicationWindow {
                                 palette.buttonText: root.textColor
                                 Layout.minimumHeight: 36
                                 onClicked: {
-                                    root.request("POST", "/scraping/credential/save", {
+                                    root.requestAction("credential.save", {
                                         "provider": providerCard.provider.id,
                                         "credentials": providerCard.credentialValues
                                     }, function(resp) {
@@ -1146,7 +1173,7 @@ ApplicationWindow {
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
                             onClicked: {
-                                root.request("POST", "/scraping/credential/test", {
+                                root.requestAction("credential.test", {
                                     "provider": provider.id
                                 }, function(resp) {
                                     credentialDialog.testResult = resp.valid
@@ -1163,7 +1190,7 @@ ApplicationWindow {
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
                             onClicked: {
-                                root.request("POST", "/scraping/credential/delete", {
+                                root.requestAction("credential.delete", {
                                     "provider": provider.id
                                 }, function(resp) {
                                     credentialDialog.refresh()
@@ -1177,7 +1204,7 @@ ApplicationWindow {
                             Layout.minimumHeight: 32
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
-                            onClicked: root.request("POST", "/scraping/provider-link", {
+                            onClicked: root.requestAction("provider.link", {
                                 "provider": provider.id, "link": "credentials"
                             }, function(resp) { Qt.openUrlExternally(resp.url) })
                         }
@@ -1221,7 +1248,7 @@ ApplicationWindow {
                 Accessible.name: text
                 onClicked: {
                     root.recoveryRequested()
-                    root.request("POST", "/recover", {}, function(response) {
+                    root.requestAction("desktop.recover", {}, function(response) {
                         recoveryDialog.close()
                         root.refreshStatus(qsTr("Recuperação concluída com segurança"))
                     })
@@ -2002,12 +2029,12 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 onPlanRequested: function(payload) {
-                                    root.request("POST", "/steam/gameplay/plan", payload, function(response) {
+                                    root.requestAction("steam.gameplay.plan", payload, function(response) {
                                         steamGameplayPage.showPlan(response.plan)
                                     })
                                 }
                                 onApplyRequested: function(planId, confirmToken) {
-                                    root.request("POST", "/steam/gameplay/apply", {
+                                    root.requestAction("steam.gameplay.apply", {
                                         "planId": planId,
                                         "confirmToken": confirmToken
                                     }, function(response) {
@@ -2016,12 +2043,12 @@ ApplicationWindow {
                                 }
                                 onSystemRequested: root.sectionIndex = 5
                                 onDesktopProfilePlanRequested: function(profile) {
-                                    root.request("POST", "/plan", {"profile": profile}, function(response) {
+                                    root.requestAction("desktop.profile.plan", {"profile": profile}, function(response) {
                                         steamGameplayPage.showDesktopPlan(response.plan)
                                     })
                                 }
                                 onDesktopProfileApplyRequested: function(planId, confirmToken) {
-                                    root.request("POST", "/apply", {
+                                    root.requestAction("desktop.profile.apply", {
                                         "planId": planId,
                                         "confirmToken": confirmToken
                                     }, function() {
@@ -2030,54 +2057,54 @@ ApplicationWindow {
                                 }
                                 onDesktopSafeResetRequested: root.beginQuickReset()
                                 onDesktopConflictRequested: root.beginConflictResolution()
-                                onDesktopRecoveryRequested: root.request(
-                                    "POST", "/recover", {}, function() {
+                                onDesktopRecoveryRequested: root.requestAction(
+                                    "desktop.recover", {}, function() {
                                         root.refreshStatus(qsTr("Estado Desktop seguro restaurado"))
                                     }
                                 )
                                 onDesktopKeyboardRequested: function(language) { root.openKeyboard(language) }
-                                onDesktopAshytermRequested: root.request("POST", "/ashyterm", {}, function(response) {
+                                onDesktopAshytermRequested: root.requestAction("terminal.open", {}, function(response) {
                                     root.notify(qsTr("Terminal Ashy aberto"), false)
                                 })
                                 onDesktopPanelAutoHideRequested: function(enable) {
-                                    root.request("POST", "/panel/autohide", {"enable": enable}, function(response) {
+                                    root.requestAction("panel.autohide", {"enable": enable}, function(response) {
                                         root.notify(qsTr("Painel auto-ocultar %1").arg(enable ? qsTr("ativado") : qsTr("desativado")), false)
                                     })
                                 }
                                 onDesktopKeyboardSoundRequested: function(enable) {
-                                    root.request("POST", "/keyboard/settings", {"sound": enable}, function(response) {
+                                    root.requestAction("keyboard.settings", {"sound": enable}, function(response) {
                                         root.notify(qsTr("Som do teclado %1").arg(enable ? qsTr("ativado") : qsTr("desativado")), false)
                                     })
                                 }
                                 onDesktopKeyboardThemeRequested: function(dark) {
-                                    root.request("POST", "/keyboard/settings", {"theme": dark ? "SuruDark" : "Ambiance"}, function(response) {
+                                    root.requestAction("keyboard.settings", {"theme": dark ? "SuruDark" : "Ambiance"}, function(response) {
                                         root.notify(qsTr("Tema do teclado: %1").arg(dark ? qsTr("escuro") : qsTr("claro")), false)
                                     })
                                 }
                                 onDesktopGamemodeReturnRequested: root.beginGamemodeReturn()
                                 onSteamInputRequested: function(gameId) {
-                                    root.request("POST", "/steam/input/open", {
+                                    root.requestAction("steam.input.open", {
                                         "gameId": gameId
                                     }, function() {
                                         root.notify(qsTr("Configuração Steam Input aberta"), false)
                                     })
                                 }
                                 onLauncherRecoveryRequested: function(gameId) {
-                                    root.request("POST", "/steam/gameplay/recover", {
+                                    root.requestAction("steam.gameplay.recover", {
                                         "gameId": gameId
                                     }, function() {
                                         root.refreshStatus(qsTr("Estado do lançamento restaurado"))
                                     })
                                 }
                                 onLaunchOptionsPlanRequested: function(gameId) {
-                                    root.request("POST", "/steam/gameplay/launch-options/plan", {
+                                    root.requestAction("steam.launch-options.plan", {
                                         "gameId": gameId
                                     }, function(response) {
                                         steamGameplayPage.showLaunchOptionsPlan(response.plan)
                                     })
                                 }
                                 onLaunchOptionsApplyRequested: function(planId, confirmToken, gameId) {
-                                    root.request("POST", "/steam/gameplay/launch-options/apply", {
+                                    root.requestAction("steam.launch-options.apply", {
                                         "planId": planId,
                                         "confirmToken": confirmToken,
                                         "gameId": gameId
@@ -2086,14 +2113,14 @@ ApplicationWindow {
                                     })
                                 }
                                 onLaunchOptionsRollbackRequested: function(operationId) {
-                                    root.request("POST", "/steam/gameplay/launch-options/rollback", {
+                                    root.requestAction("steam.launch-options.rollback", {
                                         "operationId": operationId
                                     }, function(response) {
                                         root.refreshStatus(response.message || qsTr("Configuração restaurada"))
                                     })
                                 }
                                 onMaintenancePlanRequested: function(gameId, categories) {
-                                    root.request("POST", "/steam/maintenance/plan", {
+                                    root.requestAction("steam.maintenance.plan", {
                                         "gameId": gameId,
                                         "categories": categories
                                     }, function(response) {
@@ -2101,7 +2128,7 @@ ApplicationWindow {
                                     })
                                 }
                                 onMaintenanceApplyRequested: function(planId, confirmToken, confirmPhrase) {
-                                    root.request("POST", "/steam/maintenance/apply", {
+                                    root.requestAction("steam.maintenance.apply", {
                                         "planId": planId,
                                         "confirmToken": confirmToken,
                                         "confirmPhrase": confirmPhrase
@@ -2112,12 +2139,12 @@ ApplicationWindow {
                                     })
                                 }
                                 onMaintenanceRecoveryRequested: {
-                                    root.request("POST", "/steam/maintenance/recover", {}, function() {
+                                    root.requestAction("steam.maintenance.recover", {}, function() {
                                         root.refreshStatus(qsTr("Limpeza interrompida concluída"))
                                     })
                                 }
                                 onMediaPlanRequested: function(gameId, accountId, packagePath) {
-                                    root.request("POST", "/steam/media/plan", {
+                                    root.requestAction("steam.media.plan", {
                                         "gameId": gameId,
                                         "accountId": accountId,
                                         "packagePath": packagePath
@@ -2126,7 +2153,7 @@ ApplicationWindow {
                                     })
                                 }
                                 onMediaApplyRequested: function(planId, confirmToken) {
-                                    root.request("POST", "/steam/media/apply", {
+                                    root.requestAction("steam.media.apply", {
                                         "planId": planId,
                                         "confirmToken": confirmToken
                                     }, function(response) {
@@ -2135,7 +2162,7 @@ ApplicationWindow {
                                     })
                                 }
                                 onMediaRollbackRequested: function(operationId) {
-                                    root.request("POST", "/steam/media/rollback", {
+                                    root.requestAction("steam.media.rollback", {
                                         "operationId": operationId
                                     }, function() {
                                         steamGameplayPage.mediaLastOperationId = ""
@@ -2409,7 +2436,7 @@ ApplicationWindow {
                                             KeyNavigation.down: applyButton
                                             onClicked: {
                                                 root.planRequested(root.selectedProfile)
-                                                root.request("POST", "/plan", {"profile": root.selectedProfile}, function(response) {
+                                                root.requestAction("desktop.profile.plan", {"profile": root.selectedProfile}, function(response) {
                                                     root.currentPlan = response.plan
                                                     if (response.plan.blockers.length > 0)
                                                         root.notify(qsTr("Plano bloqueado: %1").arg(response.plan.blockers.join("; ")), true)
@@ -2458,8 +2485,9 @@ ApplicationWindow {
                                             KeyNavigation.up: planButton
                                             KeyNavigation.down: profilePicker
                                             onClicked: {
-                                                const path = root.currentPlan.target.id === "safe" ? "/reset" : "/apply"
-                                                root.request("POST", path, {
+                                                const actionId = root.currentPlan.target.id === "safe"
+                                                    ? "desktop.profile.reset" : "desktop.profile.apply"
+                                                root.requestAction(actionId, {
                                                     "planId": root.currentPlan.planId,
                                                     "confirmToken": root.currentPlan.confirmToken
                                                 }, function(response) {
@@ -2623,7 +2651,7 @@ ApplicationWindow {
                                             text: qsTr("Abrir biblioteca")
                                             Layout.minimumHeight: 48
                                             Accessible.name: qsTr("Abrir biblioteca Steam para Lossless Scaling")
-                                            onClicked: root.request("POST", "/steam/open", {
+                                            onClicked: root.requestAction("steam.open", {
                                                 "target": "library"
                                             }, function() {
                                                 root.notify(qsTr("Biblioteca Steam aberta"), false)
@@ -2654,7 +2682,7 @@ ApplicationWindow {
                                             text: qsTr("Desfazer")
                                             Layout.minimumHeight: 48
                                             Accessible.name: qsTr("Desfazer última instalação LSFG-VK")
-                                            onClicked: root.request("POST", "/system/lsfg/rollback", {
+                                            onClicked: root.requestAction("lsfg.rollback", {
                                                 "operationId": root.lsfgLastOperationId.length > 0
                                                     ? root.lsfgLastOperationId
                                                     : String(root.lsfgSystemData.lastOperationId)

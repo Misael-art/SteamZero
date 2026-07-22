@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import urlparse
 
+from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_dashboard import DesktopDashboard
 from steamzero.adapters.desktop_kde import (
     KDEPanelEffect,
@@ -66,7 +67,9 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
             return
         path = urlparse(self.path).path
-        if path == "/status":
+        if path == "/contracts":
+            self._send(HTTPStatus.OK, handheld_ui_contracts())
+        elif path == "/status":
             try:
                 status = self._control_server.coordinator.status()
                 dashboard = self._control_server.dashboard

@@ -16,6 +16,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_kde import input_method_status
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
@@ -340,6 +341,7 @@ class DesktopDashboard:
             emulation = build_switch_workspace()
 
         return {
+            "uiContracts": handheld_ui_contracts(),
             "components": components,
             "steam": self._steam.rows(desktop_status),
             "steamGameplay": steam_gameplay,

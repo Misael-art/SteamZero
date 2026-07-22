@@ -49,21 +49,24 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     assert "Layout.minimumHeight: 48" in qml
     assert "Accessible.name" in qml
     assert "KeyNavigation" in qml
-    assert '"/conflict/plan"' in qml
-    assert '"/conflict/apply"' in qml
-    assert '"/component/plan"' in qml
-    assert '"/component/apply"' in qml
-    assert '"/steam/open"' in qml
-    assert '"/steam/input/open"' in qml
-    assert '"/steam/gameplay/plan"' in qml
-    assert '"/steam/gameplay/apply"' in qml
-    assert '"/steam/gameplay/recover"' in qml
-    assert '"/steam/gameplay/launch-options/plan"' in qml
-    assert '"/steam/gameplay/launch-options/apply"' in qml
-    assert '"/steam/gameplay/launch-options/rollback"' in qml
-    assert '"/system/lsfg/plan"' in qml
-    assert '"/system/lsfg/apply"' in qml
-    assert '"/system/lsfg/rollback"' in qml
+    for action_id in (
+        "desktop.conflict.plan",
+        "desktop.conflict.apply",
+        "component.plan",
+        "component.apply",
+        "steam.open",
+        "steam.input.open",
+        "steam.gameplay.plan",
+        "steam.gameplay.apply",
+        "steam.gameplay.recover",
+        "steam.launch-options.plan",
+        "steam.launch-options.apply",
+        "steam.launch-options.rollback",
+        "lsfg.plan",
+        "lsfg.apply",
+        "lsfg.rollback",
+    ):
+        assert f'"{action_id}"' in qml
     assert "Plano bloqueado" in qml
     for section in (
         "Visão geral",
@@ -116,12 +119,12 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     # A UI não menciona o projeto pesquisado: independência sem referência (ADR-0019).
     assert "phasezero" not in desktop_qml.casefold()
     main_qml = (root / "src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
-    for route in (
-        '"/steam/maintenance/plan"',
-        '"/steam/maintenance/apply"',
-        '"/steam/maintenance/recover"',
-        '"/steam/media/plan"',
-        '"/steam/media/apply"',
-        '"/steam/media/rollback"',
+    for action_id in (
+        "steam.maintenance.plan",
+        "steam.maintenance.apply",
+        "steam.maintenance.recover",
+        "steam.media.plan",
+        "steam.media.apply",
+        "steam.media.rollback",
     ):
-        assert route in main_qml
+        assert f'"{action_id}"' in main_qml
