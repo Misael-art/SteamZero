@@ -1031,13 +1031,13 @@ ApplicationWindow {
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.borderColor; border.width: 1 }
-        property var providers: ({})
+        property var providers: []
         property string testResult: ""
         property string saveResult: ""
 
         function refresh() {
             root.request("POST", "/scraping/credential/status", {}, function(resp) {
-                credentialDialog.providers = resp || {}
+                credentialDialog.providers = resp.providers || []
                 credentialDialog.testResult = ""
                 credentialDialog.saveResult = ""
             })
@@ -1053,64 +1053,79 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Repeater {
-                model: Object.keys(credentialDialog.providers)
+                model: credentialDialog.providers
                 delegate: Rectangle {
-                    required property string modelData
+                    required property var modelData
+                    id: providerCard
+                    property var provider: modelData
+                    property var credentialValues: ({})
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 80
+                    visible: provider.enabled
+                    implicitHeight: providerContent.implicitHeight + 24
                     color: root.surfaceColor
                     radius: 8
                     border.color: root.borderColor
                     ColumnLayout {
+                        id: providerContent
                         anchors.margins: 12
                         anchors.fill: parent
                         spacing: 6
                         Label {
-                            text: modelData
+                            text: provider.name
                             color: root.textColor
                             font.bold: true
                             font.pixelSize: 14
                         }
                         Label {
-                            text: credentialDialog.providers[modelData].configured
+                            text: provider.configured
                                 ? qsTr("✓ Configurado") : qsTr("✗ Não configurado")
-                            color: credentialDialog.providers[modelData].configured
+                            color: provider.configured
                                 ? root.greenColor : root.amberColor
                             font.pixelSize: 11
+                        }
+                        Label {
+                            text: provider.description
+                            color: root.mutedColor
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Repeater {
+                            model: provider.credentialFields
+                            delegate: TextField {
+                                required property var modelData
+                                property var field: modelData
+                                placeholderText: field.placeholder
+                                color: root.textColor
+                                placeholderTextColor: root.mutedColor
+                                selectByMouse: true
+                                echoMode: field.secret ? TextInput.Password : TextInput.Normal
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 36
+                                onTextChanged: providerCard.credentialValues[field.id] = text
+                                background: Rectangle {
+                                    color: root.surfaceColor
+                                    border.color: parent.activeFocus ? root.cyanColor : root.borderColor
+                                    radius: 6
+                                }
+                            }
                         }
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
-                            TextField {
-                                id: apiKeyField
-                                placeholderText: qsTr("API key")
-                                color: root.textColor
-                                placeholderTextColor: root.mutedColor
-                                selectByMouse: true
-                                echoMode: TextInput.Password
-                                Layout.fillWidth: true
-                                Layout.minimumHeight: 36
-                                background: Rectangle {
-                                    color: root.surfaceColor
-                                    border.color: apiKeyField.activeFocus ? root.cyanColor : root.borderColor
-                                    radius: 6
-                                }
-                            }
                             Button {
                                 text: qsTr("Salvar")
-                                enabled: apiKeyField.text.length > 0
+                                enabled: Object.keys(providerCard.credentialValues).length > 0
                                 palette.button: root.raisedColor
                                 palette.buttonText: root.textColor
                                 Layout.minimumHeight: 36
                                 onClicked: {
-                                    var provider = modelData
                                     root.request("POST", "/scraping/credential/save", {
-                                        "provider": provider,
-                                        "apiKey": apiKeyField.text
+                                        "provider": providerCard.provider.id,
+                                        "credentials": providerCard.credentialValues
                                     }, function(resp) {
                                         credentialDialog.refresh()
-                                        apiKeyField.text = ""
-                                        credentialDialog.saveResult = qsTr("Chave salva para %1").arg(provider)
+                                        credentialDialog.saveResult = qsTr("Chave salva para %1").arg(providerCard.provider.name)
                                     }, function(errMsg) {
                                         credentialDialog.saveResult = qsTr("Erro ao salvar: %1").arg(errMsg)
                                     })
@@ -1124,7 +1139,7 @@ ApplicationWindow {
                             font.pixelSize: 10
                         }
                         Button {
-                            visible: credentialDialog.providers[modelData].configured
+                            visible: provider.configured && provider.id === "steamgriddb"
                             text: qsTr("Testar conexão")
                             Layout.fillWidth: true
                             Layout.minimumHeight: 32
@@ -1132,7 +1147,7 @@ ApplicationWindow {
                             palette.buttonText: root.textColor
                             onClicked: {
                                 root.request("POST", "/scraping/credential/test", {
-                                    "provider": modelData
+                                    "provider": provider.id
                                 }, function(resp) {
                                     credentialDialog.testResult = resp.valid
                                         ? qsTr("✓ Conexão bem-sucedida")
@@ -1141,7 +1156,7 @@ ApplicationWindow {
                             }
                         }
                         Button {
-                            visible: credentialDialog.providers[modelData].configured
+                            visible: provider.configured
                             text: qsTr("Revogar")
                             Layout.fillWidth: true
                             Layout.minimumHeight: 32
@@ -1149,21 +1164,25 @@ ApplicationWindow {
                             palette.buttonText: root.textColor
                             onClicked: {
                                 root.request("POST", "/scraping/credential/delete", {
-                                    "provider": modelData
+                                    "provider": provider.id
                                 }, function(resp) {
                                     credentialDialog.refresh()
                                 })
                             }
                         }
+                        Button {
+                            visible: provider.links && provider.links.credentials
+                            text: qsTr("Obter credencial")
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 32
+                            palette.button: root.raisedColor
+                            palette.buttonText: root.textColor
+                            onClicked: root.request("POST", "/scraping/provider-link", {
+                                "provider": provider.id, "link": "credentials"
+                            }, function(resp) { Qt.openUrlExternally(resp.url) })
+                        }
                     }
                 }
-            }
-            Label {
-                text: qsTr("Obtenha sua chave em: https://www.steamgriddb.com/profile/preferences")
-                color: root.mutedColor
-                font.pixelSize: 10
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
             }
             Button {
                 Layout.fillWidth: true

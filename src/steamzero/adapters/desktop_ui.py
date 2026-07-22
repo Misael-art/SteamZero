@@ -338,16 +338,27 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().credential_status()
         if path == "/scraping/credential/save":
             provider = self._required_string(payload, "provider")
-            api_key = self._required_string(payload, "apiKey")
-            if not provider or not api_key:
-                raise ValueError("provider e apiKey são obrigatórios")
-            return self._dashboard().save_credential(provider, api_key)
+            credentials = payload.get("credentials")
+            if not isinstance(credentials, dict) or not credentials:
+                raise ValueError("credentials são obrigatórias")
+            values = {
+                key: value
+                for key, value in credentials.items()
+                if isinstance(key, str) and isinstance(value, str)
+            }
+            if len(values) != len(credentials):
+                raise ValueError("credentials inválidas")
+            return self._dashboard().save_credential(provider, values)
         if path == "/scraping/credential/test":
             provider = self._required_string(payload, "provider")
             return self._dashboard().test_credential(provider)
         if path == "/scraping/credential/delete":
             provider = self._required_string(payload, "provider")
             return self._dashboard().delete_credential(provider)
+        if path == "/scraping/provider-link":
+            provider = self._required_string(payload, "provider")
+            link = self._required_string(payload, "link")
+            return self._dashboard().scraping_provider_link(provider, link)
         raise ValueError(f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})

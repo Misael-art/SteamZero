@@ -120,6 +120,19 @@ class TestEmulationControllerCredential:
         result = ctrl.delete_credential("steamgriddb")
         assert result == {"provider": "steamgriddb", "configured": False}
 
+    def test_disabled_provider_does_not_accept_user_credentials(self, tmp_path: Path) -> None:
+        ctrl = _controller(tmp_path)
+        with pytest.raises(SteamZeroError, match="provedor não aceita credenciais"):
+            ctrl.save_credential("screenscraper", {"username": "user", "password": "secret"})
+
+    def test_provider_link_is_limited_to_catalog_url(self, tmp_path: Path) -> None:
+        ctrl = _controller(tmp_path)
+        assert ctrl.provider_link("steamgriddb", "credentials") == {
+            "url": "https://www.steamgriddb.com/profile/preferences/api"
+        }
+        with pytest.raises(ValueError, match="link externo não permitido"):
+            ctrl.provider_link("steamgriddb", "https://example.invalid")
+
 
 class TestSteamGridDbAdapterErrors:
     def test_search_without_api_key_raises(self) -> None:

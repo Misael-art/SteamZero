@@ -382,14 +382,17 @@ class DesktopDashboard:
     def credential_status(self) -> dict[str, Any]:
         return self._emulation.credential_status()
 
-    def save_credential(self, provider: str, api_key: str) -> dict[str, Any]:
-        return self._emulation.save_credential(provider, api_key)
+    def save_credential(self, provider: str, credentials: dict[str, str]) -> dict[str, Any]:
+        return self._emulation.save_credential(provider, credentials)
 
     def test_credential(self, provider: str) -> dict[str, Any]:
         return self._emulation.test_credential(provider)
 
     def delete_credential(self, provider: str) -> dict[str, Any]:
         return self._emulation.delete_credential(provider)
+
+    def scraping_provider_link(self, provider: str, link: str) -> dict[str, str]:
+        return self._emulation.provider_link(provider, link)
 
     def plan_steam_gameplay(
         self, payload: dict[str, Any], desktop_status: dict[str, Any]

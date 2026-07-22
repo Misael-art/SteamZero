@@ -42,7 +42,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.media_pipeline import MediaPipeline
-from steamzero.domain.scraping_providers import PROVIDERS, provider_by_id
+from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
@@ -927,6 +927,8 @@ class EmulationController:
 
     def _is_credential_configured(self, provider: str) -> bool:
         definition = provider_by_id(provider)
+        if not definition.enabled or not definition.credential_fields:
+            return False
         return all(
             self._secret_store.retrieve(provider, field.id) is not None
             for field in definition.credential_fields
@@ -948,6 +950,8 @@ class EmulationController:
         self, provider: str, credentials: Mapping[str, str] | str
     ) -> dict[str, Any]:
         definition = provider_by_id(provider)
+        if not definition.enabled or not definition.credential_fields:
+            raise SteamZeroError("E-API-SCHEMA", detail="provedor não aceita credenciais")
         values = {"api_key": credentials} if isinstance(credentials, str) else dict(credentials)
         allowed = {field.id for field in definition.credential_fields}
         invalid_value = any(not isinstance(value, str) or not value for value in values.values())
@@ -962,6 +966,8 @@ class EmulationController:
 
     def delete_credential(self, provider: str) -> dict[str, Any]:
         definition = provider_by_id(provider)
+        if not definition.credential_fields:
+            raise SteamZeroError("E-API-SCHEMA", detail="provedor não usa credenciais")
         for field in definition.credential_fields:
             self._secret_store.delete(provider, field.id)
         return {"provider": provider, "configured": False}
@@ -970,6 +976,8 @@ class EmulationController:
         return self.delete_credential(provider)
 
     def test_credential(self, provider: str) -> dict[str, Any]:
+        if provider != "steamgriddb":
+            raise SteamZeroError("E-API-SCHEMA", detail="teste não disponível para este provedor")
         secret = self._secret_store.retrieve(provider, "api_key")
         if secret is None:
             return {"provider": provider, "valid": False, "error": "E-SCRAPE-CREDENTIAL-MISSING"}
@@ -983,6 +991,10 @@ class EmulationController:
             return {"provider": provider, "valid": False, "error": exc.code}
         except Exception:
             return {"provider": provider, "valid": False, "error": "E-SCRAPE-UNEXPECTED"}
+
+    def provider_link(self, provider: str, link: str) -> dict[str, str]:
+        """Retorna somente destinos HTTPS declarados pelo catálogo local."""
+        return {"url": allowed_external_url(provider, link)}
 
     def rollback_action(self, operation_id: str) -> dict[str, Any]:
         if not ids.is_ulid(operation_id):
