@@ -32,6 +32,7 @@ from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+from steamzero.adapters.secret_service import SecretServiceStore
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
@@ -41,6 +42,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.media_pipeline import MediaPipeline
+from steamzero.domain.scraping_providers import PROVIDERS, provider_by_id
 from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
@@ -77,6 +79,7 @@ class SessionSecretStore:
     def is_available(self) -> bool:
         return True
 
+
 _MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
 
 _EMULATOR_PRESENTATION = {
@@ -111,13 +114,15 @@ def _validate_mime(path: Path) -> None:
     size = path.stat().st_size
     if size > _MAX_MEDIA_BYTES:
         raise SteamZeroError(
-            "E-CONTENT-LIMIT", detail=f"arquivo excede 32 MiB: {size} bytes",
+            "E-CONTENT-LIMIT",
+            detail=f"arquivo excede 32 MiB: {size} bytes",
         )
     data = path.read_bytes()[:512]
     mime = _guess_mime(data)
     if mime not in _MEDIA_MIME_TYPES:
         raise SteamZeroError(
-            "E-CONTENT-UNSUPPORTED", detail=f"tipo MIME não suportado: {mime}",
+            "E-CONTENT-UNSUPPORTED",
+            detail=f"tipo MIME não suportado: {mime}",
         )
 
 
@@ -169,7 +174,7 @@ class EmulationController:
         self._which = which
         self._spawn = spawn
         self._shortcuts = shortcuts or SteamShortcutManager()
-        self._secret_store = secret_store or SessionSecretStore()
+        self._secret_store = secret_store or SecretServiceStore()
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
@@ -385,11 +390,25 @@ class EmulationController:
             "pid": pid,
         }
 
-    _SPECIAL_ROOT_NAMES = frozenset({
-        "firmware", "keys", "bios", "saves", "cache", "media",
-        "screenshots", "mods", "cheats", "dlc", "updates", "patches",
-        "shader", "nand", "system",
-    })
+    _SPECIAL_ROOT_NAMES = frozenset(
+        {
+            "firmware",
+            "keys",
+            "bios",
+            "saves",
+            "cache",
+            "media",
+            "screenshots",
+            "mods",
+            "cheats",
+            "dlc",
+            "updates",
+            "patches",
+            "shader",
+            "nand",
+            "system",
+        }
+    )
 
     def library_roots(self) -> list[str]:
         candidates = [
@@ -667,7 +686,8 @@ class EmulationController:
             title_id = str(game.get("titleId", ""))
             if not title_id:
                 raise SteamZeroError(
-                    "E-API-SCHEMA", detail="Title ID é necessário para busca de mídia",
+                    "E-API-SCHEMA",
+                    detail="Title ID é necessário para busca de mídia",
                 )
             if not self._is_credential_configured("steamgriddb"):
                 raise SteamZeroError(
@@ -675,7 +695,8 @@ class EmulationController:
                     detail="Configure a chave de API do SteamGridDB em Global → Mídia.",
                 )
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.search:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -698,7 +719,8 @@ class EmulationController:
                 raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="arquivo de mídia inválido")
             _validate_mime(src_path)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.import:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -722,7 +744,8 @@ class EmulationController:
             candidate_idx = int(parts[2])
             game = self._current_game(game_id)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.select:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -738,7 +761,8 @@ class EmulationController:
         elif action.startswith("game.media.clear:"):
             game_id = action.split(":", 1)[1]
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.clear:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -749,7 +773,8 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             steam_user_id = self._required_string(payload, "steamUserId")
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.publish-steam:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -763,7 +788,8 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             steam_user_id = self._required_string(payload, "steamUserId")
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(),
+                {},
+                root=paths.data_home(),
                 kind=f"media.unpublish-steam:{game_id}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
@@ -776,7 +802,9 @@ class EmulationController:
         elif action == "rom.scan":
             roots = self.library_roots()
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind="rom.scan",
+                {},
+                root=paths.data_home(),
+                kind="rom.scan",
             )
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="rom-scan",
@@ -784,7 +812,9 @@ class EmulationController:
             )
         elif action == "media.audit":
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind="media.audit",
+                {},
+                root=paths.data_home(),
+                kind="media.audit",
             )
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="media-audit",
@@ -810,10 +840,15 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
             result = self._shortcuts.apply(plan_id, confirm_token)
-        elif plan.kind.startswith("emulation.") or plan.kind in {
-            "rom.scan",
-            "media.audit",
-        } or plan.kind.startswith("media."):
+        elif (
+            plan.kind.startswith("emulation.")
+            or plan.kind
+            in {
+                "rom.scan",
+                "media.audit",
+            }
+            or plan.kind.startswith("media.")
+        ):
             result = transaction.apply(plan_id, confirm_token)
         else:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence à emulação")
@@ -891,18 +926,44 @@ class EmulationController:
         }
 
     def _is_credential_configured(self, provider: str) -> bool:
-        return self._secret_store.retrieve(provider, "api_key") is not None
+        definition = provider_by_id(provider)
+        return all(
+            self._secret_store.retrieve(provider, field.id) is not None
+            for field in definition.credential_fields
+        )
 
     def credential_status(self) -> dict[str, Any]:
-        configured = self._secret_store.retrieve("steamgriddb", "api_key") is not None
-        return {"steamgriddb": {"configured": configured}}
+        providers: list[dict[str, object]] = []
+        for definition in PROVIDERS:
+            configured = self._is_credential_configured(definition.id)
+            health = (
+                "unavailable"
+                if not definition.enabled
+                else ("configured" if configured else "notConfigured")
+            )
+            providers.append(definition.public_dict(configured=configured, health_status=health))
+        return {"providers": providers, "secretStoreAvailable": self._secret_store.is_available()}
 
-    def save_credential(self, provider: str, api_key: str) -> dict[str, Any]:
-        self._secret_store.store(provider, "api_key", Secret(api_key))
-        return {"provider": provider, "configured": True}
+    def save_credential(
+        self, provider: str, credentials: Mapping[str, str] | str
+    ) -> dict[str, Any]:
+        definition = provider_by_id(provider)
+        values = {"api_key": credentials} if isinstance(credentials, str) else dict(credentials)
+        allowed = {field.id for field in definition.credential_fields}
+        invalid_value = any(not isinstance(value, str) or not value for value in values.values())
+        if set(values) - allowed or invalid_value:
+            raise SteamZeroError("E-API-SCHEMA", detail="campos de credencial inválidos")
+        required = {field.id for field in definition.credential_fields if field.required}
+        if not required.issubset(values):
+            raise SteamZeroError("E-API-SCHEMA", detail="campo obrigatório de credencial ausente")
+        for key_name, value in values.items():
+            self._secret_store.store(provider, key_name, Secret(value))
+        return {"provider": provider, "configured": self._is_credential_configured(provider)}
 
     def delete_credential(self, provider: str) -> dict[str, Any]:
-        self._secret_store.delete(provider, "api_key")
+        definition = provider_by_id(provider)
+        for field in definition.credential_fields:
+            self._secret_store.delete(provider, field.id)
         return {"provider": provider, "configured": False}
 
     def revoke_credential(self, provider: str) -> dict[str, Any]:
@@ -914,6 +975,7 @@ class EmulationController:
             return {"provider": provider, "valid": False, "error": "E-SCRAPE-CREDENTIAL-MISSING"}
         try:
             from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+
             adapter = SteamGridDbAdapter(api_key=secret.reveal())
             result = adapter.test_connection()
             return {"provider": provider, "valid": result}
@@ -1327,14 +1389,11 @@ class EmulationController:
                         "credential",
                         "SteamGridDB",
                         (
-                            "Configure sua chave de API para buscar capas"
-                            " automaticamente."
+                            "Configure sua chave de API para buscar capas automaticamente."
                             if not self._is_credential_configured("steamgriddb")
                             else "Credencial configurada. Teste a conexão."
                         ),
-                        "ready"
-                        if self._is_credential_configured("steamgriddb")
-                        else "attention",
+                        "ready" if self._is_credential_configured("steamgriddb") else "attention",
                         "Configurado"
                         if self._is_credential_configured("steamgriddb")
                         else "Não configurado",
@@ -1449,8 +1508,7 @@ class EmulationController:
         except (OSError, UnicodeError) as exc:
             raise SteamZeroError("E-CHEAT-CODE-INVALID", detail="arquivo ilegível") from exc
         has_code = any(
-            re.match(r"^[0-9A-Fa-f]{8}(?:\s+[0-9A-Fa-f]{8})+", line.strip())
-            for line in codes
+            re.match(r"^[0-9A-Fa-f]{8}(?:\s+[0-9A-Fa-f]{8})+", line.strip()) for line in codes
         )
         if not has_code or not validate_cheat_codes(codes):
             raise SteamZeroError(
@@ -1982,7 +2040,9 @@ class EmulationController:
 
         if not self._is_credential_configured("steamgriddb"):
             state = mgr._store.load(game_id) or GameMediaState(
-                game_id=game_id, title_id=title_id, title=params["title"],
+                game_id=game_id,
+                title_id=title_id,
+                title=params["title"],
             )
             state.metadata_state = "error"
             state.errors = {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"}
@@ -1999,12 +2059,16 @@ class EmulationController:
         media_kinds = params.get("media_kinds")
         kinds = media_kinds or ["boxart", "grid", "hero", "icon", "logo", "screenshot"]
         state = mgr._store.load(game_id) or GameMediaState(
-            game_id=game_id, title_id=title_id, title=title,
+            game_id=game_id,
+            title_id=title_id,
+            title=title,
         )
         state.metadata_state = "searching"
         mgr._store.save(state)
         identity = GameIdentity(
-            game_id=game_id, title=title, platform_slug="switch",
+            game_id=game_id,
+            title=title,
+            platform_slug="switch",
             title_id=title_id,
         )
         all_candidates: list[MediaCandidate] = []
@@ -2022,7 +2086,10 @@ class EmulationController:
             except SteamZeroError as exc:
                 provider_errors[provider_item.name] = exc.code
             ctx.set_progress(
-                "search", current=idx + 1, total=total_providers, unit="providers",
+                "search",
+                current=idx + 1,
+                total=total_providers,
+                unit="providers",
                 current_item=provider_item.name,
             )
         all_candidates.sort(key=lambda c: (-c.confidence, c.media_kind))
@@ -2048,15 +2115,15 @@ class EmulationController:
             state.metadata_state = "candidates-found"
         elif provider_errors:
             state.metadata_state = "error"
-            state.reason = "; ".join(
-                f"{p}={e}" for p, e in provider_errors.items()
-            )
+            state.reason = "; ".join(f"{p}={e}" for p, e in provider_errors.items())
         else:
             state.metadata_state = "no-results"
         state.selected_candidate_idx = -1
         mgr._store.save(state)
         ctx.set_progress(
-            "done", current=len(candidates_data), total=len(candidates_data),
+            "done",
+            current=len(candidates_data),
+            total=len(candidates_data),
             unit="candidates",
         )
         return {"candidate_count": len(candidates_data), "provider_errors": provider_errors}
@@ -2087,7 +2154,10 @@ class EmulationController:
                 for r in results
             ]
             ctx.set_progress(
-                "scan", current=idx + 1, total=total, unit="roots",
+                "scan",
+                current=idx + 1,
+                total=total,
+                unit="roots",
                 current_item=root.name,
             )
         ctx.set_progress("done", current=total, total=total, unit="roots")
@@ -2095,9 +2165,7 @@ class EmulationController:
 
     # --- Media apply helpers (executados em apply_action) ---
 
-    def _with_store_and_media(
-        self, fn: Callable[[Any, GameMediaManager], object]
-    ) -> object:
+    def _with_store_and_media(self, fn: Callable[[Any, GameMediaManager], object]) -> object:
         with self._store_factory() as store:
             store.migrate()
             mgr = self._media_manager(store)
@@ -2105,25 +2173,29 @@ class EmulationController:
 
     def _apply_media_import(self, pending: _PendingMutation) -> None:
         meta = pending.metadata
-        self._with_store_and_media(lambda s, mgr: mgr.import_custom_media(
-            game_id=meta["game_id"],
-            src_path=Path(meta["src_path"]),
-            title_id=meta["title_id"],
-            fingerprint=meta["fingerprint"],
-            canonical_name=meta["canonical_name"],
-        ))
-
-    def _apply_media_select(self, pending: _PendingMutation) -> None:
-        meta = pending.metadata
-        self._with_store_and_media(lambda s, mgr: (
-            mgr.select_candidate(meta["game_id"], meta["candidate_idx"]),
-            mgr.apply_selected_candidate(
+        self._with_store_and_media(
+            lambda s, mgr: mgr.import_custom_media(
                 game_id=meta["game_id"],
+                src_path=Path(meta["src_path"]),
                 title_id=meta["title_id"],
                 fingerprint=meta["fingerprint"],
                 canonical_name=meta["canonical_name"],
-            ),
-        ))
+            )
+        )
+
+    def _apply_media_select(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        self._with_store_and_media(
+            lambda s, mgr: (
+                mgr.select_candidate(meta["game_id"], meta["candidate_idx"]),
+                mgr.apply_selected_candidate(
+                    game_id=meta["game_id"],
+                    title_id=meta["title_id"],
+                    fingerprint=meta["fingerprint"],
+                    canonical_name=meta["canonical_name"],
+                ),
+            )
+        )
 
     def _apply_media_clear(self, pending: _PendingMutation) -> None:
         self._with_store_and_media(lambda s, mgr: mgr.clear_media(pending.metadata["game_id"]))
@@ -2142,9 +2214,13 @@ class EmulationController:
         app_id = self._shortcuts.resolve_app_id(game_id)
         if app_id is None:
             raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
-        self._with_store_and_media(lambda s, mgr: mgr.publish_steam(
-            game_id, steam_user_id, app_id,
-        ))
+        self._with_store_and_media(
+            lambda s, mgr: mgr.publish_steam(
+                game_id,
+                steam_user_id,
+                app_id,
+            )
+        )
 
     def _apply_media_unpublish_steam(self, pending: _PendingMutation) -> None:
         meta = pending.metadata
@@ -2152,9 +2228,13 @@ class EmulationController:
         app_id = self._shortcuts.resolve_app_id(meta["game_id"])
         if app_id is None:
             raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
-        self._with_store_and_media(lambda s, mgr: mgr.unpublish_steam(
-            meta["game_id"], steam_user_id, app_id,
-        ))
+        self._with_store_and_media(
+            lambda s, mgr: mgr.unpublish_steam(
+                meta["game_id"],
+                steam_user_id,
+                app_id,
+            )
+        )
 
     def _apply_media_audit(self, pending: _PendingMutation) -> None:
         self._with_store_and_media(lambda s, mgr: mgr.audit())
@@ -2610,7 +2690,9 @@ class EmulationController:
             settings[key] = value
         content = json.dumps(
             {"schemaVersion": 1, "settings": settings},
-            sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
         ).encode()
         writes = {self._global_settings_path: content}
         root = self._compatible_root(writes)
@@ -3017,10 +3099,7 @@ class EmulationController:
         cached = EmulatorCacheReader(paths.data_home()).find_icon(title_id)
         if cached is not None:
             try:
-                if (
-                    not cached.is_symlink()
-                    and cached.stat().st_size <= 16 * 1024 * 1024
-                ):
+                if not cached.is_symlink() and cached.stat().st_size <= 16 * 1024 * 1024:
                     return cached.resolve(strict=True).as_uri(), "emulator-cache"
             except OSError:
                 pass
@@ -3043,7 +3122,9 @@ class EmulationController:
     @staticmethod
     @staticmethod
     def _plan_view(
-        plan: transaction.Plan, action: str, **extra: Any,
+        plan: transaction.Plan,
+        action: str,
+        **extra: Any,
     ) -> dict[str, Any]:
         return {
             "planId": plan.plan_id,

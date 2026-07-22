@@ -19,6 +19,7 @@ def _controller(tmp_path: Path) -> EmulationController:
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         which=lambda _command: None,
         spawn=lambda _argv: None,
+        secret_store=SessionSecretStore(),
     )
 
 
@@ -67,13 +68,19 @@ class TestEmulationControllerCredential:
     def test_credential_status_not_configured(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         status = ctrl.credential_status()
-        assert status == {"steamgriddb": {"configured": False}}
+        steamgriddb = next(
+            provider for provider in status["providers"] if provider["id"] == "steamgriddb"
+        )
+        assert steamgriddb["configured"] is False
 
     def test_credential_status_configured(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         ctrl.save_credential("steamgriddb", "my-key")
         status = ctrl.credential_status()
-        assert status == {"steamgriddb": {"configured": True}}
+        steamgriddb = next(
+            provider for provider in status["providers"] if provider["id"] == "steamgriddb"
+        )
+        assert steamgriddb["configured"] is True
 
     def test_save_and_delete_credential(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
@@ -82,7 +89,10 @@ class TestEmulationControllerCredential:
         delete_result = ctrl.delete_credential("steamgriddb")
         assert delete_result == {"provider": "steamgriddb", "configured": False}
         status = ctrl.credential_status()
-        assert status == {"steamgriddb": {"configured": False}}
+        steamgriddb = next(
+            provider for provider in status["providers"] if provider["id"] == "steamgriddb"
+        )
+        assert steamgriddb["configured"] is False
 
     def test_test_credential_missing_key(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
@@ -98,7 +108,10 @@ class TestEmulationControllerCredential:
         ctrl.save_credential("steamgriddb", "first")
         ctrl.save_credential("steamgriddb", "second")
         status = ctrl.credential_status()
-        assert status == {"steamgriddb": {"configured": True}}
+        steamgriddb = next(
+            provider for provider in status["providers"] if provider["id"] == "steamgriddb"
+        )
+        assert steamgriddb["configured"] is True
         # original key is gone — only last one remains
         assert ctrl._secret_store.retrieve("steamgriddb", "api_key").reveal() == "second"  # type: ignore[union-attr]
 
@@ -114,9 +127,7 @@ class TestSteamGridDbAdapterErrors:
         from steamzero.ports import GameIdentity
 
         adapter = SteamGridDbAdapter()
-        identity = GameIdentity(
-            game_id="test", title="Test Game", platform_slug="switch"
-        )
+        identity = GameIdentity(game_id="test", title="Test Game", platform_slug="switch")
         with pytest.raises(SteamZeroError, match="E-SCRAPE-CREDENTIAL-MISSING"):
             adapter.search(identity, ["boxart"])
 
@@ -133,7 +144,9 @@ class TestSteamGridDbAdapterErrors:
 
         adapter = SteamGridDbAdapter(api_key="invalid-key-that-will-be-rejected")
         identity = GameIdentity(
-            game_id="test", title="Test Game", platform_slug="switch",
+            game_id="test",
+            title="Test Game",
+            platform_slug="switch",
             title_id="0100ABCDEF123000",
         )
         # A invalid key with network access will get 401 — handled as empty
