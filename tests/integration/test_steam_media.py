@@ -24,31 +24,31 @@ def _steam_root(tmp_path: Path) -> tuple[Path, Path]:
     root = tmp_path / "Steam"
     grid = root / "userdata" / "123456" / "config" / "grid"
     grid.mkdir(parents=True)
-    fs.write_atomic(grid / "10.jpg", _JPG)
+    fs.write_atomic(grid / "10p.jpg", _JPG)
     return root, grid
 
 
 def test_media_package_replaces_extension_and_rolls_back(tmp_path: Path) -> None:
     root, grid = _steam_root(tmp_path)
     package = tmp_path / "package"
-    fs.write_atomic(package / "grid.png", _PNG)
+    fs.write_atomic(package / "portrait.png", _PNG)
     manager = SteamMediaManager(roots=(root,), running_probe=lambda: False)
 
     snapshot = manager.snapshot("10")
     assert snapshot["accounts"][0]["id"] == "123456"
-    assert snapshot["accounts"][0]["assets"][0] == {"kind": "grid", "configured": True}
+    assert snapshot["accounts"][0]["assets"][0] == {"kind": "grid", "configured": False}
 
-    plan = manager.plan("10", "123456", package)
-    assert plan["assets"] == ["grid"]
+    plan = manager.plan_package("10", "123456", package)
+    assert "portrait" in plan["assets"]
     assert plan["replacedVariants"] == 1
     applied = manager.apply(str(plan["planId"]), str(plan["confirmToken"]))
-    assert (grid / "10.png").read_bytes() == _PNG
-    assert not (grid / "10.jpg").exists()
+    assert (grid / "10p.png").read_bytes() == _PNG
+    assert not (grid / "10p.jpg").exists()
 
     rolled_back = manager.rollback(str(applied["operationId"]))
     assert rolled_back["status"] == "rolled-back"
-    assert (grid / "10.jpg").read_bytes() == _JPG
-    assert not (grid / "10.png").exists()
+    assert (grid / "10p.jpg").read_bytes() == _JPG
+    assert not (grid / "10p.png").exists()
 
 
 def test_media_package_is_local_only_validated_and_requires_closed_steam(
@@ -59,13 +59,13 @@ def test_media_package_is_local_only_validated_and_requires_closed_steam(
     fs.write_atomic(package / "hero.png", b"not-png")
     manager = SteamMediaManager(roots=(root,), running_probe=lambda: False)
     with pytest.raises(SteamZeroError) as invalid:
-        manager.plan("10", "123456", package)
+        manager.plan_package("10", "123456", package)
     assert invalid.value.code == "E-CONTENT-POLICY"
 
     fs.write_atomic(package / "hero.png", _PNG)
     running = SteamMediaManager(roots=(root,), running_probe=lambda: True)
     with pytest.raises(SteamZeroError) as locked:
-        running.plan("10", "123456", package)
+        running.plan_package("10", "123456", package)
     assert locked.value.code == "E-TX-LOCKED"
 
 
@@ -75,8 +75,8 @@ def test_media_package_rejects_symlinked_source(tmp_path: Path) -> None:
     package.mkdir()
     outside = tmp_path / "outside.png"
     fs.write_atomic(outside, _PNG)
-    (package / "grid.png").symlink_to(outside)
+    (package / "portrait.png").symlink_to(outside)
     manager = SteamMediaManager(roots=(root,), running_probe=lambda: False)
     with pytest.raises(SteamZeroError) as incomplete:
-        manager.plan("10", "123456", package)
+        manager.plan_package("10", "123456", package)
     assert incomplete.value.code == "E-CONTENT-INCOMPLETE"

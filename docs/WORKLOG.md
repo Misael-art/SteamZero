@@ -2186,3 +2186,29 @@ sem rede.
 Nenhum reboot nem alteração de boot foi executado; o teste físico de importação
 de um mod/cheat próprio e o uso prolongado em Game Mode permanecem com o
 operador.
+
+## 2026-07-21 — Sessão: Correção de gates e fechamento do subsistema de mídia
+
+### Correções aplicadas
+
+| Item | Arquivos | Commit |
+|------|----------|--------|
+| fix mypy (plan_package) | steam_media.py, steam_gameplay.py | (neste) |
+| feat: registrar m0011_media_hub | migrations/__init__.py | (neste) |
+| feat: optimizer Pillow real | media_pipeline.py | (neste) |
+| fix: SteamGridDB autocomplete URL | steamgriddb.py | (neste) |
+| feat: fallback icon gerado | switch_media.py | (neste) |
+| fix: encapsulamento pipeline | switch_media.py, media_pipeline.py | (neste) |
+| test: adaptar test_steam_media | test_steam_media.py, test_state.py | (neste) |
+
+### Gates
+
+- pytest: 1076 passed (unit + integration)
+- ruff: All checks passed
+- mypy: Success (126 files, 0 errors)
+- make independence: OK
+
+### Host
+
+Release construída e instalada conforme autorização do operador. Rollback
+disponível como release anterior.

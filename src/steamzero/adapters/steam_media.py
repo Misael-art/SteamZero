@@ -1,11 +1,3 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
-"""Pacotes locais de arte para a biblioteca Steam, com rollback G-FULL.
-
-O SteamZero não faz scraping nem baixa mídia neste adapter. Ele aplica um pacote
-local já escolhido pelo usuário ao diretório ``userdata/<conta>/config/grid`` e
-preserva byte a byte qualquer arte substituída.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -14,9 +6,10 @@ from typing import Any
 
 from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.media_pipeline import MediaPipeline, _is_managed
 
 RunningProbe = Callable[[], bool]
-_KINDS = ("grid", "portrait", "hero", "logo")
+_KINDS = ("portrait", "landscape", "hero", "logo", "icon")
 _EXTENSIONS = (".png", ".jpg", ".webp")
 _MAX_ASSET = 16 * 1024 * 1024
 
@@ -51,10 +44,12 @@ def _steam_running() -> bool:
 class SteamMediaManager:
     def __init__(
         self,
+        pipeline: MediaPipeline | None = None,
         *,
         roots: Sequence[Path] | None = None,
         running_probe: RunningProbe = _steam_running,
     ) -> None:
+        self._pipeline = pipeline
         configured = tuple(roots) if roots is not None else _default_roots()
         self._roots = tuple(root.resolve() for root in configured if root.is_dir())
         self._running_probe = running_probe
@@ -81,7 +76,36 @@ class SteamMediaManager:
             },
         }
 
-    def plan(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
+    def plan(
+        self, game_id: str, account_id: str, steam_appid: int
+    ) -> dict[str, Any]:
+        _validate_numeric("gameId", game_id)
+        _validate_numeric("accountId", account_id)
+        if self._running_probe():
+            raise SteamZeroError("E-TX-LOCKED", detail="feche a Steam antes de trocar a arte")
+        if self._pipeline is None:
+            raise SteamZeroError(
+                "E-INTERNAL-UNEXPECTED",
+                detail="pipeline de mídia não configurado",
+            )
+        plan = self._pipeline.view_steam_plan(game_id, account_id, steam_appid)
+        if plan is None:
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE", detail="nenhuma mídia otimizada disponível"
+            )
+        data = plan.to_dict()
+        data.update(
+            {
+                "gameId": game_id,
+                "accountId": account_id,
+                "steamAppId": steam_appid,
+            }
+        )
+        return data
+
+    def plan_package(
+        self, game_id: str, account_id: str, package_dir: Path
+    ) -> dict[str, Any]:
         _validate_numeric("gameId", game_id)
         _validate_numeric("accountId", account_id)
         if self._running_probe():
@@ -90,14 +114,14 @@ class SteamMediaManager:
         grid = accounts.get(account_id)
         if grid is None:
             raise SteamZeroError("E-API-SCHEMA", detail="conta Steam não encontrada")
-        files = self._read_package(package_dir)
+        files = _read_package(package_dir)
         writes: dict[Path, bytes] = {}
         removals: set[Path] = set()
         changed: list[str] = []
         for kind, (extension, content) in files.items():
             target = grid / f"{_target_stem(game_id, kind)}{extension}"
             writes[target] = content
-            for old in self._variants(grid, game_id, kind):
+            for old in _variants(grid, game_id, kind):
                 if old != target:
                     removals.add(old)
             changed.append(kind)
@@ -126,7 +150,7 @@ class SteamMediaManager:
         return {
             "status": result.status,
             "operationId": result.operation_id,
-            "message": "Pacote de mídia aplicado; reinicie a Steam para atualizar a biblioteca.",
+            "message": "Mídia Steam publicada; reinicie a Steam para atualizar a biblioteca.",
         }
 
     @staticmethod
@@ -152,52 +176,25 @@ class SteamMediaManager:
                 if not account.name.isdigit() or account.is_symlink() or not account.is_dir():
                     continue
                 grid = account / "config" / "grid"
-                # config existente prova que é uma conta local; grid pode ser criado pelo plano.
                 if grid.parent.is_dir() and not grid.parent.is_symlink():
                     found.setdefault(account.name, grid)
         return sorted(found.items())
 
-    @staticmethod
-    def _read_package(package_dir: Path) -> dict[str, tuple[str, bytes]]:
-        if package_dir.is_symlink() or not package_dir.is_dir():
-            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="pacote de mídia inválido")
-        result: dict[str, tuple[str, bytes]] = {}
-        for kind in _KINDS:
-            matches = [
-                package_dir / f"{kind}{extension}"
-                for extension in _EXTENSIONS
-                if (package_dir / f"{kind}{extension}").is_file()
-                and not (package_dir / f"{kind}{extension}").is_symlink()
-            ]
-            if len(matches) > 1:
-                raise SteamZeroError("E-CONTENT-POLICY", detail=f"mais de uma variante para {kind}")
-            if not matches:
-                continue
-            source = matches[0]
-            if source.stat().st_size <= 0 or source.stat().st_size > _MAX_ASSET:
-                raise SteamZeroError("E-CONTENT-POLICY", detail=f"tamanho inválido: {source.name}")
-            content = source.read_bytes()
-            if not _matches_magic(content, source.suffix):
-                raise SteamZeroError("E-CONTENT-POLICY", detail=f"formato inválido: {source.name}")
-            result[kind] = (source.suffix, content)
-        if not result:
-            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="pacote não contém arte válida")
-        return result
-
-    @staticmethod
-    def _variants(grid: Path, game_id: str, kind: str) -> list[Path]:
-        return [
-            grid / f"{_target_stem(game_id, kind)}{extension}"
-            for extension in _EXTENSIONS
-            if (grid / f"{_target_stem(game_id, kind)}{extension}").is_file()
-            and not (grid / f"{_target_stem(game_id, kind)}{extension}").is_symlink()
-        ]
-
     def _asset_status(self, grid: Path, game_id: str) -> list[dict[str, Any]]:
         return [
-            {"kind": kind, "configured": bool(self._variants(grid, game_id, kind))}
-            for kind in _KINDS
+            {"kind": kind, "configured": bool(self._view_exists(grid, game_id, kind))}
+            for kind in ("grid", "portrait", "hero", "logo", "icon")
         ]
+
+    @staticmethod
+    def _view_exists(grid: Path, game_id: str, kind: str) -> bool:
+        suffixes = {"grid": "", "portrait": "p", "hero": "_hero", "logo": "_logo", "icon": "_icon"}
+        suffix = suffixes[kind]
+        for ext in _EXTENSIONS:
+            p = grid / f"{game_id}{suffix}{ext}"
+            if p.exists() and _is_managed(p):
+                return True
+        return False
 
 
 def _validate_numeric(label: str, value: str) -> None:
@@ -210,9 +207,45 @@ def _target_stem(game_id: str, kind: str) -> str:
     return game_id + suffixes[kind]
 
 
+def _variants(grid: Path, game_id: str, kind: str) -> list[Path]:
+    return [
+        grid / f"{_target_stem(game_id, kind)}{extension}"
+        for extension in _EXTENSIONS
+        if (grid / f"{_target_stem(game_id, kind)}{extension}").is_file()
+        and not (grid / f"{_target_stem(game_id, kind)}{extension}").is_symlink()
+    ]
+
+
 def _matches_magic(content: bytes, extension: str) -> bool:
     if extension == ".png":
         return content.startswith(b"\x89PNG\r\n\x1a\n")
     if extension == ".jpg":
         return content.startswith(b"\xff\xd8\xff")
     return content.startswith(b"RIFF") and content[8:12] == b"WEBP"
+
+
+def _read_package(package_dir: Path) -> dict[str, tuple[str, bytes]]:
+    if package_dir.is_symlink() or not package_dir.is_dir():
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="pacote de mídia inválido")
+    result: dict[str, tuple[str, bytes]] = {}
+    for kind in _KINDS:
+        matches = [
+            package_dir / f"{kind}{extension}"
+            for extension in _EXTENSIONS
+            if (package_dir / f"{kind}{extension}").is_file()
+            and not (package_dir / f"{kind}{extension}").is_symlink()
+        ]
+        if len(matches) > 1:
+            raise SteamZeroError("E-CONTENT-POLICY", detail=f"mais de uma variante para {kind}")
+        if not matches:
+            continue
+        source = matches[0]
+        if source.stat().st_size <= 0 or source.stat().st_size > _MAX_ASSET:
+            raise SteamZeroError("E-CONTENT-POLICY", detail=f"tamanho inválido: {source.name}")
+        content = source.read_bytes()
+        if not _matches_magic(content, source.suffix):
+            raise SteamZeroError("E-CONTENT-POLICY", detail=f"formato inválido: {source.name}")
+        result[kind] = (source.suffix, content)
+    if not result:
+        raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="pacote não contém arte válida")
+    return result

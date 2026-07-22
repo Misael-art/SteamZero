@@ -13,6 +13,7 @@ license = "GPL-3.0-or-later"
 authors = [{ name = "SteamZero contributors" }]
 dependencies = [
   "jsonschema>=4.21",
+  "Pillow>=10.0",
 ]
 
 [project.scripts]

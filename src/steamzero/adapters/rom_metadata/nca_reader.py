@@ -133,6 +133,8 @@ def extract_icon_from_nca(nca_data: bytes) -> tuple[bytes, str] | None:
             body_sz = section["body_size"]
             if body_sz < MIN_IMAGE_SIZE or body_sz > MAX_IMAGE_SIZE:
                 continue
+            if body_off >= len(nca_data):
+                continue
             section_data = nca_data[body_off:]
             found = _search_image_in_data(section_data)
             if found:

@@ -30,15 +30,19 @@ from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, Prepared
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
+from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
+from steamzero.domain.switch_media import GameMediaManager
 from steamzero.domain.switch_mods import InstalledMod, ModType
 
 StoreFactory = Callable[[], StateStore]
@@ -548,6 +552,120 @@ class EmulationController:
             root = self._root_for_game(source)
             plan = transaction.plan_write_files(
                 {}, root=root, removals={source}, kind=f"emulation.game-delete:{game_id}"
+            )
+        elif action.startswith("game.media.search:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            title_id = str(game.get("titleId", ""))
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.search_candidates(
+                    game_id=game_id,
+                    title_id=title_id,
+                    title=str(game.get("name", "")),
+                    media_kinds=payload.get("mediaKinds"),
+                )
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.search:{game_id}"
+            )
+        elif action.startswith("game.media.import:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            src_path = Path(self._required_string(payload, "path"))
+            title_id = str(game.get("titleId", ""))
+            fingerprint = str(game.get("fingerprint", ""))
+            name = str(game.get("name", ""))
+            if not src_path.is_file() or src_path.is_symlink():
+                raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="arquivo de mídia inválido")
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.import_custom_media(
+                    game_id=game_id, src_path=src_path,
+                    title_id=title_id, fingerprint=fingerprint,
+                    canonical_name=name,
+                )
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.import:{game_id}"
+            )
+        elif action.startswith("game.media.select:"):
+            parts = action.split(":")
+            if len(parts) < 3:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="formato: game.media.select:<gameId>:<candidateIdx>",
+                )
+            game_id = parts[1]
+            candidate_idx = int(parts[2])
+            game = self._current_game(game_id)
+            title_id = str(game.get("titleId", ""))
+            fingerprint = str(game.get("fingerprint", ""))
+            name = str(game.get("name", ""))
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.select_candidate(game_id, candidate_idx)
+                mgr.apply_selected_candidate(
+                    game_id=game_id, title_id=title_id,
+                    fingerprint=fingerprint, canonical_name=name,
+                )
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.select:{game_id}"
+            )
+        elif action.startswith("game.media.clear:"):
+            game_id = action.split(":", 1)[1]
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.clear_media(game_id)
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.clear:{game_id}"
+            )
+        elif action.startswith("game.media.publish-steam:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            steam_user_id = self._required_string(payload, "steamUserId")
+            settings = self._load_game_settings(strict=True)
+            game_settings = self._settings_for_game(game, settings)
+            steam_selected = game_settings.get("steamSelected")
+            if steam_selected is not True:
+                raise SteamZeroError("E-API-SCHEMA", detail="jogo não está marcado para Steam")
+            if game_id not in self._shortcuts.managed_game_ids():
+                raise SteamZeroError("E-API-SCHEMA", detail="shortcut não foi sincronizado")
+            app_id = None
+            for row in self._shortcuts._read_rows(self._shortcuts._target()):
+                marker = row.get("ShortcutPath", "")
+                if isinstance(marker, str) and game_id in marker:
+                    app_id = row.get("appid")
+                    break
+            if not isinstance(app_id, int):
+                raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.publish_steam(game_id, steam_user_id, app_id)
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.publish-steam:{game_id}"
+            )
+        elif action.startswith("game.media.unpublish-steam:"):
+            game_id = action.split(":", 1)[1]
+            steam_user_id = self._required_string(payload, "steamUserId")
+            app_id = int(self._required_string(payload, "steamAppId"))
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.unpublish_steam(game_id, steam_user_id, app_id)
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind=f"media.unpublish-steam:{game_id}"
+            )
+        elif action == "media.audit":
+            with self._store_factory() as store:
+                store.migrate()
+                mgr = self._media_manager(store)
+                mgr.audit()
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="media.audit"
             )
         else:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de emulação não permitida")
@@ -2121,6 +2239,18 @@ class EmulationController:
                 return dict(settings[candidate])
         return {}
 
+    def _media_manager(self, store: StateStore) -> GameMediaManager:
+        conn = store.adapter_connection()
+        pipeline = MediaPipeline(
+            media_root=paths.media_dir(),
+            providers=[SteamGridDbAdapter()],
+        )
+        return GameMediaManager(
+            store=StateStoreGameMediaAdapter(conn),
+            pipeline=pipeline,
+            providers=[SteamGridDbAdapter()],
+        )
+
     def _enrich_games(
         self,
         games: list[dict[str, Any]],
@@ -2131,96 +2261,139 @@ class EmulationController:
         settings = self._load_game_settings(strict=False)
         published = self._shortcuts.managed_game_ids()
         installed = {str(row["id"]) for row in emulators if row.get("installState") == "installed"}
-        extras: dict[str, tuple[list[InstalledMod], list[InstalledCheat]]] = {}
+        enriched: list[dict[str, Any]] = []
         with self._store_factory() as store:
             store.migrate()
             mod_store = StateStoreModsAdapter(store.adapter_connection())
             cheat_store = StateStoreCheatsAdapter(store.adapter_connection())
+            media_store = StateStoreGameMediaAdapter(store.adapter_connection())
+            extras: dict[str, tuple[list[InstalledMod], list[InstalledCheat]]] = {}
             for raw in games:
-                candidate_id = str(raw.get("id", ""))
-                extras[candidate_id] = (
-                    mod_store.list_installed(candidate_id),
-                    cheat_store.list_installed(candidate_id),
+                game_id = str(raw.get("id", ""))
+                _mods = mod_store.list_installed(game_id)
+                _cheats = cheat_store.list_installed(game_id)
+                extras[game_id] = (_mods, _cheats)
+            for raw in games:
+                game = dict(raw)
+                game_id = str(game["id"])
+                selected = self._settings_for_game(game, settings)
+                emulator_id = selected.get("emulatorId")
+                emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
+                keys_ready = bool(
+                    emulator_ready
+                    and isinstance(emulator_id, str)
+                    and self._key_projection_valid(emulator_id)
                 )
-        enriched: list[dict[str, Any]] = []
-        for raw in games:
-            game = dict(raw)
-            game_id = str(game["id"])
-            selected = self._settings_for_game(game, settings)
-            emulator_id = selected.get("emulatorId")
-            emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
-            keys_ready = bool(
-                emulator_ready
-                and isinstance(emulator_id, str)
-                and self._key_projection_valid(emulator_id)
-            )
-            firmware_ready = firmware.get("status") == "ok"
-            ready = emulator_ready and keys_ready and firmware_ready
-            if not emulator_ready:
-                play_reason = "Selecione um emulador instalado para este jogo."
-            elif not keys_ready:
-                play_reason = f"Sincronize prod.keys com {emulator_id}."
-            elif not firmware_ready:
-                play_reason = "Importe e valide o firmware antes de jogar."
-            else:
-                play_reason = None
-            mods, cheats = extras.get(game_id, ([], []))
-            game.update(
-                {
-                    "emulatorId": emulator_id,
-                    "steamSelected": selected.get("steamSelected") is True,
-                    "steamPublished": game_id in published,
-                    "playAction": self._action(
-                        f"game.launch:{game_id}",
-                        "Jogar",
-                        enabled=ready,
-                        reason=play_reason,
-                    ),
-                    "deleteAction": self._action(
-                        f"game.delete:{game_id}", "Excluir ROM", confirmation=True
-                    ),
-                    "modsCount": len(mods),
-                    "cheatsCount": len(cheats),
-                    "mods": [
-                        {
-                            "id": mod.id,
-                            "name": mod.name,
-                            "state": mod.state,
-                            "emulatorId": mod.emulator_id,
-                            "stateAction": self._action(
-                                f"mod.state:{mod.id}:{'off' if mod.state == 'active' else 'on'}",
-                                "Desativar" if mod.state == "active" else "Ativar",
-                                confirmation=True,
-                            ),
-                            "removeAction": self._action(
-                                f"mod.remove:{mod.id}", "Remover", confirmation=True
-                            ),
-                        }
-                        for mod in mods
-                    ],
-                    "cheats": [
-                        {
-                            "id": cheat.id,
-                            "name": cheat.name,
-                            "buildId": cheat.build_id,
-                            "state": cheat.state,
-                            "enabled": cheat.enabled,
-                            "codeCount": cheat.code_count,
-                            "emulatorId": cheat.emulator_id,
-                            "stateAction": self._action(
-                                f"cheat.state:{cheat.id}:{'off' if cheat.enabled else 'on'}",
-                                "Desativar" if cheat.enabled else "Ativar",
-                                confirmation=True,
-                            ),
-                            "removeAction": self._action(
-                                f"cheat.remove:{cheat.id}", "Remover", confirmation=True
-                            ),
-                        }
-                        for cheat in cheats
-                    ],
-                }
-            )
-            enriched.append(game)
+                firmware_ready = firmware.get("status") == "ok"
+                ready = emulator_ready and keys_ready and firmware_ready
+                if not emulator_ready:
+                    play_reason = "Selecione um emulador instalado para este jogo."
+                elif not keys_ready:
+                    play_reason = f"Sincronize prod.keys com {emulator_id}."
+                elif not firmware_ready:
+                    play_reason = "Importe e valide o firmware antes de jogar."
+                else:
+                    play_reason = None
+                mods, cheats = extras.get(game_id, ([], []))
+                title_id = game.get("titleId") or ""
+                cover_url = ""
+                media_source = "fallback"
+                media_kind = "icon"
+                media_candidate_count = 0
+                media_candidate_idx = -1
+                master_state = "none"
+                optimized_state = "none"
+                steam_view_state = "unpublished"
+                steam_appid = None
+                steam_artwork_kinds: list[str] = []
+                if title_id:
+                    existing = media_store.load(game_id)
+                    if existing and existing.media_path:
+                        try:
+                            p = Path(existing.media_path)
+                            if p.is_file() and not p.is_symlink():
+                                cover_url = p.resolve().as_uri()
+                                media_source = existing.media_source
+                                media_kind = existing.media_kind
+                                media_candidate_count = existing.candidate_count
+                                media_candidate_idx = existing.selected_candidate_idx
+                                master_state = existing.master_state
+                                optimized_state = existing.optimized_state
+                                steam_view_state = existing.steam_view_state
+                                steam_appid = existing.steam_appid
+                                steam_artwork_kinds = existing.steam_artwork_kinds
+                        except OSError:
+                            pass
+                    elif game.get("bannerAsset"):
+                        cover_url = str(game["bannerAsset"])
+                        media_source = str(game.get("mediaSource", "fallback"))
+                mod_list = [
+                    {
+                        "id": mod.id,
+                        "name": mod.name,
+                        "state": mod.state,
+                        "emulatorId": mod.emulator_id,
+                        "stateAction": self._action(
+                            f"mod.state:{mod.id}:{'off' if mod.state == 'active' else 'on'}",
+                            "Desativar" if mod.state == "active" else "Ativar",
+                            confirmation=True,
+                        ),
+                        "removeAction": self._action(
+                            f"mod.remove:{mod.id}", "Remover", confirmation=True
+                        ),
+                    }
+                    for mod in mods
+                ]
+                cheat_list = [
+                    {
+                        "id": cheat.id,
+                        "name": cheat.name,
+                        "buildId": cheat.build_id,
+                        "state": cheat.state,
+                        "enabled": cheat.enabled,
+                        "codeCount": cheat.code_count,
+                        "stateAction": self._action(
+                            f"cheat.state:{cheat.id}:{'off' if cheat.enabled else 'on'}",
+                            "Desativar" if cheat.enabled else "Ativar",
+                            confirmation=True,
+                        ),
+                        "removeAction": self._action(
+                            f"cheat.remove:{cheat.id}", "Remover", confirmation=True
+                        ),
+                    }
+                    for cheat in cheats
+                ]
+                game.update(
+                    {
+                        "emulatorId": emulator_id,
+                        "steamSelected": selected.get("steamSelected") is True,
+                        "steamPublished": game_id in published,
+                        "playAction": self._action(
+                            f"game.launch:{game_id}",
+                            "Jogar",
+                            enabled=ready,
+                            reason=play_reason,
+                        ),
+                        "deleteAction": self._action(
+                            f"game.delete:{game_id}", "Excluir ROM", confirmation=True
+                        ),
+                        "modsCount": len(mods),
+                        "cheatsCount": len(cheats),
+                        "coverUrl": cover_url,
+                        "mediaSource": media_source,
+                        "mediaKind": media_kind,
+                        "mediaCandidateCount": media_candidate_count,
+                        "mediaCandidateIdx": media_candidate_idx,
+                        "masterState": master_state,
+                        "optimizedState": optimized_state,
+                        "steamViewState": steam_view_state,
+                        "steamAppId": steam_appid,
+                        "steamArtworkKinds": steam_artwork_kinds,
+                        "mods": mod_list,
+                        "cheats": cheat_list,
+                    }
+                )
+                enriched.append(game)
         return enriched
 
     def _current_game(self, game_id: str) -> dict[str, Any]:

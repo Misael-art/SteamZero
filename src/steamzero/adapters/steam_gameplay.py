@@ -142,7 +142,7 @@ class SteamGameplayController:
         )
         self._launch_options = launch_options or SteamLaunchOptionsManager(roots=self._roots)
         self._maintenance = maintenance or SteamMaintenance(roots=self._roots)
-        self._media = media or SteamMediaManager(roots=self._roots)
+        self._media = media or SteamMediaManager(pipeline=None, roots=self._roots)
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -358,7 +358,7 @@ class SteamGameplayController:
         return self._maintenance.recover()
 
     def plan_media(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
-        return self._media.plan(game_id, account_id, package_dir)
+        return self._media.plan_package(game_id, account_id, package_dir)
 
     def apply_media(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._media.apply(plan_id, confirm_token)

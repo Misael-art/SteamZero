@@ -21,6 +21,8 @@ from steamzero.core.migrations import (
     m0007_scraping_cache,
     m0008_switch_mods,
     m0009_switch_cheats,
+    m0010_switch_media,
+    m0011_media_hub,
 )
 
 Migration = Callable[[sqlite3.Connection], None]
@@ -36,6 +38,8 @@ MIGRATIONS: list[tuple[int, Migration]] = [
     (7, m0007_scraping_cache.up),
     (8, m0008_switch_mods.up),
     (9, m0009_switch_cheats.up),
+    (10, m0010_switch_media.up),
+    (11, m0011_media_hub.up),
 ]
 
 LATEST = max(v for v, _ in MIGRATIONS)

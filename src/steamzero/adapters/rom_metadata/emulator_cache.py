@@ -71,10 +71,6 @@ class EmulatorCacheReader(EmulatorCachePort):
         candidate = self._data_home.joinpath(*parts)
         if candidate.is_dir():
             return candidate
-        # Tenta também ~/.config
-        config_candidate = Path.home() / ".config" / parts[0] / "cache" / "icons"
-        if config_candidate.is_dir():
-            return config_candidate
         return None
 
     def find_icon(self, title_id: str) -> Path | None:

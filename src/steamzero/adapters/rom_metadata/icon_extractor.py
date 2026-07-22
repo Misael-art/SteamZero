@@ -69,7 +69,7 @@ class NativeIconExtractor(RomMetadataPort):
             title=title_id,
             icon_bytes=icon[0] if icon else None,
             icon_format=icon[1] if icon else "",
-            source="nca",
+            source="nca-extracted" if icon else "nca-no-icon",
         )
 
     def extract_icon(self, rom_path: Path) -> tuple[bytes, str] | None:

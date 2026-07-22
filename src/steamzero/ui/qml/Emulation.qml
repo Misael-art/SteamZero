@@ -2400,6 +2400,175 @@ Item {
                         }
 
                         Rectangle {
+                            id: mediaPanel
+                            visible: page.selectedGame.coverUrl !== undefined
+                                && page.selectedGame.id !== ""
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: mediaPanelBody.implicitHeight + 24
+                            color: page.backgroundColor
+                            border.color: page.borderColor
+                            radius: 8
+                            ColumnLayout {
+                                id: mediaPanelBody
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    ModernIcon { iconName: "image-x-generic"; iconColor: page.cyanColor; Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+                                    Label { text: qsTr("Mídia"); color: page.textColor; font.bold: true; Layout.fillWidth: true }
+                                    Label {
+                                        text: {
+                                            var source = page.selectedGame.mediaSource || ""
+                                            if (source === "custom") return qsTr("Customizada")
+                                            if (source === "scraper") return qsTr("Scraping")
+                                            if (source === "nca") return qsTr("NCA")
+                                            if (source === "emulator-cache") return qsTr("Cache")
+                                            return qsTr("Padrão")
+                                        }
+                                        color: page.mutedColor
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                        font.letterSpacing: 1
+                                    }
+                                }
+                                Image {
+                                    id: mediaPreview
+                                    visible: page.selectedGame.coverUrl !== undefined
+                                        && page.selectedGame.coverUrl !== ""
+                                    source: page.selectedGame.coverUrl || ""
+                                    sourceSize.width: 120
+                                    sourceSize.height: 68
+                                    fillMode: Image.PreserveAspectFit
+                                    Layout.preferredHeight: 68
+                                    Layout.preferredWidth: 120
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.maximumHeight: 68
+                                    Accessible.name: qsTr("Preview de mídia")
+                                }
+                                RowLayout {
+                                    visible: (page.selectedGame.mediaCandidateCount || 0) > 1
+                                    Layout.fillWidth: true
+                                    spacing: 4
+                                    Item { Layout.fillWidth: true }
+                                    ToolButton {
+                                        icon.name: "go-previous"
+                                        icon.color: page.textColor
+                                        enabled: (page.selectedGame.mediaCandidateIdx || 0) > 0
+                                        Accessible.name: qsTr("Mídia anterior")
+                                        onClicked: {
+                                            var idx = (page.selectedGame.mediaCandidateIdx || 0) - 1
+                                            page.dispatchAction({
+                                                "id": "game.media.select:" + page.selectedGame.id + ":" + idx,
+                                                "label": qsTr("Selecionar mídia anterior"),
+                                                "enabled": true,
+                                                "requiresConfirmation": false,
+                                                "gameId": page.selectedGame.id,
+                                                "candidateIdx": idx
+                                            })
+                                        }
+                                    }
+                                    Label {
+                                        text: qsTr("%1/%2")
+                                            .arg((page.selectedGame.mediaCandidateIdx || 0) + 1)
+                                            .arg(page.selectedGame.mediaCandidateCount || 0)
+                                        color: page.mutedColor
+                                        font.pixelSize: 11
+                                    }
+                                    ToolButton {
+                                        icon.name: "go-next"
+                                        icon.color: page.textColor
+                                        enabled: (page.selectedGame.mediaCandidateIdx || 0) + 1
+                                            < (page.selectedGame.mediaCandidateCount || 0)
+                                        Accessible.name: qsTr("Próxima mídia")
+                                        onClicked: {
+                                            var idx = (page.selectedGame.mediaCandidateIdx || 0) + 1
+                                            page.dispatchAction({
+                                                "id": "game.media.select:" + page.selectedGame.id + ":" + idx,
+                                                "label": qsTr("Selecionar próxima mídia"),
+                                                "enabled": true,
+                                                "requiresConfirmation": false,
+                                                "gameId": page.selectedGame.id,
+                                                "candidateIdx": idx
+                                            })
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Button {
+                                        text: qsTr("Importar")
+                                        icon.name: "document-import"
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        Accessible.description: qsTr("Importar mídia personalizada do disco.")
+                                        onClicked: page.dispatchAction({
+                                            "id": "game.media.import:" + page.selectedGame.id,
+                                            "label": qsTr("Importar mídia personalizada"),
+                                            "enabled": true,
+                                            "requiresConfirmation": true,
+                                            "gameId": page.selectedGame.id
+                                        })
+                                    }
+                                    Button {
+                                        text: qsTr("Buscar")
+                                        icon.name: "edit-find"
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        Accessible.description: qsTr("Buscar mídia na internet.")
+                                        onClicked: page.dispatchAction({
+                                            "id": "game.media.search:" + page.selectedGame.id,
+                                            "label": qsTr("Buscar mídia na internet"),
+                                            "enabled": true,
+                                            "requiresConfirmation": false,
+                                            "gameId": page.selectedGame.id
+                                        })
+                                    }
+                                    Button {
+                                        text: qsTr("Limpar")
+                                        icon.name: "edit-clear"
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        background: Rectangle {
+                                            color: page.raisedColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        Accessible.description: qsTr("Limpar mídia personalizada.")
+                                        onClicked: page.dispatchAction({
+                                            "id": "game.media.clear:" + page.selectedGame.id,
+                                            "label": qsTr("Limpar mídia personalizada"),
+                                            "enabled": true,
+                                            "requiresConfirmation": true,
+                                            "gameId": page.selectedGame.id
+                                        })
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
                             Layout.fillWidth: true
                             Layout.minimumHeight: toolsPanel.implicitHeight + 24
                             color: page.backgroundColor
