@@ -2212,3 +2212,29 @@ operador.
 
 Release construída e instalada conforme autorização do operador. Rollback
 disponível como release anterior.
+
+## 2026-07-22 — Sessão: recuperação de merge conflicts e fechamento do scraping/mídia
+
+**Branch:** `codex/midia-switch-scraping-ui`, descendente de `main`.
+
+**Problema:** 7 arquivos UU (merge conflicts não resolvidos) entre o trabalho
+desta branch e mudanças de outras frentes. Index continha mudanças stageadas de
+outros agentes (formatação trivial em `desktop_ui.py`, `cli/main.py`,
+`switch_library.py`).
+
+**Resolução:** working tree estava limpo (zero marcadores `<<<<<<<`). Marcados
+como resolvidos com `git add`, resetados, e recomitados em ordem lógica:
+
+| Item | Commit | Testes que provam |
+|------|--------|-------------------|
+| estilo terceiros (line-wrap) | `92de333` | diff limpo |
+| erros/i18n/ports/paths | `d39d7b5` | 1106 passed |
+| plan_action, jobs, resolve_app_id | `247a7cd` | 1106 passed |
+| descoberta assíncrona de ROMs | `0d7734d` | 201 linhas novas |
+| FileDialog QML + colapsável | `620ec09` | 121 linhas QML |
+| testes de jobs/mime/discovery | `cd5b2c3` | 261 linhas de teste |
+
+**Gates:** 1106 passed; ruff check OK; mypy 129 files OK; independence OK;
+boundaries OK.
+
+**Host/release:** nenhuma. Release ativa permanece `0.1.0a33-5c8c33ddb0dd`.
