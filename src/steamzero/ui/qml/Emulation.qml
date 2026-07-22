@@ -764,6 +764,8 @@ Item {
                     "content.save.import", "content.shader.import", "nsz.convert",
                     "cheat.import"].indexOf(action.id) >= 0) {
             sourceFileDialog.open()
+        } else if (String(action.id).startsWith("game.media.import:")) {
+            mediaFileDialog.open()
         } else {
             page.actionRequested(action)
         }
@@ -873,6 +875,28 @@ Item {
                 versionDialog.open()
             else
                 submitSelectedSource("")
+        }
+    }
+
+    FileDialog {
+        id: mediaFileDialog
+        title: qsTr("Selecionar imagem para capa")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [
+            qsTr("Imagens (*.jpg *.jpeg *.png *.webp)"),
+            qsTr("Todos os arquivos (*)"),
+        ]
+        onAccepted: {
+            const request = {
+                "id": pendingAction ? pendingAction.id : "",
+                "label": qsTr("Importar mídia personalizada"),
+                "enabled": true,
+                "requiresConfirmation": true,
+                "path": page.localPath(selectedFile),
+                "gameId": page.selectedGame.id,
+            }
+            page.actionRequested(request)
+            pendingAction = null
         }
     }
 
@@ -2625,6 +2649,103 @@ Item {
                                     Layout.minimumHeight: 42
                                     Accessible.description: qsTr("A remoção exige confirmação e mantém backup transacional para rollback.")
                                     onClicked: page.dispatchAction(page.selectedGame.deleteAction)
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            color: "transparent"
+                            border.color: page.borderColor
+                            radius: 8
+                            height: advancedHeader.height + advancedBody.height
+                            property bool expanded: false
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 7
+                                Item {
+                                    id: advancedHeader
+                                    width: parent.width
+                                    height: 32
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        spacing: 8
+                                        ModernIcon {
+                                            iconName: "preferences-system"
+                                            iconColor: page.cyanColor
+                                            Layout.preferredWidth: 20
+                                            Layout.preferredHeight: 20
+                                        }
+                                        Label {
+                                            text: qsTr("Avançado")
+                                            color: page.textColor
+                                            font.bold: true
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: parent.parent.parent.expanded ? "▲" : "▼"
+                                            color: page.mutedColor
+                                            font.pixelSize: 12
+                                        }
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: parent.parent.parent.expanded = !parent.parent.parent.expanded
+                                    }
+                                }
+                                ColumnLayout {
+                                    id: advancedBody
+                                    width: parent.width
+                                    visible: parent.parent.expanded
+                                    spacing: 7
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        CheckBox {
+                                            id: steamAutoPubCheck
+                                            checked: false
+                                            Accessible.name: qsTr("Publicar automaticamente na Steam")
+                                            Layout.preferredWidth: 20
+                                        }
+                                        Label {
+                                            text: qsTr("Publicar automaticamente na Steam")
+                                            color: page.textColor
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                    Label {
+                                        text: qsTr("Ao buscar mídia com sucesso, publica automaticamente o artwork na Steam.")
+                                        color: page.mutedColor
+                                        font.pixelSize: 10
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        CheckBox {
+                                            id: preferNcaCheck
+                                            checked: true
+                                            Accessible.name: qsTr("Preferir extração NCA nativa")
+                                            Layout.preferredWidth: 20
+                                        }
+                                        Label {
+                                            text: qsTr("Preferir extração NCA nativa como fallback de mídia")
+                                            color: page.textColor
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                    Label {
+                                        text: qsTr("Usa o ícone extraído do arquivo NCA da ROM como fallback quando não há mídia externa.")
+                                        color: page.mutedColor
+                                        font.pixelSize: 10
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
                                 }
                             }
                         }
