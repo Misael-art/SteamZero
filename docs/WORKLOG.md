@@ -2352,3 +2352,27 @@ verdes; independence/boundaries OK.
 
 **Host/release:** nenhuma ação de host, build de release ou instalação. A
 validação física no painel do Steam Deck continua sendo uma ação do operador.
+
+## 2026-07-22 — Sessão: release responsiva instalada para teste humano
+
+**Branch:** `codex/midia-switch-scraping-ui`.
+
+| Item | Resultado | Evidência |
+|------|-----------|----------|
+| commit de origem | `b764bdfd17cfef7412693d3a727c60e9bc4748c6` | árvore limpa e descendente de `origin/codex/integracao-backend-ui-switch` |
+| release canônica | `0.1.0a33-b764bdfd17cf` | manifesto v4 com `sourceTreeState=clean` |
+| wheel | SHA-256 `cc04dc831668e14c60b377345ed7d857fdcc42627d825696d781b0e2c9caf977` | duas construções byte-idênticas; entry points de boot conferidos |
+| wheelhouse | 6 wheels runtime | download com `--require-hashes` a partir de `requirements-runtime.lock` |
+| instalação | ativada com `bigsudo /usr/bin/python3 tools/install_host.py install` | instalador retornou `ok=true`; `previousRelease=0.1.0a33-d4ea3bee353d` |
+| runtime de usuário | socket e service ativos no runtime novo | PID aponta para `/opt/steamzero/releases/0.1.0a33-b764bdfd17cf/venv/bin/python3` |
+
+**Gates no commit instalado:** 1127 testes passaram; Ruff, mypy,
+independence e boundaries verdes.
+
+**Validação pós-instalação:** doctor `ok`, schema 11, zero operações pendentes;
+Game Mode disponível com fallback de Desktop; `steamzero-core.socket` habilitado
+e ativo. As units de usuário foram recarregadas e reiniciadas para não manter o
+backend da release anterior residente.
+
+**Rollback disponível:** `0.1.0a33-d4ea3bee353d`. Nenhum reboot ou mudança de
+boot foi executado; o teste humano físico permanece com o operador.
