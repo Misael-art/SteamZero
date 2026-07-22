@@ -45,6 +45,7 @@ Item {
     readonly property bool compactLayout: width <= 1296 || height <= 720
     readonly property bool ultrawideLayout: width >= 1900
     readonly property int responsiveGutter: compactLayout ? 12 : 22
+    readonly property int minimumTouchTarget: 48
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showAreaSidebar: !isGameLibrary() && !compactLayout
     readonly property bool showContextPanel: isGameLibrary()
@@ -188,8 +189,36 @@ Item {
         const hostWindow = page.Window.window
         const active = hostWindow ? hostWindow.activeFocusItem : null
         const next = active ? active.nextItemInFocusChain(forward) : null
-        if (next)
+        if (next) {
             next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { page.revealFocusedItem(next) })
+        }
+    }
+
+    function revealInScroll(scroll, item) {
+        if (!scroll || !scroll.contentItem || !item)
+            return false
+        const flickable = scroll.contentItem
+        const point = item.mapToItem(flickable.contentItem, 0, 0)
+        if (point.y < 0 || point.y > flickable.contentHeight)
+            return false
+        const top = point.y - 12
+        const bottom = point.y + item.height + 12
+        if (top < flickable.contentY)
+            flickable.contentY = Math.max(0, top)
+        else if (bottom > flickable.contentY + flickable.height)
+            flickable.contentY = Math.min(
+                Math.max(0, flickable.contentHeight - flickable.height),
+                bottom - flickable.height
+            )
+        return true
+    }
+
+    function revealFocusedItem(item) {
+        if (page.isGameLibrary() && page.gameDetailsOpen
+                && page.revealInScroll(gamePanelScroll, item))
+            return
+        page.revealInScroll(contentScroll, item)
     }
 
     Keys.onUpPressed: function(event) {
@@ -1046,7 +1075,7 @@ Item {
                         color: page.mutedColor
                         font.pixelSize: 11
                     }
-                    ComboBox {
+                    SteamComboBox {
                         id: platformPicker
                         model: page.platforms
                         textRole: "name"
@@ -1162,7 +1191,7 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                ComboBox {
+                SteamComboBox {
                     visible: page.scopeId() === "emulator" && page.width >= 1250
                     model: page.emulators
                     textRole: "name"
@@ -1201,7 +1230,7 @@ Item {
                 color: page.mutedColor
                 font.bold: true
             }
-            ComboBox {
+            SteamComboBox {
                 model: page.areas
                 textRole: "label"
                 currentIndex: page.areaIndex
@@ -1317,6 +1346,49 @@ Item {
                     width: Math.min(contentScroll.availableWidth, page.contentMaxWidth)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 16
+
+                    Rectangle {
+                        visible: page.compactLayout && !page.isGameLibrary()
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 8
+                        implicitHeight: compactActionContent.implicitHeight + 20
+                        color: page.surfaceColor
+                        border.color: page.borderColor
+                        radius: 8
+
+                        RowLayout {
+                            id: compactActionContent
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 10
+                            Label {
+                                text: page.primaryAction().reason || page.areaDescription(page.selectedArea.id)
+                                color: page.primaryAction().enabled === false
+                                    ? page.mutedColor : page.cyanColor
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            Button {
+                                id: compactPrimaryAction
+                                text: page.primaryAction().label
+                                enabled: page.primaryAction().enabled !== false
+                                Layout.preferredWidth: Math.min(250, contentScroll.width * 0.34)
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: text
+                                Accessible.description: page.primaryAction().reason || ""
+                                onClicked: page.dispatchAction(page.primaryAction())
+                                background: Rectangle {
+                                    color: parent.enabled ? page.cyanDarkColor : page.raisedColor
+                                    border.color: parent.activeFocus ? page.textColor : page.cyanColor
+                                    border.width: parent.activeFocus ? 2 : 1
+                                    radius: 7
+                                }
+                            }
+                        }
+                    }
 
                     ColumnLayout {
                         visible: page.isGameLibrary()
@@ -1664,7 +1736,7 @@ Item {
                                         }
                                     }
 
-                                    ComboBox {
+                                    SteamComboBox {
                                         visible: contentScroll.width >= 760
                                         model: page.emulators
                                         textRole: "name"
@@ -1762,7 +1834,7 @@ Item {
                                     border.color: page.cyanColor
                                 }
                             }
-                            ComboBox {
+                            SteamComboBox {
                                 visible: page.width < 1250 && page.scopeId() === "emulator"
                                 model: page.emulators
                                 textRole: "name"
@@ -1782,7 +1854,7 @@ Item {
                                         page.actionRequested({"id": "game.emulator.default", "label": qsTr("Definir como padrão da plataforma"), "enabled": true, "emulatorId": emulator.id})
                                 }
                             }
-                            ComboBox {
+                            SteamComboBox {
                                 visible: page.width < 1250 && page.scopeId() === "game"
                                 model: page.games
                                 textRole: "name"
@@ -2288,7 +2360,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: 5
                             Label { text: qsTr("Emulador para este jogo"); color: page.textColor; font.bold: true }
-                            ComboBox {
+                            SteamComboBox {
                                 model: page.emulators
                                 textRole: "name"
                                 currentIndex: page.gameEmulatorIndex(page.selectedGame)
@@ -2938,44 +3010,5 @@ Item {
             }
         }
 
-        Rectangle {
-            visible: page.compactLayout && !page.isGameLibrary()
-            Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 58 : 0
-            color: page.backgroundColor
-            border.color: page.borderColor
-            z: 4
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                anchors.topMargin: 6
-                anchors.bottomMargin: 6
-                Label {
-                    text: page.primaryAction().reason || page.areaDescription(page.selectedArea.id)
-                    color: page.primaryAction().enabled === false
-                        ? page.mutedColor : page.cyanColor
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-                Button {
-                    id: compactPrimaryAction
-                    text: page.primaryAction().label
-                    enabled: page.primaryAction().enabled !== false
-                    Layout.preferredWidth: 250
-                    Layout.minimumHeight: 46
-                    Accessible.name: text
-                    Accessible.description: page.primaryAction().reason || ""
-                    onClicked: page.dispatchAction(page.primaryAction())
-                    background: Rectangle {
-                        color: parent.enabled ? page.cyanDarkColor : page.raisedColor
-                        border.color: parent.activeFocus ? page.textColor : page.cyanColor
-                        border.width: parent.activeFocus ? 2 : 1
-                        radius: 7
-                    }
-                }
-            }
-        }
     }
 }

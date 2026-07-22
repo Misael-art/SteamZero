@@ -318,7 +318,7 @@ ColumnLayout {
                     visible: panel.inputMethod.state === "available"
                     Layout.fillWidth: true
                     Label { text: qsTr("Idioma do teclado"); color: panel.mutedColor; Layout.fillWidth: true }
-                    ComboBox {
+                    SteamComboBox {
                         id: keyboardLayoutCombo
                         model: [qsTr("Auto (%1)").arg(panel.inputMethod.keyboardLayout || "us"), "br", "us", "es", "de", "fr", "it", "jp", "ru"]
                         currentIndex: 0

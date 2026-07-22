@@ -18,15 +18,15 @@ Main {
         width = 1280
         height = 800
         check(compactLayout, "1280x800 deve ativar o shell compacto")
-        check(navigationWidth === 72, "sidebar compacta deve ocupar 72 px")
-        const emulationNavigation = responsiveNavigation.itemAt(1)
-        const steamNavigation = responsiveNavigation.itemAt(2)
+        check(responsiveHeader.visible, "shell compacto deve publicar cabeçalho contextual")
+        const emulationNavigation = responsiveDrawerNavigation.itemAt(1)
+        const steamNavigation = responsiveDrawerNavigation.itemAt(2)
         check(emulationNavigation !== null && steamNavigation !== null,
-              "navegação compacta deve manter os destinos principais")
+              "drawer compacto deve manter os destinos principais")
         check(emulationNavigation.KeyNavigation.down === steamNavigation,
               "D-pad para baixo deve avançar de Emulação para Steam")
         check(emulationNavigation.Accessible.name === "Emulação",
-              "item somente com ícone deve preservar seu nome acessível")
+              "item do drawer deve preservar seu nome acessível")
         width = 1920
         height = 1080
         check(!compactLayout, "1920x1080 deve usar o shell desktop")
@@ -49,8 +49,8 @@ Main {
               "action id fora da allowlist deve ser recusado")
 
         performEmulationAction({"id": "keys.repair", "enabled": true})
-        check(lastRequest.indexOf("Bridge local indisponível") >= 0,
-              "keys.repair deve ser encaminhada ao plano de emulação")
+        check(lastRequest.indexOf("não publicou o contrato") >= 0,
+              "keys.repair deve exigir um contrato publicado pelo backend")
 
         performEmulationAction({"id": "emulation.refresh", "enabled": true})
         check(lastRequest.indexOf("Bridge local indisponível") >= 0,

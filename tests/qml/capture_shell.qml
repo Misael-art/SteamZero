@@ -9,6 +9,8 @@ Main {
     height: 800
     property int captureIndex: 0
     readonly property var captures: [
+        {"width": 949, "height": 593,
+         "path": "/tmp/steamzero-responsive-949x593-shell.png"},
         {"width": 1280, "height": 800,
          "path": "/tmp/steamzero-responsive-1280x800-shell.png"},
         {"width": 1920, "height": 1080,

@@ -72,6 +72,7 @@ Item {
     readonly property bool compactLayout: width <= 1296 || height <= 720
     readonly property bool ultrawideLayout: width >= 1900
     readonly property int responsiveGutter: compactLayout ? 12 : 20
+    readonly property int minimumTouchTarget: 48
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showSupplementaryPanels: !compactLayout && width >= 1240
     property alias reviewApplyControl: reviewApplyButton
@@ -217,8 +218,26 @@ Item {
         const hostWindow = page.Window.window
         const active = hostWindow ? hostWindow.activeFocusItem : null
         const next = active ? active.nextItemInFocusChain(forward) : null
-        if (next)
+        if (next) {
             next.forceActiveFocus(Qt.TabFocusReason)
+            Qt.callLater(function() { page.revealFocusedItem(next) })
+        }
+    }
+
+    function revealFocusedItem(item) {
+        if (!gameplayScroll.contentItem || !item)
+            return
+        const flickable = gameplayScroll.contentItem
+        const point = item.mapToItem(flickable.contentItem, 0, 0)
+        const top = point.y - 12
+        const bottom = point.y + item.height + 12
+        if (top < flickable.contentY)
+            flickable.contentY = Math.max(0, top)
+        else if (bottom > flickable.contentY + flickable.height)
+            flickable.contentY = Math.min(
+                Math.max(0, flickable.contentHeight - flickable.height),
+                bottom - flickable.height
+            )
     }
 
     Keys.onUpPressed: function(event) {
@@ -648,7 +667,7 @@ Item {
                     }
                 }
                 Label { visible: page.workspaceIndex !== 3; text: qsTr("Jogo"); color: page.mutedColor }
-                ComboBox {
+                SteamComboBox {
                     id: gamePicker
                     model: page.games
                     textRole: "name"
@@ -1141,7 +1160,7 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Label { text: qsTr("Upscaling"); color: page.mutedColor; Layout.preferredWidth: 112 }
-                            ComboBox {
+                            SteamComboBox {
                                 model: [qsTr("Nativo"), qsTr("FSR 2 · Qualidade"), qsTr("FSR 2 · Balanceado"), qsTr("Gamescope FSR")]
                                 currentIndex: page.upscalingIndex
                                 Layout.fillWidth: true
@@ -1158,7 +1177,7 @@ Item {
                                 Layout.preferredWidth: 112
                                 wrapMode: Text.WordWrap
                             }
-                            ComboBox {
+                            SteamComboBox {
                                 id: frameGenerationPicker
                                 model: [qsTr("Desligado"), "LSFG 2×", "LSFG 3×", "LSFG 4×"]
                                 currentIndex: page.frameGenerationIndex
@@ -1297,7 +1316,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 6
                         Label { text: qsTr("Layout para %1").arg(page.selectedGame.name); color: page.mutedColor }
-                        ComboBox {
+                        SteamComboBox {
                             id: controllerLayoutPicker
                             model: [
                                 qsTr("Recomendado pela Steam"), qsTr("Layout oficial"),
@@ -1483,7 +1502,7 @@ Item {
                         }
                         Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
                         Label { text: qsTr("Conta Steam"); color: page.mutedColor }
-                        ComboBox {
+                        SteamComboBox {
                             id: mediaAccountPicker
                             model: page.media.accounts || []
                             textRole: "label"
@@ -1607,7 +1626,7 @@ Item {
             Button {
                 text: qsTr("Restaurar perfil seguro")
                 Layout.fillWidth: true
-                Layout.minimumHeight: page.compactLayout ? 46 : 54
+                Layout.minimumHeight: page.compactLayout ? page.minimumTouchTarget : 54
                 Accessible.name: text
                 onClicked: page.planRequested(page.safePayload())
             }
@@ -1616,7 +1635,7 @@ Item {
                 text: qsTr("Revisar e aplicar perfil")
                 enabled: page.games.length > 0
                 Layout.fillWidth: true
-                Layout.minimumHeight: page.compactLayout ? 46 : 54
+                Layout.minimumHeight: page.compactLayout ? page.minimumTouchTarget : 54
                 Accessible.name: text
                 onClicked: page.planRequested(page.payload())
                 background: Rectangle {

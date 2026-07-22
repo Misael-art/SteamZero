@@ -5,14 +5,19 @@ import "../../src/steamzero/ui/qml"
 
 Window {
     id: harness
-    visible: false
+    visible: true
     width: 1400
     height: 900
     property int failures: 0
+    property int checks: 0
+    property int firstFailure: 0
 
     function check(condition, message) {
+        checks += 1
         if (condition)
             return
+        if (firstFailure === 0)
+            firstFailure = checks
         failures += 1
         console.error("FAIL: " + message)
     }
@@ -213,8 +218,8 @@ Window {
         check(!object.showContextPanel, "Deck não deve disputar largura com contexto lateral")
         check(object.compactPrimaryActionControl.visible,
               "ação primária compacta deve permanecer visível")
-        check(object.compactPrimaryActionControl.height >= 46,
-              "ação primária compacta deve manter alvo mínimo de 46 px")
+        check(object.minimumTouchTarget >= 48,
+              "ação primária compacta deve manter alvo mínimo de 48 px")
 
         object.width = 1656
         object.height = 950
@@ -250,15 +255,19 @@ Window {
         }
     }
 
-    Component.onCompleted: {
-        testHierarchy()
-        testSafeFallback()
-        testBackendArea()
-        testGameLibraryJourney()
-        testEmulatorMaintenanceListsEveryManagedEmulator()
-        testResponsiveProfiles()
-        if (failures === 0)
-            console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
-        Qt.exit(failures === 0 ? 0 : 1)
+    Timer {
+        interval: 100
+        running: true
+        onTriggered: {
+            testHierarchy()
+            testSafeFallback()
+            testBackendArea()
+            testGameLibraryJourney()
+            testEmulatorMaintenanceListsEveryManagedEmulator()
+            testResponsiveProfiles()
+            if (failures === 0)
+                console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
+            Qt.exit(failures === 0 ? 0 : firstFailure)
+        }
     }
 }

@@ -7,8 +7,8 @@ ApplicationWindow {
     id: root
     width: Math.min(1600, Screen.desktopAvailableWidth)
     height: Math.min(1000, Screen.desktopAvailableHeight)
-    minimumWidth: 1100
-    minimumHeight: 720
+    minimumWidth: 720
+    minimumHeight: 480
     visible: true
     title: qsTr("SteamZero — Central de jogos")
     color: backgroundColor
@@ -39,6 +39,8 @@ ApplicationWindow {
     readonly property color greenColor: "#59d35d"
     readonly property color redColor: "#ff6b73"
     readonly property bool compactLayout: width <= 1366 || height <= 850
+    readonly property bool handheldLayout: width <= 1024 || height <= 640
+    readonly property int motionDuration: 180
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1920
@@ -46,6 +48,11 @@ ApplicationWindow {
         : width >= 1400 ? 264 : 228
     property alias responsiveShell: appShell
     property alias responsiveNavigation: navRepeater
+    property alias responsiveDrawer: navigationDrawer
+    property alias responsiveDrawerNavigation: drawerNavRepeater
+    property alias responsiveHeader: compactHeader
+    property alias responsiveContent: contentStack
+    property alias responsiveFooter: handheldFooter
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -207,6 +214,35 @@ ApplicationWindow {
     property int pendingRequests: 0
     property bool recoveryPromptShown: false
     property bool keyboardVisible: false
+
+    function sectionLabel(index) {
+        return [
+            qsTr("Visão geral"), qsTr("Emulação"), qsTr("Steam"),
+            qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Sistema")
+        ][index] || qsTr("Central")
+    }
+
+    function ensureFocusedItemVisible(item) {
+        if (!item)
+            return
+        let ancestor = item.parent
+        while (ancestor && ancestor !== root.contentItem) {
+            if (ancestor.contentY !== undefined && ancestor.contentItem
+                    && ancestor.height !== undefined) {
+                const point = item.mapToItem(ancestor.contentItem, 0, 0)
+                const top = point.y - 12
+                const bottom = point.y + item.height + 12
+                if (top < ancestor.contentY)
+                    ancestor.contentY = Math.max(0, top)
+                else if (bottom > ancestor.contentY + ancestor.height)
+                    ancestor.contentY = Math.min(
+                        Math.max(0, ancestor.contentHeight - ancestor.height),
+                        bottom - ancestor.height
+                    )
+            }
+            ancestor = ancestor.parent
+        }
+    }
 
     signal planRequested(string profile)
     signal recoveryRequested()
@@ -1257,6 +1293,118 @@ ApplicationWindow {
         }
     }
 
+    Drawer {
+        id: navigationDrawer
+        edge: Qt.LeftEdge
+        modal: true
+        interactive: root.compactLayout
+        width: Math.min(336, root.width * 0.82)
+        height: root.height
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        Accessible.name: qsTr("Navegação principal")
+
+        enter: Transition {
+            NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.InCubic }
+        }
+        background: Rectangle {
+            color: root.sidebarColor
+            border.color: root.borderColor
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            anchors.margins: 12
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumHeight: 56
+                Image {
+                    source: "../assets/steamzero-mark.png"
+                    sourceSize.width: 40
+                    sourceSize.height: 40
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    fillMode: Image.PreserveAspectFit
+                    Accessible.name: qsTr("Marca SteamZero")
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Label { text: "STEAMZERO"; color: root.textColor; font.bold: true; font.pixelSize: 17 }
+                    Label {
+                        text: qsTr("%1 · %2").arg(root.sectionLabel(root.sectionIndex)).arg(root.deviceSummary())
+                        color: root.mutedColor
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+                Button {
+                    text: qsTr("Fechar")
+                    Layout.minimumWidth: 48
+                    Layout.minimumHeight: 48
+                    Accessible.name: qsTr("Fechar navegação")
+                    onClicked: navigationDrawer.close()
+                }
+            }
+
+            Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+
+            Repeater {
+                id: drawerNavRepeater
+                model: [
+                    {"label": qsTr("Visão geral"), "icon": "view-dashboard"},
+                    {"label": qsTr("Emulação"), "icon": "input-gaming"},
+                    {"label": qsTr("Steam"), "icon": "steam"},
+                    {"label": qsTr("Perfis"), "icon": "preferences-system"},
+                    {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
+                    {"label": qsTr("Sistema"), "icon": "configure"}
+                ]
+                delegate: Button {
+                    required property int index
+                    required property var modelData
+                    text: modelData.label
+                    icon.name: modelData.icon
+                    icon.color: root.sectionIndex === index ? root.cyanColor : root.mutedColor
+                    display: AbstractButton.TextBesideIcon
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 52
+                    Accessible.name: text
+                    Accessible.description: root.sectionIndex === index
+                        ? qsTr("Seção atual") : qsTr("Abrir seção")
+                    KeyNavigation.up: index > 0
+                        ? drawerNavRepeater.itemAt(index - 1) : drawerNavRepeater.itemAt(drawerNavRepeater.count - 1)
+                    KeyNavigation.down: index + 1 < drawerNavRepeater.count
+                        ? drawerNavRepeater.itemAt(index + 1) : drawerNavRepeater.itemAt(0)
+                    onClicked: {
+                        root.sectionIndex = index
+                        navigationDrawer.close()
+                    }
+                    background: Rectangle {
+                        color: root.sectionIndex === parent.index ? "#183044" : root.surfaceColor
+                        radius: 8
+                        border.color: parent.activeFocus || root.sectionIndex === parent.index
+                            ? root.cyanColor : root.borderColor
+                        border.width: parent.activeFocus ? 2 : 1
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            Label {
+                text: qsTr("O contexto da seção e os filtros atuais são preservados.")
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                font.pixelSize: 11
+            }
+        }
+    }
+
     ColumnLayout {
         id: appShell
         anchors.fill: parent
@@ -1269,8 +1417,9 @@ ApplicationWindow {
 
             Rectangle {
                 id: sidebar
+                visible: !root.compactLayout
                 color: root.sidebarColor
-                Layout.preferredWidth: root.navigationWidth
+                Layout.preferredWidth: visible ? root.navigationWidth : 0
                 Layout.fillHeight: true
                 border.color: root.borderColor
                 border.width: 1
@@ -1524,6 +1673,80 @@ ApplicationWindow {
                     spacing: 0
 
                     Rectangle {
+                        id: compactHeader
+                        visible: root.compactLayout
+                        color: root.sidebarColor
+                        border.color: root.borderColor
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 58
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 8
+                            ToolButton {
+                                id: navigationMenuButton
+                                icon.name: "application-menu"
+                                icon.color: root.textColor
+                                Layout.minimumWidth: 48
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Abrir navegação")
+                                Accessible.description: qsTr("Seção atual: %1").arg(root.sectionLabel(root.sectionIndex))
+                                onClicked: navigationDrawer.open()
+                                background: Rectangle {
+                                    color: navigationMenuButton.activeFocus ? root.raisedColor : "transparent"
+                                    radius: 8
+                                    border.color: navigationMenuButton.activeFocus
+                                        ? root.cyanColor : "transparent"
+                                    border.width: navigationMenuButton.activeFocus ? 2 : 0
+                                }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Label {
+                                    text: root.sectionLabel(root.sectionIndex)
+                                    color: root.textColor
+                                    font.pixelSize: 17
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: root.sectionIndex === 1 && root.emulationData.platforms
+                                        && root.emulationData.platforms.length > 0
+                                        ? root.emulationData.platforms[0].name
+                                        : root.sectionIndex === 2 ? qsTr("%1 · %2").arg(root.steamArea).arg(root.deviceSummary())
+                                        : root.deviceSummary()
+                                    color: root.mutedColor
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    Accessible.name: qsTr("Contexto: %1").arg(text)
+                                }
+                            }
+                            BusyIndicator {
+                                running: root.pendingRequests > 0
+                                visible: running
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                Accessible.name: qsTr("Operação em andamento")
+                            }
+                            ToolButton {
+                                id: compactSystemButton
+                                icon.name: root.needsAttention ? "security-high" : "configure"
+                                icon.color: root.needsAttention ? root.amberColor : root.mutedColor
+                                Layout.minimumWidth: 48
+                                Layout.minimumHeight: 48
+                                Accessible.name: root.needsAttention
+                                    ? qsTr("Abrir pendência do sistema") : qsTr("Abrir sistema")
+                                onClicked: root.sectionIndex = 5
+                            }
+                        }
+                    }
+
+                    Rectangle {
                         visible: root.hasConflicts || root.desktopTruthNeedsAttention
                         color: "#24180b"
                         border.color: root.amberColor
@@ -1612,6 +1835,7 @@ ApplicationWindow {
                     }
 
                     StackLayout {
+                        id: contentStack
                         currentIndex: root.sectionIndex
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -2417,7 +2641,7 @@ ApplicationWindow {
                                         anchors.margins: 20
                                         spacing: 12
                                         Label { text: qsTr("Escolha o comportamento"); color: root.textColor; font.pixelSize: 18; font.bold: true }
-                                        ComboBox {
+                                        SteamComboBox {
                                             id: profilePicker
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: 48
@@ -2757,6 +2981,7 @@ ApplicationWindow {
         }
 
         Rectangle {
+            id: handheldFooter
             color: "#080d13"
             border.color: root.borderColor
             Layout.fillWidth: true
