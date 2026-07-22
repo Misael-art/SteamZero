@@ -7,6 +7,12 @@ build/
 dist/
 .eggs/
 
+# Worktrees externos (não commitados)
+.worktrees/
+
+# Documentos de roadmap externos
+docs/12-roadmap/
+
 # Virtualenvs
 .venv/
 venv/

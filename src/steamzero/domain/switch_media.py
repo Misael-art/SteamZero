@@ -36,6 +36,7 @@ class GameMediaState:
     metadata_state: str = "unavailable"
     reason: str = ""
     checked_at: str = ""
+    errors: dict[str, str] = field(default_factory=dict)
     master_state: str = "none"
     optimized_state: str = "none"
     steam_view_state: str = "unpublished"

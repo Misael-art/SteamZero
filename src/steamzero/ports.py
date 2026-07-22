@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from steamzero.core.secret import Secret
+
 
 # --- Device (DMI) ----------------------------------------------------------
 class DevicePort(Protocol):
@@ -341,3 +343,21 @@ class MediaProviderPort(Protocol):
         media_kinds: list[str],
         region_priority: list[str] | None = None,
     ) -> list[MediaCandidate]: ...
+
+
+class SecretStorePort(Protocol):
+    """Armazenamento seguro de credenciais.
+
+    Implementação concreta deve usar Secret Service / KWallet / keyring
+    do sistema. O valor nunca aparece em logs, plans, jobs ou snapshots.
+    """
+
+    def store(self, provider: str, key_name: str, secret: Secret) -> None: ...
+
+    def retrieve(self, provider: str, key_name: str) -> Secret | None: ...
+
+    def delete(self, provider: str, key_name: str) -> None: ...
+
+    def is_available(self) -> bool:
+        """True se o serviço de credencial do sistema está operacional."""
+        ...

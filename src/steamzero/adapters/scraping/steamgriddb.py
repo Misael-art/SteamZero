@@ -106,6 +106,45 @@ class SteamGridDbAdapter(BaseMediaProvider):
         candidates.sort(key=lambda c: (-c.confidence, c.media_kind))
         return candidates
 
+    def test_connection(self) -> bool:
+        if not self._api_key:
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-MISSING",
+                detail="SteamGridDB requer API key",
+            )
+        try:
+            req = urllib.request.Request(  # noqa: S310
+                f"{_API_BASE}/games/steam/1",
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Accept": "application/json",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:  # noqa: S310
+                body = resp.read()
+                payload = json.loads(body)
+                if isinstance(payload, dict) and payload.get("success"):
+                    return True
+                raise SteamZeroError(
+                    "E-SCRAPE-CREDENTIAL-REJECTED",
+                    detail="chave SteamGridDB rejeitada pela API",
+                )
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401 or exc.code == 403:
+                raise SteamZeroError(
+                    "E-SCRAPE-CREDENTIAL-REJECTED",
+                    detail="chave SteamGridDB rejeitada (401/403)",
+                ) from exc
+            raise SteamZeroError(
+                "E-SCRAPE-HTTP-ERROR",
+                detail=f"HTTP {exc.code} do SteamGridDB",
+            ) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            raise SteamZeroError(
+                "E-SCRAPE-OFFLINE",
+                detail="não foi possível conectar ao SteamGridDB",
+            ) from exc
+
     def _resolve_game_id(self, identity: GameIdentity) -> int | None:
         """Resolve o SteamGridDB game_id a partir do Title ID."""
         self._rate_limit()

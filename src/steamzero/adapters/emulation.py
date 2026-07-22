@@ -37,6 +37,7 @@ from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.media_pipeline import MediaPipeline
@@ -47,12 +48,34 @@ from steamzero.domain.switch_media import GameMediaManager, GameMediaState
 from steamzero.domain.switch_mods import InstalledMod, ModType
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
-from steamzero.ports import GameIdentity, MediaCandidate
+from steamzero.ports import GameIdentity, MediaCandidate, SecretStorePort
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
 _log = logging.getLogger(__name__)
 Spawn = Callable[[Sequence[str]], int | None]
+
+
+class SessionSecretStore:
+    """SecretStorePort em memória (sessão atual apenas).
+
+    Preferir implementação com Secret Service / KWallet quando disponível.
+    """
+
+    def __init__(self) -> None:
+        self._secrets: dict[tuple[str, str], Secret] = {}
+
+    def store(self, provider: str, key_name: str, secret: Secret) -> None:
+        self._secrets[(provider, key_name)] = secret
+
+    def retrieve(self, provider: str, key_name: str) -> Secret | None:
+        return self._secrets.get((provider, key_name))
+
+    def delete(self, provider: str, key_name: str) -> None:
+        self._secrets.pop((provider, key_name), None)
+
+    def is_available(self) -> bool:
+        return True
 
 _MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
 
@@ -138,6 +161,7 @@ class EmulationController:
         spawn: Spawn = _spawn_detached,
         shortcuts: SteamShortcutManager | None = None,
         job_manager: JobManager | None = None,
+        secret_store: SecretStorePort | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -145,6 +169,7 @@ class EmulationController:
         self._which = which
         self._spawn = spawn
         self._shortcuts = shortcuts or SteamShortcutManager()
+        self._secret_store = secret_store or SessionSecretStore()
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
@@ -605,17 +630,6 @@ class EmulationController:
                 {}, root=paths.data_home(),
                 kind=f"media.search:{game_id}",
             )
-            job = self._jobs.create(
-                "media.search",
-                params={
-                    "game_id": game_id,
-                    "title_id": title_id,
-                    "title": str(game.get("name", "")),
-                    "media_kinds": payload.get("mediaKinds"),
-                },
-                priority="interactive",
-                created_by="ui",
-            )
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="media-search",
                 metadata={
@@ -623,10 +637,8 @@ class EmulationController:
                     "title_id": title_id,
                     "title": str(game.get("name", "")),
                     "media_kinds": payload.get("mediaKinds"),
-                    "job_id": job.id,
                 },
             )
-            return self._plan_view(plan, action, jobId=job.id)
         elif action.startswith("game.media.import:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
@@ -718,17 +730,10 @@ class EmulationController:
             plan = transaction.plan_write_files(
                 {}, root=paths.data_home(), kind="rom.scan",
             )
-            job = self._jobs.create(
-                "rom.scan",
-                params={"roots": roots},
-                priority="background",
-                created_by="ui",
-            )
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="rom-scan",
-                metadata={"job_id": job.id, "roots": roots},
+                metadata={"roots": roots},
             )
-            return self._plan_view(plan, action, jobId=job.id)
         elif action == "media.audit":
             plan = transaction.plan_write_files(
                 {}, root=paths.data_home(), kind="media.audit",
@@ -757,11 +762,18 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
             result = self._shortcuts.apply(plan_id, confirm_token)
-        elif plan.kind.startswith("emulation."):
+        elif plan.kind.startswith("emulation.") or plan.kind in {
+            "rom.scan",
+            "media.audit",
+        } or plan.kind.startswith("media."):
             result = transaction.apply(plan_id, confirm_token)
         else:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence à emulação")
         pending = self._pending.pop(plan_id, None)
+        response: dict[str, Any] = {
+            "status": result.status,
+            "operationId": result.operation_id,
+        }
         if pending is not None:
             if pending.kind in {"key", "firmware"}:
                 self._persist_import(pending)
@@ -770,9 +782,20 @@ class EmulationController:
             elif pending.kind == "media-import":
                 self._apply_media_import(pending)
             elif pending.kind == "media-search":
-                job_id = pending.metadata.get("job_id", "")
-                if job_id:
-                    self._jobs.run(job_id)
+                meta = pending.metadata
+                job = self._jobs.create(
+                    "media.search",
+                    params={
+                        "game_id": meta["game_id"],
+                        "title_id": meta["title_id"],
+                        "title": meta["title"],
+                        "media_kinds": meta.get("media_kinds"),
+                    },
+                    priority="interactive",
+                    created_by="ui",
+                )
+                response["jobId"] = job.id
+                self._jobs.run(job.id)
             elif pending.kind == "media-select":
                 self._apply_media_select(pending)
             elif pending.kind == "media-clear":
@@ -784,13 +807,15 @@ class EmulationController:
             elif pending.kind == "media-audit":
                 self._apply_media_audit(pending)
             elif pending.kind == "rom-scan":
-                job_id = pending.metadata.get("job_id", "")
-                if job_id:
-                    self._jobs.run(job_id)
-        response: dict[str, Any] = {
-            "status": result.status,
-            "operationId": result.operation_id,
-        }
+                roots = pending.metadata.get("roots", [])
+                job = self._jobs.create(
+                    "rom.scan",
+                    params={"roots": roots},
+                    priority="background",
+                    created_by="ui",
+                )
+                response["jobId"] = job.id
+                self._jobs.run(job.id)
         if plan.kind == "emulation.library-roots" or plan.kind.startswith("emulation.game-delete:"):
             response["library"] = self.scan_library()
         if pending is not None and pending.kind.startswith("media-"):
@@ -812,6 +837,32 @@ class EmulationController:
             "createdAt": job.created_at,
             "updatedAt": job.updated_at,
         }
+
+    def credential_status(self) -> dict[str, Any]:
+        configured = self._secret_store.retrieve("steamgriddb", "api_key") is not None
+        return {"steamgriddb": {"configured": configured}}
+
+    def save_credential(self, provider: str, api_key: str) -> dict[str, Any]:
+        self._secret_store.store(provider, "api_key", Secret(api_key))
+        return {"provider": provider, "configured": True}
+
+    def delete_credential(self, provider: str) -> dict[str, Any]:
+        self._secret_store.delete(provider, "api_key")
+        return {"provider": provider, "configured": False}
+
+    def test_credential(self, provider: str) -> dict[str, Any]:
+        secret = self._secret_store.retrieve(provider, "api_key")
+        if secret is None:
+            return {"provider": provider, "valid": False, "error": "E-SCRAPE-CREDENTIAL-MISSING"}
+        try:
+            from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+            adapter = SteamGridDbAdapter(api_key=secret.reveal())
+            result = adapter.test_connection()
+            return {"provider": provider, "valid": result}
+        except SteamZeroError as exc:
+            return {"provider": provider, "valid": False, "error": exc.code}
+        except Exception:
+            return {"provider": provider, "valid": False, "error": "E-SCRAPE-UNEXPECTED"}
 
     def rollback_action(self, operation_id: str) -> dict[str, Any]:
         if not ids.is_ulid(operation_id):
@@ -1838,19 +1889,24 @@ class EmulationController:
 
     # --- Job handler para busca de mídia (executado via JobManager) ---
 
-    @staticmethod
-    def _media_search_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
+    def _get_provider_api_key(self, provider_name: str) -> str | None:
+        secret = self._secret_store.retrieve(provider_name, "api_key")
+        return secret.reveal() if secret is not None else None
+
+    def _media_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         store = StateStore()
         store.migrate()
         conn = store.adapter_connection()
+        api_key = self._get_provider_api_key("steamgriddb")
+        provider = SteamGridDbAdapter(api_key=api_key)
         pipeline = MediaPipeline(
             media_root=paths.media_dir(),
-            providers=[SteamGridDbAdapter()],
+            providers=[provider],
         )
         mgr = GameMediaManager(
             store=StateStoreGameMediaAdapter(conn),
             pipeline=pipeline,
-            providers=[SteamGridDbAdapter()],
+            providers=[provider],
         )
         params = job.params
         game_id = params["game_id"]
@@ -1868,18 +1924,19 @@ class EmulationController:
             title_id=title_id,
         )
         all_candidates: list[MediaCandidate] = []
+        provider_errors: dict[str, str] = {}
         total_providers = len(mgr._providers)
         ctx.set_progress("search", current=0, total=total_providers, unit="providers")
-        for idx, provider in enumerate(mgr._providers):
+        for idx, provider_item in enumerate(mgr._providers):
             ctx.safepoint()
             try:
-                results = provider.search(identity, kinds)
+                results = provider_item.search(identity, kinds)
                 all_candidates.extend(results)
-            except Exception:
-                _log.debug("provider %s falhou", provider.name)
+            except SteamZeroError as exc:
+                provider_errors[provider_item.name] = exc.code
             ctx.set_progress(
                 "search", current=idx + 1, total=total_providers, unit="providers",
-                current_item=provider.name,
+                current_item=provider_item.name,
             )
         all_candidates.sort(key=lambda c: (-c.confidence, c.media_kind))
         candidates_data = [
@@ -1898,14 +1955,21 @@ class EmulationController:
         ]
         state.candidates = candidates_data
         state.candidate_count = len(candidates_data)
-        state.metadata_state = "candidates-found" if candidates_data else "no-results"
+        if provider_errors:
+            state.errors = provider_errors
+        if candidates_data:
+            state.metadata_state = "candidates-found"
+        elif provider_errors:
+            state.metadata_state = "error"
+        else:
+            state.metadata_state = "no-results"
         state.selected_candidate_idx = -1
         mgr._store.save(state)
         ctx.set_progress(
             "done", current=len(candidates_data), total=len(candidates_data),
             unit="candidates",
         )
-        return {"candidate_count": len(candidates_data)}
+        return {"candidate_count": len(candidates_data), "provider_errors": provider_errors}
 
     @staticmethod
     def _rom_scan_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
@@ -1957,15 +2021,6 @@ class EmulationController:
             title_id=meta["title_id"],
             fingerprint=meta["fingerprint"],
             canonical_name=meta["canonical_name"],
-        ))
-
-    def _apply_media_search(self, pending: _PendingMutation) -> None:
-        meta = pending.metadata
-        self._with_store_and_media(lambda s, mgr: mgr.search_candidates(
-            game_id=meta["game_id"],
-            title_id=meta["title_id"],
-            title=meta["title"],
-            media_kinds=meta.get("media_kinds"),
         ))
 
     def _apply_media_select(self, pending: _PendingMutation) -> None:
@@ -2527,14 +2582,16 @@ class EmulationController:
 
     def _media_manager(self, store: StateStore) -> GameMediaManager:
         conn = store.adapter_connection()
+        api_key = self._get_provider_api_key("steamgriddb")
+        provider = SteamGridDbAdapter(api_key=api_key)
         pipeline = MediaPipeline(
             media_root=paths.media_dir(),
-            providers=[SteamGridDbAdapter()],
+            providers=[provider],
         )
         return GameMediaManager(
             store=StateStoreGameMediaAdapter(conn),
             pipeline=pipeline,
-            providers=[SteamGridDbAdapter()],
+            providers=[provider],
         )
 
     def _enrich_games(
@@ -2587,6 +2644,8 @@ class EmulationController:
                 media_kind = "icon"
                 media_candidate_count = 0
                 media_candidate_idx = -1
+                media_candidates: list[dict[str, Any]] = []
+                media_errors: dict[str, str] = {}
                 master_state = "none"
                 optimized_state = "none"
                 steam_view_state = "unpublished"
@@ -2594,22 +2653,25 @@ class EmulationController:
                 steam_artwork_kinds: list[str] = []
                 if title_id:
                     existing = media_store.load(game_id)
-                    if existing and existing.media_path:
-                        try:
-                            p = Path(existing.media_path)
-                            if p.is_file() and not p.is_symlink():
-                                cover_url = p.resolve().as_uri()
-                                media_source = existing.media_source
-                                media_kind = existing.media_kind
-                                media_candidate_count = existing.candidate_count
-                                media_candidate_idx = existing.selected_candidate_idx
-                                master_state = existing.master_state
-                                optimized_state = existing.optimized_state
-                                steam_view_state = existing.steam_view_state
-                                steam_appid = existing.steam_appid
-                                steam_artwork_kinds = existing.steam_artwork_kinds
-                        except OSError:
-                            pass
+                    if existing:
+                        media_candidate_count = existing.candidate_count
+                        media_candidate_idx = existing.selected_candidate_idx
+                        media_candidates = existing.candidates
+                        media_errors = existing.errors
+                        master_state = existing.master_state
+                        optimized_state = existing.optimized_state
+                        steam_view_state = existing.steam_view_state
+                        steam_appid = existing.steam_appid
+                        steam_artwork_kinds = existing.steam_artwork_kinds
+                        if existing.media_path:
+                            try:
+                                p = Path(existing.media_path)
+                                if p.is_file() and not p.is_symlink():
+                                    cover_url = p.resolve().as_uri()
+                                    media_source = existing.media_source
+                                    media_kind = existing.media_kind
+                            except OSError:
+                                pass
                     elif game.get("bannerAsset"):
                         cover_url = str(game["bannerAsset"])
                         media_source = str(game.get("mediaSource", "fallback"))
@@ -2670,6 +2732,18 @@ class EmulationController:
                         "mediaKind": media_kind,
                         "mediaCandidateCount": media_candidate_count,
                         "mediaCandidateIdx": media_candidate_idx,
+                        "mediaCandidates": [
+                            {
+                                "url": c.get("url", ""),
+                                "mediaKind": c.get("mediaKind", ""),
+                                "width": c.get("width"),
+                                "height": c.get("height"),
+                                "provider": c.get("provider", ""),
+                                "confidence": c.get("confidence", 0),
+                            }
+                            for c in media_candidates
+                        ],
+                        "mediaErrors": media_errors,
                         "masterState": master_state,
                         "optimizedState": optimized_state,
                         "steamViewState": steam_view_state,

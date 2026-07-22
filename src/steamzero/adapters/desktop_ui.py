@@ -65,24 +65,35 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
             return
-        if urlparse(self.path).path != "/status":
+        path = urlparse(self.path).path
+        if path == "/status":
+            try:
+                status = self._control_server.coordinator.status()
+                dashboard = self._control_server.dashboard
+                if dashboard is not None:
+                    status["dashboard"] = dashboard.snapshot(status)
+            except SteamZeroError as exc:
+                self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
+                return
+            except Exception as exc:
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {"error": build_error("E-INTERNAL-UNEXPECTED", detail=str(exc))},
+                )
+                return
+            self._send(HTTPStatus.OK, status)
+        elif path.startswith("/emulation/job/status/"):
+            job_id = path.removeprefix("/emulation/job/status/")
+            if not job_id:
+                self._send(HTTPStatus.BAD_REQUEST, {"error": "jobId ausente"})
+                return
+            result = self._dashboard().get_emulation_job_status(job_id)
+            if result is None:
+                self._send(HTTPStatus.NOT_FOUND, {"error": "job não encontrado"})
+                return
+            self._send(HTTPStatus.OK, result)
+        else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
-            return
-        try:
-            status = self._control_server.coordinator.status()
-            dashboard = self._control_server.dashboard
-            if dashboard is not None:
-                status["dashboard"] = dashboard.snapshot(status)
-        except SteamZeroError as exc:
-            self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
-            return
-        except Exception as exc:
-            self._send(
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                {"error": build_error("E-INTERNAL-UNEXPECTED", detail=str(exc))},
-            )
-            return
-        self._send(HTTPStatus.OK, status)
 
     def do_POST(self) -> None:
         if not self._authorized():
@@ -193,6 +204,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/emulation/library/scan":
             return self._dashboard().scan_emulation_library()
+        if path == "/emulation/job/status":
+            job_id = self._required_string(payload, "jobId")
+            result = self._dashboard().get_emulation_job_status(job_id)
+            if result is None:
+                raise SteamZeroError("E-API-SCHEMA", detail="job não encontrado")
+            return result
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
         if path == "/steam/input/open":
@@ -317,6 +334,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             prof = profile_for(automatic_profile(ctx), ctx)
             effect.apply(replace(prof, panel_auto_hide=enable), ctx)
             return {"status": "ok", "autoHide": enable}
+        if path == "/scraping/credential/status":
+            return self._dashboard().credential_status()
+        if path == "/scraping/credential/save":
+            provider = self._required_string(payload, "provider")
+            api_key = self._required_string(payload, "apiKey")
+            if not provider or not api_key:
+                raise ValueError("provider e apiKey são obrigatórios")
+            return self._dashboard().save_credential(provider, api_key)
+        if path == "/scraping/credential/test":
+            provider = self._required_string(payload, "provider")
+            return self._dashboard().test_credential(provider)
+        if path == "/scraping/credential/delete":
+            provider = self._required_string(payload, "provider")
+            return self._dashboard().delete_credential(provider)
         raise ValueError(f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})

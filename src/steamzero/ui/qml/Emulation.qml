@@ -41,6 +41,7 @@ Item {
     property string selectedGameId: ""
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
+    property string steamUserId: ""
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -541,6 +542,7 @@ Item {
             return [
                 {"title": qsTr("Identificação"), "icon": "edit-find", "state": "unknown", "status": qsTr("Nenhum título analisado"), "detail": qsTr("Title ID, hash e DAT local ajudam a evitar correspondência errada."), "metric": "—"},
                 {"title": qsTr("Capas e metadados"), "icon": "image-x-generic", "state": "unknown", "status": qsTr("Biblioteca sem mídia"), "detail": qsTr("Preview antes de substituir imagem, título ou descrição."), "metric": "0"},
+                {"title": qsTr("Provedores"), "icon": "network-server", "state": "unknown", "status": qsTr("Chaves de API"), "detail": qsTr("Configure provedores de scraping como SteamGridDB para buscar mídia automaticamente."), "metric": qsTr("Configurar"), "actions": [{"id": "open-credential-dialog", "label": qsTr("Abrir configuração"), "enabled": true}]},
                 {"title": qsTr("Renomeação"), "icon": "edit-rename", "state": "unknown", "status": qsTr("Nenhuma mudança planejada"), "detail": qsTr("Detecta colisões e preserva o caminho original para rollback."), "metric": qsTr("Com preview")}
             ]
         }
@@ -2471,54 +2473,69 @@ Item {
                                     Layout.maximumHeight: 68
                                     Accessible.name: qsTr("Preview de mídia")
                                 }
-                                RowLayout {
-                                    visible: (page.selectedGame.mediaCandidateCount || 0) > 1
+                                Flow {
+                                    visible: (page.selectedGame.mediaCandidates || []).length > 0
                                     Layout.fillWidth: true
                                     spacing: 4
-                                    Item { Layout.fillWidth: true }
-                                    ToolButton {
-                                        icon.name: "go-previous"
-                                        icon.color: page.textColor
-                                        enabled: (page.selectedGame.mediaCandidateIdx || 0) > 0
-                                        Accessible.name: qsTr("Mídia anterior")
-                                        onClicked: {
-                                            var idx = (page.selectedGame.mediaCandidateIdx || 0) - 1
-                                            page.dispatchAction({
-                                                "id": "game.media.select:" + page.selectedGame.id + ":" + idx,
-                                                "label": qsTr("Selecionar mídia anterior"),
-                                                "enabled": true,
-                                                "requiresConfirmation": false,
-                                                "gameId": page.selectedGame.id,
-                                                "candidateIdx": idx
-                                            })
+                                    Repeater {
+                                        model: page.selectedGame.mediaCandidates || []
+                                        delegate: Rectangle {
+                                            required property int index
+                                            required property var modelData
+                                            width: 56
+                                            height: 56
+                                            radius: 6
+                                            color: index === (page.selectedGame.mediaCandidateIdx || -1)
+                                                ? page.cyanDarkColor : page.surfaceColor
+                                            border.color: index === (page.selectedGame.mediaCandidateIdx || -1)
+                                                ? page.cyanColor : page.borderColor
+                                            border.width: index === (page.selectedGame.mediaCandidateIdx || -1) ? 2 : 1
+                                            Accessible.name: qsTr("Candidato %1: %2").arg(index + 1).arg(modelData.mediaKind || "")
+                                            Image {
+                                                anchors.centerIn: parent
+                                                width: 48
+                                                height: 48
+                                                source: modelData.url || ""
+                                                sourceSize.width: 48
+                                                sourceSize.height: 48
+                                                fillMode: Image.PreserveAspectFit
+                                                visible: modelData.url && modelData.url.length > 0
+                                            }
+                                            Label {
+                                                anchors.bottom: parent.bottom
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                text: {
+                                                    var kind = modelData.mediaKind || ""
+                                                    if (kind === "boxart" || kind === "grid") return qsTr("Cx")
+                                                    if (kind === "hero") return qsTr("Hr")
+                                                    if (kind === "icon") return qsTr("Ic")
+                                                    if (kind === "logo") return qsTr("Lg")
+                                                    if (kind === "screenshot") return qsTr("Sc")
+                                                    return kind.charAt(0).toUpperCase()
+                                                }
+                                                color: page.mutedColor
+                                                font.pixelSize: 8
+                                                font.bold: true
+                                                visible: !(modelData.url && modelData.url.length > 0)
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (index !== (page.selectedGame.mediaCandidateIdx || -1)) {
+                                                        page.dispatchAction({
+                                                            "id": "game.media.select:" + page.selectedGame.id + ":" + index,
+                                                            "label": qsTr("Selecionar candidato %1").arg(index + 1),
+                                                            "enabled": true,
+                                                            "requiresConfirmation": false,
+                                                            "gameId": page.selectedGame.id,
+                                                            "candidateIdx": index
+                                                        })
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
-                                    Label {
-                                        text: qsTr("%1/%2")
-                                            .arg((page.selectedGame.mediaCandidateIdx || 0) + 1)
-                                            .arg(page.selectedGame.mediaCandidateCount || 0)
-                                        color: page.mutedColor
-                                        font.pixelSize: 11
-                                    }
-                                    ToolButton {
-                                        icon.name: "go-next"
-                                        icon.color: page.textColor
-                                        enabled: (page.selectedGame.mediaCandidateIdx || 0) + 1
-                                            < (page.selectedGame.mediaCandidateCount || 0)
-                                        Accessible.name: qsTr("Próxima mídia")
-                                        onClicked: {
-                                            var idx = (page.selectedGame.mediaCandidateIdx || 0) + 1
-                                            page.dispatchAction({
-                                                "id": "game.media.select:" + page.selectedGame.id + ":" + idx,
-                                                "label": qsTr("Selecionar próxima mídia"),
-                                                "enabled": true,
-                                                "requiresConfirmation": false,
-                                                "gameId": page.selectedGame.id,
-                                                "candidateIdx": idx
-                                            })
-                                        }
-                                    }
-                                    Item { Layout.fillWidth: true }
                                 }
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -2586,6 +2603,100 @@ Item {
                                             "enabled": true,
                                             "requiresConfirmation": true,
                                             "gameId": page.selectedGame.id
+                                        })
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+                                    Label {
+                                        visible: page.selectedGame.mediaErrors !== undefined
+                                            && Object.keys(page.selectedGame.mediaErrors).length > 0
+                                        text: qsTr("Provedores com erro: %1")
+                                            .arg(Object.keys(page.selectedGame.mediaErrors).join(", "))
+                                        color: page.amberColor
+                                        font.pixelSize: 10
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+                                    TextField {
+                                        id: steamUserIdField
+                                        visible: page.selectedGame.steamAppId !== undefined
+                                            && page.selectedGame.steamAppId > 0
+                                        placeholderText: qsTr("Steam ID (ex: 7656119...)")
+                                        text: page.steamUserId
+                                        color: page.textColor
+                                        placeholderTextColor: page.mutedColor
+                                        selectByMouse: true
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        onTextChanged: page.steamUserId = text
+                                        background: Rectangle {
+                                            color: page.surfaceColor
+                                            border.color: steamUserIdField.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        Accessible.name: qsTr("Steam user ID para publicação de mídia")
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+                                    Button {
+                                        id: publishSteamBtn
+                                        text: page.selectedGame.steamViewState === "published"
+                                            ? qsTr("Publicado") : qsTr("Publicar na Steam")
+                                        icon.name: "steam"
+                                        enabled: page.selectedGame.steamViewState !== "published"
+                                            && page.selectedGame.steamAppId !== undefined
+                                            && page.selectedGame.steamAppId > 0
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        background: Rectangle {
+                                            color: publishSteamBtn.enabled
+                                                ? page.raisedColor : page.surfaceColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        onClicked: page.dispatchAction({
+                                            "id": "game.media.publish-steam:" + page.selectedGame.id,
+                                            "label": qsTr("Publicar mídia na Steam"),
+                                            "enabled": true,
+                                            "requiresConfirmation": true,
+                                            "gameId": page.selectedGame.id,
+                                            "steamUserId": page.steamUserId || ""
+                                        })
+                                    }
+                                    Button {
+                                        id: unpublishSteamBtn
+                                        text: qsTr("Remover da Steam")
+                                        icon.name: "steam"
+                                        enabled: page.selectedGame.steamViewState === "published"
+                                        palette.button: page.raisedColor
+                                        palette.buttonText: page.textColor
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 36
+                                        background: Rectangle {
+                                            color: unpublishSteamBtn.enabled
+                                                ? page.raisedColor : page.surfaceColor
+                                            border.color: parent.hovered || parent.activeFocus
+                                                ? page.cyanColor : page.borderColor
+                                            radius: 6
+                                        }
+                                        onClicked: page.dispatchAction({
+                                            "id": "game.media.unpublish-steam:" + page.selectedGame.id,
+                                            "label": qsTr("Remover mídia da Steam"),
+                                            "enabled": true,
+                                            "requiresConfirmation": true,
+                                            "gameId": page.selectedGame.id,
+                                            "steamUserId": page.steamUserId || ""
                                         })
                                     }
                                 }

@@ -464,6 +464,11 @@ ApplicationWindow {
             refreshStatus(qsTr("Ambiente de emulação verificado"))
             return
         }
+        if (action.id === "open-credential-dialog") {
+            credentialDialog.refresh()
+            credentialDialog.open()
+            return
+        }
         if (action.id === "library.scan") {
             request("POST", "/emulation/library/scan", {}, function(response) {
                 refreshStatus(qsTr("Biblioteca atualizada: %1 jogo(s)").arg(response.games))
@@ -511,13 +516,19 @@ ApplicationWindow {
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
                 "mod.import", "cheat.import",
-                "game.steam.set", "steam.shortcuts.sync"].indexOf(action.id) >= 0
+                "game.steam.set", "steam.shortcuts.sync"]            .indexOf(action.id) >= 0
                 || action.id.indexOf("content.state:") === 0
                 || action.id.indexOf("mod.state:") === 0
                 || action.id.indexOf("mod.remove:") === 0
                 || action.id.indexOf("cheat.state:") === 0
                 || action.id.indexOf("cheat.remove:") === 0
-                || action.id.indexOf("game.delete:") === 0) {
+                || action.id.indexOf("game.delete:") === 0
+                || action.id.indexOf("game.media.search:") === 0
+                || action.id.indexOf("game.media.import:") === 0
+                || action.id.indexOf("game.media.select:") === 0
+                || action.id.indexOf("game.media.clear:") === 0
+                || action.id.indexOf("game.media.publish-steam:") === 0
+                || action.id.indexOf("game.media.unpublish-steam:") === 0) {
             const payload = {
                 "actionId": action.id,
                 "path": action.path || "",
@@ -993,6 +1004,139 @@ ApplicationWindow {
                         })
                     }
                 }
+            }
+        }
+    }
+
+    Dialog {
+        id: credentialDialog
+        title: qsTr("Credenciais de scraping")
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(root.width - 48, 500)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.borderColor; border.width: 1 }
+        property var providers: ({})
+        property string testResult: ""
+        property string saveResult: ""
+
+        function refresh() {
+            root.request("POST", "/scraping/credential/status", {}, function(resp) {
+                credentialDialog.providers = resp || {}
+                credentialDialog.testResult = ""
+                credentialDialog.saveResult = ""
+            })
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: qsTr("Configure as chaves de API dos provedores de scraping para buscar capas e mídia automaticamente.")
+                color: root.textColor
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Repeater {
+                model: Object.keys(credentialDialog.providers)
+                delegate: Rectangle {
+                    required property string modelData
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 80
+                    color: root.surfaceColor
+                    radius: 8
+                    border.color: root.borderColor
+                    ColumnLayout {
+                        anchors.margins: 12
+                        anchors.fill: parent
+                        spacing: 6
+                        Label {
+                            text: modelData
+                            color: root.textColor
+                            font.bold: true
+                            font.pixelSize: 14
+                        }
+                        Label {
+                            text: credentialDialog.providers[modelData].configured
+                                ? qsTr("✓ Configurado") : qsTr("✗ Não configurado")
+                            color: credentialDialog.providers[modelData].configured
+                                ? root.greenColor : root.amberColor
+                            font.pixelSize: 11
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            TextField {
+                                id: apiKeyField
+                                placeholderText: qsTr("API key")
+                                color: root.textColor
+                                placeholderTextColor: root.mutedColor
+                                selectByMouse: true
+                                echoMode: TextInput.Password
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 36
+                                background: Rectangle {
+                                    color: root.surfaceColor
+                                    border.color: apiKeyField.activeFocus ? root.cyanColor : root.borderColor
+                                    radius: 6
+                                }
+                            }
+                            Button {
+                                text: qsTr("Salvar")
+                                enabled: apiKeyField.text.length > 0
+                                palette.button: root.raisedColor
+                                palette.buttonText: root.textColor
+                                Layout.minimumHeight: 36
+                                onClicked: {
+                                    var provider = modelData
+                                    root.request("POST", "/scraping/credential/save", {
+                                        "provider": provider,
+                                        "apiKey": apiKeyField.text
+                                    }, function(resp) {
+                                        credentialDialog.refresh()
+                                        apiKeyField.text = ""
+                                        credentialDialog.saveResult = qsTr("Chave salva para %1").arg(provider)
+                                    }, function(errMsg) {
+                                        credentialDialog.saveResult = qsTr("Erro ao salvar: %1").arg(errMsg)
+                                    })
+                                }
+                            }
+                        }
+                        Label {
+                            text: credentialDialog.testResult || credentialDialog.saveResult || ""
+                            visible: text.length > 0
+                            color: root.cyanColor
+                            font.pixelSize: 10
+                        }
+                        Button {
+                            visible: credentialDialog.providers[modelData].configured
+                            text: qsTr("Testar conexão")
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: 32
+                            palette.button: root.raisedColor
+                            palette.buttonText: root.textColor
+                            onClicked: {
+                                root.request("POST", "/scraping/credential/test", {
+                                    "provider": modelData
+                                }, function(resp) {
+                                    credentialDialog.testResult = resp.valid
+                                        ? qsTr("✓ Conexão bem-sucedida")
+                                        : qsTr("✗ Falha na conexão: %1").arg(resp.error || "")
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                Layout.minimumHeight: 40
+                text: qsTr("Fechar")
+                palette.button: root.raisedColor
+                palette.buttonText: root.textColor
+                onClicked: credentialDialog.close()
             }
         }
     }

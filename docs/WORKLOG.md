@@ -2237,4 +2237,39 @@ como resolvidos com `git add`, resetados, e recomitados em ordem lógica:
 **Gates:** 1106 passed; ruff check OK; mypy 129 files OK; independence OK;
 boundaries OK.
 
-**Host/release:** nenhuma. Release ativa permanece `0.1.0a33-5c8c33ddb0dd`.
+**Host/release:** `0.1.0a33-89a03614d272` construída e instalada com bigsudo.
+Wheel SHA-256 byte-idêntico ao da release anterior (build reproduzível).
+Rollback disponível: `0.1.0a33-3ad7bdd3a780`.
+Schema SQLite: 9→11 (migrações de mídia executadas).
+Doctor: ok, 0 pendências. steamzero-core.socket/service ativos.
+
+## 2026-07-22 — Sessão: correção plan/apply, credential bridge, e mapeamento de erros
+
+**Branch:** `codex/midia-switch-scraping-ui` (mesma).
+
+**Problema:** A release `0.1.0a33-89a03614d272` falhou no teste humano —
+14 causas raiz identificadas, incluindo plan/apply sem separação de job,
+falta de allowlist QML para `game.media.*`, bridge sem rota de job status,
+secrets não wireadas, e `except Exception` silencioso ocultando erros.
+
+**Resolução:**
+
+| Item | Commit/Arquivo | Testes que provam |
+|------|---------------|-------------------|
+| Plan/apply separation: `media.search` e `rom.scan` criam jobs só em `apply_action` | `emulation.py:770-820` | `test_rom_scan_job_created_in_plan` atualizado |
+| Main.qml allowlist: `game.media.*` + `rom.scan` em `dispatchEmulationAction` | `Main.qml:510-520` | snapshot |
+| Bridge GET+POST `/emulation/job/status` | `desktop_ui.py:292-296` | integração bridge |
+| `SecretStorePort` protocol + `SessionSecretStore` (in-memory) | `ports.py:560-576`, `emulation.py:2273-2295` | `test_session_secret_store*` (20 testes) |
+| Credential bridge: `POST /scraping/credential/{status,save,test,delete}` | `desktop_ui.py:339-350`, `desktop_dashboard.py:379-394` | `test_credential_*` |
+| `SteamGridDbAdapter.test_connection()` | `steamgriddb.py:109-146` | `test_test_connection*` |
+| Per-provider error handling (não silencioso, com `provider_errors` no estado) | `emulation.py:1927-1937` | `test_job_handler_without_api_key_returns_provider_error` |
+| Erro mapeado no `GameMediaState.errors` | `switch_media.py:36` | — |
+| `asdict` → dict manual para compatibilidade camelCase | `emulation.py:776-778` | `test_game_preference_launch_delete_and_rollback` |
+
+**Gates:** 1126 passed (+20 novos); ruff check OK; mypy 129 files OK; independence OK.
+
+**Host/release:** Nenhuma nova release construída. Pendente autorização do operador.
+Rollback continua: `0.1.0a33-3ad7bdd3a780`.
+
+**Fora de escopo (QML journey):** display de candidatos, navegação, seleção,
+área global de mídia, publicação Steam. Serão feitos na sequência.

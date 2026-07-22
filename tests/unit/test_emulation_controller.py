@@ -342,6 +342,8 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "mediaKind": "icon",
             "mediaCandidateCount": 0,
             "mediaCandidateIdx": -1,
+            "mediaCandidates": [],
+            "mediaErrors": {},
             "masterState": "none",
             "optimizedState": "none",
             "steamViewState": "unpublished",
@@ -780,7 +782,8 @@ def test_rom_scan_job_created_in_plan(
         "steamzero.adapters.emulation.EmulationController.library_roots",
         lambda self: [str(rom_dir)],
     )
-    result = controller.plan_action({"actionId": "rom.scan"})
+    plan = controller.plan_action({"actionId": "rom.scan"})
+    result = _apply(controller, plan)
     assert "jobId" in result
     job = controller.get_job_status(result["jobId"])
     assert job is not None
