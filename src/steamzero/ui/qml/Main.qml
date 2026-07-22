@@ -45,6 +45,7 @@ ApplicationWindow {
     readonly property int navigationWidth: compactLayout ? 72
         : width >= 1400 ? 264 : 228
     property alias responsiveShell: appShell
+    property alias responsiveNavigation: navRepeater
 
     property var desktopStatus: ({
         "truthState": "unapplied",

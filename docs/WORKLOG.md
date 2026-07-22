@@ -2335,3 +2335,20 @@ software e fixtures sem rede.
 
 **Host/release:** nenhuma ação de host, build de release ou instalação. O teste
 físico de foco, hover e legibilidade no painel do Deck permanece com o operador.
+
+## 2026-07-22 — Sessão: contratos de interação responsiva
+
+**Branch:** `codex/midia-switch-scraping-ui`.
+
+| Item | Commit | Testes que provam |
+|------|--------|-------------------|
+| navegação compacta preserva nomes acessíveis e sequência D-pad | este commit | `check_main_emulation.qml` |
+| CTA compacto de Emulação permanece visível e com alvo de 46 px | este commit | `check_emulation.qml` |
+| CTA de Steam Gameplay permanece disponível nos três perfis | este commit | `check_steam_gameplay_responsive.qml` |
+| shell Full HD validado como breakpoint intermediário | este commit | captura offscreen 1920×1080; `design-qa.md` |
+
+**Gates:** 1127 testes passaram; três harnesses QML, `qmllint`, ruff e mypy
+verdes; independence/boundaries OK.
+
+**Host/release:** nenhuma ação de host, build de release ou instalação. A
+validação física no painel do Steam Deck continua sendo uma ação do operador.

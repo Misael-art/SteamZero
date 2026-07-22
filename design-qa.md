@@ -276,3 +276,55 @@ No actionable P0, P1, or P2 findings remain for the requested responsive breakpo
   software renderer uses its fallback theme for capture.
 
 final result: passed
+
+## Responsive Interaction QA — 2026-07-22
+
+### Evidence
+
+- Source visual truth: the six operator captures listed in the preceding Responsive
+  Design QA section, especially the 1280×800 Emulation/Steam screens and the
+  2560×1080 shell.
+- Rendered implementation:
+  `/home/misael/.codex/visualizations/2026/07/22/019f8a30-4b0d-7c71-90af-47eea14605f7/responsive-qa/steamzero-responsive-1920x1080-shell.png`.
+- Full-view combined comparisons: the three `compare-*.png` artifacts listed in the
+  preceding Responsive Design QA section. They combine the source and rendered state;
+  the new Full HD capture verifies the intermediate breakpoint without changing the
+  approved visual direction.
+- Source and implementation dimensions: source captures 1280×800 and 2560×1080;
+  implementation 1920×1080; CSS/logical viewport equals captured pixels at density 1.
+- State: dark theme, Emulation overview, backend-unavailable degraded fallback.
+
+### Interaction and focused-region checks
+
+- Compact global navigation preserves the Emulação and Steam accessible names while
+  rendering icon-only controls. `KeyNavigation.down` links Emulação to Steam for D-pad
+  and keyboard traversal.
+- The compact Emulation primary action remains visible with a 46 px minimum target.
+- Steam Gameplay keeps **Revisar e aplicar perfil** visible, enabled when a game exists,
+  and at least 46 px high at the Deck content viewport.
+- Focused regions: global navigation, Emulation context/action panel, and Steam fixed
+  action bar. The existing combined crops remain sufficient because this iteration
+  changes only test exposure, not pixels or component styling.
+- Runtime: all three QML interaction harnesses exited successfully with no QML runtime
+  errors. The shell capture harness also exited successfully.
+
+### Required fidelity surfaces
+
+- Fonts and typography: unchanged from the approved responsive pass; Full HD labels are
+  readable, correctly weighted, and neither wrapped nor truncated unexpectedly.
+- Spacing and layout rhythm: Full HD retains the expanded navigation, two-column card
+  grid, context column, and balanced gutters without horizontal stretch.
+- Colors and visual tokens: existing semantic cyan, green, amber, surface, and focus
+  tokens remain unchanged.
+- Image quality and asset fidelity: SteamZero and Switch source assets retain their
+  aspect ratio and sharpness; no substitute assets were introduced.
+- Copy and content: accessible names match visible destinations and CTA labels; no
+  application copy changed.
+
+### Findings and comparison history
+
+No actionable P0, P1, or P2 issue was found. No visual fix was necessary in this pass;
+the implementation changes expose existing controls for deterministic interaction tests
+and add the missing Full HD shell evidence.
+
+final result: passed

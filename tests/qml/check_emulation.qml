@@ -211,6 +211,10 @@ Window {
         check(object.compactLayout, "Deck deve ativar o perfil compacto")
         check(!object.showAreaSidebar, "Deck deve substituir a sub-sidebar de áreas")
         check(!object.showContextPanel, "Deck não deve disputar largura com contexto lateral")
+        check(object.compactPrimaryActionControl.visible,
+              "ação primária compacta deve permanecer visível")
+        check(object.compactPrimaryActionControl.height >= 46,
+              "ação primária compacta deve manter alvo mínimo de 46 px")
 
         object.width = 1656
         object.height = 950

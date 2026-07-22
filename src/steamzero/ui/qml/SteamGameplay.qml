@@ -74,6 +74,7 @@ Item {
     readonly property int responsiveGutter: compactLayout ? 12 : 20
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showSupplementaryPanels: !compactLayout && width >= 1240
+    property alias reviewApplyControl: reviewApplyButton
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -1611,6 +1612,7 @@ Item {
                 onClicked: page.planRequested(page.safePayload())
             }
             Button {
+                id: reviewApplyButton
                 text: qsTr("Revisar e aplicar perfil")
                 enabled: page.games.length > 0
                 Layout.fillWidth: true

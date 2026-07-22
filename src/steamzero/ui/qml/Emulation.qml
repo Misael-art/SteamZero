@@ -50,6 +50,7 @@ Item {
     readonly property bool showContextPanel: isGameLibrary()
         ? gameDetailsOpen && !compactLayout && width >= 900
         : !compactLayout && width >= 1500
+    property alias compactPrimaryActionControl: compactPrimaryAction
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -2959,6 +2960,7 @@ Item {
                     Layout.fillWidth: true
                 }
                 Button {
+                    id: compactPrimaryAction
                     text: page.primaryAction().label
                     enabled: page.primaryAction().enabled !== false
                     Layout.preferredWidth: 250

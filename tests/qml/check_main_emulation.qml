@@ -19,6 +19,14 @@ Main {
         height = 800
         check(compactLayout, "1280x800 deve ativar o shell compacto")
         check(navigationWidth === 72, "sidebar compacta deve ocupar 72 px")
+        const emulationNavigation = responsiveNavigation.itemAt(1)
+        const steamNavigation = responsiveNavigation.itemAt(2)
+        check(emulationNavigation !== null && steamNavigation !== null,
+              "navegação compacta deve manter os destinos principais")
+        check(emulationNavigation.KeyNavigation.down === steamNavigation,
+              "D-pad para baixo deve avançar de Emulação para Steam")
+        check(emulationNavigation.Accessible.name === "Emulação",
+              "item somente com ícone deve preservar seu nome acessível")
         width = 1920
         height = 1080
         check(!compactLayout, "1920x1080 deve usar o shell desktop")

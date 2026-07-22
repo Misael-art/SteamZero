@@ -11,6 +11,8 @@ Main {
     readonly property var captures: [
         {"width": 1280, "height": 800,
          "path": "/tmp/steamzero-responsive-1280x800-shell.png"},
+        {"width": 1920, "height": 1080,
+         "path": "/tmp/steamzero-responsive-1920x1080-shell.png"},
         {"width": 2560, "height": 1080,
          "path": "/tmp/steamzero-responsive-2560x1080-shell.png"}
     ]
