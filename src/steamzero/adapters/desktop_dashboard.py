@@ -376,6 +376,9 @@ class DesktopDashboard:
     def scan_emulation_library(self) -> dict[str, Any]:
         return self._emulation.scan_library()
 
+    def get_emulation_job_status(self, job_id: str) -> dict[str, Any] | None:
+        return self._emulation.get_job_status(job_id)
+
     def plan_steam_gameplay(
         self, payload: dict[str, Any], desktop_status: dict[str, Any]
     ) -> dict[str, Any]:

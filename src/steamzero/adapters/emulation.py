@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -42,11 +43,15 @@ from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
-from steamzero.domain.switch_media import GameMediaManager
+from steamzero.domain.switch_media import GameMediaManager, GameMediaState
 from steamzero.domain.switch_mods import InstalledMod, ModType
+from steamzero.jobs.manager import JobContext, JobManager
+from steamzero.jobs.models import Job
+from steamzero.ports import GameIdentity, MediaCandidate
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
+_log = logging.getLogger(__name__)
 Spawn = Callable[[Sequence[str]], int | None]
 
 _MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
@@ -70,6 +75,37 @@ _BUILD_ID = re.compile(r"^[0-9A-Fa-f]{16,64}$")
 class _PendingMutation:
     kind: str
     metadata: Mapping[str, Any]
+
+
+_MEDIA_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+_MAX_MEDIA_BYTES = 32 * 1024 * 1024  # 32 MiB
+_MAX_MEDIA_DIMENSION = 8192
+
+
+def _validate_mime(path: Path) -> None:
+    if not path.is_file() or path.is_symlink():
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="arquivo de mídia inválido")
+    size = path.stat().st_size
+    if size > _MAX_MEDIA_BYTES:
+        raise SteamZeroError(
+            "E-CONTENT-LIMIT", detail=f"arquivo excede 32 MiB: {size} bytes",
+        )
+    data = path.read_bytes()[:512]
+    mime = _guess_mime(data)
+    if mime not in _MEDIA_MIME_TYPES:
+        raise SteamZeroError(
+            "E-CONTENT-UNSUPPORTED", detail=f"tipo MIME não suportado: {mime}",
+        )
+
+
+def _guess_mime(header: bytes) -> str:
+    if header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if header.startswith(b"RIFF") and b"WEBP" in header[:12]:
+        return "image/webp"
+    raise SteamZeroError("E-CONTENT-UNSUPPORTED", detail="tipo de arquivo não reconhecido")
 
 
 def _spawn_detached(argv: Sequence[str]) -> int:
@@ -101,6 +137,7 @@ class EmulationController:
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
         shortcuts: SteamShortcutManager | None = None,
+        job_manager: JobManager | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -112,6 +149,13 @@ class EmulationController:
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
         self._running_pids: dict[str, int] = {}
+        self._jobs: JobManager
+        if job_manager is not None:
+            self._jobs = job_manager
+        else:
+            self._jobs = JobManager(store_factory())
+            self._jobs.register("media.search", self._media_search_job_handler)
+            self._jobs.register("rom.scan", self._rom_scan_job_handler)
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
 
     @property
@@ -557,18 +601,32 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
             title_id = str(game.get("titleId", ""))
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.search_candidates(
-                    game_id=game_id,
-                    title_id=title_id,
-                    title=str(game.get("name", "")),
-                    media_kinds=payload.get("mediaKinds"),
-                )
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.search:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.search:{game_id}",
             )
+            job = self._jobs.create(
+                "media.search",
+                params={
+                    "game_id": game_id,
+                    "title_id": title_id,
+                    "title": str(game.get("name", "")),
+                    "media_kinds": payload.get("mediaKinds"),
+                },
+                priority="interactive",
+                created_by="ui",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-search",
+                metadata={
+                    "game_id": game_id,
+                    "title_id": title_id,
+                    "title": str(game.get("name", "")),
+                    "media_kinds": payload.get("mediaKinds"),
+                    "job_id": job.id,
+                },
+            )
+            return self._plan_view(plan, action, jobId=job.id)
         elif action.startswith("game.media.import:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
@@ -578,16 +636,20 @@ class EmulationController:
             name = str(game.get("name", ""))
             if not src_path.is_file() or src_path.is_symlink():
                 raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="arquivo de mídia inválido")
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.import_custom_media(
-                    game_id=game_id, src_path=src_path,
-                    title_id=title_id, fingerprint=fingerprint,
-                    canonical_name=name,
-                )
+            _validate_mime(src_path)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.import:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.import:{game_id}",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-import",
+                metadata={
+                    "game_id": game_id,
+                    "title_id": title_id,
+                    "fingerprint": fingerprint,
+                    "canonical_name": name,
+                    "src_path": str(src_path),
+                },
             )
         elif action.startswith("game.media.select:"):
             parts = action.split(":")
@@ -599,73 +661,81 @@ class EmulationController:
             game_id = parts[1]
             candidate_idx = int(parts[2])
             game = self._current_game(game_id)
-            title_id = str(game.get("titleId", ""))
-            fingerprint = str(game.get("fingerprint", ""))
-            name = str(game.get("name", ""))
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.select_candidate(game_id, candidate_idx)
-                mgr.apply_selected_candidate(
-                    game_id=game_id, title_id=title_id,
-                    fingerprint=fingerprint, canonical_name=name,
-                )
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.select:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.select:{game_id}",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-select",
+                metadata={
+                    "game_id": game_id,
+                    "candidate_idx": candidate_idx,
+                    "title_id": str(game.get("titleId", "")),
+                    "fingerprint": str(game.get("fingerprint", "")),
+                    "canonical_name": str(game.get("name", "")),
+                },
             )
         elif action.startswith("game.media.clear:"):
             game_id = action.split(":", 1)[1]
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.clear_media(game_id)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.clear:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.clear:{game_id}",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-clear",
+                metadata={"game_id": game_id},
             )
         elif action.startswith("game.media.publish-steam:"):
             game_id = action.split(":", 1)[1]
-            game = self._current_game(game_id)
             steam_user_id = self._required_string(payload, "steamUserId")
-            settings = self._load_game_settings(strict=True)
-            game_settings = self._settings_for_game(game, settings)
-            steam_selected = game_settings.get("steamSelected")
-            if steam_selected is not True:
-                raise SteamZeroError("E-API-SCHEMA", detail="jogo não está marcado para Steam")
-            if game_id not in self._shortcuts.managed_game_ids():
-                raise SteamZeroError("E-API-SCHEMA", detail="shortcut não foi sincronizado")
-            app_id = None
-            for row in self._shortcuts._read_rows(self._shortcuts._target()):
-                marker = row.get("ShortcutPath", "")
-                if isinstance(marker, str) and game_id in marker:
-                    app_id = row.get("appid")
-                    break
-            if not isinstance(app_id, int):
-                raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.publish_steam(game_id, steam_user_id, app_id)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.publish-steam:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.publish-steam:{game_id}",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-publish-steam",
+                metadata={
+                    "game_id": game_id,
+                    "steam_user_id": steam_user_id,
+                },
             )
         elif action.startswith("game.media.unpublish-steam:"):
             game_id = action.split(":", 1)[1]
             steam_user_id = self._required_string(payload, "steamUserId")
-            app_id = int(self._required_string(payload, "steamAppId"))
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.unpublish_steam(game_id, steam_user_id, app_id)
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind=f"media.unpublish-steam:{game_id}"
+                {}, root=paths.data_home(),
+                kind=f"media.unpublish-steam:{game_id}",
             )
-        elif action == "media.audit":
-            with self._store_factory() as store:
-                store.migrate()
-                mgr = self._media_manager(store)
-                mgr.audit()
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-unpublish-steam",
+                metadata={
+                    "game_id": game_id,
+                    "steam_user_id": steam_user_id,
+                },
+            )
+        elif action == "rom.scan":
+            roots = self.library_roots()
             plan = transaction.plan_write_files(
-                {}, root=paths.data_home(), kind="media.audit"
+                {}, root=paths.data_home(), kind="rom.scan",
+            )
+            job = self._jobs.create(
+                "rom.scan",
+                params={"roots": roots},
+                priority="background",
+                created_by="ui",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="rom-scan",
+                metadata={"job_id": job.id, "roots": roots},
+            )
+            return self._plan_view(plan, action, jobId=job.id)
+        elif action == "media.audit":
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="media.audit",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-audit",
+                metadata={},
             )
         else:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de emulação não permitida")
@@ -697,13 +767,51 @@ class EmulationController:
                 self._persist_import(pending)
             elif pending.kind.startswith(("mod", "cheat")):
                 self._persist_extra(pending)
+            elif pending.kind == "media-import":
+                self._apply_media_import(pending)
+            elif pending.kind == "media-search":
+                job_id = pending.metadata.get("job_id", "")
+                if job_id:
+                    self._jobs.run(job_id)
+            elif pending.kind == "media-select":
+                self._apply_media_select(pending)
+            elif pending.kind == "media-clear":
+                self._apply_media_clear(pending)
+            elif pending.kind == "media-publish-steam":
+                self._apply_media_publish_steam(pending)
+            elif pending.kind == "media-unpublish-steam":
+                self._apply_media_unpublish_steam(pending)
+            elif pending.kind == "media-audit":
+                self._apply_media_audit(pending)
+            elif pending.kind == "rom-scan":
+                job_id = pending.metadata.get("job_id", "")
+                if job_id:
+                    self._jobs.run(job_id)
         response: dict[str, Any] = {
             "status": result.status,
             "operationId": result.operation_id,
         }
         if plan.kind == "emulation.library-roots" or plan.kind.startswith("emulation.game-delete:"):
             response["library"] = self.scan_library()
+        if pending is not None and pending.kind.startswith("media-"):
+            response["library"] = self.scan_library()
         return response
+
+    def get_job_status(self, job_id: str) -> dict[str, Any] | None:
+        job = self._jobs.get(job_id)
+        if job is None:
+            return None
+        return {
+            "jobId": job.id,
+            "type": job.type,
+            "state": job.state,
+            "priority": job.priority,
+            "progress": job.progress,
+            "errorCode": job.error_code,
+            "result": job.result,
+            "createdAt": job.created_at,
+            "updatedAt": job.updated_at,
+        }
 
     def rollback_action(self, operation_id: str) -> dict[str, Any]:
         if not ids.is_ulid(operation_id):
@@ -1728,6 +1836,184 @@ class EmulationController:
             elif pending.kind == "cheat-remove":
                 cheats.remove_installed_cheat(str(metadata["id"]))
 
+    # --- Job handler para busca de mídia (executado via JobManager) ---
+
+    @staticmethod
+    def _media_search_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
+        store = StateStore()
+        store.migrate()
+        conn = store.adapter_connection()
+        pipeline = MediaPipeline(
+            media_root=paths.media_dir(),
+            providers=[SteamGridDbAdapter()],
+        )
+        mgr = GameMediaManager(
+            store=StateStoreGameMediaAdapter(conn),
+            pipeline=pipeline,
+            providers=[SteamGridDbAdapter()],
+        )
+        params = job.params
+        game_id = params["game_id"]
+        title_id = params["title_id"]
+        title = params["title"]
+        media_kinds = params.get("media_kinds")
+        kinds = media_kinds or ["boxart", "grid", "hero", "icon", "logo", "screenshot"]
+        state = mgr._store.load(game_id) or GameMediaState(
+            game_id=game_id, title_id=title_id, title=title,
+        )
+        state.metadata_state = "searching"
+        mgr._store.save(state)
+        identity = GameIdentity(
+            game_id=game_id, title=title, platform_slug="switch",
+            title_id=title_id,
+        )
+        all_candidates: list[MediaCandidate] = []
+        total_providers = len(mgr._providers)
+        ctx.set_progress("search", current=0, total=total_providers, unit="providers")
+        for idx, provider in enumerate(mgr._providers):
+            ctx.safepoint()
+            try:
+                results = provider.search(identity, kinds)
+                all_candidates.extend(results)
+            except Exception:
+                _log.debug("provider %s falhou", provider.name)
+            ctx.set_progress(
+                "search", current=idx + 1, total=total_providers, unit="providers",
+                current_item=provider.name,
+            )
+        all_candidates.sort(key=lambda c: (-c.confidence, c.media_kind))
+        candidates_data = [
+            {
+                "url": c.url,
+                "mediaKind": c.media_kind,
+                "provider": c.provider,
+                "confidence": c.confidence,
+                "width": c.width,
+                "height": c.height,
+                "region": c.region,
+                "license": c.license,
+                "attribution": c.attribution,
+            }
+            for c in all_candidates
+        ]
+        state.candidates = candidates_data
+        state.candidate_count = len(candidates_data)
+        state.metadata_state = "candidates-found" if candidates_data else "no-results"
+        state.selected_candidate_idx = -1
+        mgr._store.save(state)
+        ctx.set_progress(
+            "done", current=len(candidates_data), total=len(candidates_data),
+            unit="candidates",
+        )
+        return {"candidate_count": len(candidates_data)}
+
+    @staticmethod
+    def _rom_scan_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
+        from steamzero.adapters.discovery.root_scanner import RomRootScanner
+
+        roots = job.params.get("roots", [])
+        scanner = RomRootScanner()
+        all_results: dict[str, list[dict[str, Any]]] = {}
+        total = len(roots)
+        for idx, root_str in enumerate(roots):
+            ctx.safepoint()
+            root = Path(root_str)
+            ctx.set_progress("scan", current=idx, total=total, unit="roots", current_item=root.name)
+            results = scanner.discover_recursive(root)
+            all_results[root_str] = [
+                {
+                    "path": str(r.path),
+                    "fmt": r.fmt,
+                    "titleId": r.title_id,
+                    "contentKind": r.content_kind,
+                    "sizeBytes": r.size_bytes,
+                    "parentTitleId": r.parent_title_id,
+                    "version": r.version,
+                }
+                for r in results
+            ]
+            ctx.set_progress(
+                "scan", current=idx + 1, total=total, unit="roots",
+                current_item=root.name,
+            )
+        ctx.set_progress("done", current=total, total=total, unit="roots")
+        return {"roots_scanned": total, "total_files": sum(len(v) for v in all_results.values())}
+
+    # --- Media apply helpers (executados em apply_action) ---
+
+    def _with_store_and_media(
+        self, fn: Callable[[Any, GameMediaManager], object]
+    ) -> object:
+        with self._store_factory() as store:
+            store.migrate()
+            mgr = self._media_manager(store)
+            return fn(store, mgr)
+
+    def _apply_media_import(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        self._with_store_and_media(lambda s, mgr: mgr.import_custom_media(
+            game_id=meta["game_id"],
+            src_path=Path(meta["src_path"]),
+            title_id=meta["title_id"],
+            fingerprint=meta["fingerprint"],
+            canonical_name=meta["canonical_name"],
+        ))
+
+    def _apply_media_search(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        self._with_store_and_media(lambda s, mgr: mgr.search_candidates(
+            game_id=meta["game_id"],
+            title_id=meta["title_id"],
+            title=meta["title"],
+            media_kinds=meta.get("media_kinds"),
+        ))
+
+    def _apply_media_select(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        self._with_store_and_media(lambda s, mgr: (
+            mgr.select_candidate(meta["game_id"], meta["candidate_idx"]),
+            mgr.apply_selected_candidate(
+                game_id=meta["game_id"],
+                title_id=meta["title_id"],
+                fingerprint=meta["fingerprint"],
+                canonical_name=meta["canonical_name"],
+            ),
+        ))
+
+    def _apply_media_clear(self, pending: _PendingMutation) -> None:
+        self._with_store_and_media(lambda s, mgr: mgr.clear_media(pending.metadata["game_id"]))
+
+    def _apply_media_publish_steam(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        game_id = meta["game_id"]
+        game = self._current_game(game_id)
+        steam_user_id = meta["steam_user_id"]
+        settings = self._load_game_settings(strict=True)
+        game_settings = self._settings_for_game(game, settings)
+        if game_settings.get("steamSelected") is not True:
+            raise SteamZeroError("E-API-SCHEMA", detail="jogo não está marcado para Steam")
+        if game_id not in self._shortcuts.managed_game_ids():
+            raise SteamZeroError("E-API-SCHEMA", detail="shortcut não foi sincronizado")
+        app_id = self._shortcuts.resolve_app_id(game_id)
+        if app_id is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
+        self._with_store_and_media(lambda s, mgr: mgr.publish_steam(
+            game_id, steam_user_id, app_id,
+        ))
+
+    def _apply_media_unpublish_steam(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        steam_user_id = meta["steam_user_id"]
+        app_id = self._shortcuts.resolve_app_id(meta["game_id"])
+        if app_id is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
+        self._with_store_and_media(lambda s, mgr: mgr.unpublish_steam(
+            meta["game_id"], steam_user_id, app_id,
+        ))
+
+    def _apply_media_audit(self, pending: _PendingMutation) -> None:
+        self._with_store_and_media(lambda s, mgr: mgr.audit())
+
     def _custom_roots(self) -> list[Path]:
         if not self._roots_path.is_file() or self._roots_path.is_symlink():
             return []
@@ -2532,7 +2818,10 @@ class EmulationController:
         return min(4, len(names))
 
     @staticmethod
-    def _plan_view(plan: transaction.Plan, action: str) -> dict[str, Any]:
+    @staticmethod
+    def _plan_view(
+        plan: transaction.Plan, action: str, **extra: Any,
+    ) -> dict[str, Any]:
         return {
             "planId": plan.plan_id,
             "confirmToken": plan.confirm_token,
@@ -2540,6 +2829,7 @@ class EmulationController:
             "preview": plan.preview,
             "rollbackGuarantee": plan.rollback_guarantee,
             "requirements": plan.requirements,
+            **extra,
         }
 
     @staticmethod

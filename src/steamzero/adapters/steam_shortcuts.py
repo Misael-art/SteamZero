@@ -172,6 +172,18 @@ class SteamShortcutManager:
         except SteamZeroError:
             return set()
 
+    def resolve_app_id(self, game_id: str) -> int | None:
+        try:
+            for row in self._read_rows(self._target()):
+                marker = row.get("ShortcutPath")
+                if isinstance(marker, str) and marker == f"{_MARKER_PREFIX}{game_id}":
+                    app_id = row.get("appid")
+                    if isinstance(app_id, int):
+                        return app_id
+            return None
+        except SteamZeroError:
+            return None
+
     def plan(self, games: Sequence[Mapping[str, Any]]) -> transaction.Plan:
         if self._running_probe():
             raise SteamZeroError(
