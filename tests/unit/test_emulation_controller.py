@@ -688,3 +688,100 @@ def test_cheat_import_toggle_and_remove_use_build_id(monkeypatch, tmp_path: Path
     assert cheat["enabled"] is False
     _apply(controller, controller.plan_action({"actionId": cheat["removeAction"]["id"]}))
     assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"] == []
+
+
+def test_media_search_job_created_in_plan(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from steamzero.jobs.manager import JobManager
+    store = StateStore(tmp_path / "test_media_job.db")
+    store.migrate()
+    jobs = JobManager(store)
+    jobs.register("media.search", lambda j, c: {"candidate_count": 0})
+    job = jobs.create("media.search", params={"game_id": "g1"})
+    assert job.type == "media.search"
+    assert job.state == "queued"
+    stored = jobs.get(job.id)
+    assert stored is not None
+    assert stored.state == "queued"
+
+
+def test_get_job_status_returns_none_for_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from steamzero.jobs.manager import JobManager
+    store = StateStore(tmp_path / "test_missing_job.db")
+    store.migrate()
+    controller = _controller(monkeypatch, tmp_path)
+    controller._jobs = JobManager(store)
+    assert controller.get_job_status("nonexistent") is None
+
+
+def test_validate_mime_jpeg(tmp_path: Path) -> None:
+    from steamzero.adapters.emulation import _validate_mime
+    f = tmp_path / "test.jpg"
+    f.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 60)
+    _validate_mime(f)
+
+
+def test_validate_mime_png(tmp_path: Path) -> None:
+    from steamzero.adapters.emulation import _validate_mime
+    f = tmp_path / "test.png"
+    f.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 60)
+    _validate_mime(f)
+
+
+def test_validate_mime_webp(tmp_path: Path) -> None:
+    from steamzero.adapters.emulation import _validate_mime
+    f = tmp_path / "test.webp"
+    f.write_bytes(b"RIFF\x00\x00\x00\x00WEBP" + b"\x00" * 60)
+    _validate_mime(f)
+
+
+def test_validate_mime_rejects_unknown(tmp_path: Path) -> None:
+    from steamzero.adapters.emulation import _guess_mime, _validate_mime
+    from steamzero.core.errors import SteamZeroError
+    f = tmp_path / "test.bin"
+    f.write_bytes(b"\x00" * 100)
+    with pytest.raises(SteamZeroError) as info:
+        _guess_mime(b"\x00" * 100)
+    assert info.value.code == "E-CONTENT-UNSUPPORTED"
+    with pytest.raises(SteamZeroError) as info:
+        _validate_mime(f)
+    assert info.value.code == "E-CONTENT-UNSUPPORTED"
+
+
+def test_validate_mime_rejects_large(tmp_path: Path) -> None:
+    from steamzero.adapters.emulation import _validate_mime
+    from steamzero.core.errors import SteamZeroError
+    f = tmp_path / "big.jpg"
+    size = 33 * 1024 * 1024 + 1000
+    data = b"\xff\xd8\xff\xe0" + b"\x00" * (size - 4)
+    f.write_bytes(data)
+    with pytest.raises(SteamZeroError) as info:
+        _validate_mime(f)
+    assert info.value.code == "E-CONTENT-LIMIT"
+
+
+def test_rom_scan_job_created_in_plan(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from steamzero.jobs.manager import JobManager
+    store = StateStore(tmp_path / "test_rom_job.db")
+    store.migrate()
+    jobs = JobManager(store)
+    jobs.register("rom.scan", lambda j, c: {"roots_scanned": 0, "total_files": 0})
+    controller = _controller(monkeypatch, tmp_path)
+    controller._jobs = jobs
+    rom_dir = tmp_path / "roms"
+    rom_dir.mkdir()
+    (rom_dir / "game.nsp").write_text("dummy")
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.EmulationController.library_roots",
+        lambda self: [str(rom_dir)],
+    )
+    result = controller.plan_action({"actionId": "rom.scan"})
+    assert "jobId" in result
+    job = controller.get_job_status(result["jobId"])
+    assert job is not None
+    assert job["type"] == "rom.scan"
