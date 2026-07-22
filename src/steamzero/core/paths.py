@@ -59,40 +59,31 @@ def media_dir() -> Path:
 
 # --- MediaHub subcaminhos (masters / optimized / views) --------------------
 def media_masters_dir() -> Path:
-    """Originais imutáveis: ``media/masters/<platform>/<kind>/``."""
     return media_dir() / "masters"
 
 
 def media_optimized_dir() -> Path:
-    """Derivados: ``media/optimized/<platform>/<profile>/``."""
     return media_dir() / "optimized"
 
 
 def media_views_dir() -> Path:
-    """Views de consumidor: ``media/views/<consumer>/<user_id>/``."""
     return media_dir() / "views"
 
 
 def media_registry_path() -> Path:
-    """Registry de plataformas: ``media/registry/platforms-v1.json``."""
     return media_dir() / "registry" / "platforms-v1.json"
 
 
 def media_assignments_path() -> Path:
-    """Assignments de mídia: ``media/registry/assignments-v1.json``."""
     return media_dir() / "registry" / "assignments-v1.json"
 
 
 def media_steam_view_manifest_path() -> Path:
-    """Manifesto de ownership das views Steam."""
     return media_dir() / "registry" / "steam-view-manifest-v1.json"
 
 
 def media_steam_grid_dir(steam_user_id: str) -> Path:
-    """Diretório grid de um usuário Steam (usado para views)."""
     return media_views_dir() / "steam" / steam_user_id / "grid"
-
-
 def mods_dir() -> Path:
     return data_home() / "mods"
 

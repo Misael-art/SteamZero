@@ -107,12 +107,6 @@ class ConverterPort(Protocol):
 # --- Mod management (Switch emulators) -------------------------------------
 @dataclass(frozen=True)
 class ModIdentity:
-    """Identificação de um mod no catálogo remoto.
-
-    ``source`` descreve a origem (``ns-emu-mod-downloader``, ``semdb``,
-    ``github:stevensnd``, ``github:fl4sh9174``).
-    """
-
     name: str
     mod_type: str
     source: str
@@ -125,12 +119,6 @@ class ModIdentity:
 
 @dataclass(frozen=True)
 class ModCandidate:
-    """Candidato a mod retornado por uma fonte de catálogo.
-
-    ``match_confidence`` (0.0-1.0): 1.0 se Title ID + Build ID casaram,
-    <1.0 se apenas Title ID ou match fuzzy por nome.
-    """
-
     title_id: str
     build_id: str | None
     identity: ModIdentity
@@ -139,8 +127,6 @@ class ModCandidate:
 
 @dataclass(frozen=True)
 class InstalledModView:
-    """Visão de um mod instalado para a UI / CLI."""
-
     mod_id: str
     game_id: str
     title_id: str
@@ -155,54 +141,30 @@ class InstalledModView:
 
 
 class ModCatalogPort(Protocol):
-    """Busca mods disponíveis em fontes remotas por Title ID / Build ID."""
-
     def search_by_title_id(self, title_id: str) -> list[ModCandidate]: ...
-
     def search_by_build_id(self, title_id: str, build_id: str) -> list[ModCandidate]: ...
-
-    def refresh_catalog(self) -> int:
-        """Atualiza o catálogo local de todas as fontes; retorna total de entradas."""
-        ...
+    def refresh_catalog(self) -> int: ...
 
 
 class ModInstallerPort(Protocol):
-    """Instala / remove / ativa / desativa mods no diretório do emulador."""
-
     def install(
-        self,
-        candidate: ModIdentity,
-        game_title_id: str,
-        emulator_id: str,
+        self, candidate: ModIdentity, game_title_id: str, emulator_id: str,
         files: Sequence[tuple[str, bytes]],
     ) -> Path: ...
-
     def remove(self, install_path: Path) -> bool: ...
-
     def activate(self, install_path: Path) -> bool: ...
-
     def deactivate(self, install_path: Path) -> bool: ...
-
     def list_installed_mods(self, title_id: str, emulator_id: str) -> list[InstalledModView]: ...
 
 
 class BuildIdProviderPort(Protocol):
-    """Extrai Build IDs de ROMs / NCAs instaladas."""
-
     def scan_game(self, game_id: str) -> list[str]: ...
-
     def scan_rom_file(self, rom_path: Path) -> list[str]: ...
 
 
 # --- Cheat management (Switch emulators) ------------------------------------
 @dataclass(frozen=True)
 class CheatIdentity:
-    """Identificação de um cheat no catálogo remoto.
-
-    ``source`` descreve a origem (``nsecm``, ``cheatslips``, ``gba_temp``,
-    ``github:tomad``).
-    """
-
     name: str
     cheat_type: str
     source: str
@@ -214,12 +176,6 @@ class CheatIdentity:
 
 @dataclass(frozen=True)
 class CheatCandidate:
-    """Candidato a cheat retornado por uma fonte de catálogo.
-
-    ``match_confidence`` (0.0-1.0): 1.0 se Title ID + Build ID casaram.
-    ``codes`` são as linhas de código Asm / Atmosphere.
-    """
-
     title_id: str
     build_id: str | None
     identity: CheatIdentity
@@ -229,8 +185,6 @@ class CheatCandidate:
 
 @dataclass(frozen=True)
 class InstalledCheatView:
-    """Visão de um cheat instalado para a UI / CLI."""
-
     cheat_id: str
     game_id: str
     title_id: str
@@ -247,62 +201,31 @@ class InstalledCheatView:
 
 
 class CheatCatalogPort(Protocol):
-    """Busca cheats disponíveis em fontes remotas por Title ID / Build ID."""
-
     def search_by_title_id(self, title_id: str) -> list[CheatCandidate]: ...
-
     def search_by_build_id(self, title_id: str, build_id: str) -> list[CheatCandidate]: ...
-
-    def refresh_catalog(self) -> int:
-        """Atualiza o catálogo local de todas as fontes; retorna total de entradas."""
-        ...
+    def refresh_catalog(self) -> int: ...
 
 
 class CheatInstallerPort(Protocol):
-    """Instala / remove / ativa / desativa cheats no diretório do emulador.
-
-    Cheats do Switch usam a estrutura ``contents/<title_id>/cheats/<build_id>.txt``
-    no diretório ``load/`` do emulador (padrão Atmosphere).
-    """
-
     def install(
-        self,
-        title_id: str,
-        build_id: str | None,
-        name: str,
-        codes: tuple[str, ...],
-        emulator_id: str,
+        self, title_id: str, build_id: str | None, name: str,
+        codes: tuple[str, ...], emulator_id: str,
     ) -> Path: ...
-
     def remove(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
-
     def enable(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
-
     def disable(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
-
-    def list_installed(self, title_id: str, emulator_id: str) -> list[InstalledCheatView]: ...
-
+    def list_installed(
+        self, title_id: str, emulator_id: str,
+    ) -> list[InstalledCheatView]: ...
     def edit_codes(
-        self,
-        title_id: str,
-        build_id: str,
-        emulator_id: str,
+        self, title_id: str, build_id: str, emulator_id: str,
         codes: tuple[str, ...],
-    ) -> bool:
-        """Substitui os códigos de um cheat instalado."""
-        ...
+    ) -> bool: ...
 
 
 # --- Native ROM metadata / icon extraction (Switch) -------------------------
 @dataclass(frozen=True)
 class RomMetadata:
-    """Metadados extraídos nativamente de uma ROM de Switch.
-
-    ``icon_bytes`` contém os bytes crus do ícone (JPEG ou PNG). ``icon_format``
-    indica o formato da imagem. ``source`` descreve a origem (``nca``, ``nsp``,
-    ``xci``, ``emulator-cache``, ``fallback``).
-    """
-
     title_id: str
     title: str
     developer: str | None = None
@@ -314,36 +237,36 @@ class RomMetadata:
 
 
 class RomMetadataPort(Protocol):
-    """Extrai metadados e ícones nativos de arquivos de ROM Switch.
-
-    Opera sem depender de chaves criptográficas: usa heurísticas de
-    byte-scanning para JPEG/PNG no corpo do NCA e parsing de cabeçalho
-    NCA (não criptografado) para Title ID e layout. Resultados podem
-    ser parciais; o chamador aplica a cadeia de fallback.
-    """
-
     def extract_metadata(self, rom_path: Path) -> RomMetadata | None: ...
-
-    def extract_icon(self, rom_path: Path) -> tuple[bytes, str] | None:
-        """Retorna (icon_bytes, icon_format) ou None se não encontrado."""
-        ...
+    def extract_icon(self, rom_path: Path) -> tuple[bytes, str] | None: ...
 
 
 class EmulatorCachePort(Protocol):
-    """Leitura de caches de ícones criados por emuladores Switch.
+    def find_icon(self, title_id: str) -> Path | None: ...
+    def find_title(self, title_id: str) -> str | None: ...
 
-    Emuladores como Ryujinx e Yuzu/Eden geram thumbnails de jogos durante
-    a varredura da biblioteca. Esta porta permite reaproveitar esse cache
-    sem reprocessar a ROM.
-    """
 
-    def find_icon(self, title_id: str) -> Path | None:
-        """Caminho do ícone em cache do emulador, ou None."""
-        ...
+# --- ROM discovery / format parsers ----------------------------------------
+@dataclass(frozen=True)
+class RomDiscoveryResult:
+    path: Path
+    fmt: str
+    title_id: str | None
+    content_kind: str  # base | update | dlc
+    size_bytes: int
+    parent_title_id: str | None = None
+    version: str | None = None
 
-    def find_title(self, title_id: str) -> str | None:
-        """Nome do jogo do cache do emulador, ou None."""
-        ...
+
+class RomFormatParser(Protocol):
+    def supports(self, path: Path) -> bool: ...
+    def parse_title_id(self, path: Path) -> str | None: ...
+    def parse_content_kind(self, path: Path) -> str: ...  # base | update | dlc
+    def parse_version(self, path: Path) -> str | None: ...
+
+
+class RomRootDiscoveryPort(Protocol):
+    def discover(self, root: Path) -> list[RomDiscoveryResult]: ...
 
 
 # --- Scraping / media providers -------------------------------------------

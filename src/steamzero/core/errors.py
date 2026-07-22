@@ -47,6 +47,8 @@ ERROR_CATALOG: dict[str, str] = {
     "E-CONTENT-KEYS-MISSING": "CONTENT",
     "E-CONTENT-KEYS-INCOMPAT": "CONTENT",
     "E-CONTENT-POLICY": "CONTENT",
+    "E-CONTENT-LIMIT": "CONTENT",
+    "E-CONTENT-UNSUPPORTED": "CONTENT",
     # COMPONENT
     "E-COMPONENT-UPDATE-ROLLEDBACK": "COMPONENT",
     "E-COMPONENT-DEGRADED": "COMPONENT",
@@ -92,7 +94,7 @@ ERROR_CATALOG: dict[str, str] = {
     "E-SCRAPE-CORRUPT-MEDIA": "SCRAPE",
     "E-SCRAPE-CREDENTIAL-MISSING": "SCRAPE",
     "E-SCRAPE-CACHE-FULL": "SCRAPE",
-    # Mods (Switch)
+    # --- Mods (Switch emulators)
     "E-MOD-NOT-FOUND": "MOD",
     "E-MOD-DOWNLOAD-FAILED": "MOD",
     "E-MOD-INSTALL-FAILED": "MOD",
@@ -100,7 +102,7 @@ ERROR_CATALOG: dict[str, str] = {
     "E-MOD-BUILD-ID-MISSING": "MOD",
     "E-MOD-EMULATOR-NOT-FOUND": "MOD",
     "E-MOD-CATALOG-STALE": "MOD",
-    # Cheats (Switch)
+    # --- Cheats (Switch emulators)
     "E-CHEAT-NOT-FOUND": "CHEAT",
     "E-CHEAT-DOWNLOAD-FAILED": "CHEAT",
     "E-CHEAT-INSTALL-FAILED": "CHEAT",
