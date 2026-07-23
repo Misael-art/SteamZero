@@ -193,6 +193,7 @@ class EmulationController:
         self._media_providers = tuple(media_providers) if media_providers is not None else None
         self._media_candidate_fetcher = media_candidate_fetcher
         self._media_optimizer_tool = media_optimizer_tool
+        self._credential_health: dict[str, dict[str, str | None]] = {}
         self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
@@ -1188,19 +1189,75 @@ class EmulationController:
         return all(
             self._secret_store.retrieve(provider, field.id) is not None
             for field in definition.credential_fields
+            if field.required
+        )
+
+    def _provider_credential_status(self, provider: str) -> dict[str, object]:
+        definition = provider_by_id(provider)
+        try:
+            vault_available = self._secret_store.is_available()
+        except Exception:
+            vault_available = False
+        required = tuple(field.id for field in definition.credential_fields if field.required)
+        if not vault_available:
+            configured = False
+            missing = required
+            state = "vaultUnavailable"
+        elif not definition.enabled:
+            configured = False
+            missing = required
+            state = "unavailable"
+        elif not definition.credential_fields:
+            configured = True
+            missing = ()
+            state = "local"
+        else:
+            try:
+                missing = tuple(
+                    field_id
+                    for field_id in required
+                    if self._secret_store.retrieve(provider, field_id) is None
+                )
+                configured = not missing
+                recorded = self._credential_health.get(provider, {})
+                state = (
+                    str(recorded.get("state") or "stored")
+                    if configured
+                    else "notConfigured"
+                )
+            except Exception:
+                configured = False
+                missing = required
+                state = "vaultUnavailable"
+        health = {
+            "notConfigured": "notConfigured",
+            "stored": "configured",
+            "validated": "ready",
+            "rejected": "rejected",
+            "vaultUnavailable": "unavailable",
+            "local": "ready",
+            "unavailable": "unavailable",
+        }.get(state, "unknown")
+        recorded = self._credential_health.get(provider, {})
+        return definition.public_dict(
+            configured=configured,
+            health_status=health,
+            last_validated_at=recorded.get("lastValidatedAt"),
+            credential_state=state,
+            missing_required_fields=missing,
         )
 
     def credential_status(self) -> dict[str, Any]:
-        providers: list[dict[str, object]] = []
-        for definition in PROVIDERS:
-            configured = self._is_credential_configured(definition.id)
-            health = (
-                "unavailable"
-                if not definition.enabled
-                else ("configured" if configured else "notConfigured")
-            )
-            providers.append(definition.public_dict(configured=configured, health_status=health))
-        return {"providers": providers, "secretStoreAvailable": self._secret_store.is_available()}
+        try:
+            vault_available = self._secret_store.is_available()
+        except Exception:
+            vault_available = False
+        return {
+            "providers": [
+                self._provider_credential_status(definition.id) for definition in PROVIDERS
+            ],
+            "secretStoreAvailable": vault_available,
+        }
 
     def save_credential(
         self, provider: str, credentials: Mapping[str, str] | str
@@ -1208,45 +1265,168 @@ class EmulationController:
         definition = provider_by_id(provider)
         if not definition.enabled or not definition.credential_fields:
             raise SteamZeroError("E-API-SCHEMA", detail="provedor não aceita credenciais")
+        if not self._secret_store.is_available():
+            raise SteamZeroError(
+                "E-SCRAPE-VAULT-UNAVAILABLE",
+                detail="cofre de credenciais indisponível",
+            )
         values = {"api_key": credentials} if isinstance(credentials, str) else dict(credentials)
         allowed = {field.id for field in definition.credential_fields}
-        invalid_value = any(not isinstance(value, str) or not value for value in values.values())
+        invalid_value = any(
+            not isinstance(value, str) or not value.strip() for value in values.values()
+        )
         if set(values) - allowed or invalid_value:
             raise SteamZeroError("E-API-SCHEMA", detail="campos de credencial inválidos")
         required = {field.id for field in definition.credential_fields if field.required}
-        if not required.issubset(values):
-            raise SteamZeroError("E-API-SCHEMA", detail="campo obrigatório de credencial ausente")
-        for key_name, value in values.items():
-            self._secret_store.store(provider, key_name, Secret(value))
-        return {"provider": provider, "configured": self._is_credential_configured(provider)}
+        missing = sorted(required - set(values))
+        if missing:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"campos obrigatórios ausentes: {', '.join(missing)}",
+            )
+        previous = {
+            key_name: self._secret_store.retrieve(provider, key_name)
+            for key_name in values
+        }
+        written: list[str] = []
+        try:
+            for key_name, value in values.items():
+                self._secret_store.store(provider, key_name, Secret(value.strip()))
+                written.append(key_name)
+            for key_name, expected in values.items():
+                verified = self._secret_store.retrieve(provider, key_name)
+                if verified is None or verified.reveal() != expected.strip():
+                    raise SteamZeroError(
+                        "E-SCRAPE-VAULT-UNAVAILABLE",
+                        detail="o cofre não confirmou a persistência",
+                    )
+        except Exception:
+            for key_name in reversed(written):
+                old = previous[key_name]
+                with suppress(Exception):
+                    if old is None:
+                        self._secret_store.delete(provider, key_name)
+                    else:
+                        self._secret_store.store(provider, key_name, old)
+            raise
+        self._credential_health[provider] = {
+            "state": "stored",
+            "lastValidatedAt": None,
+        }
+        provider_status = self._provider_credential_status(provider)
+        return {
+            "provider": provider,
+            "configured": True,
+            "state": "stored",
+            "providerStatus": provider_status,
+        }
 
     def delete_credential(self, provider: str) -> dict[str, Any]:
         definition = provider_by_id(provider)
-        if not definition.credential_fields:
+        if not definition.enabled or not definition.credential_fields:
             raise SteamZeroError("E-API-SCHEMA", detail="provedor não usa credenciais")
-        for field in definition.credential_fields:
-            self._secret_store.delete(provider, field.id)
-        return {"provider": provider, "configured": False}
+        if not self._secret_store.is_available():
+            raise SteamZeroError(
+                "E-SCRAPE-VAULT-UNAVAILABLE",
+                detail="cofre de credenciais indisponível",
+            )
+        previous = {
+            field.id: self._secret_store.retrieve(provider, field.id)
+            for field in definition.credential_fields
+        }
+        deleted: list[str] = []
+        try:
+            for field in definition.credential_fields:
+                self._secret_store.delete(provider, field.id)
+                deleted.append(field.id)
+            remaining = [
+                field.id
+                for field in definition.credential_fields
+                if self._secret_store.retrieve(provider, field.id) is not None
+            ]
+            if remaining:
+                raise SteamZeroError(
+                    "E-SCRAPE-VAULT-UNAVAILABLE",
+                    detail="o cofre não confirmou a revogação",
+                )
+        except Exception:
+            for key_name in deleted:
+                old = previous[key_name]
+                if old is not None:
+                    with suppress(Exception):
+                        self._secret_store.store(provider, key_name, old)
+            raise
+        self._credential_health[provider] = {
+            "state": "notConfigured",
+            "lastValidatedAt": None,
+        }
+        return {
+            "provider": provider,
+            "configured": False,
+            "state": "notConfigured",
+            "providerStatus": self._provider_credential_status(provider),
+        }
 
     def revoke_credential(self, provider: str) -> dict[str, Any]:
         return self.delete_credential(provider)
 
     def test_credential(self, provider: str) -> dict[str, Any]:
-        if provider != "steamgriddb":
+        definition = provider_by_id(provider)
+        if not definition.enabled or not definition.credential_test_supported:
             raise SteamZeroError("E-API-SCHEMA", detail="teste não disponível para este provedor")
         secret = self._secret_store.retrieve(provider, "api_key")
         if secret is None:
-            return {"provider": provider, "valid": False, "error": "E-SCRAPE-CREDENTIAL-MISSING"}
+            self._credential_health[provider] = {
+                "state": "notConfigured",
+                "lastValidatedAt": None,
+            }
+            return {
+                "provider": provider,
+                "valid": False,
+                "state": "notConfigured",
+                "error": "E-SCRAPE-CREDENTIAL-MISSING",
+                "providerStatus": self._provider_credential_status(provider),
+            }
         try:
             from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
 
             adapter = SteamGridDbAdapter(api_key=secret.reveal())
             result = adapter.test_connection()
-            return {"provider": provider, "valid": result}
+            state = "validated" if result else "rejected"
+            self._credential_health[provider] = {
+                "state": state,
+                "lastValidatedAt": datetime.now(UTC).isoformat(),
+            }
+            return {
+                "provider": provider,
+                "valid": result,
+                "state": state,
+                "providerStatus": self._provider_credential_status(provider),
+            }
         except SteamZeroError as exc:
-            return {"provider": provider, "valid": False, "error": exc.code}
+            self._credential_health[provider] = {
+                "state": "rejected",
+                "lastValidatedAt": datetime.now(UTC).isoformat(),
+            }
+            return {
+                "provider": provider,
+                "valid": False,
+                "state": "rejected",
+                "error": exc.code,
+                "providerStatus": self._provider_credential_status(provider),
+            }
         except Exception:
-            return {"provider": provider, "valid": False, "error": "E-SCRAPE-UNEXPECTED"}
+            self._credential_health[provider] = {
+                "state": "rejected",
+                "lastValidatedAt": datetime.now(UTC).isoformat(),
+            }
+            return {
+                "provider": provider,
+                "valid": False,
+                "state": "rejected",
+                "error": "E-INTERNAL-UNEXPECTED",
+                "providerStatus": self._provider_credential_status(provider),
+            }
 
     def provider_link(self, provider: str, link: str) -> dict[str, str]:
         """Retorna somente destinos HTTPS declarados pelo catálogo local."""

@@ -7,6 +7,7 @@ no StateStore, planos, jobs, snapshots ou argumentos de processo.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -27,6 +28,10 @@ class SecretServiceStore:
 
     @staticmethod
     def _attributes(provider: str, key_name: str) -> tuple[str, ...]:
+        if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", provider) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="provider de credencial inválido")
+        if re.fullmatch(r"[a-z0-9_]{1,64}", key_name) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="campo de credencial inválido")
         return ("application", "steamzero", "provider", provider, "key", key_name)
 
     def is_available(self) -> bool:
@@ -36,7 +41,7 @@ class SecretServiceStore:
         executable = self._which("secret-tool")
         if executable is None:
             raise SteamZeroError(
-                "E-SCRAPE-CREDENTIAL-MISSING", detail="Secret Service indisponível"
+                "E-SCRAPE-VAULT-UNAVAILABLE", detail="Secret Service indisponível"
             )
         return [executable, action, *self._attributes(provider, key_name)]
 
@@ -52,7 +57,7 @@ class SecretServiceStore:
         )
         if result.returncode != 0:
             raise SteamZeroError(
-                "E-SCRAPE-CREDENTIAL-MISSING",
+                "E-SCRAPE-VAULT-UNAVAILABLE",
                 detail="não foi possível salvar no Secret Service",
             )
 
@@ -64,7 +69,12 @@ class SecretServiceStore:
             check=False,
         )
         if result.returncode != 0:
-            return None
+            if result.returncode == 1:
+                return None
+            raise SteamZeroError(
+                "E-SCRAPE-VAULT-UNAVAILABLE",
+                detail="não foi possível consultar o Secret Service",
+            )
         value = result.stdout.rstrip("\n")
         return Secret(value) if value else None
 
@@ -77,6 +87,6 @@ class SecretServiceStore:
         )
         if result.returncode != 0:
             raise SteamZeroError(
-                "E-SCRAPE-CREDENTIAL-MISSING",
+                "E-SCRAPE-VAULT-UNAVAILABLE",
                 detail="não foi possível remover do Secret Service",
             )

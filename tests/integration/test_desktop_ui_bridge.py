@@ -9,11 +9,14 @@ import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
 from steamzero.adapters import desktop_ui
+from steamzero.adapters.desktop_dashboard import DesktopDashboard
 from steamzero.adapters.desktop_ui import DesktopControlServer
+from steamzero.adapters.emulation import EmulationController, SessionSecretStore
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
     DesktopConflictAction,
@@ -81,6 +84,10 @@ class ConflictResolver:
 class BrokenContext:
     def snapshot(self) -> DesktopContext:
         raise RuntimeError("falha inesperada simulada")
+
+
+class FakeSecretStore(SessionSecretStore):
+    """Cofre estritamente em memória para atravessar a bridge sem credenciais reais."""
 
 
 def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
@@ -381,8 +388,47 @@ def conflicted_dashboard_bridge(tmp_path: Path) -> tuple[str, str, FakeDashboard
     thread.join(timeout=2)
 
 
+@pytest.fixture
+def credential_bridge(tmp_path: Path) -> tuple[str, str, FakeSecretStore]:
+    ready: queue.Queue[DesktopControlServer] = queue.Queue()
+    secret_store = FakeSecretStore()
+    store_factory = lambda: StateStore(tmp_path / "credential-state.db")  # noqa: E731
+    emulation = EmulationController(
+        store_factory=store_factory,
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+        secret_store=secret_store,
+    )
+    dashboard = DesktopDashboard(
+        store_factory=store_factory,
+        emulation=emulation,
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+    )
+
+    def run_server() -> None:
+        store = StateStore(tmp_path / "credential-coordinator.db")
+        store.migrate()
+        server = DesktopControlServer(
+            ExperienceCoordinator(Context(), (), store),
+            "secret-token",
+            dashboard,
+        )
+        ready.put(server)
+        server.serve_forever()
+        server.server_close()
+        store.close()
+
+    thread = threading.Thread(target=run_server, daemon=True)
+    thread.start()
+    server = ready.get(timeout=3)
+    yield f"http://127.0.0.1:{server.server_port}", "secret-token", secret_store
+    server.shutdown()
+    thread.join(timeout=2)
+
+
 def request_json(
-    base: str, token: str, path: str, payload: dict[str, str] | None = None
+    base: str, token: str, path: str, payload: dict[str, Any] | None = None
 ) -> dict[str, object]:
     data = None if payload is None else json.dumps(payload).encode()
     request = urllib.request.Request(  # noqa: S310 - URL loopback criada pela fixture
@@ -394,6 +440,57 @@ def request_json(
     with urllib.request.urlopen(request, timeout=3) as response:  # noqa: S310 - loopback fixture
         loaded: dict[str, object] = json.loads(response.read())
         return loaded
+
+
+def test_credential_bridge_complete_flow_uses_only_fake_secret_store(
+    credential_bridge: tuple[str, str, FakeSecretStore],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+
+    base, token, secret_store = credential_bridge
+    initial = request_json(base, token, "/scraping/credential/status", {})
+    providers = cast(list[dict[str, object]], initial["providers"])
+    initial_provider = next(
+        item
+        for item in providers
+        if item["id"] == "steamgriddb"
+    )
+    assert initial_provider["credentialState"] == "notConfigured"
+
+    saved = request_json(
+        base,
+        token,
+        "/scraping/credential/save",
+        {
+            "provider": "steamgriddb",
+            "credentials": {"api_key": "bridge-only-secret"},
+        },
+    )
+    assert saved["state"] == "stored"
+    stored = secret_store.retrieve("steamgriddb", "api_key")
+    assert stored is not None and stored.reveal() == "bridge-only-secret"
+    assert "bridge-only-secret" not in json.dumps(saved, sort_keys=True)
+
+    monkeypatch.setattr(SteamGridDbAdapter, "test_connection", lambda _self: True)
+    tested = request_json(
+        base,
+        token,
+        "/scraping/credential/test",
+        {"provider": "steamgriddb"},
+    )
+    assert tested["valid"] is True
+    assert tested["state"] == "validated"
+    assert "bridge-only-secret" not in json.dumps(tested, sort_keys=True)
+
+    deleted = request_json(
+        base,
+        token,
+        "/scraping/credential/delete",
+        {"provider": "steamgriddb"},
+    )
+    assert deleted["state"] == "notConfigured"
+    assert secret_store.retrieve("steamgriddb", "api_key") is None
 
 
 def test_bridge_rejects_missing_token(bridge: tuple[str, str]) -> None:

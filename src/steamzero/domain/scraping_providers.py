@@ -51,6 +51,8 @@ class ProviderDefinition:
     platforms: tuple[str, ...]
     media_kinds: tuple[str, ...]
     links: dict[str, str]
+    credential_test_supported: bool = False
+    credential_revoke_supported: bool = True
     enabled: bool = True
     unavailable_reason: str | None = None
 
@@ -61,6 +63,8 @@ class ProviderDefinition:
         health_status: str = "unknown",
         last_validated_at: str | None = None,
         quota: str | None = None,
+        credential_state: str | None = None,
+        missing_required_fields: tuple[str, ...] = (),
     ) -> dict[str, object]:
         return {
             "id": self.id,
@@ -76,6 +80,22 @@ class ProviderDefinition:
             "healthStatus": health_status,
             "lastValidatedAt": last_validated_at,
             "quota": quota,
+            "credentialState": credential_state or health_status,
+            "missingRequiredFields": list(missing_required_fields),
+            "canTestCredential": bool(
+                self.enabled
+                and configured
+                and self.credential_fields
+                and self.credential_test_supported
+            ),
+            "credentialTestSupported": self.credential_test_supported,
+            "canRevokeCredential": bool(
+                self.enabled
+                and configured
+                and self.credential_fields
+                and self.credential_revoke_supported
+            ),
+            "credentialRevokeSupported": self.credential_revoke_supported,
             "enabled": self.enabled,
             "unavailableReason": self.unavailable_reason,
         }
@@ -107,6 +127,7 @@ _STEAMGRIDDB = ProviderDefinition(
         "documentation": "https://www.steamgriddb.com/api/v2",
         "terms": "https://www.steamgriddb.com/terms",
     },
+    credential_test_supported=True,
 )
 
 _SCREENSCRAPER = ProviderDefinition(
@@ -192,6 +213,7 @@ _STEAM_LOCAL = ProviderDefinition(
     platforms=("switch",),
     media_kinds=("grid", "hero", "logo", "icon"),
     links={},
+    credential_revoke_supported=False,
 )
 
 _STEAM_WEB = ProviderDefinition(
@@ -218,6 +240,7 @@ _STEAM_WEB = ProviderDefinition(
         "credentials": "https://steamcommunity.com/dev/apikey",
         "documentation": "https://steamcommunity.com/dev",
     },
+    credential_revoke_supported=False,
     enabled=False,
     unavailable_reason="Nenhum recurso atual depende da Steam Web API.",
 )

@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import QtQuick
+import QtQuick.Window
+import "../../src/steamzero/ui/qml"
+
+Window {
+    id: harness
+    visible: true
+    width: 949
+    height: 593
+
+    property int failures: 0
+    property int checks: 0
+    property string savedProvider: ""
+    property var savedCredentials: ({})
+    property var savedFieldRow: null
+
+    function check(condition, message) {
+        checks += 1
+        if (condition)
+            return
+        failures += 1
+        console.error("FAIL: " + message)
+    }
+
+    function verifyCompletion() {
+        check(savedFieldRow.inputControl.text === "",
+              "segredo só deve ser limpo após sucesso")
+        check(localCard.fieldRepeaterControl.count === 0,
+              "integração local não pode criar TextField")
+        check(!localCard.saveControl.visible
+              && !localCard.testControl.visible
+              && !localCard.revokeControl.visible
+              && !localCard.credentialLinkControl.visible,
+              "integração local não pode expor ações de credencial")
+        check(localCard.message === "",
+              "mensagem do provider remoto não pode vazar para o card local")
+        console.log("credentials checks=" + checks + " failures=" + failures)
+        Qt.exit(failures === 0 ? 0 : 1)
+    }
+
+    CredentialProviderCard {
+        id: remoteCard
+        width: 460
+        provider: ({
+            "id": "steamgriddb",
+            "name": "SteamGridDB",
+            "description": "Arte remota",
+            "enabled": true,
+            "configured": false,
+            "credentialState": "notConfigured",
+            "credentialTestSupported": true,
+            "credentialRevokeSupported": true,
+            "credentialFields": [{
+                "id": "api_key",
+                "label": "API key",
+                "placeholder": "Cole a chave",
+                "help": "Somente no cofre.",
+                "secret": true,
+                "required": true
+            }],
+            "links": {"credentials": "https://www.steamgriddb.com/profile/preferences/api"}
+        })
+        onSaveRequested: function(providerId, credentials) {
+            harness.savedProvider = providerId
+            harness.savedCredentials = credentials
+        }
+    }
+
+    CredentialProviderCard {
+        id: localCard
+        x: 480
+        width: 460
+        provider: ({
+            "id": "steam-local",
+            "name": "Integração local com Steam",
+            "description": "Sem credenciais.",
+            "enabled": true,
+            "configured": true,
+            "credentialState": "local",
+            "credentialTestSupported": false,
+            "credentialRevokeSupported": false,
+            "credentialFields": [],
+            "links": {}
+        })
+    }
+
+    Timer {
+        interval: 50
+        running: true
+        repeat: false
+        onTriggered: {
+            check(remoteCard.fieldRepeaterControl.count === 1,
+                  "provider remoto deve publicar seu único campo")
+            check(!remoteCard.saveControl.enabled,
+                  "Salvar deve iniciar bloqueado sem campo obrigatório")
+            const fieldRow = remoteCard.fieldRepeaterControl.itemAt(0)
+            savedFieldRow = fieldRow
+            check(fieldRow !== null && fieldRow.inputControl !== null,
+                  "TextField reativo deve ser instanciado")
+            fieldRow.inputControl.forceActiveFocus(Qt.TabFocusReason)
+            fieldRow.inputControl.text = "segredo-de-teste"
+            check(remoteCard.saveControl.enabled,
+                  "digitar o obrigatório deve habilitar Salvar")
+            remoteCard.saveControl.clicked()
+            check(savedProvider === "steamgriddb",
+                  "payload deve manter somente o provider do card")
+            check(Object.keys(savedCredentials).length === 1
+                  && savedCredentials.api_key === "segredo-de-teste",
+                  "payload deve conter somente o campo declarado")
+            remoteCard.saveSucceeded({
+                "providerStatus": {
+                    "configured": true,
+                    "credentialState": "stored"
+                }
+            })
+            check(remoteCard.credentialState === "stored",
+                  "sucesso verificado deve atualizar o badge")
+            check(remoteCard.message.indexOf("salva") >= 0,
+                  "mensagem de sucesso deve permanecer no card")
+            Qt.callLater(harness.verifyCompletion)
+        }
+    }
+}

@@ -73,6 +73,9 @@ class TestEmulationControllerCredential:
             provider for provider in status["providers"] if provider["id"] == "steamgriddb"
         )
         assert steamgriddb["configured"] is False
+        assert steamgriddb["credentialState"] == "notConfigured"
+        assert steamgriddb["missingRequiredFields"] == ["api_key"]
+        assert steamgriddb["canTestCredential"] is False
 
     def test_credential_status_configured(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
@@ -82,14 +85,20 @@ class TestEmulationControllerCredential:
             provider for provider in status["providers"] if provider["id"] == "steamgriddb"
         )
         assert steamgriddb["configured"] is True
+        assert steamgriddb["credentialState"] == "stored"
+        assert steamgriddb["canTestCredential"] is True
         assert "my-key" not in json.dumps(status, sort_keys=True)
 
     def test_save_and_delete_credential(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         save_result = ctrl.save_credential("steamgriddb", "my-key")
-        assert save_result == {"provider": "steamgriddb", "configured": True}
+        assert save_result["provider"] == "steamgriddb"
+        assert save_result["configured"] is True
+        assert save_result["state"] == "stored"
         delete_result = ctrl.delete_credential("steamgriddb")
-        assert delete_result == {"provider": "steamgriddb", "configured": False}
+        assert delete_result["provider"] == "steamgriddb"
+        assert delete_result["configured"] is False
+        assert delete_result["state"] == "notConfigured"
         status = ctrl.credential_status()
         steamgriddb = next(
             provider for provider in status["providers"] if provider["id"] == "steamgriddb"
@@ -99,11 +108,10 @@ class TestEmulationControllerCredential:
     def test_test_credential_missing_key(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         result = ctrl.test_credential("steamgriddb")
-        assert result == {
-            "provider": "steamgriddb",
-            "valid": False,
-            "error": "E-SCRAPE-CREDENTIAL-MISSING",
-        }
+        assert result["provider"] == "steamgriddb"
+        assert result["valid"] is False
+        assert result["state"] == "notConfigured"
+        assert result["error"] == "E-SCRAPE-CREDENTIAL-MISSING"
 
     def test_multiple_saves_same_provider_replaces(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
@@ -120,12 +128,96 @@ class TestEmulationControllerCredential:
     def test_delete_nonexistent_credential(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         result = ctrl.delete_credential("steamgriddb")
-        assert result == {"provider": "steamgriddb", "configured": False}
+        assert result["provider"] == "steamgriddb"
+        assert result["configured"] is False
+        assert result["state"] == "notConfigured"
 
     def test_disabled_provider_does_not_accept_user_credentials(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         with pytest.raises(SteamZeroError, match="provedor não aceita credenciais"):
             ctrl.save_credential("screenscraper", {"username": "user", "password": "secret"})
+
+    def test_local_provider_is_informational_only(self, tmp_path: Path) -> None:
+        ctrl = _controller(tmp_path)
+        local = next(
+            provider
+            for provider in ctrl.credential_status()["providers"]
+            if provider["id"] == "steam-local"
+        )
+        assert local["credentialState"] == "local"
+        assert local["credentialFields"] == []
+        assert local["links"] == {}
+        assert local["canTestCredential"] is False
+        assert local["canRevokeCredential"] is False
+        with pytest.raises(SteamZeroError, match="não aceita credenciais"):
+            ctrl.save_credential("steam-local", {})
+
+    def test_rejected_test_keeps_secret_and_updates_status(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+
+        ctrl = _controller(tmp_path)
+        ctrl.save_credential("steamgriddb", "never-serialized")
+        monkeypatch.setattr(SteamGridDbAdapter, "test_connection", lambda _self: False)
+        result = ctrl.test_credential("steamgriddb")
+        assert result["valid"] is False
+        assert result["state"] == "rejected"
+        assert result["providerStatus"]["credentialState"] == "rejected"
+        assert "never-serialized" not in json.dumps(result, sort_keys=True)
+        assert ctrl._secret_store.retrieve("steamgriddb", "api_key") is not None
+
+    def test_vault_unavailable_is_actionable_and_does_not_claim_configuration(
+        self, tmp_path: Path
+    ) -> None:
+        class UnavailableStore(SessionSecretStore):
+            def is_available(self) -> bool:
+                return False
+
+        ctrl = EmulationController(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            which=lambda _command: None,
+            spawn=lambda _argv: None,
+            secret_store=UnavailableStore(),
+        )
+        status = ctrl.credential_status()
+        steamgriddb = next(
+            provider for provider in status["providers"] if provider["id"] == "steamgriddb"
+        )
+        assert status["secretStoreAvailable"] is False
+        assert steamgriddb["credentialState"] == "vaultUnavailable"
+        with pytest.raises(SteamZeroError, match="E-SCRAPE-VAULT-UNAVAILABLE"):
+            ctrl.save_credential("steamgriddb", "secret")
+
+    def test_save_verification_failure_rolls_back_previous_secret(
+        self, tmp_path: Path
+    ) -> None:
+        class RejectingVerificationStore(SessionSecretStore):
+            reject_next_retrieve = False
+
+            def store(self, provider: str, key_name: str, secret: Secret) -> None:
+                super().store(provider, key_name, secret)
+                self.reject_next_retrieve = secret.reveal() == "new"
+
+            def retrieve(self, provider: str, key_name: str) -> Secret | None:
+                if self.reject_next_retrieve:
+                    self.reject_next_retrieve = False
+                    return None
+                return super().retrieve(provider, key_name)
+
+        store = RejectingVerificationStore()
+        store._secrets[("steamgriddb", "api_key")] = Secret("old")
+        ctrl = EmulationController(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            which=lambda _command: None,
+            spawn=lambda _argv: None,
+            secret_store=store,
+        )
+        with pytest.raises(SteamZeroError, match="não confirmou"):
+            ctrl.save_credential("steamgriddb", "new")
+        restored = store.retrieve("steamgriddb", "api_key")
+        assert restored is not None
+        assert restored.reveal() == "old"
 
     def test_provider_link_is_limited_to_catalog_url(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
