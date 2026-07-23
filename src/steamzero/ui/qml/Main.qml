@@ -46,6 +46,7 @@ ApplicationWindow {
         && desktopStatus.dashboard.accessibility
         && desktopStatus.dashboard.accessibility.reducedMotion === true
     readonly property int motionDuration: reducedMotion ? 0 : 180
+    readonly property int bottomSafeInset: compactLayout ? 60 : 24
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1920
@@ -61,6 +62,17 @@ ApplicationWindow {
     property alias taskMenuControl: compactTaskButton
     property alias responsiveContent: contentStack
     property alias responsiveFooter: handheldFooter
+    property alias overviewScrollControl: overviewScroll
+    property alias profilesScrollControl: profilesScroll
+    property alias syncScrollControl: syncScroll
+    property alias systemScrollControl: systemScroll
+    property alias syncProviderControl: providerStatusCard
+    property alias syncUpdateControl: syncUpdateButton
+    property alias profilePickerControl: profilePicker
+    property alias profilePlanControl: planButton
+    property alias emulationControl: emulationPage
+    property alias steamGameplayControl: steamGameplayPage
+    property alias diagnosticsPreviewControl: diagnosticsPreviewDialog
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -79,6 +91,7 @@ ApplicationWindow {
             "uiContracts": {"schemaVersion": 1, "states": [], "actions": [], "byId": {}}
         }
     })
+    property Item dialogInvoker: null
     property var fallbackComponents: [
         {
             "id": "dolphin", "name": "Dolphin", "description": "Emulador de Wii e GameCube",
@@ -318,6 +331,31 @@ ApplicationWindow {
                     )
             }
             ancestor = ancestor.parent
+        }
+    }
+
+    function rememberDialogInvoker() {
+        const active = root.activeFocusItem
+        if (active)
+            dialogInvoker = active
+    }
+
+    function restoreDialogFocus() {
+        const invoker = dialogInvoker
+        Qt.callLater(function() {
+            if (invoker && invoker.visible && invoker.enabled)
+                invoker.forceActiveFocus(Qt.TabFocusReason)
+        })
+    }
+
+    Connections {
+        target: root
+        function onActiveFocusItemChanged() {
+            const item = root.activeFocusItem
+            if (item)
+                Qt.callLater(function() {
+                    root.ensureFocusedItemVisible(item)
+                })
         }
     }
 
@@ -793,6 +831,8 @@ ApplicationWindow {
 
     Dialog {
         id: conflictDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Resolver conflito de controle")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -867,6 +907,8 @@ ApplicationWindow {
 
     Dialog {
         id: componentDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: root.componentPlan
             ? (root.componentPlan.action === "install" ? qsTr("Revisar instalação") : qsTr("Revisar atualização"))
             : qsTr("Revisar componente")
@@ -929,6 +971,8 @@ ApplicationWindow {
 
     Dialog {
         id: emulationDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Revisar operação de emulação")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -1007,6 +1051,8 @@ ApplicationWindow {
 
     Dialog {
         id: gamemodeDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Voltar ao Game Mode")
         modal: true
         width: Math.min(root.width - 48, 620)
@@ -1054,6 +1100,8 @@ ApplicationWindow {
 
     Dialog {
         id: resetDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Quick Reset")
         modal: true
         width: Math.min(root.width - 48, 620)
@@ -1106,6 +1154,8 @@ ApplicationWindow {
 
     Dialog {
         id: lsfgDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Preparar LSFG-VK")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -1200,6 +1250,8 @@ ApplicationWindow {
 
     Dialog {
         id: credentialDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Credenciais de scraping")
         modal: true
         closePolicy: Popup.CloseOnEscape
@@ -1381,6 +1433,8 @@ ApplicationWindow {
 
     Dialog {
         id: recoveryDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Alteração incompleta detectada")
         modal: true
         closePolicy: Popup.NoAutoClose
@@ -1441,6 +1495,8 @@ ApplicationWindow {
 
     Dialog {
         id: diagnosticsPreviewDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
         title: qsTr("Revisar conteúdo antes de exportar")
         modal: true
         width: Math.min(root.width - 48, 760)
@@ -2244,7 +2300,7 @@ ApplicationWindow {
                                         ? qsTr("Ver diagnóstico") : qsTr("Revisar perfis")
                                 palette.buttonText: root.textColor
                                 icon.name: "go-next"
-                                Layout.minimumHeight: root.compactLayout ? 42 : 48
+                                Layout.minimumHeight: 48
                                 Accessible.name: text
                                 background: Rectangle {
                                     color: resolveBannerButton.activeFocus ? "#3b2b18" : "#201a13"
@@ -2270,8 +2326,10 @@ ApplicationWindow {
 
                         // Visão geral
                         ScrollView {
+                            id: overviewScroll
                             clip: true
                             contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
                             ColumnLayout {
                                 width: Math.min(parent.width, root.contentMaxWidth)
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -2378,6 +2436,7 @@ ApplicationWindow {
                             Emulation {
                                 id: emulationPage
                                 emulation: root.emulationData
+                                reducedMotion: root.reducedMotion
                                 backgroundColor: root.backgroundColor
                                 sidebarColor: root.sidebarColor
                                 surfaceColor: root.surfaceColor
@@ -2666,6 +2725,7 @@ ApplicationWindow {
                                 id: steamGameplayPage
                                 gameplay: root.steamGameplayData
                                 desktopStatus: root.desktopStatus
+                                reducedMotion: root.reducedMotion
                                 initialArea: root.steamArea
                                 backgroundColor: root.backgroundColor
                                 surfaceColor: root.surfaceColor
@@ -3038,8 +3098,10 @@ ApplicationWindow {
 
                         // Perfis
                         ScrollView {
+                            id: profilesScroll
                             clip: true
                             contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 16
@@ -3154,8 +3216,10 @@ ApplicationWindow {
 
                         // Saves e Sync
                         ScrollView {
+                            id: syncScroll
                             clip: true
                             contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 16
@@ -3186,6 +3250,7 @@ ApplicationWindow {
                                     }
                                 }
                                 Rectangle {
+                                    id: providerStatusCard
                                     color: root.surfaceColor
                                     radius: 8
                                     border.color: root.borderColor
@@ -3262,6 +3327,7 @@ ApplicationWindow {
                                     Layout.rightMargin: 28
                                 }
                                 Button {
+                                    id: syncUpdateButton
                                     text: qsTr("Atualizar status")
                                     icon.name: "view-refresh"
                                     Layout.leftMargin: 28
@@ -3274,8 +3340,10 @@ ApplicationWindow {
 
                         // Sistema
                         ScrollView {
+                            id: systemScroll
                             clip: true
                             contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 16
