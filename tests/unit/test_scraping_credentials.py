@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -81,6 +82,7 @@ class TestEmulationControllerCredential:
             provider for provider in status["providers"] if provider["id"] == "steamgriddb"
         )
         assert steamgriddb["configured"] is True
+        assert "my-key" not in json.dumps(status, sort_keys=True)
 
     def test_save_and_delete_credential(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)

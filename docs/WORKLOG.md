@@ -2352,3 +2352,36 @@ verdes; independence/boundaries OK.
 
 **Host/release:** nenhuma ação de host, build de release ou instalação. A
 validação física no painel do Steam Deck continua sendo uma ação do operador.
+
+## 2026-07-22 — Sessão: refinamento handheld e cobertura backend → UI
+
+**Branch:** `codex/refino-handheld-ui-cobertura-backend`, base exata
+`131cca15c0497db49a780f92796483268818a1d4` em worktree isolado.
+
+| WI | Commit | Evidência principal |
+|---|---|---|
+| H0 — matriz executável de contratos | `065492f` | catálogo `/contracts`, rota ↔ catálogo e QML sem rotas operacionais inventadas |
+| H1–H2 — shell e navegação | `d396329` | 949×593/1280×800, drawer, D-pad, auto-scroll, `SteamComboBox`, rodapé reservado |
+| H3–H5 — biblioteca, jobs, mídia e credenciais | `b028357` | jornada por jogo full-width, Central de tarefas, providers e formulário por schema |
+| H6–H10 — conteúdo, emuladores, runtime, sistema e acessibilidade | `12e4035` | inventário acionável, remoção deduplicada, saúde do emulador, perfis Portátil/Dock e foco |
+
+**QA visual:** `tests/qml/capture_all_handheld_sections.qml` gerou as seis
+seções em 949×593 e 1280×800. As duas folhas de contato foram inspecionadas;
+nenhum corte ou sobreposição com o rodapé foi observado. Drawer e Central de
+tarefas possuem capturas próprias.
+
+**Gates finais:** 1152 testes passaram; Ruff sem achados; mypy sem erros em
+132 arquivos; `make independence boundaries` verde (0 violações).
+
+**Limites comprovados e não simulados:** sync continua somente leitura;
+histórico de operações/perfis, exportação de estado, admin health, session
+recovery e support bundle não têm contrato Desktop. Restore/migração de saves,
+invalidação de shaders e prioridade de mods possuem peças de domínio, mas não
+um destino/read model seguro na bridge; a UI os marca como indisponíveis. O
+smoke encadeado scraping → seleção → Steam não foi criado como um único teste;
+seus estágios têm cobertura separada. Teste físico de toque/D-pad no painel do
+Deck continua necessário.
+
+**Host/release:** nenhuma instalação, alteração em `/opt`, `/etc` ou
+`/usr/local`, build de release ou mutação do host foi executada. A infraestrutura
+de desenvolvimento local foi usada somente via `.venv` e Qt offscreen.

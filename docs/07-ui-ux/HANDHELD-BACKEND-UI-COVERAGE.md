@@ -29,6 +29,9 @@ Cada linha da matriz contém:
 | Recovery manual de componente | recovery é interno ao engine e ainda não existe como endpoint Desktop isolado |
 | Histórico de perfis | revisão mostra a diferença antes de aplicar e há recovery; o store não publica uma linha do tempo pela bridge |
 | Histórico global de operações | o journal existe, mas não há read model sanitizado e paginado para a GUI |
+| Restore/migração direta de saves | o domínio possui primitivas transacionais, mas a bridge ainda não resolve com segurança o destino real por jogo/emulador |
+| Invalidação/restauração direta de shader cache | o domínio exige raiz, lista de arquivos e fingerprint de driver; esses fatos ainda não são publicados pelo controller |
+| Prioridade de mods | ativar, desativar e remover são persistidos; o store atual não possui ordenação/prioridade confiável |
 | Exportação de estado | a CLI não possui destino GUI seguro via portal |
 | Saúde administrativa | o helper não publica endpoint para a bridge |
 | Recuperação de sessão | pertence ao daemon e ainda não tem contrato Desktop |

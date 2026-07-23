@@ -541,8 +541,8 @@ Item {
             "modsCheats": qsTr("Importe, ative e remova conteúdo local vinculado ao Title ID e ao emulador escolhido."),
             "graphicsPerformance": qsTr("Aplique perfis conhecidos bons, alternância dock/portátil e geração de quadros quando suportada."),
             "controls": qsTr("Configure até quatro jogadores e adapte o layout automaticamente ao modo de uso."),
-            "saves": qsTr("Proteja, restaure e migre progresso entre emuladores com verificação."),
-            "shaderCache": qsTr("Reduza engasgos e invalide caches incompatíveis sem apagar o backup válido."),
+            "saves": qsTr("Catalogue backups locais; restore direto aguarda um destino seguro publicado pelo backend."),
+            "shaderCache": qsTr("Catalogue caches por jogo; invalidação aguarda driver, raiz e fingerprint publicados pelo backend."),
             "media": qsTr("Gerencie capas, nomes e correspondência por Title ID ou DAT importado pelo usuário."),
             "storage": qsTr("Compartilhe conteúdo compatível e deduplique arquivos entre emuladores."),
             "advanced": qsTr("Converta formatos, inspecione ferramentas e revise operações antes de aplicar.")
@@ -588,14 +588,14 @@ Item {
         if (id === "saves") {
             return [
                 {"title": qsTr("Backup mais recente"), "icon": "document-save", "state": "unknown", "status": qsTr("Nenhum backup verificado"), "detail": qsTr("Snapshot por conteúdo antes de qualquer migração."), "metric": "—"},
-                {"title": qsTr("Migração entre emuladores"), "icon": "folder-sync", "state": "unknown", "status": qsTr("Origem e destino pendentes"), "detail": qsTr("Converte layout quando necessário e valida o resultado antes da troca."), "metric": qsTr("Reversível")},
+                {"title": qsTr("Migração entre emuladores"), "icon": "folder-sync", "state": "unknown", "status": qsTr("Sem contrato Desktop"), "detail": qsTr("O backend ainda não publicou um destino por jogo/emulador; nenhuma restauração é presumida."), "metric": qsTr("Indisponível")},
                 {"title": qsTr("Integridade"), "icon": "security-high", "state": "unknown", "status": qsTr("Não verificada"), "detail": qsTr("O save original permanece disponível até a confirmação."), "metric": "—"}
             ]
         }
         if (id === "shaderCache") {
             return [
                 {"title": qsTr("Cache do jogo"), "icon": "applications-graphics", "state": "unknown", "status": qsTr("Nenhum jogo selecionado"), "detail": qsTr("Tamanho, driver e versão do emulador associados ao cache."), "metric": "—"},
-                {"title": qsTr("Backup e restauração"), "icon": "edit-undo", "state": "unknown", "status": qsTr("Sem ponto de restauração"), "detail": qsTr("Mantém uma cópia válida antes de limpar ou migrar."), "metric": qsTr("Seguro")},
+                {"title": qsTr("Backup e restauração"), "icon": "edit-undo", "state": "unknown", "status": qsTr("Sem contrato Desktop"), "detail": qsTr("O backend ainda não publicou raiz e fingerprint seguros para restaurar ou invalidar."), "metric": qsTr("Indisponível")},
                 {"title": qsTr("Compatibilidade do cache"), "icon": "dialog-warning", "state": "unknown", "status": qsTr("Aguardando driver"), "detail": qsTr("Alerta quando mudança de driver ou emulador exige invalidação."), "metric": "—"}
             ]
         }
