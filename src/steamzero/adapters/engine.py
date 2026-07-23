@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections.abc import Callable
@@ -14,7 +13,7 @@ from typing import Protocol
 from urllib.parse import urlparse
 
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
-from steamzero.core import fs, paths, transaction
+from steamzero.core import crypto, fs, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.state import StateStore
@@ -119,7 +118,7 @@ class AdapterEngine:
             return PreparedComponent(manifest, source, plan)
 
         artifact = self._artifacts.fetch(source)
-        actual = hashlib.sha256(artifact).hexdigest()
+        actual = crypto.digest_bytes(artifact).hexdigest
         if actual != source.sha256:
             raise SteamZeroError(
                 "E-SUPPLY-CHECKSUM",
@@ -317,8 +316,4 @@ class AdapterEngine:
     def _sha256_file(path: Path) -> str | None:
         if not path.is_file() or path.is_symlink():
             return None
-        digest = hashlib.sha256()
-        with path.open("rb") as handle:
-            while chunk := handle.read(1 << 20):
-                digest.update(chunk)
-        return digest.hexdigest()
+        return crypto.digest_file(path).hexdigest

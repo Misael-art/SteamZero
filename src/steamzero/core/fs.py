@@ -16,7 +16,6 @@ Nenhum outro módulo pode chamar ``open(...,'w')``, ``os.rename/replace``,
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import os
 import secrets
 import shutil
@@ -27,7 +26,7 @@ from pathlib import Path, PurePosixPath
 from types import TracebackType
 from typing import IO
 
-from steamzero.core import paths
+from steamzero.core import crypto, paths
 from steamzero.core.errors import SteamZeroError
 
 _DIR_MODE = 0o700
@@ -457,16 +456,12 @@ def validate_relative_entry(name: str) -> PurePosixPath:
 # ===========================================================================
 def hash_bytes(data: bytes, *, algo: str = "blake2b") -> str:
     """Hash hex de ``data`` (default blake2b — STATE-MODEL; ``sha256`` p/ bios-db)."""
-    return hashlib.new(algo, data).hexdigest()
+    return crypto.digest_bytes(data, algorithm=algo).hexdigest
 
 
 def hash_file(path: Path, *, algo: str = "blake2b") -> str:
     """Hash hex do conteúdo de ``path`` (streaming). ``algo`` = blake2b | sha256."""
-    h = hashlib.new(algo)
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(_CHUNK), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    return crypto.digest_file(path, algorithm=algo).hexdigest
 
 
 def free_space(path: Path) -> int:

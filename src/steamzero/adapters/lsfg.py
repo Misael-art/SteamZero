@@ -9,7 +9,6 @@ em ``~/.local`` passa pelo núcleo transacional G-FULL.
 
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import platform
@@ -19,7 +18,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
-from steamzero.core import fs, transaction
+from steamzero.core import crypto, fs, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.net import NetworkFailure, fetch_bytes
 
@@ -145,14 +144,14 @@ class LsfgInstaller:
                 ),
             )
         archive = self._artifacts.fetch(LSFG_SOURCE_URL, max_bytes=_MAX_ARCHIVE_BYTES)
-        digest = hashlib.sha256(archive).hexdigest()
+        digest = crypto.digest_bytes(archive).hexdigest
         if digest != LSFG_ARCHIVE_SHA256:
             raise SteamZeroError(
                 "E-SUPPLY-CHECKSUM",
                 detail=f"LSFG-VK {LSFG_VERSION}: checksum do download divergente",
             )
         entries = self._extract_allowlisted(archive)
-        if hashlib.sha256(entries[_LIB_ENTRY]).hexdigest() != LSFG_LIBRARY_SHA256:
+        if crypto.digest_bytes(entries[_LIB_ENTRY]).hexdigest != LSFG_LIBRARY_SHA256:
             raise SteamZeroError(
                 "E-SUPPLY-CHECKSUM", detail="biblioteca LSFG-VK não corresponde ao release"
             )

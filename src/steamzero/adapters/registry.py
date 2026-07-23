@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib.resources
 import json
 import re
@@ -14,6 +13,7 @@ from typing import Any
 from jsonschema import ValidationError
 
 from steamzero.api import contracts
+from steamzero.core import crypto
 from steamzero.core.errors import SteamZeroError
 
 _SCHEMA = "adapter-v1.schema.json"
@@ -178,7 +178,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         verify_smoke_test=smoke,
         conflicts=tuple(data.get("conflicts", ())),
         requires=tuple(data.get("requires", ())),
-        manifest_hash=hashlib.sha256(canonical.encode()).hexdigest(),
+        manifest_hash=crypto.digest_bytes(canonical.encode()).hexdigest,
         raw=data,
         requires_keys=requires_keys,
         requires_firmware=requires_firmware,
