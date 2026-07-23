@@ -134,21 +134,47 @@ _SCREENSCRAPER = ProviderDefinition(
     id="screenscraper",
     name="ScreenScraper",
     description=(
-        "Metadados e mídia de catálogo; a integração aguarda credenciais de aplicação aprovadas."
+        "Metadados e mídia de catálogo. devid/devpassword identificam a integração; "
+        "ssid/sspassword são opcionais e pertencem à conta pessoal."
     ),
-    auth_type="username-password",
+    auth_type="application-and-optional-user",
     credential_fields=(
         CredentialField(
-            "username", "Usuário", "text", True, False, "Seu usuário", "Conta ScreenScraper."
+            "devid",
+            "Developer ID",
+            "text",
+            True,
+            False,
+            "devid fornecido à integração",
+            "Credencial da aplicação ScreenScraper; não é o usuário da conta pessoal.",
         ),
         CredentialField(
-            "password",
-            "Senha",
+            "devpassword",
+            "Developer password",
             "password",
             True,
             True,
-            "Sua senha",
-            "Nunca é exibida em logs.",
+            "devpassword fornecido à integração",
+            "Segredo da aplicação ScreenScraper; fica somente no cofre.",
+            True,
+        ),
+        CredentialField(
+            "ssid",
+            "Usuário ScreenScraper",
+            "text",
+            False,
+            False,
+            "Conta pessoal (opcional)",
+            "Conta pessoal opcional para ampliar a cota; não é compartilhada.",
+        ),
+        CredentialField(
+            "sspassword",
+            "Senha ScreenScraper",
+            "password",
+            False,
+            True,
+            "Senha pessoal (opcional)",
+            "Senha da conta pessoal opcional; fica somente no cofre.",
             True,
         ),
     ),
@@ -160,8 +186,7 @@ _SCREENSCRAPER = ProviderDefinition(
         "documentation": "https://www.screenscraper.fr/webapi2.php",
         "terms": "https://www.screenscraper.fr/conditions.php",
     },
-    enabled=False,
-    unavailable_reason="A API atual requer credenciais de aplicação que não pertencem ao usuário.",
+    credential_test_supported=True,
 )
 
 _IGDB = ProviderDefinition(

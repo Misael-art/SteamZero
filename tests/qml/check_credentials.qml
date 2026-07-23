@@ -15,6 +15,8 @@ Window {
     property var savedCredentials: ({})
     property var savedFieldRow: null
     property var openedLinks: []
+    property string screenProvider: ""
+    property var screenCredentials: ({})
 
     function check(condition, message) {
         checks += 1
@@ -100,11 +102,68 @@ Window {
         })
     }
 
+    CredentialProviderCard {
+        id: screenCard
+        y: 700
+        width: 460
+        provider: ({
+            "id": "screenscraper",
+            "name": "ScreenScraper",
+            "description": "Credenciais de aplicação e conta pessoal opcional.",
+            "enabled": true,
+            "configured": false,
+            "credentialState": "notConfigured",
+            "credentialTestSupported": true,
+            "credentialRevokeSupported": true,
+            "credentialFields": [
+                {"id": "devid", "label": "Developer ID", "placeholder": "",
+                 "help": "Integração", "secret": false, "required": true},
+                {"id": "devpassword", "label": "Developer password", "placeholder": "",
+                 "help": "Integração", "secret": true, "required": true},
+                {"id": "ssid", "label": "Usuário", "placeholder": "",
+                 "help": "Conta pessoal", "secret": false, "required": false},
+                {"id": "sspassword", "label": "Senha", "placeholder": "",
+                 "help": "Conta pessoal", "secret": true, "required": false}
+            ],
+            "links": {}
+        })
+        onSaveRequested: function(providerId, credentials) {
+            harness.screenProvider = providerId
+            harness.screenCredentials = credentials
+        }
+    }
+
     Timer {
         interval: 50
         running: true
         repeat: false
         onTriggered: {
+            check(screenCard.fieldRepeaterControl.count === 4,
+                  "ScreenScraper deve renderizar quatro campos isolados")
+            check(!screenCard.saveControl.enabled,
+                  "ScreenScraper deve exigir os dois campos de aplicação")
+            const screenDevId = screenCard.fieldRepeaterControl.itemAt(0)
+            const screenDevPassword = screenCard.fieldRepeaterControl.itemAt(1)
+            const screenUser = screenCard.fieldRepeaterControl.itemAt(2)
+            const screenPassword = screenCard.fieldRepeaterControl.itemAt(3)
+            check(screenDevId.inputControl.echoMode === TextInput.Normal
+                  && screenUser.inputControl.echoMode === TextInput.Normal,
+                  "devid e ssid devem ser campos de texto")
+            check(screenDevPassword.inputControl.echoMode === TextInput.Password
+                  && screenPassword.inputControl.echoMode === TextInput.Password,
+                  "devpassword e sspassword devem ocultar segredos")
+            screenDevId.inputControl.text = "dev-id"
+            check(!screenCard.saveControl.enabled,
+                  "um obrigatório isolado não pode habilitar Salvar")
+            screenDevPassword.inputControl.text = "dev-secret"
+            check(screenCard.saveControl.enabled,
+                  "os dois obrigatórios devem habilitar Salvar")
+            screenCard.saveControl.clicked()
+            check(screenProvider === "screenscraper"
+                  && Object.keys(screenCredentials).length === 2
+                  && screenCredentials.devid === "dev-id"
+                  && screenCredentials.devpassword === "dev-secret",
+                  "opcionais vazios não devem entrar no payload")
             check(remoteCard.fieldRepeaterControl.count === 1,
                   "provider remoto deve publicar seu único campo")
             check(!remoteCard.saveControl.enabled,

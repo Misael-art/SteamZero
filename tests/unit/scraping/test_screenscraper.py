@@ -41,6 +41,10 @@ _XML_ERROR = b"""<?xml version="1.0"?>
 </data>
 """
 
+_XML_USER_OK = b"""<?xml version="1.0"?>
+<data><ssuser><id>test-user</id></ssuser></data>
+"""
+
 
 @pytest.fixture
 def adapter() -> ScreenScraperAdapter:
@@ -90,6 +94,27 @@ def test_credential_missing_raises() -> None:
     with pytest.raises(SteamZeroError) as exc:
         adapter.search(identity, ["boxart"])
     assert exc.value.code == "E-SCRAPE-CREDENTIAL-MISSING"
+
+
+def test_connection_uses_lightweight_user_endpoint_without_media(
+    adapter: ScreenScraperAdapter,
+) -> None:
+    with patch.object(adapter, "_fetch_url", return_value=_XML_USER_OK) as fetch:
+        assert adapter.test_connection() is True
+    url = fetch.call_args.args[0]
+    assert "ssuserInfos.php" in url
+    assert "jeuInfos.php" not in url
+    assert fetch.call_args.kwargs == {"max_bytes": 256 * 1024}
+
+
+def test_connection_rejects_error_response(adapter: ScreenScraperAdapter) -> None:
+    error_xml = b"<data><error><code>401</code></error></data>"
+    with (
+        patch.object(adapter, "_fetch_url", return_value=error_xml),
+        pytest.raises(SteamZeroError) as exc,
+    ):
+        adapter.test_connection()
+    assert exc.value.code == "E-SCRAPE-CREDENTIAL-REJECTED"
 
 
 def test_search_returns_candidates(adapter: ScreenScraperAdapter, identity: GameIdentity) -> None:

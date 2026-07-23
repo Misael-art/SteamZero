@@ -23,6 +23,7 @@ from steamzero.ports import GameIdentity, MediaCandidate
 
 _API_BASE = "https://www.screenscraper.fr/api2"
 _API_PATH = "jeuInfos.php"
+_API_TEST_PATH = "ssuserInfos.php"
 
 _PLATFORM_MAP: dict[str, int | str] = {
     "3do": "1",
@@ -169,6 +170,37 @@ class ScreenScraperAdapter(BaseMediaProvider):
     def supported_platforms(self) -> frozenset[str]:
         return frozenset(_PLATFORM_MAP)
 
+    def test_connection(self) -> bool:
+        """Valida credenciais em endpoint leve, sem pesquisar ou baixar mídia."""
+        if self._devid is None or self._devpassword is None:
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-MISSING",
+                detail="ScreenScraper requer devid e devpassword configurados",
+            )
+        self._rate_limit()
+        params = self._authentication_params()
+        url = f"{_API_BASE}/{_API_TEST_PATH}?{urlencode(params)}"
+        raw = self._fetch_url(url, max_bytes=256 * 1024)
+        try:
+            root = ET.fromstring(raw)  # noqa: S314 — trusted API, not user input
+        except ET.ParseError as exc:
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-REJECTED",
+                detail="ScreenScraper retornou uma resposta de autenticação inválida",
+            ) from exc
+        error = root.find(".//error")
+        if error is not None:
+            code = (error.findtext("code") or "").strip()
+            if code == "429":
+                raise SteamZeroError("E-SCRAPE-RATE-LIMITED")
+            if code == "403":
+                raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED")
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-REJECTED",
+                detail="ScreenScraper recusou as credenciais informadas",
+            )
+        return True
+
     def search(
         self,
         identity: GameIdentity,
@@ -262,15 +294,12 @@ class ScreenScraperAdapter(BaseMediaProvider):
     def _build_params(self, identity: GameIdentity) -> dict[str, str]:
         if self._devid is None or self._devpassword is None:
             raise SteamZeroError("E-SCRAPE-CREDENTIAL-MISSING")
-        params = {
-            "devid": self._devid,
-            "devpassword": self._devpassword,
-            "softname": "steamzero",
-            "output": "xml",
-        }
-        if self._ssid is not None and self._sspassword is not None:
-            params["ssid"] = self._ssid
-            params["sspassword"] = self._sspassword
+        params = self._authentication_params()
+        params.update(
+            {
+                "output": "xml",
+            }
+        )
 
         platform_id = _PLATFORM_MAP.get(identity.platform_slug)
         if platform_id is not None:
@@ -293,6 +322,19 @@ class ScreenScraperAdapter(BaseMediaProvider):
         else:
             params["romnom"] = identity.title
 
+        return params
+
+    def _authentication_params(self) -> dict[str, str]:
+        if self._devid is None or self._devpassword is None:
+            raise SteamZeroError("E-SCRAPE-CREDENTIAL-MISSING")
+        params = {
+            "devid": self._devid,
+            "devpassword": self._devpassword,
+            "softname": "steamzero",
+        }
+        if self._ssid is not None and self._sspassword is not None:
+            params["ssid"] = self._ssid
+            params["sspassword"] = self._sspassword
         return params
 
 

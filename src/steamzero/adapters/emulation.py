@@ -32,6 +32,7 @@ from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
+from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
 from steamzero.adapters.secret_service import SecretServiceStore
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
@@ -1374,8 +1375,22 @@ class EmulationController:
         definition = provider_by_id(provider)
         if not definition.enabled or not definition.credential_test_supported:
             raise SteamZeroError("E-API-SCHEMA", detail="teste não disponível para este provedor")
-        secret = self._secret_store.retrieve(provider, "api_key")
-        if secret is None:
+        if not self._secret_store.is_available():
+            raise SteamZeroError(
+                "E-SCRAPE-VAULT-UNAVAILABLE",
+                detail="cofre de credenciais indisponível",
+            )
+        credentials = {
+            field.id: secret.reveal()
+            for field in definition.credential_fields
+            if (secret := self._secret_store.retrieve(provider, field.id)) is not None
+        }
+        missing = [
+            field.id
+            for field in definition.credential_fields
+            if field.required and field.id not in credentials
+        ]
+        if missing:
             self._credential_health[provider] = {
                 "state": "notConfigured",
                 "lastValidatedAt": None,
@@ -1385,12 +1400,26 @@ class EmulationController:
                 "valid": False,
                 "state": "notConfigured",
                 "error": "E-SCRAPE-CREDENTIAL-MISSING",
+                "missingRequiredFields": missing,
                 "providerStatus": self._provider_credential_status(provider),
             }
         try:
-            from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
-
-            adapter = SteamGridDbAdapter(api_key=secret.reveal())
+            if provider == "steamgriddb":
+                adapter: SteamGridDbAdapter | ScreenScraperAdapter = SteamGridDbAdapter(
+                    api_key=credentials["api_key"]
+                )
+            elif provider == "screenscraper":
+                adapter = ScreenScraperAdapter(
+                    devid=credentials["devid"],
+                    devpassword=credentials["devpassword"],
+                    ssid=credentials.get("ssid"),
+                    sspassword=credentials.get("sspassword"),
+                )
+            else:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="teste não implementado para este provedor",
+                )
             result = adapter.test_connection()
             state = "validated" if result else "rejected"
             self._credential_health[provider] = {
@@ -2722,6 +2751,15 @@ class EmulationController:
         secret = self._secret_store.retrieve(provider_name, "api_key")
         return secret.reveal() if secret is not None else None
 
+    def _get_provider_credentials(self, provider_name: str) -> dict[str, str]:
+        definition = provider_by_id(provider_name)
+        result: dict[str, str] = {}
+        for field in definition.credential_fields:
+            secret = self._secret_store.retrieve(provider_name, field.id)
+            if secret is not None:
+                result[field.id] = secret.reveal()
+        return result
+
     def _media_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         store = self._store_factory()
         store.migrate()
@@ -3522,6 +3560,16 @@ class EmulationController:
         if self._media_providers is None:
             api_key = self._get_provider_api_key("steamgriddb")
             providers: list[MediaProviderPort] = [SteamGridDbAdapter(api_key=api_key)]
+            screenscraper = self._get_provider_credentials("screenscraper")
+            if {"devid", "devpassword"} <= screenscraper.keys():
+                providers.append(
+                    ScreenScraperAdapter(
+                        devid=screenscraper["devid"],
+                        devpassword=screenscraper["devpassword"],
+                        ssid=screenscraper.get("ssid"),
+                        sspassword=screenscraper.get("sspassword"),
+                    )
+                )
         else:
             providers = list(self._media_providers)
         pipeline = MediaPipeline(

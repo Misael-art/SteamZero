@@ -132,10 +132,69 @@ class TestEmulationControllerCredential:
         assert result["configured"] is False
         assert result["state"] == "notConfigured"
 
-    def test_disabled_provider_does_not_accept_user_credentials(self, tmp_path: Path) -> None:
+    def test_screenscraper_reports_exact_missing_required_fields(
+        self, tmp_path: Path
+    ) -> None:
         ctrl = _controller(tmp_path)
-        with pytest.raises(SteamZeroError, match="provedor não aceita credenciais"):
-            ctrl.save_credential("screenscraper", {"username": "user", "password": "secret"})
+        with pytest.raises(SteamZeroError, match="devpassword"):
+            ctrl.save_credential("screenscraper", {"devid": "developer-id"})
+        status = ctrl.credential_status()
+        screenscraper = next(
+            provider for provider in status["providers"] if provider["id"] == "screenscraper"
+        )
+        assert screenscraper["missingRequiredFields"] == ["devid", "devpassword"]
+
+    def test_screenscraper_four_fields_are_isolated_tested_and_revoked(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
+
+        ctrl = _controller(tmp_path)
+        values = {
+            "devid": "integration-id",
+            "devpassword": "integration-secret",
+            "ssid": "personal-user",
+            "sspassword": "personal-secret",
+        }
+        saved = ctrl.save_credential("screenscraper", values)
+        assert saved["state"] == "stored"
+        for field, expected in values.items():
+            secret = ctrl._secret_store.retrieve("screenscraper", field)
+            assert secret is not None and secret.reveal() == expected
+        assert not any(
+            value in json.dumps(saved, sort_keys=True) for value in values.values()
+        )
+
+        monkeypatch.setattr(ScreenScraperAdapter, "test_connection", lambda _self: True)
+        tested = ctrl.test_credential("screenscraper")
+        assert tested["valid"] is True
+        assert tested["state"] == "validated"
+        assert not any(
+            value in json.dumps(tested, sort_keys=True) for value in values.values()
+        )
+
+        with ctrl._store_factory() as store:
+            store.migrate()
+            manager = ctrl._media_manager(store)
+            screen_provider = next(
+                provider for provider in manager._providers if provider.name == "screenscraper"
+            )
+            assert isinstance(screen_provider, ScreenScraperAdapter)
+
+        revoked = ctrl.delete_credential("screenscraper")
+        assert revoked["state"] == "notConfigured"
+        assert all(
+            ctrl._secret_store.retrieve("screenscraper", field) is None for field in values
+        )
+
+    def test_screenscraper_optional_account_is_not_required(self, tmp_path: Path) -> None:
+        ctrl = _controller(tmp_path)
+        saved = ctrl.save_credential(
+            "screenscraper",
+            {"devid": "integration-id", "devpassword": "integration-secret"},
+        )
+        assert saved["configured"] is True
+        assert saved["providerStatus"]["missingRequiredFields"] == []
 
     def test_local_provider_is_informational_only(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)

@@ -17,6 +17,19 @@ def test_provider_catalog_never_exposes_credential_values() -> None:
     assert all(
         "value" not in field for provider in status for field in provider["credentialFields"]
     )
+    screenscraper = next(
+        provider for provider in status if provider["id"] == "screenscraper"
+    )
+    assert screenscraper["enabled"] is True
+    assert screenscraper["credentialTestSupported"] is True
+    fields = screenscraper["credentialFields"]
+    assert [field["id"] for field in fields] == [
+        "devid",
+        "devpassword",
+        "ssid",
+        "sspassword",
+    ]
+    assert [field["required"] for field in fields] == [True, True, False, False]
 
 
 def test_official_urls_are_exact_and_allowlisted() -> None:
