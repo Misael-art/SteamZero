@@ -225,6 +225,11 @@ class TestStateStorePersistence:
                 checked_at TEXT NOT NULL DEFAULT '',
                 selected_candidate_idx INTEGER NOT NULL DEFAULT -1,
                 candidate_json TEXT NOT NULL DEFAULT '[]',
+                master_state TEXT NOT NULL DEFAULT 'none',
+                optimized_state TEXT NOT NULL DEFAULT 'none',
+                steam_view_state TEXT NOT NULL DEFAULT 'unpublished',
+                steam_appid INTEGER,
+                steam_artwork_json TEXT NOT NULL DEFAULT '[]',
                 created_at TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL DEFAULT ''
             )"""
@@ -240,7 +245,9 @@ class TestStateStorePersistence:
                 "url": "https://example.com/1.jpg", "mediaKind": "icon",
                 "provider": "test", "confidence": 0.9,
             }],
-            candidate_count=1,
+            candidate_count=1, master_state="collected", optimized_state="ready",
+            steam_view_state="published", steam_appid=123,
+            steam_artwork_kinds=["steam-icon"],
         )
         adapter.save(state)
         loaded = adapter.load("g1")
@@ -248,6 +255,11 @@ class TestStateStorePersistence:
         assert loaded.game_id == "g1"
         assert loaded.media_source == "scraper"
         assert loaded.candidate_count == 1
+        assert loaded.master_state == "collected"
+        assert loaded.optimized_state == "ready"
+        assert loaded.steam_view_state == "published"
+        assert loaded.steam_appid == 123
+        assert loaded.steam_artwork_kinds == ["steam-icon"]
 
     def test_list_all(self, conn: sqlite3.Connection) -> None:
         adapter = StateStoreGameMediaAdapter(conn)
@@ -283,6 +295,11 @@ class TestStateStorePersistence:
                 checked_at TEXT NOT NULL DEFAULT '',
                 selected_candidate_idx INTEGER NOT NULL DEFAULT -1,
                 candidate_json TEXT NOT NULL DEFAULT '[]',
+                master_state TEXT NOT NULL DEFAULT 'none',
+                optimized_state TEXT NOT NULL DEFAULT 'none',
+                steam_view_state TEXT NOT NULL DEFAULT 'unpublished',
+                steam_appid INTEGER,
+                steam_artwork_json TEXT NOT NULL DEFAULT '[]',
                 created_at TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL DEFAULT ''
             )"""

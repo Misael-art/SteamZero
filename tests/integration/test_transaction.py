@@ -157,6 +157,61 @@ def test_new_file_rollback_deletes(env: tuple[Path, Path]) -> None:
     assert not target.exists()
 
 
+def test_symlink_delete_rollback_restores_the_same_link(env: tuple[Path, Path]) -> None:
+    sandbox, _ = env
+    source = sandbox / "source.png"
+    target = sandbox / "grid" / "123_icon.png"
+    fs.write_atomic(source, b"image")
+    fs.symlink_atomic(source, target)
+    original_link = target.readlink()
+    plan = transaction.plan_write_files({}, removals={target}, root=sandbox)
+
+    result = transaction.apply(plan.plan_id, plan.confirm_token)
+    assert not target.exists() and not target.is_symlink()
+
+    rollback = transaction.rollback(result.operation_id)
+    assert rollback.status == "rolled-back"
+    assert target.is_symlink()
+    assert target.readlink() == original_link
+    assert target.read_bytes() == b"image"
+
+
+def test_symlink_replacement_rollback_restores_previous_link(
+    env: tuple[Path, Path],
+) -> None:
+    sandbox, _ = env
+    previous = sandbox / "previous.png"
+    replacement = sandbox / "replacement.png"
+    target = sandbox / "grid" / "123_icon.png"
+    fs.write_atomic(previous, b"previous")
+    fs.write_atomic(replacement, b"replacement")
+    fs.symlink_atomic(previous, target)
+
+    plan = transaction.plan_symlink_files(
+        {replacement: target}, root=sandbox, replace_existing=True
+    )
+    result = transaction.apply(plan.plan_id, plan.confirm_token)
+    assert target.resolve() == replacement.resolve()
+
+    transaction.rollback(result.operation_id)
+    assert target.is_symlink()
+    assert target.resolve() == previous.resolve()
+    assert target.read_bytes() == b"previous"
+
+
+def test_write_plan_refuses_to_follow_symlink_target(env: tuple[Path, Path]) -> None:
+    sandbox, _ = env
+    source = sandbox / "source.ini"
+    target = sandbox / "linked.ini"
+    fs.write_atomic(source, b"original")
+    fs.symlink_atomic(source, target)
+
+    with pytest.raises(SteamZeroError) as error:
+        transaction.plan_write_files({target: b"replacement"}, root=sandbox)
+    assert error.value.code == "E-TX-STALE-PLAN"
+    assert source.read_bytes() == b"original"
+
+
 def test_containment_rejects_target_outside_root(env: tuple[Path, Path]) -> None:
     sandbox, _ = env
     outside = sandbox.parent / "outside.ini"

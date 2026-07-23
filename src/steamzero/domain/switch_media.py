@@ -12,6 +12,7 @@ from steamzero.domain.media_pipeline import (
     MediaPipeline,
     OptimizeResult,
     ViewResult,
+    canonical_media_kind,
 )
 from steamzero.ports import GameIdentity, MediaCandidate, MediaProviderPort
 
@@ -191,7 +192,7 @@ class GameMediaManager:
         if state is None or state.selected_candidate_idx < 0:
             return None
         candidate_data = state.candidates[state.selected_candidate_idx]
-        kind = candidate_data.get("mediaKind", "boxart")
+        kind = canonical_media_kind(str(candidate_data.get("mediaKind", "boxart")))
         candidate = MediaCandidate(
             url=candidate_data["url"],
             media_kind=kind,
@@ -286,17 +287,86 @@ class GameMediaManager:
         return state
 
     def optimize_game(self, game_id: str, profile: str | None = None) -> OptimizeResult:
-        return self._pipeline.optimize(game_id, profile=profile)
+        result = self._pipeline.optimize(game_id, profile=profile)
+        state = self._store.load(game_id)
+        if state is not None:
+            state.optimized_state = self._resolve_optimized_state(game_id)
+            self._store.save(state)
+        return result
 
     def publish_steam(
-        self, game_id: str, steam_user_id: str, steam_appid: int
+        self,
+        game_id: str,
+        steam_user_id: str,
+        steam_appid: int,
+        *,
+        grid_dir: Path | None = None,
     ) -> ViewResult:
-        return self._pipeline.view_steam(game_id, steam_user_id, steam_appid)
+        return self._pipeline.view_steam(
+            game_id, steam_user_id, steam_appid, grid_dir=grid_dir
+        )
+
+    def plan_publish_steam(
+        self,
+        game_id: str,
+        steam_user_id: str,
+        steam_appid: int,
+        *,
+        grid_dir: Path,
+    ) -> transaction.Plan | None:
+        return self._pipeline.view_steam_plan(
+            game_id,
+            steam_user_id,
+            steam_appid,
+            grid_dir=grid_dir,
+        )
 
     def unpublish_steam(
-        self, game_id: str, steam_user_id: str, steam_appid: int
+        self,
+        game_id: str,
+        steam_user_id: str,
+        steam_appid: int,
+        *,
+        grid_dir: Path | None = None,
     ) -> transaction.Plan | None:
-        return self._pipeline.unpublish_steam_plan(game_id, steam_user_id, steam_appid)
+        return self._pipeline.unpublish_steam_plan(
+            game_id,
+            steam_user_id,
+            steam_appid,
+            grid_dir=grid_dir,
+        )
+
+    def refresh_steam_publication(
+        self,
+        game_id: str,
+        steam_appid: int,
+        *,
+        grid_dir: Path,
+    ) -> GameMediaState | None:
+        state = self._store.load(game_id)
+        if state is None:
+            return None
+        state.steam_appid = steam_appid
+        stems = {
+            "steam-portrait": f"{steam_appid}p",
+            "steam-landscape": str(steam_appid),
+            "steam-hero": f"{steam_appid}_hero",
+            "steam-logo": f"{steam_appid}_logo",
+            "steam-icon": f"{steam_appid}_icon",
+        }
+        published = [
+            profile
+            for profile, stem in stems.items()
+            if any(
+                (grid_dir / f"{stem}{extension}").is_file()
+                or (grid_dir / f"{stem}{extension}").is_symlink()
+                for extension in (".png", ".jpg", ".webp")
+            )
+        ]
+        state.steam_artwork_kinds = published
+        state.steam_view_state = "published" if published else "unpublished"
+        self._store.save(state)
+        return state
 
     def audit(self) -> AuditReport:
         return self._pipeline.audit()
@@ -359,7 +429,7 @@ class GameMediaManager:
 
     def _resolve_optimized_state(self, game_id: str) -> str:
         for pname in OptimizerProfile.steam_profiles():
-            if self._pipeline.find_optimized(game_id, pname.key):
+            if self._pipeline.find_optimized(game_id, pname.kind):
                 return "ready"
         return "none"
 
@@ -375,8 +445,8 @@ class GameMediaManager:
             return []
         kinds: list[str] = []
         for pname in OptimizerProfile.steam_profiles():
-            if self._pipeline._find_optimized(game_id, pname.key):
-                kinds.append(pname.key)
+            if self._pipeline._find_optimized(game_id, pname.kind):
+                kinds.append(pname.kind)
         return kinds
 
     def _has_steam_views(self, game_id: str) -> bool:

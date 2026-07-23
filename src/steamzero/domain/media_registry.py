@@ -39,6 +39,7 @@ class MediaMasterEntry:
     confirmed: bool = False
     steam_appid: int | None = None
     provenance: Provenance | None = None
+    masters: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         d: dict[str, object] = {
@@ -53,6 +54,7 @@ class MediaMasterEntry:
             "metadataOrigin": self.metadata_origin,
             "confirmed": self.confirmed,
             "steamAppid": self.steam_appid,
+            "masters": dict(sorted(self.masters.items())),
         }
         if self.provenance:
             d["provenance"] = {
@@ -91,6 +93,13 @@ class MediaMasterEntry:
             confirmed=d.get("confirmed", False),
             steam_appid=d.get("steamAppid"),
             provenance=provenance,
+            masters={
+                str(kind): str(path)
+                for kind, path in d.get("masters", {}).items()
+                if isinstance(kind, str) and isinstance(path, str)
+            }
+            if isinstance(d.get("masters", {}), dict)
+            else {},
         )
 
 

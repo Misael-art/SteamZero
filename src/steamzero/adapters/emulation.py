@@ -51,7 +51,7 @@ from steamzero.domain.switch_mods import InstalledMod, ModType
 from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
-from steamzero.ports import GameIdentity, MediaCandidate, SecretStorePort
+from steamzero.ports import GameIdentity, MediaCandidate, MediaProviderPort, SecretStorePort
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
@@ -107,6 +107,15 @@ class _PendingMutation:
 _MEDIA_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 _MAX_MEDIA_BYTES = 32 * 1024 * 1024  # 32 MiB
 _MAX_MEDIA_DIMENSION = 8192
+_RETRYABLE_SCRAPE_ERRORS = frozenset(
+    {
+        "E-SCRAPE-PROVIDER-UNREACHABLE",
+        "E-SCRAPE-RATE-LIMITED",
+        "E-SCRAPE-DOWNLOAD-FAILED",
+        "E-SUPPLY-OFFLINE",
+        "E-SUPPLY-REMOTE-FAILED",
+    }
+)
 
 
 def _validate_mime(path: Path) -> None:
@@ -168,6 +177,9 @@ class EmulationController:
         shortcuts: SteamShortcutManager | None = None,
         job_manager: JobManager | None = None,
         secret_store: SecretStorePort | None = None,
+        media_providers: Sequence[MediaProviderPort] | None = None,
+        media_candidate_fetcher: Callable[[str], bytes] | None = None,
+        media_optimizer_tool: Callable[[Path, Path, str], bool] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -176,6 +188,11 @@ class EmulationController:
         self._spawn = spawn
         self._shortcuts = shortcuts or SteamShortcutManager()
         self._secret_store = secret_store or SecretServiceStore()
+        self._media_providers = (
+            tuple(media_providers) if media_providers is not None else None
+        )
+        self._media_candidate_fetcher = media_candidate_fetcher
+        self._media_optimizer_tool = media_optimizer_tool
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
@@ -859,31 +876,54 @@ class EmulationController:
         elif action.startswith("game.media.publish-steam:"):
             game_id = action.split(":", 1)[1]
             steam_user_id = self._required_string(payload, "steamUserId")
-            plan = transaction.plan_write_files(
-                {},
-                root=paths.data_home(),
-                kind=f"media.publish-steam:{game_id}",
-            )
+            app_id, grid_dir = self._steam_media_context(game_id, steam_user_id)
+            with self._store_factory() as store:
+                store.migrate()
+                maybe_plan = self._media_manager(store).plan_publish_steam(
+                    game_id,
+                    steam_user_id,
+                    app_id,
+                    grid_dir=grid_dir,
+                )
+            if maybe_plan is None:
+                raise SteamZeroError(
+                    "E-CONTENT-INCOMPLETE",
+                    detail="nenhuma mídia otimizada disponível para publicação",
+                )
+            plan = maybe_plan
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="media-publish-steam",
                 metadata={
                     "game_id": game_id,
                     "steam_user_id": steam_user_id,
+                    "steam_app_id": app_id,
+                    "grid_dir": str(grid_dir),
                 },
             )
         elif action.startswith("game.media.unpublish-steam:"):
             game_id = action.split(":", 1)[1]
             steam_user_id = self._required_string(payload, "steamUserId")
-            plan = transaction.plan_write_files(
-                {},
-                root=paths.data_home(),
-                kind=f"media.unpublish-steam:{game_id}",
-            )
+            app_id, grid_dir = self._steam_media_context(game_id, steam_user_id)
+            with self._store_factory() as store:
+                store.migrate()
+                maybe_plan = self._media_manager(store).unpublish_steam(
+                    game_id,
+                    steam_user_id,
+                    app_id,
+                    grid_dir=grid_dir,
+                )
+            if maybe_plan is None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="nenhuma mídia Steam gerenciada para remover"
+                )
+            plan = maybe_plan
             self._pending[plan.plan_id] = _PendingMutation(
                 kind="media-unpublish-steam",
                 metadata={
                     "game_id": game_id,
                     "steam_user_id": steam_user_id,
+                    "steam_app_id": app_id,
+                    "grid_dir": str(grid_dir),
                 },
             )
         elif action == "rom.scan":
@@ -2395,6 +2435,9 @@ class EmulationController:
         state.candidate_count = len(candidates_data)
         if provider_errors:
             state.errors = provider_errors
+        else:
+            state.errors = {}
+            state.reason = ""
         if candidates_data:
             state.metadata_state = "candidates-found"
         elif provider_errors:
@@ -2404,6 +2447,15 @@ class EmulationController:
             state.metadata_state = "no-results"
         state.selected_candidate_idx = -1
         mgr._store.save(state)
+        retryable = next(
+            (code for code in provider_errors.values() if code in _RETRYABLE_SCRAPE_ERRORS),
+            None,
+        )
+        if not candidates_data and retryable is not None:
+            raise SteamZeroError(
+                retryable,
+                detail="provedor de mídia temporariamente indisponível",
+            )
         ctx.set_progress(
             "done",
             current=len(candidates_data),
@@ -2469,56 +2521,58 @@ class EmulationController:
 
     def _apply_media_select(self, pending: _PendingMutation) -> None:
         meta = pending.metadata
-        self._with_store_and_media(
-            lambda s, mgr: (
-                mgr.select_candidate(meta["game_id"], meta["candidate_idx"]),
-                mgr.apply_selected_candidate(
-                    game_id=meta["game_id"],
-                    title_id=meta["title_id"],
-                    fingerprint=meta["fingerprint"],
-                    canonical_name=meta["canonical_name"],
-                ),
+        with self._store_factory() as store:
+            store.migrate()
+            manager = self._media_manager(store)
+            selected = manager.select_candidate(meta["game_id"], meta["candidate_idx"])
+            if selected is None:
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="candidato de mídia expirou")
+            applied = manager.apply_selected_candidate(
+                game_id=meta["game_id"],
+                title_id=meta["title_id"],
+                fingerprint=meta["fingerprint"],
+                canonical_name=meta["canonical_name"],
             )
-        )
+            if applied is None:
+                raise SteamZeroError(
+                    "E-SCRAPE-DOWNLOAD-FAILED", detail="não foi possível persistir a arte"
+                )
+            manager.optimize_game(meta["game_id"])
 
     def _apply_media_clear(self, pending: _PendingMutation) -> None:
         self._with_store_and_media(lambda s, mgr: mgr.clear_media(pending.metadata["game_id"]))
 
     def _apply_media_publish_steam(self, pending: _PendingMutation) -> None:
         meta = pending.metadata
-        game_id = meta["game_id"]
+        self._with_store_and_media(
+            lambda _store, manager: manager.refresh_steam_publication(
+                meta["game_id"],
+                meta["steam_app_id"],
+                grid_dir=Path(meta["grid_dir"]),
+            )
+        )
+
+    def _apply_media_unpublish_steam(self, pending: _PendingMutation) -> None:
+        meta = pending.metadata
+        self._with_store_and_media(
+            lambda _store, manager: manager.refresh_steam_publication(
+                meta["game_id"],
+                meta["steam_app_id"],
+                grid_dir=Path(meta["grid_dir"]),
+            )
+        )
+
+    def _steam_media_context(self, game_id: str, account_id: str) -> tuple[int, Path]:
         game = self._current_game(game_id)
-        steam_user_id = meta["steam_user_id"]
         settings = self._load_game_settings(strict=True)
-        game_settings = self._settings_for_game(game, settings)
-        if game_settings.get("steamSelected") is not True:
+        if self._settings_for_game(game, settings).get("steamSelected") is not True:
             raise SteamZeroError("E-API-SCHEMA", detail="jogo não está marcado para Steam")
         if game_id not in self._shortcuts.managed_game_ids():
             raise SteamZeroError("E-API-SCHEMA", detail="shortcut não foi sincronizado")
         app_id = self._shortcuts.resolve_app_id(game_id)
         if app_id is None:
             raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
-        self._with_store_and_media(
-            lambda s, mgr: mgr.publish_steam(
-                game_id,
-                steam_user_id,
-                app_id,
-            )
-        )
-
-    def _apply_media_unpublish_steam(self, pending: _PendingMutation) -> None:
-        meta = pending.metadata
-        steam_user_id = meta["steam_user_id"]
-        app_id = self._shortcuts.resolve_app_id(meta["game_id"])
-        if app_id is None:
-            raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
-        self._with_store_and_media(
-            lambda s, mgr: mgr.unpublish_steam(
-                meta["game_id"],
-                steam_user_id,
-                app_id,
-            )
-        )
+        return app_id, self._shortcuts.media_grid_dir(account_id)
 
     def _apply_media_audit(self, pending: _PendingMutation) -> None:
         self._with_store_and_media(lambda s, mgr: mgr.audit())
@@ -3097,16 +3151,21 @@ class EmulationController:
 
     def _media_manager(self, store: StateStore) -> GameMediaManager:
         conn = store.adapter_connection()
-        api_key = self._get_provider_api_key("steamgriddb")
-        provider = SteamGridDbAdapter(api_key=api_key)
+        if self._media_providers is None:
+            api_key = self._get_provider_api_key("steamgriddb")
+            providers: list[MediaProviderPort] = [SteamGridDbAdapter(api_key=api_key)]
+        else:
+            providers = list(self._media_providers)
         pipeline = MediaPipeline(
             media_root=paths.media_dir(),
-            providers=[provider],
+            providers=providers,
+            optimizer_tool=self._media_optimizer_tool,
+            candidate_fetcher=self._media_candidate_fetcher,
         )
         return GameMediaManager(
             store=StateStoreGameMediaAdapter(conn),
             pipeline=pipeline,
-            providers=[provider],
+            providers=providers,
         )
 
     def _enrich_games(
@@ -3164,7 +3223,9 @@ class EmulationController:
                 master_state = "none"
                 optimized_state = "none"
                 steam_view_state = "unpublished"
-                steam_appid = None
+                steam_appid = (
+                    self._shortcuts.resolve_app_id(game_id) if game_id in published else None
+                )
                 steam_artwork_kinds: list[str] = []
                 if title_id:
                     existing = media_store.load(game_id)
@@ -3176,7 +3237,7 @@ class EmulationController:
                         master_state = existing.master_state
                         optimized_state = existing.optimized_state
                         steam_view_state = existing.steam_view_state
-                        steam_appid = existing.steam_appid
+                        steam_appid = existing.steam_appid or steam_appid
                         steam_artwork_kinds = existing.steam_artwork_kinds
                         if existing.media_path:
                             try:
@@ -3187,7 +3248,7 @@ class EmulationController:
                                     media_kind = existing.media_kind
                             except OSError:
                                 pass
-                    elif game.get("bannerAsset"):
+                    if not cover_url and game.get("bannerAsset"):
                         cover_url = str(game["bannerAsset"])
                         media_source = str(game.get("mediaSource", "fallback"))
                 mod_list = [

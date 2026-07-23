@@ -68,6 +68,7 @@ def test_qml_central_declares_handheld_accessibility_contract() -> None:
     ):
         assert f'"{action_id}"' in qml
     assert "Plano bloqueado" in qml
+    assert '"steamUserId": action.steamUserId || ""' in qml
     for section in (
         "Visão geral",
         "Gerenciar emuladores",

@@ -26,8 +26,10 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
                (game_id, title_id, title, media_source, media_kind, media_path,
                 previous_media_path, developer, version, languages,
                 metadata_state, reason, checked_at,
-                selected_candidate_idx, candidate_json, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                selected_candidate_idx, candidate_json, master_state,
+                optimized_state, steam_view_state, steam_appid,
+                steam_artwork_json, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 state.game_id,
                 state.title_id,
@@ -44,6 +46,11 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
                 state.checked_at,
                 state.selected_candidate_idx,
                 json.dumps(state.candidates),
+                state.master_state,
+                state.optimized_state,
+                state.steam_view_state,
+                state.steam_appid,
+                json.dumps(state.steam_artwork_kinds),
                 now,
             ),
         )
@@ -100,4 +107,13 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
             selected_candidate_idx=row["selected_candidate_idx"],
             candidates=candidates,
             candidate_count=len(candidates),
+            master_state=row["master_state"],
+            optimized_state=row["optimized_state"],
+            steam_view_state=row["steam_view_state"],
+            steam_appid=row["steam_appid"],
+            steam_artwork_kinds=(
+                json.loads(row["steam_artwork_json"])
+                if row["steam_artwork_json"]
+                else []
+            ),
         )

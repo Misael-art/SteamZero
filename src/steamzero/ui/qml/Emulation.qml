@@ -2979,7 +2979,7 @@ Item {
                                         id: steamUserIdField
                                         visible: page.selectedGame.steamAppId !== undefined
                                             && page.selectedGame.steamAppId > 0
-                                        placeholderText: qsTr("Steam ID (ex: 7656119...)")
+                                        placeholderText: qsTr("ID da conta local Steam (userdata)")
                                         text: page.steamUserId
                                         color: page.textColor
                                         placeholderTextColor: page.mutedColor
@@ -3007,6 +3007,7 @@ Item {
                                         enabled: page.selectedGame.steamViewState !== "published"
                                             && page.selectedGame.steamAppId !== undefined
                                             && page.selectedGame.steamAppId > 0
+                                            && page.selectedGame.optimizedState === "ready"
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true

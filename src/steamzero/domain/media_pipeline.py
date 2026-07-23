@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import os
+import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from steamzero.core import fs, paths, transaction
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.media_optimizer import (
     KIND_TO_STEAM_PROFILES,
     MASTER_EXTENSIONS,
@@ -19,6 +21,29 @@ from steamzero.domain.media_registry import MediaMasterEntry, MediaRegistry, Pro
 from steamzero.ports import MediaCandidate, MediaProviderPort
 
 _OWNERSHIP_MARKER = "# SteamZero-Boot-Managed: true"
+_MAX_DOWNLOAD = 32 * 1024 * 1024
+_KIND_ALIASES = {"boxart": "box2d", "grid": "box2d"}
+
+
+def canonical_media_kind(kind: str) -> str:
+    return _KIND_ALIASES.get(kind, kind)
+
+
+def _download_candidate(url: str) -> bytes:
+    from urllib.parse import urlsplit
+
+    if urlsplit(url).scheme.casefold() != "https":
+        raise SteamZeroError(
+            "E-SCRAPE-DOWNLOAD-FAILED", detail="mídia remota exige HTTPS"
+        )
+    request = urllib.request.Request(url, headers={"User-Agent": "SteamZero/0.1"})  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+        data = bytes(response.read(_MAX_DOWNLOAD + 1))
+    if len(data) > _MAX_DOWNLOAD:
+        raise SteamZeroError(
+            "E-CONTENT-LIMIT", detail="mídia remota excede 32 MiB"
+        )
+    return data
 
 
 @dataclass
@@ -87,10 +112,12 @@ class MediaPipeline:
         media_root: Path,
         providers: list[MediaProviderPort] | None = None,
         optimizer_tool: Callable[[Path, Path, str], bool] | None = None,
+        candidate_fetcher: Callable[[str], bytes] | None = None,
     ) -> None:
         self._media_root = media_root
         self._providers = providers or []
         self._optimizer_tool = optimizer_tool
+        self._candidate_fetcher = candidate_fetcher or _download_candidate
         self._registry = MediaRegistry.load(media_root)
 
     # --- 1. COLLECT ---
@@ -109,6 +136,7 @@ class MediaPipeline:
         except OSError as e:
             result.failed.append(str(e))
             return result
+        kind = canonical_media_kind(kind)
         sha256 = hashlib.sha256(data).hexdigest()
         ext = MASTER_EXTENSIONS.get(kind, ".png")
         master_rel = Path("masters") / "switch" / kind / f"{sha256}{ext}"
@@ -117,6 +145,9 @@ class MediaPipeline:
         if not master_path.is_file():
             fs.write_atomic(master_path, data)
         result.collected[kind] = master_path
+        previous = self._registry.get_entry(game_id)
+        masters = dict(previous.masters) if previous is not None else {}
+        masters[kind] = master_rel.as_posix()
         entry = MediaMasterEntry(
             game_id=game_id,
             title_id=title_id,
@@ -124,6 +155,7 @@ class MediaPipeline:
             canonical_name=canonical_name,
             metadata_origin="local-import",
             confirmed=True,
+            masters=masters,
         )
         self._registry.add_entry(entry)
         self._registry.save(self._media_root)
@@ -138,17 +170,11 @@ class MediaPipeline:
         canonical_name: str,
     ) -> CollectionResult:
         result = CollectionResult(game_id=game_id)
-        kind = candidate.media_kind
+        kind = canonical_media_kind(candidate.media_kind)
         ext = MASTER_EXTENSIONS.get(kind, ".png")
-        import urllib.request
-
-        req = urllib.request.Request(  # noqa: S310
-            candidate.url, headers={"User-Agent": "SteamZero/0.1"}
-        )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
-                data = resp.read()
-        except OSError as e:
+            data = self._candidate_fetcher(candidate.url)
+        except (OSError, SteamZeroError) as e:
             result.failed.append(str(e))
             return result
         if not _validate_image_magic(data):
@@ -168,6 +194,9 @@ class MediaPipeline:
             attribution=candidate.attribution,
             hash_sha256=sha256,
         )
+        previous = self._registry.get_entry(game_id)
+        masters = dict(previous.masters) if previous is not None else {}
+        masters[kind] = master_rel.as_posix()
         entry = MediaMasterEntry(
             game_id=game_id,
             title_id=title_id,
@@ -176,6 +205,7 @@ class MediaPipeline:
             metadata_origin=candidate.provider,
             confirmed=True,
             provenance=provenance,
+            masters=masters,
         )
         self._registry.add_entry(entry)
         self._registry.save(self._media_root)
@@ -199,18 +229,23 @@ class MediaPipeline:
             for kind, steam_kinds in KIND_TO_STEAM_PROFILES.items():
                 if pname not in steam_kinds:
                     continue
-                master_rel = (
-                    Path("masters")
-                    / "switch"
-                    / kind
-                    / f"{entry.fingerprint}{MASTER_EXTENSIONS.get(kind, '.png')}"
-                )
-                master_path = self._media_root / master_rel
-                if not master_path.is_file():
+                raw_master = entry.masters.get(kind)
+                if raw_master is None:
                     continue
-                master_hash = fs.hash_file(master_path, algo="sha256")
+                master_rel = Path(raw_master)
+                expected_root = Path("masters") / "switch" / kind
+                if (
+                    master_rel.is_absolute()
+                    or ".." in master_rel.parts
+                    or not master_rel.is_relative_to(expected_root)
+                ):
+                    result.failed.append(pname)
+                    continue
+                master_path = self._media_root / master_rel
+                if master_path.is_symlink() or not master_path.is_file():
+                    continue
                 profile_def = OptimizerProfile.steam_profiles()
-                pd = next((p for p in profile_def if p.label == pname), None)
+                pd = next((p for p in profile_def if p.kind == pname), None)
                 if pd is None:
                     continue
                 opt_rel = (
@@ -220,11 +255,14 @@ class MediaPipeline:
                     / f"{game_id}_{pd.key}{MASTER_EXTENSIONS.get(kind, '.png')}"
                 )
                 opt_path = self._media_root / opt_rel
-                if opt_path.is_file():
-                    cached_hash = fs.hash_file(opt_path, algo="sha256")
-                    if cached_hash == master_hash:
-                        result.skipped.append(pname)
-                        continue
+                if (
+                    opt_path.is_file()
+                    and not opt_path.is_symlink()
+                    and opt_path.stat().st_size > 0
+                    and opt_path.stat().st_mtime_ns >= master_path.stat().st_mtime_ns
+                ):
+                    result.skipped.append(pname)
+                    continue
                 fs.ensure_dir(opt_path.parent)
                 staging = opt_path.with_suffix(f".staging{opt_path.suffix}")
                 try:
@@ -232,17 +270,19 @@ class MediaPipeline:
                 except Exception:
                     result.failed.append(pname)
                     continue
-                if not ok or not staging.is_file():
+                if (
+                    not ok
+                    or staging.is_symlink()
+                    or not staging.is_file()
+                    or staging.stat().st_size <= 0
+                    or staging.stat().st_size > _MAX_DOWNLOAD
+                    or not _valid_image_file(staging)
+                ):
                     result.failed.append(pname)
-                    continue
-                staging_hash = fs.hash_file(staging, algo="sha256")
-                if staging_hash == master_hash:
-                    fs.move_file(staging, opt_path)
-                else:
-                    if staging.is_file():
+                    if staging.is_file() and not staging.is_symlink():
                         fs.remove_file(staging)
-                    result.failed.append(pname)
                     continue
+                fs.move_file(staging, opt_path)
                 if staging.is_file():
                     fs.remove_file(staging)
                 result.optimized[pname] = opt_path
@@ -270,6 +310,7 @@ class MediaPipeline:
         steam_user_id: str,
         steam_appid: int,
         profiles: list[str] | None = None,
+        grid_dir: Path | None = None,
     ) -> ViewResult:
         result = ViewResult(game_id=game_id)
         pnames = profiles or list(STEAM_PROFILES)
@@ -286,9 +327,12 @@ class MediaPipeline:
                 continue
             stem = _steam_stem(steam_appid, pname)
             ext = opt_path.suffix
-            grid_path = paths.media_steam_grid_dir(steam_user_id) / f"{stem}{ext}"
+            target_grid = grid_dir or paths.media_steam_grid_dir(steam_user_id)
+            grid_path = target_grid / f"{stem}{ext}"
             fs.ensure_dir(grid_path.parent)
-            if grid_path.is_file() and not _is_managed(grid_path):
+            if grid_path.is_file() and not _is_managed(
+                grid_path, self._media_root / "optimized"
+            ):
                 result.skipped.append(f"{pname}:externo-nao-gerenciado")
                 continue
             if grid_path.is_symlink() or grid_path.is_file():
@@ -305,6 +349,7 @@ class MediaPipeline:
         game_id: str,
         steam_user_id: str,
         steam_appid: int,
+        grid_dir: Path | None = None,
     ) -> transaction.Plan | None:
         pnames = [k for k in STEAM_PROFILES if k != UI_PREVIEW]
         links: dict[Path, Path] = {}
@@ -317,28 +362,38 @@ class MediaPipeline:
                 continue
             stem = _steam_stem(steam_appid, pname)
             ext = opt_path.suffix
-            grid_path = paths.media_steam_grid_dir(steam_user_id) / f"{stem}{ext}"
-            if grid_path.is_file() and not _is_managed(grid_path):
+            target_grid = grid_dir or paths.media_steam_grid_dir(steam_user_id)
+            grid_path = target_grid / f"{stem}{ext}"
+            if grid_path.is_file() and not _is_managed(
+                grid_path, self._media_root / "optimized"
+            ):
                 continue
             links[opt_path] = grid_path
         if not links:
             return None
         return transaction.plan_symlink_files(
             links,
-            root=paths.media_views_dir(),
+            root=grid_dir or paths.media_views_dir(),
             kind="media.view-steam",
+            replace_existing=True,
         )
 
     def unpublish_steam_plan(
-        self, game_id: str, steam_user_id: str, steam_appid: int
+        self,
+        game_id: str,
+        steam_user_id: str,
+        steam_appid: int,
+        grid_dir: Path | None = None,
     ) -> transaction.Plan | None:
         removals: set[Path] = set()
-        grid_dir = paths.media_steam_grid_dir(steam_user_id)
+        grid_dir = grid_dir or paths.media_steam_grid_dir(steam_user_id)
         for pname in [k for k in STEAM_PROFILES if k != UI_PREVIEW]:
             for ext in (".png", ".jpg", ".webp"):
                 stem = _steam_stem(steam_appid, pname)
                 candidate = grid_dir / f"{stem}{ext}"
-                if (candidate.is_file() or candidate.is_symlink()) and _is_managed(candidate):
+                if (candidate.is_file() or candidate.is_symlink()) and _is_managed(
+                    candidate, self._media_root / "optimized"
+                ):
                     removals.add(candidate)
         if not removals:
             return None
@@ -439,6 +494,14 @@ def _validate_image_magic(data: bytes) -> bool:
     )
 
 
+def _valid_image_file(path: Path) -> bool:
+    try:
+        with path.open("rb") as stream:
+            return _validate_image_magic(stream.read(12))
+    except OSError:
+        return False
+
+
 def _steam_stem(appid: int, profile: str) -> str:
     suffixes = {
         "steam-portrait": "p",
@@ -451,10 +514,13 @@ def _steam_stem(appid: int, profile: str) -> str:
     return f"{appid}{suffix}"
 
 
-def _is_managed(path: Path) -> bool:
+def _is_managed(path: Path, optimized_root: Path | None = None) -> bool:
     try:
         if path.is_symlink():
-            return True
+            if optimized_root is None:
+                return True
+            resolved = path.resolve(strict=True)
+            return resolved.is_file() and fs.is_within(optimized_root.resolve(), resolved)
         content = path.read_bytes()
         return _OWNERSHIP_MARKER.encode() in content
     except OSError:
@@ -502,6 +568,3 @@ def _optimized_from_master(opt_path: Path, master_path: Path) -> bool:
         return opt_path.stat().st_size > 0
     except OSError:
         return False
-
-
-

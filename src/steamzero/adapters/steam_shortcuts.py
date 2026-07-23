@@ -184,6 +184,38 @@ class SteamShortcutManager:
         except SteamZeroError:
             return None
 
+    def media_grid_dir(self, account_id: str) -> Path:
+        """Resolve o grid real de uma conta local sem aceitar path arbitrário."""
+        if not account_id.isdigit() or len(account_id) > 32:
+            raise SteamZeroError("E-API-SCHEMA", detail="accountId Steam inválido")
+        matches: list[Path] = []
+        for root in self._roots:
+            account = root / "userdata" / account_id
+            config = account / "config"
+            localconfig = config / "localconfig.vdf"
+            try:
+                resolved_account = account.resolve(strict=True)
+                resolved_config = config.resolve(strict=True)
+                resolved_localconfig = localconfig.resolve(strict=True)
+            except OSError:
+                continue
+            if (
+                account.is_symlink()
+                or config.is_symlink()
+                or localconfig.is_symlink()
+                or not resolved_config.is_relative_to(resolved_account)
+                or not resolved_localconfig.is_relative_to(resolved_account)
+            ):
+                continue
+            matches.append(resolved_config / "grid")
+        unique = list(dict.fromkeys(matches))
+        if len(unique) != 1:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail="conta Steam local ausente ou ambígua",
+            )
+        return unique[0]
+
     def plan(self, games: Sequence[Mapping[str, Any]]) -> transaction.Plan:
         if self._running_probe():
             raise SteamZeroError(

@@ -707,7 +707,9 @@ ApplicationWindow {
                 "gameId": action.gameId || (action.id.indexOf("game.delete:") === 0
                     ? action.id.split(":")[1] : ""),
                 "selected": action.selected === true,
-                "value": action.value === true
+                "value": action.value === true,
+                "steamUserId": action.steamUserId || "",
+                "mediaKinds": action.mediaKinds || []
             }
             requestAction("emulation.action.plan", payload, function(response) {
                 emulationPlan = response.plan
