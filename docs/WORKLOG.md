@@ -2385,3 +2385,43 @@ Deck continua necessário.
 **Host/release:** nenhuma instalação, alteração em `/opt`, `/etc` ou
 `/usr/local`, build de release ou mutação do host foi executada. A infraestrutura
 de desenvolvimento local foi usada somente via `.venv` e Qt offscreen.
+
+## 2026-07-22 — Sessão: fechamento de produção handheld e serviços operacionais
+
+**Branch:** `codex/handheld-production-closure`, base exata `a8c835a`, sem
+alterar `codex/desktop-ergonomia-d0`.
+
+| WI | Commit | Evidência principal |
+|---|---|---|
+| P0 — caminhos AF_UNIX resilientes | `e13e976` | fallback curto determinístico/privado e testes de runtime curto, longo, ausente, inseguro, symlink e concorrência |
+| P1 — smoke integrado real | `65991e0` | jornada root → scan/job → scraping → seleção → Steam, offline/retry/rollback e segredo ausente |
+| P2–P3 — saves e shader cache | `58d3bae` | destino confirmado, backup/restore transacional, rollback byte-idêntico, traversal/symlink/limites, fingerprint e invalidação reversível |
+| P4 — mods | `58d3bae` | conflito de destinos bloqueado; prioridade publicada como não suportada e controles ocultos |
+| P5 — sync | `58d3bae` | fila/conflitos reais em read model somente leitura; dependência de `CloudPort` registrada na ADR-0016 |
+| P6 — diagnóstico | `58d3bae` | operações paginadas, exportação de estado sanitizada, bundle agregado, preview e admin health allowlisted |
+| P7 — validação física | `972bec6` | host Deck/dock e renderização real capturados; matriz de interação marcada explicitamente como não executada |
+
+**Gates finais do código:** 1179 testes passaram no ambiente temporário padrão
+e 1179 passaram novamente com `XDG_RUNTIME_DIR` artificialmente extenso. Ruff
+passou em `src tools tests`; mypy passou em 136 arquivos; independência de
+runtime, fronteiras (0 violações), `qmllint` dos QML alterados e
+`git diff --check` passaram.
+
+**Host observado:** Valve Jupiter/Steam Deck LCD, AMD VanGogh/amdgpu, KDE
+Wayland/KWin 6.6.6 e Qt 6.11.1. O painel interno estava em 1280×800 efetivo,
+escala 1,35; um monitor DP 2560×1080 estava conectado. A UI da fonte commitada
+foi executada com HOME/XDG temporários vazios e encerrada normalmente. As
+capturas sanitizadas e hashes estão em
+`docs/09-operations/HANDHELD-PHYSICAL-VALIDATION-2026-07-22.md`.
+
+**Limites não simulados:** prioridade determinística de mods continua ausente;
+sync não possui provider/mutações seguras; session recovery não possui contrato
+do daemon. O indicador de operações de preservação é indeterminado, sem
+telemetria granular por byte. Toque, D-pad, analógicos, A/B/X/Y, teclado
+virtual, foco/retorno de drawers, movimento reduzido e a travessia física de
+todas as telas continuam dependendo do operador.
+
+**Host/release:** nenhuma release, wheel ou wheelhouse foi construída; nenhum
+`bigsudo`, instalador, alteração em `/opt`, `/etc`, `/usr/local` ou reboot foi
+executado. P7 não está completo, portanto release e instalação permanecem
+bloqueadas pelas próprias regras da tarefa.
