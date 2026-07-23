@@ -28,25 +28,28 @@ Cada linha da matriz contém:
 | Rollback manual de componente | o engine consegue reverter durante a transação, mas a bridge não publica seleção auditável de operação por componente |
 | Recovery manual de componente | recovery é interno ao engine e ainda não existe como endpoint Desktop isolado |
 | Histórico de perfis | revisão mostra a diferença antes de aplicar e há recovery; o store não publica uma linha do tempo pela bridge |
-| Histórico global de operações | o journal existe, mas não há read model sanitizado e paginado para a GUI |
-| Restore/migração direta de saves | o domínio possui primitivas transacionais, mas a bridge ainda não resolve com segurança o destino real por jogo/emulador |
-| Invalidação/restauração direta de shader cache | o domínio exige raiz, lista de arquivos e fingerprint de driver; esses fatos ainda não são publicados pelo controller |
-| Prioridade de mods | ativar, desativar e remover são persistidos; o store atual não possui ordenação/prioridade confiável |
-| Exportação de estado | a CLI não possui destino GUI seguro via portal |
-| Saúde administrativa | o helper não publica endpoint para a bridge |
+| Prioridade de mods | ativar, desativar e remover são transacionais, mas os emuladores gerenciados não fornecem ordem determinística verificável; o backend publica a capacidade como ausente e a UI oculta mover acima/abaixo |
 | Recuperação de sessão | pertence ao daemon e ainda não tem contrato Desktop |
-| Pacote de suporte | política de sanitização existe, geração GUI não |
-| Retry/cancel de sync | o snapshot de sync ainda é somente leitura |
+| Retry/cancel/resolução de conflito de sync | a fila é real e somente leitura; ainda não existe `CloudPort` autenticado nem mutações transacionais allowlisted na bridge |
 
-A fila de jobs de emulação deixou de ser lacuna: lista, progresso, resultado,
-cancelamento seguro e nova tentativa são publicados pela bridge e consumidos
-pela Central de tarefas global.
+A fila de jobs de emulação publica lista, progresso, resultado, cancelamento
+seguro e nova tentativa. Saves publicam destino confirmado por jogo/emulador,
+inventário de backups e restore transacional com rollback byte-idêntico. Shader
+cache publica driver/fingerprint, versão, tamanho, backup/restore compatível e
+invalidação por rename atômico com recovery. Destinos ambíguos ou inseguros não
+produzem botões.
 
 Perfis Steam expõem estado atual, prévia e diferenças no diálogo de revisão,
 aplicação confirmada e recovery do launcher. Opções de lançamento, manutenção,
 mídia Steam, LSFG e ações transacionais de emulação têm reversão/recuperação
-nas rotas indicadas pela matriz. A fila de sync permanece somente como resumo:
-conflito, retry, cancelamento e saúde do provider não são inferidos pela QML.
+nas rotas indicadas pela matriz. A fila de sync mostra itens e conflitos reais,
+mas declara explicitamente modo somente leitura, provider ausente e a
+dependência necessária para mutações.
+
+Sistema publica histórico de operações paginado com alvos hashados, estado da
+sessão, health administrativo estritamente allowlisted, exportação transacional
+do estado sanitizado e bundle de suporte agregado. Ambos exigem destino escolhido
+e preview antes do token de confirmação; session recovery permanece ausente.
 
 Os escopos Portátil e Dock publicam valores semanticamente distintos derivados
 do contexto observado (resolução, escala e controles). TDP, FPS, gráficos e
