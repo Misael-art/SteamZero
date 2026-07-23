@@ -52,6 +52,12 @@ from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState
 from steamzero.domain.switch_mods import InstalledMod, ModType
+from steamzero.domain.switch_roots import (
+    SwitchRootManager,
+    root_id,
+    sanitize_display_path,
+    validate_rom_root,
+)
 from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
@@ -500,6 +506,7 @@ class EmulationController:
     )
 
     def library_roots(self) -> list[str]:
+        configured, excluded = self._root_config()
         candidates = [
             paths.roms_dir(),
             Path.home() / "Emulation" / "roms",
@@ -509,7 +516,7 @@ class EmulationController:
             Path.home() / "ROMs",
             Path.home() / "roms",
         ]
-        candidates.extend(self._custom_roots())
+        candidates.extend(configured)
         result: list[str] = []
         seen: set[Path] = set()
         for candidate in candidates:
@@ -517,7 +524,13 @@ class EmulationController:
                 resolved = candidate.resolve(strict=True)
             except OSError:
                 continue
-            if resolved in seen or resolved.is_symlink() or not resolved.is_dir():
+            if (
+                resolved in seen
+                or resolved in excluded
+                or candidate.is_symlink()
+                or any(parent.is_symlink() for parent in candidate.absolute().parents)
+                or not resolved.is_dir()
+            ):
                 continue
             if resolved.name.casefold() in self._SPECIAL_ROOT_NAMES:
                 continue
@@ -535,6 +548,33 @@ class EmulationController:
             if not any(Path(c) != Path(r) and Path(r).is_relative_to(Path(c)) for c in result):
                 compacted.append(r)
         return compacted
+
+    def registered_library_roots(self) -> list[Path]:
+        """Raízes ativas, incluindo as customizadas temporariamente inacessíveis."""
+        configured, excluded = self._root_config()
+        automatic = [
+            paths.roms_dir(),
+            Path.home() / "Emulation" / "roms",
+            Path.home() / "emulation" / "roms",
+            Path.home() / "Games" / "ROMs",
+            Path.home() / "Games" / "roms",
+            Path.home() / "ROMs",
+            Path.home() / "roms",
+        ]
+        candidates = [
+            *(candidate for candidate in automatic if candidate.exists()),
+            *configured,
+        ]
+        result: list[Path] = []
+        seen: set[Path] = set()
+        for candidate in candidates:
+            absolute = candidate.absolute()
+            comparable = candidate.resolve(strict=False)
+            if comparable in excluded or absolute in seen:
+                continue
+            seen.add(absolute)
+            result.append(absolute)
+        return result
 
     def scan_library(self) -> dict[str, Any]:
         job = self._jobs.create(
@@ -556,10 +596,13 @@ class EmulationController:
         unidentified = 0
         errors: list[str] = []
         roots = self.library_roots()
+        scanned_at = datetime.now(UTC).isoformat()
+        root_stats: dict[str, dict[str, Any]] = {}
         if ctx is not None:
             ctx.set_progress("scan", current=0, total=len(roots), unit="roots")
         for root_index, raw_root in enumerate(roots):
             root = Path(raw_root)
+            counts = {"base": 0, "updates": 0, "dlcs": 0, "incompatible": 0, "errors": 0}
             if ctx is not None:
                 ctx.safepoint()
                 ctx.set_progress(
@@ -573,8 +616,16 @@ class EmulationController:
                 matches = scanner.inventory(root)
             except (OSError, SteamZeroError) as exc:
                 errors.append(f"{root}: {exc}")
+                counts["errors"] += 1
+                root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
+                if match.content_kind == "base":
+                    counts["base"] += 1
+                elif match.content_kind == "update":
+                    counts["updates"] += 1
+                elif match.content_kind == "dlc":
+                    counts["dlcs"] += 1
                 if match.content_kind != "base":
                     auxiliary.append(match)
                     continue
@@ -582,6 +633,7 @@ class EmulationController:
                     stat = match.path.stat()
                 except OSError as exc:
                     errors.append(f"{match.path}: {exc}")
+                    counts["errors"] += 1
                     continue
                 fingerprint = hashlib.sha256(
                     f"{match.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
@@ -622,6 +674,18 @@ class EmulationController:
                     "coverUrl": banner_asset,
                     "mediaSource": media_source,
                 }
+            try:
+                for candidate in root.rglob("*"):
+                    if candidate.is_symlink():
+                        counts["errors"] += 1
+                    elif (
+                        candidate.is_file()
+                        and candidate.suffix.casefold() in {".7z", ".rar", ".zip"}
+                    ):
+                        counts["incompatible"] += 1
+            except OSError:
+                counts["errors"] += 1
+            root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
             if ctx is not None:
                 ctx.set_progress(
                     "scan",
@@ -672,6 +736,8 @@ class EmulationController:
             "unidentified": unidentified,
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
+            "rootStats": root_stats,
+            "scannedAt": scanned_at,
         }
         fs.write_atomic_text(
             self._library_cache_path,
@@ -689,8 +755,73 @@ class EmulationController:
 
     def plan_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         action = self._required_string(payload, "actionId")
+        plan_extra: dict[str, Any] = {}
         if action == "library.root.add":
             plan = self._plan_root_add(Path(self._required_string(payload, "path")))
+        elif action.startswith("library.root.open:"):
+            selected_root = self._root_from_action(action)
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="emulation.library-root-open"
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "library-root-open", {"root": str(selected_root)}
+            )
+        elif action.startswith("library.root.scan:"):
+            selected_root = self._root_from_action(action)
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="emulation.library-root-scan"
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "library-root-scan", {"root": str(selected_root)}
+            )
+        elif action.startswith("library.root.audit:"):
+            selected_root = self._root_from_action(action)
+            audit = SwitchRootManager(selected_root).audit()
+            approved = payload.get("approvedPaths", [])
+            if not isinstance(approved, list) or not all(
+                isinstance(value, str) for value in approved
+            ):
+                raise SteamZeroError("E-API-SCHEMA", detail="approvedPaths deve ser uma lista")
+            if approved:
+                plan, quarantine_id = SwitchRootManager(selected_root).plan_quarantine(
+                    audit, approved
+                )
+                self._pending[plan.plan_id] = _PendingMutation(
+                    "library-root-quarantine",
+                    {"root": str(selected_root), "quarantineId": quarantine_id},
+                )
+                plan_extra["quarantineId"] = quarantine_id
+            else:
+                plan = transaction.plan_write_files(
+                    {}, root=paths.data_home(), kind="emulation.library-root-audit"
+                )
+                self._pending[plan.plan_id] = _PendingMutation(
+                    "library-root-audit", {"root": str(selected_root), "audit": audit}
+                )
+            plan_extra["auditPreview"] = audit
+            counts = audit["counts"]
+            plan_extra["preview"] = (
+                "Auditoria somente leitura; nenhum arquivo será apagado.\n"
+                f"Base: {counts['base']} · updates: {counts['update']} · "
+                f"DLC: {counts['dlc']} · duplicados: {counts['duplicate']} · "
+                f"incompatíveis: {counts['incompatible']} · "
+                f"corrompidos: {counts['corrupted']} · desconhecidos: {counts['unknown']}.\n"
+                "Para higienizar, selecione explicitamente itens não jogáveis do preview; "
+                "eles serão movidos para quarentena com manifesto, hashes e rollback."
+            )
+        elif action.startswith("library.root.rename:"):
+            selected_root = self._root_from_action(action)
+            games, _unidentified = self._load_library_cache()
+            games_in_root = [
+                game
+                for game in games
+                if isinstance(game.get("path"), str)
+                and Path(str(game["path"])).is_relative_to(selected_root)
+            ]
+            plan = SwitchRootManager(selected_root).plan_rename(games_in_root)
+        elif action.startswith("library.root.remove:"):
+            selected_root = self._root_from_action(action, require_accessible=False)
+            plan = self._plan_root_remove(selected_root)
         elif action == "keys.import":
             plan = self._plan_keys(Path(self._required_string(payload, "path")))
         elif action == "keys.repair":
@@ -1054,7 +1185,7 @@ class EmulationController:
             )
         else:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de emulação não permitida")
-        return self._plan_view(plan, action)
+        return self._plan_view(plan, action, **plan_extra)
 
     def apply_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         plan = transaction.load_plan(plan_id)
@@ -1084,6 +1215,8 @@ class EmulationController:
             in {
                 "rom.scan",
                 "media.audit",
+                "switch-library.rename",
+                "switch-library.quarantine",
             }
             or plan.kind.startswith("media.")
         ):
@@ -1146,6 +1279,14 @@ class EmulationController:
                 response["job"] = self._job_view(completed)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
+            elif pending.kind == "library-root-open":
+                response.update(self._open_library_root(Path(str(pending.metadata["root"]))))
+            elif pending.kind == "library-root-scan":
+                response.update(self._scan_library_now())
+            elif pending.kind == "library-root-audit":
+                response["auditPreview"] = pending.metadata["audit"]
+            elif pending.kind == "library-root-quarantine":
+                response["quarantineId"] = pending.metadata["quarantineId"]
             elif pending.kind == "rom-scan":
                 roots = pending.metadata.get("roots", [])
                 job = self._jobs.create(
@@ -1532,19 +1673,25 @@ class EmulationController:
             raise SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
         records = journal.read_records(operation_id)
         begins = [record for record in records if record.get("type") == "operation.begin"]
-        if len(begins) != 1 or not str(begins[0].get("kind", "")).startswith(
-            "emulation.game-delete:"
-        ):
+        kind = str(begins[0].get("kind", "")) if len(begins) == 1 else ""
+        allowed = kind.startswith("emulation.game-delete:") or kind in {
+            "switch-library.rename",
+            "switch-library.quarantine",
+        }
+        if not allowed:
             raise SteamZeroError(
-                "E-TX-STALE-PLAN", detail="operação não pertence à exclusão de ROM"
+                "E-TX-STALE-PLAN",
+                detail="operação não pertence à exclusão ou organização da biblioteca Switch",
             )
         result = transaction.rollback(operation_id, reason="emulation-user-request")
-        return {
+        response: dict[str, Any] = {
             "status": result.status,
             "operationId": result.operation_id,
             "restored": result.restored,
-            "library": self.scan_library(),
         }
+        if kind.startswith("emulation.game-delete:") or kind == "switch-library.rename":
+            response["library"] = self.scan_library()
+        return response
 
     def _emulator_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
@@ -1890,6 +2037,126 @@ class EmulationController:
             ],
         }
 
+    def _library_root_rows(self, games: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+        stats: Mapping[str, Any] = {}
+        try:
+            if self._library_cache_path.is_file() and not self._library_cache_path.is_symlink():
+                cached = json.loads(self._library_cache_path.read_text(encoding="utf-8"))
+                if isinstance(cached.get("rootStats"), Mapping):
+                    stats = cached["rootStats"]
+        except (OSError, json.JSONDecodeError, AttributeError):
+            stats = {}
+
+        rows: list[dict[str, Any]] = []
+        for root in self.registered_library_roots():
+            identifier = root_id(root)
+            try:
+                safe_root = validate_rom_root(root)
+                accessible = True
+            except SteamZeroError:
+                safe_root = root.absolute()
+                accessible = False
+            raw_stats = stats.get(identifier, {})
+            raw_counts = raw_stats.get("counts", {}) if isinstance(raw_stats, Mapping) else {}
+            counts = {
+                "base": int(raw_counts.get("base", 0)),
+                "updates": int(raw_counts.get("updates", 0)),
+                "dlcs": int(raw_counts.get("dlcs", 0)),
+                "incompatible": int(raw_counts.get("incompatible", 0)),
+                "errors": int(raw_counts.get("errors", 0)),
+            }
+            last_scan = (
+                raw_stats.get("lastScan") if isinstance(raw_stats, Mapping) else None
+            )
+            root_games = [
+                game
+                for game in games
+                if isinstance(game.get("path"), str)
+                and Path(str(game["path"])).is_relative_to(safe_root)
+            ]
+            unavailable_reason = "A raiz registrada está ausente ou não é um caminho real."
+            actions = [
+                self._action(
+                    f"library.root.open:{identifier}",
+                    "Abrir pasta",
+                    enabled=accessible,
+                    reason=None if accessible else unavailable_reason,
+                ),
+                self._action(
+                    f"library.root.scan:{identifier}",
+                    "Varrer agora",
+                    enabled=accessible,
+                    reason=None if accessible else unavailable_reason,
+                    confirmation=True,
+                ),
+                self._action(
+                    f"library.root.audit:{identifier}",
+                    "Auditar/higienizar",
+                    enabled=accessible,
+                    reason=None if accessible else unavailable_reason,
+                    confirmation=True,
+                ),
+                self._action(
+                    f"library.root.rename:{identifier}",
+                    "Corrigir nomes",
+                    enabled=accessible and bool(root_games),
+                    reason=(
+                        None
+                        if accessible and root_games
+                        else unavailable_reason
+                        if not accessible
+                        else "Faça uma varredura antes de corrigir nomes."
+                    ),
+                    confirmation=True,
+                ),
+                self._action(
+                    f"library.root.remove:{identifier}",
+                    "Remover da biblioteca",
+                    confirmation=True,
+                ),
+            ]
+            if root_games:
+                actions.append(
+                    self._action(
+                        f"game.media.import:{root_games[0]['id']}",
+                        "Adicionar mídia para um jogo",
+                        confirmation=True,
+                    )
+                )
+            else:
+                actions.append(
+                    self._action(
+                        f"library.root.media-unavailable:{identifier}",
+                        "Adicionar mídia para um jogo",
+                        enabled=False,
+                        reason="Nenhum jogo desta raiz está disponível após a varredura.",
+                    )
+                )
+            rows.append(
+                self._card(
+                    f"library-root-{identifier}",
+                    "Diretório de ROMs",
+                    (
+                        f"{sanitize_display_path(root)} · {counts['base']} base(s), "
+                        f"{counts['updates']} update(s), {counts['dlcs']} DLC(s), "
+                        f"{counts['incompatible']} incompatível(is), "
+                        f"{counts['errors']} erro(s) · última varredura: "
+                        f"{last_scan or 'nunca'}"
+                    ),
+                    "ready" if accessible and counts["errors"] == 0 else "attention",
+                    "Acessível" if accessible else "Inacessível",
+                    actions=actions,
+                )
+                | {
+                    "rootId": identifier,
+                    "displayPath": sanitize_display_path(root),
+                    "accessible": accessible,
+                    "counts": counts,
+                    "lastScan": last_scan,
+                }
+            )
+        return rows
+
     def _area_data(
         self,
         emulators: list[dict[str, Any]],
@@ -1925,6 +2192,7 @@ class EmulationController:
             )
         )
         media_pipeline = self._media_pipeline_summary(games)
+        library_root_rows = self._library_root_rows(games)
         return {
             "overview": {
                 "cards": [
@@ -2132,13 +2400,21 @@ class EmulationController:
             },
             "media": {
                 "cards": [
-                    self._card(
-                        "roots",
-                        "Diretórios de ROMs",
-                        "\n".join(roots) if roots else "Nenhum diretório existente encontrado.",
-                        "ready" if roots else "attention",
-                        f"{len(roots)}",
-                        action=self._action("library.root.add", "Adicionar diretório"),
+                    *(
+                        library_root_rows
+                        if library_root_rows
+                        else [
+                            self._card(
+                                "roots-empty",
+                                "Diretórios de ROMs",
+                                "Nenhum diretório registrado.",
+                                "attention",
+                                "Aguardando diretório",
+                                action=self._action(
+                                    "library.root.add", "Adicionar diretório"
+                                ),
+                            )
+                        ]
                     ),
                     self._card(
                         "identified",
@@ -2246,6 +2522,7 @@ class EmulationController:
                 ],
                 "primaryAction": self._action("library.scan", "Varrer agora"),
                 "mediaPipeline": media_pipeline,
+                "libraryRoots": library_root_rows,
             },
             "storage": {
                 "cards": [
@@ -2632,20 +2909,57 @@ class EmulationController:
             return StateStoreCheatsAdapter(store.adapter_connection()).get_by_id(record_id)
 
     def _plan_root_add(self, selected: Path) -> transaction.Plan:
-        if selected.is_symlink() or not selected.is_dir():
-            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="diretório de ROMs inválido")
-        resolved = selected.resolve(strict=True)
-        roots = self._custom_roots()
+        resolved = validate_rom_root(
+            selected,
+            managed_roots=(
+                paths.keys_dir(),
+                paths.firmware_dir(),
+                paths.media_dir(),
+                paths.data_home() / "cache",
+            ),
+        )
+        roots, excluded = self._root_config()
         if resolved not in roots:
             roots.append(resolved)
+        excluded.discard(resolved)
         ordered_roots = sorted(roots, key=str)
-        data = {"schemaVersion": 1, "roots": [str(root) for root in ordered_roots]}
+        data = {
+            "schemaVersion": 1,
+            "roots": [str(root) for root in ordered_roots],
+            "excludedRoots": [str(root) for root in sorted(excluded, key=str)],
+        }
         writes = {self._roots_path: json.dumps(data, sort_keys=True, ensure_ascii=False).encode()}
         writes.update(self._emulator_game_directory_writes(self._configured_game_roots(resolved)))
         root = self._compatible_root(writes)
         return transaction.plan_write_files(
             writes,
             root=root,
+            kind="emulation.library-roots",
+        )
+
+    def _plan_root_remove(self, selected: Path) -> transaction.Plan:
+        roots, excluded = self._root_config()
+        roots = [
+            root
+            for root in roots
+            if root.resolve(strict=False) != selected.resolve(strict=False)
+        ]
+        excluded.add(selected.resolve(strict=False))
+        data = {
+            "schemaVersion": 1,
+            "roots": [str(root) for root in sorted(roots, key=str)],
+            "excludedRoots": [str(root) for root in sorted(excluded, key=str)],
+        }
+        active_roots = tuple(
+            Path(raw)
+            for raw in self.library_roots()
+            if Path(raw).resolve(strict=False) != selected.resolve(strict=False)
+        )
+        writes = {self._roots_path: json.dumps(data, sort_keys=True, ensure_ascii=False).encode()}
+        writes.update(self._emulator_game_directory_writes(active_roots))
+        return transaction.plan_write_files(
+            writes,
+            root=self._compatible_root(writes),
             kind="emulation.library-roots",
         )
 
@@ -3405,19 +3719,57 @@ class EmulationController:
         return {"opened": True, "target": "media-cache"}
 
     def _custom_roots(self) -> list[Path]:
+        roots, _excluded = self._root_config()
+        return roots
+
+    def _root_config(self) -> tuple[list[Path], set[Path]]:
         if not self._roots_path.is_file() or self._roots_path.is_symlink():
-            return []
+            return [], set()
         try:
             data = json.loads(self._roots_path.read_text(encoding="utf-8"))
             if data.get("schemaVersion") != 1 or not isinstance(data.get("roots"), list):
-                return []
-            return [
+                return [], set()
+            roots = [
                 Path(value)
                 for value in data["roots"]
                 if isinstance(value, str) and Path(value).is_absolute()
             ]
+            raw_excluded = data.get("excludedRoots", [])
+            excluded = {
+                Path(value).resolve(strict=False)
+                for value in raw_excluded
+                if isinstance(value, str) and Path(value).is_absolute()
+            }
+            return roots, excluded
         except (OSError, json.JSONDecodeError, AttributeError):
-            return []
+            return [], set()
+
+    def _root_from_action(self, action: str, *, require_accessible: bool = True) -> Path:
+        candidate_id = action.rsplit(":", 1)[-1]
+        if re.fullmatch(r"[0-9a-f]{24}", candidate_id) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="identificador de raiz inválido")
+        for candidate in self.registered_library_roots():
+            if root_id(candidate) != candidate_id:
+                continue
+            if require_accessible:
+                return validate_rom_root(candidate)
+            return candidate.absolute()
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="raiz não registrada")
+
+    def _open_library_root(self, selected: Path) -> dict[str, object]:
+        registered = self._root_from_action(f"library.root.open:{root_id(selected)}")
+        resolved = validate_rom_root(registered)
+        executable = self._which("xdg-open")
+        if executable is None:
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail="xdg-open indisponível")
+        try:
+            self._spawn((executable, str(resolved)))
+        except Exception as exc:
+            raise SteamZeroError(
+                "E-DESKTOP-VERIFY",
+                detail="não foi possível abrir a raiz registrada",
+            ) from exc
+        return {"opened": True, "target": "library-root", "rootId": root_id(resolved)}
 
     @staticmethod
     def _new_copy_targets(

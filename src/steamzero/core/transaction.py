@@ -316,6 +316,7 @@ def plan_move_files(
     root: Path,
     kind: str = "library.organize",
     ttl_s: int = _DEFAULT_TTL_S,
+    writes: dict[Path, bytes] | None = None,
 ) -> Plan:
     """Planeja renomes/movimentos confinados sem embutir conteúdo no plano.
 
@@ -370,6 +371,28 @@ def plan_move_files(
             )
         )
         total_size += size
+
+    occupied_targets = set(targets)
+    for requested_target, content in sorted((writes or {}).items(), key=lambda item: str(item[0])):
+        target = _resolve_target_within(root_r, requested_target)
+        if target in occupied_targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
+        if target.is_symlink():
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"escrita recusou destino symlink: {target}"
+            )
+        occupied_targets.add(target)
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(target),
+                new_hash=fs.hash_bytes(content),
+                new_size=len(content),
+                new_content_b64=base64.b64encode(content).decode("ascii"),
+            )
+        )
+        preconditions.append(Precondition(target=str(target), fingerprint=_fingerprint(target)))
+        total_size += len(content)
 
     now = _now()
     plan = Plan(

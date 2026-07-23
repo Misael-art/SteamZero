@@ -681,16 +681,122 @@ def test_firmware_folder_is_not_registered_as_game_directory(monkeypatch, tmp_pa
         encoding="utf-8",
     )
 
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action({"actionId": "library.root.add", "path": str(firmware)})
+    assert exc.value.code == "E-CONTENT-UNSAFE-PATH"
+    assert str(firmware) in eden.read_text(encoding="utf-8")
+    assert str(firmware) in json.loads(ryubing.read_text(encoding="utf-8"))["game_dirs"]
+
+
+def test_library_root_read_model_open_scan_and_unregister_without_deleting_roms(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    opened: list[tuple[str, ...]] = []
+    controller = _controller(monkeypatch, tmp_path)
+    controller._which = lambda command: "/usr/bin/xdg-open" if command == "xdg-open" else None  # type: ignore[attr-defined]
+    controller._spawn = lambda argv: opened.append(tuple(argv)) or None  # type: ignore[attr-defined]
+    root = tmp_path / "owned-roms"
+    root.mkdir()
+    rom = root / "Example [0100ABCDEF123000].nsp"
+    rom.write_bytes(b"owned-game")
+    (root / "Update [0100ABCDEF123800].nsp").write_bytes(b"owned-update")
+    (root / "DLC [0100ABCDEF124001].nsp").write_bytes(b"owned-dlc")
+    (root / "archive.zip").write_bytes(b"archive")
     _apply(
         controller,
-        controller.plan_action({"actionId": "library.root.add", "path": str(firmware)}),
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    controller.scan_library()
+
+    media = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"]
+    row = next(item for item in media["libraryRoots"] if item["displayPath"] == str(root))
+    assert row["accessible"] is True
+    assert row["counts"] == {
+        "base": 1,
+        "updates": 1,
+        "dlcs": 1,
+        "incompatible": 1,
+        "errors": 0,
+    }
+    actions = {action["label"]: action for action in row["actions"]}
+    opened_result = _apply(
+        controller,
+        controller.plan_action({"actionId": actions["Abrir pasta"]["id"]}),
+    )
+    assert opened_result["opened"] is True
+    assert opened == [("/usr/bin/xdg-open", str(root))]
+
+    remove_plan = controller.plan_action(
+        {"actionId": actions["Remover da biblioteca"]["id"]}
+    )
+    _apply(controller, remove_plan)
+    assert rom.read_bytes() == b"owned-game"
+    assert str(root) not in controller.library_roots()
+
+
+def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "offline-roms"
+    root.mkdir()
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    root.rmdir()
+
+    rows = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
+        "libraryRoots"
+    ]
+    row = next(item for item in rows if item["displayPath"] == str(root))
+    assert row["accessible"] is False
+    assert next(action for action in row["actions"] if action["label"] == "Abrir pasta")[
+        "enabled"
+    ] is False
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action({"actionId": "library.root.open:" + "a" * 24})
+    assert exc.value.code == "E-CONTENT-UNSAFE-PATH"
+
+
+def test_library_root_audit_requires_explicit_selection_and_quarantine_rolls_back(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "audit-roms"
+    root.mkdir()
+    unknown = root / "readme.txt"
+    unknown.write_bytes(b"keep-until-approved")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    row = next(
+        item
+        for item in controller.snapshot({"context": {}})["platforms"][0]["areaData"][
+            "media"
+        ]["libraryRoots"]
+        if item["displayPath"] == str(root)
+    )
+    audit_action = next(
+        action for action in row["actions"] if action["label"] == "Auditar/higienizar"
     )
 
-    assert str(default_root) in eden.read_text(encoding="utf-8")
-    assert str(firmware) not in eden.read_text(encoding="utf-8")
-    configured = json.loads(ryubing.read_text(encoding="utf-8"))["game_dirs"]
-    assert str(default_root) in configured
-    assert str(firmware) not in configured
+    preview = controller.plan_action({"actionId": audit_action["id"]})
+    assert preview["auditPreview"]["counts"]["unknown"] == 1
+    assert unknown.read_bytes() == b"keep-until-approved"
+    quarantining = controller.plan_action(
+        {"actionId": audit_action["id"], "approvedPaths": ["readme.txt"]}
+    )
+    result = _apply(controller, quarantining)
+    quarantine = root / ".steamzero-quarantine" / str(result["quarantineId"])
+    assert not unknown.exists()
+    assert (quarantine / "readme.txt").read_bytes() == b"keep-until-approved"
+
+    rolled_back = controller.rollback_action(str(result["operationId"]))
+    assert rolled_back["status"] == "rolled-back"
+    assert unknown.read_bytes() == b"keep-until-approved"
+    assert not (quarantine / "manifest.json").exists()
 
 
 def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

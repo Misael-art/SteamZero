@@ -180,7 +180,11 @@
       "properties": {
         "cards": {"type": "array", "items": {"$ref": "#/$defs/card"}},
         "primaryAction": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]},
-        "mediaPipeline": {"type": "object", "additionalProperties": true}
+        "mediaPipeline": {"type": "object", "additionalProperties": true},
+        "libraryRoots": {
+          "type": "array",
+          "items": {"type": "object", "additionalProperties": true}
+        }
       }
     },
     "platform": {
