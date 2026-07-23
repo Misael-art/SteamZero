@@ -71,6 +71,10 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-JOBS-BLOCKED-GAMEPLAY` job proibido durante jogo ativo.
 - `E-JOBS-BLOCKED-BATTERY` aguardando energia.
 
+### SCRAPE
+- `E-SCRAPE-HTTP-ERROR` provedor respondeu com erro HTTP inesperado; fallback continua.
+- `E-SCRAPE-OFFLINE` conexão com o provedor indisponível; operações locais continuam.
+
 ## Governança
 
 Novo código exige: entrada neste catálogo + textos pt-BR/en + teste que o dispara. CI falha se código emitido não consta no catálogo.
