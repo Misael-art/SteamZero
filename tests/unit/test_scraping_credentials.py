@@ -220,12 +220,48 @@ class TestEmulationControllerCredential:
         assert restored.reveal() == "old"
 
     def test_provider_link_is_limited_to_catalog_url(self, tmp_path: Path) -> None:
-        ctrl = _controller(tmp_path)
-        assert ctrl.provider_link("steamgriddb", "credentials") == {
-            "url": "https://www.steamgriddb.com/profile/preferences/api"
+        calls: list[tuple[str, ...]] = []
+        ctrl = EmulationController(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            which=lambda command: "/usr/bin/xdg-open" if command == "xdg-open" else None,
+            spawn=lambda argv: calls.append(tuple(argv)),
+            secret_store=SessionSecretStore(),
+        )
+        expected = {
+            ("steamgriddb", "createAccount"): (
+                "https://www.steamgriddb.com/profile/preferences/api"
+            ),
+            ("steamgriddb", "credentials"): (
+                "https://www.steamgriddb.com/profile/preferences/api"
+            ),
+            ("steamgriddb", "documentation"): "https://www.steamgriddb.com/api/v2",
+            ("steamgriddb", "terms"): "https://www.steamgriddb.com/terms",
+            ("screenscraper", "createAccount"): (
+                "https://main.screenscraper.fr/membreinscription.php"
+            ),
+            ("screenscraper", "documentation"): (
+                "https://www.screenscraper.fr/webapi2.php"
+            ),
+            ("steam-web-api", "credentials"): "https://steamcommunity.com/dev/apikey",
         }
+        for (provider, link), url in expected.items():
+            assert ctrl.provider_link(provider, link) == {
+                "provider": provider,
+                "link": link,
+                "opened": True,
+            }
+            assert calls[-1] == ("/usr/bin/xdg-open", url)
+        call_count = len(calls)
         with pytest.raises(ValueError, match="link externo não permitido"):
             ctrl.provider_link("steamgriddb", "https://example.invalid")
+        with pytest.raises(ValueError, match="provedor não permitido"):
+            ctrl.provider_link("arbitrary", "documentation")
+        assert len(calls) == call_count
+
+    def test_provider_link_reports_missing_desktop_opener(self, tmp_path: Path) -> None:
+        ctrl = _controller(tmp_path)
+        with pytest.raises(SteamZeroError, match="E-DESKTOP-VERIFY"):
+            ctrl.provider_link("steamgriddb", "credentials")
 
 
 class TestSteamGridDbAdapterErrors:

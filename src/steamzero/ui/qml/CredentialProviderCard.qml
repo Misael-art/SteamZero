@@ -37,7 +37,10 @@ Rectangle {
     readonly property var saveControl: saveButton
     readonly property var testControl: testButton
     readonly property var revokeControl: revokeButton
+    readonly property var createAccountControl: createAccountButton
     readonly property var credentialLinkControl: credentialLinkButton
+    readonly property var documentationControl: documentationButton
+    readonly property var termsControl: termsButton
     readonly property var fieldRepeaterControl: fieldRepeater
 
     signal saveRequested(string providerId, var credentials)
@@ -333,6 +336,20 @@ Rectangle {
             }
         }
         Button {
+            id: createAccountButton
+            visible: Boolean(root.provider && root.provider.links
+                             && root.provider.links.createAccount)
+            text: qsTr("Criar conta")
+            enabled: visible && !root.busy
+            activeFocusOnTab: true
+            Accessible.name: text
+            Layout.fillWidth: true
+            Layout.minimumHeight: 48
+            palette.button: root.raisedColor
+            palette.buttonText: root.textColor
+            onClicked: root.linkRequested(root.provider.id, "createAccount")
+        }
+        Button {
             id: credentialLinkButton
             visible: Boolean(root.provider && root.provider.links
                              && root.provider.links.credentials)
@@ -345,6 +362,34 @@ Rectangle {
             palette.button: root.raisedColor
             palette.buttonText: root.textColor
             onClicked: root.linkRequested(root.provider.id, "credentials")
+        }
+        Button {
+            id: documentationButton
+            visible: Boolean(root.provider && root.provider.links
+                             && root.provider.links.documentation)
+            text: qsTr("Documentação")
+            enabled: visible && !root.busy
+            activeFocusOnTab: true
+            Accessible.name: text
+            Layout.fillWidth: true
+            Layout.minimumHeight: 48
+            palette.button: root.raisedColor
+            palette.buttonText: root.textColor
+            onClicked: root.linkRequested(root.provider.id, "documentation")
+        }
+        Button {
+            id: termsButton
+            visible: Boolean(root.provider && root.provider.links
+                             && root.provider.links.terms)
+            text: qsTr("Termos")
+            enabled: visible && !root.busy
+            activeFocusOnTab: true
+            Accessible.name: text
+            Layout.fillWidth: true
+            Layout.minimumHeight: 48
+            palette.button: root.raisedColor
+            palette.buttonText: root.textColor
+            onClicked: root.linkRequested(root.provider.id, "terms")
         }
         Label {
             visible: root.message.length > 0

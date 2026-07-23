@@ -24,7 +24,10 @@ def test_official_urls_are_exact_and_allowlisted() -> None:
         "https://www.steamgriddb.com/profile/preferences/api"
     )
     assert allowed_external_url("screenscraper", "createAccount") == (
-        "https://www.screenscraper.fr/membreinscription.php"
+        "https://main.screenscraper.fr/membreinscription.php"
+    )
+    assert allowed_external_url("screenscraper", "documentation") == (
+        "https://www.screenscraper.fr/webapi2.php"
     )
     assert (
         allowed_external_url("steam-web-api", "credentials")
@@ -37,3 +40,5 @@ def test_arbitrary_provider_and_url_are_rejected() -> None:
         provider_by_id("https://example.invalid")
     with pytest.raises(ValueError, match="link externo não permitido"):
         allowed_external_url("steamgriddb", "https://example.invalid")
+    with pytest.raises(ValueError, match="link externo não permitido"):
+        allowed_external_url("steam-local", "credentials")

@@ -14,6 +14,7 @@ Window {
     property string savedProvider: ""
     property var savedCredentials: ({})
     property var savedFieldRow: null
+    property var openedLinks: []
 
     function check(condition, message) {
         checks += 1
@@ -31,8 +32,12 @@ Window {
         check(!localCard.saveControl.visible
               && !localCard.testControl.visible
               && !localCard.revokeControl.visible
+              && !localCard.createAccountControl.visible
               && !localCard.credentialLinkControl.visible,
-              "integração local não pode expor ações de credencial")
+                  "integração local não pode expor ações de credencial")
+        check(!localCard.documentationControl.visible
+              && !localCard.termsControl.visible,
+              "integração local não pode herdar links de outro delegate")
         check(localCard.message === "",
               "mensagem do provider remoto não pode vazar para o card local")
         console.log("credentials checks=" + checks + " failures=" + failures)
@@ -59,11 +64,21 @@ Window {
                 "secret": true,
                 "required": true
             }],
-            "links": {"credentials": "https://www.steamgriddb.com/profile/preferences/api"}
+            "links": {
+                "createAccount": "https://www.steamgriddb.com/profile/preferences/api",
+                "credentials": "https://www.steamgriddb.com/profile/preferences/api",
+                "documentation": "https://www.steamgriddb.com/api/v2",
+                "terms": "https://www.steamgriddb.com/terms"
+            }
         })
         onSaveRequested: function(providerId, credentials) {
             harness.savedProvider = providerId
             harness.savedCredentials = credentials
+        }
+        onLinkRequested: function(providerId, linkKey) {
+            harness.openedLinks = harness.openedLinks.concat([
+                providerId + ":" + linkKey
+            ])
         }
     }
 
@@ -118,6 +133,14 @@ Window {
                   "sucesso verificado deve atualizar o badge")
             check(remoteCard.message.indexOf("salva") >= 0,
                   "mensagem de sucesso deve permanecer no card")
+            remoteCard.createAccountControl.clicked()
+            remoteCard.credentialLinkControl.clicked()
+            remoteCard.documentationControl.clicked()
+            remoteCard.termsControl.clicked()
+            check(openedLinks.join(",") ===
+                  "steamgriddb:createAccount,steamgriddb:credentials,"
+                  + "steamgriddb:documentation,steamgriddb:terms",
+                  "cada botão deve enviar somente seu provider e link lógico")
             Qt.callLater(harness.verifyCompletion)
         }
     }

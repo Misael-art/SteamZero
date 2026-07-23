@@ -156,7 +156,7 @@ _SCREENSCRAPER = ProviderDefinition(
     platforms=("switch",),
     media_kinds=("boxart", "screenshot", "manual"),
     links={
-        "createAccount": "https://www.screenscraper.fr/membreinscription.php",
+        "createAccount": "https://main.screenscraper.fr/membreinscription.php",
         "documentation": "https://www.screenscraper.fr/webapi2.php",
         "terms": "https://www.screenscraper.fr/conditions.php",
     },
@@ -263,6 +263,10 @@ def provider_by_id(provider_id: str) -> ProviderDefinition:
 
 def allowed_external_url(provider_id: str, link: str) -> str:
     url = provider_by_id(provider_id).links.get(link)
-    if url is None or not url.startswith("https://"):
+    if (
+        url is None
+        or not url.startswith("https://")
+        or any(character.isspace() for character in url)
+    ):
         raise ValueError("link externo não permitido")
     return url

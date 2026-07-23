@@ -1428,9 +1428,23 @@ class EmulationController:
                 "providerStatus": self._provider_credential_status(provider),
             }
 
-    def provider_link(self, provider: str, link: str) -> dict[str, str]:
-        """Retorna somente destinos HTTPS declarados pelo catálogo local."""
-        return {"url": allowed_external_url(provider, link)}
+    def provider_link(self, provider: str, link: str) -> dict[str, Any]:
+        """Abre somente destinos HTTPS declarados pelo catálogo local."""
+        url = allowed_external_url(provider, link)
+        executable = self._which("xdg-open")
+        if executable is None:
+            raise SteamZeroError(
+                "E-DESKTOP-VERIFY",
+                detail="xdg-open não está disponível para abrir o navegador",
+            )
+        try:
+            self._spawn((executable, url))
+        except Exception as exc:
+            raise SteamZeroError(
+                "E-DESKTOP-VERIFY",
+                detail="não foi possível abrir o link no navegador",
+            ) from exc
+        return {"provider": provider, "link": link, "opened": True}
 
     def rollback_action(self, operation_id: str) -> dict[str, Any]:
         if not ids.is_ulid(operation_id):
