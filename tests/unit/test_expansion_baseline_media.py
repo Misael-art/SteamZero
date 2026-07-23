@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 from pathlib import Path
 
@@ -292,7 +293,7 @@ def test_download_candidate_enforces_https_and_size(
 
     class Response:
         def __init__(self, data: bytes) -> None:
-            self.data = data
+            self.stream = io.BytesIO(data)
 
         def __enter__(self) -> Response:
             return self
@@ -300,8 +301,8 @@ def test_download_candidate_enforces_https_and_size(
         def __exit__(self, *_args: object) -> None:
             return None
 
-        def read(self, _size: int = -1) -> bytes:
-            return self.data
+        def read(self, size: int = -1) -> bytes:
+            return self.stream.read(size)
 
     monkeypatch.setattr(
         "urllib.request.urlopen",

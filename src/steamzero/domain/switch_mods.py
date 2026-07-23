@@ -216,42 +216,21 @@ class SwitchModManager:
         return mod
 
     def _fetch_candidate_files(self, candidate: ModCandidate) -> list[tuple[str, bytes]]:
-        import urllib.error
-        import urllib.request
-        from urllib.parse import urlparse
-
         from steamzero.core.errors import SteamZeroError
+        from steamzero.core.net import NetworkFailure, fetch_bytes
 
         source_url = candidate.identity.source_url
-        if urlparse(source_url).scheme != "https":
-            raise SteamZeroError("E-MOD-DOWNLOAD-FAILED", detail="somente fontes HTTPS são aceitas")
         max_bytes = 64 * 1024 * 1024
         try:
-            request = urllib.request.Request(  # noqa: S310
-                source_url, headers={"User-Agent": "SteamZero/0.1"}
+            data = fetch_bytes(
+                source_url,
+                max_bytes=max_bytes,
+                headers={"User-Agent": "SteamZero/0.1"},
             )
-            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-                if urlparse(response.geturl()).scheme != "https":
-                    raise SteamZeroError(
-                        "E-MOD-DOWNLOAD-FAILED", detail="redirect não HTTPS recusado"
-                    )
-                declared = response.headers.get("Content-Length")
-                if declared is not None and int(declared) > max_bytes:
-                    raise SteamZeroError("E-MOD-DOWNLOAD-FAILED", detail="pacote excede 64 MiB")
-                chunks: list[bytes] = []
-                received = 0
-                while chunk := response.read(1024 * 1024):
-                    received += len(chunk)
-                    if received > max_bytes:
-                        raise SteamZeroError("E-MOD-DOWNLOAD-FAILED", detail="pacote excede 64 MiB")
-                    chunks.append(chunk)
-                data = b"".join(chunks)
-        except SteamZeroError:
-            raise
-        except (OSError, ValueError, urllib.error.URLError) as exc:
+        except NetworkFailure as exc:
             raise SteamZeroError(
                 "E-MOD-DOWNLOAD-FAILED",
-                detail=f"{source_url}: {exc}",
+                detail=f"{source_url}: {exc.detail}",
             ) from exc
         return [("mod.zip", data)]
 

@@ -87,6 +87,16 @@ def test_allows_subprocess_only_in_privileged_client(tmp_path: Path) -> None:
     assert "BND-PROC" in _codes(tmp_path, "steamzero/privileged/other.py", code)
 
 
+def test_detects_http_client_outside_net_port(tmp_path: Path) -> None:
+    code = "import urllib.request\nurllib.request.urlopen('https://example.test')\n"
+    assert "BND-NET" in _codes(tmp_path, "steamzero/adapters/x.py", code)
+
+
+def test_allows_http_client_inside_net_port(tmp_path: Path) -> None:
+    code = "import urllib.request\nurllib.request.urlopen('https://example.test')\n"
+    assert "BND-NET" not in _codes(tmp_path, "steamzero/core/net.py", code)
+
+
 def test_detects_shell_true(tmp_path: Path) -> None:
     code = "import subprocess\ndef f():\n    subprocess.run('ls', shell=True)\n"
     assert "BND-SHELL" in _codes(tmp_path, "steamzero/adapters/x.py", code)

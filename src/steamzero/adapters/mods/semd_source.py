@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 import logging
 import re
-import urllib.request
 from typing import Any
 
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.ports import ModCandidate, ModCatalogPort, ModIdentity
 
 _log = logging.getLogger(__name__)
@@ -71,11 +71,11 @@ class SemdSource(ModCatalogPort):
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "SteamZero",
         }
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
-            resp = urllib.request.urlopen(req, timeout=15)  # noqa: S310
-            raw = resp.read()
-        except Exception:
+            raw = fetch_bytes(
+                url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers
+            )
+        except NetworkFailure:
             return []
         try:
             entries: list[dict[str, Any]] = json.loads(raw)
@@ -93,11 +93,11 @@ class SemdSource(ModCatalogPort):
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "SteamZero",
         }
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
-            resp = urllib.request.urlopen(req, timeout=15)  # noqa: S310
-            raw = resp.read()
-        except Exception:
+            raw = fetch_bytes(
+                url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers
+            )
+        except NetworkFailure:
             return []
         try:
             entries: list[dict[str, Any]] = json.loads(raw)

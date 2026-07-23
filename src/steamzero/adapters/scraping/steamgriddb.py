@@ -11,13 +11,12 @@ API v2 (``https://www.steamgriddb.com/api/v2``):
 from __future__ import annotations
 
 import json
-import urllib.error
-import urllib.request
 from typing import Any
 from urllib.parse import urlencode
 
 from steamzero.adapters.scraping.base import BaseMediaProvider, RateLimiter
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _API_BASE = "https://www.steamgriddb.com/api/v2"
@@ -113,36 +112,41 @@ class SteamGridDbAdapter(BaseMediaProvider):
                 detail="SteamGridDB requer API key",
             )
         try:
-            req = urllib.request.Request(  # noqa: S310
+            body = fetch_bytes(
                 f"{_API_BASE}/games/steam/1",
                 headers={
                     "Authorization": f"Bearer {self._api_key}",
                     "Accept": "application/json",
                 },
+                max_bytes=1024 * 1024,
+                timeout_seconds=15.0,
             )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:  # noqa: S310
-                body = resp.read()
-                payload = json.loads(body)
-                if isinstance(payload, dict) and payload.get("success"):
-                    return True
-                raise SteamZeroError(
-                    "E-SCRAPE-CREDENTIAL-REJECTED",
-                    detail="chave SteamGridDB rejeitada pela API",
-                )
-        except urllib.error.HTTPError as exc:
-            if exc.code == 401 or exc.code == 403:
+            payload = json.loads(body)
+            if isinstance(payload, dict) and payload.get("success"):
+                return True
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-REJECTED",
+                detail="chave SteamGridDB rejeitada pela API",
+            )
+        except NetworkFailure as exc:
+            if exc.status in {401, 403}:
                 raise SteamZeroError(
                     "E-SCRAPE-CREDENTIAL-REJECTED",
                     detail="chave SteamGridDB rejeitada (401/403)",
                 ) from exc
-            raise SteamZeroError(
-                "E-SCRAPE-HTTP-ERROR",
-                detail=f"HTTP {exc.code} do SteamGridDB",
-            ) from exc
-        except (OSError, urllib.error.URLError) as exc:
+            if exc.status is not None:
+                raise SteamZeroError(
+                    "E-SCRAPE-HTTP-ERROR",
+                    detail=f"HTTP {exc.status} do SteamGridDB",
+                ) from exc
             raise SteamZeroError(
                 "E-SCRAPE-OFFLINE",
                 detail="não foi possível conectar ao SteamGridDB",
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise SteamZeroError(
+                "E-SCRAPE-CREDENTIAL-REJECTED",
+                detail="SteamGridDB retornou resposta inválida",
             ) from exc
 
     def _resolve_game_id(self, identity: GameIdentity) -> int | None:
@@ -170,17 +174,20 @@ class SteamGridDbAdapter(BaseMediaProvider):
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
         }
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
-            with urllib.request.urlopen(req, timeout=15.0) as resp:  # noqa: S310
-                body = resp.read()
-                payload = json.loads(body)
-                if not isinstance(payload, dict):
-                    return []
-                success = payload.get("success", False)
-                data = payload.get("data", [])
-                if not success or not isinstance(data, list):
-                    return []
-                return data
-        except (OSError, urllib.error.URLError, json.JSONDecodeError):
+            body = fetch_bytes(
+                url,
+                headers=headers,
+                max_bytes=4 * 1024 * 1024,
+                timeout_seconds=15.0,
+            )
+            payload = json.loads(body)
+            if not isinstance(payload, dict):
+                return []
+            success = payload.get("success", False)
+            data = payload.get("data", [])
+            if not success or not isinstance(data, list):
+                return []
+            return data
+        except (NetworkFailure, json.JSONDecodeError):
             return []

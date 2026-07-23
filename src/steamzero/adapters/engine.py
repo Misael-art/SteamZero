@@ -7,8 +7,6 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import urllib.error
-import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +16,7 @@ from urllib.parse import urlparse
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
 from steamzero.core import fs, paths, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.state import StateStore
 
 _SAFE_VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
@@ -39,38 +38,25 @@ class HttpsArtifactPort:
     def fetch(self, source: AdapterSource) -> bytes:
         if source.url is None or urlparse(source.url).scheme != "https":
             raise SteamZeroError("E-SUPPLY-REMOTE-FAILED", detail="fonte portátil exige URL HTTPS")
-        request = urllib.request.Request(  # noqa: S310 - URL HTTPS validada acima
-            source.url,
-            headers={"User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"},
-        )
         try:
-            with urllib.request.urlopen(request, timeout=60.0) as response:  # noqa: S310
-                if urlparse(response.geturl()).scheme != "https":
-                    raise SteamZeroError(
-                        "E-SUPPLY-REMOTE-FAILED", detail="redirect não HTTPS recusado"
-                    )
-                declared = response.headers.get("Content-Length")
-                if declared is not None and int(declared) > self._max_bytes:
-                    raise SteamZeroError(
-                        "E-SUPPLY-REMOTE-FAILED", detail="artefato excede o limite de tamanho"
-                    )
-                chunks: list[bytes] = []
-                received = 0
-                while chunk := response.read(1 << 20):
-                    received += len(chunk)
-                    if received > self._max_bytes:
-                        raise SteamZeroError(
-                            "E-SUPPLY-REMOTE-FAILED",
-                            detail="artefato excedeu o limite durante o download",
-                        )
-                    chunks.append(chunk)
-        except SteamZeroError:
-            raise
-        except (OSError, ValueError, urllib.error.URLError) as exc:
+            return fetch_bytes(
+                source.url,
+                max_bytes=self._max_bytes,
+                timeout_seconds=60.0,
+                headers={
+                    "User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"
+                },
+                allowed_redirect_hosts={
+                    "github.com",
+                    "objects.githubusercontent.com",
+                    "github-releases.githubusercontent.com",
+                },
+            )
+        except NetworkFailure as exc:
             raise SteamZeroError(
-                "E-SUPPLY-REMOTE-FAILED", detail=f"falha ao baixar fonte verificada: {exc}"
+                "E-SUPPLY-REMOTE-FAILED",
+                detail=f"falha ao baixar fonte verificada: {exc.detail}",
             ) from exc
-        return b"".join(chunks)
 
 
 @dataclass(frozen=True)

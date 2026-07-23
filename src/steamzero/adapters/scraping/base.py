@@ -12,21 +12,18 @@ fornece ``_fetch_url()`` para download com limite de tamanho.
 from __future__ import annotations
 
 import time
-import urllib.error
-import urllib.request
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
 
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.fs import hash_bytes
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _MAGIC_BY_PNG = b"\x89PNG\r\n\x1a\n"
 _MAGIC_JPEG = b"\xff\xd8\xff"
 _MAGIC_WEBP = b"RIFF"
 _MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
-_USER_AGENT = "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"
 
 
 class TokenBucket:
@@ -127,60 +124,32 @@ class BaseMediaProvider(ABC):
 
     def _fetch_url(self, url: str, max_bytes: int = _MAX_DOWNLOAD_BYTES) -> bytes:
         """Baixa conteúdo de ``url`` com validação de segurança."""
-        parsed = urlparse(url)
-        if parsed.scheme not in ("https", "http"):
-            raise SteamZeroError(
-                "E-SCRAPE-DOWNLOAD-FAILED", detail=f"esquema não suportado: {parsed.scheme}"
-            )
-        request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})  # noqa: S310
         try:
-            with urllib.request.urlopen(request, timeout=30.0) as response:  # noqa: S310
-                final_url = response.geturl()
-                if urlparse(final_url).scheme not in ("https", "http"):
-                    raise SteamZeroError(
-                        "E-SCRAPE-DOWNLOAD-FAILED", detail="redirect não HTTP(S) recusado"
-                    )
-                declared = response.headers.get("Content-Length")
-                if declared is not None and int(declared) > max_bytes:
-                    raise SteamZeroError(
-                        "E-SCRAPE-DOWNLOAD-FAILED",
-                        detail=f"conteúdo declarado ({declared}B) excede limite ({max_bytes}B)",
-                    )
-                chunks: list[bytes] = []
-                received = 0
-                while chunk := response.read(1 << 20):
-                    received += len(chunk)
-                    if received > max_bytes:
-                        raise SteamZeroError(
-                            "E-SCRAPE-DOWNLOAD-FAILED",
-                            detail="download excedeu o limite de tamanho",
-                        )
-                    chunks.append(chunk)
-        except SteamZeroError:
-            raise
-        except urllib.error.HTTPError as exc:
-            if exc.code == 429:
+            return fetch_bytes(url, max_bytes=max_bytes)
+        except NetworkFailure as exc:
+            if exc.status == 429:
                 raise SteamZeroError(
                     "E-SCRAPE-RATE-LIMITED", detail=f"{self.name}: rate limit (HTTP 429)"
                 ) from exc
-            if exc.code == 403:
+            if exc.status == 403:
                 raise SteamZeroError(
                     "E-SCRAPE-QUOTA-EXCEEDED", detail=f"{self.name}: quota/cota excedida (HTTP 403)"
                 ) from exc
-            if exc.code == 404:
+            if exc.status == 404:
                 raise SteamZeroError(
                     "E-SCRAPE-NOT-FOUND", detail=f"{self.name}: recurso não encontrado (HTTP 404)"
                 ) from exc
+            if exc.code in {
+                "E-NET-INSECURE-URL",
+                "E-NET-HOST-DENIED",
+                "E-NET-REDIRECT-DENIED",
+                "E-NET-CONTENT-LIMIT",
+            }:
+                raise SteamZeroError("E-SCRAPE-DOWNLOAD-FAILED", detail=exc.detail) from exc
             raise SteamZeroError(
                 "E-SCRAPE-PROVIDER-UNREACHABLE",
-                detail=f"{self.name}: HTTP {exc.code}",
+                detail=f"{self.name}: {exc.detail}",
             ) from exc
-        except (OSError, urllib.error.URLError) as exc:
-            raise SteamZeroError(
-                "E-SCRAPE-PROVIDER-UNREACHABLE",
-                detail=f"{self.name}: falha de conexão: {exc}",
-            ) from exc
-        return b"".join(chunks)
 
     @staticmethod
     def _validate_media(data: bytes, expected_kind: str | None = None) -> str | None:

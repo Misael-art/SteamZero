@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 import logging
 import re
-import urllib.request
 from typing import Any
 
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.ports import CheatCandidate, CheatCatalogPort, CheatIdentity
 
 _log = logging.getLogger(__name__)
@@ -117,11 +117,11 @@ class NsecmSource(CheatCatalogPort):
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "SteamZero",
         }
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
-            resp = urllib.request.urlopen(req, timeout=15)  # noqa: S310
-            raw = resp.read()
-        except Exception as exc:
+            raw = fetch_bytes(
+                url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers
+            )
+        except NetworkFailure as exc:
             _log.debug("erro urlopen %s: %s", url, exc)
             return []
         try:
@@ -154,11 +154,11 @@ class NsecmSource(CheatCatalogPort):
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "SteamZero",
         }
-        req = urllib.request.Request(url, headers=headers)  # noqa: S310
         try:
-            resp = urllib.request.urlopen(req, timeout=15)  # noqa: S310
-            raw = resp.read()
-        except Exception:
+            raw = fetch_bytes(
+                url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers
+            )
+        except NetworkFailure:
             return []
         try:
             entries: list[dict[str, Any]] = json.loads(raw)
@@ -172,11 +172,14 @@ class NsecmSource(CheatCatalogPort):
             if not download_url:
                 continue
             try:
-                raw_content = urllib.request.urlopen(  # noqa: S310
-                    download_url, timeout=15
-                ).read()
+                raw_content = fetch_bytes(
+                    download_url,
+                    max_bytes=2 * 1024 * 1024,
+                    timeout_seconds=15,
+                    allowed_redirect_hosts={"raw.githubusercontent.com"},
+                )
                 text = raw_content.decode("utf-8", errors="replace")
-            except Exception as exc:
+            except NetworkFailure as exc:
                 _log.debug("erro download cheat: %s", exc)
                 continue
 

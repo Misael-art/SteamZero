@@ -77,6 +77,15 @@ ERROR_CATALOG: dict[str, str] = {
     # JOBS
     "E-JOBS-BLOCKED-GAMEPLAY": "JOBS",
     "E-JOBS-BLOCKED-BATTERY": "JOBS",
+    # NET
+    "E-NET-INSECURE-URL": "NET",
+    "E-NET-HOST-DENIED": "NET",
+    "E-NET-REDIRECT-DENIED": "NET",
+    "E-NET-TIMEOUT": "NET",
+    "E-NET-OFFLINE": "NET",
+    "E-NET-HTTP": "NET",
+    "E-NET-CONTENT-LIMIT": "NET",
+    "E-NET-CANCELLED": "NET",
     # Fase 1 (adições registradas — ver WORKLOG)
     "E-CLI-USAGE": "CLI",
     "E-STATE-MIGRATION": "STATE",

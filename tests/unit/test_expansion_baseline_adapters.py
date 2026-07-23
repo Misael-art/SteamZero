@@ -42,7 +42,7 @@ class _Response:
         self,
         payload: bytes,
         *,
-        url: str = "https://example.invalid/media.png",
+        url: str = "",
         headers: dict[str, str] | None = None,
     ) -> None:
         self._stream = io.BytesIO(payload)

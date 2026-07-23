@@ -10,6 +10,7 @@ Análise estática por AST (stdlib pura, sem dependências). Detecta:
                    modo de escrita, ``os.rename/replace/remove/...``, ``shutil``
                    mutável, métodos ``Path.write_*/rename/unlink/mkdir/...``.
 - BND-PROC       : uso de ``subprocess`` fora de ``core.proc``/``adapters.*``.
+- BND-NET        : cliente HTTP fora de ``core.net``.
 - BND-SHELL      : ``shell=True`` (SR-03).
 - BND-DOMAIN-ADAPTER : ``domain.*`` importando ``adapters.*``.
 
@@ -34,6 +35,10 @@ PROC_PORT_PREFIXES = (
     "steamzero.core.proc",
     "steamzero.adapters.",
     "steamzero.privileged.client",
+)
+NET_PORT = "steamzero.core.net"
+_HTTP_IMPORTS = frozenset(
+    {"urllib.request", "http.client", "requests", "httpx", "aiohttp"}
 )
 
 _OS_WRITE_FUNCS = frozenset(
@@ -104,6 +109,7 @@ class _Visitor(ast.NodeVisitor):
         self.violations: list[Violation] = []
         self._is_write_port = module in WRITE_PORTS
         self._is_proc_port = any(module == p or module.startswith(p) for p in PROC_PORT_PREFIXES)
+        self._is_net_port = module == NET_PORT
         self._is_domain = module.startswith("steamzero.domain")
 
     def _add(self, code: str, node: ast.AST, message: str) -> None:
@@ -129,6 +135,11 @@ class _Visitor(ast.NodeVisitor):
             name.startswith("steamzero.adapters") or name == "steamzero.adapters"
         ):
             self._add("BND-DOMAIN-ADAPTER", node, "domain importa adapters (proibido)")
+        if not self._is_net_port and (
+            name in _HTTP_IMPORTS
+            or any(name.startswith(f"{prefix}.") for prefix in {"requests", "httpx", "aiohttp"})
+        ):
+            self._add("BND-NET", node, "cliente HTTP fora de core.net")
 
     # -- calls -------------------------------------------------------------
     def visit_Call(self, node: ast.Call) -> None:

@@ -71,6 +71,16 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-JOBS-BLOCKED-GAMEPLAY` job proibido durante jogo ativo.
 - `E-JOBS-BLOCKED-BATTERY` aguardando energia.
 
+### NET
+- `E-NET-INSECURE-URL` URL sem TLS ou com credencial embutida.
+- `E-NET-HOST-DENIED` destino fora da allowlist declarada.
+- `E-NET-REDIRECT-DENIED` redirect saiu do esquema/host permitido.
+- `E-NET-TIMEOUT` origem não respondeu no prazo.
+- `E-NET-OFFLINE` conexão indisponível; estado local preservado.
+- `E-NET-HTTP` status HTTP de falha, com status apenas nos detalhes variáveis.
+- `E-NET-CONTENT-LIMIT` corpo declarado ou recebido excedeu o teto.
+- `E-NET-CANCELLED` cancelamento observado sem publicar download parcial.
+
 ### SCRAPE
 - `E-SCRAPE-HTTP-ERROR` provedor respondeu com erro HTTP inesperado; fallback continua.
 - `E-SCRAPE-OFFLINE` conexão com o provedor indisponível; operações locais continuam.

@@ -11,7 +11,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | WI | Escopo | Contrato principal | Estado | Evidência/relatório |
 |---|---|---|---|---|
 | F0 | Saneamento da baseline de qualidade | error-v1 | verified-dev | `docs/expansion/WI-F0.md` |
-| F1 | `core.net` seguro, limitado, cancelável e fake | core.net | pending | — |
+| F1 | `core.net` seguro, limitado, cancelável e fake | core.net | verified-dev | `docs/expansion/WI-F1.md` |
 | F2 | `core.crypto`, checksum, assinatura e envelopes | core.crypto | pending | — |
 | F3 | jobs/operações paginados e `--follow` | event-v1 | pending | — |
 | F4 | daemon persistente e compatibilidade CLI | local API | pending | — |

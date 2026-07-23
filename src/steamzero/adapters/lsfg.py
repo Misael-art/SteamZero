@@ -14,8 +14,6 @@ import io
 import json
 import platform
 import stat
-import urllib.error
-import urllib.request
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -23,6 +21,7 @@ from typing import Any, Protocol
 
 from steamzero.core import fs, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import NetworkFailure, fetch_bytes
 
 LSFG_VERSION = "1.0.0"
 LSFG_SOURCE_URL = "https://github.com/PancakeTAS/lsfg-vk/releases/download/v1.0.0/lsfg-vk_noui.zip"
@@ -47,31 +46,26 @@ class OfficialLsfgArtifact:
     def fetch(self, url: str, *, max_bytes: int) -> bytes:
         if url != LSFG_SOURCE_URL or max_bytes > _MAX_ARCHIVE_BYTES:
             raise SteamZeroError("E-SUPPLY-UPSTREAM-GONE", detail="origem LSFG fora da allowlist")
-        request = urllib.request.Request(  # noqa: S310 - URL fixa e allowlisted
-            url,
-            headers={"User-Agent": "SteamZero-LSFG/1"},
-        )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-                raw_length = response.headers.get("Content-Length")
-                if raw_length is not None and int(raw_length) > max_bytes:
-                    raise SteamZeroError(
-                        "E-CONTENT-UNSAFE-ARCHIVE",
-                        detail="artefato LSFG excede o limite de aquisição",
-                    )
-                payload = bytes(response.read(max_bytes + 1))
-        except SteamZeroError:
-            raise
-        except (OSError, ValueError, urllib.error.URLError) as exc:
-            raise SteamZeroError(
-                "E-SUPPLY-OFFLINE", detail=f"não foi possível obter LSFG-VK: {exc}"
-            ) from exc
-        if len(payload) > max_bytes:
-            raise SteamZeroError(
-                "E-CONTENT-UNSAFE-ARCHIVE",
-                detail="artefato LSFG excede o limite de aquisição",
+            return fetch_bytes(
+                url,
+                max_bytes=max_bytes,
+                headers={"User-Agent": "SteamZero-LSFG/1"},
+                allowed_redirect_hosts={
+                    "github.com",
+                    "objects.githubusercontent.com",
+                    "github-releases.githubusercontent.com",
+                },
             )
-        return payload
+        except NetworkFailure as exc:
+            if exc.code == "E-NET-CONTENT-LIMIT":
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-ARCHIVE",
+                    detail="artefato LSFG excede o limite de aquisição",
+                ) from exc
+            raise SteamZeroError(
+                "E-SUPPLY-OFFLINE", detail=f"não foi possível obter LSFG-VK: {exc.detail}"
+            ) from exc
 
 
 class LsfgInstaller:

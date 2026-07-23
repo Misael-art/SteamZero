@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import os
-import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from steamzero.core import fs, paths, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.domain.media_optimizer import (
     KIND_TO_STEAM_PROFILES,
     MASTER_EXTENSIONS,
@@ -30,20 +30,13 @@ def canonical_media_kind(kind: str) -> str:
 
 
 def _download_candidate(url: str) -> bytes:
-    from urllib.parse import urlsplit
-
-    if urlsplit(url).scheme.casefold() != "https":
-        raise SteamZeroError(
-            "E-SCRAPE-DOWNLOAD-FAILED", detail="mídia remota exige HTTPS"
+    try:
+        return fetch_bytes(url, max_bytes=_MAX_DOWNLOAD)
+    except NetworkFailure as exc:
+        code = "E-CONTENT-LIMIT" if exc.code == "E-NET-CONTENT-LIMIT" else (
+            "E-SCRAPE-DOWNLOAD-FAILED"
         )
-    request = urllib.request.Request(url, headers={"User-Agent": "SteamZero/0.1"})  # noqa: S310
-    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-        data = bytes(response.read(_MAX_DOWNLOAD + 1))
-    if len(data) > _MAX_DOWNLOAD:
-        raise SteamZeroError(
-            "E-CONTENT-LIMIT", detail="mídia remota excede 32 MiB"
-        )
-    return data
+        raise SteamZeroError(code, detail=exc.detail) from exc
 
 
 @dataclass
