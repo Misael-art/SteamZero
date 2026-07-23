@@ -20,6 +20,7 @@ ApplicationWindow {
     palette.button: raisedColor
     palette.buttonText: textColor
     palette.highlight: cyanDarkColor
+    palette.accent: cyanColor
     palette.highlightedText: textColor
     palette.toolTipBase: raisedColor
     palette.toolTipText: textColor
@@ -40,7 +41,10 @@ ApplicationWindow {
     readonly property color redColor: "#ff6b73"
     readonly property bool compactLayout: width <= 1366 || height <= 850
     readonly property bool handheldLayout: width <= 1024 || height <= 640
-    readonly property int motionDuration: 180
+    readonly property bool reducedMotion: desktopStatus.dashboard
+        && desktopStatus.dashboard.accessibility
+        && desktopStatus.dashboard.accessibility.reducedMotion === true
+    readonly property int motionDuration: reducedMotion ? 0 : 180
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1920
@@ -52,6 +56,8 @@ ApplicationWindow {
     property alias responsiveDrawerNavigation: drawerNavRepeater
     property alias responsiveTaskDrawer: taskDrawer
     property alias responsiveHeader: compactHeader
+    property alias navigationMenuControl: navigationMenuButton
+    property alias taskMenuControl: compactTaskButton
     property alias responsiveContent: contentStack
     property alias responsiveFooter: handheldFooter
 
@@ -1398,6 +1404,12 @@ ApplicationWindow {
         dim: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         Accessible.name: qsTr("Navegação principal")
+        onOpened: {
+            const current = drawerNavRepeater.itemAt(root.sectionIndex)
+            if (current)
+                current.forceActiveFocus(Qt.PopupFocusReason)
+        }
+        onClosed: navigationMenuButton.forceActiveFocus(Qt.PopupFocusReason)
 
         enter: Transition {
             NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.OutCubic }
@@ -1509,7 +1521,16 @@ ApplicationWindow {
         height: root.height
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         Accessible.name: qsTr("Central de tarefas")
-        onOpened: root.refreshTasks()
+        onOpened: {
+            root.refreshTasks()
+            Qt.callLater(function() { taskCloseButton.forceActiveFocus(Qt.PopupFocusReason) })
+        }
+        onClosed: {
+            if (root.compactLayout)
+                compactTaskButton.forceActiveFocus(Qt.PopupFocusReason)
+            else
+                desktopTaskButton.forceActiveFocus(Qt.PopupFocusReason)
+        }
 
         enter: Transition {
             NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.OutCubic }
@@ -1546,6 +1567,7 @@ ApplicationWindow {
                     onClicked: root.refreshTasks()
                 }
                 Button {
+                    id: taskCloseButton
                     text: qsTr("Fechar")
                     Layout.minimumHeight: 48
                     Accessible.name: qsTr("Fechar central de tarefas")

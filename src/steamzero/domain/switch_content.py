@@ -217,10 +217,39 @@ class SwitchContentManager:
             kind="switch-content.state",
         )
 
+    def plan_remove(self, record_key: str) -> transaction.Plan:
+        """Remove um registro e só apaga o blob quando não houver outro consumidor."""
+        index = self._load_index()
+        selected = next(
+            (entry for entry in index["records"] if entry["recordKey"] == record_key), None
+        )
+        if selected is None:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="conteúdo não catalogado")
+        record = self._record_from_entry(selected)
+        index["records"] = [
+            entry for entry in index["records"] if entry["recordKey"] != record_key
+        ]
+        blob_is_shared = any(entry["sha256"] == record.sha256 for entry in index["records"])
+        removals = set()
+        if not blob_is_shared and record.blob.is_file() and not record.blob.is_symlink():
+            removals.add(record.blob)
+        return transaction.plan_write_files(
+            {self.index_path: _encode_index(index)},
+            removals=removals,
+            root=self._root,
+            kind="switch-content.remove",
+        )
+
     def apply_state(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
         if plan.kind != "switch-content.state" or Path(plan.root) != self._root:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não altera estado Switch")
+        return transaction.apply(plan_id, confirm_token)
+
+    def apply_remove(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        plan = transaction.load_plan(plan_id)
+        if plan.kind != "switch-content.remove" or Path(plan.root) != self._root:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não remove conteúdo Switch")
         return transaction.apply(plan_id, confirm_token)
 
     def integrity_report(self) -> dict[str, object]:

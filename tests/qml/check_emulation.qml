@@ -38,7 +38,28 @@ Window {
                 "statusLabel": "Pronto",
                 "readiness": {"percent": 75, "title": "Quase pronto", "blockers": []},
                 "emulators": [{"id": "eden", "name": "Eden", "state": "ready", "iconAsset": "../assets/eden.svg"}],
-                "games": [{"id": "0100", "name": "Jogo de teste"}]
+                "games": [{"id": "0100", "name": "Jogo de teste"}],
+                "runtimeProfiles": {
+                    "activeScope": "handheld",
+                    "observedScope": "handheld",
+                    "desiredScope": null,
+                    "diverged": null,
+                    "autoTransition": {"supported": false, "reason": "Sem executor"},
+                    "handheld": {
+                        "resolution": {"width": 1280, "height": 720},
+                        "renderScale": 1.0,
+                        "controllers": {"activePlayers": 1, "maximumPlayers": 4},
+                        "tdp": {"value": null, "source": "steam-game-profile"},
+                        "fps": {"value": null, "source": "steam-game-profile"}
+                    },
+                    "dock": {
+                        "resolution": {"width": 1920, "height": 1080},
+                        "renderScale": 1.0,
+                        "controllers": {"activePlayers": 2, "maximumPlayers": 4},
+                        "tdp": {"value": null, "source": "steam-game-profile"},
+                        "fps": {"value": null, "source": "steam-game-profile"}
+                    }
+                }
             }]
         })
         if (!object)
@@ -54,8 +75,14 @@ Window {
         check(object.contextTitle() === "Jogo de teste", "jogo deve definir o contexto")
         object.scopeIndex = 3
         check(object.contextTitle() === "Modo portátil", "escopo portátil deve ser explícito")
+        check(object.scopedRuntimeProfile().resolution.width === 1280,
+              "perfil portátil deve consumir a resolução publicada")
+        check(object.inheritedValue("tdp", "perfil Steam/jogo").indexOf("herdado") === 0,
+              "TDP sem valor observado deve ser identificado como herdado")
         object.scopeIndex = 4
         check(object.contextTitle() === "Modo dock", "escopo dock deve ser explícito")
+        check(object.scopedRuntimeProfile().controllers.activePlayers === 2,
+              "perfil dock deve consumir controles observados")
 
         object.scopeIndex = 1
         object.areaIndex = object.areaIndexById("controls")
@@ -203,7 +230,7 @@ Window {
                 "selectedArea": "overview",
                 "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
                 "emulators": [
-                    {"id": "eden", "name": "Eden", "state": "ready"},
+                    {"id": "eden", "name": "Eden", "state": "ready", "isDefault": true, "running": true, "version": "0.0.3", "targetVersion": "0.0.3", "libraryRootCount": 1, "health": {"versionCurrent": true, "keysReady": true}},
                     {"id": "citron", "name": "Citron", "state": "ready"},
                     {"id": "ryubing", "name": "Ryubing", "state": "ready"}
                 ],
@@ -215,6 +242,10 @@ Window {
         object.syncPublishedSelection()
         check(object.emulatorMaintenanceCount === 3,
               "a aba Emulador deve exibir os três emuladores")
+        check(object.emulators[0].isDefault === true,
+              "emulador padrão publicado deve permanecer identificável")
+        check(object.emulators[0].running === true,
+              "estado em execução publicado deve permanecer identificável")
         object.destroy()
     }
 
@@ -244,6 +275,29 @@ Window {
         check(object.contentMaxWidth === 1400,
               "conteúdo ultrawide deve limitar-se a 1400 px")
         object.destroy()
+    }
+
+    function testPublishedStateFixtures() {
+        const states = ["ready", "empty", "degraded", "offline"]
+        for (let index = 0; index < states.length; ++index) {
+            const state = states[index]
+            const object = makePage({
+                "platforms": [{
+                    "id": "switch", "name": "Nintendo Switch", "state": state,
+                    "statusLabel": state,
+                    "readiness": {"percent": state === "ready" ? 100 : 0,
+                        "title": state, "blockers": []},
+                    "emulators": [], "games": []
+                }]
+            })
+            if (!object)
+                continue
+            check(object.selectedPlatform.state === state,
+                  "fixture " + state + " deve permanecer distinta na UI")
+            check(object.stateIcon(state).length > 0,
+                  "fixture " + state + " deve ter ícone não dependente apenas de cor")
+            object.destroy()
+        }
     }
 
     Component {
@@ -276,6 +330,7 @@ Window {
             testGameLibraryJourney()
             testEmulatorMaintenanceListsEveryManagedEmulator()
             testResponsiveProfiles()
+            testPublishedStateFixtures()
             if (failures === 0)
                 console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
             Qt.exit(failures === 0 ? 0 : firstFailure)

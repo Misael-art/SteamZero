@@ -45,6 +45,60 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     assert by_id["ryubing"]["targetVersion"] == "1.3.3"
     assert by_id["ryubing"]["iconAsset"] == "../assets/ryubing.png"
     assert by_id["ryubing"]["action"]["id"] == "emulator.install:ryubing"
+    assert by_id["ryubing"]["health"] == {
+        "state": "unavailable",
+        "versionCurrent": False,
+        "keysReady": False,
+        "firmwareReady": False,
+        "reason": "Pendente: instalação, firmware.",
+    }
+    assert by_id["ryubing"]["running"] is False
+    assert by_id["ryubing"]["libraryRootCount"] == 0
+
+
+def test_runtime_profiles_publish_observed_handheld_and_dock_facts(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    monkeypatch.setattr(controller, "_controller_count", lambda: 2)
+
+    profiles = controller.snapshot(
+        {
+            "context": {
+                "physicalDock": True,
+                "deviceKind": "deck-oled",
+                "displays": [
+                    {
+                        "connected": True,
+                        "internal": False,
+                        "width": 2560,
+                        "height": 1440,
+                    }
+                ],
+            }
+        }
+    )["platforms"][0]["runtimeProfiles"]
+
+    assert profiles["activeScope"] == "dock"
+    assert profiles["observedScope"] == "dock"
+    assert profiles["desiredScope"] is None
+    assert profiles["diverged"] is None
+    assert profiles["autoTransition"]["supported"] is False
+    assert profiles["handheld"]["resolution"] == {
+        "width": 1280,
+        "height": 720,
+        "label": "720p",
+    }
+    assert profiles["dock"]["resolution"] == {
+        "width": 1920,
+        "height": 1080,
+        "label": "1080p",
+    }
+    assert profiles["dock"]["controllers"]["activePlayers"] == 2
+    assert profiles["dock"]["tdp"] == {
+        "value": None,
+        "source": "steam-game-profile",
+    }
 
 
 def test_imports_project_to_switch_consumers_and_save_game_directories(
@@ -194,6 +248,12 @@ def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_pa
 
     platform = controller.snapshot({"context": {}})["platforms"][0]
     assert platform["defaultEmulatorId"] == "citron"
+    assert next(row for row in platform["emulators"] if row["id"] == "citron")[
+        "isDefault"
+    ] is True
+    assert next(row for row in platform["emulators"] if row["id"] == "eden")["actions"][0][
+        "id"
+    ] == "emulator.install:eden"
     assert platform["globalSettings"] == {
         "defaultEmulatorId": "citron",
         "autoPublishSteam": True,
@@ -632,12 +692,20 @@ def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> 
     record_card = next(card for card in cards if str(card["id"]).startswith("content-"))
     assert record_card["statusLabel"] == "Inativo"
 
-    active_plan = controller.plan_action({"actionId": record_card["action"]["id"]})
+    active_plan = controller.plan_action({"actionId": record_card["actions"][0]["id"]})
     _apply(controller, active_plan)
     cards = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["updatesDlc"]["cards"]
     active_card = next(card for card in cards if str(card["id"]).startswith("content-"))
     assert active_card["statusLabel"] == "Ativo"
-    assert active_card["action"]["label"] == "Desativar"
+    assert active_card["actions"][0]["label"] == "Desativar"
+    assert active_card["actions"][1]["label"] == "Remover"
+
+    remove_plan = controller.plan_action({"actionId": active_card["actions"][1]["id"]})
+    _apply(controller, remove_plan)
+    cards = controller.snapshot({"context": {}})["platforms"][0]["areaData"][
+        "updatesDlc"
+    ]["cards"]
+    assert not any(str(card["id"]).startswith("content-") for card in cards)
 
 
 def _configured_game(controller: EmulationController, tmp_path: Path) -> tuple[str, str]:
@@ -734,6 +802,28 @@ def test_media_search_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     stored = jobs.get(job.id)
     assert stored is not None
     assert stored.state == "queued"
+
+
+def test_media_job_persists_read_model_in_injected_store(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    from steamzero.adapters.emulation import SessionSecretStore
+    from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
+
+    controller = _controller(monkeypatch, tmp_path)
+    controller._secret_store = SessionSecretStore()  # type: ignore[attr-defined]
+    job = controller._jobs.create(  # type: ignore[attr-defined]
+        "media.search",
+        params={"game_id": "g1", "title_id": "0100ABCDEF123000", "title": "Owned"},
+    )
+
+    completed = controller._jobs.run(job.id)  # type: ignore[attr-defined]
+
+    assert completed.state == "completed"
+    with StateStore(tmp_path / "state.db") as store:
+        store.migrate()
+        media = StateStoreGameMediaAdapter(store.adapter_connection()).load("g1")
+    assert media is not None
+    assert media.metadata_state == "error"
+    assert media.reason == "Configure a chave de API do SteamGridDB"
 
 
 def test_get_job_status_returns_none_for_missing(monkeypatch, tmp_path: Path) -> None:

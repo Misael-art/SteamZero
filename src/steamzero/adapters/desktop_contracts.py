@@ -173,6 +173,34 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("componentId", componentId="string"),
         ),
         _action(
+            "component.rollback",
+            "Desfazer componente",
+            None,
+            service="components",
+            screen="system",
+            control="component-history",
+            enabled=False,
+            reason=(
+                "O engine possui rollback interno, mas a bridge Desktop não expõe "
+                "seleção auditável de operação por componente."
+            ),
+            applicable=False,
+        ),
+        _action(
+            "component.recover",
+            "Recuperar componente",
+            None,
+            service="components",
+            screen="system",
+            control="component-recovery",
+            enabled=False,
+            reason=(
+                "A recuperação automática ocorre no engine; não há endpoint Desktop "
+                "para uma recuperação manual isolada."
+            ),
+            applicable=False,
+        ),
+        _action(
             "emulator.plan",
             "Revisar emulador",
             "/emulation/emulator/plan",
@@ -614,6 +642,36 @@ def handheld_ui_contracts() -> dict[str, Any]:
             reason=(
                 "A fila é somente leitura no snapshot atual; retry/cancel ainda não "
                 "possuem rota da bridge."
+            ),
+            applicable=False,
+        ),
+        _action(
+            "profiles.history",
+            "Ver histórico de perfis",
+            None,
+            service="steam",
+            screen="steam",
+            control="profile-history",
+            method="GET",
+            enabled=False,
+            reason=(
+                "A UI revisa diferenças antes de aplicar e oferece recovery, mas o store "
+                "não publica uma linha do tempo de perfis pela bridge."
+            ),
+            applicable=False,
+        ),
+        _action(
+            "operations.history",
+            "Ver histórico de operações",
+            None,
+            service="system",
+            screen="system",
+            control="operation-history",
+            method="GET",
+            enabled=False,
+            reason=(
+                "O journal transacional existe, porém não há read model sanitizado e "
+                "paginado para a GUI."
             ),
             applicable=False,
         ),

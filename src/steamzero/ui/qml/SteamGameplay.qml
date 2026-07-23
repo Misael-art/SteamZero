@@ -394,7 +394,7 @@ Item {
                 delegate: RowLayout {
                     required property var modelData
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 44
+                    Layout.minimumHeight: 48
                     ToolButton {
                         enabled: false
                         icon.name: modelData.id === "steam" ? "steam"
@@ -813,7 +813,7 @@ Item {
                         Button {
                             visible: Boolean(page.launcher.recoveryRequired)
                             text: qsTr("Restaurar estado")
-                            Layout.minimumHeight: 44
+                            Layout.minimumHeight: 48
                             Accessible.name: text
                             onClicked: page.launcherRecoveryRequested(
                                 String(page.selectedGame.id || "")
@@ -863,7 +863,7 @@ Item {
                                     ? qsTr("Configurar")
                                     : qsTr("Configurar na Steam")
                             enabled: page.launchConfiguration.state !== "steam-running"
-                            Layout.minimumHeight: 44
+                            Layout.minimumHeight: 48
                             Accessible.name: page.launchConfiguration.state === "steam-running"
                                 ? text : qsTr("Configurar Launch Options automaticamente na Steam")
                             onClicked: page.launchOptionsPlanRequested(
@@ -873,7 +873,7 @@ Item {
                         Button {
                             visible: Boolean(page.launchConfiguration.lastOperationId)
                             text: qsTr("Desfazer configuração")
-                            Layout.minimumHeight: 44
+                            Layout.minimumHeight: 48
                             Accessible.name: text
                             onClicked: page.launchOptionsRollbackRequested(
                                 String(page.launchConfiguration.lastOperationId)
@@ -931,7 +931,7 @@ Item {
                         visible: page.width < 1240
                         text: qsTr("Ambiente")
                         icon.name: "applications-system"
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: 48
                         Accessible.name: qsTr("Ver ambiente e capacidade")
                         onClicked: environmentDialog.open()
                     }
@@ -1008,7 +1008,7 @@ Item {
                                 visible: page.environment.some(function(row) { return row.state !== "ready" })
                                 text: qsTr("Abrir Sistema")
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: 48
                                 Accessible.name: text
                                 onClicked: page.systemRequested()
                             }
@@ -1079,7 +1079,7 @@ Item {
                                     checkable: true
                                     checked: page.fpsIndex === index
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: 48
                                     Accessible.name: qsTr("%1 FPS").arg(text)
                                     onClicked: page.fpsIndex = index
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
@@ -1115,7 +1115,7 @@ Item {
                                     checked: page.gpuModeIndex === index
                                     checkable: true
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: 48
                                     Accessible.name: text
                                     enabled: index === 0 || page.hardware.gpuMax
                                     onClicked: page.gpuModeIndex = index
@@ -1150,7 +1150,7 @@ Item {
                                     checkable: true
                                     enabled: index === 0 || page.environmentById("mangohud").state === "ready"
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: 48
                                     Accessible.name: text
                                     onClicked: page.mangoIndex = index
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
@@ -1164,7 +1164,7 @@ Item {
                                 model: [qsTr("Nativo"), qsTr("FSR 2 · Qualidade"), qsTr("FSR 2 · Balanceado"), qsTr("Gamescope FSR")]
                                 currentIndex: page.upscalingIndex
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: 48
                                 Accessible.name: qsTr("Selecionar upscaling")
                                 onActivated: page.upscalingIndex = currentIndex
                             }
@@ -1182,7 +1182,7 @@ Item {
                                 model: [qsTr("Desligado"), "LSFG 2×", "LSFG 3×", "LSFG 4×"]
                                 currentIndex: page.frameGenerationIndex
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: 48
                                 Accessible.name: qsTr("Geração de quadros LSFG por jogo")
                                 Accessible.description: page.environmentById("lsfg").state === "ready"
                                     ? qsTr("LSFG-VK pronto")
@@ -1203,7 +1203,7 @@ Item {
                             icon.name: "go-down"
                             flat: true
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 42
+                            Layout.minimumHeight: 48
                             Accessible.name: text
                         }
                     }

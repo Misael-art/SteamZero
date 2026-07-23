@@ -1480,6 +1480,30 @@ def input_method_status() -> dict[str, Any]:
     }
 
 
+def reduced_motion_enabled(*, runner: Runner = run_command, which: Which = shutil.which) -> bool:
+    """Lê a preferência real de animações do Plasma sem alterar o host."""
+    if which("kreadconfig6") is None:
+        return False
+    result = runner(
+        (
+            "kreadconfig6",
+            "--file",
+            "kdeglobals",
+            "--group",
+            "KDE",
+            "--key",
+            "AnimationDurationFactor",
+        ),
+        3.0,
+    )
+    if result.returncode != 0:
+        return False
+    try:
+        return float(result.stdout.strip()) <= 0
+    except ValueError:
+        return False
+
+
 def toggle_virtual_keyboard(
     language: str | None = None,
     *,

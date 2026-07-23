@@ -323,7 +323,8 @@ ColumnLayout {
                         model: [qsTr("Auto (%1)").arg(panel.inputMethod.keyboardLayout || "us"), "br", "us", "es", "de", "fr", "it", "jp", "ru"]
                         currentIndex: 0
                         Layout.preferredWidth: 160
-                        Layout.minimumHeight: 40
+                        Layout.minimumHeight: 48
+                        Accessible.name: qsTr("Idioma do teclado: %1").arg(displayText)
                         onActivated: panel.selectedKeyboardLayout = currentIndex === 0 ? "" : model[currentIndex]
                     }
                 }
@@ -364,7 +365,7 @@ ColumnLayout {
                         text: qsTr("Abrir Terminal Ashy")
                         icon.name: "utilities-terminal"
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 44
+                        Layout.minimumHeight: 48
                         Accessible.name: text
                         onClicked: panel.ashytermRequested()
                     }
@@ -410,7 +411,7 @@ ColumnLayout {
                     delegate: RowLayout {
                         required property var modelData
                         Layout.fillWidth: true
-                        Layout.minimumHeight: 40
+                        Layout.minimumHeight: 48
                         ToolButton { enabled: false; icon.name: modelData.internal ? "computer-laptop" : "video-display"; icon.color: panel.greenColor; background: Item {} }
                         ColumnLayout {
                             Layout.fillWidth: true

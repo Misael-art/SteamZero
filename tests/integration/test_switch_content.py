@@ -63,6 +63,36 @@ def test_shared_blob_links_to_consumer_transactionally(
     assert not linked.exists() and not linked.is_symlink()
 
 
+def test_remove_keeps_shared_blob_until_last_catalog_record(
+    env: tuple[SwitchContentManager, Path],
+) -> None:
+    manager, root = env
+    source = root / "owned-content.nsp"
+    source.write_bytes(b"same-owned-content")
+    first = manager.plan_import(
+        source, kind="update", title_id="0100000000010000", version="1.0.0"
+    )
+    assert first.plan is not None
+    manager.apply_import(first.plan.plan_id, first.plan.confirm_token)
+    second = manager.plan_import(
+        source, kind="dlc", title_id="0100000000010000", version="pack-a"
+    )
+    assert second.plan is not None
+    manager.apply_import(second.plan.plan_id, second.plan.confirm_token)
+
+    remove_first = manager.plan_remove(first.record.record_key)
+    manager.apply_remove(remove_first.plan_id, remove_first.confirm_token)
+    assert first.record.blob.read_bytes() == b"same-owned-content"
+    assert [record.record_key for record in manager.list_records()] == [
+        second.record.record_key
+    ]
+
+    remove_second = manager.plan_remove(second.record.record_key)
+    manager.apply_remove(remove_second.plan_id, remove_second.confirm_token)
+    assert not first.record.blob.exists()
+    assert manager.list_records() == []
+
+
 def test_shader_invalidation_is_reversible(env: tuple[SwitchContentManager, Path]) -> None:
     _manager, root = env
     cache = root / "cache"

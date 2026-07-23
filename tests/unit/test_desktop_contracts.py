@@ -82,6 +82,10 @@ def test_matrix_covers_required_services_and_explicit_non_applicable_items() -> 
         "system",
     } <= services
     for action_id in (
+        "component.rollback",
+        "component.recover",
+        "profiles.history",
+        "operations.history",
         "state.export",
         "admin.health",
         "session.recovery",

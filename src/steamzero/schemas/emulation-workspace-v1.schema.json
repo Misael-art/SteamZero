@@ -228,6 +228,10 @@
             "preferNativeNca": {"type": "boolean"}
           }
         },
+        "runtimeProfiles": {
+          "type": "object",
+          "additionalProperties": true
+        },
         "areaData": {
           "type": "object",
           "additionalProperties": {"$ref": "#/$defs/areaData"}

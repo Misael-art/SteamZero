@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
-from steamzero.adapters.desktop_kde import input_method_status
+from steamzero.adapters.desktop_kde import input_method_status, reduced_motion_enabled
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
@@ -32,6 +32,7 @@ StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
 DoctorRunner = Callable[[], tuple[dict[str, Any], list[dict[str, str]]]]
 EmulationBuilder = Callable[..., dict[str, Any]]
+ReducedMotionProbe = Callable[[], bool]
 
 _COMPONENT_LABELS: dict[str, tuple[str, str, str]] = {
     "dolphin": ("Dolphin", "Emulador de Wii e GameCube", "dolphin-emu"),
@@ -234,6 +235,7 @@ class DesktopDashboard:
         emulation: EmulationController | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
+        reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -252,6 +254,7 @@ class DesktopDashboard:
         )
         self._which = which
         self._spawn = spawn
+        self._reduced_motion_probe = reduced_motion_probe
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -340,8 +343,14 @@ class DesktopDashboard:
             # sem probe produz estado unverified e mantém a navegação disponível.
             emulation = build_switch_workspace()
 
+        try:
+            reduced_motion = self._reduced_motion_probe()
+        except Exception:
+            reduced_motion = False
+
         return {
             "uiContracts": handheld_ui_contracts(),
+            "accessibility": {"reducedMotion": reduced_motion},
             "components": components,
             "steam": self._steam.rows(desktop_status),
             "steamGameplay": steam_gameplay,

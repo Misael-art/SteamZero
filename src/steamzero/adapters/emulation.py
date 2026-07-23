@@ -48,6 +48,7 @@ from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState
 from steamzero.domain.switch_mods import InstalledMod, ModType
+from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
 from steamzero.ports import GameIdentity, MediaCandidate, SecretStorePort
@@ -233,9 +234,50 @@ class EmulationController:
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
         platform["defaultEmulatorId"] = global_settings.get("defaultEmulatorId")
+        for emulator in emulator_rows:
+            installed = emulator["installState"] == "installed"
+            is_default = emulator["id"] == global_settings.get("defaultEmulatorId")
+            emulator["isDefault"] = is_default
+            health = emulator["health"]
+            health["firmwareReady"] = firmware_status["status"] == "ok"
+            ready = bool(
+                installed
+                and health["versionCurrent"]
+                and health["keysReady"]
+                and health["firmwareReady"]
+            )
+            health["state"] = "ready" if ready else "degraded" if installed else "unavailable"
+            missing: list[str] = []
+            if not installed:
+                missing.append("instalação")
+            if installed and not health["versionCurrent"]:
+                missing.append("atualização")
+            if installed and not health["keysReady"]:
+                missing.append("keys")
+            if not health["firmwareReady"]:
+                missing.append("firmware")
+            health["reason"] = (
+                "Emulador, versão, keys e firmware verificados."
+                if ready
+                else f"Pendente: {', '.join(missing)}."
+            )
+            if installed and not is_default:
+                emulator["actions"].insert(
+                    0,
+                    self._action(
+                        "game.emulator.default",
+                        "Definir como padrão",
+                        confirmation=True,
+                    )
+                    | {"emulatorId": emulator["id"]},
+                )
+                emulator["action"] = emulator["actions"][0]
         # These preferences are published with the workspace so QML never has to
         # invent an optimistic value for a durable setting.
         platform["globalSettings"] = global_settings
+        platform["runtimeProfiles"] = self._runtime_profiles(
+            desktop_status, physical_dock, controllers
+        )
         platform["areaData"] = self._area_data(
             emulator_rows,
             games,
@@ -647,6 +689,11 @@ class EmulationController:
             if len(parts) != 3 or re.fullmatch(r"[0-9a-f]{64}", parts[1]) is None:
                 raise SteamZeroError("E-API-SCHEMA", detail="identificador de conteúdo inválido")
             plan = self._content.plan_set_active(parts[1], active=parts[2] == "on")
+        elif action.startswith("content.remove:"):
+            record_key = action.split(":", 1)[1]
+            if re.fullmatch(r"[0-9a-f]{64}", record_key) is None:
+                raise SteamZeroError("E-API-SCHEMA", detail="identificador de conteúdo inválido")
+            plan = self._content.plan_remove(record_key)
         elif action == "storage.recover":
             plan = self._content.plan_recover_index()
         elif action == "nsz.install":
@@ -876,6 +923,8 @@ class EmulationController:
             result = self._content.apply_import(plan_id, confirm_token)
         elif plan.kind == "switch-content.state":
             result = self._content.apply_state(plan_id, confirm_token)
+        elif plan.kind == "switch-content.remove":
+            result = self._content.apply_remove(plan_id, confirm_token)
         elif plan.kind == "switch-content.recover":
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
@@ -1110,6 +1159,12 @@ class EmulationController:
     def _emulator_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         registry = self._registry_factory()
+        roots = self.library_roots()
+        try:
+            self._current_key_source()
+            keys_cataloged = True
+        except SteamZeroError:
+            keys_cataloged = False
         with self._store_factory() as store:
             store.migrate()
             engine = AdapterEngine(store, registry, self._artifacts)
@@ -1120,6 +1175,10 @@ class EmulationController:
                 installed = status["state"] == "installed"
                 current = str(status.get("version", "—"))
                 up_to_date = installed and current == source.version
+                running = bool(
+                    installed and self._managed_process_groups(engine.payload_path(emulator_id))
+                )
+                keys_ready = bool(installed and self._key_projection_valid(emulator_id))
                 actions = (
                     [
                         self._action(f"emulator.launch:{emulator_id}", "Abrir"),
@@ -1141,7 +1200,23 @@ class EmulationController:
                         )
                     ]
                 )
-                if installed and self._managed_process_groups(engine.payload_path(emulator_id)):
+                if installed and not keys_ready:
+                    actions.append(
+                        self._action(
+                            "keys.repair" if keys_cataloged else "keys.import",
+                            "Reparar keys" if keys_cataloged else "Importar keys",
+                            confirmation=True,
+                        )
+                    )
+                if installed and not roots:
+                    actions.append(
+                        self._action(
+                            "library.root.add",
+                            "Adicionar diretório de jogos",
+                            confirmation=True,
+                        )
+                    )
+                if running:
                     actions.append(
                         self._action(
                             f"emulator.stop:{emulator_id}",
@@ -1163,6 +1238,20 @@ class EmulationController:
                         "installable": True,
                         "version": current,
                         "targetVersion": source.version,
+                        "running": running,
+                        "isDefault": False,
+                        "libraryRootCount": len(roots),
+                        "health": {
+                            "state": "degraded" if installed else "unavailable",
+                            "versionCurrent": up_to_date,
+                            "keysReady": keys_ready,
+                            "firmwareReady": False,
+                            "reason": (
+                                "Aguardando verificação completa da plataforma."
+                                if installed
+                                else "Pendente: instalação e firmware."
+                            ),
+                        },
                         "specialty": "AppImage verificado, configuração e dados preservados",
                         "capabilities": [],
                         "actions": actions,
@@ -1238,6 +1327,12 @@ class EmulationController:
         dlcs = [record for record in records if record.kind == "dlc"]
         saves = [record for record in records if record.kind == "save"]
         shaders = [record for record in records if record.kind == "shader-cache"]
+        missing_records = set(integrity.get("missingRecords", []))
+        game_names = {
+            str(game.get("titleId")): str(game.get("name", game.get("titleId")))
+            for game in games
+            if game.get("titleId")
+        }
         has_game = bool(games)
         selected_reason = (
             None if has_game else "Adicione diretórios, faça a varredura e selecione um jogo."
@@ -1342,20 +1437,47 @@ class EmulationController:
                         f"content-{record.record_key[:12]}",
                         "Update" if record.kind == "update" else "DLC",
                         (
+                            f"{game_names.get(str(record.title_id), 'Jogo não catalogado')} · "
                             f"Title ID {record.title_id} · versão "
-                            f"{record.version or 'não informada'}"
+                            f"{record.version or 'não informada'} · "
+                            f"{record.size / (1024 * 1024):.1f} MiB"
                         ),
-                        "ready" if record.state == "active" else "attention",
-                        "Ativo" if record.state == "active" else "Inativo",
-                        action=self._action(
-                            (
-                                f"content.state:{record.record_key}:off"
-                                if record.state == "active"
-                                else f"content.state:{record.record_key}:on"
+                        (
+                            "failed"
+                            if record.record_key in missing_records
+                            else "ready"
+                            if record.state == "active"
+                            else "attention"
+                        ),
+                        (
+                            "Arquivo ausente"
+                            if record.record_key in missing_records
+                            else "Ativo"
+                            if record.state == "active"
+                            else "Inativo"
+                        ),
+                        actions=[
+                            self._action(
+                                (
+                                    f"content.state:{record.record_key}:off"
+                                    if record.state == "active"
+                                    else f"content.state:{record.record_key}:on"
+                                ),
+                                "Desativar" if record.state == "active" else "Ativar",
+                                enabled=record.record_key not in missing_records,
+                                reason=(
+                                    "O arquivo não passou pela validação de integridade."
+                                    if record.record_key in missing_records
+                                    else None
+                                ),
+                                confirmation=True,
                             ),
-                            "Desativar" if record.state == "active" else "Ativar",
-                            confirmation=True,
-                        ),
+                            self._action(
+                                f"content.remove:{record.record_key}",
+                                "Remover",
+                                confirmation=True,
+                            ),
+                        ],
                     )
                     for record in (updates + dlcs)[:8]
                 ],
@@ -1437,6 +1559,31 @@ class EmulationController:
                             confirmation=True,
                         ),
                     )
+                ]
+                + [
+                    self._card(
+                        f"save-{record.record_key[:12]}",
+                        game_names.get(str(record.title_id), "Backup catalogado"),
+                        (
+                            f"Title ID {record.title_id or 'não associado'} · origem "
+                            f"{record.emulator_id or 'não informada'} · "
+                            f"{record.size / 1024:.1f} KiB"
+                        ),
+                        "failed" if record.record_key in missing_records else "ready",
+                        (
+                            "Arquivo ausente"
+                            if record.record_key in missing_records
+                            else "Íntegro"
+                        ),
+                        actions=[
+                            self._action(
+                                f"content.remove:{record.record_key}",
+                                "Remover backup",
+                                confirmation=True,
+                            )
+                        ],
+                    )
+                    for record in saves[:8]
                 ],
                 "primaryAction": self._action("emulation.refresh", "Verificar integridade"),
             },
@@ -1456,6 +1603,31 @@ class EmulationController:
                             confirmation=True,
                         ),
                     )
+                ]
+                + [
+                    self._card(
+                        f"shader-{record.record_key[:12]}",
+                        game_names.get(str(record.title_id), "Shader cache catalogado"),
+                        (
+                            f"Title ID {record.title_id or 'não associado'} · emulador/driver "
+                            f"{record.emulator_id or 'não informado'} · "
+                            f"{record.size / (1024 * 1024):.1f} MiB"
+                        ),
+                        "failed" if record.record_key in missing_records else "ready",
+                        (
+                            "Arquivo ausente"
+                            if record.record_key in missing_records
+                            else "Backup íntegro"
+                        ),
+                        actions=[
+                            self._action(
+                                f"content.remove:{record.record_key}",
+                                "Remover cache",
+                                confirmation=True,
+                            )
+                        ],
+                    )
+                    for record in shaders[:8]
                 ],
                 "primaryAction": self._action("emulation.refresh", "Verificar compatibilidade"),
             },
@@ -2143,7 +2315,7 @@ class EmulationController:
         return secret.reveal() if secret is not None else None
 
     def _media_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
-        store = StateStore()
+        store = self._store_factory()
         store.migrate()
         mgr = self._media_manager(store)
         params = job.params
@@ -3024,6 +3196,19 @@ class EmulationController:
                         "name": mod.name,
                         "state": mod.state,
                         "emulatorId": mod.emulator_id,
+                        "buildId": mod.build_id,
+                        "type": mod.mod_type.value,
+                        "source": mod.source,
+                        "version": mod.version,
+                        "priority": None,
+                        "compatibility": {
+                            "state": "unknown",
+                            "reason": (
+                                "Build ID registrado; compatibilidade ainda não foi validada."
+                                if mod.build_id
+                                else "O backend não detectou Build ID para validar compatibilidade."
+                            ),
+                        },
                         "stateAction": self._action(
                             f"mod.state:{mod.id}:{'off' if mod.state == 'active' else 'on'}",
                             "Desativar" if mod.state == "active" else "Ativar",
@@ -3043,6 +3228,18 @@ class EmulationController:
                         "state": cheat.state,
                         "enabled": cheat.enabled,
                         "codeCount": cheat.code_count,
+                        "type": cheat.cheat_type.value,
+                        "source": cheat.source,
+                        "version": cheat.version,
+                        "compatibility": {
+                            "state": "unverified" if cheat.build_id else "unknown",
+                            "reason": (
+                                "Build ID do arquivo foi validado; equivalência com o "
+                                "jogo ainda não foi observada."
+                                if cheat.build_id
+                                else "Build ID ausente; compatibilidade não pode ser confirmada."
+                            ),
+                        },
                         "stateAction": self._action(
                             f"cheat.state:{cheat.id}:{'off' if cheat.enabled else 'on'}",
                             "Desativar" if cheat.enabled else "Ativar",
@@ -3223,6 +3420,64 @@ class EmulationController:
         return bool(context.get("physicalDock")) if isinstance(context, Mapping) else False
 
     @staticmethod
+    def _runtime_profiles(
+        status: Mapping[str, Any], dock: bool, controllers: int
+    ) -> dict[str, Any]:
+        context = status.get("context")
+        context_map = context if isinstance(context, Mapping) else {}
+        displays = context_map.get("displays")
+        display_rows = displays if isinstance(displays, list) else []
+        external = next(
+            (
+                row
+                for row in display_rows
+                if isinstance(row, Mapping)
+                and row.get("connected") is True
+                and row.get("internal") is False
+            ),
+            None,
+        )
+        external_width = external.get("width") if isinstance(external, Mapping) else None
+        external_height = external.get("height") if isinstance(external, Mapping) else None
+        handheld = resolve_switch_runtime_profile(
+            "handheld",
+            connected_controllers=controllers,
+            built_in_controller=(
+                controllers == 0 and str(context_map.get("deviceKind", "")).startswith("deck-")
+            ),
+        ).to_dict()
+        docked = resolve_switch_runtime_profile(
+            "dock",
+            connected_controllers=controllers,
+            built_in_controller=False,
+            external_width=external_width if isinstance(external_width, int) else None,
+            external_height=external_height if isinstance(external_height, int) else None,
+        ).to_dict()
+        for profile in (handheld, docked):
+            profile.update(
+                {
+                    "tdp": {"value": None, "source": "steam-game-profile"},
+                    "fps": {"value": None, "source": "steam-game-profile"},
+                    "graphics": {"value": None, "source": "per-game-or-emulator"},
+                    "audio": {"value": None, "source": "system-inherited"},
+                }
+            )
+        observed = "dock" if dock else "handheld"
+        return {
+            "activeScope": observed,
+            "observedScope": observed,
+            "desiredScope": None,
+            "diverged": None,
+            "autoTransition": {
+                "supported": False,
+                "reason": "A detecção é observada; transição automática ainda não possui executor.",
+                "lastResult": None,
+            },
+            "handheld": handheld,
+            "dock": docked,
+        }
+
+    @staticmethod
     def _controller_count() -> int:
         root = Path("/dev/input/by-id")
         try:
@@ -3231,7 +3486,6 @@ class EmulationController:
             return 0
         return min(4, len(names))
 
-    @staticmethod
     @staticmethod
     def _plan_view(
         plan: transaction.Plan,
@@ -3274,6 +3528,7 @@ class EmulationController:
         status_label: str,
         *,
         action: dict[str, Any] | None = None,
+        actions: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         result: dict[str, Any] = {
             "id": card_id,
@@ -3284,6 +3539,8 @@ class EmulationController:
         }
         if action is not None:
             result["action"] = action
+        if actions:
+            result["actions"] = actions
         return result
 
     @staticmethod

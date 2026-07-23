@@ -615,6 +615,43 @@ def test_keyboard_layout_maps_locale_to_language() -> None:
     assert locale_to_xkb_layout("C") == "us"
 
 
+def test_input_method_status_publishes_real_pt_br_layout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(desktop_kde, "_host_locale", lambda: "pt_BR")
+    monkeypatch.setattr(desktop_kde, "_maliit_desktop_file", lambda: None)
+    monkeypatch.setattr(desktop_kde, "_kwin_vk_available", lambda _runner, _which: False)
+    monkeypatch.setattr(desktop_kde.shutil, "which", lambda _command: None)
+
+    status = desktop_kde.input_method_status()
+
+    assert status["hostLocale"] == "pt_BR"
+    assert status["keyboardLayout"] == "br"
+
+
+def test_reduced_motion_reads_real_plasma_duration_factor() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "0\n", "")
+
+    assert desktop_kde.reduced_motion_enabled(
+        runner=runner, which=lambda command: f"/usr/bin/{command}"
+    ) is True
+    assert calls == [
+        (
+            "kreadconfig6",
+            "--file",
+            "kdeglobals",
+            "--group",
+            "KDE",
+            "--key",
+            "AnimationDurationFactor",
+        )
+    ]
+
+
 def _minimal_context(
     capabilities: frozenset[str] = frozenset({"kde-plasma"}),
     displays: tuple[DisplayState, ...] = (),

@@ -101,6 +101,7 @@ Item {
     readonly property var emulators: selectedPlatform.emulators || []
     readonly property var games: selectedPlatform.games || []
     readonly property var globalSettings: selectedPlatform.globalSettings || ({})
+    readonly property var runtimeProfiles: selectedPlatform.runtimeProfiles || ({})
     readonly property int emulatorMaintenanceCount: emulatorMaintenanceRepeater.count
     readonly property var selectedEmulator: emulators.length > 0 && emulatorIndex < emulators.length
         ? emulators[emulatorIndex] : ({
@@ -494,6 +495,19 @@ Item {
         return selectedPlatform.name
     }
 
+    function scopedRuntimeProfile() {
+        if (scopeId() !== "handheld" && scopeId() !== "dock")
+            return null
+        return runtimeProfiles[scopeId()] || null
+    }
+
+    function inheritedValue(field, suffix) {
+        const profile = scopedRuntimeProfile()
+        const value = profile && profile[field] ? profile[field].value : null
+        return value === null || value === undefined
+            ? qsTr("herdado (%1)").arg(suffix) : String(value)
+    }
+
     function areaTitle(id) {
         if (id === "overview" && scopeId() === "global")
             return qsTr("Painel da plataforma")
@@ -639,7 +653,13 @@ Item {
                 "icon": "extension",
                 "state": mod.state === "active" ? "ready" : "attention",
                 "statusLabel": mod.state === "active" ? qsTr("Ativo") : qsTr("Inativo"),
-                "detail": qsTr("Mod local em %1").arg(mod.emulatorId || qsTr("emulador não definido")),
+                "detail": qsTr("%1 • versão %2 • %3 • %4")
+                    .arg(mod.emulatorId || qsTr("emulador não definido"))
+                    .arg(mod.version || qsTr("não informada"))
+                    .arg(mod.priority === null || mod.priority === undefined
+                        ? qsTr("prioridade não suportada") : qsTr("prioridade %1").arg(mod.priority))
+                    .arg(mod.compatibility && mod.compatibility.reason
+                        ? mod.compatibility.reason : qsTr("compatibilidade não publicada")),
                 "metric": qsTr("Mod"),
                 "actions": [mod.stateAction, mod.removeAction]
             })
@@ -653,8 +673,10 @@ Item {
                 "icon": "applications-development",
                 "state": cheat.enabled ? "ready" : "attention",
                 "statusLabel": cheat.enabled ? qsTr("Ativo") : qsTr("Inativo"),
-                "detail": qsTr("Build ID %1 • %2 código(s)")
-                    .arg(cheat.buildId || qsTr("não identificado")).arg(cheat.codeCount || 0),
+                "detail": qsTr("Build ID %1 • %2 código(s) • %3")
+                    .arg(cheat.buildId || qsTr("não identificado")).arg(cheat.codeCount || 0)
+                    .arg(cheat.compatibility && cheat.compatibility.reason
+                        ? cheat.compatibility.reason : qsTr("compatibilidade não publicada")),
                 "metric": qsTr("Cheat"),
                 "actions": [cheat.stateAction, cheat.removeAction]
             })
@@ -1243,7 +1265,7 @@ Item {
                 textRole: "label"
                 currentIndex: page.areaIndex
                 Layout.fillWidth: true
-                Layout.minimumHeight: 42
+                Layout.minimumHeight: page.minimumTouchTarget
                 Accessible.name: qsTr("Selecionar área de emulação")
                 onActivated: page.areaIndex = currentIndex
             }
@@ -1436,7 +1458,7 @@ Item {
                                 placeholderTextColor: page.mutedColor
                                 selectByMouse: true
                                 Layout.preferredWidth: Math.min(360, contentScroll.width * 0.38)
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Buscar jogos")
                                 onTextChanged: page.gameSearchText = text
                                 background: Rectangle {
@@ -1454,7 +1476,7 @@ Item {
                                     || page.steamPublishedCount() > 0
                                 palette.button: enabled ? page.cyanDarkColor : page.raisedColor
                                 palette.buttonText: enabled ? page.textColor : page.mutedColor
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.description: qsTr("A Steam deve estar fechada; somente jogos marcados serão sincronizados.")
                                 onClicked: page.dispatchAction({
                                     "id": "steam.shortcuts.sync",
@@ -1468,7 +1490,7 @@ Item {
                                 icon.name: "view-refresh"
                                 palette.button: page.raisedColor
                                 palette.buttonText: page.textColor
-                                Layout.minimumHeight: 44
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Varrer biblioteca novamente")
                                 onClicked: page.dispatchAction({
                                     "id": "library.scan", "label": text, "enabled": true
@@ -1501,7 +1523,7 @@ Item {
                                     checked: page.gameSortKey === modelData.key
                                     palette.button: checked ? page.cyanDarkColor : page.raisedColor
                                     palette.buttonText: page.textColor
-                                    Layout.minimumHeight: 38
+                                    Layout.minimumHeight: page.minimumTouchTarget
                                     Accessible.name: qsTr("Ordenar por %1").arg(modelData.label)
                                     onClicked: page.setGameSort(modelData.key)
                                 }
@@ -1891,6 +1913,82 @@ Item {
                     }
 
                     Rectangle {
+                        visible: !page.isGameLibrary() && page.scopedRuntimeProfile() !== null
+                        Layout.fillWidth: true
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        implicitHeight: runtimeProfileContent.implicitHeight + 24
+                        color: page.surfaceColor
+                        border.color: page.runtimeProfiles.activeScope === page.scopeId()
+                            ? page.cyanColor : page.borderColor
+                        radius: 10
+
+                        ColumnLayout {
+                            id: runtimeProfileContent
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label {
+                                    text: page.scopeId() === "dock"
+                                        ? qsTr("Perfil Dock") : qsTr("Perfil Portátil")
+                                    color: page.textColor
+                                    font.bold: true
+                                    font.pixelSize: 16
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: page.runtimeProfiles.activeScope === page.scopeId()
+                                        ? qsTr("Observado agora") : qsTr("Inativo")
+                                    color: page.runtimeProfiles.activeScope === page.scopeId()
+                                        ? page.cyanColor : page.mutedColor
+                                    font.bold: true
+                                }
+                            }
+                            Flow {
+                                Layout.fillWidth: true
+                                spacing: 12
+                                Label {
+                                    text: qsTr("Resolução %1×%2")
+                                        .arg(page.scopedRuntimeProfile().resolution.width)
+                                        .arg(page.scopedRuntimeProfile().resolution.height)
+                                    color: page.textColor
+                                }
+                                Label {
+                                    text: qsTr("Escala %1×").arg(
+                                        Number(page.scopedRuntimeProfile().renderScale).toFixed(2))
+                                    color: page.textColor
+                                }
+                                Label {
+                                    text: qsTr("TDP %1").arg(page.inheritedValue("tdp", qsTr("perfil Steam/jogo")))
+                                    color: page.mutedColor
+                                }
+                                Label {
+                                    text: qsTr("FPS %1").arg(page.inheritedValue("fps", qsTr("perfil Steam/jogo")))
+                                    color: page.mutedColor
+                                }
+                                Label {
+                                    text: qsTr("Controles %1/%2")
+                                        .arg(page.scopedRuntimeProfile().controllers.activePlayers)
+                                        .arg(page.scopedRuntimeProfile().controllers.maximumPlayers)
+                                    color: page.mutedColor
+                                }
+                                Label { text: qsTr("Áudio herdado do sistema"); color: page.mutedColor }
+                            }
+                            Label {
+                                visible: page.runtimeProfiles.autoTransition
+                                    && page.runtimeProfiles.autoTransition.supported !== true
+                                text: page.runtimeProfiles.autoTransition
+                                    ? page.runtimeProfiles.autoTransition.reason : ""
+                                color: page.amberColor
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
+                    }
+
+                    Rectangle {
                         visible: !page.isGameLibrary()
                         Layout.fillWidth: true
                         Layout.leftMargin: page.responsiveGutter
@@ -2044,7 +2142,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Layout.minimumWidth: 0
                                                 Layout.maximumWidth: 190
-                                                Layout.minimumHeight: 40
+                                                Layout.minimumHeight: page.minimumTouchTarget
                                                 Accessible.name: text
                                                 Accessible.description: modelData.reason || ""
                                                 onClicked: page.dispatchCardAction(modelData)
@@ -2107,68 +2205,173 @@ Item {
                                 id: emulatorRow
                                 required property var modelData
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 72
+                                implicitHeight: emulatorRowContent.implicitHeight + 24
+                                Layout.minimumHeight: implicitHeight
                                 color: page.surfaceColor
-                                border.color: page.borderColor
+                                border.color: modelData.isDefault ? page.cyanColor : page.borderColor
                                 radius: 9
-                                RowLayout {
+
+                                ColumnLayout {
+                                    id: emulatorRowContent
                                     anchors.fill: parent
                                     anchors.margins: 12
-                                    Item {
-                                        Layout.preferredWidth: 24
-                                        Layout.preferredHeight: 24
-                                        Image {
-                                            id: emulatorLogo
-                                            anchors.fill: parent
-                                            source: emulatorRow.modelData.iconAsset || ""
-                                            fillMode: Image.PreserveAspectFit
-                                            asynchronous: true
-                                            smooth: true
-                                            Accessible.ignored: true
+                                    spacing: 8
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        Item {
+                                            Layout.preferredWidth: 24
+                                            Layout.preferredHeight: 24
+                                            Image {
+                                                id: emulatorLogo
+                                                anchors.fill: parent
+                                                source: emulatorRow.modelData.iconAsset || ""
+                                                fillMode: Image.PreserveAspectFit
+                                                asynchronous: true
+                                                smooth: true
+                                                Accessible.ignored: true
+                                            }
+                                            ModernIcon {
+                                                anchors.fill: parent
+                                                visible: !emulatorRow.modelData.iconAsset
+                                                    || emulatorLogo.status === Image.Error
+                                                iconName: emulatorRow.modelData.iconKey
+                                                    || "applications-games"
+                                                iconColor: page.stateColor(emulatorRow.modelData.state)
+                                            }
                                         }
-                                        ModernIcon {
-                                            anchors.fill: parent
-                                            visible: !emulatorRow.modelData.iconAsset
-                                                || emulatorLogo.status === Image.Error
-                                            iconName: emulatorRow.modelData.iconKey
-                                                || "applications-games"
-                                            iconColor: page.stateColor(emulatorRow.modelData.state)
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 1
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: emulatorRow.modelData.name
+                                                    color: page.textColor
+                                                    font.bold: true
+                                                }
+                                                Label {
+                                                    visible: emulatorRow.modelData.isDefault === true
+                                                    text: qsTr("PADRÃO")
+                                                    color: page.cyanColor
+                                                    font.bold: true
+                                                    font.pixelSize: 11
+                                                }
+                                                Label {
+                                                    visible: emulatorRow.modelData.running === true
+                                                    text: qsTr("EM EXECUÇÃO")
+                                                    color: page.greenColor
+                                                    font.bold: true
+                                                    font.pixelSize: 11
+                                                }
+                                                Item { Layout.fillWidth: true }
+                                            }
+                                            Label {
+                                                text: emulatorRow.modelData.specialty
+                                                    || emulatorRow.modelData.description
+                                                    || qsTr("Capacidades ainda não publicadas")
+                                                color: page.mutedColor
+                                                font.pixelSize: 12
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                        Label {
+                                            text: emulatorRow.modelData.statusLabel
+                                                || qsTr("Desconhecido")
+                                            color: page.stateColor(emulatorRow.modelData.state)
+                                            font.bold: true
                                         }
                                     }
-                                    ColumnLayout {
+
+                                    Flow {
                                         Layout.fillWidth: true
-                                        spacing: 1
-                                        Label { text: modelData.name; color: page.textColor; font.bold: true }
+                                        spacing: 6
                                         Label {
-                                            text: modelData.specialty || modelData.description || qsTr("Capacidades ainda não publicadas")
+                                            text: qsTr("Versão %1 → %2")
+                                                .arg(emulatorRow.modelData.version || "—")
+                                                .arg(emulatorRow.modelData.targetVersion || "—")
+                                            color: emulatorRow.modelData.health
+                                                && emulatorRow.modelData.health.versionCurrent
+                                                ? page.greenColor : page.mutedColor
+                                            height: 24
+                                        }
+                                        Label {
+                                            text: emulatorRow.modelData.health
+                                                && emulatorRow.modelData.health.keysReady
+                                                ? qsTr("Keys verificadas") : qsTr("Keys pendentes")
+                                            color: emulatorRow.modelData.health
+                                                && emulatorRow.modelData.health.keysReady
+                                                ? page.greenColor : page.amberColor
+                                            height: 24
+                                        }
+                                        Label {
+                                            text: qsTr("%1 diretório(s) de jogos")
+                                                .arg(emulatorRow.modelData.libraryRootCount || 0)
                                             color: page.mutedColor
-                                            font.pixelSize: 12
-                                            elide: Text.ElideRight
+                                            height: 24
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: emulatorRow.modelData.health
+                                                ? emulatorRow.modelData.health.reason : ""
+                                            color: page.mutedColor
+                                            wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
                                         }
+                                        Button {
+                                            id: emulatorActionsButton
+                                            text: qsTr("Ações (%1)").arg(
+                                                emulatorRow.modelData.actions
+                                                    ? emulatorRow.modelData.actions.length : 0)
+                                            icon.name: "application-menu"
+                                            enabled: emulatorRow.modelData.actions
+                                                && emulatorRow.modelData.actions.length > 0
+                                            palette.button: page.raisedColor
+                                            palette.buttonText: page.textColor
+                                            Layout.minimumWidth: 136
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.name: qsTr("Ações de %1")
+                                                .arg(emulatorRow.modelData.name)
+                                            Accessible.description: qsTr("Abrir menu de manutenção do emulador")
+                                            onClicked: emulatorActionsMenu.popup()
+                                        }
                                     }
-                                    Label {
-                                        text: modelData.statusLabel || qsTr("Desconhecido")
-                                        color: page.stateColor(modelData.state)
-                                        font.bold: true
-                                    }
-                                    RowLayout {
-                                        spacing: 6
-                                        Repeater {
-                                            model: modelData.actions && modelData.actions.length > 0
-                                                ? modelData.actions : [modelData.action]
-                                            delegate: Button {
+
+                                    Menu {
+                                        id: emulatorActionsMenu
+                                        modal: true
+                                        focus: true
+                                        closePolicy: Popup.CloseOnEscape
+                                            | Popup.CloseOnPressOutside
+
+                                        Instantiator {
+                                            model: emulatorRow.modelData.actions
+                                                && emulatorRow.modelData.actions.length > 0
+                                                ? emulatorRow.modelData.actions
+                                                : []
+                                            delegate: MenuItem {
                                                 required property var modelData
                                                 text: modelData && modelData.label
                                                     ? modelData.label : qsTr("Detalhes")
                                                 enabled: Boolean(modelData)
                                                     && modelData.enabled !== false
-                                                palette.button: page.raisedColor
-                                                palette.buttonText: page.textColor
-                                                Layout.minimumHeight: 48
+                                                height: page.minimumTouchTarget
                                                 Accessible.name: qsTr("%1: %2").arg(text)
                                                     .arg(emulatorRow.modelData.name)
-                                                onClicked: page.dispatchAction(modelData)
+                                                Accessible.description: modelData
+                                                    ? modelData.reason || "" : ""
+                                                onTriggered: page.dispatchAction(modelData)
+                                            }
+                                            onObjectAdded: function(index, object) {
+                                                emulatorActionsMenu.insertItem(index, object)
+                                            }
+                                            onObjectRemoved: function(index, object) {
+                                                emulatorActionsMenu.removeItem(object)
                                             }
                                         }
                                     }
@@ -2386,7 +2589,7 @@ Item {
                                 palette.base: page.raisedColor
                                 palette.text: page.textColor
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 42
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.description: qsTr("Preferência persistente usada pelo lançamento direto e pela Steam.")
                                 onActivated: {
                                     page.pendingEmulatorGameId = page.selectedGame.id
@@ -2441,7 +2644,7 @@ Item {
                                     palette.button: page.raisedColor
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: page.minimumTouchTarget
                                     background: Rectangle {
                                         color: page.raisedColor
                                         border.color: parent.hovered || parent.activeFocus
@@ -2488,7 +2691,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 42
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2502,7 +2705,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 42
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2548,7 +2751,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 42
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2562,7 +2765,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 42
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2695,7 +2898,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2717,7 +2920,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2739,7 +2942,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: page.raisedColor
                                             border.color: parent.hovered || parent.activeFocus
@@ -2782,7 +2985,7 @@ Item {
                                         placeholderTextColor: page.mutedColor
                                         selectByMouse: true
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         onTextChanged: page.steamUserId = text
                                         background: Rectangle {
                                             color: page.surfaceColor
@@ -2807,7 +3010,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: publishSteamBtn.enabled
                                                 ? page.raisedColor : page.surfaceColor
@@ -2832,7 +3035,7 @@ Item {
                                         palette.button: page.raisedColor
                                         palette.buttonText: page.textColor
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: 36
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         background: Rectangle {
                                             color: unpublishSteamBtn.enabled
                                                 ? page.raisedColor : page.surfaceColor
@@ -2876,7 +3079,7 @@ Item {
                                     palette.button: page.raisedColor
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: page.minimumTouchTarget
                                     background: Rectangle {
                                         color: page.raisedColor
                                         border.color: parent.hovered || parent.activeFocus
@@ -2891,7 +3094,7 @@ Item {
                                     palette.button: page.raisedColor
                                     palette.buttonText: page.textColor
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: page.minimumTouchTarget
                                     background: Rectangle {
                                         color: page.raisedColor
                                         border.color: parent.hovered || parent.activeFocus
@@ -2907,7 +3110,7 @@ Item {
                                     palette.button: page.raisedColor
                                     palette.buttonText: page.redColor
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 42
+                                    Layout.minimumHeight: page.minimumTouchTarget
                                     Accessible.description: qsTr("A remoção exige confirmação e mantém backup transacional para rollback.")
                                     onClicked: page.dispatchAction(page.selectedGame.deleteAction)
                                 }
@@ -2928,7 +3131,7 @@ Item {
                                 Item {
                                     id: advancedHeader
                                     width: parent.width
-                                    height: 32
+                                    height: page.minimumTouchTarget
                                     RowLayout {
                                         anchors.fill: parent
                                         spacing: 8
@@ -2952,8 +3155,16 @@ Item {
                                     }
                                     MouseArea {
                                         anchors.fill: parent
+                                        activeFocusOnTab: true
                                         cursorShape: Qt.PointingHandCursor
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: parent.parent.parent.expanded
+                                            ? qsTr("Recolher opções avançadas")
+                                            : qsTr("Expandir opções avançadas")
                                         onClicked: parent.parent.parent.expanded = !parent.parent.parent.expanded
+                                        Keys.onReturnPressed: parent.parent.parent.expanded = !parent.parent.parent.expanded
+                                        Keys.onEnterPressed: parent.parent.parent.expanded = !parent.parent.parent.expanded
+                                        Keys.onSpacePressed: parent.parent.parent.expanded = !parent.parent.parent.expanded
                                     }
                                 }
                                 ColumnLayout {
