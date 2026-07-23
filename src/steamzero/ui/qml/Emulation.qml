@@ -42,6 +42,7 @@ Item {
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
     property string steamUserId: ""
+    property var localActionMessages: ({})
     property bool reducedMotion: false
     property Item gameDetailsInvoker: null
     readonly property bool compactLayout: width <= 1296 || height <= 720
@@ -67,6 +68,8 @@ Item {
     property alias platformControl: platformPicker
     property alias compactGameRepeaterControl: compactGameRepeater
     property alias compactSortControl: compactSortPicker
+    property alias contentScrollControl: contentScroll
+    property alias cardsRepeaterControl: cardsRepeater
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -825,6 +828,25 @@ Item {
         if (card.targetArea)
             return [{"label": qsTr("Abrir área"), "targetArea": card.targetArea, "enabled": true}]
         return []
+    }
+
+    function setActionMessage(actionId, message) {
+        const next = Object.assign({}, localActionMessages)
+        if (message)
+            next[actionId] = String(message)
+        else
+            delete next[actionId]
+        localActionMessages = next
+    }
+
+    function cardActionMessage(card) {
+        const actions = cardActions(card)
+        for (let index = 0; index < actions.length; index++) {
+            const message = localActionMessages[actions[index].id]
+            if (message)
+                return message
+        }
+        return ""
     }
 
     function dispatchCardAction(action) {
@@ -2470,10 +2492,12 @@ Item {
                         rowSpacing: 12
 
                         Repeater {
+                            id: cardsRepeater
                             model: page.cards()
                             delegate: Rectangle {
                                 required property int index
                                 required property var modelData
+                                readonly property var actionRepeaterControl: cardActionRepeater
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 250
                                 Layout.preferredHeight: page.isGlobalOverview()
@@ -2538,15 +2562,27 @@ Item {
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                     }
+                                    Label {
+                                        visible: page.cardActionMessage(modelData).length > 0
+                                        text: page.cardActionMessage(modelData)
+                                        color: page.redColor
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WordWrap
+                                        Accessible.name: text
+                                        Layout.fillWidth: true
+                                    }
 
                                     Item { Layout.fillHeight: true }
 
-                                    RowLayout {
+                                    GridLayout {
                                         visible: page.cardActions(modelData).length > 0
                                         Layout.fillWidth: true
-                                        spacing: 6
+                                        columns: page.compactLayout ? 2 : 3
+                                        columnSpacing: 6
+                                        rowSpacing: 6
 
                                         Repeater {
+                                            id: cardActionRepeater
                                             model: page.cardActions(modelData)
                                             delegate: Button {
                                                 required property var modelData
@@ -2556,8 +2592,7 @@ Item {
                                                 palette.button: page.raisedColor
                                                 palette.buttonText: page.textColor
                                                 Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                Layout.maximumWidth: 190
+                                                Layout.minimumWidth: 120
                                                 Layout.minimumHeight: page.minimumTouchTarget
                                                 Accessible.name: text
                                                 Accessible.description: modelData.reason || ""

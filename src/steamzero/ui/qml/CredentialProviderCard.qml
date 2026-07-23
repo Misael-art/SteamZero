@@ -47,6 +47,7 @@ Rectangle {
     signal testRequested(string providerId)
     signal revokeRequested(string providerId)
     signal linkRequested(string providerId, string linkKey)
+    signal keyboardRequested(string fieldId)
 
     Layout.fillWidth: true
     implicitHeight: providerContent.implicitHeight + 24
@@ -236,6 +237,7 @@ Rectangle {
                 required property bool fieldRequired
                 required property string fieldValue
                 readonly property var inputControl: credentialField
+                readonly property var keyboardControl: keyboardButton
 
                 Layout.fillWidth: true
                 spacing: 3
@@ -267,6 +269,21 @@ Rectangle {
                         color: root.surfaceColor
                         border.color: parent.activeFocus ? root.cyanColor : root.borderColor
                         radius: 6
+                    }
+                }
+                Button {
+                    id: keyboardButton
+                    text: qsTr("Abrir teclado virtual")
+                    enabled: !root.busy
+                    activeFocusOnTab: true
+                    Accessible.name: qsTr("Abrir teclado virtual para %1").arg(fieldLabel)
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    palette.button: root.raisedColor
+                    palette.buttonText: root.textColor
+                    onClicked: {
+                        credentialField.forceActiveFocus(Qt.TabFocusReason)
+                        root.keyboardRequested(fieldId)
                     }
                 }
                 Label {

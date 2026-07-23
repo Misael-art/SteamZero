@@ -73,6 +73,10 @@ ApplicationWindow {
     property alias emulationControl: emulationPage
     property alias steamGameplayControl: steamGameplayPage
     property alias diagnosticsPreviewControl: diagnosticsPreviewDialog
+    property alias credentialDialogControl: credentialDialog
+    property alias credentialScrollControl: credentialScroll
+    property alias credentialProviderRepeaterControl: credentialProviderRepeater
+    property alias credentialCloseControl: credentialCloseButton
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -268,6 +272,7 @@ ApplicationWindow {
             "library.scan": qsTr("Varredura da biblioteca"),
             "rom.scan": qsTr("Descoberta de ROMs"),
             "media.search": qsTr("Busca de mídia"),
+            "ui.action": qsTr("Ação da interface"),
             "content.import": qsTr("Importação de conteúdo"),
             "nsz.convert": qsTr("Conversão NSZ"),
             "steam.publish": qsTr("Publicação na Steam")
@@ -301,6 +306,8 @@ ApplicationWindow {
                     .arg(result.candidate_count || 0).arg(degraded)
                 : qsTr("%1 candidato(s) encontrado(s)").arg(result.candidate_count || 0)
         }
+        if (result.message)
+            return String(result.message)
         if (job.errorCode)
             return qsTr("Código: %1. Abra os detalhes para tentar novamente.").arg(job.errorCode)
         return taskStateLabel(job.state)
@@ -405,6 +412,27 @@ ApplicationWindow {
         feedbackTimer.restart()
     }
 
+    function recordActionFailure(actionId, message) {
+        const current = liveTasks !== null ? liveTasks.slice()
+            : (emulationData && emulationData.jobs ? emulationData.jobs.slice() : [])
+        const now = new Date().toISOString()
+        current.unshift({
+            "jobId": "ui-" + Date.now() + "-" + current.length,
+            "type": "ui.action",
+            "state": "failed",
+            "rawState": "failed",
+            "priority": "interactive",
+            "progress": null,
+            "errorCode": "E-UI-ACTION",
+            "result": {"message": String(message), "actionId": actionId},
+            "canCancel": false,
+            "canRetry": false,
+            "createdAt": now,
+            "updatedAt": now
+        })
+        liveTasks = current.slice(0, 20)
+    }
+
     function errorMessage(response, fallback) {
         if (!response || response.error === undefined)
             return fallback
@@ -488,12 +516,17 @@ ApplicationWindow {
             const message = action && action.reason
                 ? action.reason
                 : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+            recordActionFailure(actionId, message)
             if (errorCallback)
                 errorCallback(message)
             notify(message, true)
             return
         }
-        request(action.method, action.endpoint, payload, callback, errorCallback)
+        request(action.method, action.endpoint, payload, callback, function(message) {
+            root.recordActionFailure(actionId, message)
+            if (errorCallback)
+                errorCallback(message)
+        })
     }
 
     function localPath(url) {
@@ -748,6 +781,8 @@ ApplicationWindow {
                 || action.id.indexOf("game.media.clear:") === 0
                 || action.id.indexOf("game.media.publish-steam:") === 0
                 || action.id.indexOf("game.media.unpublish-steam:") === 0
+                || action.id.indexOf("media.") === 0
+                || action.id.indexOf("library.root.") === 0
                 || action.id.indexOf("game.save.") === 0
                 || action.id.indexOf("game.shader.") === 0
                 || action.id === "game.emulator.default"
@@ -764,12 +799,17 @@ ApplicationWindow {
                     ? action.id.split(":")[1] : ""),
                 "selected": action.selected === true,
                 "value": action.value === true,
+                "overwrite": action.overwrite === true,
+                "approvedPaths": action.approvedPaths || [],
                 "steamUserId": action.steamUserId || "",
                 "mediaKinds": action.mediaKinds || []
             }
             requestAction("emulation.action.plan", payload, function(response) {
+                emulationPage.setActionMessage(action.id, "")
                 emulationPlan = response.plan
                 emulationDialog.open()
+            }, function(message) {
+                emulationPage.setActionMessage(action.id, message)
             })
             return
         }
@@ -972,7 +1012,55 @@ ApplicationWindow {
     Dialog {
         id: emulationDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onClosed: {
+            auditSelections = []
+            root.restoreDialogFocus()
+        }
+        property var auditSelections: []
+
+        function auditItems() {
+            if (!root.emulationPlan || !root.emulationPlan.auditPreview
+                    || root.emulationPlan.quarantineId)
+                return []
+            const categories = root.emulationPlan.auditPreview.categories || {}
+            const result = []
+            const selectable = ["duplicate", "incompatible", "corrupted", "unknown"]
+            for (let categoryIndex = 0; categoryIndex < selectable.length; categoryIndex++) {
+                const category = selectable[categoryIndex]
+                const items = categories[category] || []
+                for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+                    result.push({
+                        "relativePath": items[itemIndex].relativePath,
+                        "category": category,
+                        "sizeBytes": items[itemIndex].sizeBytes || 0
+                    })
+                }
+            }
+            return result
+        }
+
+        function setAuditSelected(relativePath, selected) {
+            const next = auditSelections.filter(function(value) {
+                return value !== relativePath
+            })
+            if (selected)
+                next.push(relativePath)
+            auditSelections = next
+        }
+
+        function prepareQuarantine() {
+            if (!root.emulationPlan || auditSelections.length === 0)
+                return
+            root.requestAction("emulation.action.plan", {
+                "actionId": root.emulationPlan.action,
+                "approvedPaths": auditSelections
+            }, function(response) {
+                root.emulationPlan = response.plan
+                root.notify(qsTr("Quarentena preparada; revise os movimentos antes de aplicar."),
+                            false)
+            })
+        }
+
         title: qsTr("Revisar operação de emulação")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -1002,14 +1090,41 @@ ApplicationWindow {
                     radius: 8
                     border.color: root.borderColor
                 }
-                TextArea {
-                    text: root.emulationPlan ? root.emulationPlan.preview : ""
-                    readOnly: true
-                    selectByMouse: true
-                    wrapMode: TextEdit.WrapAnywhere
-                    color: root.textColor
-                    background: null
-                    Accessible.name: qsTr("Prévia da operação de emulação")
+                Column {
+                    width: emulationPreviewScroll.availableWidth
+                    spacing: 8
+                    TextArea {
+                        width: parent.width
+                        text: root.emulationPlan ? root.emulationPlan.preview : ""
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: TextEdit.WrapAnywhere
+                        color: root.textColor
+                        background: null
+                        Accessible.name: qsTr("Prévia da operação de emulação")
+                    }
+                    Label {
+                        width: parent.width
+                        visible: emulationDialog.auditItems().length > 0
+                        text: qsTr("Selecione apenas itens não jogáveis para mover à quarentena. Jogos base, updates e DLCs nunca são oferecidos aqui.")
+                        color: root.amberColor
+                        wrapMode: Text.WordWrap
+                    }
+                    Repeater {
+                        model: emulationDialog.auditItems()
+                        delegate: CheckBox {
+                            required property var modelData
+                            width: parent.width
+                            implicitHeight: Math.max(48, contentItem.implicitHeight + 12)
+                            text: qsTr("%1 · %2 · %3 bytes")
+                                .arg(modelData.category)
+                                .arg(modelData.relativePath)
+                                .arg(modelData.sizeBytes)
+                            onToggled: emulationDialog.setAuditSelected(
+                                modelData.relativePath, checked)
+                            Accessible.name: text
+                        }
+                    }
                 }
             }
             RowLayout {
@@ -1023,6 +1138,17 @@ ApplicationWindow {
                         root.emulationPlan = null
                         emulationDialog.close()
                     }
+                }
+                Button {
+                    visible: root.emulationPlan
+                        && root.emulationPlan.auditPreview
+                        && !root.emulationPlan.quarantineId
+                    text: qsTr("Preparar quarentena (%1)")
+                        .arg(emulationDialog.auditSelections.length)
+                    enabled: emulationDialog.auditSelections.length > 0
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: emulationDialog.prepareQuarantine()
                 }
                 Button {
                     text: qsTr("Aplicar com rollback")
@@ -1260,16 +1386,45 @@ ApplicationWindow {
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
+        focus: true
         background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.borderColor; border.width: 1 }
         property var providers: []
-        property string testResult: ""
-        property string saveResult: ""
+
+        function moveFocus(forward) {
+            const active = root.activeFocusItem
+            const next = active ? active.nextItemInFocusChain(forward) : null
+            if (next) {
+                next.forceActiveFocus(Qt.TabFocusReason)
+                Qt.callLater(function() { root.ensureFocusedItemVisible(next) })
+            }
+        }
+
+        function closeFromBack() {
+            close()
+        }
+
+        Keys.onUpPressed: function(event) {
+            credentialDialog.moveFocus(false)
+            event.accepted = true
+        }
+        Keys.onDownPressed: function(event) {
+            credentialDialog.moveFocus(true)
+            event.accepted = true
+        }
+        Keys.onEscapePressed: function(event) {
+            credentialDialog.closeFromBack()
+            event.accepted = true
+        }
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Back) {
+                credentialDialog.closeFromBack()
+                event.accepted = true
+            }
+        }
 
         function refresh() {
             root.requestAction("credential.status", {}, function(resp) {
                 credentialDialog.providers = resp.providers || []
-                credentialDialog.testResult = ""
-                credentialDialog.saveResult = ""
             })
         }
 
@@ -1288,138 +1443,112 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Repeater {
-                model: credentialDialog.providers
-                delegate: Rectangle {
-                    required property var modelData
+                id: credentialProviderRepeater
+                model: credentialDialog.providers.filter(function(provider) {
+                    return provider.id !== "steam-web-api"
+                        && (provider.enabled || provider.id === "steam-local")
+                })
+                delegate: CredentialProviderCard {
                     id: providerCard
-                    property var provider: modelData
-                    property var credentialValues: ({})
+                    required property var modelData
+                    provider: modelData
                     Layout.fillWidth: true
-                    visible: provider.enabled
-                    implicitHeight: providerContent.implicitHeight + 24
-                    color: root.surfaceColor
-                    radius: 8
-                    border.color: root.borderColor
-                    ColumnLayout {
-                        id: providerContent
-                        anchors.margins: 12
-                        anchors.fill: parent
-                        spacing: 6
-                        Label {
-                            text: provider.name
-                            color: root.textColor
-                            font.bold: true
-                            font.pixelSize: 14
-                        }
-                        Label {
-                            text: provider.configured
-                                ? qsTr("✓ Configurado") : qsTr("✗ Não configurado")
-                            color: provider.configured
-                                ? root.greenColor : root.amberColor
-                            font.pixelSize: 11
-                        }
-                        Label {
-                            text: provider.description
-                            color: root.mutedColor
-                            font.pixelSize: 11
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                        Repeater {
-                            model: provider.credentialFields
-                            delegate: TextField {
-                                required property var modelData
-                                property var field: modelData
-                                placeholderText: field.placeholder
-                                color: root.textColor
-                                placeholderTextColor: root.mutedColor
-                                selectByMouse: true
-                                echoMode: field.secret ? TextInput.Password : TextInput.Normal
-                                Layout.fillWidth: true
-                                Layout.minimumHeight: 48
-                                onTextChanged: providerCard.credentialValues[field.id] = text
-                                background: Rectangle {
-                                    color: root.surfaceColor
-                                    border.color: parent.activeFocus ? root.cyanColor : root.borderColor
-                                    radius: 6
-                                }
+                    surfaceColor: root.surfaceColor
+                    raisedColor: root.raisedColor
+                    borderColor: root.borderColor
+                    textColor: root.textColor
+                    mutedColor: root.mutedColor
+                    cyanColor: root.cyanColor
+                    greenColor: root.greenColor
+                    amberColor: root.amberColor
+                    redColor: root.redColor
+                    onSaveRequested: function(providerId, credentials) {
+                        root.requestAction("credential.save", {
+                            "provider": providerId,
+                            "credentials": credentials
+                        }, function(resp) {
+                            providerCard.saveSucceeded(resp)
+                        }, function(errMsg) {
+                            providerCard.saveFailed(errMsg)
+                        })
+                    }
+                    onTestRequested: function(providerId) {
+                        root.requestAction("credential.test", {
+                            "provider": providerId
+                        }, function(resp) {
+                            providerCard.testSucceeded(resp)
+                        }, function(errMsg) {
+                            providerCard.actionFailed(errMsg)
+                        })
+                    }
+                    onRevokeRequested: function(providerId) {
+                        root.requestAction("credential.delete", {
+                            "provider": providerId
+                        }, function(resp) {
+                            providerCard.revokeSucceeded(resp)
+                        }, function(errMsg) {
+                            providerCard.actionFailed(errMsg)
+                        })
+                    }
+                    onLinkRequested: function(providerId, linkKey) {
+                        root.requestAction("provider.link", {
+                            "provider": providerId,
+                            "link": linkKey
+                        }, function(resp) {
+                            if (resp.opened) {
+                                providerCard.messageIsError = false
+                                providerCard.message = qsTr("Link aberto no navegador.")
+                            } else {
+                                providerCard.actionFailed(
+                                    qsTr("O navegador não confirmou a abertura."))
                             }
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-                            Button {
-                                text: qsTr("Salvar")
-                                enabled: Object.keys(providerCard.credentialValues).length > 0
-                                palette.button: root.raisedColor
-                                palette.buttonText: root.textColor
-                                Layout.minimumHeight: 48
-                                onClicked: {
-                                    root.requestAction("credential.save", {
-                                        "provider": providerCard.provider.id,
-                                        "credentials": providerCard.credentialValues
-                                    }, function(resp) {
-                                        credentialDialog.refresh()
-                                        credentialDialog.saveResult = qsTr("Chave salva para %1").arg(providerCard.provider.name)
-                                    }, function(errMsg) {
-                                        credentialDialog.saveResult = qsTr("Erro ao salvar: %1").arg(errMsg)
-                                    })
-                                }
-                            }
-                        }
-                        Label {
-                            text: credentialDialog.testResult || credentialDialog.saveResult || ""
-                            visible: text.length > 0
-                            color: root.cyanColor
-                            font.pixelSize: 10
-                        }
-                        Button {
-                            visible: provider.configured && provider.id === "steamgriddb"
-                            text: qsTr("Testar conexão")
-                            Layout.fillWidth: true
-                            Layout.minimumHeight: 48
-                            palette.button: root.raisedColor
-                            palette.buttonText: root.textColor
-                            onClicked: {
-                                root.requestAction("credential.test", {
-                                    "provider": provider.id
-                                }, function(resp) {
-                                    credentialDialog.testResult = resp.valid
-                                        ? qsTr("✓ Conexão bem-sucedida")
-                                        : qsTr("✗ Falha na conexão: %1").arg(resp.error || "")
-                                })
-                            }
-                        }
-                        Button {
-                            visible: provider.configured
-                            text: qsTr("Revogar")
-                            Layout.fillWidth: true
-                            Layout.minimumHeight: 48
-                            palette.button: root.raisedColor
-                            palette.buttonText: root.textColor
-                            onClicked: {
-                                root.requestAction("credential.delete", {
-                                    "provider": provider.id
-                                }, function(resp) {
-                                    credentialDialog.refresh()
-                                })
-                            }
-                        }
-                        Button {
-                            visible: provider.links && provider.links.credentials
-                            text: qsTr("Obter credencial")
-                            Layout.fillWidth: true
-                            Layout.minimumHeight: 48
-                            palette.button: root.raisedColor
-                            palette.buttonText: root.textColor
-                            onClicked: root.requestAction("provider.link", {
-                                "provider": provider.id, "link": "credentials"
-                            }, function(resp) { Qt.openUrlExternally(resp.url) })
-                        }
+                        }, function(errMsg) {
+                            providerCard.actionFailed(errMsg)
+                        })
+                    }
+                    onKeyboardRequested: function(fieldId) {
+                        root.openKeyboard()
+                    }
+                }
+            }
+            Label {
+                text: qsTr("Opcional — Steam Web API")
+                color: root.textColor
+                font.bold: true
+                font.pixelSize: 13
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Não é necessária para atalhos nem para artes locais da Steam.")
+                color: root.mutedColor
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Repeater {
+                model: credentialDialog.providers.filter(function(provider) {
+                    return provider.id === "steam-web-api"
+                })
+                delegate: CredentialProviderCard {
+                    required property var modelData
+                    provider: modelData
+                    Layout.fillWidth: true
+                    surfaceColor: root.surfaceColor
+                    raisedColor: root.raisedColor
+                    borderColor: root.borderColor
+                    textColor: root.textColor
+                    mutedColor: root.mutedColor
+                    cyanColor: root.cyanColor
+                    greenColor: root.greenColor
+                    amberColor: root.amberColor
+                    redColor: root.redColor
+                    onKeyboardRequested: function(fieldId) {
+                        root.openKeyboard()
                     }
                 }
             }
             Button {
+                id: credentialCloseButton
                 Layout.fillWidth: true
                 Layout.minimumHeight: 48
                 text: qsTr("Fechar")

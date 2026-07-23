@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
         "check_handheld_layout_focus.qml",
         "check_main_handheld_sections.qml",
         "check_credentials.qml",
+        "check_credential_dialog_responsive.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:

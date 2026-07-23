@@ -253,6 +253,92 @@ Window {
         object.destroy()
     }
 
+    function testLibraryRootManagementIsScrollableAndTouchSafe() {
+        const actions = [
+            "Abrir pasta", "Varrer agora", "Auditar/higienizar",
+            "Corrigir nomes", "Remover da biblioteca", "Adicionar mídia para um jogo"
+        ].map(function(label, index) {
+            return {
+                "id": "library.root.test:" + index,
+                "label": label,
+                "enabled": true,
+                "reason": null,
+                "requiresConfirmation": index > 0
+            }
+        })
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "selectedScope": "global",
+                "selectedArea": "media",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [],
+                "games": [{"id": "game", "name": "Jogo", "state": "ready"}],
+                "areaData": {
+                    "media": {
+                        "cards": [{
+                            "id": "library-root-test",
+                            "title": "Diretório de ROMs",
+                            "state": "ready",
+                            "statusLabel": "Acessível",
+                            "detail": "~/Games/ROMs · 10 bases · última varredura agora",
+                            "actions": actions
+                        }],
+                        "primaryAction": {
+                            "id": "library.root.add",
+                            "label": "Adicionar diretório",
+                            "enabled": true,
+                            "reason": null,
+                            "requiresConfirmation": true
+                        }
+                    }
+                }
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        const viewports = [
+            {"width": 949, "height": 593},
+            {"width": 1280, "height": 800}
+        ]
+        for (let viewportIndex = 0; viewportIndex < viewports.length; viewportIndex++) {
+            object.width = viewports[viewportIndex].width
+            object.height = viewports[viewportIndex].height
+            check(object.contentScrollControl && object.contentScrollControl.contentItem,
+                  "gestão de diretórios deve usar ScrollView real")
+            check(object.contentScrollControl.contentItem.contentWidth
+                  <= object.contentScrollControl.availableWidth + 1,
+                  "diretórios não podem produzir overflow horizontal")
+            const card = object.cardsRepeaterControl.itemAt(0)
+            check(card && card.actionRepeaterControl.count === 6,
+                  "cada root deve manter seis ações isoladas")
+            if (card) {
+                object.setActionMessage(actions[2].id, "E-TEST: auditoria recusada")
+                check(object.cardActionMessage(object.cards()[0])
+                      === "E-TEST: auditoria recusada",
+                      "erro deve permanecer junto ao card da ação")
+                for (let actionIndex = 0;
+                        actionIndex < card.actionRepeaterControl.count; actionIndex++) {
+                    const button = card.actionRepeaterControl.itemAt(actionIndex)
+                    check(button.height >= 48 && button.width >= 120,
+                          "ação de root deve manter alvo legível e 48×48")
+                }
+                const last = card.actionRepeaterControl.itemAt(5)
+                last.forceActiveFocus(Qt.TabFocusReason)
+                object.revealFocusedItem(last)
+                const bottom = last.mapToItem(
+                    object.contentScrollControl.contentItem, 0, last.height).y
+                check(bottom <= object.contentScrollControl.contentItem.contentY
+                      + object.contentScrollControl.height + 1,
+                      "última ação do root deve permanecer acima da borda inferior")
+            }
+        }
+        object.destroy()
+    }
+
     function testResponsiveProfiles() {
         const object = makePage({})
         if (!object)
@@ -333,6 +419,7 @@ Window {
             testBackendArea()
             testGameLibraryJourney()
             testEmulatorMaintenanceListsEveryManagedEmulator()
+            testLibraryRootManagementIsScrollableAndTouchSafe()
             testResponsiveProfiles()
             testPublishedStateFixtures()
             if (failures === 0)

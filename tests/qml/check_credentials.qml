@@ -17,6 +17,7 @@ Window {
     property var openedLinks: []
     property string screenProvider: ""
     property var screenCredentials: ({})
+    property string keyboardField: ""
 
     function check(condition, message) {
         checks += 1
@@ -81,6 +82,9 @@ Window {
             harness.openedLinks = harness.openedLinks.concat([
                 providerId + ":" + linkKey
             ])
+        }
+        onKeyboardRequested: function(fieldId) {
+            harness.keyboardField = fieldId
         }
     }
 
@@ -176,6 +180,11 @@ Window {
             fieldRow.inputControl.text = "segredo-de-teste"
             check(remoteCard.saveControl.enabled,
                   "digitar o obrigatório deve habilitar Salvar")
+            check(fieldRow.keyboardControl.height >= 48,
+                  "botão do teclado virtual deve manter alvo 48×48")
+            fieldRow.keyboardControl.clicked()
+            check(keyboardField === "api_key",
+                  "teclado virtual deve receber somente o campo do card")
             remoteCard.saveControl.clicked()
             check(savedProvider === "steamgriddb",
                   "payload deve manter somente o provider do card")
