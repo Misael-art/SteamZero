@@ -2457,3 +2457,32 @@ restaurar ou publicar foi confirmada.
 **Host/release:** nenhuma instalação, release, wheel, wheelhouse, `sudo`,
 `bigsudo`, alteração do host ou reboot foi executado. A validação usou somente
 `.venv`, Qt offscreen e fixtures sintéticas locais.
+
+## 2026-07-23 — Sessão: normalização da linha handheld para release 0.1.0a34
+
+**Branch:** `codex/normalizacao-release-handheld`, criada da ponta completa
+`40fd9db11edf832a104907b57384e3d1ef044539`. O trabalho Desktop D0 incompleto,
+o working tree raiz com evidências físicas pendentes e a linha
+`desktop-experience-input` baseada em histórico divergente não foram alterados
+nem incorporados.
+
+| Item | Commit | Evidência principal |
+|---|---|---|
+| Normalização da linha integrada | `40fd9db` | descendência direta de `main`, backend/mídia/refino/fechamento/QA handheld presentes na mesma cadeia |
+| Promoção de versão | `4a8c01e` | versão canônica elevada de `0.1.0a33` para `0.1.0a34`, sem outra mudança de produto |
+
+**Gates no código normalizado:** 1181 testes passaram; Ruff sem achados; mypy
+sem erros em 136 arquivos; independência de runtime e fronteiras passaram com
+zero violações.
+
+**Host antes da atualização:** release ativa
+`0.1.0a33-a4bf7fbd77ab`, manifesto v4 com `sourceTreeState=clean`, doctor
+saudável, schema 12, zero operações pendentes e serviços
+`steamzero-core.socket`/`steamzero-core.service` ativos. Essa release é o
+rollback imediato conhecido para o ciclo explicitamente autorizado pelo
+operador.
+
+**Limite preservado:** toque, D-pad, analógicos, A/B/X/Y, teclado virtual real,
+movimento reduzido percebido e travessia completa no painel físico continuam
+pendentes de validação humana. Os testes automatizados e offscreen não foram
+apresentados como substitutos dessa certificação.
