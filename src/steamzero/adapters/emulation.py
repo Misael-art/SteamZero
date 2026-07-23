@@ -12,6 +12,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
@@ -210,6 +211,9 @@ class EmulationController:
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
         self._running_pids: dict[str, int] = {}
+        self._background_lock = threading.Lock()
+        self._background_runners: dict[str, JobManager] = {}
+        self._background_threads: dict[str, threading.Thread] = {}
         self._jobs: JobManager
         if job_manager is not None:
             self._jobs = job_manager
@@ -1274,9 +1278,9 @@ class EmulationController:
                     priority="maintenance",
                     created_by="ui",
                 )
-                completed = self._jobs.run(job.id)
-                response["jobId"] = completed.id
-                response["job"] = self._job_view(completed)
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -1368,10 +1372,67 @@ class EmulationController:
         return [self._job_view(job) for job in jobs[-max(1, min(limit, 100)) :]][::-1]
 
     def cancel_job(self, job_id: str) -> dict[str, Any]:
+        with self._background_lock:
+            runner = self._background_runners.get(job_id)
+        if runner is not None:
+            runner.request_cancel(job_id)
+            current = self._jobs.get(job_id)
+            if current is None:
+                raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {job_id}")
+            return self._job_view(current)
         return self._job_view(self._jobs.cancel(job_id))
 
     def retry_job(self, job_id: str) -> dict[str, Any]:
-        return self._job_view(self._jobs.retry(job_id, created_by="ui"))
+        previous = self._jobs.get(job_id)
+        if previous is None:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {job_id}")
+        if previous.state not in {"cancelled", "rolled-back", "rollback-failed"}:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"job não repetível no estado {previous.state}"
+            )
+        replacement = self._jobs.create(
+            previous.type,
+            params=dict(previous.params),
+            priority=previous.priority,
+            created_by="ui",
+            constraints=dict(previous.constraints),
+            correlation_id=previous.correlation_id,
+        )
+        if replacement.type == "media.global":
+            self._start_background_job(replacement.id)
+        else:
+            self._jobs.run(replacement.id)
+        return self._job_view(self._jobs.get(replacement.id) or replacement)
+
+    def _start_background_job(self, job_id: str) -> None:
+        with self._background_lock:
+            existing = self._background_threads.get(job_id)
+            if existing is not None and existing.is_alive():
+                raise SteamZeroError("E-API-SCHEMA", detail="job já possui executor ativo")
+            thread = threading.Thread(
+                target=self._run_background_job,
+                args=(job_id,),
+                name=f"steamzero-media-{job_id[:8]}",
+                daemon=True,
+            )
+            self._background_threads[job_id] = thread
+            thread.start()
+
+    def _run_background_job(self, job_id: str) -> None:
+        with self._store_factory() as store:
+            store.migrate()
+            runner = JobManager(store)
+            runner.register("media.global", self._media_global_job_handler)
+            with self._background_lock:
+                self._background_runners[job_id] = runner
+            try:
+                job = runner.get(job_id)
+                if job is not None and job.state in {"queued", "paused"}:
+                    runner.run(job_id)
+            finally:
+                with self._background_lock:
+                    self._background_runners.pop(job_id, None)
+                    self._background_threads.pop(job_id, None)
 
     def _is_credential_configured(self, provider: str) -> bool:
         definition = provider_by_id(provider)

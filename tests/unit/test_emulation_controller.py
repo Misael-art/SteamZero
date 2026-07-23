@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -30,6 +32,21 @@ def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ig
 
 def _apply(controller: EmulationController, plan: dict[str, object]) -> dict[str, object]:
     return controller.apply_action(str(plan["planId"]), str(plan["confirmToken"]))
+
+
+def _wait_job(controller: EmulationController, job_id: str):  # type: ignore[no-untyped-def]
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        job = controller._jobs.get(job_id)  # type: ignore[attr-defined]
+        if job is not None and job.state in {
+            "completed",
+            "cancelled",
+            "rolled-back",
+            "rollback-failed",
+        }:
+            return job
+        time.sleep(0.01)
+    raise AssertionError(f"job {job_id} não chegou ao estado terminal")
 
 
 def test_switch_emulators_publish_managed_ryubing_with_official_icon(
@@ -913,13 +930,14 @@ def test_global_media_overwrite_requires_explicit_flag_and_returns_job(
         ),
     )
 
-    assert response["job"]["rawState"] == "completed"
-    result = response["job"]["result"]
+    assert response["job"]["rawState"] in {"queued", "running", "completed"}
+    completed = _wait_job(controller, str(response["jobId"]))
+    result = completed.result
     assert result["overwrite"] is True
     assert result["total"] == 1
     assert result["provider_errors"] == {}
-    assert response["job"]["progress"]["stage"] == "games"
-    assert response["job"]["progress"]["current"] == 1
+    assert completed.progress["stage"] == "games"
+    assert completed.progress["current"] == 1
 
 
 def test_global_media_overwrite_collects_and_optimizes_first_candidate(
@@ -979,12 +997,66 @@ def test_global_media_overwrite_collects_and_optimizes_first_candidate(
         ),
     )
 
-    assert response["job"]["result"]["updated"] == 1
+    completed = _wait_job(controller, str(response["jobId"]))
+    assert completed.result["updated"] == 1
     game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     assert game["id"] == game_id
     assert game["mediaSource"] == "scraper"
     assert game["masterState"] == "collected"
     assert game["optimizedState"] == "ready"
+
+
+def test_global_media_apply_returns_before_background_provider_finishes(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    from steamzero.ports import GameIdentity, MediaCandidate
+
+    started = threading.Event()
+    release = threading.Event()
+
+    class SlowProvider:
+        name = "screenscraper"
+
+        @staticmethod
+        def supported_kinds() -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        @staticmethod
+        def supported_platforms() -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(
+            self,
+            _identity: GameIdentity,
+            _media_kinds: list[str],
+            _region_priority: list[str] | None = None,
+        ) -> list[MediaCandidate]:
+            started.set()
+            release.wait(timeout=2)
+            return []
+
+    controller = _controller(monkeypatch, tmp_path)
+    _configured_game(controller, tmp_path)
+    (tmp_path / "owned-roms" / "Second [0100ABCDEF124000].nsp").write_bytes(
+        b"second-owned-game"
+    )
+    controller.scan_library()
+    controller._media_providers = (SlowProvider(),)  # type: ignore[attr-defined]
+
+    before = time.monotonic()
+    response = _apply(
+        controller,
+        controller.plan_action({"actionId": "media.global.refresh"}),
+    )
+    elapsed = time.monotonic() - before
+
+    assert elapsed < 0.5
+    assert started.wait(timeout=1)
+    assert controller._jobs.get(str(response["jobId"])).state == "running"  # type: ignore[attr-defined,union-attr]
+    cancellation = controller.cancel_job(str(response["jobId"]))
+    assert cancellation["rawState"] == "running"
+    release.set()
+    assert _wait_job(controller, str(response["jobId"])).state == "cancelled"
 
 
 def test_media_cache_open_uses_only_managed_real_directory(
@@ -1024,13 +1096,14 @@ def test_global_media_job_cancel_and_retry_are_persistent(
     cancelled = controller.cancel_job(job.id)
     assert cancelled["rawState"] == "cancelled"
     retried = controller.retry_job(job.id)
-    assert retried["rawState"] == "completed"
-    assert retried["result"]["mode"] == "audit"
+    assert retried["rawState"] in {"queued", "running", "completed"}
+    completed = _wait_job(controller, str(retried["jobId"]))
+    assert completed.result["mode"] == "audit"
     assert controller._media_audit_path.is_file()  # type: ignore[attr-defined]
     pipeline = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
         "mediaPipeline"
     ]
-    assert pipeline["lastAudit"] == retried["result"]["checked_at"]
+    assert pipeline["lastAudit"] == completed.result["checked_at"]
 
 
 def test_mod_import_toggle_and_remove_are_transactional(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
