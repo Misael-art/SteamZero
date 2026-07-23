@@ -1418,7 +1418,7 @@ Item {
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
                             }
-                            Button {
+                            DarkButton {
                                 id: compactPrimaryAction
                                 text: page.primaryAction().label
                                 enabled: page.primaryAction().enabled !== false

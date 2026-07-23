@@ -23,11 +23,26 @@ controle ou teclado virtual.
 | Cenário | Resultado visual | Arquivo | SHA-256 |
 | --- | --- | --- | --- |
 | Painel interno 1280×800 | layout compacto, cabeçalho, escopos, CTA e rodapé visíveis; nenhuma cobertura inferior observada na tela inicial de Emulação Global | `evidence/2026-07-22-handheld-p7/internal-1280x800.png` | `6d10df216da9a5a86a5dcfa2abdef3fed5fba88a292cdb59a4c1a75b610381f9` |
+| Painel interno — reteste de contraste | CTA primário compacto renderizado com texto claro após substituir o controle genérico pelo `DarkButton` do projeto | `evidence/2026-07-22-handheld-p7/internal-1280x800-contrast-retest.png` | `8ac933a5a00bff754312d4c5080611ca6441d7b62dcbccc3098d815bb6795462` |
 | Dock 2560×1080 | sidebar, conteúdo central, contexto lateral e rodapé visíveis sem sobreposição na tela inicial de Emulação Global | `evidence/2026-07-22-handheld-p7/dock-2560x1080.png` | `e3a260aa80d69a167455d99ab3cd6605985f302959e6faf14869017379672f50` |
 
 As capturas são do compositor físico. A janela foi movida entre outputs por
 atalho allowlisted do KWin; isso valida apenas renderização nos outputs, não
 entrada física.
+
+## Continuação em 2026-07-23
+
+A execução maximizada no painel físico revelou texto escuro no CTA primário
+compacto, embora o botão estivesse habilitado. A causa era o uso direto de
+`Button`, que não garantia o `contentItem` claro neste compositor/paleta. O CTA
+passou a usar `DarkButton`; um check QML fixa a cor do conteúdo habilitado e a
+captura de reteste confirma o resultado em 1280×800.
+
+Depois da correção passaram: 1179 testes no ambiente padrão, 1179 com
+`XDG_RUNTIME_DIR` extenso, Ruff, mypy (136 arquivos), independence, boundaries,
+`qmllint` e `git diff --check`. Um fixture isolado com ROM, save e shader
+sintéticos foi preparado para permitir que o operador percorra também Por jogo,
+drawer, Saves e Shader cache sem acessar conteúdo real.
 
 ## Checklist de interação física
 

@@ -157,6 +157,10 @@ Window {
         check(object.cardMetric(object.cards()[0]) === "2", "contagem do backend deve ser apresentada")
         check(object.primaryAction().id === "keys-import", "ação versionada deve ser consumida")
         check(object.primaryAction().enabled === true, "capacidade confirmada pode liberar a ação")
+        object.width = 949
+        object.height = 593
+        check(object.compactPrimaryActionControl.contentItem.color === object.textColor,
+              "CTA primário compacto habilitado deve preservar contraste claro")
         object.destroy()
     }
 
