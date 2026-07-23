@@ -2486,3 +2486,42 @@ operador.
 movimento reduzido percebido e travessia completa no painel físico continuam
 pendentes de validação humana. Os testes automatizados e offscreen não foram
 apresentados como substitutos dessa certificação.
+
+## 2026-07-23 — Sessão: credenciais, scraping, mídias e diretórios
+
+**Branch:** `codex/correcao-midia-credenciais-diretorios`, descendente da base
+exata `6b10db506991dfabad7ea3a47e55fd27cce4237b`, em worktree isolado. O
+worktree Desktop D0 e branches de outros agentes não foram alterados.
+
+| WI | Commit | Evidência principal |
+|---|---|---|
+| WI1 — credenciais ponta a ponta | `872a23d` | modelo reativo isolado por provider, save/test/revoke verificados, Secret Service por stdin e FakeSecretStore |
+| WI2 — links externos seguros | `d810f22` | provider + chave lógica allowlisted, somente HTTPS oficial e `xdg-open` via argv |
+| WI3 — ScreenScraper real | `78930a3` | quatro campos corretos, teste leve, persistência/revogação e wiring condicional |
+| WI4 — multiprovider | `4e338e3` | SteamGridDB/ScreenScraper isolados, fallback local e nenhum remoto sem bloquear |
+| WI5 — pipeline global | `30c779c`, `512daad` | read model operacional, cache órfão reversível, progresso/retry/overwrite e executor assíncrono cancelável |
+| WI6 — diretórios Switch | `24660b5` | root por ID opaco, estados/contagens, abrir/scan/audit/rename/desregistrar, quarentena com hashes e rollback |
+| WI7 — handheld | `d2e4786` | ScrollView, alvos 48×48, D-pad/A/B, foco, teclado virtual, erros locais/Central de tarefas e grade de ações |
+
+**Gates finais:** 1219 testes passaram; os oito harnesses QML offscreen
+passaram, incluindo explicitamente 949×593 e 1280×800; Ruff sem achados; mypy
+sem erros em 137 arquivos; independência de runtime e fronteiras passaram com
+zero violações; `git diff --check` passou.
+
+**Segurança e contratos:** segredos permanecem exclusivamente no
+`SecretStorePort`; jobs, planos, snapshots e logs não recebem credenciais.
+Links, raízes e arquivos são allowlisted e confinados contra
+symlink/traversal. Remover uma raiz apenas a desregistra. Higienização começa
+em preview categorizado e somente itens não jogáveis explicitamente marcados
+são movidos para `.steamzero-quarantine/<operationId>/`, com manifesto,
+SHA-256, stale-plan e rollback. Nenhuma ROM é apagada automaticamente.
+
+**Limites físicos:** continuam pendentes a validação com Secret
+Service/KWallet real, rede e rate limits dos providers oficiais, navegador
+real, biblioteca grande em armazenamento removível, publicação efetiva na
+Steam e travessia por toque/D-pad/A/B/teclado virtual no painel do handheld.
+Os harnesses offscreen não foram apresentados como certificação física.
+
+**Host/release:** nenhuma instalação, release, wheel, wheelhouse, `sudo`,
+`bigsudo`, alteração em `/opt`, `/etc` ou `/usr/local`, push ou reboot foi
+executado.
