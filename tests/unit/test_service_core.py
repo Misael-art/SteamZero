@@ -15,6 +15,7 @@ from steamzero.cli import main as cli
 from steamzero.core.errors import SteamZeroError
 from steamzero.service import core
 from steamzero.service.client import CoreProtocolError, CoreUnavailable, invoke
+from steamzero.service.socket_path import safe_socket_path
 
 
 @pytest.mark.parametrize(
@@ -106,10 +107,9 @@ def test_client_rejects_unsafe_socket_and_invalid_response(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     runtime = tmp_path / "run"
-    app = runtime / "steamzero"
-    app.mkdir(parents=True, mode=0o700)
+    runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
-    regular = app / "core.sock"
+    regular = safe_socket_path()
     regular.write_text("not a socket", encoding="utf-8")
     with pytest.raises(CoreProtocolError, match="inseguras"):
         invoke("doctor.run", {})
@@ -150,10 +150,9 @@ def test_client_rejects_each_invalid_response_shape(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, response: bytes, message: str
 ) -> None:
     runtime = tmp_path / "run"
-    app = runtime / "steamzero"
-    app.mkdir(parents=True, mode=0o700)
+    runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
-    socket_path = app / "core.sock"
+    socket_path = safe_socket_path()
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(str(socket_path))
     socket_path.chmod(0o600)
@@ -179,10 +178,9 @@ def test_client_falls_back_only_when_connect_never_happened(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     runtime = tmp_path / "run"
-    app = runtime / "steamzero"
-    app.mkdir(parents=True, mode=0o700)
+    runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
-    socket_path = app / "core.sock"
+    socket_path = safe_socket_path()
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(str(socket_path))
     socket_path.chmod(0o600)
@@ -212,10 +210,10 @@ def test_systemd_socket_inheritance_and_stale_socket_recovery(
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-stale"))
     monkeypatch.delenv("LISTEN_PID")
     monkeypatch.delenv("LISTEN_FDS")
-    stale_path = runtime / "steamzero" / "core.sock"
-    stale_path.parent.mkdir(mode=0o700)
+    stale_path = safe_socket_path()
     stale = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     stale.bind(str(stale_path))
+    stale_path.chmod(0o600)
     stale.close()
     monkeypatch.setattr(core.CoreServer, "serve_forever", lambda self, **_kwargs: None)
     assert core.serve() == 0

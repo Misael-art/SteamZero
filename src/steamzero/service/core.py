@@ -21,10 +21,11 @@ from typing import Any
 
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope
-from steamzero.core import fs, ids, paths
+from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
 from steamzero.service.reconciler import SessionEnvironmentReconciler
+from steamzero.service.socket_path import safe_socket_path
 
 _MAX_REQUEST = 1 << 20
 _MAX_REQUESTS_PER_CONNECTION = 128
@@ -178,19 +179,7 @@ def _rpc_error(request_id: str | int | None, code: int, message: str) -> dict[st
 
 
 def _safe_socket_path() -> Path:
-    runtime = paths.runtime_dir()
-    parent = runtime.parent
-    parent_stat = parent.stat()
-    if parent.is_symlink() or not parent.is_dir() or parent_stat.st_uid != os.getuid():
-        raise PermissionError(f"XDG runtime inseguro: {parent}")
-    fs.ensure_dir(runtime, mode=0o700)
-    runtime_stat = runtime.stat()
-    if runtime.is_symlink() or runtime_stat.st_uid != os.getuid() or runtime_stat.st_mode & 0o077:
-        raise PermissionError(f"diretório runtime inseguro: {runtime}")
-    socket_path = runtime / "core.sock"
-    if socket_path.is_symlink() or (socket_path.exists() and not socket_path.is_socket()):
-        raise PermissionError(f"caminho do socket inseguro: {socket_path}")
-    return socket_path
+    return safe_socket_path()
 
 
 def _server_from_systemd() -> CoreServer | None:

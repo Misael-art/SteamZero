@@ -10,7 +10,7 @@ import stat
 from dataclasses import dataclass
 from typing import Any
 
-from steamzero.core import paths
+from steamzero.service.socket_path import safe_socket_path
 
 _MAX_RESPONSE = 1 << 20
 
@@ -39,7 +39,10 @@ def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invo
         ).encode("utf-8")
         + b"\n"
     )
-    path = paths.runtime_dir() / "core.sock"
+    try:
+        path = safe_socket_path()
+    except PermissionError as exc:
+        raise CoreProtocolError("socket local possui ownership ou permissões inseguras") from exc
     try:
         metadata = path.lstat()
     except OSError as exc:

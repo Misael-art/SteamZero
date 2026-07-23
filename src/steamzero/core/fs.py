@@ -20,6 +20,7 @@ import hashlib
 import os
 import secrets
 import shutil
+import stat
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -41,6 +42,58 @@ def ensure_dir(path: Path, *, mode: int = _DIR_MODE) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     os.chmod(path, mode)
     return path
+
+
+def ensure_private_child(
+    parent: Path,
+    name: str,
+    *,
+    uid: int | None = None,
+    mode: int = _DIR_MODE,
+) -> Path:
+    """Cria/valida um subdiretório privado sem seguir symlinks.
+
+    A abertura relativa a ``parent`` com ``O_NOFOLLOW`` evita que um nome
+    previsível em diretório compartilhado seja trocado por symlink entre a
+    validação e o uso. Diretórios preexistentes nunca têm ownership ou modo
+    "corrigidos" silenciosamente: estado inseguro falha fechado.
+    """
+    if not name or name in {".", ".."} or "/" in name or "\0" in name:
+        raise ValueError("nome de subdiretório inválido")
+    expected_uid = os.getuid() if uid is None else uid
+    flags = os.O_RDONLY | os.O_DIRECTORY
+    flags |= getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        parent_fd = os.open(parent, flags)
+    except OSError as exc:
+        raise PermissionError(f"diretório pai inseguro: {parent}") from exc
+    created = False
+    try:
+        try:
+            os.mkdir(name, mode, dir_fd=parent_fd)
+            created = True
+        except FileExistsError:
+            pass
+        if created:
+            os.chmod(name, mode, dir_fd=parent_fd, follow_symlinks=False)
+            os.fsync(parent_fd)
+        try:
+            child_fd = os.open(name, flags, dir_fd=parent_fd)
+        except OSError as exc:
+            raise PermissionError(f"subdiretório privado inseguro: {parent / name}") from exc
+        try:
+            metadata = os.fstat(child_fd)
+            if (
+                not stat.S_ISDIR(metadata.st_mode)
+                or metadata.st_uid != expected_uid
+                or stat.S_IMODE(metadata.st_mode) != mode
+            ):
+                raise PermissionError(f"subdiretório privado inseguro: {parent / name}")
+        finally:
+            os.close(child_fd)
+    finally:
+        os.close(parent_fd)
+    return parent / name
 
 
 def ensure_state_layout() -> None:

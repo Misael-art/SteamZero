@@ -20,6 +20,7 @@ from steamzero.cli import main as cli
 from steamzero.core import fs
 from steamzero.service.client import invoke
 from steamzero.service.core import CoreRequestHandler, CoreServer
+from steamzero.service.socket_path import safe_socket_path
 
 
 @pytest.fixture
@@ -40,7 +41,7 @@ def core_service(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Pa
         stderr=subprocess.PIPE,
         text=True,
     )
-    socket_path = runtime / "steamzero" / "core.sock"
+    socket_path = safe_socket_path()
     # O checkout suportado pode viver em microSD; import inicial + SQLite sob
     # pressão de I/O do gate completo não deve produzir um falso negativo.
     deadline = time.monotonic() + 60
@@ -83,10 +84,9 @@ def _rpc(socket_path: Path, request: dict[str, object]) -> dict[str, object]:
 def inprocess_core(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
     runtime = tmp_path / "run"
     runtime.mkdir(mode=0o700)
-    socket_path = runtime / "steamzero" / "core.sock"
-    socket_path.parent.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    socket_path = safe_socket_path()
     server = CoreServer(str(socket_path), CoreRequestHandler)
     fs.set_mode(socket_path, 0o600)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
