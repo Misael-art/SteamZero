@@ -2425,3 +2425,35 @@ todas as telas continuam dependendo do operador.
 `bigsudo`, instalador, alteração em `/opt`, `/etc`, `/usr/local` ou reboot foi
 executado. P7 não está completo, portanto release e instalação permanecem
 bloqueadas pelas próprias regras da tarefa.
+
+## 2026-07-23 — Sessão: QA automatizável de layout e foco handheld
+
+**Branch:** `codex/handheld-qa-layout-foco`, base exata
+`33e95ed01b1ae5e044cd6f61cabb63f6fd08fc5a`.
+
+| WI | Commit | Evidência principal |
+|---|---|---|
+| WI1–WI4 e WI6 — Emulação compacta, alvos, cards, drawer e busca | `c034cc4` | biblioteca em cards sem overflow, reserva inferior, foco auto-rolável, fechamento para o invocador e campo editável integrado ao InputMethod do Qt |
+| WI1, WI2 e WI5 — Steam/Modo Desktop | `2664387` | seletores 48×48, reserva inferior, foco auto-rolável e restauração explícita após diálogos |
+| WI7 — matriz offscreen de componentes | `9594fe0` | 5 escopos × 11 áreas de Emulação e 4 escopos × 4 áreas Steam em 949×593 e 1280×800, sem emitir mutações |
+| WI7 — seções roláveis do shell | `ced1c3c` | Visão geral, Perfis, Saves/Sync, Sistema, provider, último controle e retorno de foco nos dois viewports |
+| WI1, WI2 e WI5 — shell compartilhado | `d5f29ac` | movimento reduzido propagado, reserva inferior, Sync alcançável, alvo de 48 px e nove diálogos com retorno ao invocador |
+
+**Gates finais:** 1181 testes passaram; os seis harnesses QML offscreen
+passaram; Ruff sem achados; mypy sem erros em 136 arquivos; independência de
+runtime e fronteiras verdes (0 violações); `git diff --check` passou.
+
+**Validação física:** nenhum teste automatizado foi classificado como físico.
+O checklist
+`test-reports/hw/2026-07-23-handheld-qa/OPERATOR-CHECKLIST.md` mantém todos os
+itens como `PENDING`, incluindo toque, D-pad, botão A, teclado virtual real,
+movimento reduzido e travessia no painel do handheld.
+
+**Limites preservados:** nenhuma alteração foi feita em adapters, domínio,
+payloads, bridge ou contratos. Sync continua sem mutações/provider operacional
+confirmado; nenhuma ação de instalar, remover, sincronizar, limpar, lançar,
+restaurar ou publicar foi confirmada.
+
+**Host/release:** nenhuma instalação, release, wheel, wheelhouse, `sudo`,
+`bigsudo`, alteração do host ou reboot foi executado. A validação usou somente
+`.venv`, Qt offscreen e fixtures sintéticas locais.
