@@ -212,6 +212,7 @@ class EmulationController:
             job_store.migrate()
             self._jobs = JobManager(job_store)
         self._jobs.register("media.search", self._media_search_job_handler)
+        self._jobs.register("media.global", self._media_global_job_handler)
         self._jobs.register("rom.scan", self._rom_scan_job_handler)
         self._jobs.register("library.scan", self._library_scan_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
@@ -236,6 +237,10 @@ class EmulationController:
     @property
     def _game_settings_path(self) -> Path:
         return paths.config_home() / "emulation-games-v1.json"
+
+    @property
+    def _media_audit_path(self) -> Path:
+        return paths.state_home() / "media-audit-v1.json"
 
     def snapshot(self, desktop_status: Mapping[str, Any]) -> dict[str, Any]:
         emulator_rows = self._emulator_rows()
@@ -1004,14 +1009,47 @@ class EmulationController:
                 kind="rom-scan",
                 metadata={"roots": roots},
             )
-        elif action == "media.audit":
+        elif action in {
+            "media.audit",
+            "media.global.search-missing",
+            "media.global.refresh",
+            "media.global.overwrite",
+            "media.global.optimize",
+        }:
+            mode = {
+                "media.audit": "audit",
+                "media.global.search-missing": "search-missing",
+                "media.global.refresh": "refresh",
+                "media.global.overwrite": "overwrite",
+                "media.global.optimize": "optimize",
+            }[action]
+            overwrite = mode == "overwrite"
+            if overwrite and payload.get("overwrite") is not True:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="overwrite=true é obrigatório para sobrescrever mídias",
+                )
             plan = transaction.plan_write_files(
                 {},
                 root=paths.data_home(),
-                kind="media.audit",
+                kind=f"media.global:{mode}",
             )
             self._pending[plan.plan_id] = _PendingMutation(
-                kind="media-audit",
+                kind="media-global",
+                metadata={"mode": mode, "overwrite": overwrite},
+            )
+        elif action == "media.cache.prune-orphans":
+            with self._store_factory() as store:
+                store.migrate()
+                plan = self._media_manager(store).plan_prune_orphan_cache()
+        elif action == "media.cache.open":
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="media.cache-open",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                kind="media-cache-open",
                 metadata={},
             )
         else:
@@ -1073,6 +1111,8 @@ class EmulationController:
                         "title_id": meta["title_id"],
                         "title": meta["title"],
                         "media_kinds": meta.get("media_kinds"),
+                        "local_media_source": meta.get("local_media_source", "fallback"),
+                        "local_media_url": meta.get("local_media_url", ""),
                     },
                     priority="interactive",
                     created_by="ui",
@@ -1091,8 +1131,21 @@ class EmulationController:
                 self._apply_media_publish_steam(pending)
             elif pending.kind == "media-unpublish-steam":
                 self._apply_media_unpublish_steam(pending)
-            elif pending.kind == "media-audit":
-                self._apply_media_audit(pending)
+            elif pending.kind == "media-global":
+                job = self._jobs.create(
+                    "media.global",
+                    params={
+                        "mode": pending.metadata["mode"],
+                        "overwrite": pending.metadata["overwrite"],
+                    },
+                    priority="maintenance",
+                    created_by="ui",
+                )
+                completed = self._jobs.run(job.id)
+                response["jobId"] = completed.id
+                response["job"] = self._job_view(completed)
+            elif pending.kind == "media-cache-open":
+                response.update(self._open_media_cache())
             elif pending.kind == "rom-scan":
                 roots = pending.metadata.get("roots", [])
                 job = self._jobs.create(
@@ -1183,11 +1236,14 @@ class EmulationController:
         definition = provider_by_id(provider)
         if not definition.enabled or not definition.credential_fields:
             return False
-        return all(
-            self._secret_store.retrieve(provider, field.id) is not None
-            for field in definition.credential_fields
-            if field.required
-        )
+        try:
+            return all(
+                self._secret_store.retrieve(provider, field.id) is not None
+                for field in definition.credential_fields
+                if field.required
+            )
+        except Exception:
+            return False
 
     def _provider_credential_status(self, provider: str) -> dict[str, object]:
         definition = provider_by_id(provider)
@@ -1739,6 +1795,101 @@ class EmulationController:
             )
         ]
 
+    def _media_pipeline_summary(self, games: list[dict[str, Any]]) -> dict[str, Any]:
+        sources = {
+            "custom": 0,
+            "rom": 0,
+            "emulatorCache": 0,
+            "remote": 0,
+            "fallback": 0,
+        }
+        pending_candidates = 0
+        provider_errors: dict[str, int] = {}
+        for game in games:
+            source = str(game.get("mediaSource") or "fallback")
+            if source == "custom":
+                sources["custom"] += 1
+            elif source in {"nca", "rom", "rom-extracted"}:
+                sources["rom"] += 1
+            elif source == "emulator-cache":
+                sources["emulatorCache"] += 1
+            elif source in {"scraper", "scraped", "remote"}:
+                sources["remote"] += 1
+            else:
+                sources["fallback"] += 1
+            pending_candidates += int(game.get("mediaCandidateCount") or 0)
+            errors = game.get("mediaErrors")
+            if isinstance(errors, Mapping):
+                for provider in errors:
+                    provider_errors[str(provider)] = provider_errors.get(str(provider), 0) + 1
+
+        cache_bytes = 0
+        media_root = paths.media_dir()
+        try:
+            if media_root.is_dir() and not media_root.is_symlink():
+                for candidate in media_root.rglob("*"):
+                    if candidate.is_file() and not candidate.is_symlink():
+                        cache_bytes += candidate.stat().st_size
+        except OSError:
+            cache_bytes = 0
+
+        last_scan: str | None = None
+        try:
+            if self._library_cache_path.is_file() and not self._library_cache_path.is_symlink():
+                last_scan = datetime.fromtimestamp(
+                    self._library_cache_path.stat().st_mtime,
+                    tz=UTC,
+                ).isoformat()
+        except OSError:
+            pass
+        last_audit: str | None = None
+        try:
+            if (
+                self._media_audit_path.is_file()
+                and not self._media_audit_path.is_symlink()
+                and self._media_audit_path.stat().st_size <= 1024 * 1024
+            ):
+                payload = json.loads(self._media_audit_path.read_text(encoding="utf-8"))
+                if payload.get("schemaVersion") == 1 and isinstance(
+                    payload.get("checkedAt"), str
+                ):
+                    last_audit = str(payload["checkedAt"])
+        except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+            pass
+        active_jobs = [
+            self._job_view(job)
+            for job in self._jobs.list_jobs(
+                states=["created", "queued", "blocked", "running", "paused", "cancelling"]
+            )
+            if job.type in {"media.search", "media.global"}
+        ]
+        return {
+            "totalGames": len(games),
+            "customMedia": sources["custom"],
+            "romExtracted": sources["rom"],
+            "emulatorCache": sources["emulatorCache"],
+            "remoteMedia": sources["remote"],
+            "fallbacks": sources["fallback"],
+            "pendingCandidates": pending_candidates,
+            "providerErrors": provider_errors,
+            "lastAudit": last_audit,
+            "lastScan": last_scan,
+            "cacheBytes": cache_bytes,
+            "activeJobs": active_jobs,
+            "overwriteDefault": False,
+            "mediaKinds": [
+                {"id": "boxart", "available": True},
+                {"id": "gridPortrait", "available": True},
+                {"id": "gridLandscape", "available": True},
+                {"id": "hero", "available": True},
+                {"id": "logo", "available": True},
+                {"id": "icon", "available": True},
+                {"id": "screenshot", "available": True},
+                {"id": "manual", "available": self._is_credential_configured("screenscraper")},
+                {"id": "video", "available": False},
+            ],
+        }
+
     def _area_data(
         self,
         emulators: list[dict[str, Any]],
@@ -1773,6 +1924,7 @@ class EmulationController:
                 None if keys["status"] == "ok" else "Importe prod.keys antes de converter com NSZ."
             )
         )
+        media_pipeline = self._media_pipeline_summary(games)
         return {
             "overview": {
                 "cards": [
@@ -2000,13 +2152,77 @@ class EmulationController:
                     ),
                     self._card(
                         "media-pipeline",
-                        "Pipeline de capas",
+                        "Pipeline de mídias",
                         (
-                            "Prioridade: mídia escolhida pelo usuário, cache canônico, cache do "
-                            "emulador e ícone seguro de fallback."
+                            f"{media_pipeline['customMedia']} customizada(s); "
+                            f"{media_pipeline['romExtracted']} extraída(s) da ROM; "
+                            f"{media_pipeline['emulatorCache']} do cache de emulador; "
+                            f"{media_pipeline['remoteMedia']} remota(s); "
+                            f"{media_pipeline['fallbacks']} fallback(s)."
                         ),
-                        "ready" if any(game.get("bannerAsset") for game in games) else "attention",
-                        f"{sum(bool(game.get('bannerAsset')) for game in games)} capa(s)",
+                        "ready" if media_pipeline["totalGames"] else "attention",
+                        f"{media_pipeline['totalGames']} jogo(s)",
+                        actions=[
+                            self._action(
+                                "media.audit",
+                                "Auditar mídias",
+                                confirmation=True,
+                            ),
+                            self._action(
+                                "media.global.search-missing",
+                                "Buscar somente ausentes",
+                                confirmation=True,
+                            ),
+                            self._action(
+                                "media.global.refresh",
+                                "Atualizar todas",
+                                confirmation=True,
+                            ),
+                            self._action(
+                                "media.global.overwrite",
+                                "Atualizar e sobrescrever",
+                                confirmation=True,
+                            )
+                            | {"overwrite": True},
+                            self._action(
+                                "media.global.optimize",
+                                "Reotimizar formatos",
+                                confirmation=True,
+                            ),
+                        ],
+                    ),
+                    self._card(
+                        "media-cache",
+                        "Cache canônico",
+                        (
+                            f"{media_pipeline['cacheBytes']} byte(s); "
+                            f"{media_pipeline['pendingCandidates']} candidato(s) pendente(s); "
+                            f"último audit: {media_pipeline['lastAudit'] or 'nunca'}."
+                        ),
+                        "ready" if not media_pipeline["providerErrors"] else "attention",
+                        f"{len(media_pipeline['activeJobs'])} job(s) ativo(s)",
+                        actions=[
+                            self._action("media.cache.open", "Abrir pasta do cache"),
+                            self._action(
+                                "media.cache.prune-orphans",
+                                "Limpar somente cache órfão",
+                                confirmation=True,
+                            ),
+                            (
+                                self._action(
+                                    f"game.media.import:{games[0]['id']}",
+                                    "Importar mídia manual",
+                                    confirmation=True,
+                                )
+                                if games
+                                else self._action(
+                                    "media.import.unavailable",
+                                    "Importar mídia manual",
+                                    enabled=False,
+                                    reason="Adicione um jogo antes de importar mídia.",
+                                )
+                            ),
+                        ],
                     ),
                     self._card(
                         "credential",
@@ -2029,6 +2245,7 @@ class EmulationController:
                     ),
                 ],
                 "primaryAction": self._action("library.scan", "Varrer agora"),
+                "mediaPipeline": media_pipeline,
             },
             "storage": {
                 "cards": [
@@ -2873,6 +3090,7 @@ class EmulationController:
             state.reason = (
                 "Nenhum resultado remoto; mídia local/cache e fallback foram preservados."
             )
+        state.checked_at = datetime.now(UTC).isoformat()
         state.selected_candidate_idx = -1
         mgr._store.save(state)
         ctx.set_progress(
@@ -2927,6 +3145,127 @@ class EmulationController:
                 )
                 self._media_retry_delay(0.25 * (2**attempt))
         return []
+
+    def _media_global_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        mode = str(job.params.get("mode") or "")
+        overwrite = job.params.get("overwrite") is True
+        if mode not in {"audit", "search-missing", "refresh", "overwrite", "optimize"}:
+            raise SteamZeroError("E-API-SCHEMA", detail="modo global de mídia inválido")
+        if mode == "overwrite" and not overwrite:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="job de sobrescrita requer overwrite=true",
+            )
+        if mode == "audit":
+            with self._store_factory() as store:
+                store.migrate()
+                report = self._media_manager(store).audit().to_dict()
+            checked_at = datetime.now(UTC).isoformat()
+            fs.write_atomic_text(
+                self._media_audit_path,
+                json.dumps(
+                    {"schemaVersion": 1, "checkedAt": checked_at, "report": report},
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            )
+            ctx.set_progress("done", current=1, total=1, unit="audit")
+            return {"mode": mode, "checked_at": checked_at, "report": report}
+
+        games, _unidentified = self._load_library_cache()
+        total = len(games)
+        processed = 0
+        skipped = 0
+        updated = 0
+        failures = 0
+        provider_errors: dict[str, str] = {}
+        ctx.set_progress("games", current=0, total=total, unit="games")
+        with self._store_factory() as store:
+            store.migrate()
+            manager = self._media_manager(store)
+            for index, game in enumerate(games):
+                ctx.safepoint()
+                game_id = str(game.get("id") or "")
+                title_id = str(game.get("titleId") or "")
+                title = str(game.get("name") or title_id or game_id)
+                existing = manager._store.load(game_id)
+                local_url = str(game.get("coverUrl") or "")
+                if mode == "search-missing" and (
+                    (existing is not None and bool(existing.media_path)) or bool(local_url)
+                ):
+                    skipped += 1
+                elif mode == "optimize":
+                    if existing is None or existing.master_state == "none":
+                        skipped += 1
+                    else:
+                        result = manager.optimize_game(game_id)
+                        updated += int(result.success)
+                        failures += int(not result.success)
+                        processed += 1
+                else:
+                    search_job = Job(
+                        id=job.id,
+                        type="media.search",
+                        priority=job.priority,
+                        state="running",
+                        params={
+                            "game_id": game_id,
+                            "title_id": title_id,
+                            "title": title,
+                            "media_kinds": None,
+                            "local_media_source": str(
+                                game.get("mediaSource") or "fallback"
+                            ),
+                            "local_media_url": local_url,
+                        },
+                    )
+                    search_result = self._execute_media_search(store, search_job, ctx)
+                    for provider, code in search_result["provider_errors"].items():
+                        provider_errors[str(provider)] = str(code)
+                    processed += 1
+                    if overwrite and int(search_result["candidate_count"]) > 0:
+                        selected = manager.select_candidate(game_id, 0)
+                        applied = (
+                            manager.apply_selected_candidate(
+                                game_id=game_id,
+                                title_id=title_id,
+                                fingerprint=str(game.get("fingerprint") or ""),
+                                canonical_name=title,
+                            )
+                            if selected is not None
+                            else None
+                        )
+                        if applied is not None:
+                            manager.optimize_game(game_id)
+                            updated += 1
+                        else:
+                            failures += 1
+                ctx.checkpoint(
+                    {
+                        "gameId": game_id,
+                        "index": index + 1,
+                        "mode": mode,
+                        "overwrite": overwrite,
+                    }
+                )
+                ctx.set_progress(
+                    "games",
+                    current=index + 1,
+                    total=total,
+                    unit="games",
+                    current_item=title,
+                )
+        return {
+            "mode": mode,
+            "overwrite": overwrite,
+            "total": total,
+            "processed": processed,
+            "skipped": skipped,
+            "updated": updated,
+            "failures": failures,
+            "provider_errors": provider_errors,
+        }
 
     @staticmethod
     def _rom_scan_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
@@ -3038,8 +3377,32 @@ class EmulationController:
             raise SteamZeroError("E-API-SCHEMA", detail="AppID não confirmado")
         return app_id, self._shortcuts.media_grid_dir(account_id)
 
-    def _apply_media_audit(self, pending: _PendingMutation) -> None:
-        self._with_store_and_media(lambda s, mgr: mgr.audit())
+    def _open_media_cache(self) -> dict[str, object]:
+        root = paths.media_dir()
+        try:
+            resolved = root.resolve(strict=True)
+            data_root = paths.data_home().resolve(strict=True)
+        except OSError as exc:
+            raise SteamZeroError(
+                "E-DESKTOP-VERIFY",
+                detail="a pasta do cache de mídia ainda não existe",
+            ) from exc
+        if root.is_symlink() or not resolved.is_dir() or not resolved.is_relative_to(data_root):
+            raise SteamZeroError(
+                "E-CONTENT-UNSAFE-PATH",
+                detail="pasta de mídia fora da raiz gerenciada",
+            )
+        executable = self._which("xdg-open")
+        if executable is None:
+            raise SteamZeroError("E-DESKTOP-VERIFY", detail="xdg-open indisponível")
+        try:
+            self._spawn((executable, str(resolved)))
+        except Exception as exc:
+            raise SteamZeroError(
+                "E-DESKTOP-VERIFY",
+                detail="não foi possível abrir a pasta do cache",
+            ) from exc
+        return {"opened": True, "target": "media-cache"}
 
     def _custom_roots(self) -> list[Path]:
         if not self._roots_path.is_file() or self._roots_path.is_symlink():

@@ -468,6 +468,32 @@ class MediaPipeline:
         report.add("info", "audit-complete", f"Auditoria concluída: {report.stats}")
         return report
 
+    def plan_prune_orphan_cache(self) -> transaction.Plan:
+        """Planeja remover somente masters sem referência no registro canônico."""
+        masters_dir = self._media_root / "masters"
+        referenced = {
+            (self._media_root / relpath).resolve(strict=False)
+            for entry in self._registry.entries.values()
+            for relpath in entry.masters.values()
+        }
+        removals: set[Path] = set()
+        if masters_dir.is_dir() and not masters_dir.is_symlink():
+            for candidate in masters_dir.rglob("*"):
+                if not candidate.is_file() or candidate.is_symlink():
+                    continue
+                resolved = candidate.resolve(strict=True)
+                if (
+                    resolved.is_relative_to(masters_dir.resolve(strict=True))
+                    and resolved not in referenced
+                ):
+                    removals.add(resolved)
+        return transaction.plan_write_files(
+            {},
+            removals=removals,
+            root=self._media_root,
+            kind="media.prune-orphan-cache",
+        )
+
     def _find_optimized(self, game_id: str, profile: str) -> Path | None:
         opt_root = self._media_root / "optimized" / "switch" / profile
         if not opt_root.is_dir():

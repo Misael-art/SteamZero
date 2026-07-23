@@ -389,6 +389,9 @@ class GameMediaManager:
     def audit(self) -> AuditReport:
         return self._pipeline.audit()
 
+    def plan_prune_orphan_cache(self) -> transaction.Plan:
+        return self._pipeline.plan_prune_orphan_cache()
+
     def coverage_stats(self) -> dict[str, int]:
         states = self._store.list_all()
         return {

@@ -746,6 +746,187 @@ def _configured_game(controller: EmulationController, tmp_path: Path) -> tuple[s
     return game_id, title_id
 
 
+def test_global_media_pipeline_publishes_operational_read_model_and_actions(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    queued = controller._jobs.create(  # type: ignore[attr-defined]
+        "media.global",
+        params={"mode": "refresh", "overwrite": False},
+        priority="maintenance",
+        created_by="qam",
+    )
+
+    area = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"]
+    pipeline = area["mediaPipeline"]
+    assert pipeline["totalGames"] == 1
+    assert pipeline["overwriteDefault"] is False
+    assert pipeline["cacheBytes"] >= 0
+    assert pipeline["lastScan"] is not None
+    assert pipeline["activeJobs"][0]["jobId"] == queued.id
+    assert {kind["id"] for kind in pipeline["mediaKinds"]} >= {
+        "boxart",
+        "gridPortrait",
+        "gridLandscape",
+        "hero",
+        "logo",
+        "icon",
+        "screenshot",
+    }
+    card = next(card for card in area["cards"] if card["id"] == "media-pipeline")
+    assert card["title"] == "Pipeline de mídias"
+    action_ids = {action["id"] for action in card["actions"]}
+    assert action_ids == {
+        "media.audit",
+        "media.global.search-missing",
+        "media.global.refresh",
+        "media.global.overwrite",
+        "media.global.optimize",
+    }
+    overwrite = next(
+        action for action in card["actions"] if action["id"] == "media.global.overwrite"
+    )
+    assert overwrite["overwrite"] is True
+    assert overwrite["requiresConfirmation"] is True
+    assert game_id
+
+
+def test_global_media_overwrite_requires_explicit_flag_and_returns_job(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    _configured_game(controller, tmp_path)
+    with pytest.raises(SteamZeroError, match="overwrite=true"):
+        controller.plan_action({"actionId": "media.global.overwrite"})
+
+    response = _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "media.global.overwrite", "overwrite": True}
+        ),
+    )
+
+    assert response["job"]["rawState"] == "completed"
+    result = response["job"]["result"]
+    assert result["overwrite"] is True
+    assert result["total"] == 1
+    assert result["provider_errors"] == {}
+    assert response["job"]["progress"]["stage"] == "games"
+    assert response["job"]["progress"]["current"] == 1
+
+
+def test_global_media_overwrite_collects_and_optimizes_first_candidate(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    import base64
+
+    from steamzero.core import fs
+    from steamzero.ports import GameIdentity, MediaCandidate
+
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUB"
+        "AScY42YAAAAASUVORK5CYII="
+    )
+
+    class Provider:
+        name = "screenscraper"
+
+        @staticmethod
+        def supported_kinds() -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        @staticmethod
+        def supported_platforms() -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(
+            self,
+            _identity: GameIdentity,
+            _media_kinds: list[str],
+            _region_priority: list[str] | None = None,
+        ) -> list[MediaCandidate]:
+            return [
+                MediaCandidate(
+                    url="https://provider.invalid/boxart.png",
+                    media_kind="boxart",
+                    provider=self.name,
+                    confidence=1.0,
+                )
+            ]
+
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    controller._media_providers = (Provider(),)  # type: ignore[attr-defined]
+    controller._media_candidate_fetcher = lambda _url: png  # type: ignore[attr-defined]
+
+    def optimize(source: Path, destination: Path, _profile: str) -> bool:
+        fs.copy_file_atomic(source, destination)
+        return True
+
+    controller._media_optimizer_tool = optimize  # type: ignore[attr-defined]
+
+    response = _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "media.global.overwrite", "overwrite": True}
+        ),
+    )
+
+    assert response["job"]["result"]["updated"] == 1
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["id"] == game_id
+    assert game["mediaSource"] == "scraper"
+    assert game["masterState"] == "collected"
+    assert game["optimizedState"] == "ready"
+
+
+def test_media_cache_open_uses_only_managed_real_directory(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    from steamzero.core import paths
+
+    controller = _controller(monkeypatch, tmp_path)
+    paths.media_dir().mkdir(parents=True)
+    calls: list[tuple[str, ...]] = []
+    controller._which = (  # type: ignore[attr-defined]
+        lambda command: "/usr/bin/xdg-open" if command == "xdg-open" else None
+    )
+    controller._spawn = lambda argv: calls.append(tuple(argv))  # type: ignore[attr-defined]
+
+    response = _apply(
+        controller,
+        controller.plan_action({"actionId": "media.cache.open"}),
+    )
+
+    assert response["opened"] is True
+    assert response["target"] == "media-cache"
+    assert calls == [("/usr/bin/xdg-open", str(paths.media_dir().resolve()))]
+
+
+def test_global_media_job_cancel_and_retry_are_persistent(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    job = controller._jobs.create(  # type: ignore[attr-defined]
+        "media.global",
+        params={"mode": "audit", "overwrite": False},
+        priority="maintenance",
+        created_by="qam",
+    )
+
+    cancelled = controller.cancel_job(job.id)
+    assert cancelled["rawState"] == "cancelled"
+    retried = controller.retry_job(job.id)
+    assert retried["rawState"] == "completed"
+    assert retried["result"]["mode"] == "audit"
+    assert controller._media_audit_path.is_file()  # type: ignore[attr-defined]
+    pipeline = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
+        "mediaPipeline"
+    ]
+    assert pipeline["lastAudit"] == retried["result"]["checked_at"]
+
+
 def test_mod_import_toggle_and_remove_are_transactional(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     game_id, _title_id = _configured_game(controller, tmp_path)

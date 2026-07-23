@@ -179,7 +179,8 @@
       "required": ["cards", "primaryAction"],
       "properties": {
         "cards": {"type": "array", "items": {"$ref": "#/$defs/card"}},
-        "primaryAction": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]}
+        "primaryAction": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]},
+        "mediaPipeline": {"type": "object", "additionalProperties": true}
       }
     },
     "platform": {
