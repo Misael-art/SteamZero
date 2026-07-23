@@ -29,6 +29,7 @@ from steamzero.adapters.converters import (
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
+from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
@@ -180,6 +181,7 @@ class EmulationController:
         media_providers: Sequence[MediaProviderPort] | None = None,
         media_candidate_fetcher: Callable[[str], bytes] | None = None,
         media_optimizer_tool: Callable[[Path, Path, str], bool] | None = None,
+        preservation_targets: Sequence[PreservationTarget] | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -188,11 +190,10 @@ class EmulationController:
         self._spawn = spawn
         self._shortcuts = shortcuts or SteamShortcutManager()
         self._secret_store = secret_store or SecretServiceStore()
-        self._media_providers = (
-            tuple(media_providers) if media_providers is not None else None
-        )
+        self._media_providers = tuple(media_providers) if media_providers is not None else None
         self._media_candidate_fetcher = media_candidate_fetcher
         self._media_optimizer_tool = media_optimizer_tool
+        self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
@@ -210,6 +211,13 @@ class EmulationController:
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
             self._jobs.register(job_type, self._completed_operation_job_handler)
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
+        self._preservation = PreservationService(
+            self._content,
+            targets=preservation_targets,
+            emulator_version=lambda emulator_id: self._emulator_versions.get(
+                emulator_id, "unknown"
+            ),
+        )
 
     @property
     def _roots_path(self) -> Path:
@@ -225,10 +233,15 @@ class EmulationController:
 
     def snapshot(self, desktop_status: Mapping[str, Any]) -> dict[str, Any]:
         emulator_rows = self._emulator_rows()
+        self._emulator_versions = {
+            str(row["id"]): str(row.get("version") or row.get("installedVersion") or "unknown")
+            for row in emulator_rows
+        }
         games, unidentified = self._load_library_cache()
         roots = self.library_roots()
         key_status, firmware_status = self._requirements(emulator_rows)
         games = self._enrich_games(games, emulator_rows, key_status, firmware_status)
+        games = self._enrich_preservation(games)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -701,6 +714,62 @@ class EmulationController:
             plan = decision.plan or transaction.plan_write_files(
                 {}, root=paths.data_home() / "switch-content", kind="switch-content.import"
             )
+        elif action.startswith("game.save.backup:"):
+            game_id = action.split(":", 1)[1]
+            game, emulator_id = self._preservation_context(game_id)
+            prepared = self._preservation.plan_backup(
+                game_id, str(game["titleId"]), emulator_id, "save"
+            )
+            plan = prepared.plan
+            self._pending[plan.plan_id] = _PendingMutation(
+                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            )
+        elif action.startswith("game.save.restore:"):
+            parts = action.split(":", 2)
+            if len(parts) != 3:
+                raise SteamZeroError("E-API-SCHEMA", detail="ação de restore inválida")
+            game_id, record_key = parts[1], parts[2]
+            game, emulator_id = self._preservation_context(game_id)
+            prepared = self._preservation.plan_restore(
+                game_id, str(game["titleId"]), emulator_id, "save", record_key
+            )
+            plan = prepared.plan
+            self._pending[plan.plan_id] = _PendingMutation(
+                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            )
+        elif action.startswith("game.shader.backup:"):
+            game_id = action.split(":", 1)[1]
+            game, emulator_id = self._preservation_context(game_id)
+            prepared = self._preservation.plan_backup(
+                game_id, str(game["titleId"]), emulator_id, "shader-cache"
+            )
+            plan = prepared.plan
+            self._pending[plan.plan_id] = _PendingMutation(
+                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            )
+        elif action.startswith("game.shader.restore:"):
+            parts = action.split(":", 2)
+            if len(parts) != 3:
+                raise SteamZeroError("E-API-SCHEMA", detail="ação de restore inválida")
+            game_id, record_key = parts[1], parts[2]
+            game, emulator_id = self._preservation_context(game_id)
+            prepared = self._preservation.plan_restore(
+                game_id,
+                str(game["titleId"]),
+                emulator_id,
+                "shader-cache",
+                record_key,
+            )
+            plan = prepared.plan
+            self._pending[plan.plan_id] = _PendingMutation(
+                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            )
+        elif action.startswith("game.shader.invalidate:"):
+            game_id = action.split(":", 1)[1]
+            game, emulator_id = self._preservation_context(game_id)
+            plan = self._preservation.plan_shader_invalidation(
+                game_id, str(game["titleId"]), emulator_id
+            )
         elif action.startswith("content.state:"):
             parts = action.split(":")
             if len(parts) != 3 or re.fullmatch(r"[0-9a-f]{64}", parts[1]) is None:
@@ -967,6 +1036,10 @@ class EmulationController:
             result = self._content.apply_remove(plan_id, confirm_token)
         elif plan.kind == "switch-content.recover":
             result = self._content.apply_recovery(plan_id, confirm_token)
+        elif plan.kind == "switch-shader.invalidate":
+            result = self._content.apply_shader_invalidation(plan_id, confirm_token)
+        elif plan.kind.startswith("preservation."):
+            result = transaction.apply(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
             result = self._shortcuts.apply(plan_id, confirm_token)
         elif (
@@ -1032,6 +1105,8 @@ class EmulationController:
                 )
                 response["jobId"] = job.id
                 self._jobs.run(job.id)
+            elif pending.kind == "preservation-cleanup":
+                self._preservation.cleanup(Path(str(pending.metadata["staging_root"])))
         tracked_type: str | None = None
         if plan.kind == "library.convert":
             tracked_type = "nsz.convert"
@@ -1350,6 +1425,101 @@ class EmulationController:
         }
         return key, firmware
 
+    def _preservation_cards(self, games: list[dict[str, Any]], kind: str) -> list[dict[str, Any]]:
+        is_shader = kind == "shader-cache"
+        target_key = "shaderTarget" if is_shader else "saveTarget"
+        backups_key = "shaderBackups" if is_shader else "saveBackups"
+        cards: list[dict[str, Any]] = []
+        for game in games:
+            game_id = str(game.get("id", ""))
+            target = game.get(target_key, {})
+            backups = game.get(backups_key, [])
+            confirmed = isinstance(target, dict) and target.get("confirmed") is True
+            actions: list[dict[str, Any]] = []
+            if confirmed and int(target.get("fileCount", 0)) > 0:
+                action_prefix = "game.shader" if is_shader else "game.save"
+                actions.append(
+                    self._action(
+                        f"{action_prefix}.backup:{game_id}",
+                        "Criar backup",
+                        confirmation=True,
+                    )
+                )
+                if is_shader and int(target.get("fileCount", 0)) > 0:
+                    actions.append(
+                        self._action(
+                            f"game.shader.invalidate:{game_id}",
+                            "Invalidar com segurança",
+                            confirmation=True,
+                        )
+                    )
+            cards.append(
+                self._card(
+                    f"preservation-{kind}-{game_id}",
+                    str(game.get("name", "Jogo")),
+                    (
+                        f"Destino {target.get('destination')} · "
+                        f"{int(target.get('fileCount', 0))} arquivo(s) · "
+                        f"{int(target.get('size', 0)) / (1024 * 1024):.1f} MiB · "
+                        f"emulador {target.get('emulatorVersion', 'unknown')}"
+                        if confirmed
+                        else str(target.get("reason", "destino seguro não confirmado"))
+                    ),
+                    "ready" if confirmed else "attention",
+                    "Destino confirmado" if confirmed else "Indisponível",
+                    actions=actions,
+                )
+            )
+            for backup in backups if isinstance(backups, list) else []:
+                if not isinstance(backup, dict):
+                    continue
+                record_key = str(backup.get("recordKey", ""))
+                current_fingerprint = str(target.get("compatibilityFingerprint", ""))
+                backup_fingerprint = str(backup.get("compatibilityFingerprint", ""))
+                compatible = not is_shader or (
+                    confirmed
+                    and bool(current_fingerprint)
+                    and backup_fingerprint == current_fingerprint
+                )
+                restore = self._action(
+                    f"{'game.shader' if is_shader else 'game.save'}.restore:{game_id}:{record_key}",
+                    "Restaurar",
+                    enabled=confirmed and compatible,
+                    reason=(
+                        None
+                        if confirmed and compatible
+                        else "Fingerprint do driver/emulador incompatível"
+                        if is_shader and confirmed
+                        else "Destino seguro não confirmado"
+                    ),
+                    confirmation=True,
+                )
+                cards.append(
+                    self._card(
+                        f"backup-{record_key[:12]}",
+                        f"Backup de {game.get('name', 'jogo')}",
+                        (
+                            f"{backup.get('createdAt', 'sem horário')} · "
+                            f"{int(backup.get('size', 0)) / 1024:.1f} KiB · "
+                            f"integridade {backup.get('integrity', 'unknown')}"
+                        ),
+                        "ready" if compatible else "attention",
+                        "Compatível" if compatible else "Incompatível",
+                        actions=[restore],
+                    )
+                )
+        if cards:
+            return cards
+        return [
+            self._card(
+                f"preservation-{kind}-empty",
+                "Shader cache" if is_shader else "Saves",
+                "Adicione e selecione um jogo antes de detectar o destino operacional.",
+                "attention",
+                "Sem jogo",
+            )
+        ]
+
     def _area_data(
         self,
         emulators: list[dict[str, Any]],
@@ -1365,8 +1535,6 @@ class EmulationController:
     ) -> dict[str, Any]:
         updates = [record for record in records if record.kind == "update"]
         dlcs = [record for record in records if record.kind == "dlc"]
-        saves = [record for record in records if record.kind == "save"]
-        shaders = [record for record in records if record.kind == "shader-cache"]
         missing_records = set(integrity.get("missingRecords", []))
         game_names = {
             str(game.get("titleId")): str(game.get("name", game.get("titleId")))
@@ -1584,91 +1752,11 @@ class EmulationController:
                 "primaryAction": self._action("emulation.refresh", "Detectar novamente"),
             },
             "saves": {
-                "cards": [
-                    self._card(
-                        "saves",
-                        "Backups de save",
-                        f"{len(saves)} backup(s) por conteúdo.",
-                        "ready",
-                        f"{len(saves)}",
-                        action=self._action(
-                            "content.save.import",
-                            "Importar backup",
-                            enabled=has_game,
-                            reason=selected_reason,
-                            confirmation=True,
-                        ),
-                    )
-                ]
-                + [
-                    self._card(
-                        f"save-{record.record_key[:12]}",
-                        game_names.get(str(record.title_id), "Backup catalogado"),
-                        (
-                            f"Title ID {record.title_id or 'não associado'} · origem "
-                            f"{record.emulator_id or 'não informada'} · "
-                            f"{record.size / 1024:.1f} KiB"
-                        ),
-                        "failed" if record.record_key in missing_records else "ready",
-                        (
-                            "Arquivo ausente"
-                            if record.record_key in missing_records
-                            else "Íntegro"
-                        ),
-                        actions=[
-                            self._action(
-                                f"content.remove:{record.record_key}",
-                                "Remover backup",
-                                confirmation=True,
-                            )
-                        ],
-                    )
-                    for record in saves[:8]
-                ],
+                "cards": self._preservation_cards(games, "save"),
                 "primaryAction": self._action("emulation.refresh", "Verificar integridade"),
             },
             "shaderCache": {
-                "cards": [
-                    self._card(
-                        "shaders",
-                        "Shader cache",
-                        f"{len(shaders)} cache(s) armazenado(s) por jogo.",
-                        "ready",
-                        f"{len(shaders)}",
-                        action=self._action(
-                            "content.shader.import",
-                            "Importar cache",
-                            enabled=has_game,
-                            reason=selected_reason,
-                            confirmation=True,
-                        ),
-                    )
-                ]
-                + [
-                    self._card(
-                        f"shader-{record.record_key[:12]}",
-                        game_names.get(str(record.title_id), "Shader cache catalogado"),
-                        (
-                            f"Title ID {record.title_id or 'não associado'} · emulador/driver "
-                            f"{record.emulator_id or 'não informado'} · "
-                            f"{record.size / (1024 * 1024):.1f} MiB"
-                        ),
-                        "failed" if record.record_key in missing_records else "ready",
-                        (
-                            "Arquivo ausente"
-                            if record.record_key in missing_records
-                            else "Backup íntegro"
-                        ),
-                        actions=[
-                            self._action(
-                                f"content.remove:{record.record_key}",
-                                "Remover cache",
-                                confirmation=True,
-                            )
-                        ],
-                    )
-                    for record in shaders[:8]
-                ],
+                "cards": self._preservation_cards(games, "shader-cache"),
                 "primaryAction": self._action("emulation.refresh", "Verificar compatibilidade"),
             },
             "media": {
@@ -1787,6 +1875,13 @@ class EmulationController:
         title_id = str(game["titleId"])
         selected = Path(self._required_string(payload, "path"))
         files, source_root = self._selected_mod_tree(selected)
+        relative_files = {path.relative_to(source_root).as_posix() for path in files}
+        conflicts = self._active_mod_conflicts(str(game["id"]), emulator_id, relative_files)
+        if conflicts:
+            raise SteamZeroError(
+                "E-MOD-INSTALL-FAILED",
+                detail="destinos de mod em conflito com: " + ", ".join(conflicts),
+            )
         mod_id = ids.new_ulid()
         mod_name = self._safe_extra_name(selected.stem if selected.is_file() else selected.name)
         target_dir = self._mod_install_dir(emulator_id, title_id, mod_name, mod_id)
@@ -1871,6 +1966,15 @@ class EmulationController:
         else:
             target_dir = self._mod_install_dir(mod.emulator_id, mod.title_id, mod.name, mod.id)
             new_state = "active"
+            relative_files = self._mod_relative_files(source_dir)
+            conflicts = self._active_mod_conflicts(
+                mod.game_id, mod.emulator_id, relative_files, exclude_id=mod.id
+            )
+            if conflicts:
+                raise SteamZeroError(
+                    "E-MOD-INSTALL-FAILED",
+                    detail="ativação conflita com: " + ", ".join(conflicts),
+                )
         moves = self._tree_moves(source_dir, target_dir)
         plan = transaction.plan_move_files(
             moves,
@@ -1944,6 +2048,76 @@ class EmulationController:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail="o emulador mudou; atualize a tela e tente novamente"
             )
+        return game, emulator_id
+
+    @staticmethod
+    def _mod_relative_files(root: Path) -> set[str]:
+        if root.is_symlink() or not root.is_dir():
+            raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="diretório de mod inválido")
+        result: set[str] = set()
+        for path in fs.iter_files(root):
+            if path.is_symlink() or not path.is_file():
+                raise SteamZeroError("E-MOD-INSTALL-FAILED", detail="mod contém symlink")
+            result.add(path.relative_to(root).as_posix())
+        return result
+
+    def _active_mod_conflicts(
+        self,
+        game_id: str,
+        emulator_id: str,
+        relative_files: set[str],
+        *,
+        exclude_id: str | None = None,
+    ) -> list[str]:
+        with self._store_factory() as store:
+            store.migrate()
+            mods = StateStoreModsAdapter(store.adapter_connection()).list_installed(game_id)
+        conflicts: list[str] = []
+        for installed in mods:
+            if (
+                installed.id == exclude_id
+                or installed.state != "active"
+                or installed.emulator_id != emulator_id
+                or not installed.install_path
+            ):
+                continue
+            if relative_files.intersection(self._mod_relative_files(Path(installed.install_path))):
+                conflicts.append(installed.name)
+        return sorted(conflicts, key=str.casefold)
+
+    def _mod_conflict_map(self, mods: Sequence[InstalledMod]) -> dict[str, list[str]]:
+        file_sets: dict[str, set[str]] = {}
+        for mod in mods:
+            if not mod.install_path:
+                file_sets[mod.id] = set()
+                continue
+            try:
+                file_sets[mod.id] = self._mod_relative_files(Path(mod.install_path))
+            except SteamZeroError:
+                file_sets[mod.id] = set()
+        result: dict[str, list[str]] = {mod.id: [] for mod in mods}
+        for index, left in enumerate(mods):
+            for right in mods[index + 1 :]:
+                if left.emulator_id != right.emulator_id:
+                    continue
+                if file_sets[left.id].intersection(file_sets[right.id]):
+                    result[left.id].append(right.name)
+                    result[right.id].append(left.name)
+        return result
+
+    def _preservation_context(self, game_id: str) -> tuple[dict[str, Any], str]:
+        game = self._current_game(game_id)
+        title_id = game.get("titleId")
+        if not isinstance(title_id, str) or _TITLE_ID.fullmatch(title_id) is None:
+            raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="Title ID não identificado")
+        settings = self._settings_for_game_with_global(game, self._load_game_settings(strict=True))
+        emulator_id = settings.get("emulatorId")
+        if not isinstance(emulator_id, str):
+            raise SteamZeroError(
+                "E-CONTENT-UNSUPPORTED",
+                detail="defina um emulador para confirmar o destino",
+            )
+        self._require_managed_emulator(emulator_id)
         return game, emulator_id
 
     def _selected_mod_tree(self, selected: Path) -> tuple[list[Path], Path]:
@@ -3251,6 +3425,7 @@ class EmulationController:
                     if not cover_url and game.get("bannerAsset"):
                         cover_url = str(game["bannerAsset"])
                         media_source = str(game.get("mediaSource", "fallback"))
+                mod_conflicts = self._mod_conflict_map(mods)
                 mod_list = [
                     {
                         "id": mod.id,
@@ -3262,6 +3437,8 @@ class EmulationController:
                         "source": mod.source,
                         "version": mod.version,
                         "priority": None,
+                        "prioritySupported": False,
+                        "conflicts": mod_conflicts.get(mod.id, []),
                         "compatibility": {
                             "state": "unknown",
                             "reason": (
@@ -3352,10 +3529,60 @@ class EmulationController:
                         "steamArtworkKinds": steam_artwork_kinds,
                         "mods": mod_list,
                         "cheats": cheat_list,
+                        "modPriorityCapability": {
+                            "supported": False,
+                            "reason": (
+                                "Eden, Citron e Ryubing não publicam uma ordem de sobreposição "
+                                "estável que o backend possa verificar; controles de prioridade "
+                                "permanecem ocultos."
+                            ),
+                        },
                     }
                 )
                 enriched.append(game)
         return enriched
+
+    def _enrich_preservation(self, games: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for game in games:
+            game_id = str(game.get("id", ""))
+            title_id = game.get("titleId")
+            emulator_id = game.get("emulatorId")
+            if not isinstance(title_id, str) or not isinstance(emulator_id, str):
+                unavailable = {
+                    "confirmed": False,
+                    "ambiguous": False,
+                    "reason": "defina um emulador e confirme o Title ID",
+                }
+                game["saveTarget"] = unavailable
+                game["shaderTarget"] = unavailable
+                game["saveBackups"] = []
+                game["shaderBackups"] = []
+                game["saveState"] = "Destino não confirmado"
+                game["shaderCount"] = 0
+                continue
+            for kind, target_key, backups_key in (
+                ("save", "saveTarget", "saveBackups"),
+                ("shader-cache", "shaderTarget", "shaderBackups"),
+            ):
+                try:
+                    target = self._preservation.target_status(game_id, title_id, emulator_id, kind)
+                    backups = self._preservation.backups(title_id, emulator_id, kind)
+                except SteamZeroError as exc:
+                    target = {
+                        "confirmed": False,
+                        "ambiguous": False,
+                        "reason": str(exc.detail or exc.code),
+                    }
+                    backups = []
+                game[target_key] = target
+                game[backups_key] = backups
+            game["saveState"] = (
+                f"{len(game['saveBackups'])} backup(s)"
+                if game["saveTarget"].get("confirmed")
+                else "Destino indisponível"
+            )
+            game["shaderCount"] = len(game["shaderBackups"])
+        return games
 
     def _current_game(self, game_id: str) -> dict[str, Any]:
         games, _unidentified = self._load_library_cache()

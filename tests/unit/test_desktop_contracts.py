@@ -85,15 +85,21 @@ def test_matrix_covers_required_services_and_explicit_non_applicable_items() -> 
         "component.rollback",
         "component.recover",
         "profiles.history",
-        "operations.history",
-        "state.export",
-        "admin.health",
         "session.recovery",
-        "support.bundle",
     ):
         action = matrix["byId"][action_id]
         assert action["applicability"] == "not-applicable"
         assert action["reason"]
+    for action_id in (
+        "operations.history",
+        "state.export",
+        "admin.health",
+        "support.bundle",
+    ):
+        action = matrix["byId"][action_id]
+        assert action["applicability"] == "applicable"
+        assert action["enabled"] is True
+        assert action["endpoint"]
 
 
 def test_async_scan_contract_publishes_polling_and_terminal_states() -> None:

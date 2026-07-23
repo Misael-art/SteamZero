@@ -248,12 +248,11 @@ def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_pa
 
     platform = controller.snapshot({"context": {}})["platforms"][0]
     assert platform["defaultEmulatorId"] == "citron"
-    assert next(row for row in platform["emulators"] if row["id"] == "citron")[
-        "isDefault"
-    ] is True
-    assert next(row for row in platform["emulators"] if row["id"] == "eden")["actions"][0][
-        "id"
-    ] == "emulator.install:eden"
+    assert next(row for row in platform["emulators"] if row["id"] == "citron")["isDefault"] is True
+    assert (
+        next(row for row in platform["emulators"] if row["id"] == "eden")["actions"][0]["id"]
+        == "emulator.install:eden"
+    )
     assert platform["globalSettings"] == {
         "defaultEmulatorId": "citron",
         "autoPublishSteam": True,
@@ -440,6 +439,28 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "steamArtworkKinds": [],
             "mods": [],
             "cheats": [],
+            "modPriorityCapability": {
+                "supported": False,
+                "reason": (
+                    "Eden, Citron e Ryubing não publicam uma ordem de sobreposição "
+                    "estável que o backend possa verificar; controles de prioridade "
+                    "permanecem ocultos."
+                ),
+            },
+            "saveTarget": {
+                "confirmed": False,
+                "ambiguous": False,
+                "reason": "defina um emulador e confirme o Title ID",
+            },
+            "shaderTarget": {
+                "confirmed": False,
+                "ambiguous": False,
+                "reason": "defina um emulador e confirme o Title ID",
+            },
+            "saveBackups": [],
+            "shaderBackups": [],
+            "saveState": "Destino não confirmado",
+            "shaderCount": 0,
         }
     ]
 
@@ -702,9 +723,7 @@ def test_update_and_dlc_import_can_be_activated(monkeypatch, tmp_path: Path) -> 
 
     remove_plan = controller.plan_action({"actionId": active_card["actions"][1]["id"]})
     _apply(controller, remove_plan)
-    cards = controller.snapshot({"context": {}})["platforms"][0]["areaData"][
-        "updatesDlc"
-    ]["cards"]
+    cards = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["updatesDlc"]["cards"]
     assert not any(str(card["id"]).startswith("content-") for card in cards)
 
 
@@ -759,6 +778,50 @@ def test_mod_import_toggle_and_remove_are_transactional(monkeypatch, tmp_path: P
     assert mod["state"] == "active"
     _apply(controller, controller.plan_action({"actionId": mod["removeAction"]["id"]}))
     assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["mods"] == []
+
+
+def test_mod_conflicts_are_blocked_and_priority_is_honestly_unsupported(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+    first = tmp_path / "First mod"
+    second = tmp_path / "Second mod"
+    (first / "romfs").mkdir(parents=True)
+    (second / "romfs").mkdir(parents=True)
+    (first / "romfs" / "config.bin").write_bytes(b"one")
+    (second / "romfs" / "config.bin").write_bytes(b"two")
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "mod.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(first),
+            }
+        ),
+    )
+
+    with pytest.raises(SteamZeroError) as error:
+        controller.plan_action(
+            {
+                "actionId": "mod.import",
+                "gameId": game_id,
+                "emulatorId": "eden",
+                "path": str(second),
+            }
+        )
+    assert error.value.code == "E-MOD-INSTALL-FAILED"
+    assert "First mod" in str(error.value.detail)
+
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["modPriorityCapability"]["supported"] is False
+    assert "ordem de sobreposição" in game["modPriorityCapability"]["reason"]
+    assert game["mods"][0]["priority"] is None
+    assert game["mods"][0]["prioritySupported"] is False
+    assert "moveUpAction" not in game["mods"][0]
+    assert "moveDownAction" not in game["mods"][0]
 
 
 def test_cheat_import_toggle_and_remove_use_build_id(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

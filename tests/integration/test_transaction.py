@@ -212,6 +212,32 @@ def test_write_plan_refuses_to_follow_symlink_target(env: tuple[Path, Path]) -> 
     assert source.read_bytes() == b"original"
 
 
+def test_copy_replace_and_remove_roll_back_byte_identically(
+    env: tuple[Path, Path],
+) -> None:
+    sandbox, _ = env
+    source = sandbox / "backup" / "save.bin"
+    target = sandbox / "active" / "save.bin"
+    obsolete = sandbox / "active" / "obsolete.bin"
+    fs.write_atomic(source, b"restored")
+    fs.write_atomic(target, b"current")
+    fs.write_atomic(obsolete, b"obsolete")
+
+    plan = transaction.plan_copy_files(
+        {source: target},
+        removals={obsolete},
+        root=sandbox,
+        replace_existing=True,
+    )
+    result = transaction.apply(plan.plan_id, plan.confirm_token)
+    assert target.read_bytes() == b"restored"
+    assert not obsolete.exists()
+
+    transaction.rollback(result.operation_id)
+    assert target.read_bytes() == b"current"
+    assert obsolete.read_bytes() == b"obsolete"
+
+
 def test_containment_rejects_target_outside_root(env: tuple[Path, Path]) -> None:
     sandbox, _ = env
     outside = sandbox.parent / "outside.ini"

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 ApplicationWindow {
@@ -217,6 +218,9 @@ ApplicationWindow {
     property var emulationPlan: null
     property var lsfgPlan: null
     property string lsfgLastOperationId: ""
+    property var diagnosticsPlan: null
+    property var diagnosticsPreview: ({})
+    property string diagnosticsKind: "state"
     property string apiUrl: ""
     property string apiToken: ""
     property string lastRequest: ""
@@ -452,6 +456,18 @@ ApplicationWindow {
             return
         }
         request(action.method, action.endpoint, payload, callback, errorCallback)
+    }
+
+    function localPath(url) {
+        const value = String(url || "")
+        if (!value.startsWith("file://"))
+            return ""
+        return decodeURIComponent(value.replace(/^file:\/\/(?:localhost)?/, ""))
+    }
+
+    function beginDiagnosticsExport(kind) {
+        diagnosticsKind = kind
+        diagnosticsExportDialog.open()
     }
 
     function refreshStatus(message) {
@@ -694,6 +710,8 @@ ApplicationWindow {
                 || action.id.indexOf("game.media.clear:") === 0
                 || action.id.indexOf("game.media.publish-steam:") === 0
                 || action.id.indexOf("game.media.unpublish-steam:") === 0
+                || action.id.indexOf("game.save.") === 0
+                || action.id.indexOf("game.shader.") === 0
                 || action.id === "game.emulator.default"
                 || action.id === "game.emulator.clear_default"
                 || action.id === "emulation.global.set-auto-publish-steam"
@@ -1390,6 +1408,94 @@ ApplicationWindow {
                     root.requestAction("desktop.recover", {}, function(response) {
                         recoveryDialog.close()
                         root.refreshStatus(qsTr("Recuperação concluída com segurança"))
+                    })
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: diagnosticsExportDialog
+        title: root.diagnosticsKind === "support"
+            ? qsTr("Salvar pacote de suporte sanitizado")
+            : qsTr("Salvar estado sanitizado")
+        fileMode: FileDialog.SaveFile
+        nameFilters: root.diagnosticsKind === "support"
+            ? [qsTr("Pacote ZIP (*.zip)")]
+            : [qsTr("Documento JSON (*.json)")]
+        defaultSuffix: root.diagnosticsKind === "support" ? "zip" : "json"
+        onAccepted: {
+            const destination = root.localPath(selectedFile)
+            const contract = root.diagnosticsKind === "support"
+                ? "support.bundle" : "state.export"
+            root.requestAction(contract, {
+                "destination": destination,
+                "kind": root.diagnosticsKind
+            }, function(response) {
+                root.diagnosticsPlan = response.plan
+                root.diagnosticsPreview = response.contentPreview || ({})
+                diagnosticsPreviewDialog.open()
+            })
+        }
+    }
+
+    Dialog {
+        id: diagnosticsPreviewDialog
+        title: qsTr("Revisar conteúdo antes de exportar")
+        modal: true
+        width: Math.min(root.width - 48, 760)
+        height: Math.min(root.height - 48, 620)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanDarkColor
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: qsTr("Arquivos: %1").arg(
+                    (root.diagnosticsPreview.files || []).join(", "))
+                color: root.textColor
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                TextArea {
+                    readOnly: true
+                    text: JSON.stringify(root.diagnosticsPreview.content || {}, null, 2)
+                    color: root.textColor
+                    background: Rectangle { color: root.backgroundColor; radius: 6 }
+                    wrapMode: TextEdit.WrapAnywhere
+                    Accessible.name: qsTr("Preview integral da exportação sanitizada")
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: diagnosticsPreviewDialog.close()
+                }
+                Button {
+                    text: qsTr("Confirmar exportação")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    enabled: root.diagnosticsPlan !== null
+                    onClicked: root.requestAction("diagnostics.export.apply", {
+                        "planId": root.diagnosticsPlan.planId,
+                        "confirmToken": root.diagnosticsPlan.confirmToken
+                    }, function(response) {
+                        diagnosticsPreviewDialog.close()
+                        root.diagnosticsPlan = null
+                        root.notify(qsTr("Exportação sanitizada concluída"), false)
+                        root.refreshStatus("")
                     })
                 }
             }
@@ -3053,8 +3159,8 @@ ApplicationWindow {
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 16
-                                Label { text: qsTr("Saves e Sync"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
-                                Label { text: qsTr("Fila offline: nenhum save é sobrescrito quando há conflito."); color: root.mutedColor; Layout.leftMargin: 28 }
+                                Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
+                                Label { text: qsTr("Somente leitura: a bridge ainda não publicou provider nem mutações seguras."); color: root.amberColor; Layout.leftMargin: 28 }
                                 Repeater {
                                     model: [
                                         {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh"},
@@ -3079,8 +3185,76 @@ ApplicationWindow {
                                         }
                                     }
                                 }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 8
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: providerStatusColumn.implicitHeight + 24
+                                    ColumnLayout {
+                                        id: providerStatusColumn
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        Label { text: qsTr("Provider"); color: root.textColor; font.bold: true }
+                                        Label {
+                                            text: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                                && root.desktopStatus.dashboard.sync.provider
+                                                ? root.desktopStatus.dashboard.sync.provider.detail
+                                                : qsTr("Provider não configurado")
+                                            color: root.mutedColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                                Repeater {
+                                    model: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                        ? root.desktopStatus.dashboard.sync.items || [] : []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        color: root.surfaceColor
+                                        radius: 8
+                                        border.color: modelData.state === "conflicted"
+                                            ? root.amberColor : root.borderColor
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: 28
+                                        Layout.rightMargin: 28
+                                        Layout.minimumHeight: syncItemColumn.implicitHeight + 24
+                                        ColumnLayout {
+                                            id: syncItemColumn
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            Label {
+                                                text: qsTr("Item %1 • %2")
+                                                    .arg(String(modelData.id || "").slice(0, 12))
+                                                    .arg(modelData.state || qsTr("desconhecido"))
+                                                color: root.textColor
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                text: qsTr("%1 • jogo %2 • última tentativa não publicada")
+                                                    .arg(modelData.direction || qsTr("direção desconhecida"))
+                                                    .arg(modelData.gameId || qsTr("não associado"))
+                                                color: root.mutedColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                visible: modelData.conflict !== null
+                                                text: qsTr("Conflito preservado; resolução exige contrato com confirmação.")
+                                                color: root.amberColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                    }
+                                }
                                 Label {
-                                    text: qsTr("Cloud Sync permanece opcional. Se a rede ou o provedor cair, os itens continuam na fila local.")
+                                    text: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                        ? root.desktopStatus.dashboard.sync.dependency || ""
+                                        : qsTr("Aguardando leitura da fila local.")
                                     color: root.mutedColor
                                     wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
@@ -3267,6 +3441,100 @@ ApplicationWindow {
                                                 Label { text: modelData.message; color: root.mutedColor; font.pixelSize: 12; elide: Text.ElideMiddle; Layout.fillWidth: true }
                                             }
                                         }
+                                    }
+                                }
+                                Label {
+                                    text: qsTr("Operações recentes")
+                                    color: root.textColor
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    Layout.leftMargin: 28
+                                }
+                                Repeater {
+                                    model: root.desktopStatus.dashboard
+                                        && root.desktopStatus.dashboard.diagnostics
+                                        && root.desktopStatus.dashboard.diagnostics.operations
+                                        ? root.desktopStatus.dashboard.diagnostics.operations.items || [] : []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        color: root.surfaceColor
+                                        radius: 7
+                                        border.color: root.borderColor
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: 28
+                                        Layout.rightMargin: 28
+                                        Layout.minimumHeight: operationColumn.implicitHeight + 24
+                                        ColumnLayout {
+                                            id: operationColumn
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            Label {
+                                                text: qsTr("%1 • %2")
+                                                    .arg(modelData.operation)
+                                                    .arg(modelData.state)
+                                                color: root.textColor
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                text: qsTr("%1 • %2 • rollback %3")
+                                                    .arg(modelData.timestamp || qsTr("sem horário"))
+                                                    .arg(modelData.target || qsTr("alvo sanitizado"))
+                                                    .arg(modelData.rollbackAvailable
+                                                        ? qsTr("disponível") : qsTr("indisponível"))
+                                                color: root.mutedColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 7
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: sessionDiagnosticsColumn.implicitHeight + 24
+                                    ColumnLayout {
+                                        id: sessionDiagnosticsColumn
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        Label { text: qsTr("Sessão e recovery"); color: root.textColor; font.bold: true }
+                                        Label {
+                                            text: root.desktopStatus.dashboard
+                                                && root.desktopStatus.dashboard.diagnostics
+                                                && root.desktopStatus.dashboard.diagnostics.sessionRecovery
+                                                ? root.desktopStatus.dashboard.diagnostics.sessionRecovery.reason
+                                                : qsTr("Contrato de recovery não publicado.")
+                                            color: root.mutedColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Button {
+                                        text: qsTr("Exportar estado")
+                                        icon.name: "document-export"
+                                        Layout.minimumHeight: 48
+                                        onClicked: root.beginDiagnosticsExport("state")
+                                    }
+                                    Button {
+                                        text: qsTr("Pacote de suporte")
+                                        icon.name: "tools-report-bug"
+                                        Layout.minimumHeight: 48
+                                        onClicked: root.beginDiagnosticsExport("support")
+                                    }
+                                    Button {
+                                        text: qsTr("Saúde administrativa")
+                                        icon.name: "security-high"
+                                        Layout.minimumHeight: 48
+                                        onClicked: root.requestAction("admin.health", {}, function(response) {
+                                            root.notify(response.detail || response.state, false)
+                                        })
                                     }
                                 }
                                 RowLayout {

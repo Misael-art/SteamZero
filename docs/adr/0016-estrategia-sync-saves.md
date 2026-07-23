@@ -21,3 +21,18 @@ Emuladores com formato de save opaco/locks próprios — adapter declara pontos 
 
 ## Revisão
 Fase 3, com dados reais de tamanho/frequência.
+
+## Revisão operacional — 2026-07-22
+
+A interface Desktop publica a fila persistida em modo **somente leitura**. O
+domínio possui `SyncManager`, retry preservador e tratamento de conflito, mas a
+bridge em execução não injeta um `CloudPort` autenticado nem oferece contratos
+allowlisted para retry, cancelamento ou resolução confirmada. Expor esses
+controles antes disso criaria suporte fictício e poderia divergir do estado do
+provider.
+
+Para sair do modo somente leitura são necessários: provider com health e
+identidade publicados, timestamps/erros persistidos por tentativa e três
+mutações transacionais explícitas (retry, cancelamento seguro e resolução de
+conflito). Até lá, a GUI mostra itens, direção, estado, conflito preservado e a
+ausência do provider; sua única operação é atualizar o snapshot real.

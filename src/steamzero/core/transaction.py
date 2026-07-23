@@ -398,6 +398,8 @@ def plan_copy_files(
     ttl_s: int = _DEFAULT_TTL_S,
     requirements_extra: dict[str, Any] | None = None,
     writes: dict[Path, bytes] | None = None,
+    replace_existing: bool = False,
+    removals: set[Path] | None = None,
 ) -> Plan:
     """Planeja cópias verificadas de arquivos regulares para uma raiz confinada.
 
@@ -420,8 +422,10 @@ def plan_copy_files(
         target = _resolve_target_within(root_r, requested_target)
         if target in targets:
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
-        if target.exists() or target.is_symlink():
+        if target.is_symlink() or (target.exists() and not replace_existing):
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {target}")
+        if target.exists() and not target.is_file():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino não é arquivo: {target}")
         targets.add(target)
         digest = fs.hash_file(source)
         size = source.stat().st_size
@@ -439,7 +443,7 @@ def plan_copy_files(
         preconditions.extend(
             (
                 Precondition(target=str(source), fingerprint=digest),
-                Precondition(target=str(target), fingerprint=None),
+                Precondition(target=str(target), fingerprint=_fingerprint(target)),
             )
         )
         total_size += size
@@ -460,6 +464,26 @@ def plan_copy_files(
         )
         preconditions.append(Precondition(target=str(target), fingerprint=_fingerprint(target)))
         total_size += len(content)
+
+    for requested in sorted(removals or set(), key=str):
+        target = _resolve_target_within(root_r, requested)
+        if target in targets:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"cópia e remoção duplicadas: {target}")
+        if target.is_symlink() or not target.is_file():
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"remoção inválida: {target}")
+        targets.add(target)
+        actions.append(
+            FileAction(
+                action_id=ids.new_ulid(),
+                target=str(target),
+                new_hash="",
+                new_size=0,
+                new_content_b64="",
+                kind="delete",
+            )
+        )
+        preconditions.append(Precondition(target=str(target), fingerprint=_fingerprint(target)))
+        total_size += target.stat().st_size
 
     extra = requirements_extra or {}
     if "spaceBytes" in extra:
@@ -516,13 +540,9 @@ def plan_symlink_files(
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem de link inválida: {src}")
         target = _resolve_target_within(root_r, requested_target)
         if target.exists() and not target.is_symlink():
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}"
-            )
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}")
         if target.is_symlink() and not replace_existing:
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}"
-            )
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}")
         if target in targets:
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino duplicado: {target}")
         targets.add(target)
@@ -747,9 +767,7 @@ def _backup(op_id: str, plan: Plan, jrnl: journal.Journal) -> dict[str, dict[str
                 "source": str(source),
                 "backupRel": None,
                 "expectHash": _fingerprint(target),
-                "appliedFingerprint": (
-                    f"symlink:{a.source}" if a.kind == "symlink" else None
-                ),
+                "appliedFingerprint": (f"symlink:{a.source}" if a.kind == "symlink" else None),
             }
         elif target.exists():
             entry = fs.backup_file(op_id, target, a.action_id)
@@ -816,11 +834,7 @@ def _apply_actions(
             source = Path(a.source)
             target = Path(a.target)
             staged = paths.staging_for(op_id) / a.action_id
-            if (
-                _fingerprint(source) != a.new_hash
-                or _fingerprint(staged) != a.new_hash
-                or _fingerprint(target) is not None
-            ):
+            if _fingerprint(source) != a.new_hash or _fingerprint(staged) != a.new_hash:
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"cópia mudou durante apply: {a.source}"
                 )

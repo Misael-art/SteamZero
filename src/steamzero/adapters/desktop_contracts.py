@@ -663,40 +663,32 @@ def handheld_ui_contracts() -> dict[str, Any]:
         _action(
             "operations.history",
             "Ver histórico de operações",
-            None,
+            "/system/operations",
             service="system",
             screen="system",
             control="operation-history",
             method="GET",
-            enabled=False,
-            reason=(
-                "O journal transacional existe, porém não há read model sanitizado e "
-                "paginado para a GUI."
-            ),
-            applicable=False,
+            schema=_schema(),
         ),
         _action(
             "state.export",
             "Exportar estado",
-            None,
+            "/system/diagnostics/export/plan",
             service="system",
             screen="system",
             control="diagnostics-export",
-            enabled=False,
-            reason="A CLI possui state export, mas a GUI ainda não tem destino seguro via portal.",
-            applicable=False,
+            schema=_schema("destination", "kind", destination="string", kind="string"),
+            confirmation="dialog",
         ),
         _action(
             "admin.health",
             "Ver saúde administrativa",
-            None,
+            "/system/admin/health",
             service="system",
             screen="system",
             control="admin-health",
             method="GET",
-            enabled=False,
-            reason="O helper administrativo não publica endpoint de saúde para a bridge Desktop.",
-            applicable=False,
+            schema=_schema(),
         ),
         _action(
             "session.recovery",
@@ -714,16 +706,22 @@ def handheld_ui_contracts() -> dict[str, Any]:
         _action(
             "support.bundle",
             "Exportar pacote de suporte",
-            None,
+            "/system/diagnostics/export/plan",
             service="system",
             screen="system",
             control="support-bundle",
-            enabled=False,
-            reason=(
-                "A sanitização existe como política, mas o backend GUI ainda não "
-                "publica geração do bundle."
-            ),
-            applicable=False,
+            schema=_schema("destination", "kind", destination="string", kind="string"),
+            confirmation="dialog",
+        ),
+        _action(
+            "diagnostics.export.apply",
+            "Confirmar exportação revisada",
+            "/system/diagnostics/export/apply",
+            service="system",
+            screen="system",
+            control="diagnostics-export-confirm",
+            schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
+            confirmation="dialog",
         ),
     ]
     return {

@@ -252,6 +252,14 @@ class FakeDashboard:
         self.calls.append(("lsfg-rollback", operation_id))
         return {"status": "rolled-back"}
 
+    def operations_history(self, page: int, page_size: int) -> dict[str, object]:
+        self.calls.append(("operations-history", str(page), str(page_size)))
+        return {"page": page, "pageSize": page_size, "total": 1, "items": []}
+
+    def admin_health(self) -> dict[str, object]:
+        self.calls.append(("admin-health",))
+        return {"available": True, "state": "healthy"}
+
 
 @pytest.fixture
 def bridge(tmp_path: Path) -> tuple[str, str]:
@@ -587,6 +595,12 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/system/lsfg/rollback",
         {"operationId": "lsfg-operation"},
     )
+    operations = request_json(base, token, "/system/operations?page=2&pageSize=5")
+    assert operations == {"page": 2, "pageSize": 5, "total": 1, "items": []}
+    assert request_json(base, token, "/system/admin/health") == {
+        "available": True,
+        "state": "healthy",
+    }
     assert dashboard.calls == [
         ("plan", "dolphin"),
         ("apply", "component-plan", "confirm"),
@@ -619,6 +633,8 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("lsfg-plan",),
         ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
         ("lsfg-rollback", "lsfg-operation"),
+        ("operations-history", "2", "5"),
+        ("admin-health",),
     ]
 
 

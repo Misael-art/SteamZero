@@ -18,6 +18,7 @@ from typing import Any
 
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_kde import input_method_status, reduced_motion_enabled
+from steamzero.adapters.diagnostics import DiagnosticsService
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
@@ -236,6 +237,7 @@ class DesktopDashboard:
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
         reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
+        diagnostics: DiagnosticsService | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -255,12 +257,35 @@ class DesktopDashboard:
         self._which = which
         self._spawn = spawn
         self._reduced_motion_probe = reduced_motion_probe
+        self._diagnostics = diagnostics or DiagnosticsService(store_factory)
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
         registry = self._registry_factory()
         components: list[dict[str, Any]] = []
-        sync = {"state": "unavailable", "pending": 0, "conflicted": 0, "done": 0}
+        sync: dict[str, Any] = {
+            "state": "unavailable",
+            "mode": "read-only",
+            "pending": 0,
+            "conflicted": 0,
+            "done": 0,
+            "items": [],
+            "provider": {
+                "configured": False,
+                "name": None,
+                "health": "unavailable",
+                "detail": "Nenhum CloudPort foi configurado na bridge Desktop.",
+            },
+            "capabilities": {
+                "retry": False,
+                "cancel": False,
+                "resolveConflict": False,
+            },
+            "dependency": (
+                "Publicar um CloudPort autenticado e contratos transacionais allowlisted "
+                "para retry, cancelamento e resolução de conflito."
+            ),
+        }
         try:
             with self._store_factory() as store:
                 store.migrate()
@@ -271,16 +296,43 @@ class DesktopDashboard:
                     if manifest.id in _COMPONENT_LABELS
                 ]
                 queue = store.list_sync_queue()
-                sync = {
-                    "state": "attention"
-                    if any(row.get("state") == "conflicted" for row in queue)
-                    else "pending"
-                    if any(row.get("state") in {"pending", "in-flight"} for row in queue)
-                    else "idle",
-                    "pending": sum(row.get("state") in {"pending", "in-flight"} for row in queue),
-                    "conflicted": sum(row.get("state") == "conflicted" for row in queue),
-                    "done": sum(row.get("state") == "done" for row in queue),
-                }
+                items: list[dict[str, Any]] = []
+                for row in queue:
+                    save = store.get_save_entry(str(row.get("save_entry_id", "")))
+                    items.append(
+                        {
+                            "id": str(row.get("id", "")),
+                            "saveEntryId": str(row.get("save_entry_id", "")),
+                            "gameId": str(save.get("game_id", "")) if save else None,
+                            "direction": str(row.get("direction") or "unknown"),
+                            "state": str(row.get("state") or "unknown"),
+                            "lastAttempt": None,
+                            "error": None,
+                            "conflict": (
+                                {
+                                    "preserved": True,
+                                    "group": save.get("conflict_group") if save else None,
+                                }
+                                if row.get("state") == "conflicted"
+                                else None
+                            ),
+                        }
+                    )
+                sync.update(
+                    {
+                        "state": "attention"
+                        if any(row.get("state") == "conflicted" for row in queue)
+                        else "pending"
+                        if any(row.get("state") in {"pending", "in-flight"} for row in queue)
+                        else "idle",
+                        "pending": sum(
+                            row.get("state") in {"pending", "in-flight"} for row in queue
+                        ),
+                        "conflicted": sum(row.get("state") == "conflicted" for row in queue),
+                        "done": sum(row.get("state") == "done" for row in queue),
+                        "items": items,
+                    }
+                )
         except Exception as exc:
             components = [
                 self._degraded_component_row(manifest, exc)
@@ -348,6 +400,22 @@ class DesktopDashboard:
         except Exception:
             reduced_motion = False
 
+        try:
+            diagnostics = self._diagnostics.snapshot(doctor=doctor, desktop_status=desktop_status)
+        except Exception as exc:
+            diagnostics = {
+                "operations": {"page": 1, "pageSize": 20, "total": 0, "items": []},
+                "adminHealth": {"available": False, "mode": "health-only"},
+                "session": {"state": "unknown", "recoveryRequired": False},
+                "sessionRecovery": {"available": False, "reason": str(exc)[:240]},
+                "exports": {
+                    "state": False,
+                    "supportBundle": False,
+                    "previewRequired": True,
+                    "destinationRequired": True,
+                },
+            }
+
         return {
             "uiContracts": handheld_ui_contracts(),
             "accessibility": {"reducedMotion": reduced_motion},
@@ -356,6 +424,7 @@ class DesktopDashboard:
             "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
+            "diagnostics": diagnostics,
             "inputMethod": im_status,
             "emulation": emulation,
         }
@@ -413,6 +482,40 @@ class DesktopDashboard:
 
     def scraping_provider_link(self, provider: str, link: str) -> dict[str, str]:
         return self._emulation.provider_link(provider, link)
+
+    def operations_history(self, page: int, page_size: int) -> dict[str, Any]:
+        return self._diagnostics.operations(page=page, page_size=page_size)
+
+    def plan_diagnostics_export(
+        self, destination: Path, kind: str, desktop_status: dict[str, Any]
+    ) -> dict[str, Any]:
+        doctor_data, doctor_checks = self._doctor_runner()
+        plan, preview = self._diagnostics.plan_export(
+            destination,
+            kind=kind,
+            doctor={"data": doctor_data, "checks": doctor_checks},
+            desktop_status=desktop_status,
+        )
+        return {
+            "plan": {
+                "planId": plan.plan_id,
+                "confirmToken": plan.confirm_token,
+                "preview": plan.preview,
+                "rollbackGuarantee": plan.rollback_guarantee,
+                "requirements": plan.requirements,
+            },
+            "contentPreview": preview,
+        }
+
+    def apply_diagnostics_export(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        result = self._diagnostics.apply_export(plan_id, confirm_token)
+        return {
+            "status": result.status,
+            "operationId": result.operation_id,
+        }
+
+    def admin_health(self) -> dict[str, Any]:
+        return self._diagnostics.admin_health()
 
     def plan_steam_gameplay(
         self, payload: dict[str, Any], desktop_status: dict[str, Any]

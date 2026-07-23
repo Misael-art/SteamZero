@@ -11,8 +11,10 @@ import pytest
 from steamzero.adapters.desktop_dashboard import DesktopDashboard, SteamDesktopController
 from steamzero.adapters.flatpak import FlatpakState
 from steamzero.adapters.steam_gameplay import SteamGameplayController
+from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.saves import SavesStore
 
 
 class FakeFlatpak:
@@ -162,6 +164,13 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert snapshot["accessibility"] == {"reducedMotion": True}
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
     assert snapshot["emulation"]["schemaVersion"] == 1
+    assert snapshot["sync"]["mode"] == "read-only"
+    assert snapshot["sync"]["provider"]["configured"] is False
+    assert snapshot["sync"]["capabilities"] == {
+        "retry": False,
+        "cancel": False,
+        "resolveConflict": False,
+    }
     platform = snapshot["emulation"]["platforms"][0]
     assert platform["id"] == "switch"
     refresh = platform["areaData"]["overview"]["primaryAction"]
@@ -178,6 +187,59 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     eden = platform["emulators"][0]
     assert eden["sourceState"] == "verified"
     assert eden["action"]["id"] == "emulator.install:eden"
+
+
+def test_sync_snapshot_lists_real_queue_without_inventing_mutations(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    database = tmp_path / "state.db"
+    with StateStore(database) as store:
+        store.migrate()
+        store.save_platform({"id": "switch", "name": "Switch"})
+        game_id = ids.new_ulid()
+        store.save_game(
+            {"id": game_id, "platform_id": "switch", "title": "Example", "state": "ready"}
+        )
+        save = SavesStore(store).record_save(game_id, b"save")
+        store.save_sync_entry(
+            {
+                "id": "sync-1",
+                "save_entry_id": save.id,
+                "direction": "upload",
+                "state": "conflicted",
+            }
+        )
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(database),
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+    )
+
+    sync = dashboard.snapshot(_status())["sync"]
+    assert sync["state"] == "attention"
+    assert sync["items"] == [
+        {
+            "id": "sync-1",
+            "saveEntryId": save.id,
+            "gameId": game_id,
+            "direction": "upload",
+            "state": "conflicted",
+            "lastAttempt": None,
+            "error": None,
+            "conflict": {"preserved": True, "group": None},
+        }
+    ]
+    assert all(value is False for value in sync["capabilities"].values())
 
 
 def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) -> None:

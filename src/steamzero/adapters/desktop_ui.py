@@ -14,7 +14,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_dashboard import DesktopDashboard
@@ -66,7 +66,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._send(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
             return
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path == "/contracts":
             self._send(HTTPStatus.OK, handheld_ui_contracts())
         elif path == "/status":
@@ -97,6 +98,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._send(HTTPStatus.NOT_FOUND, {"error": "job não encontrado"})
                 return
             self._send(HTTPStatus.OK, result)
+        elif path == "/system/operations":
+            query = parse_qs(parsed.query)
+            try:
+                page = int(query.get("page", ["1"])[0])
+                page_size = int(query.get("pageSize", ["20"])[0])
+            except ValueError as exc:
+                self._send(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            self._send(
+                HTTPStatus.OK,
+                self._dashboard().operations_history(page, page_size),
+            )
+        elif path == "/system/admin/health":
+            self._send(HTTPStatus.OK, self._dashboard().admin_health())
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
 
@@ -295,6 +310,17 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/system/lsfg/rollback":
             return self._dashboard().rollback_lsfg_install(
                 self._required_string(payload, "operationId")
+            )
+        if path == "/system/diagnostics/export/plan":
+            return self._dashboard().plan_diagnostics_export(
+                Path(self._required_string(payload, "destination")),
+                self._required_string(payload, "kind"),
+                coordinator.status(),
+            )
+        if path == "/system/diagnostics/export/apply":
+            return self._dashboard().apply_diagnostics_export(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
             )
         if path == "/apply":
             return coordinator.apply(

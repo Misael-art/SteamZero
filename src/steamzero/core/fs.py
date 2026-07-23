@@ -25,6 +25,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from types import TracebackType
+from typing import IO
 
 from steamzero.core import paths
 from steamzero.core.errors import SteamZeroError
@@ -139,6 +140,36 @@ def write_atomic(
 
 def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
     write_atomic(path, text.encode("utf-8"), mode=mode)
+
+
+def write_stream_atomic(
+    path: Path,
+    source: IO[bytes],
+    *,
+    max_bytes: int,
+    mode: int = _FILE_MODE,
+) -> int:
+    """Publica um stream com limite estrito sem materializá-lo em memória."""
+    parent = ensure_dir(path.parent)
+    tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    written = 0
+    try:
+        while chunk := source.read(_CHUNK):
+            written += len(chunk)
+            if written > max_bytes:
+                raise SteamZeroError("E-CONTENT-LIMIT", detail="stream excede limite seguro")
+            _write_all(fd, chunk)
+        os.fsync(fd)
+    except BaseException:
+        os.close(fd)
+        _silent_unlink(tmp)
+        raise
+    else:
+        os.close(fd)
+    os.replace(tmp, path)
+    _fsync_dir(parent)
+    return written
 
 
 def _write_all(fd: int, data: bytes) -> None:

@@ -541,8 +541,8 @@ Item {
             "modsCheats": qsTr("Importe, ative e remova conteúdo local vinculado ao Title ID e ao emulador escolhido."),
             "graphicsPerformance": qsTr("Aplique perfis conhecidos bons, alternância dock/portátil e geração de quadros quando suportada."),
             "controls": qsTr("Configure até quatro jogadores e adapte o layout automaticamente ao modo de uso."),
-            "saves": qsTr("Catalogue backups locais; restore direto aguarda um destino seguro publicado pelo backend."),
-            "shaderCache": qsTr("Catalogue caches por jogo; invalidação aguarda driver, raiz e fingerprint publicados pelo backend."),
+            "saves": qsTr("Crie backups do destino detectado e restaure somente após confirmação e preview transacional."),
+            "shaderCache": qsTr("Catalogue, restaure ou invalide caches somente com raiz e fingerprint compatíveis."),
             "media": qsTr("Gerencie capas, nomes e correspondência por Title ID ou DAT importado pelo usuário."),
             "storage": qsTr("Compartilhe conteúdo compatível e deduplique arquivos entre emuladores."),
             "advanced": qsTr("Converta formatos, inspecione ferramentas e revise operações antes de aplicar.")
@@ -588,14 +588,14 @@ Item {
         if (id === "saves") {
             return [
                 {"title": qsTr("Backup mais recente"), "icon": "document-save", "state": "unknown", "status": qsTr("Nenhum backup verificado"), "detail": qsTr("Snapshot por conteúdo antes de qualquer migração."), "metric": "—"},
-                {"title": qsTr("Migração entre emuladores"), "icon": "folder-sync", "state": "unknown", "status": qsTr("Sem contrato Desktop"), "detail": qsTr("O backend ainda não publicou um destino por jogo/emulador; nenhuma restauração é presumida."), "metric": qsTr("Indisponível")},
+                {"title": qsTr("Destino do emulador"), "icon": "folder-sync", "state": "unknown", "status": qsTr("Aguardando detecção"), "detail": qsTr("Os controles só aparecem quando existe um único destino real e seguro."), "metric": qsTr("Verificando")},
                 {"title": qsTr("Integridade"), "icon": "security-high", "state": "unknown", "status": qsTr("Não verificada"), "detail": qsTr("O save original permanece disponível até a confirmação."), "metric": "—"}
             ]
         }
         if (id === "shaderCache") {
             return [
                 {"title": qsTr("Cache do jogo"), "icon": "applications-graphics", "state": "unknown", "status": qsTr("Nenhum jogo selecionado"), "detail": qsTr("Tamanho, driver e versão do emulador associados ao cache."), "metric": "—"},
-                {"title": qsTr("Backup e restauração"), "icon": "edit-undo", "state": "unknown", "status": qsTr("Sem contrato Desktop"), "detail": qsTr("O backend ainda não publicou raiz e fingerprint seguros para restaurar ou invalidar."), "metric": qsTr("Indisponível")},
+                {"title": qsTr("Backup e restauração"), "icon": "edit-undo", "state": "unknown", "status": qsTr("Aguardando detecção"), "detail": qsTr("Restore e invalidação exigem raiz confirmada e fingerprint compatível."), "metric": qsTr("Verificando")},
                 {"title": qsTr("Compatibilidade do cache"), "icon": "dialog-warning", "state": "unknown", "status": qsTr("Aguardando driver"), "detail": qsTr("Alerta quando mudança de driver ou emulador exige invalidação."), "metric": "—"}
             ]
         }
@@ -644,6 +644,19 @@ Item {
         const published = areaData.cards || []
         for (let i = 0; i < published.length; ++i)
             result.push(published[i])
+        const priorityCapability = selectedGame.modPriorityCapability || ({})
+        if (priorityCapability.supported === false) {
+            result.push({
+                "id": "mod-priority-capability",
+                "title": qsTr("Prioridade de mods"),
+                "icon": "view-sort-ascending",
+                "state": "attention",
+                "statusLabel": qsTr("Não suportada pelo emulador"),
+                "detail": priorityCapability.reason || qsTr("A ordem efetiva não pode ser verificada."),
+                "metric": qsTr("Controles ocultos"),
+                "actions": []
+            })
+        }
         const mods = selectedGame.mods || []
         for (let m = 0; m < mods.length; ++m) {
             const mod = mods[m]
@@ -659,7 +672,9 @@ Item {
                     .arg(mod.priority === null || mod.priority === undefined
                         ? qsTr("prioridade não suportada") : qsTr("prioridade %1").arg(mod.priority))
                     .arg(mod.compatibility && mod.compatibility.reason
-                        ? mod.compatibility.reason : qsTr("compatibilidade não publicada")),
+                        ? mod.compatibility.reason : qsTr("compatibilidade não publicada"))
+                    + (mod.conflicts && mod.conflicts.length > 0
+                        ? qsTr(" • conflito com %1").arg(mod.conflicts.join(", ")) : ""),
                 "metric": qsTr("Mod"),
                 "actions": [mod.stateAction, mod.removeAction]
             })
