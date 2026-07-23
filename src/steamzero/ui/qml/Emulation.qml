@@ -42,10 +42,14 @@ Item {
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
     property string steamUserId: ""
+    property bool reducedMotion: false
+    property Item gameDetailsInvoker: null
     readonly property bool compactLayout: width <= 1296 || height <= 720
     readonly property bool ultrawideLayout: width >= 1900
     readonly property int responsiveGutter: compactLayout ? 12 : 22
     readonly property int minimumTouchTarget: 48
+    readonly property int bottomSafeInset: minimumTouchTarget + responsiveGutter
+    readonly property int motionDuration: reducedMotion ? 0 : 180
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showAreaSidebar: !isGameLibrary() && !compactLayout
     readonly property bool showContextPanel: isGameLibrary()
@@ -54,6 +58,15 @@ Item {
     property alias compactPrimaryActionControl: compactPrimaryAction
     property alias libraryListControl: contentScroll
     property alias gameDetailsControl: contextPanel
+    readonly property var gameSearchControl: compactLayout
+        ? compactGameSearchField : gameSearchField
+    property alias gamePanelScrollControl: gamePanelScroll
+    property alias gameDetailsCloseControl: gameDetailsCloseButton
+    property alias scopeControlRepeater: scopeRepeater
+    property alias compactAreaControl: compactAreaPicker
+    property alias platformControl: platformPicker
+    property alias compactGameRepeaterControl: compactGameRepeater
+    property alias compactSortControl: compactSortPicker
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -233,6 +246,17 @@ Item {
         event.accepted = true
     }
 
+    Connections {
+        target: page.Window.window
+        enabled: target !== null
+        ignoreUnknownSignals: true
+        function onActiveFocusItemChanged() {
+            const item = target ? target.activeFocusItem : null
+            if (item)
+                Qt.callLater(function() { page.revealFocusedItem(item) })
+        }
+    }
+
     function stateColor(state) {
         if (["ready", "installed", "available", "healthy", "compatible", "active"]
                 .indexOf(state) >= 0)
@@ -307,12 +331,17 @@ Item {
         return scopeId() === "game" && selectedArea.id === "overview"
     }
 
-    function selectScope(index) {
+    function selectScope(index, invoker) {
         scopeIndex = normalizedIndex(index, scopes)
         if (scopeId() === "game" || scopeId() === "emulator")
             areaIndex = areaIndexById("overview")
-        if (scopeId() === "game")
+        if (scopeId() === "game") {
+            if (invoker)
+                gameDetailsInvoker = invoker
             gameDetailsOpen = true
+            if (compactLayout)
+                Qt.callLater(function() { gameDetailsCloseButton.forceActiveFocus() })
+        }
     }
 
     function filteredGames() {
@@ -354,7 +383,7 @@ Item {
         }
     }
 
-    function selectGame(game) {
+    function selectGame(game, invoker) {
         if (!game)
             return
         const index = games.findIndex(function(candidate) {
@@ -363,7 +392,20 @@ Item {
         if (index >= 0)
             gameIndex = index
         selectedGameId = String(game.id || "")
+        if (invoker)
+            gameDetailsInvoker = invoker
         gameDetailsOpen = true
+        if (compactLayout)
+            Qt.callLater(function() { gameDetailsCloseButton.forceActiveFocus() })
+    }
+
+    function closeGameDetails() {
+        gameDetailsOpen = false
+        const invoker = gameDetailsInvoker
+        Qt.callLater(function() {
+            if (invoker && invoker.visible && invoker.enabled)
+                invoker.forceActiveFocus(Qt.TabFocusReason)
+        })
     }
 
     function formatBytes(value) {
@@ -1133,7 +1175,7 @@ Item {
                         palette.highlight: page.cyanDarkColor
                         palette.highlightedText: page.textColor
                         Layout.preferredWidth: page.compactLayout ? 180 : 220
-                        Layout.minimumHeight: page.compactLayout ? 42 : 48
+                        Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Selecionar plataforma de emulação")
                         onActivated: {
                             page.platformIndex = currentIndex
@@ -1191,6 +1233,7 @@ Item {
                 }
 
                 Repeater {
+                    id: scopeRepeater
                     model: page.scopes
                     delegate: Button {
                         required property int index
@@ -1204,10 +1247,10 @@ Item {
                         Layout.fillWidth: page.compactLayout
                         Layout.preferredWidth: page.compactLayout ? -1
                             : Math.max(112, implicitWidth + 12)
-                        Layout.minimumHeight: page.compactLayout ? 42 : 48
+                        Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Aplicar no escopo %1").arg(text)
                         Accessible.description: modelData.reason || ""
-                        onClicked: page.selectScope(index)
+                        onClicked: page.selectScope(index, this)
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.backgroundColor
                             border.color: parent.checked || parent.activeFocus
@@ -1276,6 +1319,7 @@ Item {
                 font.bold: true
             }
             SteamComboBox {
+                id: compactAreaPicker
                 model: page.areas
                 textRole: "label"
                 currentIndex: page.areaIndex
@@ -1387,6 +1431,7 @@ Item {
                 Layout.fillHeight: true
                 clip: true
                 contentWidth: availableWidth
+                bottomPadding: page.bottomSafeInset
                 background: Rectangle { color: page.backgroundColor }
 
                 ColumnLayout {
@@ -1446,6 +1491,7 @@ Item {
                         spacing: 10
 
                         RowLayout {
+                            visible: !page.compactLayout
                             Layout.fillWidth: true
                             spacing: 12
                             ColumnLayout {
@@ -1475,7 +1521,22 @@ Item {
                                 Layout.preferredWidth: Math.min(360, contentScroll.width * 0.38)
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Buscar jogos")
+                                activeFocusOnTab: true
+                                focusPolicy: Qt.StrongFocus
+                                inputMethodHints: Qt.ImhNoPredictiveText
                                 onTextChanged: page.gameSearchText = text
+                                onActiveFocusChanged: {
+                                    if (activeFocus && enabled && !readOnly)
+                                        Qt.inputMethod.show()
+                                }
+                                Keys.onReturnPressed: function(event) {
+                                    gameSearchField.forceActiveFocus(Qt.ShortcutFocusReason)
+                                    event.accepted = true
+                                }
+                                Keys.onEnterPressed: function(event) {
+                                    gameSearchField.forceActiveFocus(Qt.ShortcutFocusReason)
+                                    event.accepted = true
+                                }
                                 background: Rectangle {
                                     color: page.surfaceColor
                                     border.color: gameSearchField.activeFocus
@@ -1513,7 +1574,100 @@ Item {
                             }
                         }
 
+                        ColumnLayout {
+                            visible: page.compactLayout
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Label {
+                                text: qsTr("Biblioteca por jogo")
+                                color: page.textColor
+                                font.pixelSize: 21
+                                font.bold: true
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("%1 de %2 jogo(s) • %3 capa(s)")
+                                    .arg(page.filteredGames().length).arg(page.games.length)
+                                    .arg(page.coverCount())
+                                color: page.mutedColor
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            TextField {
+                                id: compactGameSearchField
+                                placeholderText: qsTr("Buscar por nome ou Title ID")
+                                text: page.gameSearchText
+                                color: page.textColor
+                                placeholderTextColor: page.mutedColor
+                                selectByMouse: true
+                                activeFocusOnTab: true
+                                focusPolicy: Qt.StrongFocus
+                                inputMethodHints: Qt.ImhNoPredictiveText
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: qsTr("Buscar jogos")
+                                onTextChanged: page.gameSearchText = text
+                                onActiveFocusChanged: {
+                                    if (activeFocus && enabled && !readOnly)
+                                        Qt.inputMethod.show()
+                                }
+                                Keys.onReturnPressed: function(event) {
+                                    compactGameSearchField.forceActiveFocus(
+                                        Qt.ShortcutFocusReason)
+                                    event.accepted = true
+                                }
+                                Keys.onEnterPressed: function(event) {
+                                    compactGameSearchField.forceActiveFocus(
+                                        Qt.ShortcutFocusReason)
+                                    event.accepted = true
+                                }
+                                background: Rectangle {
+                                    color: page.surfaceColor
+                                    border.color: compactGameSearchField.activeFocus
+                                        ? page.cyanColor : page.borderColor
+                                    border.width: compactGameSearchField.activeFocus ? 2 : 1
+                                    radius: 7
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                Button {
+                                    text: qsTr("Sincronizar (%1)")
+                                        .arg(page.steamSelectedCount())
+                                    icon.name: "steam"
+                                    enabled: page.steamSelectedCount() > 0
+                                        || page.steamPublishedCount() > 0
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: page.minimumTouchTarget
+                                    Accessible.name: qsTr("Sincronizar jogos selecionados com a Steam")
+                                    Accessible.description: qsTr("A Steam deve estar fechada; somente jogos marcados serão sincronizados.")
+                                    onClicked: page.dispatchAction({
+                                        "id": "steam.shortcuts.sync",
+                                        "label": text,
+                                        "enabled": true,
+                                        "requiresConfirmation": true
+                                    })
+                                }
+                                Button {
+                                    text: qsTr("Varrer")
+                                    icon.name: "view-refresh"
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: page.minimumTouchTarget
+                                    Accessible.name: qsTr("Varrer biblioteca novamente")
+                                    onClicked: page.dispatchAction({
+                                        "id": "library.scan",
+                                        "label": text,
+                                        "enabled": true
+                                    })
+                                }
+                            }
+                        }
+
                         RowLayout {
+                            visible: !page.compactLayout
                             Layout.fillWidth: true
                             spacing: 6
                             Label {
@@ -1551,7 +1705,50 @@ Item {
                             }
                         }
 
+                        RowLayout {
+                            visible: page.compactLayout
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label {
+                                text: qsTr("Ordenar")
+                                color: page.mutedColor
+                                font.bold: true
+                            }
+                            SteamComboBox {
+                                id: compactSortPicker
+                                model: [
+                                    {"key": "name", "label": qsTr("Nome")},
+                                    {"key": "titleId", "label": qsTr("Title ID")},
+                                    {"key": "size", "label": qsTr("Tamanho")},
+                                    {"key": "format", "label": qsTr("Formato")},
+                                    {"key": "state", "label": qsTr("Estado")}
+                                ]
+                                textRole: "label"
+                                currentIndex: {
+                                    const keys = ["name", "titleId", "size", "format", "state"]
+                                    return Math.max(0, keys.indexOf(page.gameSortKey))
+                                }
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: qsTr("Ordenar biblioteca")
+                                onActivated: {
+                                    page.gameSortKey = model[currentIndex].key
+                                    page.gameSortAscending = true
+                                }
+                            }
+                            Button {
+                                text: page.gameSortAscending ? "↑" : "↓"
+                                Layout.preferredWidth: page.minimumTouchTarget
+                                Layout.minimumWidth: page.minimumTouchTarget
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: page.gameSortAscending
+                                    ? qsTr("Ordem crescente") : qsTr("Ordem decrescente")
+                                onClicked: page.gameSortAscending = !page.gameSortAscending
+                            }
+                        }
+
                         Rectangle {
+                            visible: !page.compactLayout
                             Layout.fillWidth: true
                             Layout.preferredHeight: 34
                             color: page.surfaceColor
@@ -1606,7 +1803,210 @@ Item {
                         }
 
                         Repeater {
-                            model: page.filteredGames()
+                            id: compactGameRepeater
+                            model: page.compactLayout ? page.filteredGames() : []
+                            delegate: Rectangle {
+                                id: compactGameCard
+                                required property var modelData
+                                property alias adjustControl: compactAdjustButton
+                                property alias playControl: compactPlayButton
+                                property alias titleControl: compactGameTitle
+                                property alias emulatorControl: compactGameEmulator
+                                readonly property bool selected: page.selectedGame.id
+                                    === modelData.id
+                                    && page.selectedGame.path === modelData.path
+                                readonly property int emulatorSelection:
+                                    page.gameEmulatorIndex(modelData)
+                                readonly property var playAction:
+                                    page.gamePlayAction(modelData)
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: compactGameCardContent.implicitHeight + 20
+                                color: selected ? "#10283a" : page.surfaceColor
+                                border.color: selected ? page.cyanColor : page.borderColor
+                                border.width: selected ? 2 : 1
+                                radius: 8
+
+                                ColumnLayout {
+                                    id: compactGameCardContent
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 10
+                                    spacing: 8
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        Rectangle {
+                                            Layout.preferredWidth: 82
+                                            Layout.preferredHeight: 60
+                                            color: page.raisedColor
+                                            border.color: page.borderColor
+                                            radius: 6
+                                            clip: true
+                                            Image {
+                                                id: compactGameBanner
+                                                anchors.fill: parent
+                                                source: compactGameCard.modelData.coverUrl
+                                                    || compactGameCard.modelData.bannerAsset
+                                                    || ""
+                                                fillMode: Image.PreserveAspectCrop
+                                                asynchronous: true
+                                                visible: String(source) !== ""
+                                                    && status === Image.Ready
+                                            }
+                                            SwitchPlatformMark {
+                                                anchors.centerIn: parent
+                                                width: 42
+                                                height: 42
+                                                visible: !compactGameBanner.visible
+                                                cutoutColor: page.raisedColor
+                                            }
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label {
+                                                id: compactGameTitle
+                                                text: compactGameCard.modelData.name
+                                                    || qsTr("Jogo sem nome")
+                                                color: page.textColor
+                                                font.pixelSize: 16
+                                                font.bold: true
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                text: qsTr("Title ID: %1")
+                                                    .arg(compactGameCard.modelData.titleId
+                                                        || qsTr("não identificado"))
+                                                color: compactGameCard.modelData.identityVerified
+                                                    === false
+                                                    ? page.amberColor : page.mutedColor
+                                                font.pixelSize: 11
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                text: "%1 • %2".arg(
+                                                    String(compactGameCard.modelData.format
+                                                        || "—").toUpperCase()).arg(
+                                                    page.formatBytes(
+                                                        compactGameCard.modelData.size))
+                                                color: page.mutedColor
+                                                font.pixelSize: 11
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                    }
+
+                                    GridLayout {
+                                        Layout.fillWidth: true
+                                        columns: 2
+                                        columnSpacing: 10
+                                        rowSpacing: 3
+                                        Label {
+                                            text: qsTr("Emulador")
+                                            color: page.mutedColor
+                                            font.pixelSize: 11
+                                        }
+                                        Label {
+                                            id: compactGameEmulator
+                                            text: compactGameCard.emulatorSelection >= 0
+                                                ? page.emulators[
+                                                    compactGameCard.emulatorSelection].name
+                                                : qsTr("Não definido")
+                                            color: compactGameCard.emulatorSelection >= 0
+                                                ? page.textColor : page.amberColor
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: qsTr("Requisitos")
+                                            color: page.mutedColor
+                                            font.pixelSize: 11
+                                        }
+                                        Label {
+                                            text: compactGameCard.modelData.requiresFirmware
+                                                && compactGameCard.modelData.requiresFirmware.required
+                                                ? qsTr("Firmware ≥ %1 • %2").arg(
+                                                    compactGameCard.modelData.requiresFirmware.required
+                                                ).arg(compactGameCard.modelData.region
+                                                    || qsTr("região em análise"))
+                                                : qsTr("Firmware e região em análise")
+                                            color: compactGameCard.modelData.requiresFirmware
+                                                && compactGameCard.modelData.requiresFirmware.required
+                                                ? page.textColor : page.amberColor
+                                            font.pixelSize: 11
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    CheckBox {
+                                        text: compactGameCard.modelData.steamPublished
+                                            ? qsTr("Publicado na Steam")
+                                            : qsTr("Incluir na Steam")
+                                        checked: compactGameCard.modelData.steamSelected === true
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: page.minimumTouchTarget
+                                        Accessible.description: qsTr("Marca este jogo para a próxima sincronização da biblioteca Steam.")
+                                        onClicked: {
+                                            page.selectGame(
+                                                compactGameCard.modelData, this)
+                                            page.dispatchAction({
+                                                "id": "game.steam.set",
+                                                "label": checked
+                                                    ? qsTr("Marcar para Steam")
+                                                    : qsTr("Desmarcar da Steam"),
+                                                "enabled": true,
+                                                "requiresConfirmation": true,
+                                                "gameId": compactGameCard.modelData.id,
+                                                "selected": checked
+                                            })
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Button {
+                                            id: compactPlayButton
+                                            text: compactGameCard.playAction.label
+                                            icon.name: "media-playback-start"
+                                            enabled: compactGameCard.playAction.enabled === true
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.description:
+                                                compactGameCard.playAction.reason || ""
+                                            onClicked: {
+                                                page.selectGame(
+                                                    compactGameCard.modelData, this)
+                                                page.dispatchAction(
+                                                    compactGameCard.playAction)
+                                            }
+                                        }
+                                        Button {
+                                            id: compactAdjustButton
+                                            text: qsTr("Ajustes")
+                                            icon.name: "configure"
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.name: qsTr("Ajustes de %1")
+                                                .arg(compactGameCard.modelData.name)
+                                            onClicked: page.selectGame(
+                                                compactGameCard.modelData, this)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            id: desktopGameRepeater
+                            model: page.compactLayout ? [] : page.filteredGames()
                             delegate: Rectangle {
                                 id: gameRow
                                 required property var modelData
@@ -1744,6 +2144,7 @@ Item {
                                             text: gameRow.modelData.steamPublished
                                                 ? qsTr("Publicado na Steam") : qsTr("Incluir na Steam")
                                             checked: gameRow.modelData.steamSelected === true
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             palette.windowText: checked ? page.cyanColor : page.mutedColor
                                             Accessible.description: qsTr("Marca este jogo para a próxima sincronização da biblioteca Steam.")
                                             onClicked: {
@@ -1839,7 +2240,7 @@ Item {
                                             palette.buttonText: page.textColor
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
-                                            onClicked: page.selectGame(gameRow.modelData)
+                                            onClicked: page.selectGame(gameRow.modelData, this)
                                         }
                                     }
                                 }
@@ -2541,7 +2942,7 @@ Item {
                     leftPadding: 16
                     rightPadding: 16
                     topPadding: 14
-                    bottomPadding: 14
+                    bottomPadding: page.bottomSafeInset
 
                     ColumnLayout {
                         width: gamePanelScroll.availableWidth
@@ -2571,10 +2972,13 @@ Item {
                                 }
                             }
                             ToolButton {
+                                id: gameDetailsCloseButton
                                 icon.name: "window-close"
                                 icon.color: page.textColor
+                                Layout.minimumWidth: page.minimumTouchTarget
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Fechar ajustes do jogo")
-                                onClicked: page.gameDetailsOpen = false
+                                onClicked: page.closeGameDetails()
                             }
                         }
 
@@ -3195,7 +3599,8 @@ Item {
                                             id: steamAutoPubCheck
                                             checked: page.globalSettings.autoPublishSteam === true
                                             Accessible.name: qsTr("Publicar automaticamente na Steam")
-                                            Layout.preferredWidth: 20
+                                            Layout.minimumWidth: page.minimumTouchTarget
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             onClicked: page.actionRequested({"id": "emulation.global.set-auto-publish-steam", "label": qsTr("Atualizar publicação automática"), "enabled": true, "value": checked})
                                         }
                                         Label {
@@ -3219,7 +3624,8 @@ Item {
                                             id: preferNcaCheck
                                             checked: page.globalSettings.preferNativeNca !== false
                                             Accessible.name: qsTr("Preferir extração NCA nativa")
-                                            Layout.preferredWidth: 20
+                                            Layout.minimumWidth: page.minimumTouchTarget
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             onClicked: page.actionRequested({"id": "emulation.global.set-prefer-native-nca", "label": qsTr("Atualizar preferência NCA"), "enabled": true, "value": checked})
                                         }
                                         Label {
