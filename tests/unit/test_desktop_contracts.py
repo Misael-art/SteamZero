@@ -82,7 +82,6 @@ def test_matrix_covers_required_services_and_explicit_non_applicable_items() -> 
         "system",
     } <= services
     for action_id in (
-        "jobs.list",
         "state.export",
         "admin.health",
         "session.recovery",

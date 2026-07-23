@@ -220,7 +220,8 @@ class TestMediaSearchJobHandlerErrors:
         ctrl._jobs.run(job.id)
         status = ctrl.get_job_status(job.id)
         assert status is not None
-        assert status["state"] == "completed"
+        assert status["state"] == "succeeded"
+        assert status["rawState"] == "completed"
         result = status.get("result", {})
         assert result.get("provider_errors") == {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"}
         assert result.get("candidate_count") == 0

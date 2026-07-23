@@ -37,7 +37,7 @@ Item {
     property string gameSearchText: ""
     property string gameSortKey: "name"
     property bool gameSortAscending: true
-    property bool gameDetailsOpen: true
+    property bool gameDetailsOpen: false
     property string selectedGameId: ""
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
@@ -52,6 +52,8 @@ Item {
         ? gameDetailsOpen && !compactLayout && width >= 900
         : !compactLayout && width >= 1500
     property alias compactPrimaryActionControl: compactPrimaryAction
+    property alias libraryListControl: contentScroll
+    property alias gameDetailsControl: contextPanel
 
     readonly property var defaultAreas: [
         {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
@@ -446,6 +448,12 @@ Item {
 
     function steamPublishedCount() {
         return games.filter(function(game) { return game.steamPublished === true }).length
+    }
+
+    function coverCount() {
+        return games.filter(function(game) {
+            return Boolean(game.coverUrl || game.bannerAsset)
+        }).length
     }
 
     function openGameArea(areaId) {
@@ -1336,6 +1344,8 @@ Item {
 
             ScrollView {
                 id: contentScroll
+                visible: !(page.compactLayout && page.isGameLibrary()
+                    && page.gameDetailsOpen)
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -1411,8 +1421,9 @@ Item {
                                     font.bold: true
                                 }
                                 Label {
-                                    text: qsTr("%1 de %2 jogo(s) • selecione uma linha para abrir os ajustes")
+                                    text: qsTr("%1 de %2 jogo(s) • %3 capa(s) reais • selecione uma linha para abrir os ajustes")
                                         .arg(page.filteredGames().length).arg(page.games.length)
+                                        .arg(page.coverCount())
                                     color: page.mutedColor
                                     font.pixelSize: 12
                                 }
@@ -1748,7 +1759,7 @@ Item {
                                         palette.base: page.raisedColor
                                         palette.text: page.textColor
                                         Layout.preferredWidth: 126
-                                        Layout.minimumHeight: 40
+                                        Layout.minimumHeight: page.minimumTouchTarget
                                         Accessible.name: qsTr("Emulador padrão de %1").arg(gameRow.modelData.name)
                                         Accessible.description: qsTr("Define qual emulador será usado pelo botão Jogar e pelo atalho da Steam.")
                                         onActivated: {
@@ -1777,7 +1788,7 @@ Item {
                                             palette.button: enabled ? page.cyanDarkColor : page.raisedColor
                                             palette.buttonText: enabled ? page.textColor : page.mutedColor
                                             Layout.fillWidth: true
-                                            Layout.minimumHeight: 40
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.description: playAction.reason || ""
                                             onClicked: {
                                                 page.selectGame(gameRow.modelData)
@@ -1790,7 +1801,7 @@ Item {
                                             palette.button: page.raisedColor
                                             palette.buttonText: page.textColor
                                             Layout.fillWidth: true
-                                            Layout.minimumHeight: 40
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             onClicked: page.selectGame(gameRow.modelData)
                                         }
                                     }
@@ -2171,9 +2182,13 @@ Item {
             }
 
             Rectangle {
-                visible: page.showContextPanel
-                Layout.preferredWidth: page.isGameLibrary()
-                    ? (page.width < 1200 ? 340 : 360) : 286
+                id: contextPanel
+                visible: page.showContextPanel || (page.compactLayout
+                    && page.isGameLibrary() && page.gameDetailsOpen)
+                Layout.fillWidth: page.compactLayout && page.isGameLibrary()
+                Layout.preferredWidth: page.compactLayout && page.isGameLibrary()
+                    ? page.width
+                    : page.isGameLibrary() ? (page.width < 1200 ? 340 : 360) : 286
                 Layout.fillHeight: true
                 color: page.surfaceColor
                 border.color: page.borderColor

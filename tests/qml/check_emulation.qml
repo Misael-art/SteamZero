@@ -145,7 +145,7 @@ Window {
                 "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
                 "games": [
                     {"id": "b", "path": "/roms/b.nsp", "name": "Zelda", "titleId": "010000000000B000", "size": 20, "format": "nsp", "state": "ready", "statusLabel": "NSP", "steamSelected": true, "steamPublished": true},
-                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ", "playAction": {"id": "game.launch:a", "label": "Jogar", "enabled": true}}
+                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ", "coverUrl": "file:///tmp/cover.png", "playAction": {"id": "game.launch:a", "label": "Jogar", "enabled": true}}
                 ]
             }]
         })
@@ -179,6 +179,17 @@ Window {
               "cancelar a troca deve restaurar a ação persistida")
         check(object.steamSelectedCount() === 1, "seleção Steam deve ser contada")
         check(object.steamPublishedCount() === 1, "atalho Steam publicado deve ser contado")
+        check(object.coverCount() === 1, "contagem de capas deve refletir apenas mídia publicada")
+        object.width = 949
+        object.height = 593
+        object.selectGame(object.games[1])
+        check(!object.libraryListControl.visible,
+              "ajustes compactos devem substituir a lista sem sobreposição")
+        check(object.gameDetailsControl.visible,
+              "ajustes do jogo devem ocupar a largura handheld")
+        object.gameDetailsOpen = false
+        check(object.libraryListControl.visible,
+              "fechar ajustes deve restaurar a biblioteca")
         object.destroy()
     }
 

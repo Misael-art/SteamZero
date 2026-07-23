@@ -187,6 +187,18 @@ class FakeDashboard:
         self.calls.append(("emulation-library-scan",))
         return {"status": "scanned", "games": 2}
 
+    def list_emulation_jobs(self) -> list[dict[str, object]]:
+        self.calls.append(("emulation-jobs-list",))
+        return [{"jobId": "job-1", "state": "running"}]
+
+    def cancel_emulation_job(self, job_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-job-cancel", job_id))
+        return {"jobId": job_id, "state": "cancelled"}
+
+    def retry_emulation_job(self, job_id: str) -> dict[str, object]:
+        self.calls.append(("emulation-job-retry", job_id))
+        return {"jobId": "job-2", "retryOf": job_id, "state": "succeeded"}
+
     def open_steam(self, target: str) -> dict[str, object]:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
@@ -512,6 +524,10 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"operationId": "emulation-operation"},
     )
     request_json(base, token, "/emulation/library/scan", {})
+    jobs = request_json(base, token, "/emulation/jobs")
+    assert jobs["jobs"] == [{"jobId": "job-1", "state": "running"}]
+    request_json(base, token, "/emulation/job/cancel", {"jobId": "job-1"})
+    request_json(base, token, "/emulation/job/retry", {"jobId": "job-1"})
     request_json(base, token, "/steam/open", {"target": "library"})
     request_json(base, token, "/steam/input/open", {"gameId": "10"})
     gameplay_plan = request_json(
@@ -584,6 +600,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("emulation-action-apply", "emulation-plan", "emulation-confirm"),
         ("emulation-action-rollback", "emulation-operation"),
         ("emulation-library-scan",),
+        ("emulation-jobs-list",),
+        ("emulation-job-cancel", "job-1"),
+        ("emulation-job-retry", "job-1"),
         ("steam", "library"),
         ("steam-input", "10"),
         ("gameplay-plan", "10"),

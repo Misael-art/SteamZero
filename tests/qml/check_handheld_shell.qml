@@ -41,6 +41,15 @@ Main {
               "drawer não pode cobrir toda a tela")
         check(responsiveDrawerNavigation.count === 6,
               "drawer deve publicar todas as áreas principais")
+        check(responsiveTaskDrawer.width <= width * 0.94 + 0.5,
+              "central de tarefas deve respeitar a largura handheld")
+        liveTasks = [{
+            "jobId": "job-1", "type": "library.scan", "state": "running",
+            "progress": {"current": 1, "total": 4}, "result": null,
+            "canCancel": true, "canRetry": false, "errorCode": null
+        }]
+        check(activeTaskCount() === 1, "tarefa ativa deve aparecer no indicador global")
+        check(taskProgress(liveTasks[0]) === 0.25, "progresso deve usar medição publicada")
         const emulationItem = responsiveDrawerNavigation.itemAt(1)
         const steamItem = responsiveDrawerNavigation.itemAt(2)
         check(emulationItem.KeyNavigation.down === steamItem,

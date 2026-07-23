@@ -85,6 +85,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 )
                 return
             self._send(HTTPStatus.OK, status)
+        elif path == "/emulation/jobs":
+            self._send(HTTPStatus.OK, {"jobs": self._dashboard().list_emulation_jobs()})
         elif path.startswith("/emulation/job/status/"):
             job_id = path.removeprefix("/emulation/job/status/")
             if not job_id:
@@ -213,6 +215,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if result is None:
                 raise SteamZeroError("E-API-SCHEMA", detail="job não encontrado")
             return result
+        if path == "/emulation/job/cancel":
+            return self._dashboard().cancel_emulation_job(self._required_string(payload, "jobId"))
+        if path == "/emulation/job/retry":
+            return self._dashboard().retry_emulation_job(self._required_string(payload, "jobId"))
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
         if path == "/steam/input/open":

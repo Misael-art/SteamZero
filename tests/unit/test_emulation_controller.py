@@ -172,16 +172,12 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     assert enriched[0]["playAction"]["enabled"] is True
 
 
-def test_global_emulator_and_media_preferences_are_persisted(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
 
     _apply(
         controller,
-        controller.plan_action(
-            {"actionId": "game.emulator.default", "emulatorId": "citron"}
-        ),
+        controller.plan_action({"actionId": "game.emulator.default", "emulatorId": "citron"}),
     )
     _apply(
         controller,
@@ -725,10 +721,9 @@ def test_cheat_import_toggle_and_remove_use_build_id(monkeypatch, tmp_path: Path
     assert controller.snapshot({"context": {}})["platforms"][0]["games"][0]["cheats"] == []
 
 
-def test_media_search_job_created_in_plan(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_media_search_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     from steamzero.jobs.manager import JobManager
+
     store = StateStore(tmp_path / "test_media_job.db")
     store.migrate()
     jobs = JobManager(store)
@@ -741,10 +736,9 @@ def test_media_search_job_created_in_plan(
     assert stored.state == "queued"
 
 
-def test_get_job_status_returns_none_for_missing(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_get_job_status_returns_none_for_missing(monkeypatch, tmp_path: Path) -> None:
     from steamzero.jobs.manager import JobManager
+
     store = StateStore(tmp_path / "test_missing_job.db")
     store.migrate()
     controller = _controller(monkeypatch, tmp_path)
@@ -754,6 +748,7 @@ def test_get_job_status_returns_none_for_missing(
 
 def test_validate_mime_jpeg(tmp_path: Path) -> None:
     from steamzero.adapters.emulation import _validate_mime
+
     f = tmp_path / "test.jpg"
     f.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 60)
     _validate_mime(f)
@@ -761,6 +756,7 @@ def test_validate_mime_jpeg(tmp_path: Path) -> None:
 
 def test_validate_mime_png(tmp_path: Path) -> None:
     from steamzero.adapters.emulation import _validate_mime
+
     f = tmp_path / "test.png"
     f.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 60)
     _validate_mime(f)
@@ -768,6 +764,7 @@ def test_validate_mime_png(tmp_path: Path) -> None:
 
 def test_validate_mime_webp(tmp_path: Path) -> None:
     from steamzero.adapters.emulation import _validate_mime
+
     f = tmp_path / "test.webp"
     f.write_bytes(b"RIFF\x00\x00\x00\x00WEBP" + b"\x00" * 60)
     _validate_mime(f)
@@ -776,6 +773,7 @@ def test_validate_mime_webp(tmp_path: Path) -> None:
 def test_validate_mime_rejects_unknown(tmp_path: Path) -> None:
     from steamzero.adapters.emulation import _guess_mime, _validate_mime
     from steamzero.core.errors import SteamZeroError
+
     f = tmp_path / "test.bin"
     f.write_bytes(b"\x00" * 100)
     with pytest.raises(SteamZeroError) as info:
@@ -789,6 +787,7 @@ def test_validate_mime_rejects_unknown(tmp_path: Path) -> None:
 def test_validate_mime_rejects_large(tmp_path: Path) -> None:
     from steamzero.adapters.emulation import _validate_mime
     from steamzero.core.errors import SteamZeroError
+
     f = tmp_path / "big.jpg"
     size = 33 * 1024 * 1024 + 1000
     data = b"\xff\xd8\xff\xe0" + b"\x00" * (size - 4)
@@ -798,10 +797,9 @@ def test_validate_mime_rejects_large(tmp_path: Path) -> None:
     assert info.value.code == "E-CONTENT-LIMIT"
 
 
-def test_rom_scan_job_created_in_plan(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_rom_scan_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     from steamzero.jobs.manager import JobManager
+
     store = StateStore(tmp_path / "test_rom_job.db")
     store.migrate()
     jobs = JobManager(store)
@@ -821,3 +819,26 @@ def test_rom_scan_job_created_in_plan(
     job = controller.get_job_status(result["jobId"])
     assert job is not None
     assert job["type"] == "rom.scan"
+
+
+def test_library_scan_publishes_global_job_progress(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "roms"
+    roms.mkdir()
+    (roms / "Game [0100ABCDEF123000].nsp").write_bytes(b"owned")
+    monkeypatch.setattr(controller, "library_roots", lambda: [str(roms)])
+
+    result = controller.scan_library()
+
+    assert result["games"] == 1
+    assert result["job"]["state"] == "succeeded"
+    assert result["job"]["progress"] == {
+        "stage": "done",
+        "current": 1,
+        "total": 1,
+        "unit": "roots",
+        "currentItem": None,
+    }
+    listed = controller.list_jobs()
+    assert listed[0]["jobId"] == result["jobId"]
+    assert "params" not in listed[0]

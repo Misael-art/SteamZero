@@ -179,6 +179,37 @@ class JobManager:
     def request_cancel(self, job_id: str) -> None:
         self._controls.setdefault(job_id, _Control()).cancel_requested = True
 
+    def cancel(self, job_id: str) -> Job:
+        """Cancela imediatamente quando seguro ou sinaliza um handler ativo."""
+        job = self._require(job_id)
+        if job.state in {"queued", "blocked"}:
+            self._transition(job, "cancelled")
+        elif job.state == "paused":
+            self._transition(job, "cancelling")
+            self._transition(job, "cancelled")
+        elif job.state == "running":
+            self.request_cancel(job_id)
+        elif job.state != "cancelling":
+            raise SteamZeroError("E-API-SCHEMA", detail=f"job não cancelável no estado {job.state}")
+        return self._require(job_id)
+
+    def retry(self, job_id: str, *, created_by: str = "ui") -> Job:
+        """Cria nova execução auditável sem reabrir o registro anterior."""
+        previous = self._require(job_id)
+        if previous.state not in {"cancelled", "rolled-back", "rollback-failed"}:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"job não repetível no estado {previous.state}"
+            )
+        replacement = self.create(
+            previous.type,
+            params=dict(previous.params),
+            priority=previous.priority,
+            created_by=created_by,
+            constraints=dict(previous.constraints),
+            correlation_id=previous.correlation_id,
+        )
+        return self.run(replacement.id)
+
     # -- bloqueio por constraints ------------------------------------------
     def blocked_reason(self, job: Job) -> str | None:
         if job.constraints.get("forbiddenDuringGameplay") and self._session_active():

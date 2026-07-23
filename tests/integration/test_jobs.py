@@ -64,6 +64,30 @@ def test_cancel_before_run(env: tuple[JobManager, state.StateStore, Path]) -> No
     assert done.state == "cancelled"
 
 
+def test_cancel_queued_job_transitions_immediately(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, _, _ = env
+    job = mgr.create("step")
+    assert mgr.cancel(job.id).state == "cancelled"
+
+
+def test_retry_creates_auditable_replacement(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, _, _ = env
+    mgr.register("step", _stepwise)
+    original = mgr.create("step", params={"source": "ui"})
+    mgr.cancel(original.id)
+
+    replacement = mgr.retry(original.id)
+
+    assert replacement.id != original.id
+    assert replacement.state == "completed"
+    assert replacement.result == {"ok": True}
+    assert replacement.params["source"] == "ui"
+
+
 def test_pause_then_resume(env: tuple[JobManager, state.StateStore, Path]) -> None:
     mgr, _, _ = env
     mgr.register("step", _stepwise)

@@ -274,6 +274,34 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("jobId", jobId="string"),
         ),
         _action(
+            "jobs.list",
+            "Listar tarefas",
+            "/emulation/jobs",
+            service="jobs",
+            screen="tasks",
+            control="task-center",
+            method="GET",
+        ),
+        _action(
+            "job.cancel",
+            "Cancelar tarefa",
+            "/emulation/job/cancel",
+            service="jobs",
+            screen="tasks",
+            control="task-row-cancel",
+            schema=_schema("jobId", jobId="string"),
+            confirmation="dialog",
+        ),
+        _action(
+            "job.retry",
+            "Tentar novamente",
+            "/emulation/job/retry",
+            service="jobs",
+            screen="tasks",
+            control="task-row-retry",
+            schema=_schema("jobId", jobId="string"),
+        ),
+        _action(
             "steam.open",
             "Abrir Steam",
             "/steam/open",
@@ -586,21 +614,6 @@ def handheld_ui_contracts() -> dict[str, Any]:
             reason=(
                 "A fila é somente leitura no snapshot atual; retry/cancel ainda não "
                 "possuem rota da bridge."
-            ),
-            applicable=False,
-        ),
-        _action(
-            "jobs.list",
-            "Listar todas as tarefas",
-            None,
-            service="jobs",
-            screen="tasks",
-            control="task-center",
-            method="GET",
-            enabled=False,
-            reason=(
-                "A bridge expõe somente jobs de emulação conhecidos; o Job Manager "
-                "global ainda não tem endpoint GUI."
             ),
             applicable=False,
         ),

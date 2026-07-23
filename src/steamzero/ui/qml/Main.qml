@@ -50,6 +50,7 @@ ApplicationWindow {
     property alias responsiveNavigation: navRepeater
     property alias responsiveDrawer: navigationDrawer
     property alias responsiveDrawerNavigation: drawerNavRepeater
+    property alias responsiveTaskDrawer: taskDrawer
     property alias responsiveHeader: compactHeader
     property alias responsiveContent: contentStack
     property alias responsiveFooter: handheldFooter
@@ -184,6 +185,9 @@ ApplicationWindow {
         ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
+    property var liveTasks: null
+    readonly property var taskItems: liveTasks !== null ? liveTasks
+        : emulationData && emulationData.jobs ? emulationData.jobs : []
     readonly property var uiContracts: desktopStatus.dashboard
         && desktopStatus.dashboard.uiContracts
         ? desktopStatus.dashboard.uiContracts : ({"actions": [], "byId": {}})
@@ -220,6 +224,69 @@ ApplicationWindow {
             qsTr("Visão geral"), qsTr("Emulação"), qsTr("Steam"),
             qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Sistema")
         ][index] || qsTr("Central")
+    }
+
+    function activeTaskCount() {
+        return taskItems.filter(function(job) {
+            return job.state === "queued" || job.state === "running"
+        }).length
+    }
+
+    function taskStateLabel(state) {
+        return ({
+            "queued": qsTr("Na fila"), "running": qsTr("Em andamento"),
+            "succeeded": qsTr("Concluída"), "failed": qsTr("Falhou"),
+            "cancelled": qsTr("Cancelada")
+        })[state] || qsTr("Estado desconhecido")
+    }
+
+    function taskLabel(type) {
+        return ({
+            "library.scan": qsTr("Varredura da biblioteca"),
+            "rom.scan": qsTr("Descoberta de ROMs"),
+            "media.search": qsTr("Busca de mídia"),
+            "content.import": qsTr("Importação de conteúdo"),
+            "nsz.convert": qsTr("Conversão NSZ"),
+            "steam.publish": qsTr("Publicação na Steam")
+        })[type] || type
+    }
+
+    function taskProgress(job) {
+        const progress = job && job.progress ? job.progress : {}
+        const current = Number(progress.current || 0)
+        const total = Number(progress.total || 0)
+        return total > 0 ? Math.max(0, Math.min(1, current / total)) : 0
+    }
+
+    function taskResultSummary(job) {
+        const result = job && job.result ? job.result : {}
+        const progress = job && job.progress ? job.progress : {}
+        if (job.state === "running" && Number(progress.total || 0) > 0)
+            return qsTr("%1 de %2 %3").arg(progress.current || 0)
+                .arg(progress.total).arg(progress.unit || qsTr("itens"))
+        if (job.state === "queued")
+            return qsTr("Aguardando recursos; pode ser cancelada com segurança.")
+        if (job.type === "library.scan")
+            return qsTr("%1 jogo(s); %2 sem identificação; %3 erro(s)")
+                .arg(result.games || 0).arg(result.unidentified || 0)
+                .arg(result.errors ? result.errors.length : 0)
+        if (job.type === "media.search") {
+            const providerErrors = result.provider_errors || {}
+            const degraded = Object.keys(providerErrors).length
+            return degraded > 0
+                ? qsTr("%1 candidato(s); %2 provider(s) degradado(s)")
+                    .arg(result.candidate_count || 0).arg(degraded)
+                : qsTr("%1 candidato(s) encontrado(s)").arg(result.candidate_count || 0)
+        }
+        if (job.errorCode)
+            return qsTr("Código: %1. Abra os detalhes para tentar novamente.").arg(job.errorCode)
+        return taskStateLabel(job.state)
+    }
+
+    function refreshTasks() {
+        requestAction("jobs.list", {}, function(response) {
+            liveTasks = response.jobs || []
+        })
     }
 
     function ensureFocusedItemVisible(item) {
@@ -298,9 +365,12 @@ ApplicationWindow {
         return response.error.title || response.error.detail || response.error.code || fallback
     }
 
-    function request(method, path, payload, callback) {
+    function request(method, path, payload, callback, errorCallback) {
         if (!apiUrl || !apiToken) {
-            notify(qsTr("Bridge local indisponível; nenhuma mudança foi feita"), true)
+            const message = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+            if (errorCallback)
+                errorCallback(message)
+            notify(message, true)
             return
         }
         const xhr = new XMLHttpRequest()
@@ -325,21 +395,35 @@ ApplicationWindow {
             try {
                 const response = JSON.parse(xhr.responseText)
                 if (xhr.status < 200 || xhr.status >= 300) {
-                    root.notify(root.errorMessage(response, qsTr("Ação recusada")), true)
+                    const message = root.errorMessage(response, qsTr("Ação recusada"))
+                    if (errorCallback)
+                        errorCallback(message)
+                    root.notify(message, true)
                     return
                 }
                 callback(response)
             } catch (error) {
-                root.notify(qsTr("Resposta inválida; nenhuma mudança adicional foi feita"), true)
+                const message = qsTr("Resposta inválida; nenhuma mudança adicional foi feita")
+                if (errorCallback)
+                    errorCallback(message)
+                root.notify(message, true)
             }
         }
         xhr.onerror = function() {
-            if (finish())
-                root.notify(qsTr("A central local não respondeu; o estado foi preservado"), true)
+            if (finish()) {
+                const message = qsTr("A central local não respondeu; o estado foi preservado")
+                if (errorCallback)
+                    errorCallback(message)
+                root.notify(message, true)
+            }
         }
         xhr.ontimeout = function() {
-            if (finish())
-                root.notify(qsTr("A operação excedeu o tempo esperado; verifique o estado antes de repetir"), true)
+            if (finish()) {
+                const message = qsTr("A operação excedeu o tempo esperado; verifique o estado antes de repetir")
+                if (errorCallback)
+                    errorCallback(message)
+                root.notify(message, true)
+            }
         }
         xhr.send(JSON.stringify(payload || {}))
     }
@@ -349,22 +433,26 @@ ApplicationWindow {
         return actions[actionId] || null
     }
 
-    function requestAction(actionId, payload, callback) {
+    function requestAction(actionId, payload, callback, errorCallback) {
         const action = backendAction(actionId)
         if (!action || action.applicability !== "applicable" || action.enabled !== true
                 || !action.endpoint || !action.method) {
-            notify(action && action.reason
+            const message = action && action.reason
                 ? action.reason
-                : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId), true)
+                : qsTr("A bridge não publicou o contrato %1; nenhuma mudança foi feita.").arg(actionId)
+            if (errorCallback)
+                errorCallback(message)
+            notify(message, true)
             return
         }
-        request(action.method, action.endpoint, payload, callback)
+        request(action.method, action.endpoint, payload, callback, errorCallback)
     }
 
     function refreshStatus(message) {
         // /status é o único bootstrap: ele entrega o próprio catálogo de contratos.
         request("GET", "/status", {}, function(response) {
             desktopStatus = response
+            liveTasks = null
             currentPlan = null
             ensureSelections()
             if (desktopStatus.recoveryRequired && !recoveryPromptShown) {
@@ -1090,6 +1178,7 @@ ApplicationWindow {
         modal: true
         closePolicy: Popup.CloseOnEscape
         width: Math.min(root.width - 48, 500)
+        height: Math.min(root.height - 32, 620)
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         standardButtons: Dialog.NoButton
@@ -1106,8 +1195,13 @@ ApplicationWindow {
             })
         }
 
-        contentItem: ColumnLayout {
-            spacing: 12
+        contentItem: ScrollView {
+            id: credentialScroll
+            clip: true
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: credentialScroll.availableWidth
+                spacing: 12
             Label {
                 text: qsTr("Configure as chaves de API dos provedores de scraping para buscar capas e mídia automaticamente.")
                 color: root.textColor
@@ -1164,7 +1258,7 @@ ApplicationWindow {
                                 selectByMouse: true
                                 echoMode: field.secret ? TextInput.Password : TextInput.Normal
                                 Layout.fillWidth: true
-                                Layout.minimumHeight: 36
+                                Layout.minimumHeight: 48
                                 onTextChanged: providerCard.credentialValues[field.id] = text
                                 background: Rectangle {
                                     color: root.surfaceColor
@@ -1181,7 +1275,7 @@ ApplicationWindow {
                                 enabled: Object.keys(providerCard.credentialValues).length > 0
                                 palette.button: root.raisedColor
                                 palette.buttonText: root.textColor
-                                Layout.minimumHeight: 36
+                                Layout.minimumHeight: 48
                                 onClicked: {
                                     root.requestAction("credential.save", {
                                         "provider": providerCard.provider.id,
@@ -1205,7 +1299,7 @@ ApplicationWindow {
                             visible: provider.configured && provider.id === "steamgriddb"
                             text: qsTr("Testar conexão")
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 32
+                            Layout.minimumHeight: 48
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
                             onClicked: {
@@ -1222,7 +1316,7 @@ ApplicationWindow {
                             visible: provider.configured
                             text: qsTr("Revogar")
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 32
+                            Layout.minimumHeight: 48
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
                             onClicked: {
@@ -1237,7 +1331,7 @@ ApplicationWindow {
                             visible: provider.links && provider.links.credentials
                             text: qsTr("Obter credencial")
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 32
+                            Layout.minimumHeight: 48
                             palette.button: root.raisedColor
                             palette.buttonText: root.textColor
                             onClicked: root.requestAction("provider.link", {
@@ -1249,11 +1343,12 @@ ApplicationWindow {
             }
             Button {
                 Layout.fillWidth: true
-                Layout.minimumHeight: 40
+                Layout.minimumHeight: 48
                 text: qsTr("Fechar")
                 palette.button: root.raisedColor
                 palette.buttonText: root.textColor
                 onClicked: credentialDialog.close()
+            }
             }
         }
     }
@@ -1405,6 +1500,187 @@ ApplicationWindow {
         }
     }
 
+    Drawer {
+        id: taskDrawer
+        edge: Qt.RightEdge
+        modal: true
+        interactive: true
+        width: Math.min(460, root.width * 0.94)
+        height: root.height
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        Accessible.name: qsTr("Central de tarefas")
+        onOpened: root.refreshTasks()
+
+        enter: Transition {
+            NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "position"; duration: root.motionDuration; easing.type: Easing.InCubic }
+        }
+        background: Rectangle { color: root.sidebarColor; border.color: root.borderColor }
+        contentItem: ColumnLayout {
+            spacing: 10
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 12
+                Layout.rightMargin: 12
+                Layout.topMargin: 10
+                Layout.minimumHeight: 54
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Label { text: qsTr("Central de tarefas"); color: root.textColor; font.pixelSize: 19; font.bold: true }
+                    Label {
+                        text: root.activeTaskCount() > 0
+                            ? qsTr("%1 ativa(s)").arg(root.activeTaskCount())
+                            : qsTr("Nenhuma operação ativa")
+                        color: root.activeTaskCount() > 0 ? root.cyanColor : root.mutedColor
+                        font.pixelSize: 11
+                    }
+                }
+                Button {
+                    text: qsTr("Atualizar")
+                    Layout.minimumHeight: 48
+                    Accessible.name: text
+                    onClicked: root.refreshTasks()
+                }
+                Button {
+                    text: qsTr("Fechar")
+                    Layout.minimumHeight: 48
+                    Accessible.name: qsTr("Fechar central de tarefas")
+                    onClicked: taskDrawer.close()
+                }
+            }
+
+            Rectangle { color: root.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+
+            ScrollView {
+                id: taskScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
+
+                ColumnLayout {
+                    width: taskScroll.availableWidth
+                    spacing: 10
+
+                    Rectangle {
+                        visible: root.taskItems.length === 0
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 12
+                        implicitHeight: 100
+                        color: root.surfaceColor
+                        border.color: root.borderColor
+                        radius: 8
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 5
+                            Label { text: qsTr("Nenhuma tarefa registrada"); color: root.textColor; font.bold: true }
+                            Label { text: qsTr("Varreduras e buscas aparecerão aqui."); color: root.mutedColor }
+                        }
+                    }
+
+                    Repeater {
+                        model: root.taskItems
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            Layout.topMargin: index === 0 ? 4 : 0
+                            implicitHeight: taskContent.implicitHeight + 24
+                            color: root.surfaceColor
+                            border.color: modelData.state === "failed" ? root.redColor
+                                : modelData.state === "running" ? root.cyanColor : root.borderColor
+                            radius: 8
+
+                            ColumnLayout {
+                                id: taskContent
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 7
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Label {
+                                        text: root.taskLabel(modelData.type)
+                                        color: root.textColor
+                                        font.bold: true
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        text: root.taskStateLabel(modelData.state)
+                                        color: modelData.state === "failed" ? root.redColor
+                                            : modelData.state === "succeeded" ? root.greenColor
+                                            : modelData.state === "running" ? root.cyanColor : root.mutedColor
+                                        font.bold: true
+                                    }
+                                }
+                                ProgressBar {
+                                    visible: modelData.state === "running" || modelData.state === "queued"
+                                    from: 0
+                                    to: 1
+                                    value: root.taskProgress(modelData)
+                                    indeterminate: modelData.state === "running" && value === 0
+                                    Layout.fillWidth: true
+                                    Accessible.name: qsTr("Progresso de %1").arg(root.taskLabel(modelData.type))
+                                }
+                                Label {
+                                    text: root.taskResultSummary(modelData)
+                                    color: root.mutedColor
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                RowLayout {
+                                    visible: modelData.canCancel || modelData.canRetry
+                                    Layout.fillWidth: true
+                                    Item { Layout.fillWidth: true }
+                                    Button {
+                                        visible: modelData.canCancel
+                                        text: qsTr("Cancelar")
+                                        Layout.minimumHeight: 48
+                                        Accessible.name: qsTr("Cancelar %1").arg(root.taskLabel(modelData.type))
+                                        onClicked: root.requestAction("job.cancel", {
+                                            "jobId": modelData.jobId
+                                        }, function() {
+                                            root.refreshTasks()
+                                            root.refreshStatus(qsTr("Cancelamento registrado"))
+                                        })
+                                    }
+                                    Button {
+                                        visible: modelData.canRetry
+                                        text: qsTr("Tentar novamente")
+                                        Layout.minimumHeight: 48
+                                        Accessible.name: qsTr("Tentar novamente %1").arg(root.taskLabel(modelData.type))
+                                        onClicked: root.requestAction("job.retry", {
+                                            "jobId": modelData.jobId
+                                        }, function() {
+                                            root.refreshTasks()
+                                            root.refreshStatus(qsTr("Nova tentativa concluída"))
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Item { Layout.preferredHeight: 8 }
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: taskRefreshTimer
+        interval: 1500
+        repeat: true
+        running: taskDrawer.opened && root.activeTaskCount() > 0
+        onTriggered: root.refreshTasks()
+    }
+
     ColumnLayout {
         id: appShell
         anchors.fill: parent
@@ -1538,6 +1814,17 @@ ApplicationWindow {
                                 }
                             }
                         }
+                    }
+
+                    Button {
+                        id: desktopTaskButton
+                        text: root.activeTaskCount() > 0
+                            ? qsTr("Tarefas · %1").arg(root.activeTaskCount()) : qsTr("Tarefas")
+                        icon.name: "view-task"
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: 48
+                        Accessible.name: qsTr("Abrir central de tarefas")
+                        onClicked: taskDrawer.open()
                     }
 
                     Button {
@@ -1732,6 +2019,17 @@ ApplicationWindow {
                                 Layout.preferredWidth: 32
                                 Layout.preferredHeight: 32
                                 Accessible.name: qsTr("Operação em andamento")
+                            }
+                            ToolButton {
+                                id: compactTaskButton
+                                icon.name: "view-task"
+                                icon.color: root.activeTaskCount() > 0 ? root.cyanColor : root.mutedColor
+                                Layout.minimumWidth: 48
+                                Layout.minimumHeight: 48
+                                Accessible.name: root.activeTaskCount() > 0
+                                    ? qsTr("Abrir %1 tarefa(s) ativa(s)").arg(root.activeTaskCount())
+                                    : qsTr("Abrir central de tarefas")
+                                onClicked: taskDrawer.open()
                             }
                             ToolButton {
                                 id: compactSystemButton

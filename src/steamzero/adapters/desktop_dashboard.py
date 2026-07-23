@@ -381,6 +381,15 @@ class DesktopDashboard:
     def get_emulation_job_status(self, job_id: str) -> dict[str, Any] | None:
         return self._emulation.get_job_status(job_id)
 
+    def list_emulation_jobs(self) -> list[dict[str, Any]]:
+        return self._emulation.list_jobs()
+
+    def cancel_emulation_job(self, job_id: str) -> dict[str, Any]:
+        return self._emulation.cancel_job(job_id)
+
+    def retry_emulation_job(self, job_id: str) -> dict[str, Any]:
+        return self._emulation.retry_job(job_id)
+
     def credential_status(self) -> dict[str, Any]:
         return self._emulation.credential_status()
 

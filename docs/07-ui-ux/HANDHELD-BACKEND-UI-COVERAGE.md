@@ -25,12 +25,15 @@ Cada linha da matriz contém:
 
 | Capacidade | Motivo atual |
 | --- | --- |
-| Fila global de jobs | a bridge só expõe jobs de emulação conhecidos |
 | Exportação de estado | a CLI não possui destino GUI seguro via portal |
 | Saúde administrativa | o helper não publica endpoint para a bridge |
 | Recuperação de sessão | pertence ao daemon e ainda não tem contrato Desktop |
 | Pacote de suporte | política de sanitização existe, geração GUI não |
 | Retry/cancel de sync | o snapshot de sync ainda é somente leitura |
+
+A fila de jobs de emulação deixou de ser lacuna: lista, progresso, resultado,
+cancelamento seguro e nova tentativa são publicados pela bridge e consumidos
+pela Central de tarefas global.
 
 Esses itens aparecem desabilitados no catálogo; a interface não cria botões
 decorativos para preencher a lacuna.

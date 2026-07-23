@@ -183,9 +183,14 @@ class EmulationController:
         if job_manager is not None:
             self._jobs = job_manager
         else:
-            self._jobs = JobManager(store_factory())
-            self._jobs.register("media.search", self._media_search_job_handler)
-            self._jobs.register("rom.scan", self._rom_scan_job_handler)
+            job_store = store_factory()
+            job_store.migrate()
+            self._jobs = JobManager(job_store)
+        self._jobs.register("media.search", self._media_search_job_handler)
+        self._jobs.register("rom.scan", self._rom_scan_job_handler)
+        self._jobs.register("library.scan", self._library_scan_job_handler)
+        for job_type in ("content.import", "nsz.convert", "steam.publish"):
+            self._jobs.register(job_type, self._completed_operation_job_handler)
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
 
     @property
@@ -261,6 +266,7 @@ class EmulationController:
                 "storage": str(integrity["state"]),
                 "advanced": "Ferramentas locais",
             }[area_id]
+        workspace["jobs"] = self.list_jobs()
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
 
@@ -448,14 +454,38 @@ class EmulationController:
         return compacted
 
     def scan_library(self) -> dict[str, Any]:
+        job = self._jobs.create(
+            "library.scan",
+            params={"roots": self.library_roots()},
+            priority="interactive",
+            created_by="ui",
+        )
+        completed = self._jobs.run(job.id)
+        result = dict(completed.result) if isinstance(completed.result, Mapping) else {}
+        result.update({"jobId": completed.id, "job": self._job_view(completed)})
+        return result
+
+    def _scan_library_now(self, ctx: JobContext | None = None) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
         emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
         auxiliary: list[Any] = []
         unidentified = 0
         errors: list[str] = []
-        for raw_root in self.library_roots():
+        roots = self.library_roots()
+        if ctx is not None:
+            ctx.set_progress("scan", current=0, total=len(roots), unit="roots")
+        for root_index, raw_root in enumerate(roots):
             root = Path(raw_root)
+            if ctx is not None:
+                ctx.safepoint()
+                ctx.set_progress(
+                    "scan",
+                    current=root_index,
+                    total=len(roots),
+                    unit="roots",
+                    current_item=root.name,
+                )
             try:
                 matches = scanner.inventory(root)
             except (OSError, SteamZeroError) as exc:
@@ -509,6 +539,14 @@ class EmulationController:
                     "coverUrl": banner_asset,
                     "mediaSource": media_source,
                 }
+            if ctx is not None:
+                ctx.set_progress(
+                    "scan",
+                    current=root_index + 1,
+                    total=len(roots),
+                    unit="roots",
+                    current_item=root.name,
+                )
         by_title_id = {
             str(game["titleId"]): game
             for game in discovered.values()
@@ -556,6 +594,8 @@ class EmulationController:
             self._library_cache_path,
             json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")),
         )
+        if ctx is not None:
+            ctx.set_progress("done", current=len(roots), total=len(roots), unit="roots")
         return {
             "status": "scanned",
             "games": len(game_rows),
@@ -903,6 +943,28 @@ class EmulationController:
                 )
                 response["jobId"] = job.id
                 self._jobs.run(job.id)
+        tracked_type: str | None = None
+        if plan.kind == "library.convert":
+            tracked_type = "nsz.convert"
+        elif plan.kind == "steam.shortcuts.sync" or (
+            pending is not None and pending.kind in {"media-publish-steam", "media-unpublish-steam"}
+        ):
+            tracked_type = "steam.publish"
+        elif plan.kind == "switch-content.import" or (
+            pending is not None
+            and pending.kind in {"key", "firmware", "mod-install", "cheat-install", "media-import"}
+        ):
+            tracked_type = "content.import"
+        if tracked_type is not None:
+            tracked = self._jobs.create(
+                tracked_type,
+                params={"operation_id": result.operation_id},
+                priority="interactive",
+                created_by="ui",
+            )
+            completed = self._jobs.run(tracked.id)
+            response["jobId"] = completed.id
+            response["job"] = self._job_view(completed)
         if plan.kind == "emulation.library-roots" or plan.kind.startswith("emulation.game-delete:"):
             response["library"] = self.scan_library()
         if pending is not None and pending.kind.startswith("media-"):
@@ -911,19 +973,49 @@ class EmulationController:
 
     def get_job_status(self, job_id: str) -> dict[str, Any] | None:
         job = self._jobs.get(job_id)
-        if job is None:
-            return None
+        return self._job_view(job) if job is not None else None
+
+    @staticmethod
+    def _job_view(job: Job) -> dict[str, Any]:
+        state = {
+            "created": "queued",
+            "queued": "queued",
+            "blocked": "queued",
+            "paused": "queued",
+            "running": "running",
+            "cancelling": "running",
+            "rolling-back": "running",
+            "interrupted": "running",
+            "completed": "succeeded",
+            "cancelled": "cancelled",
+            "failed": "failed",
+            "rolled-back": "failed",
+            "rollback-failed": "failed",
+        }.get(job.state, "failed")
         return {
             "jobId": job.id,
             "type": job.type,
-            "state": job.state,
+            "state": state,
+            "rawState": job.state,
             "priority": job.priority,
             "progress": job.progress,
             "errorCode": job.error_code,
             "result": job.result,
+            "canCancel": job.state in {"queued", "blocked", "paused", "running"},
+            "canRetry": job.state in {"cancelled", "rolled-back", "rollback-failed"},
             "createdAt": job.created_at,
             "updatedAt": job.updated_at,
         }
+
+    def list_jobs(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        jobs = self._jobs.list_jobs()
+        return [self._job_view(job) for job in jobs[-max(1, min(limit, 100)) :]][::-1]
+
+    def cancel_job(self, job_id: str) -> dict[str, Any]:
+        return self._job_view(self._jobs.cancel(job_id))
+
+    def retry_job(self, job_id: str) -> dict[str, Any]:
+        return self._job_view(self._jobs.retry(job_id, created_by="ui"))
 
     def _is_credential_configured(self, provider: str) -> bool:
         definition = provider_by_id(provider)
@@ -2037,6 +2129,14 @@ class EmulationController:
                 cheats.remove_installed_cheat(str(metadata["id"]))
 
     # --- Job handler para busca de mídia (executado via JobManager) ---
+
+    def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
+        return self._scan_library_now(ctx)
+
+    @staticmethod
+    def _completed_operation_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
+        ctx.set_progress("commit", current=1, total=1, unit="operation")
+        return {"operationId": job.params.get("operation_id")}
 
     def _get_provider_api_key(self, provider_name: str) -> str | None:
         secret = self._secret_store.retrieve(provider_name, "api_key")
