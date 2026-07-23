@@ -69,13 +69,24 @@ Item {
     property var mediaPlan: null
     property string mediaPackagePath: ""
     property string mediaLastOperationId: ""
+    property bool reducedMotion: false
+    property Item dialogInvoker: null
     readonly property bool compactLayout: width <= 1296 || height <= 720
     readonly property bool ultrawideLayout: width >= 1900
     readonly property int responsiveGutter: compactLayout ? 12 : 20
     readonly property int minimumTouchTarget: 48
+    readonly property int bottomSafeInset: minimumTouchTarget + responsiveGutter
+    readonly property int motionDuration: reducedMotion ? 0 : 180
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
     readonly property bool showSupplementaryPanels: !compactLayout && width >= 1240
     property alias reviewApplyControl: reviewApplyButton
+    property alias gameplayScrollControl: gameplayScroll
+    property alias scopeControlRepeater: gameplayScopeRepeater
+    property alias areaControlRepeater: gameplayAreaRepeater
+    property alias gamePickerControl: gamePicker
+    property alias fixedActionsControl: fixedActions
+    property alias desktopModeControl: desktopModePanel
+    property alias fpsControlRepeater: gameplayFpsRepeater
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -172,23 +183,46 @@ Item {
         return result
     }
 
+    function currentFocusItem() {
+        const hostWindow = page.Window.window
+        return hostWindow ? hostWindow.activeFocusItem : null
+    }
+
+    function rememberDialogInvoker() {
+        const active = currentFocusItem()
+        if (active)
+            dialogInvoker = active
+    }
+
+    function restoreDialogFocus() {
+        const invoker = dialogInvoker
+        Qt.callLater(function() {
+            if (invoker && invoker.visible && invoker.enabled)
+                invoker.forceActiveFocus(Qt.TabFocusReason)
+        })
+    }
+
     function showPlan(plan) {
+        rememberDialogInvoker()
         reviewedPlan = plan
         reviewDialog.open()
     }
 
     function showLaunchOptionsPlan(plan) {
+        rememberDialogInvoker()
         launchOptionsPlan = plan
         launchOptionsDialog.open()
     }
 
     function showMaintenancePlan(plan) {
+        rememberDialogInvoker()
         maintenancePlan = plan
         cleanupPhrase.text = ""
         maintenanceDialog.open()
     }
 
     function showMediaPlan(plan) {
+        rememberDialogInvoker()
         mediaPlan = plan
         mediaDialog.open()
     }
@@ -249,6 +283,17 @@ Item {
         event.accepted = true
     }
 
+    Connections {
+        target: page.Window.window
+        enabled: target !== null
+        ignoreUnknownSignals: true
+        function onActiveFocusItemChanged() {
+            const item = target ? target.activeFocusItem : null
+            if (item)
+                Qt.callLater(function() { page.revealFocusedItem(item) })
+        }
+    }
+
     function estimatedBattery() {
         if (!hardware.tdpMax)
             return impact.battery || "—"
@@ -290,6 +335,7 @@ Item {
         x: (page.width - width) / 2
         y: (page.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: page.restoreDialogFocus()
         background: Rectangle {
             color: page.raisedColor
             radius: 10
@@ -381,6 +427,7 @@ Item {
         x: (page.width - width) / 2
         y: (page.height - height) / 2
         standardButtons: Dialog.Close
+        onClosed: page.restoreDialogFocus()
         background: Rectangle {
             color: page.raisedColor
             radius: 10
@@ -449,6 +496,7 @@ Item {
         x: (page.width - width) / 2
         y: (page.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: page.restoreDialogFocus()
         background: Rectangle {
             color: page.raisedColor
             radius: 10
@@ -517,6 +565,7 @@ Item {
         x: (page.width - width) / 2
         y: (page.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: page.restoreDialogFocus()
         background: Rectangle { color: page.raisedColor; radius: 10; border.color: page.amberColor; border.width: 2 }
         contentItem: ColumnLayout {
             spacing: 14
@@ -579,6 +628,7 @@ Item {
         x: (page.width - width) / 2
         y: (page.height - height) / 2
         standardButtons: Dialog.NoButton
+        onClosed: page.restoreDialogFocus()
         background: Rectangle { color: page.raisedColor; radius: 10; border.color: page.cyanColor; border.width: 2 }
         contentItem: ColumnLayout {
             spacing: 14
@@ -632,6 +682,7 @@ Item {
         anchors.bottom: fixedActions.top
         clip: true
         contentWidth: availableWidth
+        bottomPadding: page.bottomSafeInset
 
         ColumnLayout {
             width: Math.min(gameplayScroll.availableWidth, page.contentMaxWidth)
@@ -676,7 +727,7 @@ Item {
                     visible: page.workspaceIndex !== 3
                     Layout.preferredWidth: page.compactLayout ? 280
                         : Math.min(360, page.width * 0.3)
-                    Layout.minimumHeight: page.compactLayout ? 42 : 48
+                    Layout.minimumHeight: page.minimumTouchTarget
                     Accessible.name: qsTr("Selecionar jogo")
                     onActivated: page.gameIndex = currentIndex
                     contentItem: RowLayout {
@@ -714,6 +765,7 @@ Item {
                     Layout.rightMargin: 12
                 }
                 Repeater {
+                    id: gameplayScopeRepeater
                     model: [qsTr("Global"), qsTr("Por jogo"), qsTr("Portátil"), qsTr("Dock")]
                     delegate: Button {
                         required property int index
@@ -723,7 +775,7 @@ Item {
                         checked: page.scopeIndex === index
                         Layout.fillWidth: page.compactLayout
                         Layout.preferredWidth: page.compactLayout ? -1 : 116
-                        Layout.minimumHeight: page.compactLayout ? 40 : 44
+                        Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: text
                         onClicked: page.scopeIndex = index
                         background: Rectangle {
@@ -747,6 +799,7 @@ Item {
                     Layout.rightMargin: 12
                 }
                 Repeater {
+                    id: gameplayAreaRepeater
                     model: [
                         qsTr("Desempenho e LSFG"), qsTr("Controles"),
                         qsTr("Biblioteca"), qsTr("Modo Desktop")
@@ -760,7 +813,7 @@ Item {
                         Layout.fillWidth: page.compactLayout
                         Layout.preferredWidth: page.compactLayout ? -1
                             : index === 0 ? 174 : index === 3 ? 142 : 126
-                        Layout.minimumHeight: page.compactLayout ? 40 : 44
+                        Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Abrir área %1").arg(text)
                         onClicked: page.workspaceIndex = index
                         background: Rectangle {
@@ -933,7 +986,10 @@ Item {
                         icon.name: "applications-system"
                         Layout.minimumHeight: 48
                         Accessible.name: qsTr("Ver ambiente e capacidade")
-                        onClicked: environmentDialog.open()
+                        onClicked: {
+                            page.rememberDialogInvoker()
+                            environmentDialog.open()
+                        }
                     }
                 }
             }
@@ -1071,6 +1127,7 @@ Item {
                             Layout.fillWidth: true
                             Label { text: qsTr("Limite de FPS"); color: page.mutedColor; Layout.preferredWidth: 112 }
                             Repeater {
+                                id: gameplayFpsRepeater
                                 model: ["30", "40", "60"]
                                 delegate: Button {
                                     required property int index
@@ -1097,6 +1154,7 @@ Item {
                                 stepSize: 1
                                 value: page.tdpValue
                                 Layout.fillWidth: true
+                                Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("TDP")
                                 Accessible.description: qsTr("%1 watts, limite %2 watts").arg(Math.round(value)).arg(to)
                                 onMoved: page.tdpValue = Math.round(value)
@@ -1128,14 +1186,28 @@ Item {
                             Label { text: qsTr("Gamescope"); color: page.textColor; Layout.preferredWidth: 112; font.bold: true }
                             Label { text: qsTr("Composição e limite de quadros"); color: page.mutedColor; Layout.fillWidth: true }
                             Label { text: "SteamZero"; color: page.cyanColor; font.pixelSize: 10 }
-                            Switch { checked: page.gamescopeEnabled; enabled: page.environmentById("gamescope").state === "ready"; Accessible.name: qsTr("Ativar Gamescope"); onToggled: page.gamescopeEnabled = checked }
+                            Switch {
+                                checked: page.gamescopeEnabled
+                                enabled: page.environmentById("gamescope").state === "ready"
+                                Layout.minimumWidth: page.minimumTouchTarget
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: qsTr("Ativar Gamescope")
+                                onToggled: page.gamescopeEnabled = checked
+                            }
                         }
                         RowLayout {
                             Layout.fillWidth: true
                             Label { text: qsTr("Feral GameMode"); color: page.textColor; Layout.preferredWidth: 112; font.bold: true }
                             Label { text: qsTr("Prioridade de CPU e processos"); color: page.mutedColor; Layout.fillWidth: true }
                             Label { text: "Steam"; color: page.cyanColor; font.pixelSize: 10 }
-                            Switch { checked: page.gameModeEnabled; enabled: page.environmentById("gamemode").state === "ready"; Accessible.name: qsTr("Ativar Feral GameMode"); onToggled: page.gameModeEnabled = checked }
+                            Switch {
+                                checked: page.gameModeEnabled
+                                enabled: page.environmentById("gamemode").state === "ready"
+                                Layout.minimumWidth: page.minimumTouchTarget
+                                Layout.minimumHeight: page.minimumTouchTarget
+                                Accessible.name: qsTr("Ativar Feral GameMode")
+                                onToggled: page.gameModeEnabled = checked
+                            }
                         }
                         RowLayout {
                             Layout.fillWidth: true

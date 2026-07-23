@@ -39,6 +39,9 @@ ColumnLayout {
 
     property int profileIndex: 0
     property var reviewedPlan: null
+    property Item dialogInvoker: null
+    property alias profileControlRepeater: desktopProfileRepeater
+    property alias reviewDialogControl: reviewDialog
 
     readonly property var context: desktopStatus && desktopStatus.context
         ? desktopStatus.context : ({"capabilities": [], "conflicts": [], "displays": []})
@@ -103,8 +106,20 @@ ColumnLayout {
     }
 
     function showPlan(plan) {
+        const hostWindow = panel.Window.window
+        const active = hostWindow ? hostWindow.activeFocusItem : null
+        if (active)
+            dialogInvoker = active
         reviewedPlan = plan
         reviewDialog.open()
+    }
+
+    function restoreDialogFocus() {
+        const invoker = dialogInvoker
+        Qt.callLater(function() {
+            if (invoker && invoker.visible && invoker.enabled)
+                invoker.forceActiveFocus(Qt.TabFocusReason)
+        })
     }
 
     spacing: 14
@@ -334,6 +349,8 @@ ColumnLayout {
                     Label { text: qsTr("Som ao digitar"); color: panel.mutedColor; Layout.fillWidth: true }
                     Switch {
                         id: keyboardSoundSwitch
+                        Layout.minimumWidth: 48
+                        Layout.minimumHeight: 48
                         Accessible.name: qsTr("Som ao digitar")
                         onClicked: panel.keyboardSoundRequested(checked)
                     }
@@ -344,6 +361,8 @@ ColumnLayout {
                     Label { text: qsTr("Tema escuro do teclado"); color: panel.mutedColor; Layout.fillWidth: true }
                     Switch {
                         id: keyboardThemeSwitch
+                        Layout.minimumWidth: 48
+                        Layout.minimumHeight: 48
                         Accessible.name: qsTr("Tema escuro do teclado")
                         onClicked: panel.keyboardThemeRequested(checked)
                     }
@@ -354,6 +373,8 @@ ColumnLayout {
                     Label { text: qsTr("Ocultar painel ao usar teclado"); color: panel.mutedColor; Layout.fillWidth: true }
                     Switch {
                         id: panelAutoHideSwitch
+                        Layout.minimumWidth: 48
+                        Layout.minimumHeight: 48
                         checked: panel.desktopStatus.desiredProfile === "handheld-desktop"
                         onClicked: panel.panelAutoHideRequested(checked)
                     }
@@ -540,6 +561,7 @@ ColumnLayout {
         x: (panel.width - width) / 2
         y: Math.max(16, (panel.height - height) / 2)
         standardButtons: Dialog.NoButton
+        onClosed: panel.restoreDialogFocus()
         background: Rectangle { color: panel.raisedColor; radius: 10; border.color: panel.cyanColor }
         contentItem: ColumnLayout {
             spacing: 14
