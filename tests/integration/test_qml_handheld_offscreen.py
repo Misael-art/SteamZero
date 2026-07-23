@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
         "check_main_emulation.qml",
         "check_emulation.qml",
         "check_steam_gameplay_responsive.qml",
+        "check_handheld_layout_focus.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:
