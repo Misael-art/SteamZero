@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from steamzero.core import fs, transaction
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.media_optimizer import OptimizerProfile
 from steamzero.domain.media_pipeline import (
     AuditReport,
@@ -149,12 +150,18 @@ class GameMediaManager:
             hashes=hashes or {},
         )
         all_candidates: list[MediaCandidate] = []
+        provider_errors: dict[str, str] = {}
         for provider in self._providers:
             try:
                 results = provider.search(identity, kinds)
                 all_candidates.extend(results)
-            except Exception as exc:
-                _log.debug("provider %s falhou: %s", provider.name, exc)
+            except SteamZeroError as exc:
+                provider_errors[provider.name] = exc.code
+                _log.debug("provider %s falhou com código conhecido", provider.name)
+                continue
+            except Exception:
+                provider_errors[provider.name] = "E-SCRAPE-PROVIDER-UNREACHABLE"
+                _log.debug("provider %s falhou sem detalhe serializável", provider.name)
                 continue
         all_candidates.sort(key=lambda c: (-c.confidence, c.media_kind))
         state.candidates = [
@@ -172,7 +179,18 @@ class GameMediaManager:
             for c in all_candidates
         ]
         state.candidate_count = len(state.candidates)
-        state.metadata_state = "candidates-found" if state.candidates else "no-results"
+        state.errors = provider_errors
+        state.metadata_state = (
+            "candidates-found"
+            if state.candidates
+            else "degraded"
+            if provider_errors or not self._providers
+            else "no-results"
+        )
+        if not self._providers:
+            state.reason = "Nenhum provider remoto configurado; fallback local preservado."
+        elif provider_errors and not state.candidates:
+            state.reason = "Providers remotos falharam; fallback local preservado."
         state.selected_candidate_idx = -1
         self._store.save(state)
         return state

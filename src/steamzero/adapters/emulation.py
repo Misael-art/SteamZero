@@ -12,6 +12,7 @@ import re
 import shutil
 import signal
 import subprocess
+import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
+from steamzero.adapters.scraping.registry import ProviderRegistry
 from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
 from steamzero.adapters.secret_service import SecretServiceStore
@@ -182,6 +184,7 @@ class EmulationController:
         media_providers: Sequence[MediaProviderPort] | None = None,
         media_candidate_fetcher: Callable[[str], bytes] | None = None,
         media_optimizer_tool: Callable[[Path, Path, str], bool] | None = None,
+        media_retry_delay: Callable[[float], None] = time.sleep,
         preservation_targets: Sequence[PreservationTarget] | None = None,
     ) -> None:
         self._store_factory = store_factory
@@ -194,6 +197,7 @@ class EmulationController:
         self._media_providers = tuple(media_providers) if media_providers is not None else None
         self._media_candidate_fetcher = media_candidate_fetcher
         self._media_optimizer_tool = media_optimizer_tool
+        self._media_retry_delay = media_retry_delay
         self._credential_health: dict[str, dict[str, str | None]] = {}
         self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
@@ -859,16 +863,6 @@ class EmulationController:
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
             title_id = str(game.get("titleId", ""))
-            if not title_id:
-                raise SteamZeroError(
-                    "E-API-SCHEMA",
-                    detail="Title ID é necessário para busca de mídia",
-                )
-            if not self._is_credential_configured("steamgriddb"):
-                raise SteamZeroError(
-                    "E-SCRAPE-CREDENTIAL-MISSING",
-                    detail="Configure a chave de API do SteamGridDB em Global → Mídia.",
-                )
             plan = transaction.plan_write_files(
                 {},
                 root=paths.data_home(),
@@ -881,6 +875,8 @@ class EmulationController:
                     "title_id": title_id,
                     "title": str(game.get("name", "")),
                     "media_kinds": payload.get("mediaKinds"),
+                    "local_media_source": str(game.get("mediaSource", "fallback")),
+                    "local_media_url": str(game.get("coverUrl", "")),
                 },
             )
         elif action.startswith("game.media.import:"):
@@ -2761,38 +2757,39 @@ class EmulationController:
         return result
 
     def _media_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
-        store = self._store_factory()
-        store.migrate()
-        mgr = self._media_manager(store)
-        params = job.params
-        game_id = params["game_id"]
-        title_id = params["title_id"]
+        with self._store_factory() as store:
+            store.migrate()
+            return self._execute_media_search(store, job, ctx)
 
-        if not self._is_credential_configured("steamgriddb"):
-            state = mgr._store.load(game_id) or GameMediaState(
-                game_id=game_id,
-                title_id=title_id,
-                title=params["title"],
-            )
-            state.metadata_state = "error"
-            state.errors = {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"}
-            state.reason = "Configure a chave de API do SteamGridDB"
-            mgr._store.save(state)
-            return {
-                "candidate_count": 0,
-                "provider_errors": {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"},
-            }
+    def _execute_media_search(
+        self, store: StateStore, job: Job, ctx: JobContext
+    ) -> dict[str, Any]:
+        mgr = self._media_manager(store)
         params = job.params
         game_id = params["game_id"]
         title_id = params["title_id"]
         title = params["title"]
         media_kinds = params.get("media_kinds")
-        kinds = media_kinds or ["boxart", "grid", "hero", "icon", "logo", "screenshot"]
+        kinds = media_kinds or [
+            "grid",
+            "hero",
+            "logo",
+            "icon",
+            "boxart",
+            "screenshot",
+            "manual",
+        ]
+        if not isinstance(kinds, list) or not all(isinstance(kind, str) for kind in kinds):
+            raise SteamZeroError("E-API-SCHEMA", detail="mediaKinds precisa ser lista de strings")
         state = mgr._store.load(game_id) or GameMediaState(
             game_id=game_id,
             title_id=title_id,
             title=title,
         )
+        local_source = str(params.get("local_media_source") or state.media_source or "fallback")
+        local_url = str(params.get("local_media_url") or "")
+        if local_source != "fallback":
+            state.media_source = local_source
         state.metadata_state = "searching"
         mgr._store.save(state)
         identity = GameIdentity(
@@ -2803,18 +2800,26 @@ class EmulationController:
         )
         all_candidates: list[MediaCandidate] = []
         provider_errors: dict[str, str] = {}
-        total_providers = len(mgr._providers)
+        providers = self._ordered_media_providers(mgr._providers, kinds)
+        total_providers = len(providers)
         ctx.set_progress("search", current=0, total=total_providers, unit="providers")
-        for idx, provider_item in enumerate(mgr._providers):
+        for idx, provider_item in enumerate(providers):
             ctx.safepoint()
+            supported_kinds = [
+                kind for kind in kinds if kind in provider_item.supported_kinds()
+            ]
             try:
-                if not self._is_credential_configured(provider_item.name):
-                    provider_errors[provider_item.name] = "E-SCRAPE-CREDENTIAL-MISSING"
-                    continue
-                results = provider_item.search(identity, kinds)
+                results = self._search_provider_with_retry(
+                    provider_item,
+                    identity,
+                    supported_kinds,
+                    ctx,
+                )
                 all_candidates.extend(results)
             except SteamZeroError as exc:
                 provider_errors[provider_item.name] = exc.code
+            except Exception:
+                provider_errors[provider_item.name] = "E-SCRAPE-PROVIDER-UNREACHABLE"
             ctx.set_progress(
                 "search",
                 current=idx + 1,
@@ -2846,29 +2851,82 @@ class EmulationController:
             state.reason = ""
         if candidates_data:
             state.metadata_state = "candidates-found"
-        elif provider_errors:
-            state.metadata_state = "error"
-            state.reason = "; ".join(f"{p}={e}" for p, e in provider_errors.items())
+            state.reason = (
+                f"mídia local preservada: {local_source}"
+                if local_source != "fallback" or local_url
+                else ""
+            )
+        elif provider_errors or not providers:
+            state.metadata_state = "degraded"
+            if not providers:
+                state.reason = (
+                    "Nenhum provider remoto configurado; mídia local/cache e "
+                    "ícone seguro da plataforma foram preservados."
+                )
+            else:
+                state.reason = (
+                    "Providers remotos falharam; mídia local/cache e fallback "
+                    "continuam disponíveis."
+                )
         else:
             state.metadata_state = "no-results"
+            state.reason = (
+                "Nenhum resultado remoto; mídia local/cache e fallback foram preservados."
+            )
         state.selected_candidate_idx = -1
         mgr._store.save(state)
-        retryable = next(
-            (code for code in provider_errors.values() if code in _RETRYABLE_SCRAPE_ERRORS),
-            None,
-        )
-        if not candidates_data and retryable is not None:
-            raise SteamZeroError(
-                retryable,
-                detail="provedor de mídia temporariamente indisponível",
-            )
         ctx.set_progress(
             "done",
             current=len(candidates_data),
             total=len(candidates_data),
             unit="candidates",
         )
-        return {"candidate_count": len(candidates_data), "provider_errors": provider_errors}
+        return {
+            "candidate_count": len(candidates_data),
+            "provider_errors": provider_errors,
+            "remote_state": state.metadata_state,
+            "fallback_source": local_source if local_source != "fallback" else "platform-icon",
+        }
+
+    @staticmethod
+    def _ordered_media_providers(
+        providers: Sequence[MediaProviderPort], media_kinds: Sequence[str]
+    ) -> list[MediaProviderPort]:
+        registry = ProviderRegistry()
+        for provider in providers:
+            registry.register(provider)
+        ordered: list[MediaProviderPort] = []
+        seen: set[str] = set()
+        for kind in media_kinds:
+            for provider in registry.providers_for_kind(kind):
+                if provider.name not in seen:
+                    seen.add(provider.name)
+                    ordered.append(provider)
+        return ordered
+
+    def _search_provider_with_retry(
+        self,
+        provider: MediaProviderPort,
+        identity: GameIdentity,
+        media_kinds: list[str],
+        ctx: JobContext,
+    ) -> list[MediaCandidate]:
+        for attempt in range(3):
+            ctx.safepoint()
+            try:
+                return provider.search(identity, media_kinds)
+            except SteamZeroError as exc:
+                if exc.code not in _RETRYABLE_SCRAPE_ERRORS or attempt == 2:
+                    raise
+                ctx.checkpoint(
+                    {
+                        "provider": provider.name,
+                        "attempt": attempt + 1,
+                        "errorCode": exc.code,
+                    }
+                )
+                self._media_retry_delay(0.25 * (2**attempt))
+        return []
 
     @staticmethod
     def _rom_scan_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
@@ -3559,7 +3617,9 @@ class EmulationController:
         conn = store.adapter_connection()
         if self._media_providers is None:
             api_key = self._get_provider_api_key("steamgriddb")
-            providers: list[MediaProviderPort] = [SteamGridDbAdapter(api_key=api_key)]
+            providers: list[MediaProviderPort] = []
+            if api_key:
+                providers.append(SteamGridDbAdapter(api_key=api_key))
             screenscraper = self._get_provider_credentials("screenscraper")
             if {"devid", "devpassword"} <= screenscraper.keys():
                 providers.append(

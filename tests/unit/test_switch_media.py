@@ -176,7 +176,8 @@ class TestSearchCandidates:
         manager = GameMediaManager(store, pipeline)
         result = manager.search_candidates("g1", "0100", "Game")
         assert result.candidate_count == 0
-        assert result.metadata_state == "no-results"
+        assert result.metadata_state == "degraded"
+        assert "fallback local" in result.reason
 
     def test_candidate_navigation(self) -> None:
         store = _FakeStore()

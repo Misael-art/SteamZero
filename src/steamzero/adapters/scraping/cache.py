@@ -132,16 +132,6 @@ class ScrapingCache:
             )
             """
         )
-        self._conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS scraping_credential (
-              provider        TEXT NOT NULL,
-              key_name        TEXT NOT NULL,
-              value_encrypted TEXT,
-              PRIMARY KEY (provider, key_name)
-            )
-            """
-        )
 
     # -- cache entries -------------------------------------------------------
 
@@ -350,30 +340,6 @@ class ScrapingCache:
             (provider,),
         ).fetchone()
         return row is not None and int(row["consecutive_failures"]) >= max_failures
-
-    # -- credentials ---------------------------------------------------------
-
-    def get_credential(self, provider: str, key_name: str) -> str | None:
-        row = self._conn.execute(
-            "SELECT value_encrypted FROM scraping_credential WHERE provider=? AND key_name=?",
-            (provider, key_name),
-        ).fetchone()
-        return str(row["value_encrypted"]) if row is not None else None
-
-    def set_credential(self, provider: str, key_name: str, value: str) -> None:
-        self._conn.execute(
-            "INSERT INTO scraping_credential (provider, key_name, value_encrypted) "
-            "VALUES (?,?,?) "
-            "ON CONFLICT(provider, key_name) DO UPDATE SET "
-            "value_encrypted=excluded.value_encrypted",
-            (provider, key_name, value),
-        )
-
-    def delete_credential(self, provider: str, key_name: str) -> None:
-        self._conn.execute(
-            "DELETE FROM scraping_credential WHERE provider=? AND key_name=?",
-            (provider, key_name),
-        )
 
     # -- maintenance ---------------------------------------------------------
 

@@ -412,5 +412,6 @@ class TestMediaSearchJobHandlerErrors:
         assert status["state"] == "succeeded"
         assert status["rawState"] == "completed"
         result = status.get("result", {})
-        assert result.get("provider_errors") == {"steamgriddb": "E-SCRAPE-CREDENTIAL-MISSING"}
+        assert result.get("provider_errors") == {}
         assert result.get("candidate_count") == 0
+        assert result.get("remote_state") == "degraded"

@@ -97,11 +97,19 @@ def test_save_and_commit_media(cache: ScrapingCache) -> None:
     cache.commit_media(mid)
 
 
-def test_credential_roundtrip(cache: ScrapingCache) -> None:
-    cache.set_credential("screenscraper", "devid", "my-dev-id")
-    assert cache.get_credential("screenscraper", "devid") == "my-dev-id"
-    cache.delete_credential("screenscraper", "devid")
-    assert cache.get_credential("screenscraper", "devid") is None
+def test_cache_schema_does_not_serialize_credentials(cache: ScrapingCache) -> None:
+    import sqlite3
+
+    with sqlite3.connect(cache.path) as connection:
+        tables = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+    assert "scraping_credential" not in tables
+    assert not hasattr(cache, "set_credential")
+    assert not hasattr(cache, "get_credential")
 
 
 def test_circuit_breaker(cache: ScrapingCache) -> None:

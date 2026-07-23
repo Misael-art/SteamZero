@@ -123,6 +123,11 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
         media_optimizer_tool=_copy_optimizer,
     )
     controller.save_credential("steamgriddb", _SECRET)
+    from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
+
+    monkeypatch.setattr(SteamGridDbAdapter, "test_connection", lambda _self: True)
+    credential_test = controller.test_credential("steamgriddb")
+    assert credential_test["valid"] is True
 
     title_id = "0100ABCDEF123000"
     local_cover = paths.data_home() / "cache" / "covers" / f"{title_id}.png"
@@ -168,18 +173,13 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
             }
         ),
     )
-    failed_search = _terminal_job(controller, str(search_result["jobId"]))
-    assert failed_search["rawState"] == "rolled-back"
-    assert failed_search["errorCode"] == "E-SCRAPE-PROVIDER-UNREACHABLE"
-    assert failed_search["canRetry"] is True
+    completed_search = _terminal_job(controller, str(search_result["jobId"]))
+    assert completed_search["rawState"] == "completed"
+    result = completed_search["result"]
+    assert isinstance(result, dict)
+    assert result["candidate_count"] == 1
+    assert result["provider_errors"] == {}
     assert isinstance(search_result.get("library"), dict)
-    offline_game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
-    assert offline_game["coverUrl"] == local_cover.resolve().as_uri()
-    assert offline_game["mediaSource"] == "scraped"
-
-    retried = controller.retry_job(str(search_result["jobId"]))
-    assert retried["rawState"] == "completed"
-    assert retried["result"] == {"candidate_count": 1, "provider_errors": {}}
     refreshed_game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     assert refreshed_game["mediaCandidateCount"] == 1
     assert refreshed_game["mediaErrors"] == {}
@@ -299,9 +299,10 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
         exported_state = store.export_json()
     evidence = json.dumps(
         {
-            "root": root_result,
-            "search": search_result,
-            "retry": retried,
+                "root": root_result,
+                "credentialTest": credential_test,
+                "search": search_result,
+                "completedSearch": completed_search,
             "selected": selected,
             "emulator": emulator_selection,
             "steamSelection": steam_selection,

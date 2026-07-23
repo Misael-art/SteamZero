@@ -867,6 +867,20 @@ def test_media_search_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     assert stored.state == "queued"
 
 
+def test_media_search_plan_does_not_require_fixed_remote_provider(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    game_id, _title_id = _configured_game(controller, tmp_path)
+
+    plan = controller.plan_action(
+        {"actionId": f"game.media.search:{game_id}", "mediaKinds": ["boxart"]}
+    )
+
+    assert isinstance(plan["planId"], str)
+    assert isinstance(plan["confirmToken"], str)
+
+
 def test_media_job_persists_read_model_in_injected_store(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     from steamzero.adapters.emulation import SessionSecretStore
     from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
@@ -885,8 +899,8 @@ def test_media_job_persists_read_model_in_injected_store(monkeypatch, tmp_path: 
         store.migrate()
         media = StateStoreGameMediaAdapter(store.adapter_connection()).load("g1")
     assert media is not None
-    assert media.metadata_state == "error"
-    assert media.reason == "Configure a chave de API do SteamGridDB"
+    assert media.metadata_state == "degraded"
+    assert "Nenhum provider remoto configurado" in media.reason
 
 
 def test_get_job_status_returns_none_for_missing(monkeypatch, tmp_path: Path) -> None:
