@@ -412,6 +412,8 @@ class StateStore:
             "exit_code",
             "failure_code",
             "metadata_json",
+            "played_seconds",
+            "duration_source",
         }
         if not set(changes).issubset(allowed):
             raise SteamZeroError("E-API-SCHEMA", detail="campo de sessão não permitido")
@@ -471,6 +473,122 @@ class StateStore:
             values,
         ).fetchone()
         return dict(row) if row is not None else None
+
+    def playtime_total_seconds(self) -> int:
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(played_seconds), 0) FROM game_session"
+        ).fetchone()
+        return int(row[0]) if row is not None else 0
+
+    def list_playtime_games(
+        self,
+        *,
+        limit: int,
+        before_started_at: str | None = None,
+        before_game_id: str | None = None,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Agrega playtime por jogo e anexa sua sessão mais recente."""
+        bounded = _bounded_page_limit(limit)
+        cursor_clause = ""
+        values: list[Any] = []
+        if before_started_at is not None or before_game_id is not None:
+            if not before_started_at or not before_game_id:
+                raise ValueError("cursor de playtime incompleto")
+            cursor_clause = (
+                "WHERE (aggregate.last_started_at < ? OR "
+                "(aggregate.last_started_at = ? AND aggregate.game_id > ?))"
+            )
+            values.extend((before_started_at, before_started_at, before_game_id))
+        values.append(bounded + 1)
+        rows = self._conn.execute(
+            f"""
+            WITH aggregate AS (
+              SELECT
+                game_id,
+                SUM(played_seconds) AS played_seconds,
+                COUNT(*) AS session_count,
+                MAX(started_at) AS last_started_at
+              FROM game_session
+              GROUP BY game_id
+            ),
+            latest AS (
+              SELECT
+                game_session.*,
+                ROW_NUMBER() OVER (
+                  PARTITION BY game_id
+                  ORDER BY started_at DESC, id DESC
+                ) AS position
+              FROM game_session
+            )
+            SELECT
+              aggregate.game_id,
+              aggregate.played_seconds,
+              aggregate.session_count,
+              aggregate.last_started_at,
+              latest.id AS latest_session_id,
+              latest.state AS latest_state,
+              latest.started_at AS latest_started_at,
+              latest.updated_at AS latest_updated_at,
+              latest.finished_at AS latest_finished_at,
+              latest.failure_code AS latest_failure_code,
+              latest.played_seconds AS latest_played_seconds,
+              latest.duration_source AS latest_duration_source,
+              latest.metadata_json AS latest_metadata_json,
+              game.title AS game_title,
+              game.platform_id AS platform_id,
+              game.state AS game_state
+            FROM aggregate
+            JOIN latest
+              ON latest.game_id = aggregate.game_id AND latest.position = 1
+            LEFT JOIN game ON game.id = aggregate.game_id
+            {cursor_clause}
+            ORDER BY aggregate.last_started_at DESC, aggregate.game_id ASC
+            LIMIT ?
+            """,  # noqa: S608 - cursor_clause é uma constante fechada
+            values,
+        ).fetchall()
+        return [dict(row) for row in rows[:bounded]], len(rows) > bounded
+
+    def playtime_game(self, game_id: str) -> dict[str, Any] | None:
+        rows, _ = self.list_playtime_games(limit=100)
+        for row in rows:
+            if row["game_id"] == game_id:
+                return row
+        # A consulta paginada é limitada; uma busca pontual não pode desaparecer.
+        aggregate = self._conn.execute(
+            """
+            SELECT
+              game_id,
+              SUM(played_seconds) AS played_seconds,
+              COUNT(*) AS session_count,
+              MAX(started_at) AS last_started_at
+            FROM game_session
+            WHERE game_id=?
+            GROUP BY game_id
+            """,
+            (game_id,),
+        ).fetchone()
+        if aggregate is None:
+            return None
+        latest = self.latest_game_session(game_id)
+        if latest is None:
+            return None
+        game = self._conn.execute("SELECT * FROM game WHERE id=?", (game_id,)).fetchone()
+        return {
+            **dict(aggregate),
+            "latest_session_id": latest["id"],
+            "latest_state": latest["state"],
+            "latest_started_at": latest["started_at"],
+            "latest_updated_at": latest["updated_at"],
+            "latest_finished_at": latest["finished_at"],
+            "latest_failure_code": latest["failure_code"],
+            "latest_played_seconds": latest["played_seconds"],
+            "latest_duration_source": latest["duration_source"],
+            "latest_metadata_json": latest["metadata_json"],
+            "game_title": game["title"] if game is not None else None,
+            "platform_id": game["platform_id"] if game is not None else None,
+            "game_state": game["state"] if game is not None else None,
+        }
 
     # -- library (platform / game / rom) ------------------------------------
     def save_platform(self, platform: dict[str, Any]) -> None:

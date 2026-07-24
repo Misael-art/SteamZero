@@ -51,6 +51,11 @@ AppID, PID, digest, efeitos sem segredo, timestamps e exit code. Após SIGKILL d
 PID morto produz `recoveryRequired`; a recuperação encerra a sessão como `failed` com
 o código estável `E-SESSION-INTERRUPTED`.
 
+Desde o schema v13, encerramentos acompanhados gravam `played_seconds` pelo
+relógio monotônico. Recovery pós-crash usa a diferença de timestamps somente
+como aproximação e publica `duration_source=recovered-wall-clock`, sem promovê-la
+a medição exata.
+
 PID vivo isoladamente não prova ownership. Em `launching`, o processo precisa ser
 observado como `steamzero-launch --appid <APP_ID>` em `/proc/<pid>/cmdline`; nos estados
 `running`, `suspending`, `suspended`, `resuming` e `closing`, o ambiente precisa conter

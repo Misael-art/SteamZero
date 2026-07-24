@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -83,7 +84,12 @@ def _save_profile(path: Path, **overrides: object) -> dict[str, object]:
     return profile
 
 
-def _launcher(tmp_path: Path, processes: FakeProcesses | None = None) -> SteamGameLauncher:
+def _launcher(
+    tmp_path: Path,
+    processes: FakeProcesses | None = None,
+    *,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> SteamGameLauncher:
     available = {"gamescope", "gamemoderun", "mangohud", "mangoapp"}
     return SteamGameLauncher(
         roots=(tmp_path / "Steam",),
@@ -92,6 +98,7 @@ def _launcher(tmp_path: Path, processes: FakeProcesses | None = None) -> SteamGa
         processes=processes,
         alive_probe=lambda pid: pid == 9999,
         environ=lambda: {"HOME": "/home/deck"},
+        monotonic=monotonic,
         lsfg_manifests=(tmp_path / "VkLayer_LS_frame_generation.json",),
     )
 
@@ -151,7 +158,8 @@ def test_run_records_canonical_session_and_returns_child_code(tmp_path: Path) ->
         tdp=None,
     )
     processes = FakeProcesses(FakeChild(exit_code=17))
-    launcher = _launcher(tmp_path, processes)
+    ticks = iter((100.0, 165.9))
+    launcher = _launcher(tmp_path, processes, monotonic=lambda: next(ticks))
 
     assert launcher.run("10", ("/usr/bin/game",)) == 17
     assert processes.calls[0][0] == ("/usr/bin/game",)
@@ -159,8 +167,13 @@ def test_run_records_canonical_session_and_returns_child_code(tmp_path: Path) ->
     assert status["state"] == "desired"
     assert status["runtime"]["state"] == "closed"
     assert status["runtime"]["exitCode"] == 17
+    assert status["runtime"]["playedSeconds"] == 65
+    assert status["runtime"]["durationSource"] == "observed-monotonic"
     assert status["runtime"]["sessionId"]
     with StateStore(tmp_path / "state.db") as store:
+        session = store.latest_game_session("10")
+        assert session is not None
+        assert json.loads(session["metadata_json"])["source"] == "steam"
         assert [json.loads(event["payload_json"])["state"] for event in store.events_since(0)][
             -3:
         ] == ["launching", "running", "closed"]

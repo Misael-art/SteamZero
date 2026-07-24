@@ -210,6 +210,10 @@ class FakeDashboard:
         self.calls.append(("steam", target))
         return {"status": "started", "target": target}
 
+    def launch_steam_game(self, game_id: str) -> dict[str, object]:
+        self.calls.append(("steam-game-launch", game_id))
+        return {"status": "started", "gameId": game_id}
+
     def open_steam_input(self, game_id: str) -> dict[str, object]:
         self.calls.append(("steam-input", game_id))
         return {"status": "started", "gameId": game_id}
@@ -634,6 +638,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     request_json(base, token, "/emulation/job/cancel", {"jobId": "job-1"})
     request_json(base, token, "/emulation/job/retry", {"jobId": "job-1"})
     request_json(base, token, "/steam/open", {"target": "library"})
+    request_json(base, token, "/steam/game/launch", {"gameId": "10"})
     request_json(base, token, "/steam/input/open", {"gameId": "10"})
     gameplay_plan = request_json(
         base,
@@ -715,6 +720,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("emulation-job-cancel", "job-1"),
         ("emulation-job-retry", "job-1"),
         ("steam", "library"),
+        ("steam-game-launch", "10"),
         ("steam-input", "10"),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),

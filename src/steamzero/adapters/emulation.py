@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import threading
 import time
@@ -54,6 +55,7 @@ from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
+from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.input_profiles import InputProfileManager
@@ -93,6 +95,7 @@ StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
 _log = logging.getLogger(__name__)
 Spawn = Callable[[Sequence[str]], int | None]
+ProcessWaiter = Callable[[int], int]
 
 
 class SessionSecretStore:
@@ -217,6 +220,11 @@ def _spawn_detached(argv: Sequence[str]) -> int:
     return process.pid
 
 
+def _wait_pid(pid: int) -> int:
+    _, status = os.waitpid(pid, 0)
+    return os.waitstatus_to_exitcode(status)
+
+
 class EmulationController:
     """Fachada allowlisted usada pela bridge Desktop.
 
@@ -233,6 +241,8 @@ class EmulationController:
         artifacts: HttpsArtifactPort | None = None,
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
+        process_waiter: ProcessWaiter | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
         shortcuts: SteamShortcutManager | None = None,
         job_manager: JobManager | None = None,
         secret_store: SecretStorePort | None = None,
@@ -250,6 +260,14 @@ class EmulationController:
         self._artifacts = artifacts or HttpsArtifactPort()
         self._which = which
         self._spawn = spawn
+        self._process_waiter = (
+            process_waiter
+            if process_waiter is not None
+            else _wait_pid
+            if spawn is _spawn_detached
+            else None
+        )
+        self._monotonic = monotonic
         self._shortcuts = shortcuts or SteamShortcutManager()
         self._secret_store = secret_store or SecretServiceStore()
         self._media_providers = tuple(media_providers) if media_providers is not None else None
@@ -567,16 +585,142 @@ class EmulationController:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
             )
-        pid = self._spawn(self._launch_argv(emulator_id, payload, rom))
+        session_id: str | None = None
+        started_monotonic = self._monotonic()
+        if self._process_waiter is not None:
+            session_id = self._create_tracked_game_session(game, emulator_id)
+        try:
+            pid = self._spawn(self._launch_argv(emulator_id, payload, rom))
+        except Exception:
+            if session_id is not None:
+                self._finish_tracked_game_session(
+                    session_id,
+                    target="failed",
+                    started_monotonic=started_monotonic,
+                    failure_code="E-SESSION-LAUNCH-FAILED",
+                )
+            raise
         if isinstance(pid, int) and pid > 1:
             self._running_pids[emulator_id] = pid
+            if session_id is not None:
+                with self._store_factory() as store:
+                    store.migrate()
+                    store.transition_game_session(session_id, "running", pid=pid)
+                watcher = threading.Thread(
+                    target=self._watch_tracked_game,
+                    args=(session_id, emulator_id, pid, started_monotonic),
+                    name=f"steamzero-game-{session_id[-8:]}",
+                    daemon=True,
+                )
+                watcher.start()
+        elif session_id is not None:
+            self._finish_tracked_game_session(
+                session_id,
+                target="failed",
+                started_monotonic=started_monotonic,
+                failure_code="E-SESSION-LAUNCH-FAILED",
+            )
+            raise SteamZeroError(
+                "E-SESSION-LAUNCH-FAILED",
+                detail="o launcher não publicou um PID observável",
+            )
         return {
             "status": "started",
             "gameId": game_id,
             "emulatorId": emulator_id,
             "name": str(game["name"]),
             "pid": pid,
+            "sessionId": session_id,
         }
+
+    def _create_tracked_game_session(
+        self, game: Mapping[str, Any], emulator_id: str
+    ) -> str:
+        session_id = ids.new_ulid()
+        metadata = json.dumps(
+            {
+                "source": "emulation",
+                "title": str(game.get("name") or "")[:160],
+                "platformId": "switch",
+                "coverUrl": str(game.get("coverUrl") or game.get("bannerAsset") or "")[:4096],
+                "emulatorId": emulator_id,
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        try:
+            with self._store_factory() as store:
+                store.migrate()
+                store.create_game_session(
+                    {
+                        "id": session_id,
+                        "game_id": str(game["id"]),
+                        "state": "launching",
+                        "owner": SESSION_OWNER,
+                        "metadata_json": metadata,
+                    }
+                )
+        except sqlite3.IntegrityError as exc:
+            raise SteamZeroError(
+                "E-TX-LOCKED",
+                detail="outra sessão de jogo gerenciada ainda está ativa",
+            ) from exc
+        return session_id
+
+    def _watch_tracked_game(
+        self,
+        session_id: str,
+        emulator_id: str,
+        pid: int,
+        started_monotonic: float,
+    ) -> None:
+        waiter = self._process_waiter
+        if waiter is None:
+            return
+        try:
+            exit_code = waiter(pid)
+        except Exception:
+            self._finish_tracked_game_session(
+                session_id,
+                target="failed",
+                started_monotonic=started_monotonic,
+                failure_code="E-SESSION-INTERRUPTED",
+            )
+        else:
+            with suppress(Exception), self._store_factory() as store:
+                store.migrate()
+                store.transition_game_session(session_id, "closing")
+            self._finish_tracked_game_session(
+                session_id,
+                target="closed",
+                started_monotonic=started_monotonic,
+                exit_code=exit_code,
+            )
+        finally:
+            self._running_pids.pop(emulator_id, None)
+
+    def _finish_tracked_game_session(
+        self,
+        session_id: str,
+        *,
+        target: str,
+        started_monotonic: float,
+        exit_code: int | None = None,
+        failure_code: str | None = None,
+    ) -> None:
+        with suppress(Exception), self._store_factory() as store:
+            store.migrate()
+            store.transition_game_session(
+                session_id,
+                target,
+                pid=None,
+                finished_at=datetime.now(UTC).isoformat(),
+                exit_code=exit_code,
+                failure_code=failure_code,
+                played_seconds=max(0, int(self._monotonic() - started_monotonic)),
+                duration_source="observed-monotonic",
+            )
 
     _SPECIAL_ROOT_NAMES = frozenset(
         {

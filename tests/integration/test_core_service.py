@@ -124,7 +124,14 @@ def test_daemon_authenticates_local_transport_and_exposes_closed_capabilities(
         {"jsonrpc": "2.0", "id": 2, "method": "system.capabilities", "params": {}},
     )
     methods = {item["method"] for item in capabilities["result"]["methods"]}  # type: ignore[index,union-attr]
-    assert {"doctor.run", "session.status", "desktop.apply", "events.subscribe"} <= methods
+    assert {
+        "doctor.run",
+        "session.status",
+        "playtime.list",
+        "playtime.show",
+        "desktop.apply",
+        "events.subscribe",
+    } <= methods
     assert "shell.exec" not in methods
 
 
@@ -145,6 +152,55 @@ def test_daemon_rejects_unknown_method_and_unknown_parameters(core_service: Path
         },
     )
     assert invalid["error"]["code"] == -32602  # type: ignore[index]
+
+
+def test_daemon_exposes_playtime_without_process_or_command_data(
+    inprocess_core: Path,
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.create_game_session(
+            {
+                "id": "RPC-PLAYTIME",
+                "game_id": "10",
+                "state": "launching",
+                "owner": "steamzero-game-session",
+                "metadata_json": '{"source":"steam","title":"Portal"}',
+            }
+        )
+        store.transition_game_session("RPC-PLAYTIME", "running", pid=4242)
+        store.transition_game_session(
+            "RPC-PLAYTIME",
+            "closed",
+            pid=None,
+            finished_at="2026-07-23T12:00:00+00:00",
+            played_seconds=120,
+            duration_source="observed-monotonic",
+        )
+
+    listing = _rpc(
+        inprocess_core,
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "playtime.list",
+            "params": {"limit": "10"},
+        },
+    )
+    game = listing["result"]["envelope"]["data"]["games"][0]  # type: ignore[index]
+    assert game["playedSeconds"] == 120
+    assert "pid" not in game["latestSession"]
+
+    detail = _rpc(
+        inprocess_core,
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "playtime.show",
+            "params": {"gameId": "10"},
+        },
+    )
+    assert detail["result"]["envelope"]["data"]["game"]["title"] == "Portal"  # type: ignore[index]
 
 
 def test_cli_prefers_daemon_and_preserves_contract(

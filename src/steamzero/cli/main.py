@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from steamzero.adapters.registry import AdapterRegistry
     from steamzero.adapters.steam_launcher import SteamGameLauncher
     from steamzero.domain.input_profiles import InputProfileManager
+    from steamzero.domain.playtime import PlaytimeCatalog
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -58,6 +59,8 @@ Domínios (Fase 1):
   session environment    observa sessão, energia, rede, DRM e volumes (read-only)
   session status         mostra lifecycle persistido (--game-id APPID)
   session recover        reconhece sessão interrompida (--game-id APPID)
+  playtime list          lista recentes e playtime (--limit N --cursor CURSOR)
+  playtime show          mostra um jogo e a última sessão (--game-id ID)
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -448,6 +451,59 @@ def _cmd_session_recover(args: list[str], correlation_id: str) -> tuple[dict[str
             "session",
             "recover",
             status="ok" if data["status"] == "recovered" else "noop",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _playtime_catalog() -> PlaytimeCatalog:
+    from steamzero.domain.playtime import PlaytimeCatalog
+
+    return PlaytimeCatalog()
+
+
+def _validate_playtime_args(args: list[str], allowed: frozenset[str]) -> None:
+    if len(args) % 2:
+        raise SteamZeroError("E-API-SCHEMA", detail="flag de playtime sem valor")
+    seen: set[str] = set()
+    for index in range(0, len(args), 2):
+        flag, value = args[index : index + 2]
+        if flag not in allowed:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"flag de playtime não permitida: {flag}"
+            )
+        if flag in seen:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"flag duplicada: {flag}")
+        if not value or value.startswith("-") or "\x00" in value or len(value) > 4096:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"valor inválido para {flag}")
+        seen.add(flag)
+
+
+def _cmd_playtime_list(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    _validate_playtime_args(args, frozenset({"--limit", "--cursor"}))
+    data = _playtime_catalog().list(limit=_page_limit(args), cursor=_page_cursor(args))
+    return (
+        build_envelope(
+            "playtime",
+            "list",
+            status="ok" if data["games"] else "noop",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_playtime_show(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    _validate_playtime_args(args, frozenset({"--game-id"}))
+    data = _playtime_catalog().get(_required_flag(args, "--game-id"))
+    return (
+        build_envelope(
+            "playtime",
+            "show",
+            status="ok",
             data=data,
             correlation_id=correlation_id,
         ),
@@ -938,6 +994,8 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("session", "environment"): _cmd_session_environment,
     ("session", "status"): _cmd_session_status,
     ("session", "recover"): _cmd_session_recover,
+    ("playtime", "list"): _cmd_playtime_list,
+    ("playtime", "show"): _cmd_playtime_show,
     ("desktop", "status"): _cmd_desktop_status,
     ("desktop", "plan"): _cmd_desktop_plan,
     ("desktop", "apply"): _cmd_desktop_apply,

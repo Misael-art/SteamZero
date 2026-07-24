@@ -68,3 +68,7 @@ reconciliador futuro. O método não recebe parâmetros nem oferece uma contrapa
 Desde `0.1.0a34`, consultas paginadas e assinatura de eventos usam o mesmo socket
 autenticado. O handler de assinatura termina quando o peer desconecta ou o daemon
 entra em shutdown; uma conexão de stream não aceita comandos adicionais.
+
+Desde o schema de estado v13, `playtime.list` e `playtime.show` expõem o read
+model `feat-playtime-v1`. Ambos são read-only, limitados e não transportam PID,
+comando, ambiente ou paths internos.

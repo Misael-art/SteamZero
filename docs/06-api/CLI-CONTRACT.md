@@ -43,6 +43,8 @@ steamzero mode apply docked-tv · steamzero mode status --json
 steamzero session environment --json
 steamzero session status --game-id APPID --json
 steamzero session recover --game-id APPID
+steamzero playtime list [--limit 64] [--cursor CURSOR] --json
+steamzero playtime show --game-id ID --json
 steamzero desktop status --json
 steamzero desktop plan --profile auto|handheld|dock|safe
 steamzero desktop apply --plan-id P --confirm TOKEN
@@ -95,3 +97,6 @@ steamzero support bundle --preview
     O follow usa `events.subscribe` na mesma conexão; somente ausência antes da
     conexão permite fallback local. Depois do primeiro ack, o cliente reconecta
     pelo último cursor em vez de misturar fontes ou repetir saída.
+12. `playtime list|show` publica `feat-playtime-v1`, sem PID, comando ou
+    ambiente. O cursor é opaco, o limite máximo é 100 e sessões legadas sem
+    origem não recebem ação executável.

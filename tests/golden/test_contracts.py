@@ -37,6 +37,7 @@ def test_registry_loads_all_schemas() -> None:
         "plan-v1.schema.json",
         "platform-manifest-v1.schema.json",
         "retro-input-profile-v1.schema.json",
+        "feat-playtime-v1.schema.json",
     } <= got
 
 

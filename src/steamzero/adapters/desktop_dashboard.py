@@ -10,6 +10,7 @@ qualquer provider degrada somente a linha correspondente.
 
 from __future__ import annotations
 
+import logging
 import shutil
 import subprocess
 from collections.abc import Callable, Sequence
@@ -27,6 +28,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.playtime import PlaytimeCatalog
 
 Spawn = Callable[[Sequence[str]], None]
 StoreFactory = Callable[[], StateStore]
@@ -34,6 +36,7 @@ RegistryFactory = Callable[[], AdapterRegistry]
 DoctorRunner = Callable[[], tuple[dict[str, Any], list[dict[str, str]]]]
 EmulationBuilder = Callable[..., dict[str, Any]]
 ReducedMotionProbe = Callable[[], bool]
+_log = logging.getLogger(__name__)
 
 _COMPONENT_LABELS: dict[str, tuple[str, str, str]] = {
     "dolphin": ("Dolphin", "Emulador de Wii e GameCube", "dolphin-emu"),
@@ -209,6 +212,16 @@ class SteamDesktopController:
         self._spawn((executable, uri))
         return {"status": "started", "target": target, "uri": uri}
 
+    def open_game(self, game_id: str) -> dict[str, Any]:
+        if not game_id.isdigit() or len(game_id) > 32:
+            raise SteamZeroError("E-API-SCHEMA", detail="gameId Steam inválido")
+        executable = self._which("steam")
+        if executable is None:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail="cliente Steam não encontrado")
+        uri = f"steam://rungameid/{game_id}"
+        self._spawn((executable, uri))
+        return {"status": "started", "gameId": game_id, "uri": uri}
+
     def open_controller_config(self, game_id: str) -> dict[str, Any]:
         if not game_id.isdigit() or len(game_id) > 32:
             raise SteamZeroError("E-API-SCHEMA", detail="gameId inválido")
@@ -238,6 +251,7 @@ class DesktopDashboard:
         spawn: Spawn = _spawn_detached,
         reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
         diagnostics: DiagnosticsService | None = None,
+        playtime: PlaytimeCatalog | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -258,6 +272,7 @@ class DesktopDashboard:
         self._spawn = spawn
         self._reduced_motion_probe = reduced_motion_probe
         self._diagnostics = diagnostics or DiagnosticsService(store_factory)
+        self._playtime = playtime or PlaytimeCatalog(store_factory)
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -416,6 +431,24 @@ class DesktopDashboard:
                 },
             }
 
+        try:
+            playtime = self._playtime.list(limit=12)
+            self._enrich_playtime(
+                playtime,
+                steam_games=steam_gameplay.get("games", []),
+                emulation=emulation,
+            )
+        except Exception:
+            playtime = {
+                "schemaVersion": 1,
+                "generatedAt": None,
+                "totalPlayedSeconds": 0,
+                "games": [],
+                "page": {"limit": 12, "hasMore": False, "nextCursor": None},
+                "state": "degraded",
+                "detail": "O histórico de sessões está temporariamente indisponível.",
+            }
+
         return {
             "uiContracts": handheld_ui_contracts(),
             "accessibility": {"reducedMotion": reduced_motion},
@@ -427,6 +460,7 @@ class DesktopDashboard:
             "diagnostics": diagnostics,
             "inputMethod": im_status,
             "emulation": emulation,
+            "playtime": playtime,
         }
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
@@ -608,8 +642,84 @@ class DesktopDashboard:
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
 
+    def launch_steam_game(self, game_id: str) -> dict[str, Any]:
+        return self._steam.open_game(game_id)
+
     def open_steam_input(self, game_id: str) -> dict[str, Any]:
         return self._steam.open_controller_config(game_id)
+
+    def _enrich_playtime(
+        self,
+        playtime: dict[str, Any],
+        *,
+        steam_games: object,
+        emulation: object,
+    ) -> None:
+        catalog: dict[tuple[str, str], dict[str, str]] = {}
+        if isinstance(steam_games, list):
+            for game in steam_games:
+                if not isinstance(game, dict):
+                    continue
+                game_id = game.get("id")
+                if isinstance(game_id, str):
+                    catalog[("steam", game_id)] = {
+                        "title": str(game.get("name") or ""),
+                        "coverUrl": str(game.get("coverUrl") or ""),
+                    }
+        if isinstance(emulation, dict):
+            platforms = emulation.get("platforms")
+            if isinstance(platforms, list):
+                for platform in platforms:
+                    if not isinstance(platform, dict):
+                        continue
+                    games = platform.get("games")
+                    if not isinstance(games, list):
+                        continue
+                    for game in games:
+                        if not isinstance(game, dict):
+                            continue
+                        game_id = game.get("id")
+                        if isinstance(game_id, str):
+                            catalog[("emulation", game_id)] = {
+                                "title": str(game.get("name") or ""),
+                                "coverUrl": str(
+                                    game.get("coverUrl") or game.get("bannerAsset") or ""
+                                ),
+                            }
+        games = playtime.get("games")
+        if not isinstance(games, list):
+            return
+        for game in games:
+            if not isinstance(game, dict):
+                continue
+            enrichment = catalog.get(
+                (str(game.get("source") or ""), str(game.get("gameId") or ""))
+            )
+            if enrichment is None:
+                continue
+            if enrichment["title"]:
+                game["title"] = enrichment["title"][:160]
+            if enrichment["coverUrl"]:
+                game["coverUrl"] = enrichment["coverUrl"][:4096]
+            if game.get("source") != "steam" or game.get("continueState") != "in-progress":
+                continue
+            status_reader = getattr(self._gameplay, "session_status", None)
+            if not callable(status_reader):
+                continue
+            try:
+                status = status_reader(str(game.get("gameId") or ""))
+            except Exception as exc:
+                _log.debug("playtime.session-status-unavailable", exc_info=exc)
+                continue
+            if isinstance(status, dict) and status.get("recoveryRequired") is True:
+                game["continueState"] = "interrupted"
+                game["action"] = {
+                    "kind": "steam-recover",
+                    "target": str(game.get("gameId") or ""),
+                    "label": "Recuperar sessão",
+                    "enabled": True,
+                    "reason": "",
+                }
 
     def _component_row(
         self, manifest: AdapterManifest, executor: FlatpakExecutor, *, conflicts: bool

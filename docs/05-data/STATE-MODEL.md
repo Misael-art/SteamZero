@@ -36,7 +36,9 @@ compat_fact(id, subject[steamos|steam-client|component], version, tested_with_js
             verdict[ok|degraded|broken])
 game_session(id, game_id, state[idle|launching|running|suspending|suspended|
              resuming|closing|closed|failed], pid, profile_digest, owner,
-             started_at, updated_at, finished_at, exit_code, failure_code, metadata_json)
+             started_at, updated_at, finished_at, exit_code, failure_code, metadata_json,
+             played_seconds, duration_source[unavailable|observed-monotonic|
+             recovered-wall-clock|legacy-wall-clock])
 session_environment(id[current], observed_at, digest, payload_json)
 event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
 ```
@@ -66,3 +68,6 @@ event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
 11. Toda transação do núcleo espelha `applying → committed|rolled-back` na tabela
     `operation` e no `event_log`, mantendo o journal externo como fonte autoritativa
     de recovery. Repetir o mesmo estado não duplica evento.
+12. Playtime deriva exclusivamente de `game_session`. Duração monotônica
+    observada, aproximação de recovery e backfill legado permanecem distinguíveis;
+    PID e identidade de processo não entram no read model público.

@@ -214,6 +214,10 @@ class SteamGameplayController:
             "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
         }
 
+    def session_status(self, game_id: str) -> dict[str, Any]:
+        """Observa uma sessão específica sem expor comando ou ambiente."""
+        return self._launcher.status(game_id)
+
     def plan_lsfg_install(self) -> dict[str, Any]:
         return self._lsfg.plan_install()
 

@@ -13,6 +13,7 @@ import pytest
 from steamzero.core import state
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.migrations import (
+    MIGRATIONS,
     m0001_baseline,
     m0002_desktop_experience,
     m0003_gameplay_runtime,
@@ -27,7 +28,7 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 12
+    assert store.user_version == state.LATEST == 13
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -48,7 +49,7 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 12  # 2ª vez: no-op
+    assert store.migrate() == 13  # 2ª vez: no-op
     store.close()
 
 
@@ -65,7 +66,7 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 12
+    assert store.user_version == 13
     assert store.get_profile("legacy-profile") is not None
     store.save_profile(
         {
@@ -123,9 +124,45 @@ def test_migration_v3_to_v4_preserves_legacy_runtime(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 12
+    assert store.user_version == 13
     assert store.get_profile("steam-runtime:game:10") is not None
     assert store.latest_game_session("10") is None
+    store.close()
+
+
+def test_migration_v12_backfills_legacy_session_duration(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True)
+    connection = sqlite3.connect(db_path)
+    for version, migration in MIGRATIONS:
+        if version > 12:
+            break
+        migration(connection)
+        connection.execute(f"PRAGMA user_version={version}")
+    connection.execute(
+        """
+        INSERT INTO game_session (
+          id,game_id,state,owner,started_at,updated_at,finished_at
+        ) VALUES (?,?,?,?,?,?,?)
+        """,
+        (
+            "legacy-session",
+            "10",
+            "closed",
+            "steamzero-game-session",
+            "2026-07-23T10:00:00+00:00",
+            "2026-07-23T10:30:00+00:00",
+            "2026-07-23T10:30:00+00:00",
+        ),
+    )
+    connection.commit()
+    connection.close()
+
+    store = state.open_state(db_path)
+    session = store.latest_game_session("10")
+    assert store.user_version == 13
+    assert session is not None
+    assert 1799 <= session["played_seconds"] <= 1800
+    assert session["duration_source"] == "legacy-wall-clock"
     store.close()
 
 
@@ -356,7 +393,7 @@ def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 12
+    assert export["schemaVersion"] == 13
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -372,14 +409,14 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
         raise RuntimeError("migração v2 quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (13, bad)])
-    monkeypatch.setattr(state, "LATEST", 13)
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (14, bad)])
+    monkeypatch.setattr(state, "LATEST", 14)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 12  # não avançou além da v12 atual
+    assert store2.user_version == 13  # não avançou além da v13 atual
     tables = {
         r["name"]
         for r in store2._conn.execute(

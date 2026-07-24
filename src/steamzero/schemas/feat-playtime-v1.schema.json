@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "feat-playtime-v1.schema.json",
+  "title": "SteamZero playtime and continue-playing read model v1",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "totalPlayedSeconds": {"type": "integer", "minimum": 0},
+    "games": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/game"}
+    },
+    "page": {"$ref": "#/$defs/page"},
+    "game": {"$ref": "#/$defs/game"}
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [
+        {"required": ["totalPlayedSeconds", "games", "page"]},
+        {"required": ["game"]}
+      ]
+    }
+  ],
+  "$defs": {
+    "page": {
+      "type": "object",
+      "required": ["limit", "hasMore", "nextCursor"],
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+        "hasMore": {"type": "boolean"},
+        "nextCursor": {"type": ["string", "null"], "maxLength": 1024}
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "sessionId", "state", "startedAt", "updatedAt", "finishedAt",
+        "playedSeconds", "durationSource", "failureCode"
+      ],
+      "properties": {
+        "sessionId": {"type": "string", "minLength": 1, "maxLength": 160},
+        "state": {
+          "enum": [
+            "idle", "launching", "running", "suspending", "suspended",
+            "resuming", "closing", "closed", "failed"
+          ]
+        },
+        "startedAt": {"type": "string", "format": "date-time"},
+        "updatedAt": {"type": "string", "format": "date-time"},
+        "finishedAt": {"type": ["string", "null"], "format": "date-time"},
+        "playedSeconds": {"type": "integer", "minimum": 0},
+        "durationSource": {
+          "enum": [
+            "unavailable", "observed-monotonic", "recovered-wall-clock",
+            "legacy-wall-clock"
+          ]
+        },
+        "failureCode": {"type": ["string", "null"], "maxLength": 128}
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "required": ["kind", "target", "label", "enabled", "reason"],
+      "properties": {
+        "kind": {
+          "enum": ["steam-continue", "steam-recover", "emulation-continue", "detail"]
+        },
+        "target": {"type": "string", "minLength": 1, "maxLength": 160},
+        "label": {"type": "string", "minLength": 1, "maxLength": 80},
+        "enabled": {"type": "boolean"},
+        "reason": {"type": "string", "maxLength": 240}
+      },
+      "additionalProperties": false
+    },
+    "game": {
+      "type": "object",
+      "required": [
+        "gameId", "title", "coverUrl", "source", "platformId", "playedSeconds",
+        "sessionCount", "lastPlayedAt", "continueState", "latestSession", "action"
+      ],
+      "properties": {
+        "gameId": {"type": "string", "minLength": 1, "maxLength": 160},
+        "title": {"type": "string", "minLength": 1, "maxLength": 160},
+        "coverUrl": {"type": "string", "maxLength": 4096},
+        "source": {"enum": ["steam", "emulation", "unknown"]},
+        "platformId": {"type": ["string", "null"], "maxLength": 96},
+        "playedSeconds": {"type": "integer", "minimum": 0},
+        "sessionCount": {"type": "integer", "minimum": 1},
+        "lastPlayedAt": {"type": "string", "format": "date-time"},
+        "continueState": {
+          "enum": ["ready", "interrupted", "in-progress", "unavailable"]
+        },
+        "latestSession": {"$ref": "#/$defs/session"},
+        "action": {"$ref": "#/$defs/action"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

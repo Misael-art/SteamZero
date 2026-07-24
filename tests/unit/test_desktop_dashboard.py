@@ -62,6 +62,11 @@ class BrokenGameplay(FakeGameplay):
         raise OSError("biblioteca Steam temporariamente ilegível")
 
 
+class InterruptedGameplay(FakeGameplay):
+    def session_status(self, game_id: str) -> dict[str, object]:
+        return {"gameId": game_id, "recoveryRequired": True}
+
+
 def _status(*, conflict: bool = False) -> dict[str, object]:
     return {
         "context": {
@@ -129,6 +134,49 @@ def test_steam_input_opens_only_numeric_game_configuration() -> None:
         controller.open_controller_config("1091500;shutdown")
 
 
+def test_steam_continue_uses_only_numeric_rungameid_uri() -> None:
+    calls: list[tuple[str, ...]] = []
+    controller = SteamDesktopController(
+        which=lambda _command: "/usr/bin/steam",
+        running_probe=lambda: False,
+        spawn=lambda argv: calls.append(tuple(argv)),
+    )
+
+    result = controller.open_game("1091500")
+
+    assert result["uri"] == "steam://rungameid/1091500"
+    assert calls == [("/usr/bin/steam", "steam://rungameid/1091500")]
+    with pytest.raises(SteamZeroError, match="gameId Steam inválido"):
+        controller.open_game("../../evil")
+
+
+def test_playtime_enrichment_turns_dead_active_steam_session_into_recovery() -> None:
+    dashboard = DesktopDashboard(gameplay=InterruptedGameplay())  # type: ignore[arg-type]
+    payload: dict[str, object] = {
+        "games": [
+            {
+                "gameId": "10",
+                "title": "Jogo 10",
+                "coverUrl": "",
+                "source": "steam",
+                "continueState": "in-progress",
+                "action": {"kind": "detail", "enabled": False},
+            }
+        ]
+    }
+
+    dashboard._enrich_playtime(  # type: ignore[attr-defined]
+        payload,
+        steam_games=[{"id": "10", "name": "Portal", "coverUrl": "file:///cover.jpg"}],
+        emulation={},
+    )
+
+    game = payload["games"][0]  # type: ignore[index]
+    assert game["title"] == "Portal"
+    assert game["continueState"] == "interrupted"
+    assert game["action"]["kind"] == "steam-recover"
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -163,6 +211,8 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert snapshot["doctor"]["state"] == "healthy"
     assert snapshot["accessibility"] == {"reducedMotion": True}
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
+    assert snapshot["playtime"]["schemaVersion"] == 1
+    assert snapshot["playtime"]["games"] == []
     assert snapshot["emulation"]["schemaVersion"] == 1
     assert snapshot["sync"]["mode"] == "read-only"
     assert snapshot["sync"]["provider"]["configured"] is False

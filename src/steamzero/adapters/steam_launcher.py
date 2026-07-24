@@ -20,6 +20,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
@@ -178,6 +179,7 @@ class SteamGameLauncher:
         wrapper_probe: WrapperProbe = _is_launcher_process,
         context_probe: ContextProbe = _display_context,
         environ: Callable[[], dict[str, str]] = lambda: dict(os.environ),
+        monotonic: Callable[[], float] = time.monotonic,
         lsfg_manifests: Sequence[Path] | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
@@ -189,6 +191,7 @@ class SteamGameLauncher:
         self._wrapper_probe = wrapper_probe
         self._context_probe = context_probe
         self._environ = environ
+        self._monotonic = monotonic
         self._lsfg_manifests = (
             tuple(lsfg_manifests)
             if lsfg_manifests is not None
@@ -286,12 +289,15 @@ class SteamGameLauncher:
         runtime = dict(current.get("runtime") or {})
         session_id = runtime.get("sessionId")
         if isinstance(session_id, str) and not session_id.startswith("legacy:"):
+            played_seconds = self._recovered_seconds(runtime)
             self._transition_session(
                 session_id,
                 "failed",
                 pid=None,
                 finished_at=_now(),
                 failure_code="E-SESSION-INTERRUPTED",
+                played_seconds=played_seconds,
+                duration_source="recovered-wall-clock",
             )
         else:
             runtime.update(
@@ -392,10 +398,12 @@ class SteamGameLauncher:
         spec = self.compile(app_id, command)
         self._ensure_no_legacy_active_session()
         session_id = ids.new_ulid()
+        started_monotonic = self._monotonic()
         metadata = json.dumps(
             {
                 "appliedEffects": list(spec.applied_effects),
                 "deferredEffects": list(spec.deferred_effects),
+                "source": "steam",
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -431,6 +439,8 @@ class SteamGameLauncher:
                 pid=None,
                 finished_at=_now(),
                 exit_code=exit_code,
+                played_seconds=max(0, int(self._monotonic() - started_monotonic)),
+                duration_source="observed-monotonic",
             )
             return exit_code
         except Exception:
@@ -441,6 +451,8 @@ class SteamGameLauncher:
                     pid=None,
                     finished_at=_now(),
                     failure_code="E-SESSION-LAUNCH-FAILED",
+                    played_seconds=max(0, int(self._monotonic() - started_monotonic)),
+                    duration_source="observed-monotonic",
                 )
             raise
         finally:
@@ -569,6 +581,8 @@ class SteamGameLauncher:
             "pid": row.get("pid"),
             "startedAt": row["started_at"],
             "finishedAt": row.get("finished_at"),
+            "playedSeconds": int(row.get("played_seconds") or 0),
+            "durationSource": row.get("duration_source") or "unavailable",
             "appliedEffects": list(metadata.get("appliedEffects") or []),
             "deferredEffects": list(metadata.get("deferredEffects") or []),
         }
@@ -583,6 +597,19 @@ class SteamGameLauncher:
         if path is None:
             raise SteamZeroError("E-COMPONENT-DEGRADED", detail=f"{name} não está disponível")
         return path
+
+    @staticmethod
+    def _recovered_seconds(runtime: dict[str, Any]) -> int:
+        started = runtime.get("startedAt")
+        if not isinstance(started, str):
+            return 0
+        try:
+            beginning = datetime.fromisoformat(started)
+        except ValueError:
+            return 0
+        if beginning.tzinfo is None:
+            beginning = beginning.replace(tzinfo=UTC)
+        return max(0, int((datetime.now(UTC) - beginning.astimezone(UTC)).total_seconds()))
 
     @staticmethod
     def _profile_digest(profile: dict[str, Any]) -> str:

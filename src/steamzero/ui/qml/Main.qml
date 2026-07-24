@@ -63,6 +63,7 @@ ApplicationWindow {
     property alias responsiveContent: contentStack
     property alias responsiveFooter: handheldFooter
     property alias overviewScrollControl: overviewScroll
+    property alias playtimeRepeaterControl: playtimeRepeater
     property alias profilesScrollControl: profilesScroll
     property alias syncScrollControl: syncScroll
     property alias systemScrollControl: systemScroll
@@ -92,6 +93,7 @@ ApplicationWindow {
         "context": {"deviceKind": "deck-lcd", "displays": [], "capabilities": [], "conflicts": []},
         "dashboard": {
             "components": [], "steam": [], "sync": {}, "doctor": {"checks": []},
+            "playtime": {"schemaVersion": 1, "totalPlayedSeconds": 0, "games": []},
             "uiContracts": {"schemaVersion": 1, "states": [], "actions": [], "byId": {}}
         }
     })
@@ -164,6 +166,10 @@ ApplicationWindow {
     readonly property var steamGameplayData: desktopStatus.dashboard
         && desktopStatus.dashboard.steamGameplay
         ? desktopStatus.dashboard.steamGameplay : fallbackSteamGameplay
+    readonly property var playtimeData: desktopStatus.dashboard
+        && desktopStatus.dashboard.playtime
+        ? desktopStatus.dashboard.playtime
+        : ({"schemaVersion": 1, "totalPlayedSeconds": 0, "games": []})
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     property var liveTasks: null
@@ -241,6 +247,49 @@ ApplicationWindow {
         const current = Number(progress.current || 0)
         const total = Number(progress.total || 0)
         return total > 0 ? Math.max(0, Math.min(1, current / total)) : 0
+    }
+
+    function playtimeLabel(seconds) {
+        const totalMinutes = Math.floor(Math.max(0, Number(seconds || 0)) / 60)
+        if (totalMinutes < 60)
+            return qsTr("%1 min").arg(totalMinutes)
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        return minutes > 0 ? qsTr("%1 h %2 min").arg(hours).arg(minutes)
+            : qsTr("%1 h").arg(hours)
+    }
+
+    function continueStateLabel(state) {
+        return ({
+            "ready": qsTr("Pronto"),
+            "interrupted": qsTr("Sessão anterior interrompida"),
+            "in-progress": qsTr("Em andamento"),
+            "unavailable": qsTr("Indisponível")
+        })[state] || qsTr("Estado desconhecido")
+    }
+
+    function performContinueGame(game) {
+        if (!game || !game.action || game.action.enabled !== true) {
+            notify(game && game.action && game.action.reason
+                ? game.action.reason : qsTr("Este jogo não pode ser retomado agora."), true)
+            return
+        }
+        const contractId = game.action.kind === "steam-continue"
+            ? "playtime.continue.steam"
+            : game.action.kind === "steam-recover"
+                ? "playtime.recover.steam"
+            : game.action.kind === "emulation-continue"
+                ? "playtime.continue.emulation" : ""
+        if (contractId === "") {
+            notify(qsTr("A origem desta sessão não possui launcher seguro."), true)
+            return
+        }
+        requestAction(contractId, {"gameId": game.gameId}, function() {
+            notify(game.action.kind === "steam-recover"
+                ? qsTr("Sessão de %1 recuperada; já pode ser iniciada novamente.").arg(game.title)
+                : qsTr("%1 foi iniciado").arg(game.title), false)
+            refreshStatus("")
+        })
     }
 
     function taskResultSummary(job) {
@@ -2450,6 +2499,96 @@ ApplicationWindow {
                                                     root.beginConflictResolution()
                                                 else
                                                     root.sectionIndex = root.desktopTruthNeedsAttention ? 3 : 5
+                                            }
+                                        }
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    Label {
+                                        text: qsTr("Continuar jogando")
+                                        color: root.textColor
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        text: root.playtimeLabel(root.playtimeData.totalPlayedSeconds)
+                                        color: root.mutedColor
+                                        Accessible.name: qsTr("Tempo total: %1").arg(text)
+                                    }
+                                }
+                                Rectangle {
+                                    visible: !root.playtimeData.games
+                                        || root.playtimeData.games.length === 0
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    Layout.minimumHeight: 72
+                                    color: root.surfaceColor
+                                    radius: 8
+                                    border.color: root.borderColor
+                                    Label {
+                                        anchors.centerIn: parent
+                                        width: parent.width - 32
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: qsTr("Seu histórico aparecerá aqui após a primeira sessão gerenciada.")
+                                        color: root.mutedColor
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                                Repeater {
+                                    id: playtimeRepeater
+                                    model: root.playtimeData.games
+                                        ? root.playtimeData.games.slice(0, 4) : []
+                                    delegate: Button {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: root.responsiveGutter
+                                        Layout.rightMargin: root.responsiveGutter
+                                        Layout.minimumHeight: 64
+                                        enabled: modelData.action && modelData.action.enabled === true
+                                        Accessible.name: qsTr("%1, %2, %3")
+                                            .arg(modelData.title)
+                                            .arg(root.playtimeLabel(modelData.playedSeconds))
+                                            .arg(root.continueStateLabel(modelData.continueState))
+                                        onClicked: root.performContinueGame(modelData)
+                                        contentItem: RowLayout {
+                                            spacing: 12
+                                            ModernIcon {
+                                                iconName: modelData.source === "steam"
+                                                    ? "steam" : "input-gaming"
+                                                iconColor: modelData.continueState === "interrupted"
+                                                    ? root.amberColor : root.cyanColor
+                                                Layout.preferredWidth: 28
+                                                Layout.preferredHeight: 28
+                                            }
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+                                                Label {
+                                                    text: modelData.title
+                                                    color: root.textColor
+                                                    font.bold: true
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+                                                Label {
+                                                    text: qsTr("%1 · %2")
+                                                        .arg(root.playtimeLabel(modelData.playedSeconds))
+                                                        .arg(root.continueStateLabel(modelData.continueState))
+                                                    color: modelData.continueState === "interrupted"
+                                                        ? root.amberColor : root.mutedColor
+                                                    font.pixelSize: 13
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                            Label {
+                                                text: modelData.action ? modelData.action.label : qsTr("Detalhes")
+                                                color: enabled ? root.cyanColor : root.mutedColor
                                             }
                                         }
                                     }

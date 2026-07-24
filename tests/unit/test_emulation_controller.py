@@ -676,6 +676,58 @@ def test_game_preference_launch_delete_and_rollback(monkeypatch, tmp_path: Path)
         controller.rollback_action(str(applied_foreign["operationId"]))
 
 
+def test_game_launch_tracks_detached_session_and_playtime(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    ticks = iter((10.0, 75.8))
+    controller._spawn = lambda _argv: 4242  # type: ignore[attr-defined]
+    controller._process_waiter = lambda _pid: 0  # type: ignore[attr-defined]
+    controller._monotonic = lambda: next(ticks)  # type: ignore[attr-defined]
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    rom = roms / "Example [0100ABCDEF123000].nsp"
+    rom.write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "game.emulator.set",
+                "gameId": game["id"],
+                "emulatorId": "ryubing",
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.AdapterEngine.payload_path",
+        lambda _self, emulator_id: tmp_path / f"{emulator_id}.AppImage",
+    )
+    monkeypatch.setattr(controller, "_require_key_projection", lambda _emulator_id: None)
+
+    result = controller.launch_game(game["id"])
+    deadline = time.monotonic() + 2
+    session = None
+    while time.monotonic() < deadline:
+        with StateStore(tmp_path / "state.db") as store:
+            store.migrate()
+            session = store.latest_game_session(game["id"])
+        if session is not None and session["state"] == "closed":
+            break
+        time.sleep(0.01)
+
+    assert result["sessionId"]
+    assert session is not None
+    assert session["state"] == "closed"
+    assert session["played_seconds"] == 65
+    assert session["duration_source"] == "observed-monotonic"
+    metadata = json.loads(session["metadata_json"])
+    assert metadata["source"] == "emulation"
+    assert metadata["title"] == "Example"
+
+
 def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
     monkeypatch,
 ) -> None:  # type: ignore[no-untyped-def]

@@ -236,6 +236,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().retry_emulation_job(self._required_string(payload, "jobId"))
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
+        if path == "/steam/game/launch":
+            return self._dashboard().launch_steam_game(
+                self._required_string(payload, "gameId")
+            )
         if path == "/steam/input/open":
             return self._dashboard().open_steam_input(self._required_string(payload, "gameId"))
         if path == "/steam/gameplay/plan":

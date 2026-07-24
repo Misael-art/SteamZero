@@ -117,6 +117,55 @@ def test_jobs_and_operations_list_are_paginated(
     assert operations["page"]["hasMore"] is False
 
 
+def test_playtime_list_and_show_use_versioned_read_model(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.create_game_session(
+            {
+                "id": "PLAYTIME-SESSION",
+                "game_id": "10",
+                "state": "launching",
+                "owner": "steamzero-game-session",
+                "metadata_json": '{"source":"steam","title":"Portal"}',
+            }
+        )
+        store.transition_game_session("PLAYTIME-SESSION", "running")
+        store.transition_game_session(
+            "PLAYTIME-SESSION",
+            "closed",
+            finished_at="2026-07-23T12:00:00+00:00",
+            played_seconds=3661,
+            duration_source="observed-monotonic",
+        )
+
+    assert cli.main(["playtime", "list", "--limit", "10", "--json"]) == cli.EXIT_OK
+    listing = json.loads(capsys.readouterr().out)
+    assert listing["module"] == "playtime"
+    assert listing["data"]["games"][0]["playedSeconds"] == 3661
+
+    assert cli.main(["playtime", "show", "--game-id", "10", "--json"]) == cli.EXIT_OK
+    detail = json.loads(capsys.readouterr().out)
+    assert detail["data"]["game"]["title"] == "Portal"
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["playtime", "list", "--limit", "101"],
+        ["playtime", "list", "--cursor"],
+        ["playtime", "show", "--game-id", "10", "--game-id", "20"],
+        ["playtime", "show", "--shell", "x"],
+    ],
+)
+def test_playtime_cli_rejects_unbounded_or_ambiguous_flags(
+    capsys: pytest.CaptureFixture[str], args: list[str]
+) -> None:
+    assert cli.main([*args, "--json"]) == cli.EXIT_FAILURE
+    assert json.loads(capsys.readouterr().out)["error"]["code"] == "E-API-SCHEMA"
+
+
 def test_jobs_follow_emits_reconnectable_event_v1_ndjson(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

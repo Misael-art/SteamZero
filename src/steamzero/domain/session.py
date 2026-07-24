@@ -14,6 +14,8 @@ sempre preservando a timeline de saves. O controle do processo/emulador é uma
 from __future__ import annotations
 
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -39,15 +41,23 @@ class Session:
     checkpoints: list[dict[str, Any]] = field(default_factory=list)
     last_warning: str | None = None
     needs_kill_confirmation: bool = False
+    played_seconds: float = 0
+    active_since: float | None = None
 
 
 class SessionManager:
     def __init__(
-        self, port: SessionPort, store: StateStore, *, job_manager: JobManager | None = None
+        self,
+        port: SessionPort,
+        store: StateStore,
+        *,
+        job_manager: JobManager | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._port = port
         self._store = store
         self._jobs = job_manager
+        self._monotonic = monotonic
         self._session: Session | None = None
 
     @property
@@ -73,18 +83,28 @@ class SessionManager:
                 "game_id": game_id,
                 "state": "idle",
                 "owner": SESSION_OWNER,
+                "metadata_json": json.dumps({"source": "emulation"}),
             }
         )
         self._session = session
         self._transition(session, "launching")
         if not self._port.launch(game_id):
-            self._transition(session, "failed")
+            self._transition(
+                session,
+                "failed",
+                finished_at=_now_iso(),
+                failure_code="E-SESSION-LAUNCH-FAILED",
+                played_seconds=0,
+                duration_source="observed-monotonic",
+            )
             return session
         self._transition(session, "running")
+        session.active_since = self._monotonic()
         return session
 
     def suspend(self) -> Session:
         session = self._require()
+        self._accumulate(session)
         self._transition(session, "suspending")
         # FI-09: pausa jobs em ponto de segurança antes de suspender
         if self._jobs is not None:
@@ -118,15 +138,19 @@ class SessionManager:
                 "failed",
                 finished_at=_now_iso(),
                 failure_code=session.last_warning,
+                played_seconds=int(session.played_seconds),
+                duration_source="observed-monotonic",
             )
         else:
             session.last_warning = None
             self._transition(session, "running")
+            session.active_since = self._monotonic()
         return session
 
     def close(self, *, allow_kill: bool = False) -> Session:
         session = self._require()
         if session.state != "closing":  # primeira tentativa: escalada até SIGTERM
+            self._accumulate(session)
             self._transition(session, "closing")
             self._port.flush_save()  # preserva a timeline antes de encerrar
             self._port.signal_close()
@@ -138,8 +162,20 @@ class SessionManager:
                 return session
             self._port.kill()  # SIGKILL confirmado
         session.needs_kill_confirmation = False
-        self._transition(session, "closed", finished_at=_now_iso())
+        self._transition(
+            session,
+            "closed",
+            finished_at=_now_iso(),
+            played_seconds=int(session.played_seconds),
+            duration_source="observed-monotonic",
+        )
         return session
+
+    def _accumulate(self, session: Session) -> None:
+        if session.active_since is None:
+            return
+        session.played_seconds += max(0.0, self._monotonic() - session.active_since)
+        session.active_since = None
 
     def _require(self) -> Session:
         if self._session is None:

@@ -56,6 +56,24 @@ Main {
             },
             "doctor": {"checks": []},
             "diagnostics": {"operations": {"items": []}},
+            "playtime": {
+                "schemaVersion": 1,
+                "totalPlayedSeconds": 3661,
+                "games": [{
+                    "gameId": "10",
+                    "title": "Fixture",
+                    "source": "steam",
+                    "playedSeconds": 3661,
+                    "continueState": "interrupted",
+                    "action": {
+                        "kind": "steam-continue",
+                        "target": "10",
+                        "label": "Continuar",
+                        "enabled": true,
+                        "reason": ""
+                    }
+                }]
+            },
             "uiContracts": {
                 "schemaVersion": 1,
                 "states": [],
@@ -116,6 +134,10 @@ Main {
         }
         if (phase === 1) {
             checkScrollWidth(window.overviewScrollControl, "Visão geral")
+            check(window.playtimeRepeaterControl.count === 1,
+                  "Continuar jogando deve renderizar a sessão recente")
+            check(window.playtimeRepeaterControl.itemAt(0).height >= 48,
+                  "Continuar jogando deve manter alvo 48×48")
             window.sectionIndex = 3
             phase = 2
             return

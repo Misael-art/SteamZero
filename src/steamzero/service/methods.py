@@ -131,6 +131,8 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("session.environment", "session", "environment"),
     MethodSpec("session.status", "session", "status", (_GAME_ID,)),
     MethodSpec("session.recover", "session", "recover", (_GAME_ID,), mutation=True),
+    MethodSpec("playtime.list", "playtime", "list", (_LIMIT, _CURSOR)),
+    MethodSpec("playtime.show", "playtime", "show", (_GAME_ID,)),
     MethodSpec("desktop.status", "desktop", "status"),
     MethodSpec(
         "desktop.plan",

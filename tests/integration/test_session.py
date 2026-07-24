@@ -185,3 +185,20 @@ def test_close_preserves_timeline_flush_first(store: state.StateStore) -> None:
     mgr.launch("g")
     mgr.close()
     assert port.actions.index("flush") < port.actions.index("signal_close")
+
+
+def test_playtime_excludes_suspended_interval_and_is_persisted(
+    store: state.StateStore,
+) -> None:
+    ticks = iter((10.0, 40.9, 100.0, 169.8))
+    mgr = SessionManager(FakeSessionPort(), store, monotonic=lambda: next(ticks))
+
+    mgr.launch("g")
+    mgr.suspend()
+    mgr.resume()
+    mgr.close()
+
+    session = store.latest_game_session("g")
+    assert session is not None
+    assert session["played_seconds"] == 100
+    assert session["duration_source"] == "observed-monotonic"
