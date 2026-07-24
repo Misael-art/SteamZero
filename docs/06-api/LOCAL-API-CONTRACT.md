@@ -24,6 +24,11 @@ A superfície implementada em F4 acrescenta `jobs.list`, `operations.list` e
 especial de leitura: depois do resultado de confirmação, a mesma conexão fica
 dedicada às notificações `events.event` e termina com `events.complete`.
 
+F6 acrescenta `controls.profiles`, `controls.plan`, `controls.apply` e
+`controls.rollback`. Campos de plataforma, perfil, escopo e orientação são
+enums/IDs limitados; apply exige o token single-use e rollback aceita somente
+uma operação cujo journal declare `input-profile.activate:*`.
+
 Regras próprias do SteamZero (UI nunca importa funções do orquestrador; só contrato):
 
 1. **Nomes de método são enum registrado**; método desconhecido = erro padrão, sem reflexão (P4, SR-19).

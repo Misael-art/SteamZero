@@ -100,6 +100,21 @@ _CURSOR = Field("cursor", "--cursor", required=False)
 _STATE = Field("state", "--state", required=False)
 _KIND = Field("kind", "--kind", required=False)
 _ENTITY = Field("entity", "--entity", required=False)
+_PLATFORM_ID = Field("platformId", "--platform")
+_PROFILE_ID = Field("profileId", "--profile")
+_SCOPE = Field(
+    "scope",
+    "--scope",
+    required=False,
+    choices=frozenset({"global", "platform", "game", "device", "mode"}),
+)
+_SCOPE_ID = Field("scopeId", "--scope-id", required=False)
+_ORIENTATION = Field(
+    "orientation",
+    "--orientation",
+    required=False,
+    choices=frozenset({"landscape", "portrait-left", "portrait-right"}),
+)
 
 METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("doctor.run", "doctor", None),
@@ -135,6 +150,22 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("desktop.reset", "desktop", "reset", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("desktop.recover", "desktop", "recover", mutation=True),
     MethodSpec("emulation.workspace", "emulation", "workspace"),
+    MethodSpec("controls.profiles", "controls", "profiles", (_PLATFORM_ID,)),
+    MethodSpec(
+        "controls.plan",
+        "controls",
+        "plan",
+        (_PLATFORM_ID, _PROFILE_ID, _SCOPE, _SCOPE_ID, _ORIENTATION),
+        mutation=True,
+    ),
+    MethodSpec("controls.apply", "controls", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
+    MethodSpec(
+        "controls.rollback",
+        "controls",
+        "rollback",
+        (_OPERATION_ID,),
+        mutation=True,
+    ),
 )
 
 METHODS = {spec.method: spec for spec in METHOD_SPECS}

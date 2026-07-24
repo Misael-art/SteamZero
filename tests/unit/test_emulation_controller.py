@@ -122,6 +122,38 @@ def test_runtime_profiles_publish_observed_handheld_and_dock_facts(
     }
 
 
+def test_input_profile_plan_apply_snapshot_and_rollback(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    before = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["controls"]
+    profile_card = next(card for card in before["cards"] if card["id"] == "input-profile")
+    assert profile_card["state"] == "unverified"
+    assert {action["id"] for action in profile_card["actions"]} == {
+        "controls.profile.activate:standard-gamepad",
+        "controls.profile.activate:joycon-pair",
+    }
+
+    plan = controller.plan_action(
+        {
+            "actionId": "controls.profile.activate:standard-gamepad",
+            "orientation": "portrait-left",
+        }
+    )
+    result = _apply(controller, plan)
+    after = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["controls"]
+    active_card = next(card for card in after["cards"] if card["id"] == "input-profile")
+    assert active_card["state"] == "ready"
+    assert "standard-gamepad · revisão 1 · portrait-left" in active_card["detail"]
+
+    rollback = controller.rollback_action(str(result["operationId"]))
+    assert rollback["status"] == "rolled-back"
+    restored = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["controls"]
+    restored_card = next(card for card in restored["cards"] if card["id"] == "input-profile")
+    assert restored_card["state"] == "unverified"
+
+
 def test_imports_project_to_switch_consumers_and_save_game_directories(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

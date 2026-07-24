@@ -65,6 +65,12 @@ presets; adapter descreve uma implementação instalável/detectável. A associa
 planejada remove/bloqueia a ação na UI com causa, sem fallback por nome de
 plataforma. Ver `05-data/PLATFORM-MANIFEST-V1.md`.
 
+`retro-input-profile-v1` fica entre os dois contratos: o perfil define bindings
+semânticos e rotação; o platform manifest lista quais perfis são aplicáveis; o
+adapter traduz somente IDs semânticos conhecidos para sua configuração concreta.
+Strings do perfil jamais escolhem código ou comandos. Ver
+`05-data/RETRO-INPUT-PROFILE-V1.md`.
+
 ## Regras
 
 1. Adapter **declara**, engine **executa**: download, checksum, staging, activate e rollback são do núcleo — o adapter nunca baixa nada por conta própria.

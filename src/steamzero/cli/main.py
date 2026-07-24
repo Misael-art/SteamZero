@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from steamzero.adapters.flatpak import FlatpakExecutor
     from steamzero.adapters.registry import AdapterRegistry
     from steamzero.adapters.steam_launcher import SteamGameLauncher
+    from steamzero.domain.input_profiles import InputProfileManager
 
 # Exit codes (CLI-CONTRACT).
 EXIT_OK = 0
@@ -66,6 +67,10 @@ Domínios (Fase 1):
   desktop ui             abre a central Qt/QML opcional
   emulation workspace    read model da central de emulação Switch
   emulation launch       abre um jogo escaneado (--game-id ID)
+  controls profiles      lista perfis e seleção ativa (--platform ID)
+  controls plan          revisa seleção de perfil (--platform ID --profile ID)
+  controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
+  controls rollback      desfaz seleção (--operation-id ID)
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -622,6 +627,126 @@ def _cmd_emulation_launch(args: list[str], correlation_id: str) -> tuple[dict[st
     )
 
 
+def _input_profiles_manager() -> InputProfileManager:
+    from steamzero.core import paths
+    from steamzero.domain.input_profiles import InputProfileManager
+
+    return InputProfileManager(paths.config_home() / "input-profiles")
+
+
+def _validate_controls_args(args: list[str], allowed: frozenset[str]) -> None:
+    if len(args) % 2:
+        raise SteamZeroError("E-API-SCHEMA", detail="flag de controls sem valor")
+    seen: set[str] = set()
+    for index in range(0, len(args), 2):
+        flag, value = args[index : index + 2]
+        if flag not in allowed:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"flag de controls não permitida: {flag}")
+        if flag in seen:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"flag duplicada: {flag}")
+        if not value or value.startswith("-") or "\x00" in value or len(value) > 4096:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"valor inválido para {flag}")
+        seen.add(flag)
+
+
+def _cmd_controls_profiles(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    _validate_controls_args(args, frozenset({"--platform"}))
+    platform_id = _flag_value(args, "--platform")
+    if platform_id is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --platform <id>")
+    manager = _input_profiles_manager()
+    data = manager.status(platform_id)
+    return (
+        build_envelope(
+            "controls",
+            "profiles",
+            status=data["state"],
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_controls_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    _validate_controls_args(
+        args,
+        frozenset({"--platform", "--profile", "--scope", "--scope-id", "--orientation"}),
+    )
+    platform_id = _flag_value(args, "--platform")
+    profile_id = _flag_value(args, "--profile")
+    if platform_id is None or profile_id is None:
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="use --platform <id> --profile <id>"
+        )
+    manager = _input_profiles_manager()
+    plan = manager.plan_activate(
+        platform_id=platform_id,
+        profile_id=profile_id,
+        scope=_flag_value(args, "--scope") or "platform",
+        scope_id=_flag_value(args, "--scope-id"),
+        orientation=_flag_value(args, "--orientation"),
+    )
+    data = {
+        "planId": plan.plan_id,
+        "confirmToken": plan.confirm_token,
+        "preview": plan.preview,
+        "rollbackGuarantee": plan.rollback_guarantee,
+        "requirements": plan.requirements,
+        "platformId": platform_id,
+        "profileId": profile_id,
+    }
+    return (
+        build_envelope(
+            "controls", "plan", status="ready", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_controls_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    _validate_controls_args(args, frozenset({"--plan-id", "--confirm"}))
+    plan_id = _flag_value(args, "--plan-id")
+    confirm = _flag_value(args, "--confirm")
+    if plan_id is None or confirm is None:
+        raise SteamZeroError(
+            "E-TX-CONFIRM-REQUIRED", detail="use --plan-id <id> --confirm <token>"
+        )
+    result = _input_profiles_manager().apply(plan_id, confirm)
+    data = {
+        "status": result.status,
+        "operationId": result.operation_id,
+        "actions": result.actions,
+    }
+    return (
+        build_envelope(
+            "controls", "apply", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_controls_rollback(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    _validate_controls_args(args, frozenset({"--operation-id"}))
+    operation_id = _flag_value(args, "--operation-id")
+    if operation_id is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --operation-id <id>")
+    result = _input_profiles_manager().rollback(operation_id)
+    data = {
+        "status": result.status,
+        "operationId": result.operation_id,
+        "restored": result.restored,
+    }
+    return (
+        build_envelope(
+            "controls", "rollback", status=result.status, data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_desktop_keyboard(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     from steamzero.adapters.desktop_kde import activate_virtual_keyboard, toggle_virtual_keyboard
 
@@ -822,6 +947,10 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("desktop", "ui"): _cmd_desktop_ui,
     ("emulation", "workspace"): _cmd_emulation_workspace,
     ("emulation", "launch"): _cmd_emulation_launch,
+    ("controls", "profiles"): _cmd_controls_profiles,
+    ("controls", "plan"): _cmd_controls_plan,
+    ("controls", "apply"): _cmd_controls_apply,
+    ("controls", "rollback"): _cmd_controls_rollback,
 }
 
 

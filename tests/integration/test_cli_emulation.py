@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -66,3 +67,90 @@ def test_emulation_launch_cli_uses_local_controller(
     assert code == 0
     assert launched == ["game-1"]
     assert envelope["data"]["emulatorId"] == "ryubing"
+
+
+def test_controls_cli_plan_apply_status_and_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("STEAMZERO_NO_DAEMON", "1")
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+
+    assert (
+        main(
+            [
+                "controls",
+                "plan",
+                "--platform",
+                "switch",
+                "--profile",
+                "standard-gamepad",
+                "--orientation",
+                "portrait-left",
+                "--json",
+            ]
+        )
+        == 0
+    )
+    planned = json.loads(capsys.readouterr().out)["data"]
+    assert planned["rollbackGuarantee"] == "G-FULL"
+
+    assert (
+        main(
+            [
+                "controls",
+                "apply",
+                "--plan-id",
+                planned["planId"],
+                "--confirm",
+                planned["confirmToken"],
+                "--json",
+            ]
+        )
+        == 0
+    )
+    applied = json.loads(capsys.readouterr().out)["data"]
+
+    assert main(["controls", "profiles", "--platform", "switch", "--json"]) == 0
+    status = json.loads(capsys.readouterr().out)["data"]
+    assert status["active"]["id"] == "standard-gamepad"
+    assert status["active"]["orientation"] == "portrait-left"
+
+    assert (
+        main(
+            [
+                "controls",
+                "rollback",
+                "--operation-id",
+                applied["operationId"],
+                "--json",
+            ]
+        )
+        == 0
+    )
+    rolled_back = json.loads(capsys.readouterr().out)["data"]
+    assert rolled_back["status"] == "rolled-back"
+    assert main(["controls", "profiles", "--platform", "switch", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["data"]["active"] is None
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["controls", "profiles", "--platform"],
+        ["controls", "profiles", "--platform", "switch", "--shell", "x"],
+        ["controls", "profiles", "--platform", "switch", "--platform", "arcade"],
+    ],
+)
+def test_controls_cli_rejects_open_ended_or_ambiguous_flags(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    args: list[str],
+) -> None:
+    monkeypatch.setenv("STEAMZERO_NO_DAEMON", "1")
+    assert main([*args, "--json"]) == 1
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["error"]["code"] == "E-API-SCHEMA"

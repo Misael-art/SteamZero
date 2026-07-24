@@ -56,6 +56,7 @@ from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
@@ -242,6 +243,7 @@ class EmulationController:
         preservation_targets: Sequence[PreservationTarget] | None = None,
         mod_catalog: ModCatalogPort | None = None,
         cheat_catalog: CheatCatalogPort | None = None,
+        input_profiles: InputProfileManager | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -264,6 +266,9 @@ class EmulationController:
             ]
         )
         self._cheat_catalog = cheat_catalog or NsecmSource()
+        self._input_profiles = input_profiles or InputProfileManager(
+            paths.config_home() / "input-profiles"
+        )
         self._credential_health: dict[str, dict[str, str | None]] = {}
         self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
@@ -328,6 +333,7 @@ class EmulationController:
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
         controllers = self._controller_count()
+        input_profile_status = self._input_profiles.status("switch")
 
         workspace = build_switch_workspace(
             probe=lambda emulator_id: next(
@@ -422,6 +428,7 @@ class EmulationController:
             controllers,
             key_status,
             firmware_status,
+            input_profile_status,
         )
         for area in platform["areas"]:
             area_id = area["id"]
@@ -1034,6 +1041,20 @@ class EmulationController:
             plan = self._plan_global_setting(
                 "preferNativeNca", self._required_bool(payload, "value")
             )
+        elif action.startswith("controls.profile.activate:"):
+            profile_id = action.split(":", 1)[1]
+            scope = self._optional_string(payload, "scope") or "platform"
+            scope_id = self._optional_string(payload, "scopeId")
+            orientation = self._optional_string(payload, "orientation")
+            plan = self._input_profiles.plan_activate(
+                platform_id="switch",
+                profile_id=profile_id,
+                scope=scope,
+                scope_id=scope_id,
+                orientation=orientation,
+            )
+            plan_extra["profileId"] = profile_id
+            plan_extra["orientation"] = orientation or "landscape"
         elif action == "game.emulator.set":
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
@@ -1332,6 +1353,8 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "switch-shader.invalidate":
             result = self._content.apply_shader_invalidation(plan_id, confirm_token)
+        elif plan.kind.startswith("input-profile.activate:"):
+            result = self._input_profiles.apply(plan_id, confirm_token)
         elif plan.kind.startswith("preservation."):
             result = transaction.apply(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
@@ -1898,16 +1921,24 @@ class EmulationController:
         records = journal.read_records(operation_id)
         begins = [record for record in records if record.get("type") == "operation.begin"]
         kind = str(begins[0].get("kind", "")) if len(begins) == 1 else ""
-        allowed = kind.startswith("emulation.game-delete:") or kind in {
-            "switch-library.rename",
-            "switch-library.quarantine",
-        }
+        allowed = (
+            kind.startswith("emulation.game-delete:")
+            or kind.startswith("input-profile.activate:")
+            or kind in {"switch-library.rename", "switch-library.quarantine"}
+        )
         if not allowed:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
-                detail="operação não pertence à exclusão ou organização da biblioteca Switch",
+                detail=(
+                    "operação não pertence à exclusão, organização ou "
+                    "perfil reversível de emulação"
+                ),
             )
-        result = transaction.rollback(operation_id, reason="emulation-user-request")
+        result = (
+            self._input_profiles.rollback(operation_id)
+            if kind.startswith("input-profile.activate:")
+            else transaction.rollback(operation_id, reason="emulation-user-request")
+        )
         response: dict[str, Any] = {
             "status": result.status,
             "operationId": result.operation_id,
@@ -2393,6 +2424,7 @@ class EmulationController:
         controllers: int,
         keys: Mapping[str, Any],
         firmware: Mapping[str, Any],
+        input_profile_status: Mapping[str, Any],
     ) -> dict[str, Any]:
         updates = [record for record in records if record.kind == "update"]
         dlcs = [record for record in records if record.kind == "dlc"]
@@ -2610,9 +2642,35 @@ class EmulationController:
                         "Detecção local limitada a quatro jogadores.",
                         "ready",
                         f"{controllers} / 4",
-                    )
+                    ),
+                    self._card(
+                        "input-profile",
+                        "Perfil de input",
+                        (
+                            f"{input_profile_status['active']['id']} · revisão "
+                            f"{input_profile_status['active']['revision']} · "
+                            f"{input_profile_status['active']['orientation']}"
+                            if isinstance(input_profile_status.get("active"), Mapping)
+                            else "Nenhum perfil foi selecionado para esta plataforma."
+                        ),
+                        str(input_profile_status["state"]),
+                        str(input_profile_status["statusLabel"]),
+                        actions=[
+                            self._action(
+                                f"controls.profile.activate:{row['id']}",
+                                str(row["label"]),
+                                confirmation=True,
+                            )
+                            for row in input_profile_status["available"]
+                            if isinstance(row, Mapping)
+                        ],
+                    ),
                 ],
-                "primaryAction": self._action("emulation.refresh", "Detectar novamente"),
+                "primaryAction": self._action(
+                    "controls.profile.activate:standard-gamepad",
+                    "Selecionar perfil padrão",
+                    confirmation=True,
+                ),
             },
             "saves": {
                 "cards": self._preservation_cards(games, "save"),

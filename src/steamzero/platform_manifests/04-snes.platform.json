@@ -10,7 +10,7 @@
   "capabilities": [
     {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca SNES ainda será composta.", "action": null},
     {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "PAR, NTSC/PAL e slowdown pertencem ao track R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Gamepad e acessórios dependem de perfis.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível; Super Scope e mouse permanecem no R6.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
     {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork será composto no A7/A12.", "action": null}
   ],
   "areas": [

@@ -32,6 +32,8 @@ def core_service(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Pa
     runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(root / "src")
@@ -88,6 +90,8 @@ def inprocess_core(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[
     runtime.mkdir(mode=0o700)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     socket_path = safe_socket_path()
     server = CoreServer(str(socket_path), CoreRequestHandler)
     fs.set_mode(socket_path, 0o600)
@@ -210,6 +214,46 @@ def test_inprocess_server_covers_rpc_errors_and_domain_dispatch(inprocess_core: 
         timeout=10,
     )
     assert status.envelope["module"] == "session"
+
+
+def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
+    inprocess_core: Path,
+) -> None:
+    planned = invoke(
+        "controls.plan",
+        {
+            "platformId": "switch",
+            "profileId": "standard-gamepad",
+            "orientation": "portrait-right",
+            "correlationId": "01J000000000000000000000AC",
+        },
+    ).envelope["data"]
+    applied = invoke(
+        "controls.apply",
+        {
+            "planId": planned["planId"],
+            "confirmToken": planned["confirmToken"],
+            "correlationId": "01J000000000000000000000AD",
+        },
+    ).envelope["data"]
+    active = invoke(
+        "controls.profiles",
+        {
+            "platformId": "switch",
+            "correlationId": "01J000000000000000000000AE",
+        },
+    ).envelope["data"]["active"]
+    assert active["id"] == "standard-gamepad"
+    assert active["orientation"] == "portrait-right"
+
+    rolled_back = invoke(
+        "controls.rollback",
+        {
+            "operationId": applied["operationId"],
+            "correlationId": "01J000000000000000000000AF",
+        },
+    ).envelope["data"]
+    assert rolled_back["status"] == "rolled-back"
 
 
 def test_event_subscription_streams_valid_events_and_completes(

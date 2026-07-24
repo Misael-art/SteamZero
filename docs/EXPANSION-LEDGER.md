@@ -16,7 +16,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | F3 | jobs/operações paginados e `--follow` | event-v1 | verified-dev | `docs/expansion/WI-F3.md` |
 | F4 | daemon persistente e compatibilidade CLI | local API | verified-dev | `docs/expansion/WI-F4.md` |
 | F5 | registry declarativo de plataformas/capacidades | platform-manifest-v1 | verified-dev | `docs/expansion/WI-F5.md` |
-| F6 | perfis versionados e reversíveis de input | retro-input-profile-v1 | pending | — |
+| F6 | perfis versionados e reversíveis de input | retro-input-profile-v1 | verified-dev | `docs/expansion/WI-F6.md` |
 | A1 | Playtime, sessões interrompidas e continuar jogando | feat-playtime-v1 | pending | — |
 | A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | pending | — |
 | A3 | Tags, favoritos e coleções inteligentes | feat-collection-v1 | pending | — |
@@ -59,7 +59,7 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 | D2 | DLC/update no scan e projeção para emuladores | F5, A4, A8 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D3 | Fiação de catálogos, mods e cheats existentes | A12 + composição | verified-dev | `docs/expansion/WI-D3.md` |
 | D4 | Gráficos e performance | G1, G3, G4, G6, R0–R2 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
-| D5 | Controles editáveis e perfis | F6, R6 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D5 | Controles editáveis e perfis | F6, R6 | in-progress | base reversível: `docs/expansion/WI-F6.md`; automação especializada: R6 |
 | D6 | vSaves, playtime, captura e lançamento | A1, G5 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D7 | Scraping/download e fallback de artwork | F1, F5, A7, A12 | in-progress | fallback: `docs/expansion/WI-F5.md`; pipeline: A7/A12 |
 | D8 | Artwork e conversão de ROM | A7, A8 | in-progress | conversão: `docs/expansion/WI-D3.md`; artwork: A7 |

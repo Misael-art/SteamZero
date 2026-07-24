@@ -239,6 +239,7 @@ def plan_write_files(
     kind: str = "config.write",
     ttl_s: int = _DEFAULT_TTL_S,
     removals: set[Path] | None = None,
+    skip_unchanged: bool = False,
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -257,6 +258,10 @@ def plan_write_files(
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail=f"escrita recusou destino symlink: {resolved}"
             )
+        fingerprint = _fingerprint(resolved)
+        if skip_unchanged and fingerprint == fs.hash_bytes(content):
+            preconditions.append(Precondition(target=str(resolved), fingerprint=fingerprint))
+            continue
         actions.append(
             FileAction(
                 action_id=ids.new_ulid(),
@@ -266,7 +271,7 @@ def plan_write_files(
                 new_content_b64=base64.b64encode(content).decode("ascii"),
             )
         )
-        preconditions.append(Precondition(target=str(resolved), fingerprint=_fingerprint(resolved)))
+        preconditions.append(Precondition(target=str(resolved), fingerprint=fingerprint))
         total_new += len(content)
         if resolved.exists():
             total_existing += resolved.stat().st_size

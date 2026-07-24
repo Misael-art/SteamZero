@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "mega-drive-6-button",
+  "revision": 1,
+  "label": "Mega Drive — 6 botões",
+  "platforms": ["mega-drive"],
+  "source": {"kind": "builtin", "license": "GPL-3.0-or-later"},
+  "layout": "six-button",
+  "maxPlayers": 4,
+  "bindings": [
+    {"action": "game.up", "input": "hat.up", "required": true},
+    {"action": "game.right", "input": "hat.right", "required": true},
+    {"action": "game.down", "input": "hat.down", "required": true},
+    {"action": "game.left", "input": "hat.left", "required": true},
+    {"action": "game.primary", "input": "button.west", "required": true},
+    {"action": "game.secondary", "input": "button.south", "required": true},
+    {"action": "game.tertiary", "input": "button.east", "required": true},
+    {"action": "game.quaternary", "input": "button.north", "required": true},
+    {"action": "game.shoulder-left", "input": "button.shoulder-left", "required": true},
+    {"action": "game.shoulder-right", "input": "button.shoulder-right", "required": true},
+    {"action": "game.start", "input": "button.start", "required": true}
+  ],
+  "rotation": {
+    "allowedOrientations": ["landscape", "portrait-left", "portrait-right"],
+    "defaultOrientation": "landscape",
+    "directionalRemap": "rotate-with-display"
+  }
+}

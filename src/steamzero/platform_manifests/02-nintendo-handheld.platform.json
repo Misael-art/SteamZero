@@ -10,7 +10,7 @@
   "capabilities": [
     {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca multi-sistema ainda será composta.", "action": null},
     {"id": "graphics", "label": "Vídeo e tela portátil", "state": "planned", "detail": "Integer scale, LCD, cores e ghosting ficam explícitos no track R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Gamepad padrão; sensores GBA permanecem capability específica.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível; sensores GBA permanecem capability específica.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
     {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork hash-first será composto no A7/A12.", "action": null},
     {"id": "advanced", "label": "Avançado", "state": "planned", "detail": "Timing e filtros avançados ficam recolhidos.", "action": null}
   ],

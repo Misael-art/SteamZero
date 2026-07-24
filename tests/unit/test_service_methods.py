@@ -21,6 +21,11 @@ def _value(field_name: str) -> str:
         "state": "running",
         "kind": "job.state",
         "entity": "job:J1",
+        "platformId": "switch",
+        "profileId": "standard-gamepad",
+        "scope": "platform",
+        "scopeId": "game-1",
+        "orientation": "landscape",
     }
     return values[field_name]
 

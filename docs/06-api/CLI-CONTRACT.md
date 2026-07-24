@@ -48,6 +48,12 @@ steamzero desktop plan --profile auto|handheld|dock|safe
 steamzero desktop apply --plan-id P --confirm TOKEN
 steamzero desktop reset --plan-id P_SAFE --confirm TOKEN
 steamzero desktop recover · steamzero desktop ui
+steamzero controls profiles --platform switch --json
+steamzero controls plan --platform switch --profile standard-gamepad \
+  [--scope platform|game|device|mode] [--scope-id ID] \
+  [--orientation landscape|portrait-left|portrait-right]
+steamzero controls apply --plan-id P --confirm TOKEN
+steamzero controls rollback --operation-id OP
 steamzero jobs list|pause|resume|cancel <jobId>
 steamzero jobs list --limit 64 [--cursor JOB_ID] [--state STATE]
 steamzero jobs list --follow [--job-id ID] [--cursor SEQ] [--timeout SEG] --json

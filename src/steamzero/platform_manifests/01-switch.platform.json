@@ -13,7 +13,7 @@
     {"id": "updates-dlc", "label": "Updates e DLC", "state": "ready", "detail": "Conteúdo do usuário associado por Title ID.", "action": {"id": "content.refresh", "label": "Atualizar inventário", "requiresConfirmation": false}},
     {"id": "mods-cheats", "label": "Mods e cheats", "state": "ready", "detail": "Catálogos e instalação transacional por jogo.", "action": {"id": "extras.refresh", "label": "Atualizar catálogo", "requiresConfirmation": false}},
     {"id": "graphics", "label": "Gráficos e desempenho", "state": "planned", "detail": "Perfis por jogo pertencem aos tracks G e R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Perfis reversíveis pertencem ao F6.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfis base versionados e reversíveis; projeção em emuladores permanece capability separada.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
     {"id": "saves", "label": "Saves", "state": "planned", "detail": "Timeline e playtime pertencem ao A1.", "action": null},
     {"id": "shader-cache", "label": "Shader cache", "state": "planned", "detail": "Auditoria e restauração ainda não compostas.", "action": null},
     {"id": "media", "label": "Mídia", "state": "ready", "detail": "MediaHub local e arte por jogo disponíveis.", "action": {"id": "media.refresh", "label": "Atualizar mídia", "requiresConfirmation": false}},

@@ -42,6 +42,11 @@ Além do JSON Schema draft 2020-12, o loader rejeita:
 Os manifestos são dados empacotados no wheel. Não há descoberta de código,
 hooks, shell ou diretório de plugins.
 
+Desde F6, cada ID em `controls.profiles` precisa existir no registry
+`retro-input-profile-v1`, declarar a plataforma correspondente e respeitar seu
+`maxPlayers`. O manifesto descreve aplicabilidade; seleção, rotação e rollback
+ficam no contrato de input.
+
 ## Cloud
 
 F5 registra somente identidade e allowlist; lançamento e atalhos reversíveis

@@ -10,7 +10,7 @@
   "capabilities": [
     {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Disponibilidade depende de região, conta, navegador e rede.", "action": null},
     {"id": "cloud-launch", "label": "Abrir serviço oficial", "state": "planned", "detail": "Atalho reversível e URL allowlisted pertencem ao A5.", "action": {"id": "cloud.launch", "label": "Abrir GeForce NOW", "requiresConfirmation": false}},
-    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Compatibilidade será verificada por dispositivo.", "action": null}
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil local base disponível; compatibilidade do serviço será verificada por dispositivo.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}}
   ],
   "areas": [
     {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},

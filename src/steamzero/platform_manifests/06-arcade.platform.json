@@ -10,7 +10,7 @@
   "capabilities": [
     {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "ROMsets e cores ainda serão compostos com versão explícita.", "action": null},
     {"id": "graphics", "label": "Vídeo, TATE e timing", "state": "planned", "detail": "TATE, CRT e refresh pertencem ao track R.", "action": null},
-    {"id": "controls", "label": "Controles especializados", "state": "planned", "detail": "Perfis automáticos pertencem ao F6/R6.", "action": null},
+    {"id": "controls", "label": "Controles especializados", "state": "ready", "detail": "Perfil arcade base reversível; dispositivos especializados permanecem no R6.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
     {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork será composto no A7/A12.", "action": null},
     {"id": "advanced", "label": "Avançado", "state": "planned", "detail": "Versão do ROMset e DIP switches precisam de provider.", "action": null}
   ],

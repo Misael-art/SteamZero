@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retro-input-profile-v1.schema.json",
+  "title": "SteamZero retro input profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "revision", "label", "platforms", "source",
+    "layout", "maxPlayers", "bindings", "rotation"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "revision": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+    "label": {"type": "string", "minLength": 1, "maxLength": 80},
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$"}
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "license"],
+      "properties": {
+        "kind": {"enum": ["builtin", "user"]},
+        "license": {"type": "string", "minLength": 1, "maxLength": 80}
+      }
+    },
+    "layout": {
+      "enum": [
+        "standard-gamepad", "split-gamepad", "three-button", "six-button",
+        "arcade-stick", "digital-pad", "dual-analog", "cloud-gamepad"
+      ]
+    },
+    "maxPlayers": {"type": "integer", "minimum": 1, "maximum": 16},
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "input", "required"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9.-]{1,62}$"
+          },
+          "input": {
+            "type": "string",
+            "pattern": "^(button|axis|hat)\\.[a-z0-9-]{1,40}$"
+          },
+          "required": {"type": "boolean"}
+        }
+      }
+    },
+    "rotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowedOrientations", "defaultOrientation", "directionalRemap"],
+      "properties": {
+        "allowedOrientations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"enum": ["landscape", "portrait-left", "portrait-right"]}
+        },
+        "defaultOrientation": {
+          "enum": ["landscape", "portrait-left", "portrait-right"]
+        },
+        "directionalRemap": {"enum": ["preserve", "rotate-with-display"]}
+      }
+    }
+  }
+}

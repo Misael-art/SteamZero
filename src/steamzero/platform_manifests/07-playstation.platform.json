@@ -11,7 +11,7 @@
     {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PlayStation ainda será composta.", "action": null},
     {"id": "requirements", "label": "BIOS", "state": "planned", "detail": "BIOS do usuário será verificada por hash sem expor conteúdo.", "action": null},
     {"id": "graphics", "label": "Vídeo e melhorias 3D", "state": "planned", "detail": "PAR, CRT e melhorias 3D pertencem ao track R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Digital, DualShock e acessórios dependem de perfis.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfis Digital e DualShock reversíveis; acessórios permanecem no R6.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
     {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e multidisco serão compostos no A7/A12.", "action": null}
   ],
   "areas": [
