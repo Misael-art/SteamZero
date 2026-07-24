@@ -725,6 +725,61 @@ Item {
                 "actions": []
             })
         }
+        const modCandidates = selectedGame.modCandidates || []
+        const cheatCandidates = selectedGame.cheatCandidates || []
+        const searchAction = selectedGame.catalogSearchAction || ({
+            "id": "extras.catalog.unavailable",
+            "label": qsTr("Buscar mods e cheats"),
+            "enabled": false,
+            "reason": qsTr("O backend ainda não publicou a busca para este jogo."),
+            "requiresConfirmation": true
+        })
+        result.push({
+            "id": "extras-catalog-search",
+            "title": qsTr("Catálogos remotos"),
+            "icon": "edit-find",
+            "state": modCandidates.length + cheatCandidates.length > 0
+                ? "ready" : "attention",
+            "statusLabel": qsTr("%1 mod(s) • %2 cheat(s)")
+                .arg(modCandidates.length).arg(cheatCandidates.length),
+            "detail": qsTr("Busca por Title ID nos catálogos configurados; resultados ficam em cache para uso offline."),
+            "metric": String(modCandidates.length + cheatCandidates.length),
+            "actions": [searchAction]
+        })
+        for (let availableMod = 0; availableMod < modCandidates.length; ++availableMod) {
+            const candidate = modCandidates[availableMod]
+            result.push({
+                "id": "catalog-mod-" + candidate.id,
+                "title": candidate.name,
+                "icon": "extension",
+                "state": "ready",
+                "statusLabel": qsTr("Mod disponível • %1").arg(candidate.source),
+                "detail": qsTr("Build ID %1 • compatibilidade %2% • %3")
+                    .arg(candidate.buildId || qsTr("não publicado"))
+                    .arg(Math.round(Number(candidate.matchConfidence || 0) * 100))
+                    .arg(candidate.description || qsTr("sem descrição")),
+                "metric": candidate.type || qsTr("mod"),
+                "actions": [candidate.installAction]
+            })
+        }
+        for (let availableCheat = 0; availableCheat < cheatCandidates.length;
+                ++availableCheat) {
+            const candidate = cheatCandidates[availableCheat]
+            result.push({
+                "id": "catalog-cheat-" + candidate.id,
+                "title": candidate.name,
+                "icon": "applications-development",
+                "state": candidate.installAction && candidate.installAction.enabled
+                    ? "ready" : "attention",
+                "statusLabel": qsTr("Cheat disponível • %1").arg(candidate.source),
+                "detail": qsTr("Build ID %1 • %2 código(s) • compatibilidade %3%")
+                    .arg(candidate.buildId || qsTr("não publicado"))
+                    .arg(candidate.codeCount || 0)
+                    .arg(Math.round(Number(candidate.matchConfidence || 0) * 100)),
+                "metric": candidate.type || qsTr("cheat"),
+                "actions": [candidate.installAction]
+            })
+        }
         const mods = selectedGame.mods || []
         for (let m = 0; m < mods.length; ++m) {
             const mod = mods[m]

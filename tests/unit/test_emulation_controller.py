@@ -14,6 +14,7 @@ from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
 
 
 def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ignore[no-untyped-def]
@@ -375,6 +376,48 @@ def test_nsz_private_install_is_idempotent_after_verified_publication(
     assert manager.install()["status"] == "already-installed"
 
 
+def test_nsz_ready_state_publishes_the_existing_conversion_journey(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    controller._nsz.status = lambda: {  # type: ignore[method-assign]
+        "available": True,
+        "version": "4.6.1",
+    }
+    controller._requirements = lambda _emulators: (  # type: ignore[method-assign]
+        {
+            "kind": "keys",
+            "status": "ok",
+            "required": None,
+            "installed": "rev1",
+            "detail": "Keys validadas.",
+            "blocksPlay": False,
+        },
+        {
+            "kind": "firmware",
+            "status": "missing",
+            "required": None,
+            "installed": None,
+            "detail": "Firmware ausente.",
+            "blocksPlay": True,
+        },
+    )
+
+    advanced = controller.snapshot({"context": {}})["platforms"][0]["areaData"][
+        "advanced"
+    ]
+    card = next(card for card in advanced["cards"] if card["id"] == "nsz")
+
+    assert card["statusLabel"] == "Pronto"
+    assert card["action"] == {
+        "id": "nsz.convert",
+        "label": "Selecionar arquivo",
+        "enabled": True,
+        "reason": None,
+        "requiresConfirmation": True,
+    }
+
+
 def test_library_roots_scan_and_local_requirements(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     roms = tmp_path / "owned-roms"
@@ -486,6 +529,16 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "steamArtworkKinds": [],
             "mods": [],
             "cheats": [],
+            "modCandidates": [],
+            "cheatCandidates": [],
+            "catalogSearchAction": {
+                "id": f"extras.catalog.search:{published[0]['id']}",
+                "label": "Buscar mods e cheats",
+                "enabled": False,
+                "reason": "Title ID não identificado para consultar catálogos.",
+                "requiresConfirmation": True,
+                "gameId": published[0]["id"],
+            },
             "modPriorityCapability": {
                 "supported": False,
                 "reason": (
@@ -943,6 +996,143 @@ def test_global_media_pipeline_publishes_operational_read_model_and_actions(
     assert overwrite["overwrite"] is True
     assert overwrite["requiresConfirmation"] is True
     assert game_id
+
+
+def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactionally(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    title_id = "0100ABCDEF123000"
+    build_id = "A1" * 16
+    mod_candidate = ModCandidate(
+        title_id=title_id,
+        build_id=build_id,
+        identity=ModIdentity(
+            name="60 FPS",
+            mod_type="performance",
+            source="github:test",
+            source_url="https://example.invalid/mod.zip",
+            description="Patch de desempenho",
+        ),
+    )
+    cheat_candidate = CheatCandidate(
+        title_id=title_id,
+        build_id=build_id,
+        identity=CheatIdentity(
+            name="Vida infinita",
+            cheat_type="infinite",
+            source="nsecm:test",
+            source_url="https://example.invalid/cheat.txt",
+        ),
+        codes=("[Vida infinita]", "04000000 00000000 00000001"),
+    )
+
+    class ModCatalog:
+        def search_by_title_id(self, requested: str) -> list[ModCandidate]:
+            return [mod_candidate] if requested == title_id else []
+
+        def search_by_build_id(
+            self, requested: str, requested_build: str
+        ) -> list[ModCandidate]:
+            return (
+                [mod_candidate]
+                if requested == title_id and requested_build == build_id
+                else []
+            )
+
+        def refresh_catalog(self) -> int:
+            return 1
+
+    class CheatCatalog:
+        def search_by_title_id(self, requested: str) -> list[CheatCandidate]:
+            return [cheat_candidate] if requested == title_id else []
+
+        def search_by_build_id(
+            self, requested: str, requested_build: str
+        ) -> list[CheatCandidate]:
+            return (
+                [cheat_candidate]
+                if requested == title_id and requested_build == build_id
+                else []
+            )
+
+        def refresh_catalog(self) -> int:
+            return 1
+
+    controller = _controller(monkeypatch, tmp_path)
+    controller._mod_catalog = ModCatalog()  # type: ignore[attr-defined]
+    controller._cheat_catalog = CheatCatalog()  # type: ignore[attr-defined]
+    game_id, _ = _configured_game(controller, tmp_path)
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    search_action = game["catalogSearchAction"]
+
+    search_response = _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": search_action["id"],
+                "gameId": game_id,
+            }
+        ),
+    )
+    completed = _wait_job(controller, str(search_response["jobId"]))
+    assert completed.result["mods_found"] == 1
+    assert completed.result["cheats_found"] == 1
+
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["modCandidates"][0]["name"] == "60 FPS"
+    assert game["modCandidates"][0]["installAction"]["enabled"] is False
+    cheat_action = game["cheatCandidates"][0]["installAction"]
+    assert cheat_action["enabled"] is True
+
+    class OfflineCatalog:
+        def search_by_title_id(self, _requested: str):  # type: ignore[no-untyped-def]
+            raise RuntimeError("offline")
+
+        def search_by_build_id(  # type: ignore[no-untyped-def]
+            self, _requested: str, _requested_build: str
+        ):
+            raise RuntimeError("offline")
+
+        def refresh_catalog(self) -> int:
+            raise RuntimeError("offline")
+
+    controller._mod_catalog = OfflineCatalog()  # type: ignore[attr-defined]
+    controller._cheat_catalog = OfflineCatalog()  # type: ignore[attr-defined]
+    offline_response = _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": search_action["id"],
+                "gameId": game_id,
+            }
+        ),
+    )
+    offline = _wait_job(controller, str(offline_response["jobId"]))
+    assert set(offline.result["errors"]) == {"mods", "cheats"}
+    cached = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert len(cached["modCandidates"]) == 1
+    assert len(cached["cheatCandidates"]) == 1
+
+    install = controller.plan_action(
+        {
+            "actionId": cheat_action["id"],
+            "gameId": game_id,
+            "emulatorId": "eden",
+        }
+    )
+    _apply(controller, install)
+
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["cheatsCount"] == 1
+    assert game["cheats"][0]["source"] == "nsecm:test"
+    installed = controller._extra_record(  # type: ignore[attr-defined]
+        "cheat", str(game["cheats"][0]["id"])
+    )
+    assert installed is not None and installed.install_path is not None
+    installed_path = Path(installed.install_path)
+    assert installed_path.read_text(encoding="utf-8").startswith(
+        "// Vida infinita\n// BuildID:"
+    )
 
 
 def test_global_media_overwrite_requires_explicit_flag_and_returns_job(

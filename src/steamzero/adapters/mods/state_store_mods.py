@@ -7,10 +7,12 @@ Implementa a porta interna ``ModDatabasePort`` definida em domain.switch_mods.
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from datetime import UTC, datetime
 
 from steamzero.domain.switch_mods import GameBuildId, InstalledMod, ModDatabasePort, ModType
+from steamzero.ports import ModCandidate, ModIdentity
 
 
 class StateStoreModsAdapter(ModDatabasePort):
@@ -81,6 +83,92 @@ class StateStoreModsAdapter(ModDatabasePort):
         if row is None:
             return None
         return self._row_to_installed(row)
+
+    # --- Remote catalog ------------------------------------------------------
+
+    def replace_catalog(
+        self, title_id: str, candidates: list[ModCandidate]
+    ) -> list[str]:
+        """Substitui atomicamente o recorte de um Title ID e devolve IDs estáveis."""
+        now = datetime.now(UTC).isoformat()
+        self._conn.execute("DELETE FROM switch_mod_catalog WHERE title_id = ?", (title_id,))
+        identifiers: list[str] = []
+        for candidate in candidates:
+            identifier = self._catalog_id(candidate)
+            identifiers.append(identifier)
+            identity = candidate.identity
+            self._conn.execute(
+                """INSERT INTO switch_mod_catalog
+                   (id, title_id, build_id, name, mod_type, source, source_url,
+                    version, description, author, requirements, added_at, refreshed_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    identifier,
+                    candidate.title_id,
+                    candidate.build_id,
+                    identity.name,
+                    identity.mod_type,
+                    identity.source,
+                    identity.source_url,
+                    identity.version,
+                    identity.description,
+                    identity.author,
+                    None,
+                    now,
+                    now,
+                ),
+            )
+        return identifiers
+
+    def list_catalog(
+        self, title_id: str, *, build_id: str | None = None
+    ) -> list[tuple[str, ModCandidate]]:
+        query = "SELECT * FROM switch_mod_catalog WHERE title_id = ?"
+        params: tuple[str, ...] = (title_id,)
+        if build_id is not None:
+            query += " AND build_id = ?"
+            params = (title_id, build_id)
+        rows = self._conn.execute(
+            query + " ORDER BY name COLLATE NOCASE, source", params
+        ).fetchall()
+        return [(str(row["id"]), self._row_to_candidate(row)) for row in rows]
+
+    def get_catalog(self, catalog_id: str) -> ModCandidate | None:
+        row = self._conn.execute(
+            "SELECT * FROM switch_mod_catalog WHERE id = ?", (catalog_id,)
+        ).fetchone()
+        return self._row_to_candidate(row) if row is not None else None
+
+    @staticmethod
+    def _catalog_id(candidate: ModCandidate) -> str:
+        identity = candidate.identity
+        raw = "\0".join(
+            (
+                candidate.title_id,
+                candidate.build_id or "",
+                identity.source,
+                identity.source_url,
+                identity.name,
+            )
+        )
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _row_to_candidate(row: sqlite3.Row) -> ModCandidate:
+        return ModCandidate(
+            title_id=str(row["title_id"]),
+            build_id=row["build_id"],
+            identity=ModIdentity(
+                name=str(row["name"]),
+                mod_type=str(row["mod_type"]),
+                source=str(row["source"]),
+                source_url=str(row["source_url"]),
+                version=row["version"],
+                description=row["description"],
+                author=row["author"],
+            ),
+            match_confidence=1.0 if row["build_id"] else 0.7,
+        )
 
     # --- GameBuildId ---------------------------------------------------------
 

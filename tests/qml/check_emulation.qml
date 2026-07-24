@@ -435,6 +435,73 @@ Window {
         }
     }
 
+    function testRemoteExtrasCatalogPresentation() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "selectedScope": "game",
+                "selectedArea": "modsCheats",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "games": [{
+                    "id": "game", "name": "Jogo", "titleId": "0100000000001000",
+                    "state": "ready", "statusLabel": "Pronto",
+                    "catalogSearchAction": {
+                        "id": "extras.catalog.search:game",
+                        "label": "Buscar mods e cheats",
+                        "enabled": true,
+                        "reason": null,
+                        "requiresConfirmation": true,
+                        "gameId": "game"
+                    },
+                    "modCandidates": [{
+                        "id": "mod1", "name": "60 FPS", "source": "github:test",
+                        "buildId": "A1", "matchConfidence": 1.0, "type": "performance",
+                        "installAction": {
+                            "id": "mod.catalog.install:mod1",
+                            "label": "Preparar instalação",
+                            "enabled": false,
+                            "reason": "Pacote ainda não preparado",
+                            "requiresConfirmation": true
+                        }
+                    }],
+                    "cheatCandidates": [{
+                        "id": "cheat1", "name": "Vida infinita", "source": "nsecm:test",
+                        "buildId": "B2", "matchConfidence": 1.0, "type": "infinite",
+                        "codeCount": 1,
+                        "installAction": {
+                            "id": "cheat.catalog.install:cheat1",
+                            "label": "Instalar cheat",
+                            "enabled": true,
+                            "reason": null,
+                            "requiresConfirmation": true
+                        }
+                    }],
+                    "mods": [],
+                    "cheats": []
+                }],
+                "areaData": {"modsCheats": {"cards": [], "primaryAction": null}}
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        const cards = object.cards()
+        check(cards.some(function(card) { return card.id === "extras-catalog-search" }),
+              "área por jogo deve publicar a busca nos catálogos")
+        const modCard = cards.find(function(card) { return card.id === "catalog-mod-mod1" })
+        check(modCard.actions[0].enabled === false,
+              "mod remoto sem pacote preparado deve permanecer bloqueado")
+        const cheatCard = cards.find(function(card) {
+            return card.id === "catalog-cheat-cheat1"
+        })
+        check(cheatCard.actions[0].enabled === true,
+              "cheat remoto validado deve expor instalação confirmável")
+        object.destroy()
+    }
+
     Component {
         id: pageComponent
         Emulation {
@@ -468,6 +535,7 @@ Window {
             testLibraryRootManagementIsScrollableAndTouchSafe()
             testResponsiveProfiles()
             testPublishedStateFixtures()
+            testRemoteExtrasCatalogPresentation()
             if (failures === 0)
                 console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
             Qt.exit(failures === 0 ? 0 : firstFailure)

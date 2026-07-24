@@ -21,6 +21,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
+from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
 from steamzero.adapters.converters import (
     NszConverter,
@@ -30,6 +32,12 @@ from steamzero.adapters.converters import (
     nsz_tool_manifest,
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
+from steamzero.adapters.mods.build_id_scanner import BuildIdScanner
+from steamzero.adapters.mods.composite_catalog import CompositeModCatalog
+from steamzero.adapters.mods.github_mod_source import GithubModSource
+from steamzero.adapters.mods.mod_installer import FilesystemModInstaller
+from steamzero.adapters.mods.ns_emu_mod_downloader import NsEmuModDownloaderSource
+from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.registry import AdapterRegistry
@@ -48,11 +56,16 @@ from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
-from steamzero.domain.switch_cheats import CheatType, InstalledCheat, validate_cheat_codes
+from steamzero.domain.switch_cheats import (
+    CheatType,
+    InstalledCheat,
+    SwitchCheatManager,
+    validate_cheat_codes,
+)
 from steamzero.domain.switch_content import SwitchContentManager
 from steamzero.domain.switch_library import SwitchLibraryScanner
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState
-from steamzero.domain.switch_mods import InstalledMod, ModType
+from steamzero.domain.switch_mods import InstalledMod, ModType, SwitchModManager
 from steamzero.domain.switch_roots import (
     SwitchRootManager,
     root_id,
@@ -62,7 +75,16 @@ from steamzero.domain.switch_roots import (
 from steamzero.domain.switch_runtime import resolve_switch_runtime_profile
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
-from steamzero.ports import GameIdentity, MediaCandidate, MediaProviderPort, SecretStorePort
+from steamzero.ports import (
+    CheatCandidate,
+    CheatCatalogPort,
+    GameIdentity,
+    MediaCandidate,
+    MediaProviderPort,
+    ModCandidate,
+    ModCatalogPort,
+    SecretStorePort,
+)
 
 StoreFactory = Callable[[], StateStore]
 RegistryFactory = Callable[[], AdapterRegistry]
@@ -215,6 +237,8 @@ class EmulationController:
         media_optimizer_tool: Callable[[Path, Path, str], bool] | None = None,
         media_retry_delay: Callable[[float], None] = time.sleep,
         preservation_targets: Sequence[PreservationTarget] | None = None,
+        mod_catalog: ModCatalogPort | None = None,
+        cheat_catalog: CheatCatalogPort | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -227,6 +251,16 @@ class EmulationController:
         self._media_candidate_fetcher = media_candidate_fetcher
         self._media_optimizer_tool = media_optimizer_tool
         self._media_retry_delay = media_retry_delay
+        self._mod_catalog = mod_catalog or CompositeModCatalog(
+            [
+                GithubModSource(
+                    cache_path=paths.data_home() / "catalog-cache" / "switch-mods.json"
+                ),
+                SemdSource(),
+                NsEmuModDownloaderSource(),
+            ]
+        )
+        self._cheat_catalog = cheat_catalog or NsecmSource()
         self._credential_health: dict[str, dict[str, str | None]] = {}
         self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
@@ -245,6 +279,7 @@ class EmulationController:
             self._jobs = JobManager(job_store)
         self._jobs.register("media.search", self._media_search_job_handler)
         self._jobs.register("media.global", self._media_global_job_handler)
+        self._jobs.register("extras.catalog.search", self._extra_catalog_search_job_handler)
         self._jobs.register("rom.scan", self._rom_scan_job_handler)
         self._jobs.register("library.scan", self._library_scan_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
@@ -1014,6 +1049,23 @@ class EmulationController:
             if not isinstance(selected, bool):
                 raise SteamZeroError("E-API-SCHEMA", detail="campo booleano obrigatório: selected")
             plan = self._plan_game_setting(game_id, "steamSelected", selected)
+        elif action.startswith("extras.catalog.search:"):
+            game_id = action.split(":", 1)[1]
+            game = self._catalog_game_context(game_id, payload)
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.extras-catalog-search",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "extras-catalog-search",
+                {
+                    "gameId": str(game["id"]),
+                    "titleId": str(game["titleId"]),
+                },
+            )
+        elif action.startswith("cheat.catalog.install:"):
+            plan = self._plan_catalog_cheat_install(action, payload)
         elif action == "mod.import":
             plan = self._plan_mod_import(payload)
         elif action == "cheat.import":
@@ -1325,6 +1377,19 @@ class EmulationController:
                 self._start_background_job(job.id)
                 response["jobId"] = job.id
                 response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "extras-catalog-search":
+                job = self._jobs.create(
+                    "extras.catalog.search",
+                    params={
+                        "game_id": pending.metadata["gameId"],
+                        "title_id": pending.metadata["titleId"],
+                    },
+                    priority="interactive",
+                    created_by="ui",
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
             elif pending.kind == "media-cache-open":
                 response.update(self._open_media_cache())
             elif pending.kind == "library-root-open":
@@ -1442,7 +1507,7 @@ class EmulationController:
             constraints=dict(previous.constraints),
             correlation_id=previous.correlation_id,
         )
-        if replacement.type == "media.global":
+        if replacement.type in {"media.global", "extras.catalog.search"}:
             self._start_background_job(replacement.id)
         else:
             self._jobs.run(replacement.id)
@@ -1467,6 +1532,7 @@ class EmulationController:
             store.migrate()
             runner = JobManager(store)
             runner.register("media.global", self._media_global_job_handler)
+            runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -2770,6 +2836,85 @@ class EmulationController:
         )
         return plan
 
+    def _catalog_game_context(
+        self, game_id: str, payload: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        requested = self._optional_string(payload, "gameId")
+        if requested and requested != game_id:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="o jogo selecionado mudou; atualize a tela e tente novamente",
+            )
+        game = self._current_game(game_id)
+        title_id = game.get("titleId")
+        if not isinstance(title_id, str) or _TITLE_ID.fullmatch(title_id) is None:
+            raise SteamZeroError(
+                "E-MOD-TITLE-ID-NOT-FOUND",
+                detail="Title ID não identificado para buscar catálogos",
+            )
+        return game
+
+    def _plan_catalog_cheat_install(
+        self, action: str, payload: Mapping[str, Any]
+    ) -> transaction.Plan:
+        catalog_id = action.split(":", 1)[1] if ":" in action else ""
+        if re.fullmatch(r"[0-9a-f]{64}", catalog_id) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="candidato de cheat inválido")
+        game, emulator_id = self._extra_context(payload)
+        with self._store_factory() as store:
+            store.migrate()
+            candidate = StateStoreCheatsAdapter(store.adapter_connection()).get_catalog(
+                catalog_id
+            )
+        if candidate is None or candidate.title_id != game["titleId"]:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="candidato expirou ou pertence a outro jogo",
+            )
+        build_id = candidate.build_id
+        if build_id is None or _BUILD_ID.fullmatch(build_id) is None:
+            raise SteamZeroError(
+                "E-CHEAT-BUILD-ID-MISMATCH",
+                detail="o catálogo não publicou um Build ID instalável",
+            )
+        if not candidate.codes or not validate_cheat_codes(candidate.codes):
+            raise SteamZeroError(
+                "E-CHEAT-CODE-INVALID",
+                detail="o catálogo não publicou códigos Atmosphere válidos",
+            )
+        name = self._safe_extra_name(candidate.identity.name)
+        content = (
+            f"// {name}\n// BuildID: {build_id}\n" + "\n".join(candidate.codes) + "\n"
+        ).encode("utf-8")
+        target = self._cheat_dir(emulator_id, candidate.title_id) / f"{build_id}.txt"
+        plan = transaction.plan_write_files(
+            {target: content},
+            root=self._extra_transaction_root(target),
+            kind="emulation.cheat-catalog-install",
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "cheat-install",
+            {
+                "id": ids.new_ulid(),
+                "catalogId": catalog_id,
+                "gameId": str(game["id"]),
+                "titleId": candidate.title_id,
+                "name": name,
+                "buildId": build_id,
+                "emulatorId": emulator_id,
+                "installPath": str(target),
+                "codeCount": sum(
+                    1
+                    for line in candidate.codes
+                    if line.strip() and not line.lstrip().startswith(("//", "#", "["))
+                ),
+                "source": candidate.identity.source,
+                "version": candidate.identity.version,
+                "cheatType": candidate.identity.cheat_type,
+            },
+        )
+        return plan
+
     def _plan_mod_state(self, action: str) -> transaction.Plan:
         parts = action.split(":")
         if len(parts) != 3 or parts[2] not in {"on", "off"}:
@@ -3343,9 +3488,13 @@ class EmulationController:
                         title_id=str(metadata["titleId"]),
                         build_id=str(metadata["buildId"]),
                         name=str(metadata["name"]),
-                        cheat_type=CheatType.OTHER,
-                        source="local-user",
-                        version=None,
+                        cheat_type=CheatType(str(metadata.get("cheatType") or "other")),
+                        source=str(metadata.get("source") or "local-user"),
+                        version=(
+                            str(metadata["version"])
+                            if metadata.get("version") is not None
+                            else None
+                        ),
                         state="active",
                         install_path=str(metadata["installPath"]),
                         emulator_id=str(metadata["emulatorId"]),
@@ -3378,6 +3527,74 @@ class EmulationController:
     def _completed_operation_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
         ctx.set_progress("commit", current=1, total=1, unit="operation")
         return {"operationId": job.params.get("operation_id")}
+
+    def _extra_catalog_search_job_handler(
+        self, job: Job, ctx: JobContext
+    ) -> dict[str, Any]:
+        game_id = str(job.params.get("game_id") or "")
+        title_id = str(job.params.get("title_id") or "")
+        if not game_id or _TITLE_ID.fullmatch(title_id) is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="job de catálogo requer jogo e Title ID válidos",
+            )
+        errors: dict[str, str] = {}
+        ctx.set_progress("mods", current=0, total=2, unit="catalogs")
+        with self._store_factory() as store:
+            store.migrate()
+            mod_store = StateStoreModsAdapter(store.adapter_connection())
+            cheat_store = StateStoreCheatsAdapter(store.adapter_connection())
+            mod_manager = SwitchModManager(
+                self._mod_catalog,
+                FilesystemModInstaller(
+                    Path.home() / ".local" / "share",
+                    config_home=Path.home() / ".config",
+                ),
+                BuildIdScanner(),
+                mod_store,
+            )
+            cheat_manager = SwitchCheatManager(
+                self._cheat_catalog,
+                FsCheatInstaller(
+                    Path.home() / ".local" / "share",
+                    config_home=Path.home() / ".config",
+                ),
+                cheat_store,
+            )
+            try:
+                mods = mod_manager.list_candidates(title_id)
+            except SteamZeroError as exc:
+                mods = []
+                errors["mods"] = exc.code
+            except Exception:
+                mods = []
+                errors["mods"] = "E-MOD-SOURCE-UNREACHABLE"
+            if mods:
+                mod_store.replace_catalog(title_id, mods)
+            cached_mods = mod_store.list_catalog(title_id)
+            ctx.safepoint()
+            ctx.set_progress("cheats", current=1, total=2, unit="catalogs")
+            try:
+                cheats = cheat_manager.list_candidates(title_id)
+            except SteamZeroError as exc:
+                cheats = []
+                errors["cheats"] = exc.code
+            except Exception:
+                cheats = []
+                errors["cheats"] = "E-CHEAT-SOURCE-UNREACHABLE"
+            if cheats:
+                cheat_store.replace_catalog(title_id, cheats)
+            cached_cheats = cheat_store.list_catalog(title_id)
+        ctx.set_progress("done", current=2, total=2, unit="catalogs")
+        return {
+            "game_id": game_id,
+            "title_id": title_id,
+            "mods_found": len(mods),
+            "cheats_found": len(cheats),
+            "mods_cached": len(cached_mods),
+            "cheats_cached": len(cached_cheats),
+            "errors": errors,
+        }
 
     def _get_provider_api_key(self, provider_name: str) -> str | None:
         secret = self._secret_store.retrieve(provider_name, "api_key")
@@ -4481,11 +4698,23 @@ class EmulationController:
             cheat_store = StateStoreCheatsAdapter(store.adapter_connection())
             media_store = StateStoreGameMediaAdapter(store.adapter_connection())
             extras: dict[str, tuple[list[InstalledMod], list[InstalledCheat]]] = {}
+            catalog_extras: dict[
+                str,
+                tuple[list[tuple[str, ModCandidate]], list[tuple[str, CheatCandidate]]],
+            ] = {}
             for raw in games:
                 game_id = str(raw.get("id", ""))
                 _mods = mod_store.list_installed(game_id)
                 _cheats = cheat_store.list_installed(game_id)
                 extras[game_id] = (_mods, _cheats)
+                title_id = raw.get("titleId")
+                if isinstance(title_id, str):
+                    catalog_extras[game_id] = (
+                        mod_store.list_catalog(title_id),
+                        cheat_store.list_catalog(title_id),
+                    )
+                else:
+                    catalog_extras[game_id] = ([], [])
             for raw in games:
                 game = dict(raw)
                 game_id = str(game["id"])
@@ -4508,6 +4737,7 @@ class EmulationController:
                 else:
                     play_reason = None
                 mods, cheats = extras.get(game_id, ([], []))
+                mod_candidates, cheat_candidates = catalog_extras.get(game_id, ([], []))
                 title_id = game.get("titleId") or ""
                 cover_url = ""
                 media_source = "fallback"
@@ -4611,6 +4841,74 @@ class EmulationController:
                     }
                     for cheat in cheats
                 ]
+                mod_candidate_list = [
+                    {
+                        "id": catalog_id,
+                        "name": candidate.identity.name,
+                        "buildId": candidate.build_id,
+                        "type": candidate.identity.mod_type,
+                        "source": candidate.identity.source,
+                        "version": candidate.identity.version,
+                        "description": candidate.identity.description,
+                        "matchConfidence": candidate.match_confidence,
+                        "installAction": self._action(
+                            f"mod.catalog.install:{catalog_id}",
+                            "Preparar instalação",
+                            enabled=False,
+                            reason=(
+                                "O pacote remoto precisa ser baixado, inspecionado e "
+                                "convertido em uma árvore transacional antes de instalar."
+                            ),
+                            confirmation=True,
+                        )
+                        | {
+                            "gameId": game_id,
+                            "emulatorId": emulator_id or "",
+                        },
+                    }
+                    for catalog_id, candidate in mod_candidates
+                ]
+                cheat_candidate_list = []
+                for catalog_id, candidate in cheat_candidates:
+                    candidate_ready = (
+                        isinstance(emulator_id, str)
+                        and isinstance(candidate.build_id, str)
+                        and _BUILD_ID.fullmatch(candidate.build_id) is not None
+                        and bool(candidate.codes)
+                        and validate_cheat_codes(candidate.codes)
+                    )
+                    if not isinstance(emulator_id, str):
+                        reason = "Defina o emulador deste jogo antes de instalar."
+                    elif not candidate.build_id:
+                        reason = "O catálogo não publicou Build ID para este cheat."
+                    elif not candidate.codes or not validate_cheat_codes(candidate.codes):
+                        reason = "O catálogo não publicou códigos Atmosphere válidos."
+                    else:
+                        reason = None
+                    cheat_candidate_list.append(
+                        {
+                            "id": catalog_id,
+                            "name": candidate.identity.name,
+                            "buildId": candidate.build_id,
+                            "type": candidate.identity.cheat_type,
+                            "source": candidate.identity.source,
+                            "version": candidate.identity.version,
+                            "description": candidate.identity.description,
+                            "codeCount": len(candidate.codes),
+                            "matchConfidence": candidate.match_confidence,
+                            "installAction": self._action(
+                                f"cheat.catalog.install:{catalog_id}",
+                                "Instalar cheat",
+                                enabled=candidate_ready,
+                                reason=reason,
+                                confirmation=True,
+                            )
+                            | {
+                                "gameId": game_id,
+                                "emulatorId": emulator_id or "",
+                            },
+                        }
+                    )
                 game.update(
                     {
                         "platformId": "switch",
@@ -4653,6 +4951,20 @@ class EmulationController:
                         "steamArtworkKinds": steam_artwork_kinds,
                         "mods": mod_list,
                         "cheats": cheat_list,
+                        "modCandidates": mod_candidate_list,
+                        "cheatCandidates": cheat_candidate_list,
+                        "catalogSearchAction": self._action(
+                            f"extras.catalog.search:{game_id}",
+                            "Buscar mods e cheats",
+                            enabled=bool(title_id),
+                            reason=(
+                                None
+                                if title_id
+                                else "Title ID não identificado para consultar catálogos."
+                            ),
+                            confirmation=True,
+                        )
+                        | {"gameId": game_id},
                         "modPriorityCapability": {
                             "supported": False,
                             "reason": (
