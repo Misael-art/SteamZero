@@ -63,3 +63,6 @@ event_log(seq, ts, kind, entity, payload_json)   -- fonte dos eventos da UI
     ignora bateria percentual, espaço livre e timestamp para não criar eventos de polling;
     mudanças de energia, rede, display, volume, device ou sessão geram
     `session.environment` atomicamente com o snapshot.
+11. Toda transação do núcleo espelha `applying → committed|rolled-back` na tabela
+    `operation` e no `event_log`, mantendo o journal externo como fonte autoritativa
+    de recovery. Repetir o mesmo estado não duplica evento.

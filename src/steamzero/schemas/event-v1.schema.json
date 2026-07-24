@@ -7,8 +7,9 @@
   "properties": {
     "seq": { "type": "integer", "minimum": 0 },
     "ts": { "type": "string", "format": "date-time" },
-    "kind": { "enum": ["job.progress", "job.state", "session.state", "session.environment", "session.resume", "entity.changed", "alert"] },
+    "kind": { "enum": ["job.progress", "job.state", "operation.state", "session.state", "session.environment", "session.resume", "entity.changed", "alert"] },
     "jobId": { "type": "string" },
+    "operationId": { "type": "string" },
     "sessionId": { "type": "string" },
     "gameId": { "type": "string" },
     "correlationId": { "type": "string" },
@@ -18,7 +19,7 @@
         "stage": { "type": "string" },
         "current": { "type": ["number", "null"] },
         "total": { "type": ["number", "null"] },
-        "unit": { "enum": ["bytes", "items", "steps"] },
+        "unit": { "type": ["string", "null"] },
         "rate": { "type": ["number", "null"] },
         "currentItem": { "type": ["string", "null"] }
       }

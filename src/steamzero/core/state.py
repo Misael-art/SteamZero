@@ -164,6 +164,32 @@ class StateStore:
             rows = self._conn.execute("SELECT * FROM job ORDER BY created_at").fetchall()
         return [dict(r) for r in rows]
 
+    def list_jobs_page(
+        self,
+        *,
+        limit: int,
+        before_id: str | None = None,
+        states: list[str] | None = None,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Lista jobs em ordem recency com paginação keyset e memória limitada."""
+        bounded = _bounded_page_limit(limit)
+        clauses: list[str] = []
+        values: list[Any] = []
+        if before_id is not None:
+            clauses.append("id < ?")
+            values.append(before_id)
+        if states:
+            marks = ",".join("?" for _ in states)
+            clauses.append(f"state IN ({marks})")
+            values.extend(states)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        values.append(bounded + 1)
+        rows = self._conn.execute(
+            f"SELECT * FROM job{where} ORDER BY id DESC LIMIT ?",  # noqa: S608
+            values,
+        ).fetchall()
+        return [dict(row) for row in rows[:bounded]], len(rows) > bounded
+
     # -- operações ----------------------------------------------------------
     def save_operation(
         self,
@@ -174,16 +200,48 @@ class StateStore:
         backup_path: str | None = None,
     ) -> None:
         """Registra/atualiza uma operação (referenciada por job.operation_id)."""
-        self._conn.execute(
-            "INSERT INTO operation (id, journal_path, state, backup_path) VALUES (?,?,?,?) "
-            "ON CONFLICT(id) DO UPDATE SET journal_path=excluded.journal_path, "
-            "state=excluded.state, backup_path=excluded.backup_path",
-            (operation_id, journal_path, state, backup_path),
-        )
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            previous = self._conn.execute(
+                "SELECT state FROM operation WHERE id=?", (operation_id,)
+            ).fetchone()
+            self._conn.execute(
+                "INSERT INTO operation (id, journal_path, state, backup_path) VALUES (?,?,?,?) "
+                "ON CONFLICT(id) DO UPDATE SET journal_path=excluded.journal_path, "
+                "state=excluded.state, backup_path=excluded.backup_path",
+                (operation_id, journal_path, state, backup_path),
+            )
+            if previous is None or previous["state"] != state:
+                self.append_event(
+                    "operation.state",
+                    entity=f"operation:{operation_id}",
+                    payload={"state": state},
+                )
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
 
     def get_operation(self, operation_id: str) -> dict[str, Any] | None:
         row = self._conn.execute("SELECT * FROM operation WHERE id=?", (operation_id,)).fetchone()
         return dict(row) if row is not None else None
+
+    def list_operations_page(
+        self, *, limit: int, before_id: str | None = None
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Lista operações em ordem recency sem materializar o histórico inteiro."""
+        bounded = _bounded_page_limit(limit)
+        if before_id is None:
+            rows = self._conn.execute(
+                "SELECT * FROM operation ORDER BY id DESC LIMIT ?", (bounded + 1,)
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM operation WHERE id < ? ORDER BY id DESC LIMIT ?",
+                (before_id, bounded + 1),
+            ).fetchall()
+        return [dict(row) for row in rows[:bounded]], len(rows) > bounded
 
     # -- device -------------------------------------------------------------
     def save_device(self, device: dict[str, Any]) -> None:
@@ -657,6 +715,41 @@ class StateStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def events_page(
+        self,
+        *,
+        after_seq: int,
+        limit: int,
+        kinds: list[str] | None = None,
+        entities: list[str] | None = None,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Lê uma página crescente do log append-only, com filtros exatos."""
+        if after_seq < 0:
+            raise ValueError("after_seq não pode ser negativo")
+        bounded = _bounded_page_limit(limit)
+        clauses = ["seq > ?"]
+        values: list[Any] = [after_seq]
+        if kinds:
+            marks = ",".join("?" for _ in kinds)
+            clauses.append(f"kind IN ({marks})")
+            values.extend(kinds)
+        if entities:
+            marks = ",".join("?" for _ in entities)
+            clauses.append(f"entity IN ({marks})")
+            values.extend(entities)
+        values.append(bounded + 1)
+        sql = (
+            "SELECT * FROM event_log WHERE "  # noqa: S608 - fixed fragments/placeholders
+            + " AND ".join(clauses)
+            + " ORDER BY seq LIMIT ?"
+        )
+        rows = self._conn.execute(sql, values).fetchall()
+        return [dict(row) for row in rows[:bounded]], len(rows) > bounded
+
+    def latest_event_seq(self) -> int:
+        row = self._conn.execute("SELECT COALESCE(MAX(seq), 0) FROM event_log").fetchone()
+        return int(row[0])
+
     # -- export -------------------------------------------------------------
     def export_json(self) -> dict[str, Any]:
         """Dump canônico do estado (steamzero state export)."""
@@ -697,3 +790,9 @@ def open_state(path: Path | None = None) -> StateStore:
     store = StateStore(path)
     store.migrate()
     return store
+
+
+def _bounded_page_limit(limit: int) -> int:
+    if not 1 <= limit <= 256:
+        raise ValueError("limit precisa estar entre 1 e 256")
+    return limit

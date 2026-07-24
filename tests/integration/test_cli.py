@@ -13,6 +13,10 @@ import pytest
 from steamzero import CONTRACT_VERSION
 from steamzero.api import contracts
 from steamzero.cli import main as cli
+from steamzero.core.errors import SteamZeroError
+from steamzero.core.state import StateStore
+from steamzero.jobs.manager import JobContext, JobManager
+from steamzero.jobs.models import Job
 from steamzero.privileged.protocol import Response
 
 
@@ -58,6 +62,305 @@ def test_jobs_list_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert env["status"] == "noop"
     assert env["data"]["count"] == 0
     assert code == cli.EXIT_OK
+
+
+def test_jobs_and_operations_list_are_paginated(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        for identifier in (
+            "01J0000000000000000000000A",
+            "01J0000000000000000000000B",
+            "01J0000000000000000000000C",
+        ):
+            store.save_job(
+                {
+                    "id": identifier,
+                    "type": "scan",
+                    "priority": "background",
+                    "state": "queued",
+                }
+            )
+            store.save_operation(identifier, state="committed")
+
+    assert cli.main(["jobs", "list", "--limit", "2", "--json"]) == cli.EXIT_OK
+    jobs = json.loads(capsys.readouterr().out)["data"]
+    assert [row["id"] for row in jobs["jobs"]] == [
+        "01J0000000000000000000000C",
+        "01J0000000000000000000000B",
+    ]
+    assert jobs["page"] == {
+        "limit": 2,
+        "hasMore": True,
+        "nextCursor": "01J0000000000000000000000B",
+    }
+
+    assert (
+        cli.main(
+            [
+                "operations",
+                "list",
+                "--limit",
+                "2",
+                "--cursor",
+                jobs["page"]["nextCursor"],
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    operations = json.loads(capsys.readouterr().out)["data"]
+    assert [row["id"] for row in operations["operations"]] == [
+        "01J0000000000000000000000A"
+    ]
+    assert operations["page"]["hasMore"] is False
+
+
+def test_jobs_follow_emits_reconnectable_event_v1_ndjson(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        jobs = JobManager(store)
+
+        def work(_job: Job, context: JobContext) -> dict[str, bool]:
+            context.set_progress(
+                "scan", current=1, total=1, unit="catalogs"
+            )
+            return {"ok": True}
+
+        jobs.register("scan", work)
+        job = jobs.create(
+            "scan",
+            correlation_id="01J000000000000000000000AA",
+        )
+        jobs.run(job.id)
+
+    assert (
+        cli.main(
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--job-id",
+                job.id,
+                "--cursor",
+                "0",
+                "--timeout",
+                "0",
+                "--limit",
+                "2",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    events = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if line.strip()
+    ]
+    assert [event["seq"] for event in events] == sorted(
+        event["seq"] for event in events
+    )
+    assert events[-1]["state"] == "completed"
+    assert all(event["jobId"] == job.id for event in events)
+    assert any(event.get("progress", {}).get("unit") == "catalogs" for event in events)
+    for event in events:
+        contracts.validate(event, "event-v1.schema.json")
+
+
+def test_operations_follow_emits_state_events_without_internal_paths(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    operation_id = "01J000000000000000000000AB"
+    with StateStore() as store:
+        store.migrate()
+        store.save_operation(
+            operation_id,
+            state="applying",
+            journal_path="/private/journal.jsonl",
+            backup_path="/private/backup",
+        )
+        store.save_operation(
+            operation_id,
+            state="committed",
+            journal_path="/private/journal.jsonl",
+            backup_path="/private/backup",
+        )
+
+    assert (
+        cli.main(
+            [
+                "operations",
+                "list",
+                "--follow",
+                "--operation-id",
+                operation_id,
+                "--cursor",
+                "0",
+                "--timeout",
+                "0",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert [event["state"] for event in events] == ["applying", "committed"]
+    assert all(event["operationId"] == operation_id for event in events)
+    assert all("journalPath" not in event and "backupPath" not in event for event in events)
+
+
+@pytest.mark.parametrize(
+    ("argv", "detail"),
+    [
+        (["jobs", "list", "--limit", "nope", "--json"], "--limit precisa ser inteiro"),
+        (["jobs", "list", "--limit", "0", "--json"], "--limit precisa estar"),
+        (
+            ["jobs", "list", "--cursor", "x" * 129, "--json"],
+            "cursor inválido",
+        ),
+        (
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--cursor",
+                "-1",
+                "--timeout",
+                "0",
+                "--json",
+            ],
+            "cursor de evento inválido",
+        ),
+        (
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--timeout",
+                "nope",
+                "--json",
+            ],
+            "--timeout precisa ser número",
+        ),
+        (
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--timeout",
+                "86401",
+                "--json",
+            ],
+            "--timeout precisa estar",
+        ),
+        (
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--job-id",
+                "missing",
+                "--timeout",
+                "0",
+                "--json",
+            ],
+            "job inexistente",
+        ),
+        (
+            [
+                "operations",
+                "list",
+                "--follow",
+                "--operation-id",
+                "missing",
+                "--timeout",
+                "0",
+                "--json",
+            ],
+            "operação inexistente",
+        ),
+    ],
+)
+def test_paginated_cli_rejects_invalid_limits_cursors_and_follow_targets(
+    capsys: pytest.CaptureFixture[str], argv: list[str], detail: str
+) -> None:
+    assert cli.main(argv) == cli.EXIT_FAILURE
+    envelope = json.loads(capsys.readouterr().out)
+    assert detail in envelope["error"]["detail"]
+
+
+def test_follow_rejects_unrelated_actions_and_has_human_stream(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert cli.main(["doctor", "--follow", "--json"]) == cli.EXIT_USAGE
+    rejected = json.loads(capsys.readouterr().out)
+    assert rejected["error"]["code"] == "E-CLI-USAGE"
+
+    with StateStore() as store:
+        store.migrate()
+        jobs = JobManager(store)
+        job = jobs.create("noop")
+        jobs.cancel(job.id)
+    assert (
+        cli.main(
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--job-id",
+                job.id,
+                "--cursor",
+                "0",
+                "--timeout",
+                "0",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    human = capsys.readouterr().out
+    assert "job.state" in human
+    assert job.id in human
+
+
+def test_follow_helpers_cover_default_timeout_interrupt_and_invalid_domain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert cli._follow_timeout([]) is None  # type: ignore[attr-defined]
+    with pytest.raises(SteamZeroError, match="não é suportado"):
+        cli._run_follow("invalid", [], json_out=True)  # type: ignore[attr-defined]
+
+    from steamzero.api import events
+
+    def interrupted(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise KeyboardInterrupt
+        yield
+
+    monkeypatch.setattr(events, "follow_events", interrupted)
+    assert cli._run_follow("jobs", [], json_out=True) == cli.EXIT_OK  # type: ignore[attr-defined]
+
+
+def test_jobs_list_degrades_corrupt_private_progress_payload(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.save_job(
+            {
+                "id": "01J000000000000000000000AB",
+                "type": "scan",
+                "priority": "background",
+                "state": "queued",
+                "progress_json": "{",
+            }
+        )
+
+    assert cli.main(["jobs", "list", "--json"]) == cli.EXIT_OK
+    job = json.loads(capsys.readouterr().out)["data"]["jobs"][0]
+    assert job["progress"] is None
 
 
 def test_admin_health_uses_read_only_contract(

@@ -15,6 +15,7 @@ no handler (não reimplementado aqui).
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -96,6 +97,7 @@ class JobManager:
         session_active: Callable[[], bool] | None = None,
         on_ac_power: Callable[[], bool] | None = None,
         network_available: Callable[[], bool] | None = None,
+        monotonic: Callable[[], float] | None = None,
     ) -> None:
         self._store = store
         self._log = logger or log.get_logger()
@@ -104,6 +106,8 @@ class JobManager:
         self._session_active = session_active or (lambda: False)
         self._on_ac_power = on_ac_power or (lambda: True)
         self._network_available = network_available or (lambda: True)
+        self._monotonic = monotonic or time.monotonic
+        self._last_progress_event: dict[str, float] = {}
 
     # -- registro / criação -------------------------------------------------
     def register(self, job_type: str, handler: Handler) -> None:
@@ -140,6 +144,12 @@ class JobManager:
         self._store.save_job(job.to_row())
 
     def _emit(self, job: Job, kind: str) -> None:
+        if kind == "job.progress":
+            now = self._monotonic()
+            previous = self._last_progress_event.get(job.id)
+            if previous is not None and now - previous < 0.25:
+                return
+            self._last_progress_event[job.id] = now
         self._store.append_event(kind, entity=f"job:{job.id}", payload=job.progress or {})
 
     def _transition(self, job: Job, new_state: str) -> None:
@@ -151,6 +161,8 @@ class JobManager:
         job.state = new_state
         self._persist(job)
         self._store.append_event("job.state", entity=f"job:{job.id}", payload={"state": new_state})
+        if new_state in {"completed", "cancelled", "rolled-back", "rollback-failed"}:
+            self._last_progress_event.pop(job.id, None)
         self._log.bind(jobId=job.id, correlationId=job.correlation_id or "").info(
             "job.transition", state=new_state
         )

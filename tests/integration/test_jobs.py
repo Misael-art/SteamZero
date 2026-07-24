@@ -55,6 +55,37 @@ def test_run_happy_path(env: tuple[JobManager, state.StateStore, Path]) -> None:
     assert done.progress["current"] == 3
 
 
+def test_progress_events_are_throttled_without_losing_persisted_progress(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    fs.ensure_state_layout()
+    store = state.open_state()
+    now = [100.0]
+    manager = JobManager(store, monotonic=lambda: now[0])
+
+    def burst(_job: Job, context: JobContext) -> None:
+        context.set_progress("scan", current=1, total=3, unit="items")
+        context.set_progress("scan", current=2, total=3, unit="items")
+        now[0] += 0.25
+        context.set_progress("scan", current=3, total=3, unit="items")
+
+    manager.register("burst", burst)
+    job = manager.create("burst")
+    manager.run(job.id)
+
+    progress_events = [
+        event
+        for event in store.events_since(0)
+        if event["kind"] == "job.progress"
+    ]
+    assert len(progress_events) == 2
+    persisted = manager.get(job.id)
+    assert persisted is not None
+    assert persisted.progress["current"] == 3
+    store.close()
+
+
 def test_cancel_before_run(env: tuple[JobManager, state.StateStore, Path]) -> None:
     mgr, _, _ = env
     mgr.register("step", _stepwise)

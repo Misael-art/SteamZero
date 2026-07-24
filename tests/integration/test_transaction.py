@@ -10,6 +10,7 @@ import pytest
 
 from steamzero.core import fs, journal, paths, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.state import StateStore
 
 
 @pytest.fixture
@@ -31,6 +32,20 @@ def test_happy_path_apply(env: tuple[Path, Path]) -> None:
     assert target.read_bytes() == b"[core]\nx=1\n"
     records = journal.read_records(result.operation_id)
     assert journal.has_type(records, journal.COMMIT)
+    with StateStore() as store:
+        store.migrate()
+        operation = store.get_operation(result.operation_id)
+        assert operation is not None
+        assert operation["state"] == "committed"
+        events = [
+            event
+            for event in store.events_since(0)
+            if event["entity"] == f"operation:{result.operation_id}"
+        ]
+        assert [event["kind"] for event in events] == [
+            "operation.state",
+            "operation.state",
+        ]
     # staging limpo após commit
     assert not paths.staging_for(result.operation_id).exists()
 

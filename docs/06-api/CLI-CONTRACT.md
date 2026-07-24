@@ -49,6 +49,10 @@ steamzero desktop apply --plan-id P --confirm TOKEN
 steamzero desktop reset --plan-id P_SAFE --confirm TOKEN
 steamzero desktop recover · steamzero desktop ui
 steamzero jobs list|pause|resume|cancel <jobId>
+steamzero jobs list --limit 64 [--cursor JOB_ID] [--state STATE]
+steamzero jobs list --follow [--job-id ID] [--cursor SEQ] [--timeout SEG] --json
+steamzero operations list --limit 64 [--cursor OPERATION_ID]
+steamzero operations list --follow [--operation-id ID] [--cursor SEQ] [--timeout SEG] --json
 steamzero state export --out state.json · steamzero backup create --full
 steamzero support bundle --preview
 ```
@@ -76,3 +80,7 @@ steamzero support bundle --preview
 9. `session environment` é estritamente read-only e observa DMI/painel, sessão gráfica,
    energia, rede, conectores DRM e volumes montados por UUID. Fonte ausente degrada o
    campo correspondente; nunca dispara mount, KScreen, systemctl ou ação privilegiada.
+10. Páginas de jobs/operações usam cursor keyset e limite entre 1 e 256.
+    `--follow --json` não emite envelope de sucesso: cada linha é um `event-v1`.
+    `--timeout 0` drena somente o backlog após o cursor e é útil para reconexão/testes.
+    Paths internos de journal, backup, parâmetros e ambiente não entram nessas saídas.

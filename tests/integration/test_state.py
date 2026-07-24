@@ -223,6 +223,53 @@ def test_list_jobs_by_state(db_path: Path) -> None:
     store.close()
 
 
+def test_jobs_and_operations_use_bounded_keyset_pages(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    for identifier in (
+        "01J0000000000000000000000A",
+        "01J0000000000000000000000B",
+        "01J0000000000000000000000C",
+    ):
+        store.save_job(
+            {
+                "id": identifier,
+                "type": "t",
+                "priority": "background",
+                "state": "queued",
+            }
+        )
+        store.save_operation(identifier, state="committed")
+
+    jobs, jobs_more = store.list_jobs_page(limit=2)
+    operations, operations_more = store.list_operations_page(limit=2)
+    assert [row["id"] for row in jobs] == [
+        "01J0000000000000000000000C",
+        "01J0000000000000000000000B",
+    ]
+    assert [row["id"] for row in operations] == [
+        "01J0000000000000000000000C",
+        "01J0000000000000000000000B",
+    ]
+    assert jobs_more is operations_more is True
+
+    remaining_jobs, jobs_more = store.list_jobs_page(
+        limit=2, before_id="01J0000000000000000000000B"
+    )
+    remaining_operations, operations_more = store.list_operations_page(
+        limit=2, before_id="01J0000000000000000000000B"
+    )
+    assert [row["id"] for row in remaining_jobs] == [
+        "01J0000000000000000000000A"
+    ]
+    assert [row["id"] for row in remaining_operations] == [
+        "01J0000000000000000000000A"
+    ]
+    assert jobs_more is operations_more is False
+    with pytest.raises(ValueError, match="entre 1 e 256"):
+        store.list_jobs_page(limit=257)
+    store.close()
+
+
 def test_event_log(db_path: Path) -> None:
     store = state.open_state(db_path)
     s1 = store.append_event("job.state", entity="J1", payload={"state": "running"})
@@ -230,6 +277,59 @@ def test_event_log(db_path: Path) -> None:
     assert s2 > s1
     since = store.events_since(s1)
     assert [e["kind"] for e in since] == ["entity.changed"]
+    store.close()
+
+
+def test_event_pages_are_filtered_bounded_and_reconnect_by_sequence(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    first = store.append_event(
+        "job.state", entity="job:J1", payload={"state": "queued"}
+    )
+    store.append_event(
+        "job.state", entity="job:J2", payload={"state": "queued"}
+    )
+    third = store.append_event(
+        "job.progress",
+        entity="job:J1",
+        payload={"stage": "scan", "current": 1, "total": 2, "unit": "items"},
+    )
+
+    page, has_more = store.events_page(
+        after_seq=0,
+        limit=1,
+        kinds=["job.state", "job.progress"],
+        entities=["job:J1"],
+    )
+    assert [row["seq"] for row in page] == [first]
+    assert has_more is True
+    resumed, has_more = store.events_page(
+        after_seq=first,
+        limit=2,
+        kinds=["job.state", "job.progress"],
+        entities=["job:J1"],
+    )
+    assert [row["seq"] for row in resumed] == [third]
+    assert has_more is False
+    assert store.latest_event_seq() == third
+    store.close()
+
+
+def test_operation_state_event_is_atomic_and_deduplicated(db_path: Path) -> None:
+    store = state.open_state(db_path)
+    store.save_operation("OP1", state="applying")
+    store.save_operation("OP1", state="applying")
+    store.save_operation("OP1", state="committed")
+
+    events = [
+        row
+        for row in store.events_since(0)
+        if row["kind"] == "operation.state"
+    ]
+    assert [json.loads(row["payload_json"])["state"] for row in events] == [
+        "applying",
+        "committed",
+    ]
+    assert all(row["entity"] == "operation:OP1" for row in events)
     store.close()
 
 

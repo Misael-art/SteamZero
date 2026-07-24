@@ -5,12 +5,21 @@
 - API: notificações JSON-RPC após `events.subscribe {jobIds?|kinds?|entities?}`.
 - CLI: `--follow` emite NDJSON (um evento por linha, schema `event-v1`).
 - UI que reconecta: re-hidrata do State Store (`job.get` + `event_log` desde `seq`) — eventos têm `seq` monotônico por job; sem perda ao reconectar.
+- F3 implementa a metade local: páginas crescentes limitadas a 256 eventos,
+  cursor igual ao último `seq` consumido e polling sem acumular histórico em
+  memória. A assinatura persistente do daemon/JSON-RPC pertence a F4.
+- Sem cursor explícito, `--follow` começa no maior `seq` já persistido; para
+  retomar uma conexão, o consumidor envia o último cursor confirmado.
+- Eventos sistêmicos sem correlação de requisição usam o ULID reservado
+  `00000000000000000000000000`; eventos de job recuperam o `correlationId`
+  persistido no próprio job.
 
 ## Tipos
 
 | kind | Conteúdo | Frequência |
 |---|---|---|
 | `job.state` | transições da máquina de JOB-LIFECYCLE | por transição |
+| `operation.state` | `applying|committed|rolled-back|…` espelhado do journal | por mudança real |
 | `session.state` | lifecycle canônico do jogo (`launching`…`failed`) | por transição |
 | `session.environment` | digest + grupos materiais alterados no host | por mudança observada |
 | `session.resume` | duração aproximada observada após suspend | por retomada |
@@ -31,3 +40,6 @@
    somente topologia/capacidade material produz uma nova sequência.
 8. `session.resume` compara `CLOCK_BOOTTIME` com `CLOCK_MONOTONIC`. É evidência
    pós-resume; não equivale a um hook pré-suspend nem promete flush anterior.
+9. O produtor persiste todo progresso mais recente no job, mas limita eventos
+   `job.progress` a no máximo 4/s por job; transições de estado nunca são
+   descartadas.

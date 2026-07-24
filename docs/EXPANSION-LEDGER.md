@@ -13,7 +13,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | F0 | Saneamento da baseline de qualidade | error-v1 | verified-dev | `docs/expansion/WI-F0.md` |
 | F1 | `core.net` seguro, limitado, cancelável e fake | core.net | verified-dev | `docs/expansion/WI-F1.md` |
 | F2 | `core.crypto`, checksum, assinatura e envelopes | core.crypto | verified-dev | `docs/expansion/WI-F2.md` |
-| F3 | jobs/operações paginados e `--follow` | event-v1 | pending | — |
+| F3 | jobs/operações paginados e `--follow` | event-v1 | verified-dev | `docs/expansion/WI-F3.md` |
 | F4 | daemon persistente e compatibilidade CLI | local API | pending | — |
 | F5 | registry declarativo de plataformas/capacidades | platform-manifest-v1 | pending | — |
 | F6 | perfis versionados e reversíveis de input | retro-input-profile-v1 | pending | — |

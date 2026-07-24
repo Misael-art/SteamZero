@@ -41,7 +41,10 @@ _USAGE = f"""steamzero <domínio> <ação> [flags]
 
 Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
-  jobs list              lista jobs
+  jobs list              lista jobs paginados (--limit N --cursor ID --state STATE)
+  jobs list --follow     segue eventos em NDJSON (--job-id ID --cursor SEQ)
+  operations list        lista operações paginadas (--limit N --cursor ID)
+  operations list --follow segue eventos em NDJSON (--operation-id ID --cursor SEQ)
   state export [--out F] exporta o State Store (JSON)
   component list         lista adapters e deployments Flatpak
   component status      mostra um deployment (--id ADAPTER)
@@ -80,21 +83,83 @@ def _cmd_doctor(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], 
     return env, EXIT_OK if status != "failed" else EXIT_FAILURE
 
 
-def _cmd_jobs_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+def _cmd_jobs_list(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    limit = _page_limit(args)
+    cursor = _page_cursor(args)
+    state = _flag_value(args, "--state")
     with StateStore() as store:
         store.migrate()
+        rows, has_more = store.list_jobs_page(
+            limit=limit,
+            before_id=cursor,
+            states=[state] if state is not None else None,
+        )
         jobs = [
-            {"id": j["id"], "type": j["type"], "state": j["state"], "priority": j["priority"]}
-            for j in store.list_jobs()
+            {
+                "id": row["id"],
+                "type": row["type"],
+                "state": row["state"],
+                "priority": row["priority"],
+                "progress": _decoded_json(row.get("progress_json")),
+                "operationId": row.get("operation_id"),
+                "correlationId": row.get("correlation_id"),
+                "errorCode": row.get("error_code"),
+                "createdAt": row.get("created_at"),
+                "updatedAt": row.get("updated_at"),
+            }
+            for row in rows
         ]
     env = build_envelope(
         "jobs",
         "list",
         status="ok" if jobs else "noop",
-        data={"jobs": jobs, "count": len(jobs)},
+        data={
+            "jobs": jobs,
+            "count": len(jobs),
+            "page": {
+                "limit": limit,
+                "hasMore": has_more,
+                "nextCursor": jobs[-1]["id"] if has_more and jobs else None,
+            },
+        },
         correlation_id=correlation_id,
     )
     return env, EXIT_OK
+
+
+def _cmd_operations_list(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    limit = _page_limit(args)
+    cursor = _page_cursor(args)
+    with StateStore() as store:
+        store.migrate()
+        rows, has_more = store.list_operations_page(limit=limit, before_id=cursor)
+    operations = [
+        {
+            "id": row["id"],
+            "state": row["state"],
+        }
+        for row in rows
+    ]
+    return (
+        build_envelope(
+            "operations",
+            "list",
+            status="ok" if operations else "noop",
+            data={
+                "operations": operations,
+                "count": len(operations),
+                "page": {
+                    "limit": limit,
+                    "hasMore": has_more,
+                    "nextCursor": (
+                        operations[-1]["id"] if has_more and operations else None
+                    ),
+                },
+            },
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
 
 
 def _cmd_state_export(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
@@ -552,10 +617,132 @@ def _flag_value(args: list[str], flag: str) -> str | None:
     return None
 
 
+def _page_limit(args: list[str]) -> int:
+    value = _flag_value(args, "--limit")
+    if value is None:
+        return 64
+    try:
+        limit = int(value)
+    except ValueError as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail="--limit precisa ser inteiro") from exc
+    if not 1 <= limit <= 256:
+        raise SteamZeroError("E-API-SCHEMA", detail="--limit precisa estar entre 1 e 256")
+    return limit
+
+
+def _page_cursor(args: list[str]) -> str | None:
+    cursor = _flag_value(args, "--cursor")
+    if cursor is not None and (len(cursor) > 128 or "\x00" in cursor):
+        raise SteamZeroError("E-API-SCHEMA", detail="cursor inválido")
+    return cursor
+
+
+def _decoded_json(value: object) -> object:
+    if not isinstance(value, str):
+        return None
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return None
+
+
+def _follow_timeout(args: list[str]) -> float | None:
+    value = _flag_value(args, "--timeout")
+    if value is None:
+        return None
+    try:
+        timeout = float(value)
+    except ValueError as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail="--timeout precisa ser número") from exc
+    if not 0 <= timeout <= 86_400:
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="--timeout precisa estar entre 0 e 86400 segundos"
+        )
+    return timeout
+
+
+def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
+    from steamzero.api import contracts
+    from steamzero.api.events import (
+        JOB_EVENT_KINDS,
+        JOB_TERMINAL_STATES,
+        OPERATION_EVENT_KINDS,
+        OPERATION_TERMINAL_STATES,
+        follow_events,
+        parse_event_cursor,
+    )
+
+    cursor = _flag_value(args, "--cursor")
+    try:
+        parse_event_cursor(cursor)
+    except ValueError as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+    timeout = _follow_timeout(args)
+    limit = _page_limit(args)
+    kinds: tuple[str, ...]
+    if domain == "jobs":
+        target = _flag_value(args, "--job-id")
+        kinds = JOB_EVENT_KINDS
+        entities = (f"job:{target}",) if target is not None else ()
+        terminal_states = JOB_TERMINAL_STATES if target is not None else frozenset()
+    elif domain == "operations":
+        target = _flag_value(args, "--operation-id")
+        kinds = OPERATION_EVENT_KINDS
+        entities = (f"operation:{target}",) if target is not None else ()
+        terminal_states = OPERATION_TERMINAL_STATES if target is not None else frozenset()
+    else:
+        raise SteamZeroError("E-CLI-USAGE", detail="--follow não é suportado nesta ação")
+
+    with StateStore() as store:
+        store.migrate()
+        if domain == "jobs" and target is not None and store.get_job(target) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {target}")
+        if (
+            domain == "operations"
+            and target is not None
+            and store.get_operation(target) is None
+        ):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"operação inexistente: {target}"
+            )
+        try:
+            for event in follow_events(
+                store,
+                cursor=cursor,
+                kinds=kinds,
+                entities=entities,
+                limit=limit,
+                idle_timeout=timeout,
+                terminal_states=terminal_states,
+            ):
+                contracts.validate(event, "event-v1.schema.json")
+                if json_out:
+                    sys.stdout.write(
+                        json.dumps(
+                            event,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        )
+                        + "\n"
+                    )
+                else:
+                    target_id = event.get("jobId") or event.get("operationId") or "-"
+                    detail = event.get("state") or event.get("progress") or ""
+                    sys.stdout.write(
+                        f"{event['seq']} {event['kind']} {target_id} "
+                        f"{json.dumps(detail, ensure_ascii=False)}\n"
+                    )
+                sys.stdout.flush()
+        except KeyboardInterrupt:
+            return EXIT_OK
+    return EXIT_OK
+
+
 #: Allowlist de ações. Chave (domínio, ação|None).
 HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("jobs", "list"): _cmd_jobs_list,
+    ("operations", "list"): _cmd_operations_list,
     ("state", "export"): _cmd_state_export,
     ("component", "list"): _cmd_component_list,
     ("component", "status"): _cmd_component_status,
@@ -620,7 +807,8 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_OK
 
     json_out = "--json" in argv
-    tokens = [a for a in argv if a != "--json"]
+    follow = "--follow" in argv
+    tokens = [a for a in argv if a not in {"--json", "--follow"}]
     domain = tokens[0]
     action: str | None = tokens[1] if len(tokens) > 1 and not tokens[1].startswith("-") else None
     rest = tokens[2:] if action is not None else tokens[1:]
@@ -643,6 +831,35 @@ def main(argv: list[str] | None = None) -> int:
         if not json_out:
             sys.stderr.write("\n" + _USAGE)
         return EXIT_USAGE
+
+    if follow:
+        if (domain, action) not in {("jobs", "list"), ("operations", "list")}:
+            env = build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error(
+                    "E-CLI-USAGE",
+                    detail="--follow é aceito somente em jobs list e operations list",
+                ),
+                correlation_id=correlation_id,
+            )
+            _emit(env, json_out=json_out)
+            return EXIT_USAGE
+        try:
+            return _run_follow(domain, rest, json_out=json_out)
+        except SteamZeroError as exc:
+            env = build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=exc.to_error_object(),
+                correlation_id=correlation_id,
+            )
+            _emit(env, json_out=json_out)
+            return EXIT_FAILURE
 
     daemon_result = _try_daemon(domain, action, rest, correlation_id)
     if daemon_result is not None:

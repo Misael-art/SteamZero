@@ -681,6 +681,7 @@ def apply(
     jrnl = journal.Journal(op_id)
     try:
         jrnl.begin(plan_id=plan_id, kind=plan.kind)
+        _record_operation_state(op_id, "applying")
         _maybe_crash("apply.begin")
 
         _stage(op_id, plan, jrnl)
@@ -697,6 +698,7 @@ def apply(
         jrnl.stage("commit")
         _maybe_crash("apply.commit")
         jrnl.commit()
+        _record_operation_state(op_id, "committed")
         _maybe_crash("apply.after-commit")
     except Exception:
         jrnl.close()
@@ -996,7 +998,22 @@ def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
     fs.remove_tree(paths.staging_for(operation_id))
     with journal.Journal(operation_id) as jrnl:
         jrnl.rollback(reason=reason)
+    _record_operation_state(operation_id, "rolled-back")
     return RollbackResult(operation_id, "rolled-back", restored)
+
+
+def _record_operation_state(operation_id: str, state: str) -> None:
+    """Espelha o journal no State Store para histórico/eventos reconectáveis."""
+    from steamzero.core.state import StateStore
+
+    with StateStore() as store:
+        store.migrate()
+        store.save_operation(
+            operation_id,
+            journal_path=str(paths.journal_path(operation_id)),
+            state=state,
+            backup_path=str(paths.backup_for(operation_id)),
+        )
 
 
 def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
