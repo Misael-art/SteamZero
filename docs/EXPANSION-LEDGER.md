@@ -73,3 +73,6 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 - Ao fim de cada track: matriz requisito → WI → contrato → teste → evidência.
 - Instalação e release somente após todos os gates finais e preflights do
   instalador canônico.
+
+Auditoria concluída do primeiro lote de produto:
+`docs/expansion/AUDIT-A1-A4.md`.
