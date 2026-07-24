@@ -57,6 +57,7 @@ from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
+from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.media_pipeline import MediaPipeline
@@ -140,9 +141,7 @@ def _resolve_primary_emulator(
     ]
     if configured_id in installed:
         return configured_id, "configured"
-    if configured_id is not None and any(
-        row.get("id") == configured_id for row in rows
-    ):
+    if configured_id is not None and any(row.get("id") == configured_id for row in rows):
         return configured_id, "configured-unavailable"
     if installed:
         return installed[0], "precedence"
@@ -287,6 +286,7 @@ class EmulationController:
         self._input_profiles = input_profiles or InputProfileManager(
             paths.config_home() / "input-profiles"
         )
+        self._bitrot = BitrotManager(monotonic=monotonic)
         self._credential_health: dict[str, dict[str, str | None]] = {}
         self._emulator_versions: dict[str, str] = {}
         self._nsz = NszToolManager()
@@ -296,12 +296,14 @@ class EmulationController:
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
         self._background_threads: dict[str, threading.Thread] = {}
+        self._owned_job_store: StateStore | None = None
         self._jobs: JobManager
         if job_manager is not None:
             self._jobs = job_manager
         else:
             job_store = store_factory()
             job_store.migrate()
+            self._owned_job_store = job_store
             self._jobs = JobManager(job_store)
         self._jobs.register("media.search", self._media_search_job_handler)
         self._jobs.register("media.global", self._media_global_job_handler)
@@ -309,6 +311,7 @@ class EmulationController:
         self._jobs.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         self._jobs.register("rom.scan", self._rom_scan_job_handler)
         self._jobs.register("library.scan", self._library_scan_job_handler)
+        self._jobs.register("library.bitrot", self._bitrot_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
             self._jobs.register(job_type, self._completed_operation_job_handler)
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
@@ -319,6 +322,11 @@ class EmulationController:
                 emulator_id, "unknown"
             ),
         )
+
+    def close(self) -> None:
+        if self._owned_job_store is not None:
+            self._owned_job_store.close()
+            self._owned_job_store = None
 
     @property
     def _roots_path(self) -> Path:
@@ -633,9 +641,7 @@ class EmulationController:
             "sessionId": session_id,
         }
 
-    def _create_tracked_game_session(
-        self, game: Mapping[str, Any], emulator_id: str
-    ) -> str:
+    def _create_tracked_game_session(self, game: Mapping[str, Any], emulator_id: str) -> str:
         session_id = ids.new_ulid()
         metadata = json.dumps(
             {
@@ -825,6 +831,19 @@ class EmulationController:
         result.update({"jobId": completed.id, "job": self._job_view(completed)})
         return result
 
+    def library_health(self) -> dict[str, Any]:
+        active = [
+            self._job_view(job)
+            for job in self._jobs.list_jobs(
+                states=["created", "queued", "blocked", "running", "paused", "cancelling"]
+            )
+            if job.type == "library.bitrot"
+        ]
+        return self._bitrot.status(self._bitrot_targets(), active_jobs=active)
+
+    def plan_library_health(self) -> dict[str, Any]:
+        return self.plan_action({"actionId": "library.health.scan"})
+
     def _scan_library_now(self, ctx: JobContext | None = None) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
         emulator_cache = EmulatorCacheReader(paths.data_home())
@@ -915,10 +934,11 @@ class EmulationController:
                 for candidate in root.rglob("*"):
                     if candidate.is_symlink():
                         counts["errors"] += 1
-                    elif (
-                        candidate.is_file()
-                        and candidate.suffix.casefold() in {".7z", ".rar", ".zip"}
-                    ):
+                    elif candidate.is_file() and candidate.suffix.casefold() in {
+                        ".7z",
+                        ".rar",
+                        ".zip",
+                    }:
                         counts["incompatible"] += 1
             except OSError:
                 counts["errors"] += 1
@@ -993,7 +1013,29 @@ class EmulationController:
     def plan_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         action = self._required_string(payload, "actionId")
         plan_extra: dict[str, Any] = {}
-        if action == "library.root.add":
+        if action == "library.health.scan":
+            games, _unidentified = self._load_library_cache()
+            if not games:
+                raise SteamZeroError(
+                    "E-CONTENT-INCOMPLETE",
+                    detail="faça uma varredura da biblioteca antes do anti-bitrot",
+                )
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.state_home(),
+                kind="bitrot.scan",
+                requirements_extra={
+                    "maxFiles": 8,
+                    "maxBytes": 2 * 1024**3,
+                    "maxSeconds": 20,
+                },
+            )
+            plan_extra["preview"] = (
+                "Verificação somente leitura de até 8 arquivos, 2 GiB e 20 segundos. "
+                "Divergências serão marcadas como suspect; nenhum conteúdo será "
+                "reparado, removido ou substituído."
+            )
+        elif action == "library.root.add":
             plan = self._plan_root_add(Path(self._required_string(payload, "path")))
         elif action.startswith("library.root.open:"):
             selected_root = self._root_from_action(action)
@@ -1507,6 +1549,7 @@ class EmulationController:
             plan.kind.startswith("emulation.")
             or plan.kind
             in {
+                "bitrot.scan",
                 "rom.scan",
                 "media.audit",
                 "switch-library.rename",
@@ -1649,6 +1692,23 @@ class EmulationController:
             completed = self._jobs.run(tracked.id)
             response["jobId"] = completed.id
             response["job"] = self._job_view(completed)
+        if plan.kind == "bitrot.scan":
+            limits = plan.requirements
+            job = self._jobs.create(
+                "library.bitrot",
+                params={
+                    "max_files": int(limits.get("maxFiles", 8)),
+                    "max_bytes": int(limits.get("maxBytes", 2 * 1024**3)),
+                    "max_seconds": float(limits.get("maxSeconds", 20)),
+                },
+                priority="maintenance",
+                created_by="ui",
+                constraints={"forbiddenDuringGameplay": True},
+            )
+            completed = self._jobs.run(job.id)
+            response["jobId"] = completed.id
+            response["job"] = self._job_view(completed)
+            response["health"] = self.library_health()
         if plan.kind == "emulation.library-roots" or plan.kind.startswith("emulation.game-delete:"):
             response["library"] = self.scan_library()
         if pending is not None and pending.kind.startswith("media-"):
@@ -1805,11 +1865,7 @@ class EmulationController:
                 )
                 configured = not missing
                 recorded = self._credential_health.get(provider, {})
-                state = (
-                    str(recorded.get("state") or "stored")
-                    if configured
-                    else "notConfigured"
-                )
+                state = str(recorded.get("state") or "stored") if configured else "notConfigured"
             except Exception:
                 configured = False
                 missing = required
@@ -1870,8 +1926,7 @@ class EmulationController:
                 detail=f"campos obrigatórios ausentes: {', '.join(missing)}",
             )
         previous = {
-            key_name: self._secret_store.retrieve(provider, key_name)
-            for key_name in values
+            key_name: self._secret_store.retrieve(provider, key_name) for key_name in values
         }
         written: list[str] = []
         try:
@@ -2074,8 +2129,7 @@ class EmulationController:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
                 detail=(
-                    "operação não pertence à exclusão, organização ou "
-                    "perfil reversível de emulação"
+                    "operação não pertence à exclusão, organização ou perfil reversível de emulação"
                 ),
             )
         result = (
@@ -2396,9 +2450,7 @@ class EmulationController:
                 and self._media_audit_path.stat().st_size <= 1024 * 1024
             ):
                 payload = json.loads(self._media_audit_path.read_text(encoding="utf-8"))
-                if payload.get("schemaVersion") == 1 and isinstance(
-                    payload.get("checkedAt"), str
-                ):
+                if payload.get("schemaVersion") == 1 and isinstance(payload.get("checkedAt"), str):
                     last_audit = str(payload["checkedAt"])
         except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
             pass
@@ -2464,9 +2516,7 @@ class EmulationController:
                 "incompatible": int(raw_counts.get("incompatible", 0)),
                 "errors": int(raw_counts.get("errors", 0)),
             }
-            last_scan = (
-                raw_stats.get("lastScan") if isinstance(raw_stats, Mapping) else None
-            )
+            last_scan = raw_stats.get("lastScan") if isinstance(raw_stats, Mapping) else None
             root_games = [
                 game
                 for game in games
@@ -2836,9 +2886,7 @@ class EmulationController:
                                 "Nenhum diretório registrado.",
                                 "attention",
                                 "Aguardando diretório",
-                                action=self._action(
-                                    "library.root.add", "Adicionar diretório"
-                                ),
+                                action=self._action("library.root.add", "Adicionar diretório"),
                             )
                         ]
                     ),
@@ -3091,9 +3139,7 @@ class EmulationController:
         )
         return plan
 
-    def _catalog_game_context(
-        self, game_id: str, payload: Mapping[str, Any]
-    ) -> dict[str, Any]:
+    def _catalog_game_context(self, game_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         requested = self._optional_string(payload, "gameId")
         if requested and requested != game_id:
             raise SteamZeroError(
@@ -3119,9 +3165,7 @@ class EmulationController:
     def _catalog_mod_candidate(self, catalog_id: str, title_id: str) -> ModCandidate:
         with self._store_factory() as store:
             store.migrate()
-            candidate = StateStoreModsAdapter(store.adapter_connection()).get_catalog(
-                catalog_id
-            )
+            candidate = StateStoreModsAdapter(store.adapter_connection()).get_catalog(catalog_id)
         if candidate is None or candidate.title_id != title_id:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
@@ -3266,9 +3310,7 @@ class EmulationController:
         game, emulator_id = self._extra_context(payload)
         with self._store_factory() as store:
             store.migrate()
-            candidate = StateStoreCheatsAdapter(store.adapter_connection()).get_catalog(
-                catalog_id
-            )
+            candidate = StateStoreCheatsAdapter(store.adapter_connection()).get_catalog(catalog_id)
         if candidate is None or candidate.title_id != game["titleId"]:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
@@ -3593,9 +3635,7 @@ class EmulationController:
     def _plan_root_remove(self, selected: Path) -> transaction.Plan:
         roots, excluded = self._root_config()
         roots = [
-            root
-            for root in roots
-            if root.resolve(strict=False) != selected.resolve(strict=False)
+            root for root in roots if root.resolve(strict=False) != selected.resolve(strict=False)
         ]
         excluded.add(selected.resolve(strict=False))
         data = {
@@ -3938,14 +3978,55 @@ class EmulationController:
     def _library_scan_job_handler(self, _job: Job, ctx: JobContext) -> dict[str, Any]:
         return self._scan_library_now(ctx)
 
+    def _bitrot_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        return self._bitrot.verify_sample(
+            self._bitrot_targets(),
+            max_files=int(job.params.get("max_files", 8)),
+            max_bytes=int(job.params.get("max_bytes", 2 * 1024**3)),
+            max_seconds=float(job.params.get("max_seconds", 20)),
+            safepoint=ctx.safepoint,
+            progress=lambda current, total, item: ctx.set_progress(
+                "rehash",
+                current=current,
+                total=total,
+                unit="files",
+                current_item=item or None,
+            ),
+        )
+
+    def _bitrot_targets(self) -> list[BitrotTarget]:
+        games, _unidentified = self._load_library_cache()
+        targets: list[BitrotTarget] = []
+        for game in games:
+            game_id = game.get("id")
+            title = game.get("name")
+            raw_path = game.get("path")
+            size = game.get("size")
+            if (
+                not isinstance(game_id, str)
+                or not isinstance(title, str)
+                or not isinstance(raw_path, str)
+                or not isinstance(size, int)
+                or size < 0
+            ):
+                continue
+            targets.append(
+                BitrotTarget(
+                    asset_id=f"emulation:{game_id}",
+                    title=title,
+                    platform_id=str(game.get("platformId") or "switch"),
+                    path=Path(raw_path),
+                    size=size,
+                )
+            )
+        return targets
+
     @staticmethod
     def _completed_operation_job_handler(job: Job, ctx: JobContext) -> dict[str, Any]:
         ctx.set_progress("commit", current=1, total=1, unit="operation")
         return {"operationId": job.params.get("operation_id")}
 
-    def _extra_catalog_search_job_handler(
-        self, job: Job, ctx: JobContext
-    ) -> dict[str, Any]:
+    def _extra_catalog_search_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
         game_id = str(job.params.get("game_id") or "")
         title_id = str(job.params.get("title_id") or "")
         if not game_id or _TITLE_ID.fullmatch(title_id) is None:
@@ -4160,9 +4241,7 @@ class EmulationController:
             store.migrate()
             return self._execute_media_search(store, job, ctx)
 
-    def _execute_media_search(
-        self, store: StateStore, job: Job, ctx: JobContext
-    ) -> dict[str, Any]:
+    def _execute_media_search(self, store: StateStore, job: Job, ctx: JobContext) -> dict[str, Any]:
         mgr = self._media_manager(store)
         params = job.params
         game_id = params["game_id"]
@@ -4204,9 +4283,7 @@ class EmulationController:
         ctx.set_progress("search", current=0, total=total_providers, unit="providers")
         for idx, provider_item in enumerate(providers):
             ctx.safepoint()
-            supported_kinds = [
-                kind for kind in kinds if kind in provider_item.supported_kinds()
-            ]
+            supported_kinds = [kind for kind in kinds if kind in provider_item.supported_kinds()]
             try:
                 results = self._search_provider_with_retry(
                     provider_item,
@@ -4396,9 +4473,7 @@ class EmulationController:
                             "title_id": title_id,
                             "title": title,
                             "media_kinds": None,
-                            "local_media_source": str(
-                                game.get("mediaSource") or "fallback"
-                            ),
+                            "local_media_source": str(game.get("mediaSource") or "fallback"),
                             "local_media_url": local_url,
                         },
                     )

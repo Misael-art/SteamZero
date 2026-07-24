@@ -106,6 +106,18 @@ Main {
                     "members": ["steam:10"]
                 }]
             },
+            "libraryHealth": {
+                "schemaVersion": 1,
+                "state": "suspect",
+                "counts": {
+                    "verified": 3,
+                    "suspect": 1,
+                    "missing": 0,
+                    "error": 0,
+                    "unavailable": 0,
+                    "unchecked": 2
+                }
+            },
             "uiContracts": {
                 "schemaVersion": 1,
                 "states": [],
@@ -254,6 +266,21 @@ Main {
             check(window.collectionManagerControl.width <= window.width - 48 + 0.5,
                   "gerenciador de coleções não pode exceder o viewport")
             window.collectionManagerControl.close()
+            window.libraryHealthPlan = {
+                "planId": "01J0000000000000000000000C",
+                "confirmToken": "fixture-health-token",
+                "preview": "Amostragem limitada e somente leitura."
+            }
+            window.libraryHealthPlanControl.open()
+            phase = 9
+            return
+        }
+        if (phase === 9) {
+            check(window.libraryHealthPlanControl.visible,
+                  "preview anti-bitrot deve abrir no handheld")
+            check(window.libraryHealthPlanControl.width <= window.width - 48 + 0.5,
+                  "preview anti-bitrot não pode exceder o viewport")
+            window.libraryHealthPlanControl.close()
             viewportIndex += 1
             if (viewportIndex >= viewports.length) {
                 Qt.exit(failures === 0 ? 0 : firstFailure)

@@ -112,6 +112,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         elif path == "/collections":
             self._send(HTTPStatus.OK, self._dashboard().collection_state())
+        elif path == "/library/health":
+            self._send(HTTPStatus.OK, self._dashboard().library_health())
         elif path == "/system/admin/health":
             self._send(HTTPStatus.OK, self._dashboard().admin_health())
         else:
@@ -239,9 +241,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/steam/open":
             return self._dashboard().open_steam(self._required_string(payload, "target"))
         if path == "/steam/game/launch":
-            return self._dashboard().launch_steam_game(
-                self._required_string(payload, "gameId")
-            )
+            return self._dashboard().launch_steam_game(self._required_string(payload, "gameId"))
         if path == "/steam/input/open":
             return self._dashboard().open_steam_input(self._required_string(payload, "gameId"))
         if path == "/steam/gameplay/plan":
@@ -329,9 +329,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "confirmToken"),
             )
         if path == "/system/operations/show":
-            return self._dashboard().operation_detail(
-                self._required_string(payload, "operationId")
-            )
+            return self._dashboard().operation_detail(self._required_string(payload, "operationId"))
         if path == "/system/operations/rollback/plan":
             return self._dashboard().plan_operation_rollback(
                 self._required_string(payload, "operationId")
@@ -348,6 +346,13 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             return self._dashboard().plan_collection_action(action)
         if path == "/collections/apply":
             return self._dashboard().apply_collection_action(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/library/health/plan":
+            return {"plan": self._dashboard().plan_library_health()}
+        if path == "/library/health/apply":
+            return self._dashboard().apply_library_health(
                 self._required_string(payload, "planId"),
                 self._required_string(payload, "confirmToken"),
             )

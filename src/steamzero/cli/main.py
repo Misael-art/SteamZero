@@ -67,6 +67,9 @@ Domínios (Fase 1):
   collections list       lista tags, favoritos e coleções inteligentes
   collections plan       revisa mutação (--action-json JSON)
   collections apply      aplica plano (--plan-id ID --confirm TOKEN)
+  health status          mostra saúde e amostragem anti-bitrot da coleção
+  health plan            revisa re-hash limitado
+  health apply           executa re-hash confirmado (--plan-id ID --confirm TOKEN)
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -251,9 +254,7 @@ def _collection_manager() -> Any:
     return CollectionManager()
 
 
-def _cmd_collections_list(
-    _args: list[str], correlation_id: str
-) -> tuple[dict[str, Any], int]:
+def _cmd_collections_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     data = _collection_manager().state()
     return (
         build_envelope(
@@ -263,9 +264,7 @@ def _cmd_collections_list(
     )
 
 
-def _cmd_collections_plan(
-    args: list[str], correlation_id: str
-) -> tuple[dict[str, Any], int]:
+def _cmd_collections_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     raw = _required_flag(args, "--action-json")
     if len(raw) > 16384:
         raise SteamZeroError("E-CONTENT-LIMIT", detail="ação excede 16 KiB")
@@ -284,15 +283,66 @@ def _cmd_collections_plan(
     )
 
 
-def _cmd_collections_apply(
-    args: list[str], correlation_id: str
-) -> tuple[dict[str, Any], int]:
+def _cmd_collections_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     plan_id = _required_flag(args, "--plan-id")
     confirm_token = _required_flag(args, "--confirm")
     data = _collection_manager().apply(plan_id, confirm_token)
     return (
         build_envelope(
             "collections",
+            "apply",
+            status=str(data["status"]),
+            data=data,
+            operation_id=str(data["operationId"]),
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _bitrot_controller() -> Any:
+    from steamzero.adapters.emulation import EmulationController
+
+    return EmulationController()
+
+
+def _cmd_health_status(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    controller = _bitrot_controller()
+    try:
+        data = controller.library_health()
+    finally:
+        controller.close()
+    return (
+        build_envelope(
+            "health", "status", status=str(data["state"]), data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_health_plan(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    controller = _bitrot_controller()
+    try:
+        data = controller.plan_library_health()
+    finally:
+        controller.close()
+    return (
+        build_envelope("health", "plan", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_health_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    controller = _bitrot_controller()
+    try:
+        data = controller.apply_action(plan_id, confirm_token)
+    finally:
+        controller.close()
+    return (
+        build_envelope(
+            "health",
             "apply",
             status=str(data["status"]),
             data=data,
@@ -603,9 +653,7 @@ def _validate_playtime_args(args: list[str], allowed: frozenset[str]) -> None:
     for index in range(0, len(args), 2):
         flag, value = args[index : index + 2]
         if flag not in allowed:
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail=f"flag de playtime não permitida: {flag}"
-            )
+            raise SteamZeroError("E-API-SCHEMA", detail=f"flag de playtime não permitida: {flag}")
         if flag in seen:
             raise SteamZeroError("E-API-SCHEMA", detail=f"flag duplicada: {flag}")
         if not value or value.startswith("-") or "\x00" in value or len(value) > 4096:
@@ -864,9 +912,7 @@ def _cmd_controls_plan(args: list[str], correlation_id: str) -> tuple[dict[str, 
     platform_id = _flag_value(args, "--platform")
     profile_id = _flag_value(args, "--profile")
     if platform_id is None or profile_id is None:
-        raise SteamZeroError(
-            "E-API-SCHEMA", detail="use --platform <id> --profile <id>"
-        )
+        raise SteamZeroError("E-API-SCHEMA", detail="use --platform <id> --profile <id>")
     manager = _input_profiles_manager()
     plan = manager.plan_activate(
         platform_id=platform_id,
@@ -897,9 +943,7 @@ def _cmd_controls_apply(args: list[str], correlation_id: str) -> tuple[dict[str,
     plan_id = _flag_value(args, "--plan-id")
     confirm = _flag_value(args, "--confirm")
     if plan_id is None or confirm is None:
-        raise SteamZeroError(
-            "E-TX-CONFIRM-REQUIRED", detail="use --plan-id <id> --confirm <token>"
-        )
+        raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="use --plan-id <id> --confirm <token>")
     result = _input_profiles_manager().apply(plan_id, confirm)
     data = {
         "status": result.status,
@@ -907,16 +951,12 @@ def _cmd_controls_apply(args: list[str], correlation_id: str) -> tuple[dict[str,
         "actions": result.actions,
     }
     return (
-        build_envelope(
-            "controls", "apply", status="ok", data=data, correlation_id=correlation_id
-        ),
+        build_envelope("controls", "apply", status="ok", data=data, correlation_id=correlation_id),
         EXIT_OK,
     )
 
 
-def _cmd_controls_rollback(
-    args: list[str], correlation_id: str
-) -> tuple[dict[str, Any], int]:
+def _cmd_controls_rollback(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     _validate_controls_args(args, frozenset({"--operation-id"}))
     operation_id = _flag_value(args, "--operation-id")
     if operation_id is None:
@@ -1043,9 +1083,7 @@ def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
     def emit_event(event: dict[str, Any]) -> None:
         contracts.validate(event, "event-v1.schema.json")
         if json_out:
-            sys.stdout.write(
-                json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
-            )
+            sys.stdout.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
         else:
             target_id = event.get("jobId") or event.get("operationId") or "-"
             detail = event.get("state") or event.get("progress") or ""
@@ -1085,14 +1123,8 @@ def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
         store.migrate()
         if domain == "jobs" and target is not None and store.get_job(target) is None:
             raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {target}")
-        if (
-            domain == "operations"
-            and target is not None
-            and store.get_operation(target) is None
-        ):
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail=f"operação inexistente: {target}"
-            )
+        if domain == "operations" and target is not None and store.get_operation(target) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"operação inexistente: {target}")
         try:
             for event in follow_events(
                 store,
@@ -1120,6 +1152,9 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("collections", "list"): _cmd_collections_list,
     ("collections", "plan"): _cmd_collections_plan,
     ("collections", "apply"): _cmd_collections_apply,
+    ("health", "status"): _cmd_health_status,
+    ("health", "plan"): _cmd_health_plan,
+    ("health", "apply"): _cmd_health_apply,
     ("events", "page"): _cmd_events_page,
     ("state", "export"): _cmd_state_export,
     ("component", "list"): _cmd_component_list,

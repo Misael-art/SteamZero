@@ -275,9 +275,7 @@ class FakeDashboard:
         self.calls.append(("operation-rollback-plan", operation_id))
         return {"plan": {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}}
 
-    def apply_operation_rollback(
-        self, plan_id: str, confirm_token: str
-    ) -> dict[str, object]:
+    def apply_operation_rollback(self, plan_id: str, confirm_token: str) -> dict[str, object]:
         self.calls.append(("operation-rollback-apply", plan_id, confirm_token))
         return {"result": {"status": "rolled-back", "verified": True}}
 
@@ -289,11 +287,21 @@ class FakeDashboard:
         self.calls.append(("collections-plan", str(action["actionId"])))
         return {"planId": "collection-plan", "confirmToken": "collection-confirm"}
 
-    def apply_collection_action(
-        self, plan_id: str, confirm_token: str
-    ) -> dict[str, object]:
+    def apply_collection_action(self, plan_id: str, confirm_token: str) -> dict[str, object]:
         self.calls.append(("collections-apply", plan_id, confirm_token))
         return {"status": "ok", "operationId": "collection-operation"}
+
+    def library_health(self) -> dict[str, object]:
+        self.calls.append(("library-health",))
+        return {"schemaVersion": 1, "state": "healthy"}
+
+    def plan_library_health(self) -> dict[str, object]:
+        self.calls.append(("library-health-plan",))
+        return {"planId": "health-plan", "confirmToken": "health-confirm"}
+
+    def apply_library_health(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("library-health-apply", plan_id, confirm_token))
+        return {"status": "committed", "operationId": "health-operation"}
 
     def admin_health(self) -> dict[str, object]:
         self.calls.append(("admin-health",))
@@ -483,11 +491,7 @@ def test_credential_bridge_complete_flow_uses_only_fake_secret_store(
     base, token, secret_store = credential_bridge
     initial = request_json(base, token, "/scraping/credential/status", {})
     providers = cast(list[dict[str, object]], initial["providers"])
-    initial_provider = next(
-        item
-        for item in providers
-        if item["id"] == "steamgriddb"
-    )
+    initial_provider = next(item for item in providers if item["id"] == "steamgriddb")
     assert initial_provider["credentialState"] == "notConfigured"
 
     saved = request_json(
@@ -761,6 +765,15 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/collections/apply",
         {"planId": "collection-plan", "confirmToken": "collection-confirm"},
     )
+    assert request_json(base, token, "/library/health")["state"] == "healthy"
+    health_plan = request_json(base, token, "/library/health/plan", {})
+    assert health_plan["plan"]["planId"] == "health-plan"
+    request_json(
+        base,
+        token,
+        "/library/health/apply",
+        {"planId": "health-plan", "confirmToken": "health-confirm"},
+    )
     assert request_json(base, token, "/system/admin/health") == {
         "available": True,
         "state": "healthy",
@@ -805,6 +818,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("collections-list",),
         ("collections-plan", "favorite.set"),
         ("collections-apply", "collection-plan", "collection-confirm"),
+        ("library-health",),
+        ("library-health-plan",),
+        ("library-health-apply", "health-plan", "health-confirm"),
         ("admin-health",),
     ]
 

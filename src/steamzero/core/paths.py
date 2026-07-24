@@ -84,6 +84,8 @@ def media_steam_view_manifest_path() -> Path:
 
 def media_steam_grid_dir(steam_user_id: str) -> Path:
     return media_views_dir() / "steam" / steam_user_id / "grid"
+
+
 def mods_dir() -> Path:
     return data_home() / "mods"
 
@@ -95,6 +97,10 @@ def config_home() -> Path:
 
 def collection_config_path() -> Path:
     return config_home() / "collections-v1.json"
+
+
+def bitrot_state_path() -> Path:
+    return state_home() / "bitrot-v1.json"
 
 
 def runtime_dir() -> Path:

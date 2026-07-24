@@ -77,6 +77,47 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     assert by_id["ryubing"]["libraryRootCount"] == 0
 
 
+def test_library_health_plan_runs_bounded_job_and_marks_suspect(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    rom = tmp_path / "Game.nsp"
+    rom.write_bytes(b"A" * 2048)
+    cache = controller._library_cache_path  # type: ignore[attr-defined]
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "games": [
+                    {
+                        "id": "game-1",
+                        "name": "Game",
+                        "state": "ready",
+                        "path": str(rom),
+                        "size": 2048,
+                    }
+                ],
+                "unidentified": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    before = controller.library_health()
+    assert before["counts"]["unchecked"] == 1
+    plan = controller.plan_library_health()
+    assert "somente leitura" in str(plan["preview"]).casefold()
+    applied = _apply(controller, plan)
+    assert applied["job"]["rawState"] == "completed"
+    assert applied["health"]["state"] == "healthy"
+
+    rom.write_bytes(b"B" * 2048)
+    second = _apply(controller, controller.plan_library_health())
+    assert second["health"]["state"] == "suspect"
+    assert second["health"]["counts"]["suspect"] == 1
+
+
 def test_runtime_profiles_publish_observed_handheld_and_dock_facts(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]
@@ -122,9 +163,7 @@ def test_runtime_profiles_publish_observed_handheld_and_dock_facts(
     }
 
 
-def test_input_profile_plan_apply_snapshot_and_rollback(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_input_profile_plan_apply_snapshot_and_rollback(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
 
     before = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["controls"]
@@ -437,9 +476,7 @@ def test_nsz_ready_state_publishes_the_existing_conversion_journey(
         },
     )
 
-    advanced = controller.snapshot({"context": {}})["platforms"][0]["areaData"][
-        "advanced"
-    ]
+    advanced = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["advanced"]
     card = next(card for card in advanced["cards"] if card["id"] == "nsz")
 
     assert card["statusLabel"] == "Pronto"
@@ -912,9 +949,7 @@ def test_library_root_read_model_open_scan_and_unregister_without_deleting_roms(
     assert opened_result["opened"] is True
     assert opened == [("/usr/bin/xdg-open", str(root))]
 
-    remove_plan = controller.plan_action(
-        {"actionId": actions["Remover da biblioteca"]["id"]}
-    )
+    remove_plan = controller.plan_action({"actionId": actions["Remover da biblioteca"]["id"]})
     _apply(controller, remove_plan)
     assert rom.read_bytes() == b"owned-game"
     assert str(root) not in controller.library_roots()
@@ -932,14 +967,13 @@ def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
     )
     root.rmdir()
 
-    rows = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
-        "libraryRoots"
-    ]
+    rows = controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"]["libraryRoots"]
     row = next(item for item in rows if item["displayPath"] == str(root))
     assert row["accessible"] is False
-    assert next(action for action in row["actions"] if action["label"] == "Abrir pasta")[
-        "enabled"
-    ] is False
+    assert (
+        next(action for action in row["actions"] if action["label"] == "Abrir pasta")["enabled"]
+        is False
+    )
     with pytest.raises(SteamZeroError) as exc:
         controller.plan_action({"actionId": "library.root.open:" + "a" * 24})
     assert exc.value.code == "E-CONTENT-UNSAFE-PATH"
@@ -959,9 +993,9 @@ def test_library_root_audit_requires_explicit_selection_and_quarantine_rolls_bac
     )
     row = next(
         item
-        for item in controller.snapshot({"context": {}})["platforms"][0]["areaData"][
-            "media"
-        ]["libraryRoots"]
+        for item in controller.snapshot({"context": {}})["platforms"][0]["areaData"]["media"][
+            "libraryRoots"
+        ]
         if item["displayPath"] == str(root)
     )
     audit_action = next(
@@ -1116,14 +1150,8 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
         def search_by_title_id(self, requested: str) -> list[ModCandidate]:
             return [mod_candidate] if requested == title_id else []
 
-        def search_by_build_id(
-            self, requested: str, requested_build: str
-        ) -> list[ModCandidate]:
-            return (
-                [mod_candidate]
-                if requested == title_id and requested_build == build_id
-                else []
-            )
+        def search_by_build_id(self, requested: str, requested_build: str) -> list[ModCandidate]:
+            return [mod_candidate] if requested == title_id and requested_build == build_id else []
 
         def refresh_catalog(self) -> int:
             return 1
@@ -1132,13 +1160,9 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
         def search_by_title_id(self, requested: str) -> list[CheatCandidate]:
             return [cheat_candidate] if requested == title_id else []
 
-        def search_by_build_id(
-            self, requested: str, requested_build: str
-        ) -> list[CheatCandidate]:
+        def search_by_build_id(self, requested: str, requested_build: str) -> list[CheatCandidate]:
             return (
-                [cheat_candidate]
-                if requested == title_id and requested_build == build_id
-                else []
+                [cheat_candidate] if requested == title_id and requested_build == build_id else []
             )
 
         def refresh_catalog(self) -> int:
@@ -1270,9 +1294,7 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
     )
     assert installed is not None and installed.install_path is not None
     installed_path = Path(installed.install_path)
-    assert installed_path.read_text(encoding="utf-8").startswith(
-        "// Vida infinita\n// BuildID:"
-    )
+    assert installed_path.read_text(encoding="utf-8").startswith("// Vida infinita\n// BuildID:")
 
 
 def test_remote_mod_catalog_rejects_zip_traversal_without_prepared_cache(
@@ -1294,9 +1316,7 @@ def test_remote_mod_catalog_rejects_zip_traversal_without_prepared_cache(
         def search_by_title_id(self, requested: str) -> list[ModCandidate]:
             return [candidate] if requested == title_id else []
 
-        def search_by_build_id(
-            self, _requested: str, _requested_build: str
-        ) -> list[ModCandidate]:
+        def search_by_build_id(self, _requested: str, _requested_build: str) -> list[ModCandidate]:
             return []
 
         def refresh_catalog(self) -> int:
@@ -1335,9 +1355,7 @@ def test_remote_mod_catalog_rejects_zip_traversal_without_prepared_cache(
     package = io.BytesIO()
     with zipfile.ZipFile(package, "w") as archive:
         archive.writestr("../escape.ips", b"unsafe")
-    monkeypatch.setattr(
-        emulation, "fetch_bytes", lambda *_args, **_kwargs: package.getvalue()
-    )
+    monkeypatch.setattr(emulation, "fetch_bytes", lambda *_args, **_kwargs: package.getvalue())
     response = _apply(
         controller,
         controller.plan_action(
@@ -1367,9 +1385,7 @@ def test_global_media_overwrite_requires_explicit_flag_and_returns_job(
 
     response = _apply(
         controller,
-        controller.plan_action(
-            {"actionId": "media.global.overwrite", "overwrite": True}
-        ),
+        controller.plan_action({"actionId": "media.global.overwrite", "overwrite": True}),
     )
 
     assert response["job"]["rawState"] in {"queued", "running", "completed"}
@@ -1434,9 +1450,7 @@ def test_global_media_overwrite_collects_and_optimizes_first_candidate(
 
     response = _apply(
         controller,
-        controller.plan_action(
-            {"actionId": "media.global.overwrite", "overwrite": True}
-        ),
+        controller.plan_action({"actionId": "media.global.overwrite", "overwrite": True}),
     )
 
     completed = _wait_job(controller, str(response["jobId"]))
@@ -1479,9 +1493,7 @@ def test_global_media_apply_returns_before_background_provider_finishes(
 
     controller = _controller(monkeypatch, tmp_path)
     _configured_game(controller, tmp_path)
-    (tmp_path / "owned-roms" / "Second [0100ABCDEF124000].nsp").write_bytes(
-        b"second-owned-game"
-    )
+    (tmp_path / "owned-roms" / "Second [0100ABCDEF124000].nsp").write_bytes(b"second-owned-game")
     controller.scan_library()
     controller._media_providers = (SlowProvider(),)  # type: ignore[attr-defined]
 
@@ -1501,9 +1513,7 @@ def test_global_media_apply_returns_before_background_provider_finishes(
     assert _wait_job(controller, str(response["jobId"])).state == "cancelled"
 
 
-def test_media_cache_open_uses_only_managed_real_directory(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_media_cache_open_uses_only_managed_real_directory(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     from steamzero.core import paths
 
     controller = _controller(monkeypatch, tmp_path)
@@ -1524,9 +1534,7 @@ def test_media_cache_open_uses_only_managed_real_directory(
     assert calls == [("/usr/bin/xdg-open", str(paths.media_dir().resolve()))]
 
 
-def test_global_media_job_cancel_and_retry_are_persistent(
-    monkeypatch, tmp_path: Path
-) -> None:  # type: ignore[no-untyped-def]
+def test_global_media_job_cancel_and_retry_are_persistent(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
     job = controller._jobs.create(  # type: ignore[attr-defined]
         "media.global",

@@ -20,7 +20,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | A1 | Playtime, sessões interrompidas e continuar jogando | feat-playtime-v1 | verified-dev | `docs/expansion/WI-A1.md` |
 | A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | verified-dev | `docs/expansion/WI-A2.md` |
 | A3 | Tags, favoritos e coleções inteligentes | feat-collection-v1 | verified-dev | `docs/expansion/WI-A3.md` |
-| A4 | Anti-bitrot limitado, re-hash e estado suspect | feat-bitrot-v1 | pending | — |
+| A4 | Anti-bitrot limitado, re-hash e estado suspect | feat-bitrot-v1 | verified-dev | `docs/expansion/WI-A4.md` |
 | A5 | Plataformas cloud declarativas e atalhos reversíveis | platform-manifest-v1 | pending | — |
 | A6 | Sessões co-op por QR atrás de feature flag | co-op-session-v1 | pending | — |
 | A7 | MediaHub canônico masters → optimized → views | media-registry-v1 | pending | — |

@@ -54,6 +54,7 @@ def _title(kind: str) -> str:
     prefixes = (
         ("component.", "Componente"),
         ("collections.", "Coleções e favoritos"),
+        ("bitrot.", "Saúde da coleção"),
         ("diagnostics.export.", "Exportação de diagnóstico"),
         ("emulation.game-delete:", "Exclusão de jogo"),
         ("emulation.", "Emulação"),

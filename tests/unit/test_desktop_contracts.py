@@ -132,6 +132,8 @@ def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
         "operations.rollback.apply",
         "collections.plan",
         "collections.apply",
+        "library.health.plan",
+        "library.health.apply",
     } <= static_action_ids
 
 

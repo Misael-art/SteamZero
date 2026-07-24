@@ -406,6 +406,54 @@ def test_daemon_collections_roundtrip_is_closed_and_reversible(
     assert state["favorites"] == []
 
 
+def test_daemon_library_health_roundtrip_uses_bounded_job(
+    inprocess_core: Path,
+    tmp_path: Path,
+) -> None:
+    del inprocess_core
+    rom = tmp_path / "Game.nsp"
+    rom.write_bytes(b"synthetic" * 256)
+    cache = tmp_path / "data" / "steamzero" / "emulation-library-cache-v1.json"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "unidentified": 0,
+                "games": [
+                    {
+                        "id": "game-health",
+                        "name": "Game",
+                        "state": "ready",
+                        "path": str(rom),
+                        "size": rom.stat().st_size,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    before = invoke(
+        "health.status",
+        {"correlationId": "01J000000000000000000000AS"},
+    ).envelope["data"]
+    assert before["counts"]["unchecked"] == 1
+    plan = invoke(
+        "health.plan",
+        {"correlationId": "01J000000000000000000000AT"},
+    ).envelope["data"]
+    result = invoke(
+        "health.apply",
+        {
+            "planId": plan["planId"],
+            "confirmToken": plan["confirmToken"],
+            "correlationId": "01J000000000000000000000AV",
+        },
+    ).envelope["data"]
+    assert result["job"]["rawState"] == "completed"
+    assert result["health"]["state"] == "healthy"
+
+
 def test_event_subscription_streams_valid_events_and_completes(
     inprocess_core: Path,
 ) -> None:

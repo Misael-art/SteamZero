@@ -26,7 +26,7 @@ def _value(field_name: str) -> str:
         "scope": "platform",
         "scopeId": "game-1",
         "orientation": "landscape",
-        "actionJson": "{\"actionId\":\"favorite.set\",\"gameRef\":\"steam:10\",\"value\":true}",
+        "actionJson": '{"actionId":"favorite.set","gameRef":"steam:10","value":true}',
     }
     return values[field_name]
 

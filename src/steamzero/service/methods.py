@@ -164,6 +164,15 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
         (_PLAN_ID, _CONFIRM),
         mutation=True,
     ),
+    MethodSpec("health.status", "health", "status"),
+    MethodSpec("health.plan", "health", "plan", mutation=True),
+    MethodSpec(
+        "health.apply",
+        "health",
+        "apply",
+        (_PLAN_ID, _CONFIRM),
+        mutation=True,
+    ),
     MethodSpec("desktop.status", "desktop", "status"),
     MethodSpec(
         "desktop.plan",

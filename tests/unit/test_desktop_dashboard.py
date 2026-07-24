@@ -180,11 +180,7 @@ def test_playtime_enrichment_turns_dead_active_steam_session_into_recovery() -> 
 def test_collection_catalog_unifies_sources_and_enriches_recent_games() -> None:
     catalog = DesktopDashboard._collection_games(  # type: ignore[attr-defined]
         steam_games=[{"id": "10", "name": "Steam Game"}],
-        emulation={
-            "platforms": [
-                {"id": "switch", "games": [{"id": "abc", "name": "Emulated"}]}
-            ]
-        },
+        emulation={"platforms": [{"id": "switch", "games": [{"id": "abc", "name": "Emulated"}]}]},
     )
     assert [item["gameRef"] for item in catalog] == ["steam:10", "emulation:abc"]
     playtime = {
@@ -254,6 +250,8 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
     assert snapshot["playtime"]["schemaVersion"] == 1
     assert snapshot["playtime"]["games"] == []
+    assert snapshot["libraryHealth"]["state"] == "unchecked"
+    assert snapshot["libraryHealth"]["counts"]["unchecked"] == 0
     assert snapshot["emulation"]["schemaVersion"] == 1
     assert snapshot["sync"]["mode"] == "read-only"
     assert snapshot["sync"]["provider"]["configured"] is False

@@ -240,6 +240,7 @@ def plan_write_files(
     ttl_s: int = _DEFAULT_TTL_S,
     removals: set[Path] | None = None,
     skip_unchanged: bool = False,
+    requirements_extra: dict[str, Any] | None = None,
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -296,6 +297,7 @@ def plan_write_files(
         preconditions.append(Precondition(target=str(resolved), fingerprint=fingerprint))
         total_existing += resolved.stat().st_size
     requirements = {"spaceBytes": 2 * total_new + total_existing + _SPACE_MARGIN}
+    requirements.update(requirements_extra or {})
     now = _now()
     plan = Plan(
         plan_id=ids.new_ulid(),

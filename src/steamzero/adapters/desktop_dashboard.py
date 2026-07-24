@@ -419,6 +419,26 @@ class DesktopDashboard:
             # Um provider defeituoso não derruba o dashboard. O builder padrão
             # sem probe produz estado unverified e mantém a navegação disponível.
             emulation = build_switch_workspace()
+        try:
+            library_health = self._emulation.library_health()
+        except Exception:
+            library_health = {
+                "schemaVersion": 1,
+                "generatedAt": None,
+                "state": "unchecked",
+                "lastRun": None,
+                "counts": {
+                    "verified": 0,
+                    "suspect": 0,
+                    "missing": 0,
+                    "error": 0,
+                    "unavailable": 0,
+                    "unchecked": 0,
+                },
+                "items": [],
+                "activeJobs": [],
+                "limits": {"maxFiles": 8, "maxBytes": 2 * 1024**3, "maxSeconds": 20},
+            }
 
         try:
             reduced_motion = self._reduced_motion_probe()
@@ -491,6 +511,7 @@ class DesktopDashboard:
             "emulation": emulation,
             "playtime": playtime,
             "collections": collections,
+            "libraryHealth": library_health,
         }
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
@@ -556,9 +577,7 @@ class DesktopDashboard:
     def plan_operation_rollback(self, operation_id: str) -> dict[str, Any]:
         return self._operation_history.plan_rollback(operation_id)
 
-    def apply_operation_rollback(
-        self, plan_id: str, confirm_token: str
-    ) -> dict[str, Any]:
+    def apply_operation_rollback(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._operation_history.apply_rollback(plan_id, confirm_token)
 
     def collection_state(self) -> dict[str, Any]:
@@ -567,10 +586,17 @@ class DesktopDashboard:
     def plan_collection_action(self, action: dict[str, Any]) -> dict[str, Any]:
         return self._collections.plan(action)
 
-    def apply_collection_action(
-        self, plan_id: str, confirm_token: str
-    ) -> dict[str, Any]:
+    def apply_collection_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._collections.apply(plan_id, confirm_token)
+
+    def library_health(self) -> dict[str, Any]:
+        return self._emulation.library_health()
+
+    def plan_library_health(self) -> dict[str, Any]:
+        return self._emulation.plan_library_health()
+
+    def apply_library_health(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.apply_action(plan_id, confirm_token)
 
     def _rollback_component_for_history(self, operation_id: str) -> Any:
         with self._store_factory() as store:
@@ -751,9 +777,7 @@ class DesktopDashboard:
         for game in games:
             if not isinstance(game, dict):
                 continue
-            enrichment = catalog.get(
-                (str(game.get("source") or ""), str(game.get("gameId") or ""))
-            )
+            enrichment = catalog.get((str(game.get("source") or ""), str(game.get("gameId") or "")))
             if enrichment is None:
                 continue
             if enrichment["title"]:
@@ -781,9 +805,7 @@ class DesktopDashboard:
                 }
 
     @staticmethod
-    def _collection_games(
-        *, steam_games: object, emulation: object
-    ) -> list[dict[str, Any]]:
+    def _collection_games(*, steam_games: object, emulation: object) -> list[dict[str, Any]]:
         games: list[dict[str, Any]] = []
         if isinstance(steam_games, list):
             for game in steam_games:
@@ -798,9 +820,7 @@ class DesktopDashboard:
                     )
         if isinstance(emulation, dict) and isinstance(emulation.get("platforms"), list):
             for platform in emulation["platforms"]:
-                if not isinstance(platform, dict) or not isinstance(
-                    platform.get("games"), list
-                ):
+                if not isinstance(platform, dict) or not isinstance(platform.get("games"), list):
                     continue
                 platform_id = str(platform.get("id") or "unknown")
                 for game in platform["games"]:
@@ -816,9 +836,7 @@ class DesktopDashboard:
         return games
 
     @staticmethod
-    def _enrich_collection_state(
-        playtime: dict[str, Any], collections: dict[str, Any]
-    ) -> None:
+    def _enrich_collection_state(playtime: dict[str, Any], collections: dict[str, Any]) -> None:
         favorites = set(collections.get("favorites", []))
         assignments = {
             item["gameRef"]: item["tagIds"]

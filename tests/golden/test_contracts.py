@@ -40,6 +40,7 @@ def test_registry_loads_all_schemas() -> None:
         "feat-playtime-v1.schema.json",
         "feat-operation-history-v1.schema.json",
         "feat-collection-v1.schema.json",
+        "feat-bitrot-v1.schema.json",
     } <= got
 
 
@@ -83,6 +84,47 @@ def test_live_plan_validates(state: Path) -> None:
 def test_bundled_input_profile_validates() -> None:
     profile = InputProfileRegistry.bundled().get("standard-gamepad")
     contracts.validate(profile.to_dict(), "retro-input-profile-v1.schema.json")
+
+
+@pytest.mark.golden
+def test_bitrot_sample_validates() -> None:
+    contracts.validate(
+        {
+            "schemaVersion": 1,
+            "generatedAt": "2026-07-23T12:00:00+00:00",
+            "state": "suspect",
+            "lastRun": {
+                "startedAt": "2026-07-23T11:59:58+00:00",
+                "finishedAt": "2026-07-23T12:00:00+00:00",
+                "checked": 1,
+                "bytesRead": 1024,
+                "suspect": 1,
+                "limited": True,
+            },
+            "counts": {
+                "verified": 3,
+                "suspect": 1,
+                "missing": 0,
+                "error": 0,
+                "unavailable": 0,
+                "unchecked": 2,
+            },
+            "items": [
+                {
+                    "assetId": "emulation:game-1",
+                    "title": "Synthetic",
+                    "platformId": "switch",
+                    "state": "suspect",
+                    "size": 1024,
+                    "checkedAt": "2026-07-23T12:00:00+00:00",
+                    "reason": "Hash diverge da baseline; o arquivo não foi alterado.",
+                }
+            ],
+            "activeJobs": [],
+            "limits": {"maxFiles": 8, "maxBytes": 2147483648, "maxSeconds": 20},
+        },
+        "feat-bitrot-v1.schema.json",
+    )
 
 
 @pytest.mark.golden

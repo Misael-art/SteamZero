@@ -76,6 +76,7 @@ ApplicationWindow {
     property alias diagnosticsPreviewControl: diagnosticsPreviewDialog
     property alias operationRollbackControl: operationRollbackDialog
     property alias collectionManagerControl: collectionManageDialog
+    property alias libraryHealthPlanControl: libraryHealthPlanDialog
     property alias credentialDialogControl: credentialDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
@@ -96,6 +97,9 @@ ApplicationWindow {
         "dashboard": {
             "components": [], "steam": [], "sync": {}, "doctor": {"checks": []},
             "playtime": {"schemaVersion": 1, "totalPlayedSeconds": 0, "games": []},
+            "libraryHealth": {"schemaVersion": 1, "state": "unchecked",
+                "counts": {"verified": 0, "suspect": 0, "missing": 0,
+                    "error": 0, "unavailable": 0, "unchecked": 0}},
             "uiContracts": {"schemaVersion": 1, "states": [], "actions": [], "byId": {}}
         }
     })
@@ -176,6 +180,12 @@ ApplicationWindow {
         && desktopStatus.dashboard.collections
         ? desktopStatus.dashboard.collections
         : ({"schemaVersion": 1, "favorites": [], "tags": [], "collections": []})
+    readonly property var libraryHealthData: desktopStatus.dashboard
+        && desktopStatus.dashboard.libraryHealth
+        ? desktopStatus.dashboard.libraryHealth
+        : ({"schemaVersion": 1, "state": "unchecked",
+            "counts": {"verified": 0, "suspect": 0, "missing": 0,
+                "error": 0, "unavailable": 0, "unchecked": 0}})
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     property var liveTasks: null
@@ -209,6 +219,7 @@ ApplicationWindow {
     property var operationDetail: null
     property var operationRollbackPlan: null
     property var collectionPlan: null
+    property var libraryHealthPlan: null
     property string diagnosticsKind: "state"
     property string apiUrl: ""
     property string apiToken: ""
@@ -242,6 +253,7 @@ ApplicationWindow {
     function taskLabel(type) {
         return ({
             "library.scan": qsTr("Varredura da biblioteca"),
+            "library.bitrot": qsTr("Verificação anti-bitrot"),
             "rom.scan": qsTr("Descoberta de ROMs"),
             "media.search": qsTr("Busca de mídia"),
             "ui.action": qsTr("Ação da interface"),
@@ -318,6 +330,13 @@ ApplicationWindow {
         })
     }
 
+    function planLibraryHealth() {
+        requestAction("library.health.plan", {}, function(response) {
+            root.libraryHealthPlan = response.plan
+            libraryHealthPlanDialog.open()
+        })
+    }
+
     function taskResultSummary(job) {
         const result = job && job.result ? job.result : {}
         const progress = job && job.progress ? job.progress : {}
@@ -330,6 +349,10 @@ ApplicationWindow {
             return qsTr("%1 jogo(s); %2 sem identificação; %3 erro(s)")
                 .arg(result.games || 0).arg(result.unidentified || 0)
                 .arg(result.errors ? result.errors.length : 0)
+        if (job.type === "library.bitrot")
+            return qsTr("%1 arquivo(s), %2 byte(s), %3 suspeito(s)")
+                .arg(result.checked || 0).arg(result.bytesRead || 0)
+                .arg(result.suspect || 0)
         if (job.type === "media.search") {
             const providerErrors = result.provider_errors || {}
             const degraded = Object.keys(providerErrors).length
@@ -1960,6 +1983,63 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: libraryHealthPlanDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: {
+            root.libraryHealthPlan = null
+            root.restoreDialogFocus()
+        }
+        title: qsTr("Revisar verificação anti-bitrot")
+        modal: true
+        width: Math.min(root.width - 48, 640)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanDarkColor
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: root.libraryHealthPlan ? root.libraryHealthPlan.preview : ""
+                color: root.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("A leitura é limitada e não altera ROMs. Um resultado suspeito exige inspeção; não há reparo automático.")
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: libraryHealthPlanDialog.close()
+                }
+                Button {
+                    text: qsTr("Verificar agora")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    enabled: root.libraryHealthPlan !== null
+                    onClicked: root.requestAction("library.health.apply", {
+                        "planId": root.libraryHealthPlan.planId,
+                        "confirmToken": root.libraryHealthPlan.confirmToken
+                    }, function() {
+                        libraryHealthPlanDialog.close()
+                        root.refreshStatus(qsTr("Verificação anti-bitrot concluída"))
+                    })
+                }
+            }
+        }
+    }
+
     Drawer {
         id: navigationDrawer
         edge: Qt.LeftEdge
@@ -2944,6 +3024,61 @@ ApplicationWindow {
                                                 text: qsTr("%1 jogo(s)").arg(modelData.members.length)
                                                 color: root.cyanColor
                                             }
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    Layout.minimumHeight: 92
+                                    color: root.surfaceColor
+                                    radius: 8
+                                    border.color: root.libraryHealthData.state === "suspect"
+                                        ? root.amberColor : root.borderColor
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 12
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            Label {
+                                                text: qsTr("Saúde da coleção")
+                                                color: root.textColor
+                                                font.pixelSize: 20
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                text: root.libraryHealthData.state === "suspect"
+                                                    ? qsTr("%1 suspeito(s), %2 ausente(s) ou com erro")
+                                                        .arg(root.libraryHealthData.counts.suspect || 0)
+                                                        .arg((root.libraryHealthData.counts.missing || 0)
+                                                            + (root.libraryHealthData.counts.error || 0))
+                                                    : root.libraryHealthData.state === "healthy"
+                                                        ? qsTr("%1 arquivo(s) verificado(s)")
+                                                            .arg(root.libraryHealthData.counts.verified || 0)
+                                                        : qsTr("%1 arquivo(s) aguardando amostragem")
+                                                            .arg(root.libraryHealthData.counts.unchecked || 0)
+                                                color: root.libraryHealthData.state === "suspect"
+                                                    ? root.amberColor : root.mutedColor
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                        Button {
+                                            readonly property int availableItems:
+                                                (root.libraryHealthData.counts.verified || 0)
+                                                + (root.libraryHealthData.counts.unchecked || 0)
+                                                + (root.libraryHealthData.counts.suspect || 0)
+                                                + (root.libraryHealthData.counts.missing || 0)
+                                                + (root.libraryHealthData.counts.error || 0)
+                                            text: availableItems > 0
+                                                ? qsTr("Verificar amostra")
+                                                : qsTr("Varrer biblioteca primeiro")
+                                            enabled: availableItems > 0
+                                            Layout.minimumHeight: 48
+                                            Accessible.name: qsTr("Revisar verificação anti-bitrot limitada")
+                                            onClicked: root.planLibraryHealth()
                                         }
                                     }
                                 }
