@@ -76,3 +76,6 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 
 Auditoria concluída do primeiro lote de produto:
 `docs/expansion/AUDIT-A1-A4.md`.
+
+Auditoria concluída do track Gaming tools G0–G3:
+`docs/expansion/AUDIT-G0-G3.md`.
