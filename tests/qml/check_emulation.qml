@@ -150,6 +150,15 @@ Window {
         object.syncPublishedSelection()
         check(object.selectedEmulator.id === "citron",
               "emulador primário publicado deve selecionar o contexto inicial")
+        const primaryCard = object.overviewCards().find(function(card) {
+            return card.id === "health-emulator"
+        })
+        check(primaryCard.statusLabel.indexOf("Citron") >= 0,
+              "visão geral deve nomear o emulador primário publicado")
+        check(primaryCard.statusLabel.indexOf("Padrão não definido") < 0,
+              "visão geral não pode manter placeholder após receber a preferência")
+        check(primaryCard.state === "ready",
+              "emulador primário pronto deve produzir estado pronto no card")
         check(object.gameArtwork(object.games[0]) === "../assets/switch.svg",
               "ROM sem mídia deve usar um único fallback da própria plataforma")
         object.destroy()

@@ -9,6 +9,8 @@
 - payload inclui `primaryEmulator`, origem da resolução e IDs configurado/efetivo;
 - QML seleciona o emulador primário no primeiro snapshot e preserva seleção local
   em refresh posterior da mesma plataforma;
+- card de saúde global apresenta nome, estado e origem reais do primário, sem o
+  placeholder contraditório “Padrão não definido”;
 - jogos Switch publicam `platformId` e um único `fallbackArtworkUrl`;
 - `switch.svg` é um fallback original, único e atribuído; cards não duplicam SVG
   em diretórios de jogos ou emuladores.

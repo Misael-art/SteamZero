@@ -788,8 +788,18 @@ Item {
             "reason": qsTr("A varredura ainda não foi publicada pelo serviço.")
         })
         const installed = installedEmulatorCount()
-        const emulatorName = selectedEmulator.id ? selectedEmulator.name
-            : qsTr("Nenhum selecionado")
+        const primary = selectedPlatform.primaryEmulator || ({})
+        const primaryName = primary.name || (selectedEmulator.id
+            ? selectedEmulator.name : qsTr("Nenhum selecionado"))
+        const primaryReady = primary.state === "ready" || primary.state === "installed"
+        const primaryDetail = primary.source === "configured"
+            ? qsTr("Preferência configurada e usada pelo Play. %1 emulador(es) instalado(s).")
+                .arg(installed)
+            : primary.source === "configured-unavailable"
+                ? qsTr("Preferência configurada, mas indisponível. Instale ou escolha outro emulador.")
+                : primary.source === "precedence"
+                    ? qsTr("Escolhido automaticamente pela precedência dos emuladores instalados.")
+                    : qsTr("Instale um emulador ou defina uma preferência para o Play.")
         return [
             {
                 "id": "health-keys", "title": qsTr("Keys"),
@@ -829,10 +839,12 @@ Item {
             {
                 "id": "health-emulator", "title": qsTr("Emulador principal"),
                 "icon": "applications-games",
-                "state": installed > 0 ? "attention" : "missing",
-                "statusLabel": qsTr("Padrão não definido"),
-                "detail": qsTr("%1 instalado(s). Em foco: %2. O serviço ainda não publica a preferência usada pelo Play.")
-                    .arg(installed).arg(emulatorName),
+                "state": primary.id ? (primaryReady ? "ready" : "attention") : "missing",
+                "statusLabel": primary.id
+                    ? qsTr("%1 · %2").arg(primaryName)
+                        .arg(primary.statusLabel || qsTr("Estado não observado"))
+                    : qsTr("Nenhum emulador definido"),
+                "detail": primaryDetail,
                 "metric": String(installed),
                 "actions": [{
                     "label": qsTr("Escolher e gerenciar"), "targetScope": "emulator",
