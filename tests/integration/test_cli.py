@@ -582,6 +582,75 @@ def test_desktop_apply_requires_confirm(capsys: pytest.CaptureFixture[str]) -> N
     assert env["error"]["code"] == "E-API-SCHEMA"
 
 
+def test_cloud_cli_uses_closed_controller_contracts(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from steamzero.adapters import emulation
+
+    calls: list[tuple[str, ...]] = []
+
+    class Controller:
+        def cloud_platforms(self) -> list[dict[str, object]]:
+            calls.append(("list",))
+            return [{"id": "geforce-now", "cloud": {"serviceAvailability": "unverified"}}]
+
+        def launch_cloud(self, platform_id: str) -> dict[str, object]:
+            calls.append(("launch", platform_id))
+            return {"status": "started", "platformId": platform_id}
+
+        def plan_action(self, payload: dict[str, object]) -> dict[str, object]:
+            calls.append(("plan", str(payload["actionId"])))
+            return {"planId": "cloud-plan", "confirmToken": "cloud-confirm"}
+
+        def apply_action(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+            calls.append(("apply", plan_id, confirm_token))
+            return {"status": "committed", "operationId": "cloud-operation"}
+
+        def close(self) -> None:
+            calls.append(("close",))
+
+    monkeypatch.setattr(emulation, "EmulationController", Controller)
+
+    assert cli.main(["cloud", "list", "--json"]) == cli.EXIT_OK
+    listed = json.loads(capsys.readouterr().out)
+    assert listed["data"]["platforms"][0]["id"] == "geforce-now"
+
+    assert cli.main(["cloud", "launch", "--platform", "xbox-cloud-gaming", "--json"]) == cli.EXIT_OK
+    launched = json.loads(capsys.readouterr().out)
+    assert launched["data"]["platformId"] == "xbox-cloud-gaming"
+
+    assert cli.main(["cloud", "plan", "--json"]) == cli.EXIT_OK
+    planned = json.loads(capsys.readouterr().out)
+    assert planned["data"]["planId"] == "cloud-plan"
+
+    assert (
+        cli.main(
+            [
+                "cloud",
+                "apply",
+                "--plan-id",
+                "cloud-plan",
+                "--confirm",
+                "cloud-confirm",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    applied = json.loads(capsys.readouterr().out)
+    assert applied["data"]["operationId"] == "cloud-operation"
+    assert calls == [
+        ("list",),
+        ("close",),
+        ("launch", "xbox-cloud-gaming"),
+        ("close",),
+        ("plan", "cloud.shortcuts.sync"),
+        ("close",),
+        ("apply", "cloud-plan", "cloud-confirm"),
+        ("close",),
+    ]
+
+
 def test_desktop_status_surfaces_generic_owner_blocker(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

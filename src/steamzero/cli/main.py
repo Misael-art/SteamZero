@@ -79,6 +79,10 @@ Domínios (Fase 1):
   desktop ui             abre a central Qt/QML opcional
   emulation workspace    read model da central de emulação Switch
   emulation launch       abre um jogo escaneado (--game-id ID)
+  cloud list             lista serviços declarados e estado local
+  cloud launch           abre URL allowlisted (--platform ID)
+  cloud plan             revisa publicação dos atalhos Steam
+  cloud apply            aplica publicação (--plan-id ID --confirm TOKEN)
   controls profiles      lista perfis e seleção ativa (--platform ID)
   controls plan          revisa seleção de perfil (--platform ID --profile ID)
   controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
@@ -850,7 +854,13 @@ def _cmd_emulation_launch(args: list[str], correlation_id: str) -> tuple[dict[st
     game_id = _flag_value(args, "--game-id")
     if game_id is None:
         raise SteamZeroError("E-API-SCHEMA", detail="use --game-id <id>")
-    data = EmulationController().launch_game(game_id)
+    controller = EmulationController()
+    try:
+        data = controller.launch_game(game_id)
+    finally:
+        close = getattr(controller, "close", None)
+        if callable(close):
+            close()
     return (
         build_envelope(
             "emulation",
@@ -858,6 +868,71 @@ def _cmd_emulation_launch(args: list[str], correlation_id: str) -> tuple[dict[st
             status="ok",
             data=data,
             correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_cloud_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.emulation import EmulationController
+
+    controller = EmulationController()
+    try:
+        data = {"platforms": controller.cloud_platforms()}
+    finally:
+        controller.close()
+    return (
+        build_envelope("cloud", "list", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_cloud_launch(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.emulation import EmulationController
+
+    platform_id = _flag_value(args, "--platform")
+    if platform_id is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --platform <id>")
+    controller = EmulationController()
+    try:
+        data = controller.launch_cloud(platform_id)
+    finally:
+        controller.close()
+    return (
+        build_envelope("cloud", "launch", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_cloud_plan(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.emulation import EmulationController
+
+    controller = EmulationController()
+    try:
+        data = controller.plan_action({"actionId": "cloud.shortcuts.sync"})
+    finally:
+        controller.close()
+    return (
+        build_envelope("cloud", "plan", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_cloud_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.emulation import EmulationController
+
+    plan_id = _flag_value(args, "--plan-id")
+    confirm_token = _flag_value(args, "--confirm")
+    if plan_id is None or confirm_token is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --plan-id <id> --confirm <token>")
+    controller = EmulationController()
+    try:
+        data = controller.apply_action(plan_id, confirm_token)
+    finally:
+        controller.close()
+    return (
+        build_envelope(
+            "cloud", "apply", status=str(data["status"]), data=data, correlation_id=correlation_id
         ),
         EXIT_OK,
     )
@@ -1178,6 +1253,10 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("desktop", "ui"): _cmd_desktop_ui,
     ("emulation", "workspace"): _cmd_emulation_workspace,
     ("emulation", "launch"): _cmd_emulation_launch,
+    ("cloud", "list"): _cmd_cloud_list,
+    ("cloud", "launch"): _cmd_cloud_launch,
+    ("cloud", "plan"): _cmd_cloud_plan,
+    ("cloud", "apply"): _cmd_cloud_apply,
     ("controls", "profiles"): _cmd_controls_profiles,
     ("controls", "plan"): _cmd_controls_plan,
     ("controls", "apply"): _cmd_controls_apply,

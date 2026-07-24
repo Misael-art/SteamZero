@@ -529,6 +529,9 @@ class DesktopDashboard:
     def launch_emulation_game(self, game_id: str) -> dict[str, Any]:
         return self._emulation.launch_game(game_id)
 
+    def launch_cloud_platform(self, platform_id: str) -> dict[str, Any]:
+        return self._emulation.launch_cloud(platform_id)
+
     def plan_emulation_action(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._emulation.plan_action(payload)
 

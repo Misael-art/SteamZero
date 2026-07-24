@@ -215,6 +215,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/emulation/game/launch":
             return self._dashboard().launch_emulation_game(self._required_string(payload, "gameId"))
+        if path == "/cloud/launch":
+            return self._dashboard().launch_cloud_platform(
+                self._required_string(payload, "platformId")
+            )
         if path == "/emulation/action/plan":
             return {"plan": self._dashboard().plan_emulation_action(payload)}
         if path == "/emulation/action/apply":

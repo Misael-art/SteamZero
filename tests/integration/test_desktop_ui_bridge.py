@@ -178,6 +178,10 @@ class FakeDashboard:
         self.calls.append(("emulation-game-launch", game_id))
         return {"status": "started", "gameId": game_id}
 
+    def launch_cloud_platform(self, platform_id: str) -> dict[str, object]:
+        self.calls.append(("cloud-launch", platform_id))
+        return {"status": "started", "platformId": platform_id}
+
     def plan_emulation_action(self, payload: dict[str, object]) -> dict[str, object]:
         self.calls.append(("emulation-action-plan", str(payload["actionId"])))
         return {"planId": "emulation-plan", "confirmToken": "emulation-confirm"}
@@ -642,6 +646,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     request_json(base, token, "/emulation/emulator/launch", {"emulatorId": "eden"})
     request_json(base, token, "/emulation/emulator/stop", {"emulatorId": "eden"})
     request_json(base, token, "/emulation/game/launch", {"gameId": "game-1"})
+    request_json(base, token, "/cloud/launch", {"platformId": "xbox-cloud-gaming"})
     emulation_plan = request_json(
         base,
         token,
@@ -787,6 +792,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("emulation-emulator-launch", "eden"),
         ("emulation-emulator-stop", "eden"),
         ("emulation-game-launch", "game-1"),
+        ("cloud-launch", "xbox-cloud-gaming"),
         ("emulation-action-plan", "storage.recover"),
         ("emulation-action-apply", "emulation-plan", "emulation-confirm"),
         ("emulation-action-rollback", "emulation-operation"),

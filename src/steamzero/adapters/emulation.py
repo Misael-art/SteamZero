@@ -58,6 +58,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
+from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.media_pipeline import MediaPipeline
@@ -253,6 +254,7 @@ class EmulationController:
         mod_catalog: ModCatalogPort | None = None,
         cheat_catalog: CheatCatalogPort | None = None,
         input_profiles: InputProfileManager | None = None,
+        cloud_platforms: CloudPlatformService | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -285,6 +287,11 @@ class EmulationController:
         self._cheat_catalog = cheat_catalog or NsecmSource()
         self._input_profiles = input_profiles or InputProfileManager(
             paths.config_home() / "input-profiles"
+        )
+        self._cloud = cloud_platforms or CloudPlatformService(
+            self._shortcuts,
+            which=which,
+            spawn=spawn,
         )
         self._bitrot = BitrotManager(monotonic=monotonic)
         self._credential_health: dict[str, dict[str, str | None]] = {}
@@ -374,6 +381,10 @@ class EmulationController:
             firmware=firmware_status,
             games=games,
         )
+        composed_cloud = {row["id"]: row for row in self._cloud.platforms()}
+        workspace["platforms"] = [
+            composed_cloud.get(str(row["id"]), row) for row in workspace["platforms"]
+        ]
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
@@ -640,6 +651,12 @@ class EmulationController:
             "pid": pid,
             "sessionId": session_id,
         }
+
+    def cloud_platforms(self) -> list[dict[str, Any]]:
+        return self._cloud.platforms()
+
+    def launch_cloud(self, platform_id: str) -> dict[str, Any]:
+        return self._cloud.launch(platform_id)
 
     def _create_tracked_game_session(self, game: Mapping[str, Any], emulator_id: str) -> str:
         session_id = ids.new_ulid()
@@ -1321,6 +1338,12 @@ class EmulationController:
                 if self._settings_for_game(game, settings).get("steamSelected") is True
             ]
             plan = self._shortcuts.plan(selected)
+        elif action == "cloud.shortcuts.sync":
+            plan = self._cloud.plan_shortcuts()
+            plan_extra["preview"] = (
+                "Publica os três serviços cloud declarados como atalhos não-Steam. "
+                "Atalhos Switch e de terceiros são preservados; a Steam deve permanecer fechada."
+            )
         elif action == "game.delete":
             game_id = self._required_string(payload, "gameId")
             game = self._current_game(game_id)
@@ -1545,6 +1568,8 @@ class EmulationController:
             result = transaction.apply(plan_id, confirm_token)
         elif plan.kind == "steam.shortcuts.sync":
             result = self._shortcuts.apply(plan_id, confirm_token)
+        elif plan.kind == "steam.cloud-shortcuts.sync":
+            result = self._shortcuts.apply_cloud(plan_id, confirm_token)
         elif (
             plan.kind.startswith("emulation.")
             or plan.kind
@@ -1673,7 +1698,7 @@ class EmulationController:
         tracked_type: str | None = None
         if plan.kind == "library.convert":
             tracked_type = "nsz.convert"
-        elif plan.kind == "steam.shortcuts.sync" or (
+        elif plan.kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"} or (
             pending is not None and pending.kind in {"media-publish-steam", "media-unpublish-steam"}
         ):
             tracked_type = "steam.publish"
@@ -2123,13 +2148,15 @@ class EmulationController:
         allowed = (
             kind.startswith("emulation.game-delete:")
             or kind.startswith("input-profile.activate:")
+            or kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"}
             or kind in {"switch-library.rename", "switch-library.quarantine"}
         )
         if not allowed:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
                 detail=(
-                    "operação não pertence à exclusão, organização ou perfil reversível de emulação"
+                    "operação não pertence à exclusão, organização, atalho Steam "
+                    "ou perfil reversível de emulação"
                 ),
             )
         result = (

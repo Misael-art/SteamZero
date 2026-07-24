@@ -210,6 +210,7 @@ def test_dashboard_delegates_all_registered_controller_actions(tmp_path: Path) -
     emulation.launch_emulator.return_value = marker
     emulation.stop_emulator.return_value = marker
     emulation.launch_game.return_value = marker
+    emulation.launch_cloud.return_value = marker
     emulation.plan_action.return_value = marker
     emulation.apply_action.return_value = marker
     emulation.rollback_action.return_value = marker
@@ -229,6 +230,7 @@ def test_dashboard_delegates_all_registered_controller_actions(tmp_path: Path) -
     assert dashboard.launch_emulation_emulator("emu") == marker
     assert dashboard.stop_emulation_emulator("emu") == marker
     assert dashboard.launch_emulation_game("g") == marker
+    assert dashboard.launch_cloud_platform("xbox-cloud-gaming") == marker
     assert dashboard.plan_emulation_action({"action": "x"}) == marker
     assert dashboard.apply_emulation_action("p", "t") == marker
     assert dashboard.rollback_emulation_action("o") == marker

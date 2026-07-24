@@ -257,6 +257,15 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("gameId", gameId="string"),
         ),
         _action(
+            "cloud.launch",
+            "Abrir serviço cloud",
+            "/cloud/launch",
+            service="emulation",
+            screen="emulation",
+            control="cloud-primary",
+            schema=_schema("platformId", platformId="string"),
+        ),
+        _action(
             "emulation.action.plan",
             "Revisar alteração",
             "/emulation/action/plan",

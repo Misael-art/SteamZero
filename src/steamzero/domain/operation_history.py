@@ -38,6 +38,7 @@ _TITLES = {
     "library.organize": "Organização da biblioteca",
     "media.reconcile": "Organização de mídia",
     "steam.media-package": "Arte da biblioteca Steam",
+    "steam.cloud-shortcuts.sync": "Atalhos cloud na Steam",
     "steam.shortcuts.sync": "Atalhos não-Steam",
     "switch-library.quarantine": "Quarentena da biblioteca Switch",
     "switch-library.rename": "Organização da biblioteca Switch",

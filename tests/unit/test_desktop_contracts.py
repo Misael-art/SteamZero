@@ -111,6 +111,18 @@ def test_async_scan_contract_publishes_polling_and_terminal_states() -> None:
     }
 
 
+def test_cloud_launch_contract_is_closed_and_routes_to_allowlisted_bridge() -> None:
+    action = handheld_ui_contracts()["byId"]["cloud.launch"]
+    assert action["endpoint"] == "/cloud/launch"
+    assert action["inputSchema"] == {
+        "type": "object",
+        "required": ["platformId"],
+        "properties": {"platformId": {"type": "string"}},
+        "additionalProperties": False,
+    }
+    assert action["rollback"]["supported"] is False
+
+
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
     qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     direct_routes = re.findall(r'request\("(?:GET|POST)",\s*"([^"]+)"', qml)

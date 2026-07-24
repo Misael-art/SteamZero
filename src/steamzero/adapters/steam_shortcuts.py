@@ -10,6 +10,7 @@ estar encerrada durante plan/apply para impedir lost updates.
 
 from __future__ import annotations
 
+import re
 import struct
 import zlib
 from collections.abc import Callable, Mapping, Sequence
@@ -25,7 +26,8 @@ from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 
 _MAX_BYTES = 16 * 1024 * 1024
-_MARKER_PREFIX = "steamzero://switch/"
+_SWITCH_MARKER_PREFIX = "steamzero://switch/"
+_CLOUD_MARKER_PREFIX = "steamzero://cloud/"
 _TARGET = "/usr/local/bin/steamzero"
 _QUOTED_TARGET = f'"{_TARGET}"'
 
@@ -142,12 +144,20 @@ def shortcut_long_id(app_id: int) -> int:
     return (app_id << 32) | 0x02000000
 
 
-def _managed_game_id(row: Mapping[str, BinaryValue]) -> str | None:
+def _managed_id(row: Mapping[str, BinaryValue], prefix: str) -> str | None:
     marker = row.get("ShortcutPath")
-    if not isinstance(marker, str) or not marker.startswith(_MARKER_PREFIX):
+    if not isinstance(marker, str) or not marker.startswith(prefix):
         return None
-    game_id = marker.removeprefix(_MARKER_PREFIX)
-    return game_id if game_id and len(game_id) <= 128 else None
+    item_id = marker.removeprefix(prefix)
+    return item_id if item_id and len(item_id) <= 128 else None
+
+
+def _managed_game_id(row: Mapping[str, BinaryValue]) -> str | None:
+    return _managed_id(row, _SWITCH_MARKER_PREFIX)
+
+
+def _managed_cloud_id(row: Mapping[str, BinaryValue]) -> str | None:
+    return _managed_id(row, _CLOUD_MARKER_PREFIX)
 
 
 class SteamShortcutManager:
@@ -172,11 +182,21 @@ class SteamShortcutManager:
         except SteamZeroError:
             return set()
 
+    def managed_cloud_platform_ids(self) -> set[str]:
+        try:
+            return {
+                platform_id
+                for row in self._read_rows(self._target())
+                if (platform_id := _managed_cloud_id(row)) is not None
+            }
+        except SteamZeroError:
+            return set()
+
     def resolve_app_id(self, game_id: str) -> int | None:
         try:
             for row in self._read_rows(self._target()):
                 marker = row.get("ShortcutPath")
-                if isinstance(marker, str) and marker == f"{_MARKER_PREFIX}{game_id}":
+                if isinstance(marker, str) and marker == f"{_SWITCH_MARKER_PREFIX}{game_id}":
                     app_id = row.get("appid")
                     if isinstance(app_id, int):
                         return app_id
@@ -217,13 +237,42 @@ class SteamShortcutManager:
         return unique[0]
 
     def plan(self, games: Sequence[Mapping[str, Any]]) -> transaction.Plan:
+        return self._plan_rows(
+            games,
+            marker_prefix=_SWITCH_MARKER_PREFIX,
+            kind="steam.shortcuts.sync",
+            row_factory=self._row,
+            noun="jogo",
+            id_pattern=None,
+        )
+
+    def plan_cloud(self, platforms: Sequence[Mapping[str, Any]]) -> transaction.Plan:
+        return self._plan_rows(
+            platforms,
+            marker_prefix=_CLOUD_MARKER_PREFIX,
+            kind="steam.cloud-shortcuts.sync",
+            row_factory=self._cloud_row,
+            noun="plataforma",
+            id_pattern=r"[a-z][a-z0-9-]{0,127}",
+        )
+
+    def _plan_rows(
+        self,
+        items: Sequence[Mapping[str, Any]],
+        *,
+        marker_prefix: str,
+        kind: str,
+        row_factory: Callable[[str, str, int], dict[str, BinaryValue]],
+        noun: str,
+        id_pattern: str | None,
+    ) -> transaction.Plan:
         if self._running_probe():
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail="feche completamente a Steam antes de publicar"
             )
         target = self._target()
         existing = self._read_rows(target)
-        foreign = [row for row in existing if _managed_game_id(row) is None]
+        foreign = [row for row in existing if _managed_id(row, marker_prefix) is None]
         occupied: set[int] = set()
         for row in foreign:
             app_id = row.get("appid")
@@ -231,12 +280,15 @@ class SteamShortcutManager:
                 occupied.add(app_id)
         managed: list[dict[str, BinaryValue]] = []
         seen_ids: set[str] = set()
-        for game in sorted(games, key=lambda item: str(item["name"]).casefold()):
-            game_id = str(game["id"])
-            name = str(game["name"])
-            if game_id in seen_ids or not game_id or len(game_id) > 128:
-                raise SteamZeroError("E-API-SCHEMA", detail="jogo duplicado ou inválido")
-            seen_ids.add(game_id)
+        for item in sorted(items, key=lambda value: str(value["name"]).casefold()):
+            item_id = str(item["id"])
+            name = str(item["name"])
+            valid_id = bool(item_id) and len(item_id) <= 128
+            if id_pattern is not None:
+                valid_id = valid_id and re.fullmatch(id_pattern, item_id) is not None
+            if item_id in seen_ids or not valid_id:
+                raise SteamZeroError("E-API-SCHEMA", detail=f"{noun} duplicado(a) ou inválido(a)")
+            seen_ids.add(item_id)
             app_id = shortcut_app_id(_QUOTED_TARGET, name)
             if app_id in occupied:
                 raise SteamZeroError(
@@ -244,13 +296,19 @@ class SteamShortcutManager:
                     detail=f"colisão de AppID com atalho não gerenciado: {name}",
                 )
             occupied.add(app_id)
-            managed.append(self._row(game_id, name, app_id))
+            managed.append(row_factory(item_id, name, app_id))
         content = encode_shortcuts([*foreign, *managed])
-        return transaction.plan_write_files(
-            {target: content}, root=target.parents[1], kind="steam.shortcuts.sync"
-        )
+        return transaction.plan_write_files({target: content}, root=target.parents[1], kind=kind)
 
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        return self._apply_kind(plan_id, confirm_token, kind="steam.shortcuts.sync")
+
+    def apply_cloud(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        return self._apply_kind(plan_id, confirm_token, kind="steam.cloud-shortcuts.sync")
+
+    def _apply_kind(
+        self, plan_id: str, confirm_token: str, *, kind: str
+    ) -> transaction.ApplyResult:
         if self._running_probe():
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail="a Steam foi aberta; feche-a e revise novamente"
@@ -258,7 +316,7 @@ class SteamShortcutManager:
         plan = transaction.load_plan(plan_id)
         target = self._target()
         if (
-            plan.kind != "steam.shortcuts.sync"
+            plan.kind != kind
             or Path(plan.root) != target.parents[1]
             or len(plan.actions) != 1
             or plan.actions[0].target != str(target)
@@ -291,7 +349,7 @@ class SteamShortcutManager:
             "Exe": _QUOTED_TARGET,
             "StartDir": '"/usr/local/bin"',
             "icon": "",
-            "ShortcutPath": f"{_MARKER_PREFIX}{game_id}",
+            "ShortcutPath": f"{_SWITCH_MARKER_PREFIX}{game_id}",
             "LaunchOptions": f"emulation launch --game-id {game_id}",
             "IsHidden": 0,
             "AllowDesktopConfig": 1,
@@ -303,4 +361,26 @@ class SteamShortcutManager:
             "LastPlayTime": 0,
             "FlatpakAppID": "",
             "tags": {"0": "SteamZero", "1": "Nintendo Switch"},
+        }
+
+    @staticmethod
+    def _cloud_row(platform_id: str, name: str, app_id: int) -> dict[str, BinaryValue]:
+        return {
+            "appid": app_id,
+            "AppName": name,
+            "Exe": _QUOTED_TARGET,
+            "StartDir": '"/usr/local/bin"',
+            "icon": "",
+            "ShortcutPath": f"{_CLOUD_MARKER_PREFIX}{platform_id}",
+            "LaunchOptions": f"cloud launch --platform {platform_id}",
+            "IsHidden": 0,
+            "AllowDesktopConfig": 1,
+            "AllowOverlay": 1,
+            "OpenVR": 0,
+            "Devkit": 0,
+            "DevkitGameID": "",
+            "DevkitOverrideAppID": 0,
+            "LastPlayTime": 0,
+            "FlatpakAppID": "",
+            "tags": {"0": "SteamZero", "1": "Cloud Gaming"},
         }

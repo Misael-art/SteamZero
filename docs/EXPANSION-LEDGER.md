@@ -21,7 +21,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | verified-dev | `docs/expansion/WI-A2.md` |
 | A3 | Tags, favoritos e coleções inteligentes | feat-collection-v1 | verified-dev | `docs/expansion/WI-A3.md` |
 | A4 | Anti-bitrot limitado, re-hash e estado suspect | feat-bitrot-v1 | verified-dev | `docs/expansion/WI-A4.md` |
-| A5 | Plataformas cloud declarativas e atalhos reversíveis | platform-manifest-v1 | pending | — |
+| A5 | Plataformas cloud declarativas e atalhos reversíveis | platform-manifest-v1 | verified-dev | `docs/expansion/WI-A5.md` |
 | A6 | Sessões co-op por QR atrás de feature flag | co-op-session-v1 | pending | — |
 | A7 | MediaHub canônico masters → optimized → views | media-registry-v1 | pending | — |
 | A8 | Patches IPS/BPS/xdelta sobre cópia imutável | patch-operation-v1 | pending | — |

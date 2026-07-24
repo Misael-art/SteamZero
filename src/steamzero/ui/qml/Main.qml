@@ -769,6 +769,14 @@ ApplicationWindow {
             })
             return
         }
+        if (action.id.indexOf("cloud.launch:") === 0) {
+            const platformId = action.id.slice("cloud.launch:".length)
+            requestAction("cloud.launch", {"platformId": platformId},
+                    function() {
+                notify(qsTr("Serviço cloud aberto; conta e rede não verificadas."), false)
+            })
+            return
+        }
         if (action.id.indexOf("emulator.stop:") === 0) {
             const emulatorId = action.id.split(":")[1]
             requestAction("emulator.stop", {"emulatorId": emulatorId},
@@ -794,7 +802,8 @@ ApplicationWindow {
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
                 "mod.import", "cheat.import",
-                "game.steam.set", "steam.shortcuts.sync"]            .indexOf(action.id) >= 0
+                "game.steam.set", "steam.shortcuts.sync", "cloud.shortcuts.sync"]
+            .indexOf(action.id) >= 0
                 || action.id.indexOf("content.state:") === 0
                 || action.id.indexOf("mod.state:") === 0
                 || action.id.indexOf("mod.remove:") === 0
