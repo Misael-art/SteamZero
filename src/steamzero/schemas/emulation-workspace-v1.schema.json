@@ -9,6 +9,17 @@
     "schemaVersion": {"const": 1},
     "truthState": {"$ref": "#/$defs/state"},
     "contextLabel": {"type": "string", "minLength": 1},
+    "retroExperience": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schemaVersion", "contractId", "truthState", "scalingTable", "presets"],
+      "properties": {
+        "schemaVersion": {"const": 1},
+        "contractId": {"const": "retro-experience-v1"},
+        "truthState": {"const": "declarative"},
+        "presets": {"type": "array", "minItems": 3, "maxItems": 3}
+      }
+    },
     "jobs": {
       "type": "array",
       "items": {"$ref": "#/$defs/job"}

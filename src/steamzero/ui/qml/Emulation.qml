@@ -42,6 +42,7 @@ Item {
     property string pendingEmulatorGameId: ""
     property string pendingEmulatorId: ""
     property string steamUserId: ""
+    property string expandedRetroPresetId: ""
     property var localActionMessages: ({})
     property bool reducedMotion: false
     property Item gameDetailsInvoker: null
@@ -98,6 +99,8 @@ Item {
     ]
     readonly property var platforms: emulation && emulation.platforms
         && emulation.platforms.length > 0 ? emulation.platforms : []
+    readonly property var retroExperience: emulation && emulation.retroExperience
+        ? emulation.retroExperience : ({"presets": []})
     readonly property var selectedPlatform: platforms.length > 0
         && platformIndex < platforms.length ? platforms[platformIndex] : ({
             "id": "unavailable",
@@ -723,9 +726,33 @@ Item {
             return overviewCards()
         if (selectedArea.id === "modsCheats" && scopeId() === "game")
             return gameExtraCards()
+        if (selectedArea.id === "graphicsPerformance"
+                && selectedPlatform.kind === "emulated"
+                && retroExperience.presets && retroExperience.presets.length > 0)
+            return retroPresetCards()
         if (areaData.cards && areaData.cards.length > 0)
             return areaData.cards
         return defaultCards(selectedArea.id)
+    }
+
+    function retroPresetCards() {
+        return retroExperience.presets.map(function(preset) {
+            const ready = preset.differences.filter(function(difference) {
+                return difference.readiness === "ready"
+            }).length
+            return {
+                "id": "retro-preset-" + preset.id,
+                "presetId": preset.id,
+                "title": preset.label,
+                "icon": preset.recommended ? "favorite" : "video-display",
+                "state": "attention",
+                "statusLabel": preset.recommended
+                    ? qsTr("Recomendado · declarativo") : qsTr("Declarativo"),
+                "detail": preset.summary,
+                "metric": qsTr("%1/%2 prontos").arg(ready).arg(preset.differences.length),
+                "differences": preset.differences
+            }
+        })
     }
 
     function gameExtraCards() {
@@ -2667,6 +2694,57 @@ Item {
                                         maximumLineCount: page.isGlobalOverview() ? 2 : 4
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
+                                    }
+                                    Button {
+                                        visible: modelData.differences
+                                            && modelData.differences.length > 0
+                                        text: page.expandedRetroPresetId === modelData.id
+                                            ? qsTr("Ocultar diferenças")
+                                            : qsTr("Mostrar todas as diferenças")
+                                        flat: true
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: page.minimumTouchTarget
+                                        Accessible.name: text
+                                        Accessible.description: qsTr(
+                                            "A lista contém todas as políticas internas do preset"
+                                        )
+                                        onClicked: page.expandedRetroPresetId =
+                                            page.expandedRetroPresetId === modelData.id
+                                                ? "" : modelData.id
+                                    }
+                                    ColumnLayout {
+                                        visible: page.expandedRetroPresetId === modelData.id
+                                            && modelData.differences
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Repeater {
+                                            model: modelData.differences || []
+                                            delegate: RowLayout {
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: modelData.label
+                                                    color: page.mutedColor
+                                                    Layout.preferredWidth: 132
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                                Label {
+                                                    text: modelData.value
+                                                    color: page.textColor
+                                                    font.bold: true
+                                                    Layout.fillWidth: true
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                                Label {
+                                                    text: modelData.readiness === "ready"
+                                                        ? qsTr("PRONTO") : qsTr("PLANEJADO")
+                                                    color: modelData.readiness === "ready"
+                                                        ? page.greenColor : page.amberColor
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                }
+                                            }
+                                        }
                                     }
                                     Label {
                                         visible: page.cardActionMessage(modelData).length > 0

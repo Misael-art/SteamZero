@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retro-experience-v1.schema.json",
+  "title": "SteamZero retro experience presets v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "contractId", "truthState", "scalingTable", "presets"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "contractId": {"const": "retro-experience-v1"},
+    "truthState": {"const": "declarative"},
+    "scalingTable": {
+      "type": "object",
+      "required": ["schemaVersion", "tableId", "policy", "viewport", "rows"],
+      "properties": {
+        "schemaVersion": {"const": 1},
+        "tableId": {"const": "retro-integer-scaling-v1"}
+      }
+    },
+    "presets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/preset"}
+    }
+  },
+  "$defs": {
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scalingMode", "fallbackFilter", "crop", "stretch", "pixelAspect",
+        "colorProfile", "displayShader", "signalPath", "timingPolicy",
+        "slowdownPolicy", "overclockPolicy"
+      ],
+      "properties": {
+        "scalingMode": {"enum": ["integer", "sharp-bilinear"]},
+        "fallbackFilter": {"const": "sharp-bilinear"},
+        "crop": {"type": "boolean"},
+        "stretch": {"type": "boolean"},
+        "pixelAspect": {"enum": ["hardware-native", "corrected"]},
+        "colorProfile": {"enum": ["hardware-original", "neutral", "enhanced"]},
+        "displayShader": {"enum": ["authentic", "subtle", "off"]},
+        "signalPath": {"enum": ["historical", "clean-rgb"]},
+        "timingPolicy": {"const": "registry-native"},
+        "slowdownPolicy": {"const": "preserve"},
+        "overclockPolicy": {"enum": ["off", "opt-in"]}
+      }
+    },
+    "difference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "value", "detail", "readiness", "originality"],
+      "properties": {
+        "key": {
+          "enum": [
+            "scalingMode", "fallbackFilter", "crop", "stretch", "pixelAspect",
+            "colorProfile", "displayShader", "signalPath", "timingPolicy",
+            "slowdownPolicy", "overclockPolicy"
+          ]
+        },
+        "label": {"type": "string", "minLength": 1, "maxLength": 64},
+        "value": {"type": "string", "minLength": 1, "maxLength": 64},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 160},
+        "readiness": {"enum": ["ready", "planned"]},
+        "originality": {"enum": ["original", "balanced", "enhanced"]}
+      }
+    },
+    "preset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "label", "summary", "recommended", "originality",
+        "settings", "differences"
+      ],
+      "properties": {
+        "id": {"enum": ["como-era", "equilibrado", "melhorado"]},
+        "label": {"type": "string", "minLength": 1, "maxLength": 32},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 160},
+        "recommended": {"type": "boolean"},
+        "originality": {"enum": ["original", "balanced", "enhanced"]},
+        "settings": {"$ref": "#/$defs/settings"},
+        "differences": {
+          "type": "array",
+          "minItems": 11,
+          "maxItems": 11,
+          "items": {"$ref": "#/$defs/difference"}
+        }
+      }
+    }
+  }
+}

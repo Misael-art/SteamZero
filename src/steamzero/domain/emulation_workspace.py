@@ -19,6 +19,7 @@ from steamzero.domain.platforms import (
     PlatformRegistry,
     platform_placeholder,
 )
+from steamzero.domain.retro_experience import preset_catalog
 from steamzero.domain.switch_emulators import SwitchEmulatorCatalog
 
 _SCOPE_DEFS = (
@@ -110,6 +111,7 @@ def build_switch_workspace(
         "schemaVersion": 1,
         "truthState": state,
         "contextLabel": f"{switch_manifest.name} · {_scope_label(selected_scope)}",
+        "retroExperience": preset_catalog(),
         "platforms": [
             switch_platform,
             *[
