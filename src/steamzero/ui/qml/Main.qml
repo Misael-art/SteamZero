@@ -775,6 +775,8 @@ ApplicationWindow {
                 || action.id.indexOf("cheat.state:") === 0
                 || action.id.indexOf("cheat.remove:") === 0
                 || action.id.indexOf("cheat.catalog.install:") === 0
+                || action.id.indexOf("mod.catalog.prepare:") === 0
+                || action.id.indexOf("mod.catalog.install:") === 0
                 || action.id.indexOf("extras.catalog.search:") === 0
                 || action.id.indexOf("game.delete:") === 0
                 || action.id.indexOf("game.media.search:") === 0

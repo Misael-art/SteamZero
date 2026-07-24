@@ -752,8 +752,11 @@ Item {
                 "id": "catalog-mod-" + candidate.id,
                 "title": candidate.name,
                 "icon": "extension",
-                "state": "ready",
-                "statusLabel": qsTr("Mod disponível • %1").arg(candidate.source),
+                "state": candidate.installAction && candidate.installAction.enabled
+                    ? "ready" : "attention",
+                "statusLabel": candidate.prepared
+                    ? qsTr("Pacote inspecionado • %1").arg(candidate.source)
+                    : qsTr("Mod disponível • %1").arg(candidate.source),
                 "detail": qsTr("Build ID %1 • compatibilidade %2% • %3")
                     .arg(candidate.buildId || qsTr("não publicado"))
                     .arg(Math.round(Number(candidate.matchConfidence || 0) * 100))

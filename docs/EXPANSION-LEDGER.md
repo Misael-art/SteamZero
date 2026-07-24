@@ -57,7 +57,7 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 |---|---|---|---|---|
 | D1 | Emulador principal + fallback visual por plataforma | correção transversal/F5 | verified-dev | `docs/expansion/WI-D1.md` |
 | D2 | DLC/update no scan e projeção para emuladores | F5, A4, A8 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
-| D3 | Fiação de catálogos, mods e cheats existentes | A12 + composição | in-progress | `docs/expansion/WI-D3.md` |
+| D3 | Fiação de catálogos, mods e cheats existentes | A12 + composição | verified-dev | `docs/expansion/WI-D3.md` |
 | D4 | Gráficos e performance | G1, G3, G4, G6, R0–R2 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D5 | Controles editáveis e perfis | F6, R6 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D6 | vSaves, playtime, captura e lançamento | A1, G5 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |

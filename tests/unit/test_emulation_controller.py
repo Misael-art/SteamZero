@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import io
 import json
 import threading
 import time
+import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -1080,7 +1082,9 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
 
     game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     assert game["modCandidates"][0]["name"] == "60 FPS"
-    assert game["modCandidates"][0]["installAction"]["enabled"] is False
+    mod_action = game["modCandidates"][0]["installAction"]
+    assert mod_action["enabled"] is True
+    assert str(mod_action["id"]).startswith("mod.catalog.prepare:")
     cheat_action = game["cheatCandidates"][0]["installAction"]
     assert cheat_action["enabled"] is True
 
@@ -1113,6 +1117,51 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
     assert len(cached["modCandidates"]) == 1
     assert len(cached["cheatCandidates"]) == 1
 
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("exefs/main.ips", b"verified-mod")
+    monkeypatch.setattr(emulation, "fetch_bytes", lambda *_args, **_kwargs: package.getvalue())
+    prepare_response = _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": mod_action["id"],
+                "gameId": game_id,
+                "emulatorId": "eden",
+            }
+        ),
+    )
+    prepared = _wait_job(controller, str(prepare_response["jobId"]))
+    assert prepared.result["file_count"] == 1
+    cached = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    prepared_mod = cached["modCandidates"][0]
+    assert prepared_mod["prepared"] is True
+    assert str(prepared_mod["installAction"]["id"]).startswith("mod.catalog.install:")
+    catalog_id = str(prepared_mod["installAction"]["id"]).split(":", 1)[1]
+    prepared_package = controller._prepared_mod_package(catalog_id)  # type: ignore[attr-defined]
+    assert prepared_package is not None
+    prepared_file = prepared_package[1][0]
+    prepared_file.write_bytes(b"tampered-mod")
+    with pytest.raises(SteamZeroError, match="E-MOD-CATALOG-STALE"):
+        controller.plan_action(
+            {
+                "actionId": prepared_mod["installAction"]["id"],
+                "gameId": game_id,
+                "emulatorId": "eden",
+            }
+        )
+    prepared_file.write_bytes(b"verified-mod")
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": prepared_mod["installAction"]["id"],
+                "gameId": game_id,
+                "emulatorId": "eden",
+            }
+        ),
+    )
+
     install = controller.plan_action(
         {
             "actionId": cheat_action["id"],
@@ -1123,6 +1172,13 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
     _apply(controller, install)
 
     game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["modsCount"] == 1
+    assert game["mods"][0]["source"] == "github:test"
+    installed_mod = controller._extra_record(  # type: ignore[attr-defined]
+        "mod", str(game["mods"][0]["id"])
+    )
+    assert installed_mod is not None and installed_mod.install_path is not None
+    assert (Path(installed_mod.install_path) / "main.ips").read_bytes() == b"verified-mod"
     assert game["cheatsCount"] == 1
     assert game["cheats"][0]["source"] == "nsecm:test"
     installed = controller._extra_record(  # type: ignore[attr-defined]
@@ -1133,6 +1189,88 @@ def test_remote_extra_catalogs_are_wired_cached_and_install_cheats_transactional
     assert installed_path.read_text(encoding="utf-8").startswith(
         "// Vida infinita\n// BuildID:"
     )
+
+
+def test_remote_mod_catalog_rejects_zip_traversal_without_prepared_cache(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    title_id = "0100ABCDEF123000"
+    candidate = ModCandidate(
+        title_id=title_id,
+        build_id=None,
+        identity=ModIdentity(
+            name="Pacote suspeito",
+            mod_type="other",
+            source="github:test",
+            source_url="https://example.invalid/traversal.zip",
+        ),
+    )
+
+    class ModCatalog:
+        def search_by_title_id(self, requested: str) -> list[ModCandidate]:
+            return [candidate] if requested == title_id else []
+
+        def search_by_build_id(
+            self, _requested: str, _requested_build: str
+        ) -> list[ModCandidate]:
+            return []
+
+        def refresh_catalog(self) -> int:
+            return 1
+
+    class EmptyCheatCatalog:
+        def search_by_title_id(self, _requested: str) -> list[CheatCandidate]:
+            return []
+
+        def search_by_build_id(
+            self, _requested: str, _requested_build: str
+        ) -> list[CheatCandidate]:
+            return []
+
+        def refresh_catalog(self) -> int:
+            return 0
+
+    controller = _controller(monkeypatch, tmp_path)
+    controller._mod_catalog = ModCatalog()  # type: ignore[attr-defined]
+    controller._cheat_catalog = EmptyCheatCatalog()  # type: ignore[attr-defined]
+    game_id, _ = _configured_game(controller, tmp_path)
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    search_response = _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": game["catalogSearchAction"]["id"],
+                "gameId": game_id,
+            }
+        ),
+    )
+    _wait_job(controller, str(search_response["jobId"]))
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    prepare_action = game["modCandidates"][0]["installAction"]
+
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("../escape.ips", b"unsafe")
+    monkeypatch.setattr(
+        emulation, "fetch_bytes", lambda *_args, **_kwargs: package.getvalue()
+    )
+    response = _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": prepare_action["id"],
+                "gameId": game_id,
+                "emulatorId": "eden",
+            }
+        ),
+    )
+    rejected = _wait_job(controller, str(response["jobId"]))
+
+    assert rejected.state == "rolled-back"
+    assert rejected.error_code == "E-CONTENT-UNSAFE-PATH"
+    assert not (tmp_path / "escape.ips").exists()
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    assert game["modCandidates"][0]["prepared"] is False
 
 
 def test_global_media_overwrite_requires_explicit_flag_and_returns_job(

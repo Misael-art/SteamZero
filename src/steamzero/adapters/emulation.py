@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
@@ -51,6 +52,7 @@ from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.domain.emulation_workspace import build_switch_workspace
@@ -151,6 +153,7 @@ _MAX_IMPORT_FILES = 10_000
 _MAX_IMPORT_BYTES = 2 * 1024**3
 _MAX_MOD_BYTES = 512 * 1024**2
 _BUILD_ID = re.compile(r"^[0-9A-Fa-f]{16,64}$")
+_REMOTE_MOD_SUFFIXES = frozenset({".zip", ".ips", ".bps", ".pchtxt", ".txt", ".bin"})
 
 
 @dataclass(frozen=True)
@@ -280,6 +283,7 @@ class EmulationController:
         self._jobs.register("media.search", self._media_search_job_handler)
         self._jobs.register("media.global", self._media_global_job_handler)
         self._jobs.register("extras.catalog.search", self._extra_catalog_search_job_handler)
+        self._jobs.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
         self._jobs.register("rom.scan", self._rom_scan_job_handler)
         self._jobs.register("library.scan", self._library_scan_job_handler)
         for job_type in ("content.import", "nsz.convert", "steam.publish"):
@@ -1064,6 +1068,30 @@ class EmulationController:
                     "titleId": str(game["titleId"]),
                 },
             )
+        elif action.startswith("mod.catalog.prepare:"):
+            catalog_id = self._catalog_action_id(action)
+            game, _emulator_id = self._extra_context(payload)
+            candidate = self._catalog_mod_candidate(catalog_id, str(game["titleId"]))
+            if not self._remote_mod_url_supported(candidate.identity.source_url):
+                raise SteamZeroError(
+                    "E-MOD-DOWNLOAD-FAILED",
+                    detail="a fonte não publicou um arquivo de mod suportado",
+                )
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.data_home(),
+                kind="emulation.mod-catalog-prepare",
+            )
+            self._pending[plan.plan_id] = _PendingMutation(
+                "mod-catalog-prepare",
+                {
+                    "catalogId": catalog_id,
+                    "gameId": str(game["id"]),
+                    "titleId": str(game["titleId"]),
+                },
+            )
+        elif action.startswith("mod.catalog.install:"):
+            plan = self._plan_catalog_mod_install(action, payload)
         elif action.startswith("cheat.catalog.install:"):
             plan = self._plan_catalog_cheat_install(action, payload)
         elif action == "mod.import":
@@ -1331,7 +1359,14 @@ class EmulationController:
         if pending is not None:
             if pending.kind in {"key", "firmware"}:
                 self._persist_import(pending)
-            elif pending.kind.startswith(("mod", "cheat")):
+            elif pending.kind in {
+                "mod-install",
+                "cheat-install",
+                "mod-state",
+                "cheat-state",
+                "mod-remove",
+                "cheat-remove",
+            }:
                 self._persist_extra(pending)
             elif pending.kind == "media-import":
                 self._apply_media_import(pending)
@@ -1381,6 +1416,20 @@ class EmulationController:
                 job = self._jobs.create(
                     "extras.catalog.search",
                     params={
+                        "game_id": pending.metadata["gameId"],
+                        "title_id": pending.metadata["titleId"],
+                    },
+                    priority="interactive",
+                    created_by="ui",
+                )
+                self._start_background_job(job.id)
+                response["jobId"] = job.id
+                response["job"] = self._job_view(self._jobs.get(job.id) or job)
+            elif pending.kind == "mod-catalog-prepare":
+                job = self._jobs.create(
+                    "mod.catalog.prepare",
+                    params={
+                        "catalog_id": pending.metadata["catalogId"],
                         "game_id": pending.metadata["gameId"],
                         "title_id": pending.metadata["titleId"],
                     },
@@ -1507,7 +1556,11 @@ class EmulationController:
             constraints=dict(previous.constraints),
             correlation_id=previous.correlation_id,
         )
-        if replacement.type in {"media.global", "extras.catalog.search"}:
+        if replacement.type in {
+            "media.global",
+            "extras.catalog.search",
+            "mod.catalog.prepare",
+        }:
             self._start_background_job(replacement.id)
         else:
             self._jobs.run(replacement.id)
@@ -1533,6 +1586,7 @@ class EmulationController:
             runner = JobManager(store)
             runner.register("media.global", self._media_global_job_handler)
             runner.register("extras.catalog.search", self._extra_catalog_search_job_handler)
+            runner.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
             with self._background_lock:
                 self._background_runners[job_id] = runner
             try:
@@ -2854,12 +2908,160 @@ class EmulationController:
             )
         return game
 
+    @staticmethod
+    def _catalog_action_id(action: str) -> str:
+        catalog_id = action.split(":", 1)[1] if ":" in action else ""
+        if re.fullmatch(r"[0-9a-f]{64}", catalog_id) is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="candidato de catálogo inválido")
+        return catalog_id
+
+    def _catalog_mod_candidate(self, catalog_id: str, title_id: str) -> ModCandidate:
+        with self._store_factory() as store:
+            store.migrate()
+            candidate = StateStoreModsAdapter(store.adapter_connection()).get_catalog(
+                catalog_id
+            )
+        if candidate is None or candidate.title_id != title_id:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="candidato de mod expirou ou pertence a outro jogo",
+            )
+        return candidate
+
+    @staticmethod
+    def _remote_mod_url_supported(url: str) -> bool:
+        parsed = urlsplit(url)
+        suffix = Path(unquote(parsed.path)).suffix.casefold()
+        return (
+            parsed.scheme.casefold() == "https"
+            and bool(parsed.hostname)
+            and suffix in _REMOTE_MOD_SUFFIXES
+        )
+
+    @staticmethod
+    def _mod_package_root(catalog_id: str) -> Path:
+        return paths.data_home() / "catalog-packages" / catalog_id
+
+    def _prepared_mod_package(
+        self, catalog_id: str
+    ) -> tuple[dict[str, Any], list[Path], Path] | None:
+        if re.fullmatch(r"[0-9a-f]{64}", catalog_id) is None:
+            return None
+        base = self._mod_package_root(catalog_id)
+        if base.is_symlink() or not base.is_dir():
+            return None
+        for digest_dir in sorted(base.iterdir(), key=lambda item: item.name, reverse=True):
+            if (
+                digest_dir.is_symlink()
+                or not digest_dir.is_dir()
+                or re.fullmatch(r"[0-9a-f]{64}", digest_dir.name) is None
+            ):
+                continue
+            manifest_path = digest_dir / "manifest.json"
+            if manifest_path.is_symlink() or not manifest_path.is_file():
+                continue
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if (
+                manifest.get("schemaVersion") != 1
+                or manifest.get("catalogId") != catalog_id
+                or manifest.get("contentSha256") != digest_dir.name
+                or not isinstance(manifest.get("files"), list)
+            ):
+                continue
+            tree = digest_dir / "tree"
+            files: list[Path] = []
+            valid = True
+            for item in manifest["files"]:
+                if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                    valid = False
+                    break
+                try:
+                    relative = fs.validate_relative_entry(item["path"])
+                    source = fs.resolve_within(tree, tree / relative)
+                except (SteamZeroError, OSError):
+                    valid = False
+                    break
+                if (
+                    source.is_symlink()
+                    or not source.is_file()
+                    or source.stat().st_size != item.get("size")
+                ):
+                    valid = False
+                    break
+                files.append(source)
+            if valid and files:
+                return manifest, files, tree
+        return None
+
+    def _plan_catalog_mod_install(
+        self, action: str, payload: Mapping[str, Any]
+    ) -> transaction.Plan:
+        catalog_id = self._catalog_action_id(action)
+        game, emulator_id = self._extra_context(payload)
+        candidate = self._catalog_mod_candidate(catalog_id, str(game["titleId"]))
+        prepared = self._prepared_mod_package(catalog_id)
+        if prepared is None:
+            raise SteamZeroError(
+                "E-MOD-CATALOG-STALE",
+                detail="prepare e valide o pacote remoto antes de instalar",
+            )
+        manifest, files, tree = prepared
+        relative_files: set[str] = set()
+        total = 0
+        for item, source in zip(manifest["files"], files, strict=True):
+            relative = str(item["path"])
+            if fs.hash_file(source, algo="sha256") != item.get("sha256"):
+                raise SteamZeroError(
+                    "E-MOD-CATALOG-STALE",
+                    detail=f"arquivo preparado divergiu: {relative}",
+                )
+            relative_files.add(relative)
+            total += source.stat().st_size
+        if len(files) > _MAX_IMPORT_FILES or total > _MAX_MOD_BYTES:
+            raise SteamZeroError(
+                "E-MOD-INSTALL-FAILED",
+                detail="pacote preparado excede os limites de segurança",
+            )
+        conflicts = self._active_mod_conflicts(str(game["id"]), emulator_id, relative_files)
+        if conflicts:
+            raise SteamZeroError(
+                "E-MOD-INSTALL-FAILED",
+                detail="destinos de mod em conflito com: " + ", ".join(conflicts),
+            )
+        mod_id = ids.new_ulid()
+        name = self._safe_extra_name(candidate.identity.name)
+        target_dir = self._mod_install_dir(emulator_id, candidate.title_id, name, mod_id)
+        copies = [(source, target_dir / source.relative_to(tree)) for source in files]
+        plan = transaction.plan_copy_files(
+            copies,
+            root=self._extra_transaction_root(target_dir),
+            kind="emulation.mod-catalog-install",
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "mod-install",
+            {
+                "id": mod_id,
+                "catalogId": catalog_id,
+                "gameId": str(game["id"]),
+                "titleId": candidate.title_id,
+                "buildId": candidate.build_id,
+                "name": name,
+                "modType": candidate.identity.mod_type,
+                "source": candidate.identity.source,
+                "version": candidate.identity.version,
+                "emulatorId": emulator_id,
+                "installPath": str(target_dir),
+            },
+        )
+        return plan
+
     def _plan_catalog_cheat_install(
         self, action: str, payload: Mapping[str, Any]
     ) -> transaction.Plan:
-        catalog_id = action.split(":", 1)[1] if ":" in action else ""
-        if re.fullmatch(r"[0-9a-f]{64}", catalog_id) is None:
-            raise SteamZeroError("E-API-SCHEMA", detail="candidato de cheat inválido")
+        catalog_id = self._catalog_action_id(action)
         game, emulator_id = self._extra_context(payload)
         with self._store_factory() as store:
             store.migrate()
@@ -3468,13 +3670,25 @@ class EmulationController:
                     InstalledMod(
                         id=str(metadata["id"]),
                         game_id=str(metadata["gameId"]),
-                        catalog_id=None,
+                        catalog_id=(
+                            str(metadata["catalogId"])
+                            if metadata.get("catalogId") is not None
+                            else None
+                        ),
                         title_id=str(metadata["titleId"]),
-                        build_id=None,
+                        build_id=(
+                            str(metadata["buildId"])
+                            if metadata.get("buildId") is not None
+                            else None
+                        ),
                         name=str(metadata["name"]),
-                        mod_type=ModType.OTHER,
-                        source="local-user",
-                        version=None,
+                        mod_type=ModType(str(metadata.get("modType") or "other")),
+                        source=str(metadata.get("source") or "local-user"),
+                        version=(
+                            str(metadata["version"])
+                            if metadata.get("version") is not None
+                            else None
+                        ),
                         state="active",
                         install_path=str(metadata["installPath"]),
                         emulator_id=str(metadata["emulatorId"]),
@@ -3594,6 +3808,137 @@ class EmulationController:
             "mods_cached": len(cached_mods),
             "cheats_cached": len(cached_cheats),
             "errors": errors,
+        }
+
+    def _mod_catalog_prepare_job_handler(self, job: Job, ctx: JobContext) -> dict[str, Any]:
+        catalog_id = str(job.params.get("catalog_id") or "")
+        title_id = str(job.params.get("title_id") or "")
+        candidate = self._catalog_mod_candidate(catalog_id, title_id)
+        url = candidate.identity.source_url
+        if not self._remote_mod_url_supported(url):
+            raise SteamZeroError(
+                "E-MOD-DOWNLOAD-FAILED",
+                detail="a fonte não publicou um arquivo de mod suportado",
+            )
+        ctx.set_progress("download", current=0, total=1, unit="package")
+        try:
+            payload = fetch_bytes(
+                url,
+                max_bytes=64 * 1024**2,
+                timeout_seconds=30,
+                headers={"User-Agent": "SteamZero/0.1"},
+                allowed_redirect_hosts={
+                    "github.com",
+                    "objects.githubusercontent.com",
+                    "raw.githubusercontent.com",
+                },
+            )
+        except NetworkFailure as exc:
+            raise SteamZeroError(
+                "E-MOD-DOWNLOAD-FAILED",
+                detail=exc.code,
+            ) from exc
+        ctx.safepoint()
+        digest = hashlib.sha256(payload).hexdigest()
+        existing = self._prepared_mod_package(catalog_id)
+        if existing is not None and existing[0].get("contentSha256") == digest:
+            ctx.set_progress("done", current=1, total=1, unit="package")
+            return {
+                "catalog_id": catalog_id,
+                "content_sha256": digest,
+                "file_count": len(existing[1]),
+                "cached": True,
+            }
+
+        parsed = urlsplit(url)
+        suffix = Path(unquote(parsed.path)).suffix.casefold()
+        extraction_id = f"{job.id}-mod"
+        package_id = f"{job.id}-package"
+        extracted: list[Path] = []
+        try:
+            if suffix == ".zip":
+                package = fs.stage_bytes(package_id, "package.zip", payload)
+                extracted = safezip.extract_safe(
+                    package,
+                    extraction_id,
+                    limits=safezip.SafeZipLimits(
+                        max_entries=_MAX_IMPORT_FILES,
+                        max_total_bytes=_MAX_MOD_BYTES,
+                        max_entry_bytes=_MAX_MOD_BYTES,
+                        max_depth=16,
+                        max_ratio=200,
+                    ),
+                )
+            else:
+                filename = self._safe_extra_name(Path(unquote(parsed.path)).name)
+                if Path(filename).suffix.casefold() not in _REMOTE_MOD_SUFFIXES:
+                    raise SteamZeroError(
+                        "E-MOD-DOWNLOAD-FAILED",
+                        detail="extensão do arquivo remoto não é suportada",
+                    )
+                extracted = [fs.stage_bytes(extraction_id, filename, payload)]
+            if not extracted:
+                raise SteamZeroError(
+                    "E-MOD-INSTALL-FAILED",
+                    detail="pacote remoto não contém arquivos",
+                )
+            source_root = Path(os.path.commonpath([str(source.parent) for source in extracted]))
+            total = sum(source.stat().st_size for source in extracted)
+            if len(extracted) > _MAX_IMPORT_FILES or total > _MAX_MOD_BYTES:
+                raise SteamZeroError(
+                    "E-MOD-INSTALL-FAILED",
+                    detail="pacote remoto excede os limites de segurança",
+                )
+            cache_root = self._mod_package_root(catalog_id) / digest
+            tree = cache_root / "tree"
+            manifest_files: list[dict[str, object]] = []
+            ctx.set_progress("inspect", current=0, total=len(extracted), unit="files")
+            for index, source in enumerate(extracted):
+                ctx.safepoint()
+                relative = source.relative_to(source_root)
+                target = tree / relative
+                fs.copy_file_atomic(source, target)
+                manifest_files.append(
+                    {
+                        "path": relative.as_posix(),
+                        "size": target.stat().st_size,
+                        "sha256": fs.hash_file(target, algo="sha256"),
+                    }
+                )
+                ctx.set_progress(
+                    "inspect",
+                    current=index + 1,
+                    total=len(extracted),
+                    unit="files",
+                    current_item=relative.as_posix(),
+                )
+            manifest = {
+                "schemaVersion": 1,
+                "catalogId": catalog_id,
+                "titleId": title_id,
+                "contentSha256": digest,
+                "source": candidate.identity.source,
+                "preparedAt": datetime.now(UTC).isoformat(),
+                "files": manifest_files,
+            }
+            fs.write_atomic_text(
+                cache_root / "manifest.json",
+                json.dumps(
+                    manifest,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            )
+        finally:
+            fs.remove_tree(paths.staging_for(extraction_id))
+            fs.remove_tree(paths.staging_for(package_id))
+        ctx.set_progress("done", current=1, total=1, unit="package")
+        return {
+            "catalog_id": catalog_id,
+            "content_sha256": digest,
+            "file_count": len(extracted),
+            "cached": False,
         }
 
     def _get_provider_api_key(self, provider_name: str) -> str | None:
@@ -4841,61 +5186,77 @@ class EmulationController:
                     }
                     for cheat in cheats
                 ]
-                mod_candidate_list = [
-                    {
-                        "id": catalog_id,
-                        "name": candidate.identity.name,
-                        "buildId": candidate.build_id,
-                        "type": candidate.identity.mod_type,
-                        "source": candidate.identity.source,
-                        "version": candidate.identity.version,
-                        "description": candidate.identity.description,
-                        "matchConfidence": candidate.match_confidence,
-                        "installAction": self._action(
-                            f"mod.catalog.install:{catalog_id}",
-                            "Preparar instalação",
-                            enabled=False,
-                            reason=(
-                                "O pacote remoto precisa ser baixado, inspecionado e "
-                                "convertido em uma árvore transacional antes de instalar."
-                            ),
-                            confirmation=True,
+                mod_candidate_list = []
+                for catalog_id, mod_candidate in mod_candidates:
+                    prepared = self._prepared_mod_package(catalog_id) is not None
+                    supported_url = self._remote_mod_url_supported(
+                        mod_candidate.identity.source_url
+                    )
+                    action_enabled = isinstance(emulator_id, str) and (prepared or supported_url)
+                    if not isinstance(emulator_id, str):
+                        reason = "Defina o emulador deste jogo antes de preparar o mod."
+                    elif not prepared and not supported_url:
+                        reason = (
+                            "A fonte não publicou um arquivo ZIP/IPS/BPS/PCHTXT "
+                            "instalável para este resultado."
                         )
-                        | {
-                            "gameId": game_id,
-                            "emulatorId": emulator_id or "",
-                        },
-                    }
-                    for catalog_id, candidate in mod_candidates
-                ]
+                    else:
+                        reason = None
+                    action_kind = "install" if prepared else "prepare"
+                    mod_candidate_list.append(
+                        {
+                            "id": catalog_id,
+                            "name": mod_candidate.identity.name,
+                            "buildId": mod_candidate.build_id,
+                            "type": mod_candidate.identity.mod_type,
+                            "source": mod_candidate.identity.source,
+                            "version": mod_candidate.identity.version,
+                            "description": mod_candidate.identity.description,
+                            "matchConfidence": mod_candidate.match_confidence,
+                            "prepared": prepared,
+                            "installAction": self._action(
+                                f"mod.catalog.{action_kind}:{catalog_id}",
+                                ("Revisar e instalar" if prepared else "Baixar e inspecionar"),
+                                enabled=action_enabled,
+                                reason=reason,
+                                confirmation=True,
+                            )
+                            | {
+                                "gameId": game_id,
+                                "emulatorId": emulator_id or "",
+                            },
+                        }
+                    )
                 cheat_candidate_list = []
-                for catalog_id, candidate in cheat_candidates:
+                for catalog_id, cheat_candidate in cheat_candidates:
                     candidate_ready = (
                         isinstance(emulator_id, str)
-                        and isinstance(candidate.build_id, str)
-                        and _BUILD_ID.fullmatch(candidate.build_id) is not None
-                        and bool(candidate.codes)
-                        and validate_cheat_codes(candidate.codes)
+                        and isinstance(cheat_candidate.build_id, str)
+                        and _BUILD_ID.fullmatch(cheat_candidate.build_id) is not None
+                        and bool(cheat_candidate.codes)
+                        and validate_cheat_codes(cheat_candidate.codes)
                     )
                     if not isinstance(emulator_id, str):
                         reason = "Defina o emulador deste jogo antes de instalar."
-                    elif not candidate.build_id:
+                    elif not cheat_candidate.build_id:
                         reason = "O catálogo não publicou Build ID para este cheat."
-                    elif not candidate.codes or not validate_cheat_codes(candidate.codes):
+                    elif not cheat_candidate.codes or not validate_cheat_codes(
+                        cheat_candidate.codes
+                    ):
                         reason = "O catálogo não publicou códigos Atmosphere válidos."
                     else:
                         reason = None
                     cheat_candidate_list.append(
                         {
                             "id": catalog_id,
-                            "name": candidate.identity.name,
-                            "buildId": candidate.build_id,
-                            "type": candidate.identity.cheat_type,
-                            "source": candidate.identity.source,
-                            "version": candidate.identity.version,
-                            "description": candidate.identity.description,
-                            "codeCount": len(candidate.codes),
-                            "matchConfidence": candidate.match_confidence,
+                            "name": cheat_candidate.identity.name,
+                            "buildId": cheat_candidate.build_id,
+                            "type": cheat_candidate.identity.cheat_type,
+                            "source": cheat_candidate.identity.source,
+                            "version": cheat_candidate.identity.version,
+                            "description": cheat_candidate.identity.description,
+                            "codeCount": len(cheat_candidate.codes),
+                            "matchConfidence": cheat_candidate.match_confidence,
                             "installAction": self._action(
                                 f"cheat.catalog.install:{catalog_id}",
                                 "Instalar cheat",
