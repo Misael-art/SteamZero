@@ -36,7 +36,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | G4 | Frame generation LSFG/OptiScaler com fallback | gtool-framegen-v1 | pending | — |
 | G5 | Captura e galeria com orçamento de performance | media-registry-v1 | pending | — |
 | G6 | Benchmark local reproduzível por jogo/perfil | benchmark-v1 | pending | — |
-| R0 | Tabela integer normativa e sharp-bilinear | retro-experience-v1 | pending | — |
+| R0 | Tabela integer normativa e sharp-bilinear | retro-integer-scaling-v1 | verified-dev | `docs/expansion/WI-R0.md` |
 | R1 | Presets Como era/Equilibrado/Melhorado | retro-experience-v1 | pending | — |
 | R2 | Vídeo: integer, PAR, cores, shaders e RF→RGB | retro-experience-v1 | pending | — |
 | R3 | Timing, DRC, PAL/NTSC, slowdown e overclock | retro-experience-v1 | pending | — |
