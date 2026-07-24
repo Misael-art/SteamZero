@@ -18,6 +18,7 @@ from steamzero.adapters import steam_launcher as launcher_module
 from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.vkbasalt import render_config as render_vkbasalt_config
 
 
 class FakeChild:
@@ -100,6 +101,8 @@ def _launcher(
         environ=lambda: {"HOME": "/home/deck"},
         monotonic=monotonic,
         lsfg_manifests=(tmp_path / "VkLayer_LS_frame_generation.json",),
+        vkbasalt_config_root=tmp_path / "vkbasalt",
+        vkbasalt_manifests=(tmp_path / "vkBasalt.json",),
     )
 
 
@@ -235,6 +238,46 @@ def test_lsfg_environment_uses_owned_dll_and_pinned_layer(tmp_path: Path) -> Non
     assert spec.environment["LSFG_LEGACY"] == "1"
     assert spec.environment["LSFG_MULTIPLIER"] == "3"
     assert spec.environment["LSFG_DLL_PATH"] == str(dll.resolve())
+
+
+def test_vkbasalt_is_per_game_allowlisted_and_off_is_complete(tmp_path: Path) -> None:
+    _save_profile(
+        tmp_path / "state.db",
+        gamescope=False,
+        gameMode=False,
+        mangoHud="off",
+        vkBasalt="cas",
+        upscaling="native",
+        tdp=None,
+    )
+    (tmp_path / "vkBasalt.json").write_text("{}", encoding="utf-8")
+    config = tmp_path / "vkbasalt/10.conf"
+    config.parent.mkdir(parents=True)
+    config.write_bytes(render_vkbasalt_config("cas"))
+
+    enabled = _launcher(tmp_path).compile("10", ("game",))
+
+    assert enabled.environment["ENABLE_VKBASALT"] == "1"
+    assert enabled.environment["VKBASALT_CONFIG_FILE"] == str(config)
+    assert "vkbasalt" in enabled.environment_plan["layers"]
+    assert "vkBasalt CAS" in enabled.applied_effects
+
+    _save_profile(tmp_path / "state.db", vkBasalt="off")
+    disabled = _launcher(tmp_path).compile("10", ("game",))
+    assert "ENABLE_VKBASALT" not in disabled.environment
+    assert "VKBASALT_CONFIG_FILE" not in disabled.environment
+    assert "vkbasalt" not in disabled.environment_plan["layers"]
+
+
+def test_vkbasalt_rejects_tampered_managed_config(tmp_path: Path) -> None:
+    _save_profile(tmp_path / "state.db", vkBasalt="fxaa")
+    (tmp_path / "vkBasalt.json").write_text("{}", encoding="utf-8")
+    config = tmp_path / "vkbasalt/10.conf"
+    config.parent.mkdir(parents=True)
+    config.write_text("effects = ../../shader\n", encoding="utf-8")
+
+    with pytest.raises(SteamZeroError, match="divergente"):
+        _launcher(tmp_path).compile("10", ("game",))
 
 
 def test_missing_mangoapp_blocks_before_process_start(tmp_path: Path) -> None:

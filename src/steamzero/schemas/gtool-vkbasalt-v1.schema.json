@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gtool-vkbasalt-v1.schema.json",
+  "title": "SteamZero per-game vkBasalt catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "available",
+    "scope",
+    "defaultMode",
+    "costBasis",
+    "costNotice",
+    "presets"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "available": {"type": "boolean"},
+    "scope": {"const": "game"},
+    "defaultMode": {"const": "off"},
+    "costBasis": {"const": "qualitative"},
+    "costNotice": {"type": "string", "minLength": 1, "maxLength": 160},
+    "presets": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "effect",
+          "gpuCost",
+          "costLabel",
+          "completeOff",
+          "requiresCapability"
+        ],
+        "properties": {
+          "id": {"enum": ["off", "cas", "fxaa", "smaa"]},
+          "label": {"type": "string", "minLength": 1, "maxLength": 64},
+          "effect": {"enum": ["none", "cas", "fxaa", "smaa"]},
+          "gpuCost": {"enum": ["none", "low", "medium", "high"]},
+          "costLabel": {"type": "string", "minLength": 1, "maxLength": 64},
+          "completeOff": {"type": "boolean"},
+          "requiresCapability": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

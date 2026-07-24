@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import secrets
 import shutil
@@ -31,6 +32,7 @@ from steamzero.adapters.steam_session import readiness as session_readiness
 from steamzero.core import ids, journal, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain import vkbasalt
 from steamzero.domain.hud import hud_catalog
 
 Which = Callable[[str], str | None]
@@ -120,6 +122,8 @@ class SteamGameplayController:
         launch_options: SteamLaunchOptionsManager | None = None,
         maintenance: SteamMaintenance | None = None,
         media: SteamMediaManager | None = None,
+        vkbasalt_config_root: Path | None = None,
+        vkbasalt_manifests: Sequence[Path] | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -136,11 +140,29 @@ class SteamGameplayController:
             )
         )
         self._lsfg = lsfg_installer or LsfgInstaller(lossless_probe=self._has_lossless_scaling)
+        self._vkbasalt_config_root = Path(
+            os.path.realpath(
+                vkbasalt_config_root
+                if vkbasalt_config_root is not None
+                else paths.config_home() / "vkbasalt/games"
+            )
+        )
+        self._vkbasalt_manifests = (
+            tuple(vkbasalt_manifests)
+            if vkbasalt_manifests is not None
+            else (
+                Path.home() / ".local/share/vulkan/implicit_layer.d/vkBasalt.json",
+                Path("/usr/local/share/vulkan/implicit_layer.d/vkBasalt.json"),
+                Path("/usr/share/vulkan/implicit_layer.d/vkBasalt.json"),
+            )
+        )
         self._launcher = launcher or SteamGameLauncher(
             roots=self._roots,
             which=which,
             store_factory=store_factory,
             lsfg_manifests=self._lsfg_manifests,
+            vkbasalt_config_root=self._vkbasalt_config_root,
+            vkbasalt_manifests=self._vkbasalt_manifests,
         )
         self._launch_options = launch_options or SteamLaunchOptionsManager(roots=self._roots)
         self._maintenance = maintenance or SteamMaintenance(roots=self._roots)
@@ -215,6 +237,7 @@ class SteamGameplayController:
             "sessionManager": session_readiness(which=self._which),
             "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
             "hud": hud_catalog(mangohud_available=capabilities["mangohud"]),
+            "vkBasalt": vkbasalt.catalog(available=capabilities["vkbasalt"]),
         }
 
     def hud_presets(self) -> dict[str, Any]:
@@ -250,6 +273,10 @@ class SteamGameplayController:
             blockers.append("Feral GameMode não está disponível; abra Sistema.")
         if normalized["mangoHud"] != "off" and not capabilities["mangohud"]:
             blockers.append("MangoHud não está disponível; abra Sistema.")
+        if normalized["vkBasalt"] != "off" and normalized["scope"] != "game":
+            blockers.append("vkBasalt é permitido exclusivamente em perfis por jogo.")
+        if normalized["vkBasalt"] != "off" and not capabilities["vkbasalt"]:
+            blockers.append("vkBasalt não está disponível; abra Sistema.")
         if (
             normalized["mangoHud"] != "off"
             and normalized["gamescope"]
@@ -272,10 +299,24 @@ class SteamGameplayController:
             game_id,
         )
         changes = self._changes(current, normalized)
+        files: dict[Path, bytes] = {}
+        removals: set[Path] = set()
+        tx_root = paths.state_home()
+        if normalized["scope"] == "game" and game_id:
+            tx_root = self._vkbasalt_config_root
+            target = vkbasalt.config_path(tx_root, game_id)
+            if normalized["vkBasalt"] == "off":
+                if target.is_file() or target.is_symlink():
+                    removals.add(target)
+            else:
+                files[target] = vkbasalt.render_config(str(normalized["vkBasalt"]))
         tx_plan = transaction.plan_write_files(
-            {},
-            root=paths.state_home(),
+            files,
+            root=tx_root,
             kind=f"steam.gameplay-profile:{self._profile_id(normalized['scope'], game_id)}",
+            removals=removals,
+            skip_unchanged=True,
+            requirements_extra={"vkBasaltMode": normalized["vkBasalt"]},
         )
         plan = GameplayPlan(
             plan_id=tx_plan.plan_id,
@@ -312,9 +353,7 @@ class SteamGameplayController:
             if plan.profile["scope"] == "game" and plan.profile["gameId"]:
                 target_ids.append(self._controls_profile_id(plan.profile["gameId"]))
             before = [
-                row
-                for target in target_ids
-                if (row := store.get_profile(target)) is not None
+                row for target in target_ids if (row := store.get_profile(target)) is not None
             ]
             profiles = [
                 {
@@ -492,6 +531,7 @@ class SteamGameplayController:
             "gamescope": True,
             "gameMode": True,
             "mangoHud": "off",
+            "vkBasalt": "off",
             "upscaling": "fsr2-quality",
             "frameGeneration": "off",
             "controllerLayout": "steam-recommended",
@@ -538,6 +578,7 @@ class SteamGameplayController:
         gpu_mode = payload.get("gpuMode")
         gpu_clock = payload.get("gpuClock")
         mango = payload.get("mangoHud")
+        vkbasalt_mode = payload.get("vkBasalt", "off")
         upscaling = payload.get("upscaling")
         frame_generation = payload.get("frameGeneration", "off")
         controller_layout = payload.get("controllerLayout", "steam-recommended")
@@ -561,6 +602,8 @@ class SteamGameplayController:
             gpu_clock = None
         if mango not in _MANGO or upscaling not in _UPSCALING:
             raise SteamZeroError("E-API-SCHEMA", detail="overlay ou upscaling inválido")
+        if vkbasalt_mode not in vkbasalt.MODES:
+            raise SteamZeroError("E-API-SCHEMA", detail="preset vkBasalt inválido")
         if frame_generation not in _FRAME_GENERATION:
             raise SteamZeroError("E-API-SCHEMA", detail="modo de geração de quadros inválido")
         if controller_layout not in _CONTROLLER_LAYOUTS:
@@ -580,6 +623,7 @@ class SteamGameplayController:
             "gamescope": gamescope,
             "gameMode": game_mode,
             "mangoHud": mango,
+            "vkBasalt": vkbasalt_mode,
             "upscaling": upscaling,
             "frameGeneration": frame_generation,
             "controllerLayout": controller_layout,
@@ -687,7 +731,8 @@ class SteamGameplayController:
             "gamemode": self._which("gamemoderun") is not None,
             "mangohud": self._which("mangohud") is not None,
             "mangoapp": self._which("mangoapp") is not None,
-            "vkbasalt": self._which("vkbasalt") is not None,
+            "vkbasalt": self._which("vkbasalt") is not None
+            or any(path.is_file() and not path.is_symlink() for path in self._vkbasalt_manifests),
             "lsfg": any(path.is_file() for path in self._lsfg_manifests),
         }
 
@@ -750,6 +795,7 @@ class SteamGameplayController:
             "gamescope": "Gamescope",
             "gameMode": "Feral GameMode",
             "mangoHud": "MangoHud",
+            "vkBasalt": "vkBasalt",
             "upscaling": "Upscaling",
             "frameGeneration": "Geração de quadros",
             "controllerLayout": "Layout de controles",

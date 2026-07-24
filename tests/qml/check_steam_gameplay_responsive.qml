@@ -65,6 +65,10 @@ Window {
                   "CTA deve manter alvo mínimo de 48 px")
             check(page.gameplay.hud.evidence.humanReview.state === "PENDING-HUMAN",
                   "evidência HUD não deve promover revisão visual humana")
+            check(page.payload().vkBasalt === "off",
+                  "vkBasalt deve iniciar completamente desligado")
+            check(page.vkBasaltControl.Accessible.description.length > 0,
+                  "vkBasalt indisponível deve explicar a dependência")
             width = 1656
             height = 954
             phase = 1

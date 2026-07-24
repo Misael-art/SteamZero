@@ -152,7 +152,17 @@ ApplicationWindow {
         "readiness": {"percent": 0, "title": "Ambiente Steam indisponível", "detail": "Abra Sistema para diagnosticar"},
         "hardware": {"deviceLabel": "Linux", "tdpMin": null, "tdpMax": null, "gpuMin": null, "gpuMax": null, "refreshHz": null, "memoryGb": null, "withinSafeLimits": false},
         "context": {"device": "Linux", "battery": null, "mode": "Modo Desktop"},
-        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+        "currentProfile": {"gameId": "", "scope": "global", "profile": "balanced", "fps": 40, "tdp": null, "gpuMode": "auto", "gpuClock": null, "gamescope": false, "gameMode": false, "mangoHud": "off", "vkBasalt": "off", "upscaling": "native", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+        "vkBasalt": {
+            "schemaVersion": 1, "available": false, "scope": "game", "defaultMode": "off",
+            "costBasis": "qualitative", "costNotice": "O impacto real depende do jogo, resolução e GPU.",
+            "presets": [
+                {"id": "off", "label": "Desligado", "effect": "none", "gpuCost": "none", "costLabel": "Sem custo adicional", "completeOff": true, "requiresCapability": false},
+                {"id": "cas", "label": "Nitidez CAS", "effect": "cas", "gpuCost": "low", "costLabel": "Custo baixo estimado", "completeOff": false, "requiresCapability": true},
+                {"id": "fxaa", "label": "Antisserrilhado FXAA", "effect": "fxaa", "gpuCost": "medium", "costLabel": "Custo médio estimado", "completeOff": false, "requiresCapability": true},
+                {"id": "smaa", "label": "Antisserrilhado SMAA", "effect": "smaa", "gpuCost": "high", "costLabel": "Custo alto estimado", "completeOff": false, "requiresCapability": true}
+            ]
+        },
         "launcher": {"state": "unconfigured", "statusLabel": "Selecione um jogo", "launchOption": "", "recoveryRequired": false, "configuration": {"state": "unavailable", "statusLabel": "Configuração Steam indisponível", "managed": false, "lastOperationId": null}},
         "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
         "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}

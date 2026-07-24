@@ -43,6 +43,7 @@ def test_registry_loads_all_schemas() -> None:
         "feat-bitrot-v1.schema.json",
         "gtool-hud-v1.schema.json",
         "gtool-launch-environment-v1.schema.json",
+        "gtool-vkbasalt-v1.schema.json",
     } <= got
 
 

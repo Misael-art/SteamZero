@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from steamzero.adapters.lsfg import LSFG_APP_ID
-from steamzero.core import ids
+from steamzero.core import ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.session_state import (
     ACTIVE_SESSION_STATES,
@@ -37,6 +37,7 @@ from steamzero.core.session_state import (
     normalize_session_state,
 )
 from steamzero.core.state import StateStore
+from steamzero.domain import vkbasalt
 from steamzero.domain.hud import MANGO_CONFIG
 from steamzero.domain.launch_environment import (
     EnvironmentLayer,
@@ -184,6 +185,8 @@ class SteamGameLauncher:
         environ: Callable[[], dict[str, str]] = lambda: dict(os.environ),
         monotonic: Callable[[], float] = time.monotonic,
         lsfg_manifests: Sequence[Path] | None = None,
+        vkbasalt_config_root: Path | None = None,
+        vkbasalt_manifests: Sequence[Path] | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -203,6 +206,22 @@ class SteamGameLauncher:
                 / ".local/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json",
                 Path("/usr/local/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json"),
                 Path("/usr/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json"),
+            )
+        )
+        self._vkbasalt_config_root = Path(
+            os.path.realpath(
+                vkbasalt_config_root
+                if vkbasalt_config_root is not None
+                else paths.config_home() / "vkbasalt/games"
+            )
+        )
+        self._vkbasalt_manifests = (
+            tuple(vkbasalt_manifests)
+            if vkbasalt_manifests is not None
+            else (
+                Path.home() / ".local/share/vulkan/implicit_layer.d/vkBasalt.json",
+                Path("/usr/local/share/vulkan/implicit_layer.d/vkBasalt.json"),
+                Path("/usr/share/vulkan/implicit_layer.d/vkBasalt.json"),
             )
         )
 
@@ -361,6 +380,39 @@ class SteamGameLauncher:
                 gamescope_args.append("--mangoapp")
             argv = [*gamescope_args, "--", *argv]
             applied.append(f"Gamescope {profile['fps']} FPS")
+
+        vkbasalt_mode = str(profile["vkBasalt"])
+        if vkbasalt_mode != "off":
+            available = self._which("vkbasalt") is not None or any(
+                path.is_file() and not path.is_symlink() for path in self._vkbasalt_manifests
+            )
+            if not available:
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail="camada vkBasalt ausente")
+            config = vkbasalt.config_path(self._vkbasalt_config_root, app_id)
+            try:
+                valid_config = (
+                    config.is_file()
+                    and not config.is_symlink()
+                    and config.stat().st_size <= 4096
+                    and config.read_bytes() == vkbasalt.render_config(vkbasalt_mode)
+                )
+            except OSError:
+                valid_config = False
+            if not valid_config:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY",
+                    detail="configuração vkBasalt por jogo ausente ou divergente",
+                )
+            layers.append(
+                EnvironmentLayer(
+                    "vkbasalt",
+                    {
+                        "ENABLE_VKBASALT": "1",
+                        "VKBASALT_CONFIG_FILE": str(config),
+                    },
+                )
+            )
+            applied.append(f"vkBasalt {vkbasalt_mode.upper()}")
 
         frame_generation = str(profile["frameGeneration"])
         if frame_generation != "off":
@@ -623,7 +675,9 @@ class SteamGameLauncher:
 
     @staticmethod
     def _profile_digest(profile: dict[str, Any]) -> str:
-        canonical = json.dumps(profile, sort_keys=True, separators=(",", ":")).encode()
+        canonical_profile = dict(profile)
+        canonical_profile.setdefault("vkBasalt", "off")
+        canonical = json.dumps(canonical_profile, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(canonical).hexdigest()
 
     def _lossless_dll(self) -> Path | None:
@@ -663,6 +717,8 @@ class SteamGameLauncher:
 
     @staticmethod
     def _validated_profile(profile: dict[str, Any], app_id: str) -> dict[str, Any]:
+        normalized = dict(profile)
+        normalized.setdefault("vkBasalt", "off")
         required = {
             "gameId",
             "scope",
@@ -676,12 +732,13 @@ class SteamGameLauncher:
             "mangoHud",
             "upscaling",
             "frameGeneration",
+            "vkBasalt",
         }
-        if not required.issubset(profile) or profile.get("gameId") != app_id:
+        if not required.issubset(normalized) or normalized.get("gameId") != app_id:
             raise SteamZeroError(
                 "E-STATE-INTEGRITY", detail="perfil Steam incompleto ou divergente"
             )
-        if profile["scope"] not in {"game", "global", "portable", "dock"} or profile[
+        if normalized["scope"] not in {"game", "global", "portable", "dock"} or normalized[
             "profile"
         ] not in {
             "economy",
@@ -689,34 +746,40 @@ class SteamGameLauncher:
             "performance",
         }:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="perfil Steam fora da allowlist")
-        if profile["fps"] not in {30, 40, 60}:
+        if normalized["fps"] not in {30, 40, 60}:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="FPS Steam fora da allowlist")
-        tdp = profile["tdp"]
+        tdp = normalized["tdp"]
         if tdp is not None and (
             not isinstance(tdp, int) or isinstance(tdp, bool) or not 3 <= tdp <= 15
         ):
             raise SteamZeroError("E-STATE-INTEGRITY", detail="TDP Steam fora da allowlist")
-        if profile["gpuMode"] not in {"auto", "manual"}:
+        if normalized["gpuMode"] not in {"auto", "manual"}:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="modo de GPU fora da allowlist")
-        gpu_clock = profile["gpuClock"]
-        if profile["gpuMode"] == "manual" and (
+        gpu_clock = normalized["gpuClock"]
+        if normalized["gpuMode"] == "manual" and (
             not isinstance(gpu_clock, int)
             or isinstance(gpu_clock, bool)
             or not 200 <= gpu_clock <= 1600
         ):
             raise SteamZeroError("E-STATE-INTEGRITY", detail="clock de GPU fora da allowlist")
-        if profile["mangoHud"] not in {"off", "basic", "detailed"}:
+        if normalized["mangoHud"] not in {"off", "basic", "detailed"}:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="MangoHud fora da allowlist")
-        if profile["upscaling"] not in {
+        if normalized["vkBasalt"] not in vkbasalt.MODES or (
+            normalized["vkBasalt"] != "off" and normalized["scope"] != "game"
+        ):
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="vkBasalt fora da allowlist por jogo")
+        if normalized["upscaling"] not in {
             "native",
             "fsr2-quality",
             "fsr2-balanced",
             "gamescope-fsr",
-        } or profile["frameGeneration"] not in {"off", *_FRAME_MULTIPLIERS}:
+        } or normalized["frameGeneration"] not in {"off", *_FRAME_MULTIPLIERS}:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="renderização fora da allowlist")
-        if not isinstance(profile["gamescope"], bool) or not isinstance(profile["gameMode"], bool):
+        if not isinstance(normalized["gamescope"], bool) or not isinstance(
+            normalized["gameMode"], bool
+        ):
             raise SteamZeroError("E-STATE-INTEGRITY", detail="integrações Steam inválidas")
-        return dict(profile)
+        return normalized
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -56,6 +56,7 @@ Item {
     property int tdpValue: 10
     property int gpuModeIndex: 0
     property int mangoIndex: 0
+    property int vkBasaltIndex: 0
     property int upscalingIndex: 1
     property int frameGenerationIndex: 0
     property int controllerLayoutIndex: 0
@@ -89,11 +90,14 @@ Item {
     property alias fixedActionsControl: fixedActions
     property alias desktopModeControl: desktopModePanel
     property alias fpsControlRepeater: gameplayFpsRepeater
+    property alias vkBasaltControl: vkBasaltPicker
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
     readonly property var hardware: gameplay && gameplay.hardware ? gameplay.hardware : ({})
     readonly property var impact: gameplay && gameplay.impact ? gameplay.impact : ({})
+    readonly property var vkBasalt: gameplay && gameplay.vkBasalt
+        ? gameplay.vkBasalt : ({"presets": []})
     readonly property var currentProfile: gameplay && gameplay.currentProfile
         ? gameplay.currentProfile : ({})
     readonly property var launcher: gameplay && gameplay.launcher ? gameplay.launcher : ({})
@@ -126,6 +130,9 @@ Item {
         gamescopeEnabled = profile.gamescope !== false
         gameModeEnabled = profile.gameMode !== false
         mangoIndex = environmentById("mangohud").state === "ready" ? 1 : 0
+        vkBasaltIndex = valueIndex(
+            ["off", "cas", "fxaa", "smaa"], profile.vkBasalt, 0
+        )
         upscalingIndex = valueIndex(
             ["native", "fsr2-quality", "fsr2-balanced", "gamescope-fsr"],
             profile.upscaling, 1
@@ -160,6 +167,7 @@ Item {
             "gamescope": gamescopeEnabled,
             "gameMode": gameModeEnabled,
             "mangoHud": ["off", "basic", "detailed"][mangoIndex],
+            "vkBasalt": ["off", "cas", "fxaa", "smaa"][vkBasaltIndex],
             "upscaling": ["native", "fsr2-quality", "fsr2-balanced", "gamescope-fsr"][upscalingIndex],
             "frameGeneration": ["off", "lsfg-2x", "lsfg-3x", "lsfg-4x"][frameGenerationIndex],
             "controllerLayout": [
@@ -179,6 +187,7 @@ Item {
         result.gamescope = environmentById("gamescope").state === "ready"
         result.gameMode = false
         result.mangoHud = "off"
+        result.vkBasalt = "off"
         result.upscaling = "native"
         result.frameGeneration = "off"
         result.controllerLayout = "steam-recommended"
@@ -1238,6 +1247,49 @@ Item {
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                             Accessible.name: text
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "vkBasalt"
+                                color: page.mutedColor
+                                Layout.preferredWidth: 112
+                            }
+                            SteamComboBox {
+                                id: vkBasaltPicker
+                                model: [
+                                    qsTr("Desligado"), qsTr("Nitidez CAS"),
+                                    qsTr("Antisserrilhado FXAA"), qsTr("Antisserrilhado SMAA")
+                                ]
+                                currentIndex: page.vkBasaltIndex
+                                enabled: (page.scopeIndex === 1
+                                    && page.environmentById("vkbasalt").state === "ready")
+                                    || page.vkBasaltIndex !== 0
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Pós-processamento vkBasalt por jogo")
+                                Accessible.description: page.scopeIndex !== 1
+                                    ? qsTr("Disponível exclusivamente no escopo por jogo")
+                                    : page.environmentById("vkbasalt").state === "ready"
+                                        ? qsTr("Camada Vulkan disponível")
+                                        : qsTr("Componente ausente; o modo desligado permanece completo")
+                                onActivated: {
+                                    if (currentIndex === 0
+                                            || (page.scopeIndex === 1
+                                                && page.environmentById("vkbasalt").state === "ready"))
+                                        page.vkBasaltIndex = currentIndex
+                                }
+                            }
+                            Label {
+                                text: page.vkBasalt.presets
+                                    && page.vkBasalt.presets.length > page.vkBasaltIndex
+                                    ? page.vkBasalt.presets[page.vkBasaltIndex].costLabel : ""
+                                color: page.vkBasaltIndex === 0
+                                    ? page.greenColor : page.amberColor
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.preferredWidth: 120
+                            }
                         }
                         Button {
                             visible: profileLastOperationId.length > 0

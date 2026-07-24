@@ -443,7 +443,7 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(
         '"AppState"\n{\n  "appid" "10"\n  "name" "Counter-Strike"\n}\n',
         encoding="utf-8",
     )
-    available = {"steam", "gamescope", "gamemoderun", "mangohud", "mangoapp"}
+    available = {"steam", "gamescope", "gamemoderun", "mangohud", "mangoapp", "vkbasalt"}
     status = {"context": {"deviceKind": "deck-lcd", "displays": []}}
     payload = {
         "gameId": "10",
@@ -456,6 +456,7 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(
         "gamescope": True,
         "gameMode": True,
         "mangoHud": "basic",
+        "vkBasalt": "cas",
         "upscaling": "fsr2-quality",
         "frameGeneration": "lsfg-2x",
         "controllerLayout": "official",
@@ -468,6 +469,7 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(
         which=lambda command: f"/usr/bin/{command}" if command in available else None,
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         lsfg_manifests=(lsfg_manifest,),
+        vkbasalt_config_root=tmp_path / "vkbasalt",
     )
 
     plan = controller.plan(payload, status)
@@ -483,6 +485,8 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(
     assert saved is not None
     assert saved["kind"] == "performance"
     assert "controllerLayout" not in str(saved["payload_json"])
+    vkbasalt_config = tmp_path / "vkbasalt/10.conf"
+    assert "effects = cas" in vkbasalt_config.read_text(encoding="utf-8")
     with StateStore(tmp_path / "state.db") as store:
         controls = store.get_profile("steam-controls:game:10")
     assert controls is not None
@@ -491,17 +495,22 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(
 
     changed = dict(payload)
     changed["mangoHud"] = "detailed"
+    changed["vkBasalt"] = "off"
     changed_plan = controller.plan(changed, status)
     assert "MangoHud: basic → detailed" in changed_plan["changes"]
+    assert "vkBasalt: cas → off" in changed_plan["changes"]
     changed_result = controller.apply(
         str(changed_plan["planId"]), str(changed_plan["confirmToken"]), status
     )
+    assert not vkbasalt_config.exists()
     rolled_back = controller.rollback_profile(str(changed_result["operationId"]))
     assert rolled_back["status"] == "rolled-back"
     with StateStore(tmp_path / "state.db") as store:
         restored = store.get_profile("steam-gameplay:game:10")
     assert restored is not None
     assert '"mangoHud":"basic"' in str(restored["payload_json"])
+    assert '"vkBasalt":"cas"' in str(restored["payload_json"])
+    assert "effects = cas" in vkbasalt_config.read_text(encoding="utf-8")
     with pytest.raises(SteamZeroError, match="indisponível"):
         controller.rollback_profile(str(changed_result["operationId"]))
 
@@ -533,9 +542,14 @@ def test_gameplay_plan_blocks_lsfg_when_vulkan_layer_is_missing(tmp_path: Path) 
 
 
 @pytest.mark.parametrize(
-    "field,value", [("frameGeneration", "latest"), ("controllerLayout", "shell")]
+    "field,value",
+    [
+        ("frameGeneration", "latest"),
+        ("controllerLayout", "shell"),
+        ("vkBasalt", "custom-shader"),
+    ],
 )
-def test_gameplay_rejects_unknown_lsfg_and_controller_values(
+def test_gameplay_rejects_unknown_rendering_and_controller_values(
     tmp_path: Path, field: str, value: str
 ) -> None:
     root = tmp_path / "Steam"
@@ -551,6 +565,31 @@ def test_gameplay_rejects_unknown_lsfg_and_controller_values(
     with pytest.raises(SteamZeroError) as error:
         controller.plan(payload, {"context": {"deviceKind": "deck-lcd", "displays": []}})
     assert error.value.code == "E-API-SCHEMA"
+
+
+def test_gameplay_vkbasalt_requires_per_game_scope_and_capability(tmp_path: Path) -> None:
+    root = tmp_path / "Steam"
+    steamapps = root / "steamapps"
+    steamapps.mkdir(parents=True)
+    (steamapps / "appmanifest_10.acf").write_text(
+        '"AppState"\n{\n  "appid" "10"\n  "name" "Game"\n}\n',
+        encoding="utf-8",
+    )
+    controller = SteamGameplayController(
+        roots=(root,),
+        which=lambda command: "/usr/bin/steam" if command == "steam" else None,
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        vkbasalt_config_root=tmp_path / "vkbasalt",
+        vkbasalt_manifests=(tmp_path / "missing-vkBasalt.json",),
+    )
+    payload = SteamGameplayController.safe_profile("10")
+    payload["scope"] = "global"
+    payload["vkBasalt"] = "smaa"
+
+    plan = controller.plan(payload, {"context": {"deviceKind": "deck-lcd", "displays": []}})
+
+    assert any("exclusivamente" in blocker for blocker in plan["blockers"])
+    assert any("não está disponível" in blocker for blocker in plan["blockers"])
 
 
 def test_gameplay_plan_blocks_missing_runtime_instead_of_simulating_apply(

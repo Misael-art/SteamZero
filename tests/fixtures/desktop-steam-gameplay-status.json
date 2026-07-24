@@ -48,7 +48,21 @@
       "readiness": {"percent": 85, "title": "Pronto com 1 ajuste recomendado", "detail": "Hardware compatível · Perfil seguro disponível"},
       "hardware": {"deviceLabel": "Deck LCD", "tdpMin": 3, "tdpMax": 15, "gpuMin": 200, "gpuMax": 1600, "refreshHz": 60, "memoryGb": 11.2, "withinSafeLimits": true},
       "context": {"device": "Deck LCD", "battery": 74, "mode": "Modo Desktop"},
-      "currentProfile": {"gameId": "1091500", "scope": "game", "profile": "economy", "fps": 30, "tdp": 7, "gpuMode": "auto", "gpuClock": null, "gamescope": true, "gameMode": true, "mangoHud": "off", "upscaling": "fsr2-quality", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+      "currentProfile": {"gameId": "1091500", "scope": "game", "profile": "economy", "fps": 30, "tdp": 7, "gpuMode": "auto", "gpuClock": null, "gamescope": true, "gameMode": true, "mangoHud": "off", "vkBasalt": "off", "upscaling": "fsr2-quality", "frameGeneration": "off", "controllerLayout": "steam-recommended"},
+      "vkBasalt": {
+        "schemaVersion": 1,
+        "available": false,
+        "scope": "game",
+        "defaultMode": "off",
+        "costBasis": "qualitative",
+        "costNotice": "O impacto real depende do jogo, resolução e GPU.",
+        "presets": [
+          {"id": "off", "label": "Desligado", "effect": "none", "gpuCost": "none", "costLabel": "Sem custo adicional", "completeOff": true, "requiresCapability": false},
+          {"id": "cas", "label": "Nitidez CAS", "effect": "cas", "gpuCost": "low", "costLabel": "Custo baixo estimado", "completeOff": false, "requiresCapability": true},
+          {"id": "fxaa", "label": "Antisserrilhado FXAA", "effect": "fxaa", "gpuCost": "medium", "costLabel": "Custo médio estimado", "completeOff": false, "requiresCapability": true},
+          {"id": "smaa", "label": "Antisserrilhado SMAA", "effect": "smaa", "gpuCost": "high", "costLabel": "Custo alto estimado", "completeOff": false, "requiresCapability": true}
+        ]
+      },
       "truthState": "desired",
       "launcher": {"state": "desired", "statusLabel": "Aguardando lançamento gerenciado", "launchOption": "steamzero-launch --appid 1091500 -- %command%", "recoveryRequired": false, "runtime": null, "configuration": {"state": "foreign", "statusLabel": "Launch Options existente", "detail": "A configuração existente será preservada pelo rollback G-FULL.", "steamRunning": false, "managed": false, "replacesExisting": true, "lastOperationId": null}},
       "impact": {"battery": "2 h 35 min", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
