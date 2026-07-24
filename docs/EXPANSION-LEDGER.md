@@ -29,7 +29,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | A10 | Reserva compatível do catálogo de produto | capability payload | pending | — |
 | A11 | Ports/homebrew open-source reproduzíveis | port-catalog-v1 | pending | — |
 | A12 | Scraper hash-first/DAT/fuzzy/cache/seed | media-registry-v1 | pending | — |
-| G0 | Evidência automatizada HUD 1280×800 | gtool-hud-v1 | pending | — |
+| G0 | Evidência automatizada HUD 1280×800 | gtool-hud-v1 | verified-offscreen | `docs/expansion/WI-G0.md` |
 | G1 | MangoHud por jogo, diff e rollback | gtool-hud-v1 | pending | — |
 | G2 | Compositor puro de ambiente de lançamento | gtool-launch-environment-v1 | pending | — |
 | G3 | vkBasalt por jogo, custo e desligamento completo | gtool-launch-environment-v1 | pending | — |

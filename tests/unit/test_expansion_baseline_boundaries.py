@@ -262,6 +262,7 @@ def test_dashboard_delegates_all_registered_controller_actions(tmp_path: Path) -
     assert dashboard.admin_health() == marker
 
     delegated_calls = [
+        (dashboard.hud_presets, ()),
         (dashboard.plan_steam_gameplay, ({"x": 1}, {})),
         (dashboard.apply_steam_gameplay, ("p", "t", {})),
         (dashboard.recover_steam_gameplay, ("g",)),

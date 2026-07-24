@@ -37,6 +37,7 @@ from steamzero.core.session_state import (
     normalize_session_state,
 )
 from steamzero.core.state import StateStore
+from steamzero.domain.hud import MANGO_CONFIG
 
 StoreFactory = Callable[[], StateStore]
 Which = Callable[[str], str | None]
@@ -48,10 +49,6 @@ ContextProbe = Callable[[], str | None]
 _RUNTIME_KIND = "performance-runtime"
 _RUNTIME_OWNER = "steamzero-launcher"
 _FRAME_MULTIPLIERS = {"lsfg-2x": "2", "lsfg-3x": "3", "lsfg-4x": "4"}
-_MANGO_CONFIG = {
-    "basic": "fps,frametime,frame_timing=0,cpu_stats=0,gpu_stats=0",
-    "detailed": "fps,frametime,cpu_stats,gpu_stats,ram,vram,battery,battery_watt",
-}
 _INSTALL_DIR = re.compile(r'^\s*"installdir"\s+"(?P<value>[^"\x00\r\n]+)"\s*$')
 
 
@@ -340,7 +337,7 @@ class SteamGameLauncher:
         mango = str(profile["mangoHud"])
         gamescope = bool(profile["gamescope"])
         if mango != "off":
-            environment["MANGOHUD_CONFIG"] = _MANGO_CONFIG[mango]
+            environment["MANGOHUD_CONFIG"] = MANGO_CONFIG[mango]
             if gamescope:
                 self._required_tool("mangoapp")
             else:

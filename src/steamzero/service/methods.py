@@ -196,6 +196,7 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("cloud.launch", "cloud", "launch", (_PLATFORM_ID,), mutation=True),
     MethodSpec("cloud.plan", "cloud", "plan", mutation=True),
     MethodSpec("cloud.apply", "cloud", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
+    MethodSpec("hud.presets", "hud", "presets"),
     MethodSpec("controls.profiles", "controls", "profiles", (_PLATFORM_ID,)),
     MethodSpec(
         "controls.plan",

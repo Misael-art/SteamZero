@@ -30,6 +30,7 @@ from steamzero.adapters.steam_media import SteamMediaManager
 from steamzero.adapters.steam_session import readiness as session_readiness
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.hud import hud_catalog
 
 Which = Callable[[str], str | None]
 StoreFactory = Callable[[], StateStore]
@@ -212,7 +213,11 @@ class SteamGameplayController:
             "media": self._media.snapshot(selected_id) if selected_id else {"accounts": []},
             "sessionManager": session_readiness(which=self._which),
             "hostPreparation": host_preparation_snapshot(device_kind, which=self._which),
+            "hud": hud_catalog(mangohud_available=capabilities["mangohud"]),
         }
+
+    def hud_presets(self) -> dict[str, Any]:
+        return hud_catalog(mangohud_available=self._capabilities()["mangohud"])
 
     def session_status(self, game_id: str) -> dict[str, Any]:
         """Observa uma sessão específica sem expor comando ou ambiente."""

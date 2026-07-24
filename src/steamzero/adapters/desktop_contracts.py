@@ -453,6 +453,15 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("gameId", gameId="string"),
         ),
         _action(
+            "hud.presets",
+            "Consultar presets HUD",
+            "/hud/presets",
+            service="steam",
+            screen="steam-gameplay",
+            control="mangohud-presets",
+            method="GET",
+        ),
+        _action(
             "steam.gameplay.plan",
             "Revisar perfil Steam",
             "/steam/gameplay/plan",

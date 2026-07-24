@@ -644,6 +644,9 @@ class DesktopDashboard:
     ) -> dict[str, Any]:
         return self._gameplay.plan(payload, desktop_status)
 
+    def hud_presets(self) -> dict[str, Any]:
+        return self._gameplay.hud_presets()
+
     def apply_steam_gameplay(
         self,
         plan_id: str,

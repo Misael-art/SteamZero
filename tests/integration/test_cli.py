@@ -651,6 +651,18 @@ def test_cloud_cli_uses_closed_controller_contracts(
     ]
 
 
+def test_hud_cli_publishes_versioned_offscreen_evidence(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+
+    assert cli.main(["hud", "presets", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    contracts.validate(envelope["data"], "gtool-hud-v1.schema.json")
+    assert envelope["data"]["runtime"]["state"] == "unavailable"
+    assert envelope["data"]["evidence"]["humanReview"]["state"] == "PENDING-HUMAN"
+
+
 def test_desktop_status_surfaces_generic_owner_blocker(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

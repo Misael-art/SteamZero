@@ -228,6 +228,10 @@ class FakeDashboard:
         self.calls.append(("gameplay-plan", str(payload["gameId"])))
         return {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"}
 
+    def hud_presets(self) -> dict[str, object]:
+        self.calls.append(("hud-presets",))
+        return {"schemaVersion": 1, "presets": []}
+
     def apply_steam_gameplay(
         self,
         plan_id: str,
@@ -677,6 +681,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     request_json(base, token, "/steam/open", {"target": "library"})
     request_json(base, token, "/steam/game/launch", {"gameId": "10"})
     request_json(base, token, "/steam/input/open", {"gameId": "10"})
+    assert request_json(base, token, "/hud/presets")["schemaVersion"] == 1
     gameplay_plan = request_json(
         base,
         token,
@@ -803,6 +808,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("steam", "library"),
         ("steam-game-launch", "10"),
         ("steam-input", "10"),
+        ("hud-presets",),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
         ("gameplay-recover", "10"),

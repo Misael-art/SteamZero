@@ -41,6 +41,7 @@ def test_registry_loads_all_schemas() -> None:
         "feat-operation-history-v1.schema.json",
         "feat-collection-v1.schema.json",
         "feat-bitrot-v1.schema.json",
+        "gtool-hud-v1.schema.json",
     } <= got
 
 
@@ -125,6 +126,13 @@ def test_bitrot_sample_validates() -> None:
         },
         "feat-bitrot-v1.schema.json",
     )
+
+
+@pytest.mark.golden
+def test_hud_catalog_validates() -> None:
+    from steamzero.domain.hud import hud_catalog
+
+    contracts.validate(hud_catalog(), "gtool-hud-v1.schema.json")
 
 
 @pytest.mark.golden

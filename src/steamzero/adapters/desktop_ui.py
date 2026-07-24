@@ -114,6 +114,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, self._dashboard().collection_state())
         elif path == "/library/health":
             self._send(HTTPStatus.OK, self._dashboard().library_health())
+        elif path == "/hud/presets":
+            self._send(HTTPStatus.OK, self._dashboard().hud_presets())
         elif path == "/system/admin/health":
             self._send(HTTPStatus.OK, self._dashboard().admin_health())
         else:

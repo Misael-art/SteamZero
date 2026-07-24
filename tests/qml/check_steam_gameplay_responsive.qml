@@ -30,6 +30,11 @@ Window {
             "games": [{"id": "3311720", "name": "Gimmick! 2 Demo"}],
             "environment": [],
             "readiness": {"percent": 100, "title": "Pronto"},
+            "hud": {
+                "viewport": {"width": 1280, "height": 800},
+                "evidence": {"state": "verified-offscreen",
+                    "humanReview": {"state": "PENDING-HUMAN"}}
+            },
             "hardware": {"tdpMin": 3, "tdpMax": 15, "refreshHz": 60},
             "currentProfile": {"gameId": "3311720", "scope": "game"}
         })
@@ -58,6 +63,8 @@ Window {
                   "CTA deve permanecer acionável quando há jogo selecionado")
             check(page.minimumTouchTarget >= 48,
                   "CTA deve manter alvo mínimo de 48 px")
+            check(page.gameplay.hud.evidence.humanReview.state === "PENDING-HUMAN",
+                  "evidência HUD não deve promover revisão visual humana")
             width = 1656
             height = 954
             phase = 1

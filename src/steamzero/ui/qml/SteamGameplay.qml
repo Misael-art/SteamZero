@@ -1229,6 +1229,14 @@ Item {
                                 }
                             }
                         }
+                        Label {
+                            visible: gameplay && gameplay.hud && gameplay.hud.evidence
+                            text: qsTr("HUD 1280×800 · encaixe automatizado · revisão visual pendente")
+                            color: page.amberColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            Accessible.name: text
+                        }
                         RowLayout {
                             Layout.fillWidth: true
                             Label { text: qsTr("Upscaling"); color: page.mutedColor; Layout.preferredWidth: 112 }

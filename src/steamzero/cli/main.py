@@ -83,6 +83,7 @@ Domínios (Fase 1):
   cloud launch           abre URL allowlisted (--platform ID)
   cloud plan             revisa publicação dos atalhos Steam
   cloud apply            aplica publicação (--plan-id ID --confirm TOKEN)
+  hud presets            lista presets e evidência automatizada 1280x800
   controls profiles      lista perfis e seleção ativa (--platform ID)
   controls plan          revisa seleção de perfil (--platform ID --profile ID)
   controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
@@ -938,6 +939,18 @@ def _cmd_cloud_apply(args: list[str], correlation_id: str) -> tuple[dict[str, An
     )
 
 
+def _cmd_hud_presets(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    import shutil
+
+    from steamzero.domain.hud import hud_catalog
+
+    data = hud_catalog(mangohud_available=shutil.which("mangohud") is not None)
+    return (
+        build_envelope("hud", "presets", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
 def _input_profiles_manager() -> InputProfileManager:
     from steamzero.core import paths
     from steamzero.domain.input_profiles import InputProfileManager
@@ -1257,6 +1270,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("cloud", "launch"): _cmd_cloud_launch,
     ("cloud", "plan"): _cmd_cloud_plan,
     ("cloud", "apply"): _cmd_cloud_apply,
+    ("hud", "presets"): _cmd_hud_presets,
     ("controls", "profiles"): _cmd_controls_profiles,
     ("controls", "plan"): _cmd_controls_plan,
     ("controls", "apply"): _cmd_controls_apply,

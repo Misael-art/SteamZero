@@ -123,6 +123,14 @@ def test_cloud_launch_contract_is_closed_and_routes_to_allowlisted_bridge() -> N
     assert action["rollback"]["supported"] is False
 
 
+def test_hud_presets_contract_is_read_only() -> None:
+    action = handheld_ui_contracts()["byId"]["hud.presets"]
+    assert action["endpoint"] == "/hud/presets"
+    assert action["method"] == "GET"
+    assert action["confirmation"] == {"required": False, "mode": "none"}
+    assert action["rollback"]["supported"] is False
+
+
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
     qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     direct_routes = re.findall(r'request\("(?:GET|POST)",\s*"([^"]+)"', qml)
