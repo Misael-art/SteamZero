@@ -236,6 +236,38 @@ ApplicationWindow {
     property string lastRequest: ""
     property bool lastRequestIsError: false
     property int pendingRequests: 0
+    property bool bridgeUnavailable: false
+    property var activeErrors: []
+
+    function pushError(errorObj) {
+        if (!errorObj || typeof errorObj !== "object" || !errorObj.code)
+            return
+        var opId = errorObj.operationId || ""
+        for (var i = 0; i < activeErrors.length; i++) {
+            if (opId.length > 0 && activeErrors[i].operationId === opId)
+                return
+            if (!opId && activeErrors[i].code === errorObj.code
+                    && !activeErrors[i].operationId)
+                return
+        }
+        var copy = activeErrors.slice()
+        copy.unshift(errorObj)
+        activeErrors = copy.slice(0, 8)
+    }
+
+    function dismissError(code) {
+        var remaining = []
+        for (var i = 0; i < activeErrors.length; i++) {
+            if (activeErrors[i].code !== code)
+                remaining.push(activeErrors[i])
+        }
+        activeErrors = remaining
+    }
+
+    function isCatalogError(code) {
+        return code && typeof code === "string" && code.startsWith("E-")
+    }
+
     property bool recoveryPromptShown: false
     property bool keyboardVisible: false
 
@@ -471,7 +503,16 @@ ApplicationWindow {
         }
     }
 
-    function notify(message, isError) {
+    function notify(message, isError, errorObj) {
+        if (errorObj && typeof errorObj === "object" && errorObj.code) {
+            pushError(errorObj)
+            return
+        }
+        if (isError && typeof message === "string" && root.isCatalogError(message)) {
+            pushError({"code": message, "title": message, "what": "", "impact": "",
+                "autoAction": "", "manualAction": "", "probableCause": "", "operationId": ""})
+            return
+        }
         lastRequest = message
         lastRequestIsError = isError === true
         feedbackTimer.restart()
@@ -498,22 +539,33 @@ ApplicationWindow {
         liveTasks = current.slice(0, 20)
     }
 
+    function errorObject(response) {
+        if (!response || response.error === undefined)
+            return null
+        if (typeof response.error === "object" && response.error !== null)
+            return response.error
+        return null
+    }
+
     function errorMessage(response, fallback) {
         if (!response || response.error === undefined)
             return fallback
         if (typeof response.error === "string")
             return response.error
-        return response.error.title || response.error.detail || response.error.code || fallback
+        var err = response.error
+        return err.title || err.detail || err.code || fallback
     }
 
     function request(method, path, payload, callback, errorCallback) {
         if (!apiUrl || !apiToken) {
-            const message = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+            var msg = qsTr("Bridge local indisponível; nenhuma mudança foi feita")
+            bridgeUnavailable = true
             if (errorCallback)
-                errorCallback(message)
-            notify(message, true)
+                errorCallback(msg)
+            notify(msg, true)
             return
         }
+        bridgeUnavailable = false
         const xhr = new XMLHttpRequest()
         let completed = false
         pendingRequests += 1
@@ -536,18 +588,19 @@ ApplicationWindow {
             try {
                 const response = JSON.parse(xhr.responseText)
                 if (xhr.status < 200 || xhr.status >= 300) {
-                    const message = root.errorMessage(response, qsTr("Ação recusada"))
+                    var errObj = root.errorObject(response)
+                    var msg = root.errorMessage(response, qsTr("Ação recusada"))
                     if (errorCallback)
-                        errorCallback(message)
-                    root.notify(message, true)
+                        errorCallback(errObj ? errObj : msg)
+                    root.notify(msg, true, errObj)
                     return
                 }
                 callback(response)
             } catch (error) {
-                const message = qsTr("Resposta inválida; nenhuma mudança adicional foi feita")
+                var msg = qsTr("Resposta inválida; nenhuma mudança adicional foi feita")
                 if (errorCallback)
-                    errorCallback(message)
-                root.notify(message, true)
+                    errorCallback(msg)
+                root.notify(msg, true)
             }
         }
         xhr.onerror = function() {
@@ -2815,6 +2868,65 @@ ApplicationWindow {
                                     else
                                         root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 5 : 3
                                 }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: root.bridgeUnavailable
+                        color: "#352020"
+                        border.color: "#d45454"
+                        border.width: 1
+                        radius: 8
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 14
+                        Layout.rightMargin: 14
+                        Layout.topMargin: 7
+                        Layout.preferredHeight: 46
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            spacing: 10
+                            ToolButton {
+                                enabled: false
+                                icon.name: "network-offline"
+                                icon.color: "#d45454"
+                                icon.width: 22
+                                icon.height: 22
+                                background: Item {}
+                            }
+                            Label {
+                                text: qsTr("Central desconectada — alterações locais não serão sincronizadas")
+                                color: "#f2f6fb"
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        visible: root.activeErrors.length > 0
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Repeater {
+                            model: root.activeErrors
+                            ErrorCard {
+                                Layout.fillWidth: true
+                                errorObject: modelData
+                                onDismiss: root.dismissError(errorObject ? errorObject.code : "")
+                                onShowDiagnostics: {
+                                    var code = errorObject ? errorObject.code : ""
+                                    console.log("Diagnóstico exportado para", code)
+                                }
+                                onExecuteAction: {
+                                    var action = errorObject ? errorObject.manualAction : ""
+                                    console.log("Ação executada:", action)
+                                }
+                                Component.onCompleted: resolve(modelData)
                             }
                         }
                     }
