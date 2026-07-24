@@ -9,20 +9,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import select
 import signal
 import socket
 import socketserver
 import struct
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
 from typing import Any
 
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope
+from steamzero.api.events import (
+    JOB_TERMINAL_STATES,
+    OPERATION_TERMINAL_STATES,
+    PUBLIC_EVENT_KINDS,
+    follow_events,
+    parse_event_cursor,
+)
 from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.core.state import StateStore
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
 from steamzero.service.reconciler import SessionEnvironmentReconciler
 from steamzero.service.socket_path import safe_socket_path
@@ -30,6 +41,21 @@ from steamzero.service.socket_path import safe_socket_path
 _MAX_REQUEST = 1 << 20
 _MAX_REQUESTS_PER_CONNECTION = 128
 _MAX_MUTATIONS_PER_CONNECTION = 16
+_MAX_SUBSCRIPTION_FILTERS = 64
+_MAX_SUBSCRIPTION_IDLE = 86_400.0
+
+
+@dataclass(frozen=True)
+class EventSubscription:
+    request_id: str | int
+    cursor: str | None
+    kinds: tuple[str, ...]
+    entities: tuple[str, ...]
+    job_ids: tuple[str, ...]
+    operation_ids: tuple[str, ...]
+    limit: int
+    idle_timeout: float | None
+    terminal_states: frozenset[str]
 
 
 class CoreRequestHandler(socketserver.StreamRequestHandler):
@@ -53,6 +79,9 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
             if len(raw) > _MAX_REQUEST or not raw.endswith(b"\n"):
                 self._write(_rpc_error(None, -32600, "requisição excede o limite"))
                 return
+            if _request_method(raw) == "events.subscribe":
+                self._handle_subscription(raw)
+                return
             response, is_mutation = _dispatch(raw)
             if is_mutation:
                 mutations += 1
@@ -66,11 +95,80 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
         self.wfile.write(payload + b"\n")
         self.wfile.flush()
 
+    def _handle_subscription(self, raw: bytes) -> None:
+        parsed = _parse_subscription(raw)
+        if isinstance(parsed, dict):
+            self._write(parsed)
+            return
+        subscription_id = ids.new_ulid()
+        try:
+            with StateStore() as store:
+                store.migrate()
+                missing = _missing_subscription_target(store, parsed)
+                if missing is not None:
+                    self._write(_rpc_error(parsed.request_id, -32602, missing))
+                    return
+                cursor = (
+                    str(store.latest_event_seq())
+                    if parsed.cursor is None
+                    else parsed.cursor
+                )
+                self._write(
+                    _rpc_result(
+                        parsed.request_id,
+                        {
+                            "subscriptionId": subscription_id,
+                            "cursor": cursor,
+                            "transport": "json-rpc-notifications",
+                        },
+                    )
+                )
+                for event in follow_events(
+                    store,
+                    cursor=cursor,
+                    kinds=parsed.kinds,
+                    entities=parsed.entities,
+                    limit=parsed.limit,
+                    idle_timeout=parsed.idle_timeout,
+                    terminal_states=parsed.terminal_states,
+                    stop_requested=lambda: (
+                        self.server.shutdown_requested.is_set()
+                        or _socket_has_input(self.request)
+                    ),
+                ):
+                    cursor = str(event["seq"])
+                    self._write(
+                        _rpc_notification(
+                            "events.event",
+                            {
+                                "subscriptionId": subscription_id,
+                                "cursor": cursor,
+                                "event": event,
+                            },
+                        )
+                    )
+                self._write(
+                    _rpc_notification(
+                        "events.complete",
+                        {"subscriptionId": subscription_id, "cursor": cursor},
+                    )
+                )
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            return
+
 
 class CoreServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     daemon_threads = False
     block_on_close = True
     request_queue_size = 16
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.shutdown_requested = threading.Event()
+        super().__init__(*args, **kwargs)
+
+    def shutdown(self) -> None:
+        self.shutdown_requested.set()
+        super().shutdown()
 
 
 def _request_id(raw: bytes) -> str | int | None:
@@ -82,6 +180,150 @@ def _request_id(raw: bytes) -> str | int | None:
         return None
     value = request.get("id")
     return value if isinstance(value, (str, int)) and not isinstance(value, bool) else None
+
+
+def _request_method(raw: bytes) -> str | None:
+    try:
+        request = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(request, dict):
+        return None
+    method = request.get("method")
+    return method if isinstance(method, str) else None
+
+
+def _socket_has_input(stream: socket.socket) -> bool:
+    try:
+        readable, _writable, _exceptional = select.select([stream], [], [], 0)
+    except (OSError, ValueError):
+        return True
+    return bool(readable)
+
+
+def _parse_subscription(raw: bytes) -> EventSubscription | dict[str, Any]:
+    try:
+        request = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return _rpc_error(None, -32700, "JSON inválido")
+    if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
+        return _rpc_error(None, -32600, "requisição JSON-RPC inválida")
+    request_id = request.get("id")
+    if not isinstance(request_id, (str, int)) or isinstance(request_id, bool):
+        return _rpc_error(None, -32600, "id precisa ser texto ou inteiro")
+    params = request.get("params", {})
+    if not isinstance(params, dict) or not all(isinstance(key, str) for key in params):
+        return _rpc_error(request_id, -32602, "params precisa ser um objeto")
+    allowed = {
+        "cursor",
+        "kinds",
+        "jobIds",
+        "operationIds",
+        "entities",
+        "limit",
+        "idleTimeout",
+        "stopOnTerminal",
+    }
+    unknown = set(params) - allowed
+    if unknown:
+        return _rpc_error(
+            request_id,
+            -32602,
+            f"campos desconhecidos: {', '.join(sorted(unknown))}",
+        )
+    try:
+        cursor_value = params.get("cursor")
+        if cursor_value is not None and not isinstance(cursor_value, str):
+            raise ValueError("cursor precisa ser texto decimal")
+        parse_event_cursor(cursor_value)
+        kinds = _subscription_text_list(params, "kinds")
+        if not kinds:
+            kinds = PUBLIC_EVENT_KINDS
+        unsupported = set(kinds) - set(PUBLIC_EVENT_KINDS)
+        if unsupported:
+            raise ValueError(
+                f"kinds não públicos: {', '.join(sorted(unsupported))}"
+            )
+        job_ids = _subscription_text_list(params, "jobIds")
+        operation_ids = _subscription_text_list(params, "operationIds")
+        requested_entities = _subscription_text_list(params, "entities")
+        entities = tuple(
+            dict.fromkeys(
+                (
+                    *(f"job:{job_id}" for job_id in job_ids),
+                    *(f"operation:{operation_id}" for operation_id in operation_ids),
+                    *requested_entities,
+                )
+            )
+        )
+        limit = params.get("limit", 64)
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 256:
+            raise ValueError("limit precisa ser inteiro entre 1 e 256")
+        idle_value = params.get("idleTimeout")
+        idle_timeout: float | None
+        if idle_value is None:
+            idle_timeout = None
+        elif (
+            not isinstance(idle_value, (int, float))
+            or isinstance(idle_value, bool)
+            or not math.isfinite(float(idle_value))
+            or not 0 <= float(idle_value) <= _MAX_SUBSCRIPTION_IDLE
+        ):
+            raise ValueError("idleTimeout precisa estar entre 0 e 86400 segundos")
+        else:
+            idle_timeout = float(idle_value)
+        stop_on_terminal = params.get("stopOnTerminal", False)
+        if not isinstance(stop_on_terminal, bool):
+            raise ValueError("stopOnTerminal precisa ser booleano")
+    except ValueError as exc:
+        return _rpc_error(request_id, -32602, str(exc))
+    terminal_states = (
+        JOB_TERMINAL_STATES | OPERATION_TERMINAL_STATES
+        if stop_on_terminal
+        else frozenset()
+    )
+    return EventSubscription(
+        request_id=request_id,
+        cursor=cursor_value,
+        kinds=kinds,
+        entities=entities,
+        job_ids=job_ids,
+        operation_ids=operation_ids,
+        limit=limit,
+        idle_timeout=idle_timeout,
+        terminal_states=terminal_states,
+    )
+
+
+def _subscription_text_list(params: dict[str, Any], name: str) -> tuple[str, ...]:
+    value = params.get(name, [])
+    if (
+        not isinstance(value, list)
+        or len(value) > _MAX_SUBSCRIPTION_FILTERS
+        or any(
+            not isinstance(item, str)
+            or not item
+            or len(item) > 256
+            or "\x00" in item
+            for item in value
+        )
+    ):
+        raise ValueError(
+            f"{name} precisa ser uma lista de até {_MAX_SUBSCRIPTION_FILTERS} textos"
+        )
+    return tuple(dict.fromkeys(value))
+
+
+def _missing_subscription_target(
+    store: StateStore, subscription: EventSubscription
+) -> str | None:
+    for job_id in subscription.job_ids:
+        if store.get_job(job_id) is None:
+            return f"job inexistente: {job_id}"
+    for operation_id in subscription.operation_ids:
+        if store.get_operation(operation_id) is None:
+            return f"operação inexistente: {operation_id}"
+    return None
 
 
 def _dispatch(raw: bytes) -> tuple[dict[str, Any], bool]:
@@ -178,6 +420,10 @@ def _rpc_error(request_id: str | int | None, code: int, message: str) -> dict[st
     return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
 
 
+def _rpc_notification(method: str, params: dict[str, Any]) -> dict[str, Any]:
+    return {"jsonrpc": "2.0", "method": method, "params": params}
+
+
 def _safe_socket_path() -> Path:
     return safe_socket_path()
 
@@ -202,8 +448,6 @@ def _server_from_systemd() -> CoreServer | None:
 
 def serve(*, systemd: bool = False) -> int:
     # Migração serial antes de abrir concorrência entre handlers e reconciliador.
-    from steamzero.core.state import StateStore
-
     with StateStore() as store:
         store.migrate()
     server = _server_from_systemd() if systemd else None

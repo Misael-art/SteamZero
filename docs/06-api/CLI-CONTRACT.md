@@ -53,6 +53,7 @@ steamzero jobs list --limit 64 [--cursor JOB_ID] [--state STATE]
 steamzero jobs list --follow [--job-id ID] [--cursor SEQ] [--timeout SEG] --json
 steamzero operations list --limit 64 [--cursor OPERATION_ID]
 steamzero operations list --follow [--operation-id ID] [--cursor SEQ] [--timeout SEG] --json
+steamzero events page [--cursor SEQ] [--limit 64] [--kind KIND] [--entity ENTITY] --json
 steamzero state export --out state.json · steamzero backup create --full
 steamzero support bundle --preview
 ```
@@ -84,3 +85,7 @@ steamzero support bundle --preview
     `--follow --json` não emite envelope de sucesso: cada linha é um `event-v1`.
     `--timeout 0` drena somente o backlog após o cursor e é útil para reconexão/testes.
     Paths internos de journal, backup, parâmetros e ambiente não entram nessas saídas.
+11. Jobs, operações e eventos paginados preferem a allowlist JSON-RPC do daemon.
+    O follow usa `events.subscribe` na mesma conexão; somente ausência antes da
+    conexão permite fallback local. Depois do primeiro ack, o cliente reconecta
+    pelo último cursor em vez de misturar fontes ou repetir saída.

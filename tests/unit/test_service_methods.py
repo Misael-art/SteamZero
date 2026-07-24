@@ -16,6 +16,11 @@ def _value(field_name: str) -> str:
         "confirmToken": "token",
         "operationId": "01J000000000000000000000AB",
         "profile": "safe",
+        "limit": "64",
+        "cursor": "0",
+        "state": "running",
+        "kind": "job.state",
+        "entity": "job:J1",
     }
     return values[field_name]
 
@@ -33,7 +38,10 @@ def test_all_method_specs_roundtrip_cli_and_rpc() -> None:
         assert spec.args_to_params(args, params["correlationId"]) == params
 
     advertised = capabilities()
-    assert {row["method"] for row in advertised} == {spec.method for spec in METHOD_SPECS}
+    assert {row["method"] for row in advertised} == {
+        *(spec.method for spec in METHOD_SPECS),
+        "events.subscribe",
+    }
     assert {row["authorization"] for row in advertised} == {"read", "mutate"}
 
 

@@ -16,9 +16,11 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.api import contracts
 from steamzero.cli import main as cli
 from steamzero.core import fs
-from steamzero.service.client import invoke
+from steamzero.core.state import StateStore
+from steamzero.service.client import invoke, subscribe_events
 from steamzero.service.core import CoreRequestHandler, CoreServer
 from steamzero.service.socket_path import safe_socket_path
 
@@ -118,7 +120,7 @@ def test_daemon_authenticates_local_transport_and_exposes_closed_capabilities(
         {"jsonrpc": "2.0", "id": 2, "method": "system.capabilities", "params": {}},
     )
     methods = {item["method"] for item in capabilities["result"]["methods"]}  # type: ignore[index,union-attr]
-    assert {"doctor.run", "session.status", "desktop.apply"} <= methods
+    assert {"doctor.run", "session.status", "desktop.apply", "events.subscribe"} <= methods
     assert "shell.exec" not in methods
 
 
@@ -163,6 +165,33 @@ def test_cli_prefers_daemon_and_preserves_contract(
     assert invocation.envelope["module"] == "session"
 
 
+def test_daemon_exposes_paginated_jobs_through_same_cli_contract(
+    core_service: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.save_job(
+            {
+                "id": "J-PAGED",
+                "type": "catalog.search",
+                "priority": "interactive",
+                "state": "queued",
+                "correlation_id": "01J000000000000000000000AA",
+            }
+        )
+
+    def fail_local(_args: list[str], _correlation_id: str) -> tuple[dict[str, object], int]:
+        raise AssertionError("handler local não deveria ser chamado")
+
+    monkeypatch.setitem(cli.HANDLERS, ("jobs", "list"), fail_local)
+    assert cli.main(["jobs", "list", "--limit", "1", "--json"]) == cli.EXIT_OK
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["data"]["jobs"][0]["id"] == "J-PAGED"
+    assert envelope["data"]["page"]["limit"] == 1
+
+
 def test_inprocess_server_covers_rpc_errors_and_domain_dispatch(inprocess_core: Path) -> None:
     malformed = _rpc(inprocess_core, {"jsonrpc": "1.0", "id": 1, "method": "doctor.run"})
     assert malformed["error"]["code"] == -32600  # type: ignore[index]
@@ -181,6 +210,99 @@ def test_inprocess_server_covers_rpc_errors_and_domain_dispatch(inprocess_core: 
         timeout=10,
     )
     assert status.envelope["module"] == "session"
+
+
+def test_event_subscription_streams_valid_events_and_completes(
+    inprocess_core: Path,
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.save_job(
+            {
+                "id": "J-STREAM",
+                "type": "catalog.search",
+                "priority": "interactive",
+                "state": "running",
+                "correlation_id": "01J000000000000000000000AA",
+            }
+        )
+        store.append_event(
+            "job.progress",
+            entity="job:J-STREAM",
+            payload={"stage": "download", "current": 1, "total": 2, "unit": "items"},
+        )
+        store.append_event(
+            "job.state",
+            entity="job:J-STREAM",
+            payload={"state": "completed"},
+        )
+
+    events = list(
+        subscribe_events(
+            {
+                "cursor": "0",
+                "kinds": ["job.progress", "job.state"],
+                "jobIds": ["J-STREAM"],
+                "limit": 1,
+                "idleTimeout": 0,
+                "stopOnTerminal": True,
+            }
+        )
+    )
+    assert [event["seq"] for event in events] == sorted(event["seq"] for event in events)
+    assert events[-1]["state"] == "completed"
+    assert all(event["jobId"] == "J-STREAM" for event in events)
+    for event in events:
+        contracts.validate(event, "event-v1.schema.json")
+
+
+def test_cli_follow_prefers_daemon_subscription(
+    inprocess_core: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with StateStore() as store:
+        store.migrate()
+        store.save_job(
+            {
+                "id": "J-CLI-STREAM",
+                "type": "catalog.search",
+                "priority": "interactive",
+                "state": "running",
+                "correlation_id": "01J000000000000000000000AB",
+            }
+        )
+        store.append_event(
+            "job.state",
+            entity="job:J-CLI-STREAM",
+            payload={"state": "completed"},
+        )
+
+    class FailLocalStore:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            raise AssertionError("fallback local não deveria ser aberto")
+
+    monkeypatch.setattr(cli, "StateStore", FailLocalStore)
+    assert (
+        cli.main(
+            [
+                "jobs",
+                "list",
+                "--follow",
+                "--job-id",
+                "J-CLI-STREAM",
+                "--cursor",
+                "0",
+                "--timeout",
+                "0",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert events[-1]["state"] == "completed"
+    assert all(event["jobId"] == "J-CLI-STREAM" for event in events)
 
 
 def test_inprocess_server_rate_limits_mutations_per_connection(inprocess_core: Path) -> None:

@@ -2,17 +2,44 @@
 
 ## Canal
 
-- API: notificações JSON-RPC após `events.subscribe {jobIds?|kinds?|entities?}`.
+- API: notificações JSON-RPC após
+  `events.subscribe {cursor?, kinds?, jobIds?, operationIds?, entities?, limit?, idleTimeout?, stopOnTerminal?}`.
 - CLI: `--follow` emite NDJSON (um evento por linha, schema `event-v1`).
-- UI que reconecta: re-hidrata do State Store (`job.get` + `event_log` desde `seq`) — eventos têm `seq` monotônico por job; sem perda ao reconectar.
-- F3 implementa a metade local: páginas crescentes limitadas a 256 eventos,
-  cursor igual ao último `seq` consumido e polling sem acumular histórico em
-  memória. A assinatura persistente do daemon/JSON-RPC pertence a F4.
+- UI que reconecta: re-hidrata do State Store (`job.get` + `event_log` desde
+  `seq`) — eventos têm `seq` global monotônico; sem perda ao reconectar.
+- F3 implementa a persistência e as páginas crescentes limitadas a 256 eventos.
+  F4 transporta essas páginas pelo daemon sem acumular histórico em memória.
 - Sem cursor explícito, `--follow` começa no maior `seq` já persistido; para
   retomar uma conexão, o consumidor envia o último cursor confirmado.
 - Eventos sistêmicos sem correlação de requisição usam o ULID reservado
   `00000000000000000000000000`; eventos de job recuperam o `correlationId`
   persistido no próprio job.
+
+## Protocolo da assinatura
+
+O resultado inicial confirma a posição efetiva:
+
+```json
+{"jsonrpc":"2.0","id":1,"result":{"subscriptionId":"01…","cursor":"42","transport":"json-rpc-notifications"}}
+```
+
+Cada evento avança estritamente o cursor:
+
+```json
+{"jsonrpc":"2.0","method":"events.event","params":{"subscriptionId":"01…","cursor":"43","event":{"seq":43,"ts":"…","kind":"job.state","correlationId":"01…","jobId":"J1","state":"completed"}}}
+```
+
+Fim por timeout ocioso ou estado terminal emite `events.complete` com o último
+cursor. Queda de transporte não emite conclusão: o cliente reconecta enviando
+esse último cursor, e rejeita regressão, repetição ou mensagem fora do contrato.
+`cursor` é uma string decimal para preservar o inteiro SQLite sem perda em
+clientes JSON; `event.seq` continua inteiro no `event-v1`.
+
+O daemon aceita apenas os oito kinds públicos desta página, no máximo 64 itens
+por lista de filtro, página de 1 a 256 e timeout entre 0 e 86400 segundos.
+`jobIds` e `operationIds` são validados antes do ack. Sem cursor explícito, o ack
+fixa o maior `seq` existente naquele instante, evitando uma janela entre
+descoberta da posição e início do stream.
 
 ## Tipos
 

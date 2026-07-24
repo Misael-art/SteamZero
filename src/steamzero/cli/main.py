@@ -45,6 +45,7 @@ Domínios (Fase 1):
   jobs list --follow     segue eventos em NDJSON (--job-id ID --cursor SEQ)
   operations list        lista operações paginadas (--limit N --cursor ID)
   operations list --follow segue eventos em NDJSON (--operation-id ID --cursor SEQ)
+  events page            lê eventos paginados (--cursor SEQ --limit N)
   state export [--out F] exporta o State Store (JSON)
   component list         lista adapters e deployments Flatpak
   component status      mostra um deployment (--id ADAPTER)
@@ -156,6 +157,39 @@ def _cmd_operations_list(args: list[str], correlation_id: str) -> tuple[dict[str
                     ),
                 },
             },
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_events_page(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.api.events import PUBLIC_EVENT_KINDS, event_page
+
+    cursor = _flag_value(args, "--cursor")
+    kind = _flag_value(args, "--kind")
+    entity = _flag_value(args, "--entity")
+    if kind is not None and kind not in PUBLIC_EVENT_KINDS:
+        raise SteamZeroError("E-API-SCHEMA", detail=f"kind de evento não público: {kind}")
+    with StateStore() as store:
+        store.migrate()
+        try:
+            page = event_page(
+                store,
+                cursor=cursor,
+                limit=_page_limit(args),
+                kinds=(kind,) if kind is not None else (),
+                entities=(entity,) if entity is not None else (),
+            )
+        except ValueError as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=str(exc)) from exc
+    data = page.to_dict()
+    return (
+        build_envelope(
+            "events",
+            "page",
+            status="ok" if data["events"] else "noop",
+            data=data,
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -693,6 +727,47 @@ def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
     else:
         raise SteamZeroError("E-CLI-USAGE", detail="--follow não é suportado nesta ação")
 
+    def emit_event(event: dict[str, Any]) -> None:
+        contracts.validate(event, "event-v1.schema.json")
+        if json_out:
+            sys.stdout.write(
+                json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
+            )
+        else:
+            target_id = event.get("jobId") or event.get("operationId") or "-"
+            detail = event.get("state") or event.get("progress") or ""
+            sys.stdout.write(
+                f"{event['seq']} {event['kind']} {target_id} "
+                f"{json.dumps(detail, ensure_ascii=False)}\n"
+            )
+        sys.stdout.flush()
+
+    if os.environ.get("STEAMZERO_NO_DAEMON") != "1":
+        from steamzero.service.client import (
+            CoreProtocolError,
+            CoreUnavailable,
+            subscribe_events,
+        )
+
+        params: dict[str, Any] = {
+            "kinds": list(kinds),
+            "limit": limit,
+            "idleTimeout": timeout,
+            "stopOnTerminal": bool(terminal_states),
+        }
+        if cursor is not None:
+            params["cursor"] = cursor
+        if target is not None:
+            params["jobIds" if domain == "jobs" else "operationIds"] = [target]
+        try:
+            for event in subscribe_events(params):
+                emit_event(event)
+            return EXIT_OK
+        except CoreUnavailable:
+            pass
+        except CoreProtocolError as exc:
+            raise SteamZeroError("E-API-CONTRACT", detail=str(exc)) from exc
+
     with StateStore() as store:
         store.migrate()
         if domain == "jobs" and target is not None and store.get_job(target) is None:
@@ -715,24 +790,7 @@ def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
                 idle_timeout=timeout,
                 terminal_states=terminal_states,
             ):
-                contracts.validate(event, "event-v1.schema.json")
-                if json_out:
-                    sys.stdout.write(
-                        json.dumps(
-                            event,
-                            ensure_ascii=False,
-                            separators=(",", ":"),
-                        )
-                        + "\n"
-                    )
-                else:
-                    target_id = event.get("jobId") or event.get("operationId") or "-"
-                    detail = event.get("state") or event.get("progress") or ""
-                    sys.stdout.write(
-                        f"{event['seq']} {event['kind']} {target_id} "
-                        f"{json.dumps(detail, ensure_ascii=False)}\n"
-                    )
-                sys.stdout.flush()
+                emit_event(event)
         except KeyboardInterrupt:
             return EXIT_OK
     return EXIT_OK
@@ -743,6 +801,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("jobs", "list"): _cmd_jobs_list,
     ("operations", "list"): _cmd_operations_list,
+    ("events", "page"): _cmd_events_page,
     ("state", "export"): _cmd_state_export,
     ("component", "list"): _cmd_component_list,
     ("component", "status"): _cmd_component_status,

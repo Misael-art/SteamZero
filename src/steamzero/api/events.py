@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,6 +16,16 @@ SYSTEM_CORRELATION_ID = "00000000000000000000000000"
 MAX_PAGE_SIZE = 256
 DEFAULT_PAGE_SIZE = 64
 
+PUBLIC_EVENT_KINDS = (
+    "job.progress",
+    "job.state",
+    "operation.state",
+    "session.state",
+    "session.environment",
+    "session.resume",
+    "entity.changed",
+    "alert",
+)
 JOB_EVENT_KINDS = ("job.progress", "job.state")
 OPERATION_EVENT_KINDS = ("operation.state",)
 JOB_TERMINAL_STATES = frozenset(
@@ -84,6 +94,7 @@ def follow_events(
     poll_interval: float = 0.25,
     idle_timeout: float | None = None,
     terminal_states: frozenset[str] = frozenset(),
+    stop_requested: Callable[[], bool] | None = None,
 ) -> Iterator[dict[str, Any]]:
     """Entrega eventos incrementalmente sem acumular histórico em memória."""
     if poll_interval < 0:
@@ -93,6 +104,8 @@ def follow_events(
     current = str(store.latest_event_seq()) if cursor is None else cursor
     last_activity = time.monotonic()
     while True:
+        if stop_requested is not None and stop_requested():
+            return
         page = event_page(
             store,
             cursor=current,

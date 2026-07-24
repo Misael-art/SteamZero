@@ -95,10 +95,17 @@ _GAME_ID = Field("gameId", "--game-id")
 _PLAN_ID = Field("planId", "--plan-id")
 _CONFIRM = Field("confirmToken", "--confirm")
 _OPERATION_ID = Field("operationId", "--operation-id")
+_LIMIT = Field("limit", "--limit", required=False)
+_CURSOR = Field("cursor", "--cursor", required=False)
+_STATE = Field("state", "--state", required=False)
+_KIND = Field("kind", "--kind", required=False)
+_ENTITY = Field("entity", "--entity", required=False)
 
 METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("doctor.run", "doctor", None),
-    MethodSpec("jobs.list", "jobs", "list"),
+    MethodSpec("jobs.list", "jobs", "list", (_LIMIT, _CURSOR, _STATE)),
+    MethodSpec("operations.list", "operations", "list", (_LIMIT, _CURSOR)),
+    MethodSpec("events.page", "events", "page", (_LIMIT, _CURSOR, _KIND, _ENTITY)),
     MethodSpec("state.export", "state", "export"),
     MethodSpec("component.list", "component", "list"),
     MethodSpec("component.status", "component", "status", (_ID,)),
@@ -135,7 +142,15 @@ CLI_METHODS = {(spec.domain, spec.action): spec for spec in METHOD_SPECS}
 
 
 def capabilities() -> list[dict[str, Any]]:
-    return [
+    methods = [
         {"method": spec.method, "authorization": "mutate" if spec.mutation else "read"}
         for spec in METHOD_SPECS
     ]
+    methods.append(
+        {
+            "method": "events.subscribe",
+            "authorization": "read",
+            "transport": "json-rpc-notifications",
+        }
+    )
+    return methods

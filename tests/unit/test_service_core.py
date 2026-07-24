@@ -14,7 +14,12 @@ import pytest
 from steamzero.cli import main as cli
 from steamzero.core.errors import SteamZeroError
 from steamzero.service import core
-from steamzero.service.client import CoreProtocolError, CoreUnavailable, invoke
+from steamzero.service.client import (
+    CoreProtocolError,
+    CoreUnavailable,
+    invoke,
+    subscribe_events,
+)
 from steamzero.service.socket_path import safe_socket_path
 
 
@@ -53,6 +58,68 @@ def test_dispatch_system_methods_and_parameter_guards() -> None:
         )
         response, _ = core._dispatch(payload)
         assert response["error"]["code"] == -32602
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"unknown": True},
+        {"cursor": 1},
+        {"cursor": "-1"},
+        {"kinds": ["private.event"]},
+        {"kinds": "job.state"},
+        {"jobIds": [""]},
+        {"operationIds": ["x"] * 65},
+        {"limit": 0},
+        {"limit": True},
+        {"idleTimeout": float("inf")},
+        {"idleTimeout": 86_401},
+        {"stopOnTerminal": "yes"},
+    ],
+)
+def test_subscription_parser_rejects_unbounded_or_unknown_params(
+    params: dict[str, object],
+) -> None:
+    raw = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "events.subscribe",
+                "params": params,
+            }
+        ).encode()
+        + b"\n"
+    )
+    parsed = core._parse_subscription(raw)
+    assert isinstance(parsed, dict)
+    assert parsed["error"]["code"] == -32602
+
+
+def test_subscription_parser_builds_exact_bounded_filters() -> None:
+    raw = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": "stream-1",
+                "method": "events.subscribe",
+                "params": {
+                    "cursor": "10",
+                    "kinds": ["job.state"],
+                    "jobIds": ["J1", "J1"],
+                    "entities": ["session:S1"],
+                    "limit": 32,
+                    "idleTimeout": 1.5,
+                    "stopOnTerminal": True,
+                },
+            }
+        ).encode()
+        + b"\n"
+    )
+    parsed = core._parse_subscription(raw)
+    assert isinstance(parsed, core.EventSubscription)
+    assert parsed.entities == ("job:J1", "session:S1")
+    assert parsed.terminal_states
 
 
 def test_domain_exceptions_are_returned_as_typed_envelopes(
@@ -187,6 +254,199 @@ def test_client_falls_back_only_when_connect_never_happened(
     server.close()
     with pytest.raises(CoreUnavailable):
         invoke("doctor.run", {})
+
+
+def test_subscription_client_reconnects_from_confirmed_cursor_without_duplicates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(socket_path))
+    socket_path.chmod(0o600)
+    server.listen(2)
+    requests: list[dict[str, object]] = []
+    failures: list[BaseException] = []
+
+    event_one = {
+        "seq": 1,
+        "ts": "2026-07-23T00:00:00+00:00",
+        "kind": "entity.changed",
+        "correlationId": "00000000000000000000000000",
+    }
+    event_two = {
+        "seq": 2,
+        "ts": "2026-07-23T00:00:01+00:00",
+        "kind": "entity.changed",
+        "correlationId": "00000000000000000000000000",
+    }
+
+    def message(value: dict[str, object]) -> bytes:
+        return json.dumps(value, separators=(",", ":")).encode() + b"\n"
+
+    def respond() -> None:
+        try:
+            first, _address = server.accept()
+            first_request = json.loads(first.makefile("rb").readline())
+            requests.append(first_request)
+            first.sendall(
+                message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {
+                            "subscriptionId": "S1",
+                            "cursor": "0",
+                            "transport": "json-rpc-notifications",
+                        },
+                    }
+                )
+                + message(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "events.event",
+                        "params": {
+                            "subscriptionId": "S1",
+                            "cursor": "1",
+                            "event": event_one,
+                        },
+                    }
+                )
+            )
+            first.close()
+
+            second, _address = server.accept()
+            second_request = json.loads(second.makefile("rb").readline())
+            requests.append(second_request)
+            second.sendall(
+                message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {
+                            "subscriptionId": "S2",
+                            "cursor": "1",
+                            "transport": "json-rpc-notifications",
+                        },
+                    }
+                )
+                + message(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "events.event",
+                        "params": {
+                            "subscriptionId": "S2",
+                            "cursor": "2",
+                            "event": event_two,
+                        },
+                    }
+                )
+                + message(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "events.complete",
+                        "params": {"subscriptionId": "S2", "cursor": "2"},
+                    }
+                )
+            )
+            second.close()
+        except BaseException as exc:
+            failures.append(exc)
+
+    thread = threading.Thread(target=respond)
+    thread.start()
+    try:
+        events = list(
+            subscribe_events(
+                {
+                    "cursor": "0",
+                    "kinds": ["entity.changed"],
+                    "idleTimeout": 0,
+                },
+                reconnect_attempts=2,
+            )
+        )
+    finally:
+        thread.join(timeout=5)
+        server.close()
+
+    assert not failures
+    assert [event["seq"] for event in events] == [1, 2]
+    assert requests[0]["params"]["cursor"] == "0"  # type: ignore[index]
+    assert requests[1]["params"]["cursor"] == "1"  # type: ignore[index]
+
+
+@pytest.mark.parametrize(
+    ("ack_cursor", "complete_cursor", "message"),
+    [
+        ("1", None, "alterou o cursor"),
+        ("0", "1", "cursor final divergiu"),
+    ],
+)
+def test_subscription_client_rejects_cursor_divergence(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    ack_cursor: str,
+    complete_cursor: str | None,
+    message: str,
+) -> None:
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(socket_path))
+    socket_path.chmod(0o600)
+    server.listen(1)
+
+    def respond() -> None:
+        connection, _address = server.accept()
+        connection.recv(65536)
+        messages = [
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "subscriptionId": "S1",
+                    "cursor": ack_cursor,
+                    "transport": "json-rpc-notifications",
+                },
+            }
+        ]
+        if complete_cursor is not None:
+            messages.append(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "events.complete",
+                    "params": {
+                        "subscriptionId": "S1",
+                        "cursor": complete_cursor,
+                    },
+                }
+            )
+        connection.sendall(
+            b"".join(
+                json.dumps(item, separators=(",", ":")).encode() + b"\n"
+                for item in messages
+            )
+        )
+        connection.close()
+
+    thread = threading.Thread(target=respond)
+    thread.start()
+    try:
+        with pytest.raises(CoreProtocolError, match=message):
+            list(
+                subscribe_events(
+                    {"cursor": "0", "kinds": ["entity.changed"]},
+                    reconnect_attempts=0,
+                )
+            )
+    finally:
+        thread.join(timeout=5)
+        server.close()
 
 
 def test_systemd_socket_inheritance_and_stale_socket_recovery(
