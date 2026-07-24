@@ -243,6 +243,10 @@ class StateStore:
             ).fetchall()
         return [dict(row) for row in rows[:bounded]], len(rows) > bounded
 
+    def count_operations(self) -> int:
+        row = self._conn.execute("SELECT COUNT(*) AS total FROM operation").fetchone()
+        return int(row["total"]) if row is not None else 0
+
     # -- device -------------------------------------------------------------
     def save_device(self, device: dict[str, Any]) -> None:
         self._conn.execute(

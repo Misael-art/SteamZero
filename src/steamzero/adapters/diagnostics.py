@@ -12,10 +12,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import journal, paths, transaction
+from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
+from steamzero.domain.operation_history import OperationHistory
 from steamzero.privileged.client import AdminClient
 
 _SENSITIVE_KEY = re.compile(
@@ -38,8 +39,13 @@ _PERSONAL_KEYS = {
 
 
 class DiagnosticsService:
-    def __init__(self, store_factory: type[StateStore] | Any = StateStore) -> None:
+    def __init__(
+        self,
+        store_factory: type[StateStore] | Any = StateStore,
+        operation_history: OperationHistory | None = None,
+    ) -> None:
         self._store_factory = store_factory
+        self._operation_history = operation_history or OperationHistory(store_factory)
 
     def snapshot(
         self,
@@ -78,42 +84,17 @@ class DiagnosticsService:
         }
 
     def operations(self, *, page: int = 1, page_size: int = 20) -> dict[str, Any]:
-        if page < 1 or not 1 <= page_size <= 100:
-            raise SteamZeroError("E-API-SCHEMA", detail="paginação inválida")
-        rows: list[dict[str, Any]] = []
-        for path in sorted(
-            paths.journal_dir().glob("*.jsonl"),
-            key=lambda item: item.stat().st_mtime_ns,
-            reverse=True,
-        ):
-            operation_id = path.stem
-            try:
-                records = journal.read_records(operation_id, path=path)
-            except (OSError, json.JSONDecodeError):
-                continue
-            begin = next(
-                (record for record in records if record.get("type") == "operation.begin"), {}
-            )
-            rolled_back = journal.has_type(records, journal.ROLLBACK)
-            committed = journal.has_type(records, journal.COMMIT)
-            rows.append(
-                {
-                    "operationId": operation_id,
-                    "operation": str(begin.get("kind") or "unknown"),
-                    "state": (
-                        "rolled-back" if rolled_back else "committed" if committed else "active"
-                    ),
-                    "timestamp": begin.get("ts"),
-                    "target": _operation_target(records),
-                    "rollbackAvailable": committed and not rolled_back,
-                }
-            )
-        start = (page - 1) * page_size
+        payload = self._operation_history.page(page=page, page_size=page_size)
         return {
-            "page": page,
-            "pageSize": page_size,
-            "total": len(rows),
-            "items": rows[start : start + page_size],
+            **payload,
+            "items": [
+                {
+                    **item,
+                    "operation": item["kind"],
+                    "rollbackAvailable": item["rollback"]["available"],
+                }
+                for item in payload["items"]
+            ],
         }
 
     @staticmethod

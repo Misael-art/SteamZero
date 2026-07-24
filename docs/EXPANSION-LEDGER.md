@@ -18,7 +18,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | F5 | registry declarativo de plataformas/capacidades | platform-manifest-v1 | verified-dev | `docs/expansion/WI-F5.md` |
 | F6 | perfis versionados e reversíveis de input | retro-input-profile-v1 | verified-dev | `docs/expansion/WI-F6.md` |
 | A1 | Playtime, sessões interrompidas e continuar jogando | feat-playtime-v1 | verified-dev | `docs/expansion/WI-A1.md` |
-| A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | pending | — |
+| A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | verified-dev | `docs/expansion/WI-A2.md` |
 | A3 | Tags, favoritos e coleções inteligentes | feat-collection-v1 | pending | — |
 | A4 | Anti-bitrot limitado, re-hash e estado suspect | feat-bitrot-v1 | pending | — |
 | A5 | Plataformas cloud declarativas e atalhos reversíveis | platform-manifest-v1 | pending | — |

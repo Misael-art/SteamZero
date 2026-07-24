@@ -38,6 +38,7 @@ def test_registry_loads_all_schemas() -> None:
         "platform-manifest-v1.schema.json",
         "retro-input-profile-v1.schema.json",
         "feat-playtime-v1.schema.json",
+        "feat-operation-history-v1.schema.json",
     } <= got
 
 
@@ -146,6 +147,33 @@ def test_event_sample_validates() -> None:
         "suspendedSeconds": 42.125,
     }
     contracts.validate(resume_event, "event-v1.schema.json")
+
+
+@pytest.mark.golden
+def test_operation_history_sample_validates() -> None:
+    sample = {
+        "schemaVersion": 1,
+        "generatedAt": "2026-07-23T12:00:00+00:00",
+        "items": [
+            {
+                "operationId": "01J000000000000000000000AA",
+                "kind": "emulator.config",
+                "title": "Configuração de emulador",
+                "state": "committed",
+                "timestamp": "2026-07-23T11:59:00+00:00",
+                "target": "arquivo:0123456789ab",
+                "changeCount": 1,
+                "rollback": {
+                    "available": True,
+                    "guarantee": "G-FULL",
+                    "route": "transaction",
+                    "reason": "",
+                },
+            }
+        ],
+        "page": {"limit": 20, "hasMore": False, "nextCursor": None},
+    }
+    contracts.validate(sample, "feat-operation-history-v1.schema.json")
 
 
 @pytest.mark.golden

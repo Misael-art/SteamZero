@@ -18,7 +18,7 @@ import pytest
 
 from steamzero.api import contracts
 from steamzero.cli import main as cli
-from steamzero.core import fs
+from steamzero.core import fs, transaction
 from steamzero.core.state import StateStore
 from steamzero.service.client import invoke, subscribe_events
 from steamzero.service.core import CoreRequestHandler, CoreServer
@@ -310,6 +310,49 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
         },
     ).envelope["data"]
     assert rolled_back["status"] == "rolled-back"
+
+
+def test_daemon_operation_history_previews_and_confirms_rollback(
+    inprocess_core: Path,
+    tmp_path: Path,
+) -> None:
+    del inprocess_core
+    managed = tmp_path / "managed"
+    target = managed / "settings.ini"
+    fs.write_atomic(target, b"before")
+    plan = transaction.plan_write_files(
+        {target: b"after"},
+        root=managed,
+        kind="emulator.config",
+    )
+    applied = transaction.apply(plan.plan_id, plan.confirm_token)
+
+    detail = invoke(
+        "operations.show",
+        {
+            "operationId": applied.operation_id,
+            "correlationId": "01J000000000000000000000AG",
+        },
+    ).envelope["data"]["operation"]
+    assert detail["rollback"]["available"] is True
+
+    rollback_plan = invoke(
+        "operations.rollback.plan",
+        {
+            "operationId": applied.operation_id,
+            "correlationId": "01J000000000000000000000AH",
+        },
+    ).envelope["data"]["plan"]
+    result = invoke(
+        "operations.rollback.apply",
+        {
+            "planId": rollback_plan["planId"],
+            "confirmToken": rollback_plan["confirmToken"],
+            "correlationId": "01J000000000000000000000AJ",
+        },
+    ).envelope["data"]["result"]
+    assert result["verified"] is True
+    assert target.read_bytes() == b"before"
 
 
 def test_event_subscription_streams_valid_events_and_completes(

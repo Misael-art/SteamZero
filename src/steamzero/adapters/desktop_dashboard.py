@@ -28,6 +28,7 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 
 Spawn = Callable[[Sequence[str]], None]
@@ -271,7 +272,13 @@ class DesktopDashboard:
         self._which = which
         self._spawn = spawn
         self._reduced_motion_probe = reduced_motion_probe
-        self._diagnostics = diagnostics or DiagnosticsService(store_factory)
+        self._operation_history = OperationHistory(
+            store_factory,
+            component_rollback=self._rollback_component_for_history,
+        )
+        self._diagnostics = diagnostics or DiagnosticsService(
+            store_factory, self._operation_history
+        )
         self._playtime = playtime or PlaytimeCatalog(store_factory)
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -519,6 +526,24 @@ class DesktopDashboard:
 
     def operations_history(self, page: int, page_size: int) -> dict[str, Any]:
         return self._diagnostics.operations(page=page, page_size=page_size)
+
+    def operation_detail(self, operation_id: str) -> dict[str, Any]:
+        return self._operation_history.get(operation_id)
+
+    def plan_operation_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._operation_history.plan_rollback(operation_id)
+
+    def apply_operation_rollback(
+        self, plan_id: str, confirm_token: str
+    ) -> dict[str, Any]:
+        return self._operation_history.apply_rollback(plan_id, confirm_token)
+
+    def _rollback_component_for_history(self, operation_id: str) -> Any:
+        with self._store_factory() as store:
+            store.migrate()
+            registry = self._registry_factory()
+            executor = FlatpakExecutor(store, registry, self._flatpak_factory())
+            return executor.rollback(operation_id)
 
     def plan_diagnostics_export(
         self, destination: Path, kind: str, desktop_status: dict[str, Any]

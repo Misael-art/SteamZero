@@ -55,7 +55,23 @@ Main {
                 "dependency": "Fixture local; nenhuma mutação disponível."
             },
             "doctor": {"checks": []},
-            "diagnostics": {"operations": {"items": []}},
+            "diagnostics": {"operations": {"items": [{
+                "operationId": "01J0000000000000000000000A",
+                "operation": "emulator.config",
+                "kind": "emulator.config",
+                "title": "Configuração de emulador",
+                "state": "committed",
+                "timestamp": "2026-07-23T12:00:00+00:00",
+                "target": "arquivo:0123456789ab",
+                "changeCount": 1,
+                "rollbackAvailable": true,
+                "rollback": {
+                    "available": true,
+                    "guarantee": "G-FULL",
+                    "route": "transaction",
+                    "reason": ""
+                }
+            }]}},
             "playtime": {
                 "schemaVersion": 1,
                 "totalPlayedSeconds": 3661,
@@ -192,6 +208,26 @@ Main {
         }
         if (phase === 6) {
             checkScrollWidth(window.systemScrollControl, "Sistema")
+            window.operationRollbackPlan = {
+                "planId": "01J0000000000000000000000B",
+                "confirmToken": "fixture-confirm-token",
+                "operationId": "01J0000000000000000000000A",
+                "kind": "emulator.config",
+                "title": "Configuração de emulador",
+                "target": "arquivo:0123456789ab",
+                "changeCount": 1,
+                "rollbackGuarantee": "G-FULL"
+            }
+            window.operationRollbackControl.open()
+            phase = 7
+            return
+        }
+        if (phase === 7) {
+            check(window.operationRollbackControl.visible,
+                  "preview de rollback contextual deve abrir no handheld")
+            check(window.operationRollbackControl.width <= window.width - 48 + 0.5,
+                  "preview de rollback não pode exceder o viewport")
+            window.operationRollbackControl.close()
             viewportIndex += 1
             if (viewportIndex >= viewports.length) {
                 Qt.exit(failures === 0 ? 0 : firstFailure)

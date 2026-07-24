@@ -74,6 +74,7 @@ ApplicationWindow {
     property alias emulationControl: emulationPage
     property alias steamGameplayControl: steamGameplayPage
     property alias diagnosticsPreviewControl: diagnosticsPreviewDialog
+    property alias operationRollbackControl: operationRollbackDialog
     property alias credentialDialogControl: credentialDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
@@ -200,6 +201,8 @@ ApplicationWindow {
     property string lsfgLastOperationId: ""
     property var diagnosticsPlan: null
     property var diagnosticsPreview: ({})
+    property var operationDetail: null
+    property var operationRollbackPlan: null
     property string diagnosticsKind: "state"
     property string apiUrl: ""
     property string apiToken: ""
@@ -1662,6 +1665,92 @@ ApplicationWindow {
                         root.diagnosticsPlan = null
                         root.notify(qsTr("Exportação sanitizada concluída"), false)
                         root.refreshStatus("")
+                    })
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: operationRollbackDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: {
+            root.operationDetail = null
+            root.operationRollbackPlan = null
+            root.restoreDialogFocus()
+        }
+        title: root.operationRollbackPlan
+            ? qsTr("Revisar rollback contextual")
+            : qsTr("Detalhes da operação")
+        modal: true
+        width: Math.min(root.width - 48, 680)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.operationRollbackPlan ? root.amberColor : root.cyanDarkColor
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            readonly property var shown: root.operationRollbackPlan || root.operationDetail || ({})
+            Label {
+                text: parent.shown.title || qsTr("Operação")
+                color: root.textColor
+                font.pixelSize: 20
+                font.bold: true
+                Layout.fillWidth: true
+            }
+            Label {
+                text: parent.shown.kind || ""
+                color: root.mutedColor
+                wrapMode: Text.WrapAnywhere
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Alvo sanitizado: %1").arg(
+                    parent.shown.target || qsTr("indisponível"))
+                color: root.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("%1 alteração(ões) • garantia %2")
+                    .arg(parent.shown.changeCount || 0)
+                    .arg(parent.shown.rollbackGuarantee
+                        || (parent.shown.rollback ? parent.shown.rollback.guarantee : "—"))
+                color: root.operationRollbackPlan ? root.amberColor : root.mutedColor
+                font.bold: root.operationRollbackPlan !== null
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: root.operationRollbackPlan !== null
+                text: qsTr("A evidência e o estado serão revalidados antes de restaurar. "
+                    + "Se tiverem mudado desde este preview, nenhuma alteração será feita.")
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Fechar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: operationRollbackDialog.close()
+                }
+                Button {
+                    visible: root.operationRollbackPlan !== null
+                    text: qsTr("Confirmar e desfazer")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: root.requestAction("operations.rollback.apply", {
+                        "planId": root.operationRollbackPlan.planId,
+                        "confirmToken": root.operationRollbackPlan.confirmToken
+                    }, function(response) {
+                        operationRollbackDialog.close()
+                        root.refreshStatus(qsTr("Rollback verificado e concluído"))
                     })
                 }
             }
@@ -3512,6 +3601,35 @@ ApplicationWindow {
                                                 color: root.amberColor
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
+                                            }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Button {
+                                                    text: qsTr("Detalhes")
+                                                    Layout.minimumHeight: 48
+                                                    onClicked: root.requestAction("operations.detail",
+                                                        {"operationId": modelData.operationId},
+                                                        function(response) {
+                                                            root.operationDetail = response.operation
+                                                            operationRollbackDialog.open()
+                                                        }
+                                                    )
+                                                }
+                                                Item { Layout.fillWidth: true }
+                                                Button {
+                                                    text: qsTr("Desfazer")
+                                                    enabled: modelData.rollback
+                                                        ? modelData.rollback.available
+                                                        : modelData.rollbackAvailable
+                                                    Layout.minimumHeight: 48
+                                                    onClicked: root.requestAction("operations.rollback.plan",
+                                                        {"operationId": modelData.operationId},
+                                                        function(response) {
+                                                            root.operationRollbackPlan = response.plan
+                                                            operationRollbackDialog.open()
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }

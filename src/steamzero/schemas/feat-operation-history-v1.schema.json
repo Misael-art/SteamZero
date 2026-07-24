@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "feat-operation-history-v1.schema.json",
+  "title": "SteamZero operation history and contextual rollback v1",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "items": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/operation"}
+    },
+    "page": {"$ref": "#/$defs/page"},
+    "operation": {"$ref": "#/$defs/operation"},
+    "plan": {"$ref": "#/$defs/plan"},
+    "result": {"$ref": "#/$defs/result"}
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {"required": ["items", "page"]},
+    {"required": ["operation"]},
+    {"required": ["plan"]},
+    {"required": ["result"]}
+  ],
+  "$defs": {
+    "page": {
+      "type": "object",
+      "required": ["limit", "hasMore", "nextCursor"],
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+        "hasMore": {"type": "boolean"},
+        "nextCursor": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["available", "guarantee", "route", "reason"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "guarantee": {"enum": ["G-FULL", "G-DEPLOYMENT"]},
+        "route": {"enum": ["transaction", "component-flatpak", "unavailable"]},
+        "reason": {"type": "string", "maxLength": 240}
+      },
+      "additionalProperties": false
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "operationId", "kind", "title", "state", "timestamp", "target",
+        "changeCount", "rollback"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "kind": {"type": "string", "minLength": 1, "maxLength": 160},
+        "title": {"type": "string", "minLength": 1, "maxLength": 120},
+        "state": {
+          "enum": [
+            "active", "applying", "committed", "rolled-back",
+            "rolling-back", "recovery-required", "invalid"
+          ]
+        },
+        "timestamp": {"type": ["string", "null"], "format": "date-time"},
+        "target": {"type": "string", "minLength": 1, "maxLength": 120},
+        "changeCount": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "rollback": {"$ref": "#/$defs/rollback"}
+      },
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "required": [
+        "planId", "confirmToken", "operationId", "kind", "title", "target",
+        "changeCount", "rollbackGuarantee", "expiresAt"
+      ],
+      "properties": {
+        "planId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+        "confirmToken": {"type": "string", "minLength": 16, "maxLength": 128},
+        "operationId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+        "kind": {"type": "string", "minLength": 1, "maxLength": 160},
+        "title": {"type": "string", "minLength": 1, "maxLength": 120},
+        "target": {"type": "string", "minLength": 1, "maxLength": 120},
+        "changeCount": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "rollbackGuarantee": {"enum": ["G-FULL", "G-DEPLOYMENT"]},
+        "expiresAt": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "result": {
+      "type": "object",
+      "required": ["operationId", "status", "restoredCount", "verified"],
+      "properties": {
+        "operationId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+        "status": {"enum": ["rolled-back"]},
+        "restoredCount": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "verified": {"const": true}
+      },
+      "additionalProperties": false
+    }
+  }
+}

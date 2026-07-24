@@ -127,6 +127,9 @@ def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
         "steam.gameplay.plan",
         "credential.save",
         "desktop.recover",
+        "operations.detail",
+        "operations.rollback.plan",
+        "operations.rollback.apply",
     } <= static_action_ids
 
 

@@ -326,6 +326,19 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "planId"),
                 self._required_string(payload, "confirmToken"),
             )
+        if path == "/system/operations/show":
+            return self._dashboard().operation_detail(
+                self._required_string(payload, "operationId")
+            )
+        if path == "/system/operations/rollback/plan":
+            return self._dashboard().plan_operation_rollback(
+                self._required_string(payload, "operationId")
+            )
+        if path == "/system/operations/rollback/apply":
+            return self._dashboard().apply_operation_rollback(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
         if path == "/apply":
             return coordinator.apply(
                 self._required_string(payload, "planId"),

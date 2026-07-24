@@ -47,6 +47,9 @@ Domínios (Fase 1):
   jobs list --follow     segue eventos em NDJSON (--job-id ID --cursor SEQ)
   operations list        lista operações paginadas (--limit N --cursor ID)
   operations list --follow segue eventos em NDJSON (--operation-id ID --cursor SEQ)
+  operations show        detalha uma operação (--operation-id ID)
+  operations rollback-plan revisa rollback contextual (--operation-id ID)
+  operations rollback-apply aplica rollback confirmado (--plan-id ID --confirm TOKEN)
   events page            lê eventos paginados (--cursor SEQ --limit N)
   state export [--out F] exporta o State Store (JSON)
   component list         lista adapters e deployments Flatpak
@@ -137,17 +140,18 @@ def _cmd_jobs_list(args: list[str], correlation_id: str) -> tuple[dict[str, Any]
 
 
 def _cmd_operations_list(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.domain.operation_history import OperationHistory
+
     limit = _page_limit(args)
     cursor = _page_cursor(args)
-    with StateStore() as store:
-        store.migrate()
-        rows, has_more = store.list_operations_page(limit=limit, before_id=cursor)
+    history = OperationHistory(component_rollback=_component_rollback_for_history)
+    payload = history.list(limit=limit, cursor=cursor)
     operations = [
         {
-            "id": row["id"],
-            "state": row["state"],
+            **row,
+            "id": row["operationId"],
         }
-        for row in rows
+        for row in payload["items"]
     ]
     return (
         build_envelope(
@@ -159,12 +163,79 @@ def _cmd_operations_list(args: list[str], correlation_id: str) -> tuple[dict[str
                 "count": len(operations),
                 "page": {
                     "limit": limit,
-                    "hasMore": has_more,
-                    "nextCursor": (
-                        operations[-1]["id"] if has_more and operations else None
-                    ),
+                    "hasMore": payload["page"]["hasMore"],
+                    "nextCursor": payload["page"]["nextCursor"],
                 },
+                "schemaVersion": payload["schemaVersion"],
+                "generatedAt": payload["generatedAt"],
             },
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _component_rollback_for_history(operation_id: str) -> Any:
+    with StateStore() as store:
+        store.migrate()
+        _registry, executor = _component_runtime(store)
+        return executor.rollback(operation_id)
+
+
+def _operation_history() -> Any:
+    from steamzero.domain.operation_history import OperationHistory
+
+    return OperationHistory(component_rollback=_component_rollback_for_history)
+
+
+def _cmd_operations_show(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    operation_id = _required_flag(args, "--operation-id")
+    data = _operation_history().get(operation_id)
+    return (
+        build_envelope(
+            "operations",
+            "show",
+            status="ok",
+            data=data,
+            operation_id=operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_operations_rollback_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    operation_id = _required_flag(args, "--operation-id")
+    data = _operation_history().plan_rollback(operation_id)
+    return (
+        build_envelope(
+            "operations",
+            "rollback-plan",
+            status="ok",
+            data=data,
+            operation_id=operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_operations_rollback_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    data = _operation_history().apply_rollback(plan_id, confirm_token)
+    operation_id = str(data["result"]["operationId"])
+    return (
+        build_envelope(
+            "operations",
+            "rollback-apply",
+            status="rolled-back",
+            data=data,
+            operation_id=operation_id,
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -982,6 +1053,9 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("jobs", "list"): _cmd_jobs_list,
     ("operations", "list"): _cmd_operations_list,
+    ("operations", "show"): _cmd_operations_show,
+    ("operations", "rollback-plan"): _cmd_operations_rollback_plan,
+    ("operations", "rollback-apply"): _cmd_operations_rollback_apply,
     ("events", "page"): _cmd_events_page,
     ("state", "export"): _cmd_state_export,
     ("component", "list"): _cmd_component_list,

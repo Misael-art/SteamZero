@@ -267,6 +267,20 @@ class FakeDashboard:
         self.calls.append(("operations-history", str(page), str(page_size)))
         return {"page": page, "pageSize": page_size, "total": 1, "items": []}
 
+    def operation_detail(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("operation-detail", operation_id))
+        return {"operation": {"operationId": operation_id}}
+
+    def plan_operation_rollback(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("operation-rollback-plan", operation_id))
+        return {"plan": {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}}
+
+    def apply_operation_rollback(
+        self, plan_id: str, confirm_token: str
+    ) -> dict[str, object]:
+        self.calls.append(("operation-rollback-apply", plan_id, confirm_token))
+        return {"result": {"status": "rolled-back", "verified": True}}
+
     def admin_health(self) -> dict[str, object]:
         self.calls.append(("admin-health",))
         return {"available": True, "state": "healthy"}
@@ -699,6 +713,26 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
     )
     operations = request_json(base, token, "/system/operations?page=2&pageSize=5")
     assert operations == {"page": 2, "pageSize": 5, "total": 1, "items": []}
+    assert request_json(
+        base,
+        token,
+        "/system/operations/show",
+        {"operationId": "operation-1"},
+    ) == {"operation": {"operationId": "operation-1"}}
+    rollback_plan = request_json(
+        base,
+        token,
+        "/system/operations/rollback/plan",
+        {"operationId": "operation-1"},
+    )
+    assert rollback_plan["plan"]["planId"] == "rollback-plan"
+    rollback_result = request_json(
+        base,
+        token,
+        "/system/operations/rollback/apply",
+        {"planId": "rollback-plan", "confirmToken": "rollback-confirm"},
+    )
+    assert rollback_result["result"]["verified"] is True
     assert request_json(base, token, "/system/admin/health") == {
         "available": True,
         "state": "healthy",
@@ -737,6 +771,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("lsfg-apply", "lsfg-plan", "lsfg-confirm"),
         ("lsfg-rollback", "lsfg-operation"),
         ("operations-history", "2", "5"),
+        ("operation-detail", "operation-1"),
+        ("operation-rollback-plan", "operation-1"),
+        ("operation-rollback-apply", "rollback-plan", "rollback-confirm"),
         ("admin-health",),
     ]
 
