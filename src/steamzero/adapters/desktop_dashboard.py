@@ -655,6 +655,9 @@ class DesktopDashboard:
     ) -> dict[str, Any]:
         return self._gameplay.apply(plan_id, confirm_token, desktop_status)
 
+    def rollback_steam_gameplay(self, operation_id: str) -> dict[str, Any]:
+        return self._gameplay.rollback_profile(operation_id)
+
     def recover_steam_gameplay(self, game_id: str) -> dict[str, Any]:
         return self._gameplay.recover_launcher(game_id)
 

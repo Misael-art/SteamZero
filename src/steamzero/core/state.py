@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -334,6 +335,24 @@ class StateStore:
         try:
             for profile in profiles:
                 self.save_profile(profile)
+            self._conn.execute("COMMIT")
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise
+
+    def replace_profiles(
+        self, profiles: list[dict[str, Any]], *, delete_ids: Sequence[str] = ()
+    ) -> None:
+        """Aplica upserts e remoções allowlisted em uma única transação."""
+        if any(not value or len(value) > 240 or "\x00" in value for value in delete_ids):
+            raise ValueError("profile id inválido")
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            for profile in profiles:
+                self.save_profile(profile)
+            for profile_id in delete_ids:
+                self._conn.execute("DELETE FROM profile WHERE id=?", (profile_id,))
             self._conn.execute("COMMIT")
         except Exception:
             if self._conn.in_transaction:

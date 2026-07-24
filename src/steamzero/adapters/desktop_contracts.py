@@ -484,7 +484,17 @@ def handheld_ui_contracts() -> dict[str, Any]:
             control="gameplay-apply",
             schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
             confirmation="token",
-            rollback_endpoint="/steam/gameplay/recover",
+            rollback_endpoint="/steam/gameplay/rollback",
+        ),
+        _action(
+            "steam.gameplay.rollback",
+            "Desfazer perfil Steam",
+            "/steam/gameplay/rollback",
+            service="steam",
+            screen="steam",
+            control="gameplay-rollback",
+            schema=_schema("operationId", operationId="string"),
+            confirmation="dialog",
         ),
         _action(
             "steam.gameplay.recover",

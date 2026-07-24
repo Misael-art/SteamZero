@@ -265,6 +265,7 @@ def test_dashboard_delegates_all_registered_controller_actions(tmp_path: Path) -
         (dashboard.hud_presets, ()),
         (dashboard.plan_steam_gameplay, ({"x": 1}, {})),
         (dashboard.apply_steam_gameplay, ("p", "t", {})),
+        (dashboard.rollback_steam_gameplay, ("o",)),
         (dashboard.recover_steam_gameplay, ("g",)),
         (dashboard.plan_steam_launch_options, ("g",)),
         (dashboard.apply_steam_launch_options, ("p", "t", "g")),

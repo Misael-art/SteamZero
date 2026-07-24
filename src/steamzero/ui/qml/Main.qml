@@ -3448,7 +3448,17 @@ ApplicationWindow {
                                         "planId": planId,
                                         "confirmToken": confirmToken
                                     }, function(response) {
+                                        steamGameplayPage.profileLastOperationId =
+                                            response.operationId || ""
                                         root.refreshStatus(response.message || qsTr("Perfil Steam salvo"))
+                                    })
+                                }
+                                onProfileRollbackRequested: function(operationId) {
+                                    root.requestAction("steam.gameplay.rollback", {
+                                        "operationId": operationId
+                                    }, function() {
+                                        steamGameplayPage.profileLastOperationId = ""
+                                        root.refreshStatus(qsTr("Perfil Steam restaurado"))
                                     })
                                 }
                                 onSystemRequested: root.sectionIndex = 5

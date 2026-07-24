@@ -24,6 +24,7 @@ Item {
 
     signal planRequested(var payload)
     signal applyRequested(string planId, string confirmToken)
+    signal profileRollbackRequested(string operationId)
     signal systemRequested()
     signal steamInputRequested(string gameId)
     signal launcherRecoveryRequested(string gameId)
@@ -64,6 +65,7 @@ Item {
     property bool gameModeEnabled: true
     property bool initialized: false
     property var reviewedPlan: null
+    property string profileLastOperationId: ""
     property var launchOptionsPlan: null
     property var maintenancePlan: null
     property var mediaPlan: null
@@ -1236,6 +1238,14 @@ Item {
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                             Accessible.name: text
+                        }
+                        Button {
+                            visible: profileLastOperationId.length > 0
+                            text: qsTr("Desfazer último perfil")
+                            Layout.minimumHeight: minimumTouchTarget
+                            Layout.alignment: Qt.AlignRight
+                            Accessible.name: text
+                            onClicked: profileRollbackRequested(profileLastOperationId)
                         }
                         RowLayout {
                             Layout.fillWidth: true

@@ -432,7 +432,10 @@ def test_emulation_builder_failure_degrades_only_emulation_section(tmp_path: Pat
     assert snapshot["doctor"]["state"] == "healthy"
 
 
-def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path) -> None:
+def test_gameplay_plan_requires_confirmation_and_persists_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     root = tmp_path / "Steam"
     steamapps = root / "steamapps"
     steamapps.mkdir(parents=True)
@@ -474,6 +477,7 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
 
     result = controller.apply(str(plan["planId"]), str(plan["confirmToken"]), status)
     assert result["status"] == "saved"
+    assert ids.is_ulid(str(result["operationId"]))
     with StateStore(tmp_path / "state.db") as store:
         saved = store.get_profile("steam-gameplay:game:10")
     assert saved is not None
@@ -484,6 +488,22 @@ def test_gameplay_plan_requires_confirmation_and_persists_policy(tmp_path: Path)
     assert controls is not None
     assert controls["kind"] == "controls"
     assert '"layout":"official"' in str(controls["payload_json"])
+
+    changed = dict(payload)
+    changed["mangoHud"] = "detailed"
+    changed_plan = controller.plan(changed, status)
+    assert "MangoHud: basic → detailed" in changed_plan["changes"]
+    changed_result = controller.apply(
+        str(changed_plan["planId"]), str(changed_plan["confirmToken"]), status
+    )
+    rolled_back = controller.rollback_profile(str(changed_result["operationId"]))
+    assert rolled_back["status"] == "rolled-back"
+    with StateStore(tmp_path / "state.db") as store:
+        restored = store.get_profile("steam-gameplay:game:10")
+    assert restored is not None
+    assert '"mangoHud":"basic"' in str(restored["payload_json"])
+    with pytest.raises(SteamZeroError, match="indisponível"):
+        controller.rollback_profile(str(changed_result["operationId"]))
 
 
 def test_gameplay_plan_blocks_lsfg_when_vulkan_layer_is_missing(tmp_path: Path) -> None:

@@ -245,6 +245,10 @@ class FakeDashboard:
         self.calls.append(("gameplay-recover", game_id))
         return {"status": "recovered", "gameId": game_id}
 
+    def rollback_steam_gameplay(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("gameplay-rollback", operation_id))
+        return {"status": "rolled-back", "operationId": operation_id}
+
     def plan_steam_launch_options(self, game_id: str) -> dict[str, object]:
         self.calls.append(("launch-options-plan", game_id))
         return {"planId": "launch-options-plan", "confirmToken": "launch-options-confirm"}
@@ -698,6 +702,12 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/steam/gameplay/apply",
         {"planId": "gameplay-plan", "confirmToken": "gameplay-confirm"},
     )
+    request_json(
+        base,
+        token,
+        "/steam/gameplay/rollback",
+        {"operationId": "gameplay-operation"},
+    )
     request_json(base, token, "/steam/gameplay/recover", {"gameId": "10"})
     launch_options_plan = request_json(
         base, token, "/steam/gameplay/launch-options/plan", {"gameId": "10"}
@@ -811,6 +821,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("hud-presets",),
         ("gameplay-plan", "10"),
         ("gameplay-apply", "gameplay-plan", "gameplay-confirm"),
+        ("gameplay-rollback", "gameplay-operation"),
         ("gameplay-recover", "10"),
         ("launch-options-plan", "10"),
         (

@@ -64,6 +64,7 @@ def _title(kind: str) -> str:
         ("preservation.", "Restauração de preservação"),
         ("saves.restore", "Restauração de save"),
         ("steam.launch-options.configure:", "Opções de lançamento Steam"),
+        ("steam.gameplay-profile:", "Perfil de gameplay Steam"),
         ("switch-content.", "Conteúdo Switch"),
     )
     return next((label for prefix, label in prefixes if kind.startswith(prefix)), "Operação")

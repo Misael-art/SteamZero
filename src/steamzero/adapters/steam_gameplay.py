@@ -28,6 +28,7 @@ from steamzero.adapters.steam_launcher import SteamGameLauncher
 from steamzero.adapters.steam_maintenance import SteamMaintenance
 from steamzero.adapters.steam_media import SteamMediaManager
 from steamzero.adapters.steam_session import readiness as session_readiness
+from steamzero.core import ids, journal, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.hud import hud_catalog
@@ -271,9 +272,14 @@ class SteamGameplayController:
             game_id,
         )
         changes = self._changes(current, normalized)
+        tx_plan = transaction.plan_write_files(
+            {},
+            root=paths.state_home(),
+            kind=f"steam.gameplay-profile:{self._profile_id(normalized['scope'], game_id)}",
+        )
         plan = GameplayPlan(
-            plan_id=f"steam-gameplay-{secrets.token_hex(10)}",
-            confirm_token=secrets.token_urlsafe(24),
+            plan_id=tx_plan.plan_id,
+            confirm_token=tx_plan.confirm_token,
             created_at=_now(),
             basis=basis,
             profile=normalized,
@@ -302,6 +308,14 @@ class SteamGameplayController:
             store.migrate()
             performance = dict(plan.profile)
             controller_layout = str(performance.pop("controllerLayout"))
+            target_ids = [profile_id]
+            if plan.profile["scope"] == "game" and plan.profile["gameId"]:
+                target_ids.append(self._controls_profile_id(plan.profile["gameId"]))
+            before = [
+                row
+                for target in target_ids
+                if (row := store.get_profile(target)) is not None
+            ]
             profiles = [
                 {
                     "id": profile_id,
@@ -331,15 +345,105 @@ class SteamGameplayController:
                         "profile_owner": "steamzero",
                     }
                 )
-            store.save_profiles(profiles)
+            result = transaction.apply(plan_id, confirm_token)
+            undo_id = self._undo_profile_id(result.operation_id)
+            profiles.append(
+                {
+                    "id": undo_id,
+                    "scope": "game",
+                    "kind": "performance",
+                    "payload_json": json.dumps(
+                        {"schemaVersion": 1, "targetIds": target_ids, "before": before},
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    "priority": -100,
+                    "profile_owner": "steamzero-undo",
+                }
+            )
+            try:
+                store.replace_profiles(profiles)
+            except Exception:
+                transaction.rollback(result.operation_id, reason="state-store-save-failed")
+                raise
         self._plans.pop(plan_id, None)
         return {
             "status": "saved",
+            "operationId": result.operation_id,
             "truthState": "desired",
             "profile": plan.profile,
             "launcher": self._launcher.status(str(plan.profile["gameId"])),
             "message": "Perfil salvo; configure a opção de lançamento gerenciado na Steam.",
         }
+
+    def rollback_profile(self, operation_id: str) -> dict[str, Any]:
+        if not ids.is_ulid(operation_id):
+            raise SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
+        undo_id = self._undo_profile_id(operation_id)
+        with self._store_factory() as store:
+            store.migrate()
+            undo = store.get_profile(undo_id)
+            if undo is None or undo.get("profile_owner") != "steamzero-undo":
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="rollback do perfil Steam indisponível"
+                )
+            payload = self._parse_profile_undo(undo)
+            target_ids = payload["targetIds"]
+            before = payload["before"]
+            current = [
+                row for target in target_ids if (row := store.get_profile(target)) is not None
+            ]
+            before_ids = {str(row["id"]) for row in before}
+            store.replace_profiles(
+                before,
+                delete_ids=[target for target in target_ids if target not in before_ids],
+            )
+            try:
+                records = journal.read_records(operation_id)
+                begin = next(
+                    (row for row in records if row.get("type") == "operation.begin"),
+                    None,
+                )
+                expected = f"steam.gameplay-profile:{target_ids[0]}"
+                if not isinstance(begin, dict) or begin.get("kind") != expected:
+                    raise SteamZeroError(
+                        "E-TX-STALE-PLAN", detail="operação não pertence ao perfil Steam"
+                    )
+                result = transaction.rollback(operation_id, reason="gameplay-profile-user-request")
+            except Exception:
+                current_ids = {str(row["id"]) for row in current}
+                store.replace_profiles(
+                    current,
+                    delete_ids=[target for target in target_ids if target not in current_ids],
+                )
+                raise
+            store.replace_profiles([], delete_ids=[undo_id])
+        return {"status": result.status, "operationId": operation_id}
+
+    @staticmethod
+    def _undo_profile_id(operation_id: str) -> str:
+        return f"steam-gameplay-undo:{operation_id}"
+
+    @staticmethod
+    def _parse_profile_undo(row: dict[str, Any]) -> dict[str, Any]:
+        try:
+            payload = json.loads(str(row["payload_json"]))
+        except (KeyError, TypeError, json.JSONDecodeError) as exc:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="rollback Steam corrompido") from exc
+        if (
+            not isinstance(payload, dict)
+            or payload.get("schemaVersion") != 1
+            or not isinstance(payload.get("targetIds"), list)
+            or not 1 <= len(payload["targetIds"]) <= 2
+            or not all(isinstance(value, str) and value for value in payload["targetIds"])
+            or not isinstance(payload.get("before"), list)
+            or not all(
+                isinstance(value, dict) and value.get("id") in payload["targetIds"]
+                for value in payload["before"]
+            )
+        ):
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="rollback Steam inválido")
+        return payload
 
     def recover_launcher(self, game_id: str) -> dict[str, Any]:
         return self._launcher.recover(game_id)

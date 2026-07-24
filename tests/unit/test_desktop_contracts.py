@@ -131,6 +131,17 @@ def test_hud_presets_contract_is_read_only() -> None:
     assert action["rollback"]["supported"] is False
 
 
+def test_gameplay_profile_apply_points_to_real_rollback_contract() -> None:
+    matrix = handheld_ui_contracts()["byId"]
+    assert matrix["steam.gameplay.apply"]["rollback"] == {
+        "supported": True,
+        "endpoint": "/steam/gameplay/rollback",
+    }
+    assert matrix["steam.gameplay.rollback"]["inputSchema"]["required"] == [
+        "operationId"
+    ]
+
+
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
     qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     direct_routes = re.findall(r'request\("(?:GET|POST)",\s*"([^"]+)"', qml)
