@@ -11,6 +11,7 @@ Schemas JSON (draft 2020-12) versionados em `schemas/` no repositório (Fase 1);
 | `desktop-status-v1.schema.json` | Contexto/status Desktop | MANIFEST-SCHEMAS §7 |
 | `session-environment-v1.schema.json` | Ambiente Linux read-only da sessão | STEAM-SESSION-ROADMAP R1 |
 | `adapter-v1.schema.json` | adapter.json | ADAPTER-MODEL |
+| `platform-manifest-v1.schema.json` | registry de plataformas e capacidades | PLATFORM-MANIFEST-V1 |
 | `component-lock-v1.schema.json` | lockfile empacotado de componentes | MANIFEST-SCHEMAS §2 |
 | `component-plan-v1.schema.json` | plano Flatpak pinado | MANIFEST-SCHEMAS §4 |
 | `backup-manifest-v1.schema.json` | manifesto de backup | BACKUP-FORMAT |

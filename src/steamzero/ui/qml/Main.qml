@@ -155,52 +155,9 @@ ApplicationWindow {
         && desktopStatus.dashboard.emulation
         ? desktopStatus.dashboard.emulation : ({
             "schemaVersion": 1,
-            "truthState": "degraded",
+            "truthState": "unverified",
             "contextLabel": root.deviceSummary(),
-            "platforms": [
-                {
-                    "id": "switch",
-                    "name": qsTr("Nintendo Switch"),
-                    "shortName": qsTr("Switch"),
-                    "iconKey": "switch",
-                    "state": "degraded",
-                    "statusLabel": qsTr("Backend Switch ainda não conectado"),
-                    "modeLabel": desktopStatus.context && desktopStatus.context.displays
-                        && desktopStatus.context.displays.length > 1
-                        ? qsTr("Dock detectado") : qsTr("Modo portátil ou desktop"),
-                    "modeShortLabel": desktopStatus.context && desktopStatus.context.displays
-                        && desktopStatus.context.displays.length > 1 ? qsTr("Dock") : qsTr("Portátil"),
-                    "readiness": {
-                        "percent": 0,
-                        "title": qsTr("Conectando a plataforma Switch"),
-                        "detail": qsTr("A apresentação está pronta; keys, firmware, emuladores e jogos ainda precisam ser publicados pela bridge local."),
-                        "blockers": [
-                            qsTr("Keys e firmware ainda não verificados"),
-                            qsTr("Nenhum emulador Switch confirmado")
-                        ]
-                    },
-                    "emulators": [],
-                    "games": []
-                },
-                root.legacyPlatform(
-                    "nintendo-classic",
-                    qsTr("Nintendo Wii e GameCube"),
-                    "input-gaming",
-                    ["Wii", "GameCube"]
-                ),
-                root.legacyPlatform(
-                    "playstation",
-                    qsTr("PlayStation"),
-                    "applications-games",
-                    ["PlayStation"]
-                ),
-                root.legacyPlatform(
-                    "multi",
-                    qsTr("Multi-sistema"),
-                    "folder-games",
-                    ["Múltiplos"]
-                )
-            ]
+            "platforms": []
         })
     readonly property var steamItems: desktopStatus.dashboard && desktopStatus.dashboard.steam
         ? desktopStatus.dashboard.steam : fallbackSteam
@@ -580,35 +537,6 @@ ApplicationWindow {
                 return ["installed", "available", "running"].indexOf(row.state) >= 0
             })
         return rows
-    }
-
-    function legacyPlatform(id, name, iconKey, systems) {
-        const rows = emulatorItems.filter(function(row) {
-            const rowSystems = row.systems || []
-            return systems.some(function(system) { return rowSystems.indexOf(system) >= 0 })
-        })
-        const ready = readyCount(rows)
-        const total = rows.length
-        const percent = total > 0 ? Math.round(ready * 100 / total) : 0
-        return {
-            "id": id,
-            "name": name,
-            "shortName": name,
-            "iconKey": iconKey,
-            "state": ready > 0 ? "ready" : total > 0 ? "degraded" : "empty",
-            "statusLabel": ready > 0
-                ? qsTr("%1 de %2 emulador(es) pronto(s)").arg(ready).arg(total)
-                : total > 0 ? qsTr("Requer atenção") : qsTr("Nenhum emulador catalogado"),
-            "readiness": {
-                "percent": percent,
-                "title": ready > 0 ? qsTr("Plataforma parcialmente pronta")
-                    : qsTr("Emuladores ainda não preparados"),
-                "detail": qsTr("A compatibilidade detalhada desta plataforma será incorporada de forma incremental."),
-                "blockers": ready > 0 ? [] : [qsTr("Nenhum emulador instalado ou disponível")]
-            },
-            "emulators": rows,
-            "games": []
-        }
     }
 
     function attentionCount(rows) {

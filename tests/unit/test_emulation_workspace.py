@@ -52,6 +52,10 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     assert set(platform["areaData"]) == {area["id"] for area in platform["areas"]}
     assert platform["emulators"][0]["name"] == "Eden"
     assert platform["emulators"][0]["state"] == "ready"
+    assert len(payload["platforms"]) == 10
+    assert payload["platforms"][1]["areas"][0]["id"] == "overview"
+    assert payload["platforms"][-1]["cloud"]["allowedHosts"] == ["luna.amazon.com"]
+    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 10
 
 
 def test_workspace_accepts_visible_game_with_unverified_identity() -> None:

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="NES Famicom — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#24191b"/>
+  <rect x="34" y="50" width="252" height="80" rx="14" fill="#e6ddd4"/>
+  <path d="M74 90h48m-24-24v48" stroke="#29272a" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="217" cy="78" r="13" fill="#d63b42"/><circle cx="247" cy="103" r="13" fill="#d63b42"/>
+  <rect x="139" y="69" width="48" height="9" rx="4" fill="#7b7471"/><rect x="139" y="92" width="48" height="9" rx="4" fill="#7b7471"/>
+</svg>

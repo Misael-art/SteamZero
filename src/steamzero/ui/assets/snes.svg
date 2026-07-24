@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="SNES — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#181724"/>
+  <path d="M65 48h190l25 42-25 42H65L40 90z" fill="#d8d5e3"/>
+  <path d="M78 90h48m-24-24v48" stroke="#49455d" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="213" cy="70" r="11" fill="#58a4e8"/><circle cx="238" cy="86" r="11" fill="#55b878"/>
+  <circle cx="188" cy="94" r="11" fill="#e4bf45"/><circle cx="213" cy="110" r="11" fill="#d85c8c"/>
+</svg>

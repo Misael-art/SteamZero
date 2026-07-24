@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="GB GBC GBA — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#17251f"/>
+  <rect x="86" y="18" width="148" height="144" rx="26" fill="#86d7a8"/>
+  <rect x="109" y="39" width="102" height="68" rx="8" fill="#20352b"/>
+  <path d="M119 130h30m-15-15v30" stroke="#17251f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="188" cy="126" r="10" fill="#e95871"/><circle cx="211" cy="139" r="10" fill="#6a4fb3"/>
+</svg>

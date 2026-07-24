@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "arcade",
+  "kind": "emulated",
+  "name": "Arcade, CPS, Neo Geo e MAME",
+  "shortName": "Arcade",
+  "iconKey": "applications-games",
+  "artworkAsset": "../assets/arcade.svg",
+  "systems": ["arcade", "cps", "neo-geo", "mame"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "ROMsets e cores ainda serão compostos com versão explícita.", "action": null},
+    {"id": "graphics", "label": "Vídeo, TATE e timing", "state": "planned", "detail": "TATE, CRT e refresh pertencem ao track R.", "action": null},
+    {"id": "controls", "label": "Controles especializados", "state": "planned", "detail": "Perfis automáticos pertencem ao F6/R6.", "action": null},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork será composto no A7/A12.", "action": null},
+    {"id": "advanced", "label": "Avançado", "state": "planned", "detail": "Versão do ROMset e DIP switches precisam de provider.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "graphicsPerformance", "label": "Vídeo, TATE e timing", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"},
+    {"id": "advanced", "label": "Avançado", "iconKey": "tune", "capabilityId": "advanced"}
+  ],
+  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
+  "media": {"extensions": ["zip", "7z", "chd"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["arcade-standard"], "maxPlayers": 8, "specialized": ["trackball", "spinner", "light-gun", "twin-stick", "wheel", "paddle", "fight-stick"]},
+  "timing": {"standards": ["board-native", "ntsc", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Timing e apresentação por placa."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Legibilidade com timing preservado."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+  ],
+  "cloud": null
+}

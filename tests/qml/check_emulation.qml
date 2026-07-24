@@ -110,12 +110,75 @@ Window {
         const object = makePage({})
         if (!object)
             return
-        check(object.selectedPlatform.id === "switch", "fallback deve permanecer na plataforma Switch")
+        check(object.selectedPlatform.id === "unavailable",
+              "fallback não pode escolher uma plataforma sem o catálogo")
         check(object.readinessPercent() === 0, "fallback não pode alegar prontidão")
         check(object.emulators.length === 0, "fallback não pode inventar emulador")
         check(object.games.length === 0, "fallback não pode inventar jogo")
         check(object.primaryAction().enabled === false, "ação sem backend deve ficar bloqueada")
         check(object.primaryAction().requiresConfirmation === true, "ação mutável deve exigir confirmação")
+        object.destroy()
+    }
+
+    function testManifestDrivenPlatformSelection() {
+        const object = makePage({
+            "platforms": [
+                {
+                    "id": "switch",
+                    "name": "Nintendo Switch",
+                    "shortName": "Switch",
+                    "iconKey": "switch",
+                    "state": "ready",
+                    "readiness": {"percent": 80, "title": "Pronto", "blockers": []},
+                    "areas": [
+                        {"id": "overview", "label": "Visão geral", "iconKey": "view-dashboard"}
+                    ],
+                    "media": {"extensions": ["nsp", "xci"]},
+                    "emulators": [],
+                    "games": []
+                },
+                {
+                    "id": "arcade",
+                    "name": "Arcade",
+                    "shortName": "Arcade",
+                    "iconKey": "applications-games",
+                    "state": "planned",
+                    "readiness": {"percent": 0, "title": "Planejado", "blockers": []},
+                    "areas": [
+                        {"id": "controls", "label": "Controles especializados",
+                         "iconKey": "input-gaming"}
+                    ],
+                    "media": {"extensions": ["zip", "chd"]},
+                    "areaData": {
+                        "controls": {
+                            "cards": [],
+                            "primaryAction": {
+                                "id": "feature.planned",
+                                "label": "Planejado",
+                                "enabled": false,
+                                "reason": "Depende do F6",
+                                "requiresConfirmation": false
+                            }
+                        }
+                    },
+                    "emulators": [],
+                    "games": []
+                }
+            ]
+        })
+        if (!object)
+            return
+        object.platformIndex = 1
+        object.resetContext()
+        check(object.selectedPlatform.id === "arcade",
+              "seletor deve consumir a plataforma publicada")
+        check(object.areas.length === 1 && object.selectedArea.id === "controls",
+              "áreas devem vir do manifesto da plataforma selecionada")
+        check(object.primaryAction().enabled === false
+              && object.primaryAction().reason === "Depende do F6",
+              "ação indisponível deve preservar a causa publicada")
+        check(object.platformContentFilters()[0].indexOf("*.chd") >= 0,
+              "filtro de conteúdo deve vir das extensões da plataforma")
         object.destroy()
     }
 
@@ -528,6 +591,7 @@ Window {
         onTriggered: {
             testHierarchy()
             testSafeFallback()
+            testManifestDrivenPlatformSelection()
             testPublishedPrimaryAndPlatformArtwork()
             testBackendArea()
             testGameLibraryJourney()

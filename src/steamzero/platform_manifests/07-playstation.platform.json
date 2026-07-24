@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "playstation",
+  "kind": "emulated",
+  "name": "Sony PlayStation",
+  "shortName": "PlayStation",
+  "iconKey": "media-optical",
+  "artworkAsset": "../assets/playstation.svg",
+  "systems": ["psx"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PlayStation ainda será composta.", "action": null},
+    {"id": "requirements", "label": "BIOS", "state": "planned", "detail": "BIOS do usuário será verificada por hash sem expor conteúdo.", "action": null},
+    {"id": "graphics", "label": "Vídeo e melhorias 3D", "state": "planned", "detail": "PAR, CRT e melhorias 3D pertencem ao track R.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "planned", "detail": "Digital, DualShock e acessórios dependem de perfis.", "action": null},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e multidisco serão compostos no A7/A12.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "keysFirmware", "label": "BIOS", "iconKey": "key", "capabilityId": "requirements"},
+    {"id": "graphicsPerformance", "label": "Vídeo e melhorias 3D", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [
+    {"id": "duckstation", "name": "DuckStation", "adapterId": "duckstation", "precedence": 1, "role": "primary"},
+    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+  ],
+  "media": {"extensions": ["cue", "bin", "chd", "m3u", "pbp"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["psx-digital", "dualshock"], "maxPlayers": 8, "specialized": ["negcon", "mouse", "light-gun"]},
+  "timing": {"standards": ["ntsc-u", "ntsc-j", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez e estabilidade conservadoras."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos 3D opt-in e identificados."}
+  ],
+  "cloud": null
+}

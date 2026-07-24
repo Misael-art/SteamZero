@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Mega Drive — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#101318"/>
+  <ellipse cx="160" cy="90" rx="120" ry="64" fill="#292f39"/>
+  <ellipse cx="160" cy="90" rx="58" ry="42" fill="#11151b" stroke="#3e9bea" stroke-width="7"/>
+  <path d="M79 92h48m-24-24v48" stroke="#dce5ec" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="225" cy="72" r="11" fill="#cf3e4d"/><circle cx="247" cy="93" r="11" fill="#cf3e4d"/><circle cx="219" cy="110" r="11" fill="#cf3e4d"/>
+</svg>

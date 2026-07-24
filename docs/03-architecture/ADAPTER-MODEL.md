@@ -56,6 +56,15 @@ Interface única; adapter declara o que implementa (nem todos implementam tudo �
 - **Sistema**: package (flatpak/appimage/pacman/dnf/apt/rpm-ostree — detecção herda conceito `is_*` do LinuxToys `helpers.lib`), storage (UUID, mounts, espaço), display, áudio, input, steamdeck (DMI + quirks LCD/OLED).
 - **Cloud**: provedores de sync (comportamento de referência: EmuDeck `cloudServicesManager.sh`), sempre atrás da fila offline.
 
+## Registry de plataformas
+
+`platform-manifest-v1` é distinto de `adapter-v1`: plataforma descreve sistemas,
+áreas da UI, capacidades, candidatos de emulação, mídia, controles, timing e
+presets; adapter descreve uma implementação instalável/detectável. A associação
+é somente por `adapterId` validado nos testes do registry. Capacidade ausente ou
+planejada remove/bloqueia a ação na UI com causa, sem fallback por nome de
+plataforma. Ver `05-data/PLATFORM-MANIFEST-V1.md`.
+
 ## Regras
 
 1. Adapter **declara**, engine **executa**: download, checksum, staging, activate e rollback são do núcleo — o adapter nunca baixa nada por conta própria.

@@ -15,7 +15,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | F2 | `core.crypto`, checksum, assinatura e envelopes | core.crypto | verified-dev | `docs/expansion/WI-F2.md` |
 | F3 | jobs/operações paginados e `--follow` | event-v1 | verified-dev | `docs/expansion/WI-F3.md` |
 | F4 | daemon persistente e compatibilidade CLI | local API | verified-dev | `docs/expansion/WI-F4.md` |
-| F5 | registry declarativo de plataformas/capacidades | platform-manifest-v1 | pending | — |
+| F5 | registry declarativo de plataformas/capacidades | platform-manifest-v1 | verified-dev | `docs/expansion/WI-F5.md` |
 | F6 | perfis versionados e reversíveis de input | retro-input-profile-v1 | pending | — |
 | A1 | Playtime, sessões interrompidas e continuar jogando | feat-playtime-v1 | pending | — |
 | A2 | Histórico operacional e rollback contextual | feat-operation-history-v1 | pending | — |
@@ -61,7 +61,7 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 | D4 | Gráficos e performance | G1, G3, G4, G6, R0–R2 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D5 | Controles editáveis e perfis | F6, R6 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D6 | vSaves, playtime, captura e lançamento | A1, G5 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
-| D7 | Scraping/download e fallback de artwork | F1, A7, A12 | in-progress | `docs/expansion/WI-D1.md` |
+| D7 | Scraping/download e fallback de artwork | F1, F5, A7, A12 | in-progress | fallback: `docs/expansion/WI-F5.md`; pipeline: A7/A12 |
 | D8 | Artwork e conversão de ROM | A7, A8 | in-progress | conversão: `docs/expansion/WI-D3.md`; artwork: A7 |
 | D9 | Armazenamento e exclusão linkada | A4, A7 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D10 | Leitura de DLC, shader, firmware e região | F5, A4, A12 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |

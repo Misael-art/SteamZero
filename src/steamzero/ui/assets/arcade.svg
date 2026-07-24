@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Arcade — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#21152c"/>
+  <path d="M88 22h144l24 136H64z" fill="#50316b"/>
+  <rect x="101" y="39" width="118" height="59" rx="7" fill="#141824" stroke="#e5bc45" stroke-width="5"/>
+  <path d="M121 130h44m-22-22v44" stroke="#e9e6f2" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="196" cy="125" r="11" fill="#ef536c"/><circle cx="222" cy="139" r="11" fill="#4dd0d0"/>
+</svg>

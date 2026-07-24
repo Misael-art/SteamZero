@@ -72,40 +72,46 @@ Item {
     property alias cardsRepeaterControl: cardsRepeater
 
     readonly property var defaultAreas: [
-        {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
-        {"id": "keysFirmware", "label": qsTr("Keys e firmware"), "icon": "document-encrypt"},
-        {"id": "updatesDlc", "label": qsTr("Updates e DLC"), "icon": "download"},
-        {"id": "modsCheats", "label": qsTr("Mods e cheats"), "icon": "extension"},
-        {"id": "graphicsPerformance", "label": qsTr("Gráficos e fluidez"), "icon": "video-display"},
-        {"id": "controls", "label": qsTr("Controles"), "icon": "input-gaming"},
-        {"id": "saves", "label": qsTr("Saves"), "icon": "document-save"},
-        {"id": "shaderCache", "label": qsTr("Shader cache"), "icon": "applications-graphics"},
-        {"id": "media", "label": qsTr("Mídia"), "icon": "image-x-generic"},
-        {"id": "storage", "label": qsTr("Armazenamento"), "icon": "drive-harddisk"},
-        {"id": "advanced", "label": qsTr("Avançado"), "icon": "configure"}
+        {"id": "overview", "label": qsTr("Visão geral"), "iconKey": "view-dashboard"},
+        {"id": "keysFirmware", "label": qsTr("Requisitos"), "iconKey": "document-encrypt"},
+        {"id": "updatesDlc", "label": qsTr("Conteúdo adicional"), "iconKey": "download"},
+        {"id": "modsCheats", "label": qsTr("Mods e extras"), "iconKey": "extension"},
+        {"id": "graphicsPerformance", "label": qsTr("Gráficos e fluidez"), "iconKey": "video-display"},
+        {"id": "controls", "label": qsTr("Controles"), "iconKey": "input-gaming"},
+        {"id": "saves", "label": qsTr("Saves"), "iconKey": "document-save"},
+        {"id": "shaderCache", "label": qsTr("Cache gráfico"), "iconKey": "applications-graphics"},
+        {"id": "media", "label": qsTr("Mídia"), "iconKey": "image-x-generic"},
+        {"id": "storage", "label": qsTr("Armazenamento"), "iconKey": "drive-harddisk"},
+        {"id": "advanced", "label": qsTr("Avançado"), "iconKey": "configure"}
     ]
     readonly property var defaultScopes: [
-        {"id": "global", "label": qsTr("Global"), "icon": "globe"},
-        {"id": "emulator", "label": qsTr("Emulador"), "icon": "applications-games"},
-        {"id": "game", "label": qsTr("Por jogo"), "icon": "media-playback-start"},
-        {"id": "handheld", "label": qsTr("Portátil"), "icon": "computer-laptop"},
-        {"id": "dock", "label": qsTr("Dock"), "icon": "video-display"}
+        {"id": "global", "label": qsTr("Global"), "iconKey": "globe",
+         "enabled": true, "reason": null},
+        {"id": "emulator", "label": qsTr("Emulador"), "iconKey": "applications-games",
+         "enabled": true, "reason": null},
+        {"id": "game", "label": qsTr("Por jogo"), "iconKey": "media-playback-start",
+         "enabled": true, "reason": null},
+        {"id": "handheld", "label": qsTr("Portátil"), "iconKey": "computer-laptop",
+         "enabled": true, "reason": null},
+        {"id": "dock", "label": qsTr("Dock"), "iconKey": "video-display",
+         "enabled": true, "reason": null}
     ]
     readonly property var platforms: emulation && emulation.platforms
         && emulation.platforms.length > 0 ? emulation.platforms : []
     readonly property var selectedPlatform: platforms.length > 0
         && platformIndex < platforms.length ? platforms[platformIndex] : ({
-            "id": "switch",
-            "name": qsTr("Nintendo Switch"),
-            "shortName": qsTr("Switch"),
-            "iconKey": "switch",
-            "state": "degraded",
-            "statusLabel": qsTr("Aguardando dados da plataforma"),
-            "fallbackArtworkAsset": "../assets/switch.svg",
+            "id": "unavailable",
+            "name": qsTr("Plataformas indisponíveis"),
+            "shortName": qsTr("Emulação"),
+            "iconKey": "applications-games",
+            "state": "unavailable",
+            "statusLabel": qsTr("Aguardando catálogo de plataformas"),
+            "scopes": defaultScopes,
+            "areas": defaultAreas,
             "readiness": {
                 "percent": 0,
                 "title": qsTr("Verificação ainda não disponível"),
-                "detail": qsTr("A bridge local ainda não publicou o estado da emulação Switch."),
+                "detail": qsTr("A bridge local ainda não publicou o catálogo de plataformas."),
                 "blockers": [qsTr("Backend de emulação ainda não conectado")]
             },
             "emulators": [],
@@ -167,6 +173,21 @@ Item {
             return selectedPlatform.fallbackArtworkAsset || ""
         return game.coverUrl || game.bannerAsset || game.fallbackArtworkUrl
             || selectedPlatform.fallbackArtworkAsset || ""
+    }
+
+    function platformContentFilters() {
+        const media = selectedPlatform.media || ({})
+        const extensions = media.extensions || []
+        if (extensions.length === 0)
+            return [qsTr("Todos os arquivos (*)")]
+        const patterns = extensions.map(function(extension) {
+            return "*." + String(extension)
+        }).join(" ")
+        return [
+            qsTr("Conteúdo %1 (%2)").arg(selectedPlatform.shortName || selectedPlatform.name)
+                .arg(patterns),
+            qsTr("Todos os arquivos (*)")
+        ]
     }
 
     function resetContext() {
@@ -1098,7 +1119,7 @@ Item {
                     ? [qsTr("Pacotes de mod (*.zip)"), qsTr("Todos os arquivos (*)")]
                     : pendingAction && pendingAction.id === "cheat.import"
                         ? [qsTr("Cheats Atmosphere (*.txt)"), qsTr("Todos os arquivos (*)")]
-                : [qsTr("Conteúdo Switch (*.nsp *.xci *.nsz *.zip)"), qsTr("Todos os arquivos (*)")]
+                : page.platformContentFilters()
         onAccepted: {
             pendingPath = page.localPath(selectedFile)
             if (pendingAction && (pendingAction.id === "firmware.import"
@@ -1216,18 +1237,7 @@ Item {
                         ? page.greenColor : page.cyanColor
                     border.width: 2
 
-                    SwitchPlatformMark {
-                        visible: page.selectedPlatform.iconKey === "switch"
-                            || page.selectedPlatform.id === "switch"
-                        anchors.centerIn: parent
-                        width: page.compactLayout ? 44 : 62
-                        height: page.compactLayout ? 44 : 62
-                        cutoutColor: page.raisedColor
-                    }
-
                     ModernIcon {
-                        visible: page.selectedPlatform.iconKey !== "switch"
-                            && page.selectedPlatform.id !== "switch"
                         anchors.centerIn: parent
                         width: page.compactLayout ? 34 : 44
                         height: page.compactLayout ? 34 : 44
@@ -1969,12 +1979,14 @@ Item {
                                                 visible: String(source) !== ""
                                                     && status === Image.Ready
                                             }
-                                            SwitchPlatformMark {
+                                            ModernIcon {
                                                 anchors.centerIn: parent
                                                 width: 42
                                                 height: 42
                                                 visible: !compactGameBanner.visible
-                                                cutoutColor: page.raisedColor
+                                                iconName: page.selectedPlatform.iconKey
+                                                    || "applications-games"
+                                                iconColor: page.cyanColor
                                             }
                                         }
                                         ColumnLayout {
@@ -2158,12 +2170,14 @@ Item {
                                             asynchronous: true
                                             visible: String(source) !== "" && status === Image.Ready
                                         }
-                                        SwitchPlatformMark {
+                                        ModernIcon {
                                             anchors.centerIn: parent
                                             width: 42
                                             height: 42
                                             visible: !gameBanner.visible
-                                            cutoutColor: page.raisedColor
+                                            iconName: page.selectedPlatform.iconKey
+                                                || "applications-games"
+                                            iconColor: page.cyanColor
                                         }
                                         Label {
                                             anchors.right: parent.right
@@ -2729,9 +2743,19 @@ Item {
                                 }
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    Label { text: qsTr("Nenhum emulador Switch foi verificado"); color: page.textColor; font.bold: true }
                                     Label {
-                                        text: qsTr("A central exibirá Eden, Citron e Ryubing somente quando o backend confirmar disponibilidade e capacidades.")
+                                        text: page.selectedPlatform.kind === "cloud"
+                                            ? qsTr("Esta plataforma não usa emuladores locais")
+                                            : qsTr("Nenhum emulador de %1 foi verificado")
+                                                .arg(page.selectedPlatform.shortName
+                                                     || page.selectedPlatform.name)
+                                        color: page.textColor
+                                        font.bold: true
+                                    }
+                                    Label {
+                                        text: page.selectedPlatform.kind === "cloud"
+                                            ? qsTr("A ação de acesso será exibida somente quando a capability correspondente estiver habilitada.")
+                                            : qsTr("Os candidatos declarados serão exibidos somente quando o backend confirmar disponibilidade e capacidades.")
                                         color: page.mutedColor
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true

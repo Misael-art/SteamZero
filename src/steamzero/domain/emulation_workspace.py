@@ -14,6 +14,11 @@ from typing import Any
 
 from steamzero.api import contracts
 from steamzero.domain.keys_firmware import RequirementCheck
+from steamzero.domain.platforms import (
+    PlatformManifest,
+    PlatformRegistry,
+    platform_placeholder,
+)
 from steamzero.domain.switch_emulators import SwitchEmulatorCatalog
 
 _SCOPE_DEFS = (
@@ -24,25 +29,6 @@ _SCOPE_DEFS = (
     ("dock", "Dock", "dock"),
 )
 
-_AREA_DEFS = (
-    ("overview", "Visão geral", "dashboard"),
-    ("keysFirmware", "Keys & firmware", "key"),
-    ("updatesDlc", "Updates & DLC", "download"),
-    ("modsCheats", "Mods & cheats", "extension"),
-    ("graphicsPerformance", "Gráficos & desempenho", "speedometer"),
-    ("controls", "Controles", "gamepad"),
-    ("saves", "Saves", "save"),
-    ("shaderCache", "Shader cache", "sparkles"),
-    ("media", "Mídia", "image"),
-    ("storage", "Armazenamento", "storage"),
-    ("advanced", "Avançado", "tune"),
-)
-
-_PLANNED_AREAS = frozenset(
-    {"updatesDlc", "graphicsPerformance", "controls", "saves", "shaderCache", "media", "storage"}
-)
-
-
 def build_switch_workspace(
     *,
     catalog: SwitchEmulatorCatalog | None = None,
@@ -51,12 +37,15 @@ def build_switch_workspace(
     firmware: RequirementCheck | Mapping[str, Any] | None = None,
     games: Sequence[Mapping[str, Any]] = (),
     emulator_capabilities: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
+    platform_registry: PlatformRegistry | None = None,
     selected_scope: str = "global",
     selected_area: str = "overview",
 ) -> dict[str, Any]:
     """Compõe o snapshot Switch e valida o próprio contrato antes de retornar."""
+    registry = platform_registry or PlatformRegistry.bundled()
+    switch_manifest = registry.get("switch")
     valid_scopes = {item[0] for item in _SCOPE_DEFS}
-    valid_areas = {item[0] for item in _AREA_DEFS}
+    valid_areas = {str(item["id"]) for item in switch_manifest.areas}
     if selected_scope not in valid_scopes:
         selected_scope = "global"
     if selected_area not in valid_areas:
@@ -69,39 +58,65 @@ def build_switch_workspace(
     emulators = _emulator_rows(catalog or SwitchEmulatorCatalog(), probe, emulator_capabilities)
     game_rows = [dict(game) for game in games]
     state, status_label, readiness = _readiness(requirements, emulators)
-    areas = _areas(requirements, state)
+    areas = _areas(requirements, state, switch_manifest)
     area_data = _area_data(requirements, emulators, game_rows)
+    area_data = {
+        str(area["id"]): area_data[str(area["id"])]
+        for area in switch_manifest.areas
+    }
+    switch_platform = {
+        "id": switch_manifest.id,
+        "kind": switch_manifest.kind,
+        "name": switch_manifest.name,
+        "shortName": switch_manifest.short_name,
+        "iconKey": switch_manifest.icon_key,
+        "state": state,
+        "statusLabel": status_label,
+        "readiness": readiness,
+        "scopes": [
+            {
+                "id": scope_id,
+                "label": label,
+                "iconKey": icon,
+                "enabled": True,
+                "reason": None,
+            }
+            for scope_id, label, icon in _SCOPE_DEFS
+        ],
+        "selectedScope": selected_scope,
+        "areas": areas,
+        "selectedArea": selected_area,
+        "emulators": emulators,
+        "games": game_rows,
+        "requirements": requirements,
+        "fallbackArtworkAsset": switch_manifest.artwork_asset,
+        "capabilities": [
+            {
+                "id": item["id"],
+                "label": item["label"],
+                "state": item["state"],
+                "detail": item["detail"],
+            }
+            for item in switch_manifest.capabilities
+        ],
+        "media": dict(switch_manifest.media),
+        "controls": dict(switch_manifest.controls),
+        "timing": dict(switch_manifest.timing),
+        "presets": [dict(item) for item in switch_manifest.presets],
+        "cloud": None,
+        "areaData": area_data,
+    }
     payload = {
         "schemaVersion": 1,
         "truthState": state,
-        "contextLabel": f"Nintendo Switch · {_scope_label(selected_scope)}",
+        "contextLabel": f"{switch_manifest.name} · {_scope_label(selected_scope)}",
         "platforms": [
-            {
-                "id": "switch",
-                "name": "Nintendo Switch",
-                "shortName": "Switch",
-                "iconKey": "switch",
-                "state": state,
-                "statusLabel": status_label,
-                "readiness": readiness,
-                "scopes": [
-                    {
-                        "id": scope_id,
-                        "label": label,
-                        "iconKey": icon,
-                        "enabled": True,
-                        "reason": None,
-                    }
-                    for scope_id, label, icon in _SCOPE_DEFS
-                ],
-                "selectedScope": selected_scope,
-                "areas": areas,
-                "selectedArea": selected_area,
-                "emulators": emulators,
-                "games": game_rows,
-                "requirements": requirements,
-                "areaData": area_data,
-            }
+            switch_platform,
+            *[
+                platform_placeholder(manifest)
+                for manifest in registry.list()
+                if manifest.id != "switch"
+            ],
         ],
     }
     contracts.validate(payload, "emulation-workspace-v1.schema.json")
@@ -206,7 +221,9 @@ def _readiness(
 
 
 def _areas(
-    requirements: Mapping[str, Mapping[str, Any]], platform_state: str
+    requirements: Mapping[str, Mapping[str, Any]],
+    platform_state: str,
+    manifest: PlatformManifest,
 ) -> list[dict[str, Any]]:
     requirement_states = {str(value["status"]) for value in requirements.values()}
     if "missing" in requirement_states:
@@ -219,22 +236,27 @@ def _areas(
         requirement_state, requirement_label = "unverified", "Não verificado"
 
     rows: list[dict[str, Any]] = []
-    for area_id, label, icon in _AREA_DEFS:
+    capabilities = {item["id"]: item for item in manifest.capabilities}
+    for declared in manifest.areas:
+        area_id = str(declared["id"])
+        capability = capabilities[declared["capabilityId"]]
         if area_id == "overview":
             state, status = platform_state, "Resumo do ambiente"
         elif area_id == "keysFirmware":
             state, status = requirement_state, requirement_label
-        elif area_id == "advanced":
-            state, status = "attention", "Uso especializado"
-        elif area_id in _PLANNED_AREAS:
-            state, status = "planned", "Planejado"
         else:
-            state, status = "unverified", "Não verificado"
+            declared_state = str(capability["state"])
+            state = "unverified" if declared_state == "ready" else declared_state
+            status = {
+                "ready": "Verificação pendente",
+                "planned": "Planejado",
+                "unavailable": "Indisponível",
+            }[declared_state]
         rows.append(
             {
                 "id": area_id,
-                "label": label,
-                "iconKey": icon,
+                "label": declared["label"],
+                "iconKey": declared["iconKey"],
                 "state": state,
                 "statusLabel": status,
                 "badge": None,

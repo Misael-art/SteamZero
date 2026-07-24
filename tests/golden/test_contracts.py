@@ -34,6 +34,7 @@ def test_registry_loads_all_schemas() -> None:
         "error-v1.schema.json",
         "event-v1.schema.json",
         "plan-v1.schema.json",
+        "platform-manifest-v1.schema.json",
     } <= got
 
 

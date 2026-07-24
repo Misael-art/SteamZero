@@ -367,7 +367,6 @@ class EmulationController:
             ),
             "source": primary_source,
         }
-        platform["fallbackArtworkAsset"] = "../assets/switch.svg"
         for emulator in emulator_rows:
             installed = emulator["installState"] == "installed"
             is_default = emulator["id"] == primary_id
