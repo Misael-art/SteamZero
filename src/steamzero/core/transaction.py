@@ -707,9 +707,11 @@ def apply(
         jrnl.commit()
         _record_operation_state(op_id, "committed")
         _maybe_crash("apply.after-commit")
-    except Exception:
+    except Exception as exc:
         jrnl.close()
         _do_rollback(op_id, reason="apply-failed")
+        if isinstance(exc, SteamZeroError) and exc.operation_id is None:
+            exc.operation_id = op_id
         raise
     finally:
         jrnl.close()

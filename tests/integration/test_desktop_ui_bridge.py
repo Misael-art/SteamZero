@@ -1056,5 +1056,5 @@ def test_bridge_session_select_rejects_bad_target_and_token(
             "/session/select",
             {"target": "steam", "planId": str(plan["planId"]), "confirmToken": "errado"},
         )
-    assert bad_token.value.code == 409
+    assert bad_token.value.code == 400
     bad_token.value.close()

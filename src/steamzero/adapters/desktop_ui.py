@@ -129,7 +129,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             payload = self._read_payload()
             result = self._dispatch(urlparse(self.path).path, payload)
         except SteamZeroError as exc:
-            self._send(HTTPStatus.CONFLICT, {"error": exc.to_error_object()})
+            status = HTTPStatus.BAD_REQUEST if exc.code == "E-API-SCHEMA" else HTTPStatus.CONFLICT
+            self._send(status, {"error": exc.to_error_object()})
             return
         except (json.JSONDecodeError, TypeError, ValueError) as exc:
             self._send(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
@@ -154,12 +155,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         raw_length = self.headers.get("Content-Length", "0")
         length = int(raw_length)
         if length < 0 or length > _MAX_BODY:
-            raise ValueError("corpo fora do limite")
+            raise SteamZeroError("E-API-SCHEMA", detail="corpo fora do limite")
         if length == 0:
             return {}
         loaded = json.loads(self.rfile.read(length))
         if not isinstance(loaded, dict):
-            raise TypeError("corpo precisa ser objeto JSON")
+            raise SteamZeroError("E-API-SCHEMA", detail="corpo precisa ser objeto JSON")
         return loaded
 
     def _dispatch(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -167,7 +168,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/plan":
             requested = payload.get("profile", "auto")
             if not isinstance(requested, str):
-                raise TypeError("profile precisa ser string")
+                raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
             return {"plan": coordinator.plan(requested).to_dict()}
         if path == "/conflict/plan":
             return {
@@ -289,7 +290,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if not isinstance(raw_categories, list) or not all(
                 isinstance(value, str) for value in raw_categories
             ):
-                raise ValueError("campo obrigatório: categories")
+                raise SteamZeroError("E-API-SCHEMA", detail="campo obrigatório: categories")
             return self._dashboard().plan_steam_maintenance(
                 self._required_string(payload, "gameId"), raw_categories
             )
@@ -352,7 +353,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/collections/plan":
             action = payload.get("action")
             if not isinstance(action, dict):
-                raise ValueError("campo obrigatório: action")
+                raise SteamZeroError("E-API-SCHEMA", detail="campo obrigatório: action")
             return self._dashboard().plan_collection_action(action)
         if path == "/collections/apply":
             return self._dashboard().apply_collection_action(
@@ -391,7 +392,9 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 if name in {"sound", "haptic", "theme"} and isinstance(value, bool | str)
             }
             if not settings:
-                raise ValueError("nenhuma configuração de teclado informada")
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail="nenhuma configuração de teclado informada"
+                )
             return apply_maliit_comfort(settings)
         if path == "/session/select":
             return self._session_select(payload)
@@ -419,14 +422,14 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             provider = self._required_string(payload, "provider")
             credentials = payload.get("credentials")
             if not isinstance(credentials, dict) or not credentials:
-                raise ValueError("credentials são obrigatórias")
+                raise SteamZeroError("E-API-SCHEMA", detail="credentials são obrigatórias")
             values = {
                 key: value
                 for key, value in credentials.items()
                 if isinstance(key, str) and isinstance(value, str)
             }
             if len(values) != len(credentials):
-                raise ValueError("credentials inválidas")
+                raise SteamZeroError("E-API-SCHEMA", detail="credentials inválidas")
             return self._dashboard().save_credential(provider, values)
         if path == "/scraping/credential/test":
             provider = self._required_string(payload, "provider")
@@ -438,7 +441,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             provider = self._required_string(payload, "provider")
             link = self._required_string(payload, "link")
             return self._dashboard().scraping_provider_link(provider, link)
-        raise ValueError(f"ação não permitida: {path}")
+        raise SteamZeroError("E-API-SCHEMA", detail=f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})
 
@@ -446,7 +449,9 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         """Retorno confirmado ao Game Mode: plano + token antes de encerrar a sessão."""
         target = str(payload.get("target", "steam"))
         if target not in self._SESSION_TARGETS:
-            raise ValueError(f"destino de sessão não permitido: {target}")
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"destino de sessão não permitido: {target}"
+            )
         plan_id = payload.get("planId")
         confirm = payload.get("confirmToken")
         plans = self._control_server.session_plans
@@ -522,7 +527,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
     def _required_string(self, payload: dict[str, Any], key: str) -> str:
         value = payload.get(key)
         if not isinstance(value, str) or not value:
-            raise ValueError(f"campo obrigatório: {key}")
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value
 
     def _send(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
