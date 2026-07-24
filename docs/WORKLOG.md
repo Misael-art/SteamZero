@@ -2525,3 +2525,41 @@ Os harnesses offscreen não foram apresentados como certificação física.
 **Host/release:** nenhuma instalação, release, wheel, wheelhouse, `sudo`,
 `bigsudo`, alteração em `/opt`, `/etc` ou `/usr/local`, push ou reboot foi
 executado.
+
+## 2026-07-24 — Sessão 57: fechamento da linha de expansão e release para teste
+
+**Branch de trabalho:** `codex/expansao-r1-retro-presets` (worktree isolada em
+`/home/misael/Documentos/Codex/2026-07-23/steamzero-expansao-master`).
+Branch-alvo promovida: `codex/steam-gameplay-readiness-ui`.
+
+**Escopo:** conclusão do WI-R1 (catálogo declarativo retro-experience-v1) deixado
+interrompido pelo agente anterior, limpeza de formatação, gates finais, promoção
+por fast-forward e produção do wheel+wheelhouse para teste do operador.
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| R1: catálogo retro-experience-v1 com 11 políticas, 4 ready, 7 planned, conectado a workspace, QML, schema e golden | `76a9e88` | `test_retro_experience.py` (3), `test_contracts.py` (14), integração via `emulation workspace` |
+| Baseline de formatação (ruff format, 47 arquivos) | `b2385a6` | `ruff format --check` verde (271 arquivos) |
+| Gates finais (árvore limpa sobre `b2385a6`) | tip da branch | 1466 testes, cobertura 85,37%, ruff/mypy/independence/boundaries/QML offscreen verdes |
+| Promoção FF para `codex/steam-gameplay-readiness-ui` | push `0dd726c..b2385a6` | merge-base `0dd726c` ancestral direto |
+
+**Gates no tip final:**
+- pytest: 1466 passed, 0 failed
+- ruff check: All checks passed
+- ruff format --check: 271 files already formatted
+- mypy: Success, no issues in 155 source files
+- make independence boundaries: OK
+- Cobertura: **85.37%** (≥ 85%)
+- QML offscreen: 8 passed
+
+**Release construída de árvore limpa (autorizada para teste, não instalar):**
+- Wheel: `dist/steamzero-0.1.0a34-py3-none-any.whl`
+- SHA-256: `4ab063b51b5f2c366d1ccb7488d517895c0042cdd1f34ec1045a8e2216e34adc`
+- Source commit: `b2385a6fc3b4d263d9a69b00e44212b9444ba082`
+- Release canônica: `0.1.0a34-b2385a6fc3b4`
+- Wheelhouse runtime: `dist/runtime-wheelhouse/` (6 wheels, hashes verificados)
+- Entry points de boot (`steamzero-gamemode-boot`, `steamzero-gamemode-session`) conferidos no wheel
+
+**Limites:** nenhuma instalação, ativação, rollback, `sudo`/`bigsudo`, alteração
+em `/opt`/`/etc`/`/usr/local` ou reinicialização foi executada. O teste físico e
+a ativação no host permanecem ação do operador após autorização explícita.
