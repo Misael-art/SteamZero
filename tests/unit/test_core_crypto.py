@@ -71,12 +71,15 @@ def test_detached_signature_uses_injected_verifier() -> None:
 
     with pytest.raises(SteamZeroError, match="E-SUPPLY-CHECKSUM"):
         verify_detached_signature(payload + b"!", signature, verifier)
-    assert verifier.verify(
-        algorithm="ed25519",
-        key_id="test-key",
-        payload=payload,
-        signature=raw_signature,
-    ) is False
+    assert (
+        verifier.verify(
+            algorithm="ed25519",
+            key_id="test-key",
+            payload=payload,
+            signature=raw_signature,
+        )
+        is False
+    )
 
 
 def test_detached_signature_parser_is_bounded() -> None:

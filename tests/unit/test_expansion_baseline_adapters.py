@@ -134,9 +134,12 @@ def test_ns_emu_downloader_parses_json_text_and_subprocess_failures(
     assert source.refresh_catalog() == 1
     assert source.search_by_title_id("0100ABCD00000000")[0].identity.mod_type == "performance"
     assert source.search_by_build_id("0100ABCD00000000", "AABB")
-    assert source.download_for_game(
-        "0100ABCD00000000", tmp_path, build_id="AABB", emulator_id="ryubing"
-    ) == 0
+    assert (
+        source.download_for_game(
+            "0100ABCD00000000", tmp_path, build_id="AABB", emulator_id="ryubing"
+        )
+        == 0
+    )
     assert calls[-1][-4:] == ["--build-id", "AABB", "--emulator", "ryubing"]
 
     text = "\n".join(
@@ -231,17 +234,14 @@ def test_nsecm_fetches_valid_entries_and_degrades_per_source(
         if url.endswith("/empty"):
             return _Response(b"// no executable codes")
         return _Response(
-            b"// Infinite gold\n// BuildID: AABBCCDDEEFF00112233445566778899\n"
-            b"04000000 00000000\n"
+            b"// Infinite gold\n// BuildID: AABBCCDDEEFF00112233445566778899\n04000000 00000000\n"
         )
 
     monkeypatch.setattr("urllib.request.urlopen", urlopen)
     source = NsecmSource({"fixture": "owner/repo"})
     assert source.refresh_catalog() == 1
     assert source.search_by_title_id("0100ABCD00000000")[0].identity.cheat_type == "gold"
-    assert source.search_by_build_id(
-        "0100ABCD00000000", "AABBCCDDEEFF00112233445566778899"
-    )
+    assert source.search_by_build_id("0100ABCD00000000", "AABBCCDDEEFF00112233445566778899")
 
     monkeypatch.setattr("urllib.request.urlopen", lambda *_a, **_k: _Response(b"{broken"))
     assert NsecmSource({"bad": "owner/repo"}).refresh_catalog() == 0

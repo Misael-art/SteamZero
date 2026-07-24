@@ -74,11 +74,7 @@ def test_progress_events_are_throttled_without_losing_persisted_progress(
     job = manager.create("burst")
     manager.run(job.id)
 
-    progress_events = [
-        event
-        for event in store.events_since(0)
-        if event["kind"] == "job.progress"
-    ]
+    progress_events = [event for event in store.events_since(0) if event["kind"] == "job.progress"]
     assert len(progress_events) == 2
     persisted = manager.get(job.id)
     assert persisted is not None

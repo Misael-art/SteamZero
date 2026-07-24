@@ -17,9 +17,7 @@ def test_provider_catalog_never_exposes_credential_values() -> None:
     assert all(
         "value" not in field for provider in status for field in provider["credentialFields"]
     )
-    screenscraper = next(
-        provider for provider in status if provider["id"] == "screenscraper"
-    )
+    screenscraper = next(provider for provider in status if provider["id"] == "screenscraper")
     assert screenscraper["enabled"] is True
     assert screenscraper["credentialTestSupported"] is True
     fields = screenscraper["credentialFields"]

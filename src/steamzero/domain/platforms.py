@@ -141,9 +141,7 @@ class PlatformRegistry:
         self._items: dict[str, PlatformManifest] = {}
         for manifest in manifests:
             if manifest.id in self._items:
-                raise SteamZeroError(
-                    "E-API-SCHEMA", detail=f"plataforma duplicada: {manifest.id}"
-                )
+                raise SteamZeroError("E-API-SCHEMA", detail=f"plataforma duplicada: {manifest.id}")
             self._items[manifest.id] = manifest
 
     @classmethod
@@ -240,9 +238,7 @@ def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
         }
         for emulator in manifest.emulators
     ]
-    blockers = [
-        "A composição operacional desta plataforma ainda não foi verificada neste host."
-    ]
+    blockers = ["A composição operacional desta plataforma ainda não foi verificada neste host."]
     return {
         "id": manifest.id,
         "kind": manifest.kind,

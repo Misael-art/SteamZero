@@ -296,9 +296,7 @@ def fetch_bytes(
         max_bytes=max_bytes,
         retry=retry or RetryPolicy(attempts=1),
     )
-    return (client or HttpClient()).get(
-        url, policy=policy, headers=headers, cancel=cancel
-    ).body
+    return (client or HttpClient()).get(url, policy=policy, headers=headers, cancel=cancel).body
 
 
 class _CancelableReader:

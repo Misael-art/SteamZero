@@ -108,11 +108,7 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
                 if missing is not None:
                     self._write(_rpc_error(parsed.request_id, -32602, missing))
                     return
-                cursor = (
-                    str(store.latest_event_seq())
-                    if parsed.cursor is None
-                    else parsed.cursor
-                )
+                cursor = str(store.latest_event_seq()) if parsed.cursor is None else parsed.cursor
                 self._write(
                     _rpc_result(
                         parsed.request_id,
@@ -132,8 +128,7 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
                     idle_timeout=parsed.idle_timeout,
                     terminal_states=parsed.terminal_states,
                     stop_requested=lambda: (
-                        self.server.shutdown_requested.is_set()
-                        or _socket_has_input(self.request)
+                        self.server.shutdown_requested.is_set() or _socket_has_input(self.request)
                     ),
                 ):
                     cursor = str(event["seq"])
@@ -241,9 +236,7 @@ def _parse_subscription(raw: bytes) -> EventSubscription | dict[str, Any]:
             kinds = PUBLIC_EVENT_KINDS
         unsupported = set(kinds) - set(PUBLIC_EVENT_KINDS)
         if unsupported:
-            raise ValueError(
-                f"kinds não públicos: {', '.join(sorted(unsupported))}"
-            )
+            raise ValueError(f"kinds não públicos: {', '.join(sorted(unsupported))}")
         job_ids = _subscription_text_list(params, "jobIds")
         operation_ids = _subscription_text_list(params, "operationIds")
         requested_entities = _subscription_text_list(params, "entities")
@@ -278,9 +271,7 @@ def _parse_subscription(raw: bytes) -> EventSubscription | dict[str, Any]:
     except ValueError as exc:
         return _rpc_error(request_id, -32602, str(exc))
     terminal_states = (
-        JOB_TERMINAL_STATES | OPERATION_TERMINAL_STATES
-        if stop_on_terminal
-        else frozenset()
+        JOB_TERMINAL_STATES | OPERATION_TERMINAL_STATES if stop_on_terminal else frozenset()
     )
     return EventSubscription(
         request_id=request_id,
@@ -301,22 +292,15 @@ def _subscription_text_list(params: dict[str, Any], name: str) -> tuple[str, ...
         not isinstance(value, list)
         or len(value) > _MAX_SUBSCRIPTION_FILTERS
         or any(
-            not isinstance(item, str)
-            or not item
-            or len(item) > 256
-            or "\x00" in item
+            not isinstance(item, str) or not item or len(item) > 256 or "\x00" in item
             for item in value
         )
     ):
-        raise ValueError(
-            f"{name} precisa ser uma lista de até {_MAX_SUBSCRIPTION_FILTERS} textos"
-        )
+        raise ValueError(f"{name} precisa ser uma lista de até {_MAX_SUBSCRIPTION_FILTERS} textos")
     return tuple(dict.fromkeys(value))
 
 
-def _missing_subscription_target(
-    store: StateStore, subscription: EventSubscription
-) -> str | None:
+def _missing_subscription_target(store: StateStore, subscription: EventSubscription) -> str | None:
     for job_id in subscription.job_ids:
         if store.get_job(job_id) is None:
             return f"job inexistente: {job_id}"

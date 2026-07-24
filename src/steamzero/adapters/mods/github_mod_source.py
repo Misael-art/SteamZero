@@ -102,9 +102,7 @@ class GithubModSource(ModCatalogPort):
             "User-Agent": "SteamZero",
         }
         try:
-            raw = fetch_bytes(
-                url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers
-            )
+            raw = fetch_bytes(url, max_bytes=4 * 1024 * 1024, timeout_seconds=15, headers=headers)
         except NetworkFailure as exc:
             _log.debug("erro urlopen %s: %s", url, exc)
             return []

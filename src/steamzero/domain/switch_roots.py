@@ -127,10 +127,7 @@ class SwitchRootManager:
                 lexical_relative = candidate.relative_to(self.root)
             except ValueError:
                 lexical_relative = Path(candidate.name)
-            if (
-                lexical_relative.parts
-                and lexical_relative.parts[0] == ".steamzero-quarantine"
-            ):
+            if lexical_relative.parts and lexical_relative.parts[0] == ".steamzero-quarantine":
                 continue
             relative = self._safe_relative(candidate)
             if relative is None:

@@ -83,9 +83,7 @@ def test_follow_drains_pages_and_resumes_without_duplicates(store) -> None:  # t
             idle_timeout=0,
         )
     )
-    assert [event["seq"] for event in first] == sorted(
-        event["seq"] for event in first
-    )
+    assert [event["seq"] for event in first] == sorted(event["seq"] for event in first)
     assert len(first) == 5
 
     resumed = list(
@@ -148,10 +146,7 @@ def test_public_event_projection_covers_system_session_and_alert_payloads(store)
     by_kind = {event["kind"]: event for event in page.events}
     assert by_kind["session.state"]["sessionId"] == "S1"
     assert by_kind["session.state"]["gameId"] == "10"
-    assert (
-        by_kind["session.state"]["correlationId"]
-        == "01J000000000000000000000AC"
-    )
+    assert by_kind["session.state"]["correlationId"] == "01J000000000000000000000AC"
     assert by_kind["session.environment"]["changes"] == ["display", "power"]
     assert by_kind["session.resume"]["suspendedSeconds"] == 12.5
     assert by_kind["alert"]["error"]["code"] == "E-INTERNAL-UNEXPECTED"
@@ -169,9 +164,7 @@ def test_event_projection_degrades_malformed_private_payloads(store) -> None:  #
         ("2026-07-23T00:00:01+00:00", "entity.changed", None, "[]"),
     )
     store.append_event("job.state", entity=None, payload={"state": "queued"})
-    store.append_event(
-        "job.state", entity="Jlegacy", payload={"state": "running"}
-    )
+    store.append_event("job.state", entity="Jlegacy", payload={"state": "running"})
 
     page = event_page(store, cursor="0")
 
@@ -195,12 +188,8 @@ def test_follow_validates_polling_and_stops_on_terminal_state(store) -> None:  #
             )
         )
 
-    store.append_event(
-        "job.state", entity="job:J1", payload={"state": "completed"}
-    )
-    store.append_event(
-        "job.state", entity="job:J1", payload={"state": "queued"}
-    )
+    store.append_event("job.state", entity="job:J1", payload={"state": "completed"})
+    store.append_event("job.state", entity="job:J1", payload={"state": "queued"})
     followed = list(
         follow_events(
             store,

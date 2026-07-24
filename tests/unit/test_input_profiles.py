@@ -65,14 +65,8 @@ def test_rotation_resolves_directional_bindings_without_mutating_profile() -> No
     profile = InputProfileRegistry.bundled().get("standard-gamepad")
 
     landscape = {row["action"]: row["input"] for row in resolve_bindings(profile)}
-    left = {
-        row["action"]: row["input"]
-        for row in resolve_bindings(profile, "portrait-left")
-    }
-    right = {
-        row["action"]: row["input"]
-        for row in resolve_bindings(profile, "portrait-right")
-    }
+    left = {row["action"]: row["input"] for row in resolve_bindings(profile, "portrait-left")}
+    right = {row["action"]: row["input"] for row in resolve_bindings(profile, "portrait-right")}
 
     assert landscape["game.up"] == "hat.up"
     assert left["game.up"] == "hat.right"
@@ -105,9 +99,7 @@ def test_semantic_and_schema_violations_are_typed(
 
 def test_directional_rotation_requires_complete_hat() -> None:
     data = _raw()
-    data["bindings"] = [
-        binding for binding in data["bindings"] if binding["input"] != "hat.left"
-    ]
+    data["bindings"] = [binding for binding in data["bindings"] if binding["input"] != "hat.left"]
 
     with pytest.raises(SteamZeroError, match="direcional completo"):
         load_input_profile(data)

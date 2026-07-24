@@ -103,9 +103,7 @@ def test_cache_schema_does_not_serialize_credentials(cache: ScrapingCache) -> No
     with sqlite3.connect(cache.path) as connection:
         tables = {
             str(row[0])
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     assert "scraping_credential" not in tables
     assert not hasattr(cache, "set_credential")

@@ -68,8 +68,7 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
 
 def test_emulation_ui_has_no_switch_specific_routing_or_copy() -> None:
     source = "\n".join(
-        (QML / name).read_text(encoding="utf-8")
-        for name in ("Emulation.qml", "Main.qml")
+        (QML / name).read_text(encoding="utf-8") for name in ("Emulation.qml", "Main.qml")
     )
 
     assert "switch" not in source.casefold()

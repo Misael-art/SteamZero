@@ -30,6 +30,7 @@ _SCOPE_DEFS = (
     ("dock", "Dock", "dock"),
 )
 
+
 def build_switch_workspace(
     *,
     catalog: SwitchEmulatorCatalog | None = None,
@@ -61,10 +62,7 @@ def build_switch_workspace(
     state, status_label, readiness = _readiness(requirements, emulators)
     areas = _areas(requirements, state, switch_manifest)
     area_data = _area_data(requirements, emulators, game_rows)
-    area_data = {
-        str(area["id"]): area_data[str(area["id"])]
-        for area in switch_manifest.areas
-    }
+    area_data = {str(area["id"]): area_data[str(area["id"])] for area in switch_manifest.areas}
     switch_platform = {
         "id": switch_manifest.id,
         "kind": switch_manifest.kind,

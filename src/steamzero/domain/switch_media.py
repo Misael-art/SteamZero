@@ -87,9 +87,7 @@ class GameMediaManager:
         if existing:
             if steam_appid is not None:
                 existing.steam_appid = steam_appid
-            existing.steam_view_state = self._resolve_steam_state(
-                game_id, existing.steam_appid
-            )
+            existing.steam_view_state = self._resolve_steam_state(game_id, existing.steam_appid)
             existing.master_state = self._resolve_master_state(game_id)
             existing.optimized_state = self._resolve_optimized_state(game_id)
             existing.steam_artwork_kinds = self._resolve_artwork_kinds(
@@ -320,9 +318,7 @@ class GameMediaManager:
         *,
         grid_dir: Path | None = None,
     ) -> ViewResult:
-        return self._pipeline.view_steam(
-            game_id, steam_user_id, steam_appid, grid_dir=grid_dir
-        )
+        return self._pipeline.view_steam(game_id, steam_user_id, steam_appid, grid_dir=grid_dir)
 
     def plan_publish_steam(
         self,
@@ -459,9 +455,7 @@ class GameMediaManager:
             return "no-steam-appid"
         return "published" if self._has_steam_views(game_id) else "unpublished"
 
-    def _resolve_artwork_kinds(
-        self, game_id: str, steam_appid: int | None
-    ) -> list[str]:
+    def _resolve_artwork_kinds(self, game_id: str, steam_appid: int | None) -> list[str]:
         if steam_appid is None:
             return []
         kinds: list[str] = []

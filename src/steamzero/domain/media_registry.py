@@ -133,8 +133,7 @@ class MediaRegistry:
         reg_path = root / "registry"
         fs.ensure_dir(reg_path)
         platform_data = {
-            slug: {"name": p.name, "kinds": list(p.kinds)}
-            for slug, p in self.platforms.items()
+            slug: {"name": p.name, "kinds": list(p.kinds)} for slug, p in self.platforms.items()
         }
         fs.write_atomic_text(
             reg_path / "platforms-v1.json",

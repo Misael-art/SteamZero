@@ -153,9 +153,7 @@ class PlaytimeCatalog:
                 "updatedAt": str(row["latest_updated_at"]),
                 "finishedAt": row.get("latest_finished_at"),
                 "playedSeconds": int(row.get("latest_played_seconds") or 0),
-                "durationSource": str(
-                    row.get("latest_duration_source") or "unavailable"
-                ),
+                "durationSource": str(row.get("latest_duration_source") or "unavailable"),
                 "failureCode": failure_code,
             },
             "action": action,
@@ -201,10 +199,5 @@ class PlaytimeCatalog:
 
     @staticmethod
     def _validate_game_id(game_id: str) -> None:
-        if (
-            not isinstance(game_id, str)
-            or not game_id
-            or len(game_id) > 160
-            or "\x00" in game_id
-        ):
+        if not isinstance(game_id, str) or not game_id or len(game_id) > 160 or "\x00" in game_id:
             raise SteamZeroError("E-API-SCHEMA", detail="gameId inválido")

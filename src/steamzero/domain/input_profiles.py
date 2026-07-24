@@ -72,9 +72,7 @@ def load_input_profile(data: dict[str, Any]) -> RetroInputProfile:
     try:
         contracts.validate(data, _SCHEMA)
     except (ValidationError, KeyError, TypeError, ValueError) as exc:
-        raise SteamZeroError(
-            "E-API-SCHEMA", detail=f"perfil de input inválido: {exc}"
-        ) from exc
+        raise SteamZeroError("E-API-SCHEMA", detail=f"perfil de input inválido: {exc}") from exc
 
     actions = [str(binding["action"]) for binding in data["bindings"]]
     if len(actions) != len(set(actions)):
@@ -87,11 +85,12 @@ def load_input_profile(data: dict[str, Any]) -> RetroInputProfile:
             "E-API-SCHEMA",
             detail=f"perfil {data['id']} possui orientação default não permitida",
         )
-    if (
-        rotation["directionalRemap"] == "rotate-with-display"
-        and not {"hat.up", "hat.right", "hat.down", "hat.left"}
-        <= {str(binding["input"]) for binding in data["bindings"]}
-    ):
+    if rotation["directionalRemap"] == "rotate-with-display" and not {
+        "hat.up",
+        "hat.right",
+        "hat.down",
+        "hat.left",
+    } <= {str(binding["input"]) for binding in data["bindings"]}:
         raise SteamZeroError(
             "E-API-SCHEMA",
             detail=f"perfil {data['id']} não possui direcional completo para rotação",
@@ -164,10 +163,7 @@ def resolve_bindings(
             detail=f"orientação {selected!r} não é permitida pelo perfil {profile.id}",
         )
     remap: dict[str, str] = {}
-    if (
-        selected != "landscape"
-        and profile.rotation["directionalRemap"] == "rotate-with-display"
-    ):
+    if selected != "landscape" and profile.rotation["directionalRemap"] == "rotate-with-display":
         remap = _DIRECTION_INPUTS[selected]
     return [
         {**binding, "input": remap.get(str(binding["input"]), binding["input"])}
@@ -248,9 +244,7 @@ class InputProfileManager:
                 "E-TX-STALE-PLAN", detail="ativação de input existente não é arquivo regular"
             )
         if target.is_file() and target.stat().st_size > _MAX_ACTIVATION_BYTES:
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail="ativação de input excede 256 KiB"
-            )
+            raise SteamZeroError("E-API-SCHEMA", detail="ativação de input excede 256 KiB")
         return transaction.plan_write_files(
             {target: content},
             root=self._root,
@@ -261,9 +255,7 @@ class InputProfileManager:
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
         if not plan.kind.startswith("input-profile.activate:"):
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN", detail="plano não pertence a perfil de input"
-            )
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence a perfil de input")
 
         def verify() -> None:
             targets = {Path(action.target) for action in plan.actions}
@@ -277,12 +269,8 @@ class InputProfileManager:
         if not ids.is_ulid(operation_id):
             raise SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
         records = journal.read_records(operation_id)
-        beginnings = [
-            record for record in records if record.get("type") == "operation.begin"
-        ]
-        kind = (
-            str(beginnings[0].get("kind", "")) if len(beginnings) == 1 else ""
-        )
+        beginnings = [record for record in records if record.get("type") == "operation.begin"]
+        kind = str(beginnings[0].get("kind", "")) if len(beginnings) == 1 else ""
         if not kind.startswith("input-profile.activate:"):
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail="operação não pertence a perfil de input"
@@ -337,9 +325,7 @@ class InputProfileManager:
                 "E-CONTENT-UNSAFE-PATH", detail="ativação de input não é arquivo regular"
             )
         if target.stat().st_size > _MAX_ACTIVATION_BYTES:
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail="ativação de input excede 256 KiB"
-            )
+            raise SteamZeroError("E-API-SCHEMA", detail="ativação de input excede 256 KiB")
         value = json.loads(target.read_text(encoding="utf-8"))
         if not isinstance(value, dict):
             raise SteamZeroError("E-API-SCHEMA", detail="ativação de input precisa ser objeto")

@@ -76,9 +76,7 @@ class SteamMediaManager:
             },
         }
 
-    def plan(
-        self, game_id: str, account_id: str, steam_appid: int
-    ) -> dict[str, Any]:
+    def plan(self, game_id: str, account_id: str, steam_appid: int) -> dict[str, Any]:
         _validate_numeric("gameId", game_id)
         _validate_numeric("accountId", account_id)
         if self._running_probe():
@@ -103,9 +101,7 @@ class SteamMediaManager:
         )
         return data
 
-    def plan_package(
-        self, game_id: str, account_id: str, package_dir: Path
-    ) -> dict[str, Any]:
+    def plan_package(self, game_id: str, account_id: str, package_dir: Path) -> dict[str, Any]:
         _validate_numeric("gameId", game_id)
         _validate_numeric("accountId", account_id)
         if self._running_probe():

@@ -71,9 +71,7 @@ def hud_catalog(*, mangohud_available: bool | None = None) -> dict[str, Any]:
         "schemaVersion": 1,
         "viewport": {"width": 1280, "height": 800},
         "runtime": {"state": runtime_state, "tool": "MangoHud", "detail": detail},
-        "presets": [
-            {**preset, "config": MANGO_CONFIG[str(preset["mode"])]} for preset in _PRESETS
-        ],
+        "presets": [{**preset, "config": MANGO_CONFIG[str(preset["mode"])]} for preset in _PRESETS],
         "evidence": {
             "method": "deterministic-layout-budget",
             "state": "verified-offscreen",

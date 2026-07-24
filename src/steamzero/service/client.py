@@ -121,13 +121,8 @@ def subscribe_events(
                 + b"\n"
             )
             acknowledgement = _read_json_line(reader)
-            subscription_id, acknowledged_cursor = _subscription_ack(
-                acknowledgement, request_id
-            )
-            if (
-                current_cursor is not None
-                and acknowledged_cursor != current_cursor
-            ):
+            subscription_id, acknowledged_cursor = _subscription_ack(acknowledgement, request_id)
+            if current_cursor is not None and acknowledged_cursor != current_cursor:
                 raise CoreProtocolError("ack da assinatura alterou o cursor solicitado")
             current_cursor = acknowledged_cursor
             client.settimeout(None)
@@ -211,9 +206,7 @@ def _connect(timeout: float) -> socket.socket:
     return client
 
 
-def _read_json_line(
-    reader: IO[bytes], *, disconnected: bool = False
-) -> dict[str, Any]:
+def _read_json_line(reader: IO[bytes], *, disconnected: bool = False) -> dict[str, Any]:
     payload = reader.readline(_MAX_RESPONSE + 1)
     if not payload:
         if disconnected:
@@ -230,9 +223,7 @@ def _read_json_line(
     return response
 
 
-def _subscription_ack(
-    response: dict[str, Any], request_id: str | int
-) -> tuple[str, str]:
+def _subscription_ack(response: dict[str, Any], request_id: str | int) -> tuple[str, str]:
     if response.get("jsonrpc") != "2.0" or response.get("id") != request_id:
         raise CoreProtocolError("ack da assinatura inválido")
     error = response.get("error")

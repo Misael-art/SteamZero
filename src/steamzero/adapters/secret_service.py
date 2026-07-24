@@ -40,9 +40,7 @@ class SecretServiceStore:
     def _command(self, action: str, provider: str, key_name: str) -> list[str]:
         executable = self._which("secret-tool")
         if executable is None:
-            raise SteamZeroError(
-                "E-SCRAPE-VAULT-UNAVAILABLE", detail="Secret Service indisponível"
-            )
+            raise SteamZeroError("E-SCRAPE-VAULT-UNAVAILABLE", detail="Secret Service indisponível")
         return [executable, action, *self._attributes(provider, key_name)]
 
     def store(self, provider: str, key_name: str, secret: Secret) -> None:

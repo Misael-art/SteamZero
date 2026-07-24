@@ -150,7 +150,10 @@ class ModCatalogPort(Protocol):
 
 class ModInstallerPort(Protocol):
     def install(
-        self, candidate: ModIdentity, game_title_id: str, emulator_id: str,
+        self,
+        candidate: ModIdentity,
+        game_title_id: str,
+        emulator_id: str,
         files: Sequence[tuple[str, bytes]],
     ) -> Path: ...
     def remove(self, install_path: Path) -> bool: ...
@@ -210,17 +213,26 @@ class CheatCatalogPort(Protocol):
 
 class CheatInstallerPort(Protocol):
     def install(
-        self, title_id: str, build_id: str | None, name: str,
-        codes: tuple[str, ...], emulator_id: str,
+        self,
+        title_id: str,
+        build_id: str | None,
+        name: str,
+        codes: tuple[str, ...],
+        emulator_id: str,
     ) -> Path: ...
     def remove(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
     def enable(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
     def disable(self, title_id: str, build_id: str, emulator_id: str) -> bool: ...
     def list_installed(
-        self, title_id: str, emulator_id: str,
+        self,
+        title_id: str,
+        emulator_id: str,
     ) -> list[InstalledCheatView]: ...
     def edit_codes(
-        self, title_id: str, build_id: str, emulator_id: str,
+        self,
+        title_id: str,
+        build_id: str,
+        emulator_id: str,
         codes: tuple[str, ...],
     ) -> bool: ...
 

@@ -20,8 +20,7 @@ from steamzero.core.state import StateStore
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUB"
-    "AScY42YAAAAASUVORK5CYII="
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 )
 _SECRET = "production-smoke-secret-must-never-leak"
 _TERMINAL = {"completed", "cancelled", "rolled-back", "rollback-failed"}
@@ -209,9 +208,7 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
     )
     steam_selection = _apply(
         controller,
-        controller.plan_action(
-            {"actionId": "game.steam.set", "gameId": game_id, "selected": True}
-        ),
+        controller.plan_action({"actionId": "game.steam.set", "gameId": game_id, "selected": True}),
     )
     settings = controller._load_game_settings(strict=True)  # type: ignore[attr-defined]
     assert settings[game_id] == {"emulatorId": "citron", "steamSelected": True}
@@ -299,10 +296,10 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
         exported_state = store.export_json()
     evidence = json.dumps(
         {
-                "root": root_result,
-                "credentialTest": credential_test,
-                "search": search_result,
-                "completedSearch": completed_search,
+            "root": root_result,
+            "credentialTest": credential_test,
+            "search": search_result,
+            "completedSearch": completed_search,
             "selected": selected,
             "emulator": emulator_selection,
             "steamSelection": steam_selection,

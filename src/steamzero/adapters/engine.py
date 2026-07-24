@@ -42,9 +42,7 @@ class HttpsArtifactPort:
                 source.url,
                 max_bytes=self._max_bytes,
                 timeout_seconds=60.0,
-                headers={
-                    "User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"
-                },
+                headers={"User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"},
                 allowed_redirect_hosts={
                     "github.com",
                     "objects.githubusercontent.com",

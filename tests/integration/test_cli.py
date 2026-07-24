@@ -111,9 +111,7 @@ def test_jobs_and_operations_list_are_paginated(
         == cli.EXIT_OK
     )
     operations = json.loads(capsys.readouterr().out)["data"]
-    assert [row["id"] for row in operations["operations"]] == [
-        "01J0000000000000000000000A"
-    ]
+    assert [row["id"] for row in operations["operations"]] == ["01J0000000000000000000000A"]
     assert operations["page"]["hasMore"] is False
 
 
@@ -174,9 +172,7 @@ def test_jobs_follow_emits_reconnectable_event_v1_ndjson(
         jobs = JobManager(store)
 
         def work(_job: Job, context: JobContext) -> dict[str, bool]:
-            context.set_progress(
-                "scan", current=1, total=1, unit="catalogs"
-            )
+            context.set_progress("scan", current=1, total=1, unit="catalogs")
             return {"ok": True}
 
         jobs.register("scan", work)
@@ -205,14 +201,8 @@ def test_jobs_follow_emits_reconnectable_event_v1_ndjson(
         )
         == cli.EXIT_OK
     )
-    events = [
-        json.loads(line)
-        for line in capsys.readouterr().out.splitlines()
-        if line.strip()
-    ]
-    assert [event["seq"] for event in events] == sorted(
-        event["seq"] for event in events
-    )
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert [event["seq"] for event in events] == sorted(event["seq"] for event in events)
     assert events[-1]["state"] == "completed"
     assert all(event["jobId"] == job.id for event in events)
     assert any(event.get("progress", {}).get("unit") == "catalogs" for event in events)

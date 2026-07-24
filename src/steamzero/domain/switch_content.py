@@ -226,9 +226,7 @@ class SwitchContentManager:
         if selected is None:
             raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="conteúdo não catalogado")
         record = self._record_from_entry(selected)
-        index["records"] = [
-            entry for entry in index["records"] if entry["recordKey"] != record_key
-        ]
+        index["records"] = [entry for entry in index["records"] if entry["recordKey"] != record_key]
         blob_is_shared = any(entry["sha256"] == record.sha256 for entry in index["records"])
         removals = set()
         if not blob_is_shared and record.blob.is_file() and not record.blob.is_symlink():

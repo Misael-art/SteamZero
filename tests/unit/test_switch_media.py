@@ -47,18 +47,22 @@ class _FakePipeline:
 
     def collect(self, source, game_id, title_id, fingerprint, canonical_name, kind="box2d"):
         from steamzero.domain.media_pipeline import CollectionResult
+
         return CollectionResult(game_id=game_id, collected={kind: source})
 
     def collect_from_candidate(self, candidate, game_id, title_id, fingerprint, canonical_name):
         from steamzero.domain.media_pipeline import CollectionResult
+
         return CollectionResult(game_id=game_id, collected={"boxart": Path("fakepipeline.png")})
 
     def optimize(self, game_id, profile=None):
         from steamzero.domain.media_pipeline import OptimizeResult
+
         return OptimizeResult(game_id=game_id)
 
     def view_steam(self, game_id, steam_user_id, steam_appid):
         from steamzero.domain.media_pipeline import ViewResult
+
         return ViewResult(game_id=game_id)
 
     def unpublish_steam_plan(self, game_id, steam_user_id, steam_appid):
@@ -66,6 +70,7 @@ class _FakePipeline:
 
     def audit(self):
         from steamzero.domain.media_pipeline import AuditReport
+
         return AuditReport()
 
     def _find_optimized(self, game_id, profile):
@@ -101,12 +106,14 @@ class TestGameMediaState:
             game_id="g1",
             title_id="0100",
             title="Game",
-            candidates=[{
-                "url": "https://example.com/icon.jpg",
-                "mediaKind": "icon",
-                "provider": "test",
-                "confidence": 0.9,
-            }],
+            candidates=[
+                {
+                    "url": "https://example.com/icon.jpg",
+                    "mediaKind": "icon",
+                    "provider": "test",
+                    "confidence": 0.9,
+                }
+            ],
             candidate_count=1,
         )
         assert state.candidate_count == 1
@@ -124,10 +131,15 @@ class TestStoreResolveFallback:
         manager = GameMediaManager(store, pipeline)
         art_path = tmp_path / "custom.jpg"
         art_path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
-        store.save(GameMediaState(
-            game_id="g1", title_id="0100", title="Game",
-            media_source="custom", media_path=str(art_path),
-        ))
+        store.save(
+            GameMediaState(
+                game_id="g1",
+                title_id="0100",
+                title="Game",
+                media_source="custom",
+                media_path=str(art_path),
+            )
+        )
         result = manager.resolve_effective_media("g1", "0100", "Game")
         assert result.media_source == "custom"
 
@@ -142,10 +154,15 @@ class TestStoreResolveFallback:
         store = _FakeStore()
         pipeline = _FakePipeline()
         manager = GameMediaManager(store, pipeline)
-        store.save(GameMediaState(
-            game_id="g1", title_id="0100", title="Game",
-            media_source="scraper", media_path="/path/to/art.jpg",
-        ))
+        store.save(
+            GameMediaState(
+                game_id="g1",
+                title_id="0100",
+                title="Game",
+                media_source="scraper",
+                media_path="/path/to/art.jpg",
+            )
+        )
         result = manager.clear_media("g1")
         assert result is not None
         assert result.media_source == "fallback"
@@ -156,11 +173,16 @@ class TestStoreResolveFallback:
         store = _FakeStore()
         pipeline = _FakePipeline()
         manager = GameMediaManager(store, pipeline)
-        store.save(GameMediaState(
-            game_id="g1", title_id="0100", title="Game",
-            media_source="scraper", media_path="/path/to/new.jpg",
-            previous_media_path="/path/to/old.jpg",
-        ))
+        store.save(
+            GameMediaState(
+                game_id="g1",
+                title_id="0100",
+                title="Game",
+                media_source="scraper",
+                media_path="/path/to/new.jpg",
+                previous_media_path="/path/to/old.jpg",
+            )
+        )
         result = manager.restore_previous("g1")
         assert result is not None
         assert result.media_path == "/path/to/old.jpg"
@@ -185,16 +207,28 @@ class TestSearchCandidates:
         store = _FakeStore()
         pipeline = _FakePipeline()
         manager = GameMediaManager(store, pipeline)
-        store.save(GameMediaState(
-            game_id="g1", title_id="0100", title="Game",
-            candidates=[
-                {"url": "https://example.com/1.jpg", "mediaKind": "boxart",
-                 "provider": "fake", "confidence": 0.9},
-                {"url": "https://example.com/2.jpg", "mediaKind": "boxart",
-                 "provider": "fake2", "confidence": 0.8},
-            ],
-            candidate_count=2,
-        ))
+        store.save(
+            GameMediaState(
+                game_id="g1",
+                title_id="0100",
+                title="Game",
+                candidates=[
+                    {
+                        "url": "https://example.com/1.jpg",
+                        "mediaKind": "boxart",
+                        "provider": "fake",
+                        "confidence": 0.9,
+                    },
+                    {
+                        "url": "https://example.com/2.jpg",
+                        "mediaKind": "boxart",
+                        "provider": "fake2",
+                        "confidence": 0.8,
+                    },
+                ],
+                candidate_count=2,
+            )
+        )
         result = manager.select_candidate("g1", 1)
         assert result is not None
         assert result.selected_candidate_idx == 1
@@ -261,14 +295,24 @@ class TestStateStorePersistence:
     def test_save_and_load(self, conn: sqlite3.Connection) -> None:
         adapter = StateStoreGameMediaAdapter(conn)
         state = GameMediaState(
-            game_id="g1", title_id="0100", title="Game",
-            media_source="scraper", media_path="/path/to/icon.jpg",
-            candidates=[{
-                "url": "https://example.com/1.jpg", "mediaKind": "icon",
-                "provider": "test", "confidence": 0.9,
-            }],
-            candidate_count=1, master_state="collected", optimized_state="ready",
-            steam_view_state="published", steam_appid=123,
+            game_id="g1",
+            title_id="0100",
+            title="Game",
+            media_source="scraper",
+            media_path="/path/to/icon.jpg",
+            candidates=[
+                {
+                    "url": "https://example.com/1.jpg",
+                    "mediaKind": "icon",
+                    "provider": "test",
+                    "confidence": 0.9,
+                }
+            ],
+            candidate_count=1,
+            master_state="collected",
+            optimized_state="ready",
+            steam_view_state="published",
+            steam_appid=123,
             steam_artwork_kinds=["steam-icon"],
         )
         adapter.save(state)
@@ -351,10 +395,14 @@ class TestCoverageStats:
         manager = GameMediaManager(store, pipeline)
         store.save(GameMediaState(game_id="g1", title_id="0100", title="G1", media_source="custom"))
         store.save(GameMediaState(game_id="g2", title_id="0101", title="G2", media_source="nca"))
-        store.save(GameMediaState(
-            game_id="g3", title_id="0102", title="G3",
-            media_source="fallback",
-        ))
+        store.save(
+            GameMediaState(
+                game_id="g3",
+                title_id="0102",
+                title="G3",
+                media_source="fallback",
+            )
+        )
         stats = manager.coverage_stats()
         assert stats["total"] == 3
         assert stats["custom"] == 1

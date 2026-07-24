@@ -99,9 +99,7 @@ def test_retry_uses_backoff_only_for_retryable_failures() -> None:
 
 
 def test_http_status_is_normalized_and_not_retried_when_terminal() -> None:
-    error = urllib.error.HTTPError(
-        "https://downloads.example/file", 404, "not found", {}, None
-    )
+    error = urllib.error.HTTPError("https://downloads.example/file", 404, "not found", {}, None)
     with pytest.raises(NetworkFailure) as raised:
         HttpClient(transport=FakeTransport([error])).get(
             "https://downloads.example/file",
@@ -129,9 +127,7 @@ def test_download_publishes_atomically_and_cancellation_leaves_no_file(tmp_path:
             [FakeResponse(b"content", "https://downloads.example/file", chunk_size=2)]
         )
     )
-    assert client.download(
-        "https://downloads.example/file", destination, policy=policy()
-    ) == 7
+    assert client.download("https://downloads.example/file", destination, policy=policy()) == 7
     assert destination.read_bytes() == b"content"
 
     cancel = CancellationToken()
@@ -166,9 +162,7 @@ def test_token_bucket_waits_for_capacity_and_honors_cancellation() -> None:
         sleeps.append(delay)
         now[0] += delay
 
-    bucket = TokenBucket(
-        rate_per_second=2.0, burst=1, clock=lambda: now[0], sleep=advance
-    )
+    bucket = TokenBucket(rate_per_second=2.0, burst=1, clock=lambda: now[0], sleep=advance)
     bucket.acquire()
     bucket.acquire()
     assert sleeps == [0.5]

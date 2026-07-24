@@ -36,9 +36,7 @@ def test_audit_classifies_content_without_following_symlinks(tmp_path: Path) -> 
         "corrupted": 1,
         "unknown": 1,
     }
-    assert audit["errors"] == [
-        {"code": "E-CONTENT-UNSAFE-PATH", "entry": "linked.nsp"}
-    ]
+    assert audit["errors"] == [{"code": "E-CONTENT-UNSAFE-PATH", "entry": "linked.nsp"}]
 
 
 def test_quarantine_has_manifest_hashes_and_byte_identical_rollback(

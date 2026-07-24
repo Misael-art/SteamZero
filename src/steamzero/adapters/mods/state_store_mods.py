@@ -86,9 +86,7 @@ class StateStoreModsAdapter(ModDatabasePort):
 
     # --- Remote catalog ------------------------------------------------------
 
-    def replace_catalog(
-        self, title_id: str, candidates: list[ModCandidate]
-    ) -> list[str]:
+    def replace_catalog(self, title_id: str, candidates: list[ModCandidate]) -> list[str]:
         """Substitui atomicamente o recorte de um Title ID e devolve IDs estáveis."""
         now = datetime.now(UTC).isoformat()
         self._conn.execute("DELETE FROM switch_mod_catalog WHERE title_id = ?", (title_id,))

@@ -295,12 +295,8 @@ def test_jobs_and_operations_use_bounded_keyset_pages(db_path: Path) -> None:
     remaining_operations, operations_more = store.list_operations_page(
         limit=2, before_id="01J0000000000000000000000B"
     )
-    assert [row["id"] for row in remaining_jobs] == [
-        "01J0000000000000000000000A"
-    ]
-    assert [row["id"] for row in remaining_operations] == [
-        "01J0000000000000000000000A"
-    ]
+    assert [row["id"] for row in remaining_jobs] == ["01J0000000000000000000000A"]
+    assert [row["id"] for row in remaining_operations] == ["01J0000000000000000000000A"]
     assert jobs_more is operations_more is False
     with pytest.raises(ValueError, match="entre 1 e 256"):
         store.list_jobs_page(limit=257)
@@ -319,12 +315,8 @@ def test_event_log(db_path: Path) -> None:
 
 def test_event_pages_are_filtered_bounded_and_reconnect_by_sequence(db_path: Path) -> None:
     store = state.open_state(db_path)
-    first = store.append_event(
-        "job.state", entity="job:J1", payload={"state": "queued"}
-    )
-    store.append_event(
-        "job.state", entity="job:J2", payload={"state": "queued"}
-    )
+    first = store.append_event("job.state", entity="job:J1", payload={"state": "queued"})
+    store.append_event("job.state", entity="job:J2", payload={"state": "queued"})
     third = store.append_event(
         "job.progress",
         entity="job:J1",
@@ -357,11 +349,7 @@ def test_operation_state_event_is_atomic_and_deduplicated(db_path: Path) -> None
     store.save_operation("OP1", state="applying")
     store.save_operation("OP1", state="committed")
 
-    events = [
-        row
-        for row in store.events_since(0)
-        if row["kind"] == "operation.state"
-    ]
+    events = [row for row in store.events_since(0) if row["kind"] == "operation.state"]
     assert [json.loads(row["payload_json"])["state"] for row in events] == [
         "applying",
         "committed",

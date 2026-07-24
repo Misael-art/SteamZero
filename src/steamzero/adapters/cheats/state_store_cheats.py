@@ -92,9 +92,7 @@ class StateStoreCheatsAdapter(CheatDatabasePort):
 
     # --- Remote catalog ------------------------------------------------------
 
-    def replace_catalog(
-        self, title_id: str, candidates: list[CheatCandidate]
-    ) -> list[str]:
+    def replace_catalog(self, title_id: str, candidates: list[CheatCandidate]) -> list[str]:
         """Substitui atomicamente o recorte de cheats de um Title ID."""
         now = datetime.now(UTC).isoformat()
         self._conn.execute("DELETE FROM switch_cheat_catalog WHERE title_id = ?", (title_id,))

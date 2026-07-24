@@ -37,8 +37,8 @@ def test_emulation_workspace_cli_emits_versioned_envelope(
     assert {area["id"] for area in platform["areas"]} == {
         "overview",
         "keysFirmware",
-            "updatesDlc",
-            "modsCheats",
+        "updatesDlc",
+        "modsCheats",
         "graphicsPerformance",
         "controls",
         "saves",

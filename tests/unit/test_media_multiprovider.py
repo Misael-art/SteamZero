@@ -153,9 +153,7 @@ def test_provider_failure_does_not_cancel_next_provider_or_leak_detail(
     )
     assert calls == ["steamgriddb", "steamgriddb", "steamgriddb", "screenscraper"]
     assert result["candidate_count"] == 1
-    assert result["provider_errors"] == {
-        "steamgriddb": "E-SCRAPE-PROVIDER-UNREACHABLE"
-    }
+    assert result["provider_errors"] == {"steamgriddb": "E-SCRAPE-PROVIDER-UNREACHABLE"}
     assert "secret-in-detail" not in str(result)
 
 

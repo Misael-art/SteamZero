@@ -427,10 +427,7 @@ def test_subscription_client_rejects_cursor_divergence(
                 }
             )
         connection.sendall(
-            b"".join(
-                json.dumps(item, separators=(",", ":")).encode() + b"\n"
-                for item in messages
-            )
+            b"".join(json.dumps(item, separators=(",", ":")).encode() + b"\n" for item in messages)
         )
         connection.close()
 

@@ -61,15 +61,9 @@ def up(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_media_masters_game ON media_masters(game_id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_media_masters_sha ON media_masters(sha256)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_media_optimized_game ON media_optimized(game_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_media_masters_game ON media_masters(game_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_media_masters_sha ON media_masters(sha256)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_media_optimized_game ON media_optimized(game_id)")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_media_views_steam_game ON media_views_steam(game_id)"
     )

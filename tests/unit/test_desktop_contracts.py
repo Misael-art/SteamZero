@@ -137,9 +137,7 @@ def test_gameplay_profile_apply_points_to_real_rollback_contract() -> None:
         "supported": True,
         "endpoint": "/steam/gameplay/rollback",
     }
-    assert matrix["steam.gameplay.rollback"]["inputSchema"]["required"] == [
-        "operationId"
-    ]
+    assert matrix["steam.gameplay.rollback"]["inputSchema"]["required"] == ["operationId"]
 
 
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:

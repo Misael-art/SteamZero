@@ -28,9 +28,7 @@ PUBLIC_EVENT_KINDS = (
 )
 JOB_EVENT_KINDS = ("job.progress", "job.state")
 OPERATION_EVENT_KINDS = ("operation.state",)
-JOB_TERMINAL_STATES = frozenset(
-    {"completed", "cancelled", "rolled-back", "rollback-failed"}
-)
+JOB_TERMINAL_STATES = frozenset({"completed", "cancelled", "rolled-back", "rollback-failed"})
 OPERATION_TERMINAL_STATES = frozenset(
     {"committed", "rolled-back", "rollback-failed", "recovery-required"}
 )
@@ -155,11 +153,7 @@ def _job_correlation(store: StateStore, job_id: str | None) -> str:
     if job is None:
         return SYSTEM_CORRELATION_ID
     correlation = job.get("correlation_id")
-    return (
-        correlation
-        if isinstance(correlation, str) and correlation
-        else SYSTEM_CORRELATION_ID
-    )
+    return correlation if isinstance(correlation, str) and correlation else SYSTEM_CORRELATION_ID
 
 
 def _public_event(store: StateStore, row: dict[str, Any]) -> dict[str, Any]:
@@ -179,9 +173,7 @@ def _public_event(store: StateStore, row: dict[str, Any]) -> dict[str, Any]:
     }
     if job_id is not None:
         event["jobId"] = job_id
-    operation_id = (
-        _entity_id(row, "operation") if kind == "operation.state" else None
-    )
+    operation_id = _entity_id(row, "operation") if kind == "operation.state" else None
     if operation_id is not None:
         event["operationId"] = operation_id
     if kind == "job.progress":

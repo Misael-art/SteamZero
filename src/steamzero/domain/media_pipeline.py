@@ -33,8 +33,8 @@ def _download_candidate(url: str) -> bytes:
     try:
         return fetch_bytes(url, max_bytes=_MAX_DOWNLOAD)
     except NetworkFailure as exc:
-        code = "E-CONTENT-LIMIT" if exc.code == "E-NET-CONTENT-LIMIT" else (
-            "E-SCRAPE-DOWNLOAD-FAILED"
+        code = (
+            "E-CONTENT-LIMIT" if exc.code == "E-NET-CONTENT-LIMIT" else ("E-SCRAPE-DOWNLOAD-FAILED")
         )
         raise SteamZeroError(code, detail=exc.detail) from exc
 
@@ -205,9 +205,7 @@ class MediaPipeline:
         return result
 
     # --- 2. OPTIMIZE ---
-    def optimize(
-        self, game_id: str, profile: str | None = None
-    ) -> OptimizeResult:
+    def optimize(self, game_id: str, profile: str | None = None) -> OptimizeResult:
         result = OptimizeResult(game_id=game_id)
         caps = self._detect_optimizer()
         if not caps.ok:
@@ -323,9 +321,7 @@ class MediaPipeline:
             target_grid = grid_dir or paths.media_steam_grid_dir(steam_user_id)
             grid_path = target_grid / f"{stem}{ext}"
             fs.ensure_dir(grid_path.parent)
-            if grid_path.is_file() and not _is_managed(
-                grid_path, self._media_root / "optimized"
-            ):
+            if grid_path.is_file() and not _is_managed(grid_path, self._media_root / "optimized"):
                 result.skipped.append(f"{pname}:externo-nao-gerenciado")
                 continue
             if grid_path.is_symlink() or grid_path.is_file():
@@ -357,9 +353,7 @@ class MediaPipeline:
             ext = opt_path.suffix
             target_grid = grid_dir or paths.media_steam_grid_dir(steam_user_id)
             grid_path = target_grid / f"{stem}{ext}"
-            if grid_path.is_file() and not _is_managed(
-                grid_path, self._media_root / "optimized"
-            ):
+            if grid_path.is_file() and not _is_managed(grid_path, self._media_root / "optimized"):
                 continue
             links[opt_path] = grid_path
         if not links:
@@ -445,11 +439,7 @@ class MediaPipeline:
         report.stats["orphanMasters"] = orphan_masters
 
         for game_id in self._registry.entries:
-            if not any(
-                (optimized_dir / p).is_file()
-                for p in opt_files
-                if game_id in p
-            ):
+            if not any((optimized_dir / p).is_file() for p in opt_files if game_id in p):
                 mstr = self._registry.entries[game_id]
                 if mstr.confirmed:
                     report.add(
@@ -563,6 +553,7 @@ def _publish_link(source: Path, target: Path) -> bool:
 
 def _detect_pillow() -> bool:
     import importlib.util
+
     return importlib.util.find_spec("PIL") is not None
 
 

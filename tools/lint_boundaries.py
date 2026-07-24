@@ -37,9 +37,7 @@ PROC_PORT_PREFIXES = (
     "steamzero.privileged.client",
 )
 NET_PORT = "steamzero.core.net"
-_HTTP_IMPORTS = frozenset(
-    {"urllib.request", "http.client", "requests", "httpx", "aiohttp"}
-)
+_HTTP_IMPORTS = frozenset({"urllib.request", "http.client", "requests", "httpx", "aiohttp"})
 
 _OS_WRITE_FUNCS = frozenset(
     {"rename", "replace", "remove", "unlink", "mkdir", "makedirs", "rmdir", "symlink", "link"}

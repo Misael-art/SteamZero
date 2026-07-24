@@ -636,9 +636,12 @@ def test_reduced_motion_reads_real_plasma_duration_factor() -> None:
         calls.append(tuple(argv))
         return CommandResult(0, "0\n", "")
 
-    assert desktop_kde.reduced_motion_enabled(
-        runner=runner, which=lambda command: f"/usr/bin/{command}"
-    ) is True
+    assert (
+        desktop_kde.reduced_motion_enabled(
+            runner=runner, which=lambda command: f"/usr/bin/{command}"
+        )
+        is True
+    )
     assert calls == [
         (
             "kreadconfig6",

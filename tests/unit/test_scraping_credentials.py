@@ -132,9 +132,7 @@ class TestEmulationControllerCredential:
         assert result["configured"] is False
         assert result["state"] == "notConfigured"
 
-    def test_screenscraper_reports_exact_missing_required_fields(
-        self, tmp_path: Path
-    ) -> None:
+    def test_screenscraper_reports_exact_missing_required_fields(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
         with pytest.raises(SteamZeroError, match="devpassword"):
             ctrl.save_credential("screenscraper", {"devid": "developer-id"})
@@ -161,17 +159,13 @@ class TestEmulationControllerCredential:
         for field, expected in values.items():
             secret = ctrl._secret_store.retrieve("screenscraper", field)
             assert secret is not None and secret.reveal() == expected
-        assert not any(
-            value in json.dumps(saved, sort_keys=True) for value in values.values()
-        )
+        assert not any(value in json.dumps(saved, sort_keys=True) for value in values.values())
 
         monkeypatch.setattr(ScreenScraperAdapter, "test_connection", lambda _self: True)
         tested = ctrl.test_credential("screenscraper")
         assert tested["valid"] is True
         assert tested["state"] == "validated"
-        assert not any(
-            value in json.dumps(tested, sort_keys=True) for value in values.values()
-        )
+        assert not any(value in json.dumps(tested, sort_keys=True) for value in values.values())
 
         with ctrl._store_factory() as store:
             store.migrate()
@@ -183,9 +177,7 @@ class TestEmulationControllerCredential:
 
         revoked = ctrl.delete_credential("screenscraper")
         assert revoked["state"] == "notConfigured"
-        assert all(
-            ctrl._secret_store.retrieve("screenscraper", field) is None for field in values
-        )
+        assert all(ctrl._secret_store.retrieve("screenscraper", field) is None for field in values)
 
     def test_screenscraper_optional_account_is_not_required(self, tmp_path: Path) -> None:
         ctrl = _controller(tmp_path)
@@ -248,9 +240,7 @@ class TestEmulationControllerCredential:
         with pytest.raises(SteamZeroError, match="E-SCRAPE-VAULT-UNAVAILABLE"):
             ctrl.save_credential("steamgriddb", "secret")
 
-    def test_save_verification_failure_rolls_back_previous_secret(
-        self, tmp_path: Path
-    ) -> None:
+    def test_save_verification_failure_rolls_back_previous_secret(self, tmp_path: Path) -> None:
         class RejectingVerificationStore(SessionSecretStore):
             reject_next_retrieve = False
 
@@ -290,17 +280,13 @@ class TestEmulationControllerCredential:
             ("steamgriddb", "createAccount"): (
                 "https://www.steamgriddb.com/profile/preferences/api"
             ),
-            ("steamgriddb", "credentials"): (
-                "https://www.steamgriddb.com/profile/preferences/api"
-            ),
+            ("steamgriddb", "credentials"): ("https://www.steamgriddb.com/profile/preferences/api"),
             ("steamgriddb", "documentation"): "https://www.steamgriddb.com/api/v2",
             ("steamgriddb", "terms"): "https://www.steamgriddb.com/terms",
             ("screenscraper", "createAccount"): (
                 "https://main.screenscraper.fr/membreinscription.php"
             ),
-            ("screenscraper", "documentation"): (
-                "https://www.screenscraper.fr/webapi2.php"
-            ),
+            ("screenscraper", "documentation"): ("https://www.screenscraper.fr/webapi2.php"),
             ("steam-web-api", "credentials"): "https://steamcommunity.com/dev/apikey",
         }
         for (provider, link), url in expected.items():

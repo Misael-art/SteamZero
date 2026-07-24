@@ -57,9 +57,7 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
         self._conn.commit()
 
     def list_all(self) -> list[GameMediaState]:
-        rows = self._conn.execute(
-            "SELECT * FROM switch_game_media ORDER BY title"
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM switch_game_media ORDER BY title").fetchall()
         return [self._row_to_state(r) for r in rows]
 
     def delete(self, game_id: str) -> None:
@@ -112,8 +110,6 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
             steam_view_state=row["steam_view_state"],
             steam_appid=row["steam_appid"],
             steam_artwork_kinds=(
-                json.loads(row["steam_artwork_json"])
-                if row["steam_artwork_json"]
-                else []
+                json.loads(row["steam_artwork_json"]) if row["steam_artwork_json"] else []
             ),
         )
