@@ -156,6 +156,8 @@
         "requiresKeys": {"type": ["object", "null"]},
         "requiresFirmware": {"type": ["object", "null"]},
         "coverUrl": {"type": ["string", "null"]},
+        "platformId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "fallbackArtworkUrl": {"type": "string"},
         "mediaSource": {"type": ["string", "null"]},
         "mediaKind": {"type": ["string", "null"]}
       }
@@ -224,6 +226,22 @@
           }
         },
         "defaultEmulatorId": {"type": ["string", "null"]},
+        "configuredDefaultEmulatorId": {"type": ["string", "null"]},
+        "primaryEmulator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name", "state", "statusLabel", "source"],
+          "properties": {
+            "id": {"type": ["string", "null"]},
+            "name": {"type": "string"},
+            "state": {"$ref": "#/$defs/state"},
+            "statusLabel": {"type": "string", "minLength": 1},
+            "source": {
+              "enum": ["configured", "configured-unavailable", "precedence", "none"]
+            }
+          }
+        },
+        "fallbackArtworkAsset": {"type": "string", "minLength": 1},
         "globalSettings": {
           "type": "object",
           "additionalProperties": false,

@@ -47,6 +47,25 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | R8 | Registry compartilhado de shaders/bezels | media-registry-v1 | pending | — |
 | B0 | Web UI LAN, família/kiosk, comunidade, pareamento | nenhum (protegido) | backlog-protected | — |
 
+## Diagnóstico de emulação incorporado
+
+Fonte: catálogo de inspeção `2026-07-23-catalogo-falhas-emulacao.md`, lido na
+worktree `codex/desktop-ergonomia-d0` (`43ec946`). A comparação autoritativa é
+feita contra esta linha consolidada; código presente aqui não será reconstruído.
+
+| ID | Achado do diagnóstico | Destino no ciclo | Estado | Evidência |
+|---|---|---|---|---|
+| D1 | Emulador principal + fallback visual por plataforma | correção transversal/F5 | verified-dev | `docs/expansion/WI-D1.md` |
+| D2 | DLC/update no scan e projeção para emuladores | F5, A4, A8 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D3 | Fiação de catálogos, mods e cheats existentes | A12 + composição | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D4 | Gráficos e performance | G1, G3, G4, G6, R0–R2 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D5 | Controles editáveis e perfis | F6, R6 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D6 | vSaves, playtime, captura e lançamento | A1, G5 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D7 | Scraping/download e fallback de artwork | F1, A7, A12 | in-progress | `docs/expansion/WI-D1.md` |
+| D8 | Artwork e conversão de ROM | A7, A8 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D9 | Armazenamento e exclusão linkada | A4, A7 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+| D10 | Leitura de DLC, shader, firmware e região | F5, A4, A12 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+
 ## Auditorias por lote
 
 - A cada quatro WIs: suíte completa, ledger × commits × relatórios e dependências

@@ -119,6 +119,42 @@ Window {
         object.destroy()
     }
 
+    function testPublishedPrimaryAndPlatformArtwork() {
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "state": "ready",
+                "statusLabel": "Pronto",
+                "defaultEmulatorId": "citron",
+                "primaryEmulator": {
+                    "id": "citron", "name": "Citron", "state": "ready",
+                    "statusLabel": "Instalado", "source": "configured"
+                },
+                "fallbackArtworkAsset": "../assets/switch.svg",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [
+                    {"id": "eden", "name": "Eden", "state": "ready",
+                        "installState": "installed"},
+                    {"id": "citron", "name": "Citron", "state": "ready",
+                        "installState": "installed"}
+                ],
+                "games": [{
+                    "id": "fixture", "name": "Sem artwork", "platformId": "switch",
+                    "fallbackArtworkUrl": "../assets/switch.svg"
+                }]
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        check(object.selectedEmulator.id === "citron",
+              "emulador primário publicado deve selecionar o contexto inicial")
+        check(object.gameArtwork(object.games[0]) === "../assets/switch.svg",
+              "ROM sem mídia deve usar um único fallback da própria plataforma")
+        object.destroy()
+    }
+
     function testBackendArea() {
         const object = makePage({
             "platforms": [{
@@ -416,6 +452,7 @@ Window {
         onTriggered: {
             testHierarchy()
             testSafeFallback()
+            testPublishedPrimaryAndPlatformArtwork()
             testBackendArea()
             testGameLibraryJourney()
             testEmulatorMaintenanceListsEveryManagedEmulator()

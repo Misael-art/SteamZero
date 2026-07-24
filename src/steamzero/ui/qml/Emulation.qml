@@ -101,6 +101,7 @@ Item {
             "iconKey": "switch",
             "state": "degraded",
             "statusLabel": qsTr("Aguardando dados da plataforma"),
+            "fallbackArtworkAsset": "../assets/switch.svg",
             "readiness": {
                 "percent": 0,
                 "title": qsTr("Verificação ainda não disponível"),
@@ -146,6 +147,28 @@ Item {
         return rows.length > 0 ? Math.max(0, Math.min(index, rows.length - 1)) : 0
     }
 
+    function publishedPrimaryEmulatorIndex() {
+        const primary = selectedPlatform.primaryEmulator || ({})
+        const primaryId = String(primary.id || selectedPlatform.defaultEmulatorId || "")
+        const published = emulators.findIndex(function(item) {
+            return String(item.id || "") === primaryId
+        })
+        if (published >= 0)
+            return published
+        const installed = emulators.findIndex(function(item) {
+            return item.installState === "installed"
+                || item.state === "installed" || item.state === "ready"
+        })
+        return installed >= 0 ? installed : normalizedIndex(emulatorIndex, emulators)
+    }
+
+    function gameArtwork(game) {
+        if (!game)
+            return selectedPlatform.fallbackArtworkAsset || ""
+        return game.coverUrl || game.bannerAsset || game.fallbackArtworkUrl
+            || selectedPlatform.fallbackArtworkAsset || ""
+    }
+
     function resetContext() {
         scopeIndex = 0
         areaIndex = 0
@@ -169,7 +192,7 @@ Item {
         const area = selectedPlatform.selectedArea || "overview"
         const publishedArea = areas.findIndex(function(item) { return item.id === area })
         areaIndex = publishedArea >= 0 ? publishedArea : 0
-        emulatorIndex = normalizedIndex(emulatorIndex, emulators)
+        emulatorIndex = publishedPrimaryEmulatorIndex()
         gameIndex = normalizedIndex(gameIndex, games)
         synchronizedPlatformId = platformId
         syncGameSelection()
@@ -1869,9 +1892,8 @@ Item {
                                             Image {
                                                 id: compactGameBanner
                                                 anchors.fill: parent
-                                                source: compactGameCard.modelData.coverUrl
-                                                    || compactGameCard.modelData.bannerAsset
-                                                    || ""
+                                                source: page.gameArtwork(
+                                                    compactGameCard.modelData)
                                                 fillMode: Image.PreserveAspectCrop
                                                 asynchronous: true
                                                 visible: String(source) !== ""
@@ -2061,7 +2083,7 @@ Item {
                                         Image {
                                             id: gameBanner
                                             anchors.fill: parent
-                                            source: gameRow.modelData.coverUrl || gameRow.modelData.bannerAsset || ""
+                                            source: page.gameArtwork(gameRow.modelData)
                                             fillMode: Image.PreserveAspectCrop
                                             asynchronous: true
                                             visible: String(source) !== "" && status === Image.Ready

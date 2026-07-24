@@ -27,6 +27,7 @@ def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ig
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         which=lambda _command: None,
         spawn=lambda _argv: None,
+        secret_store=emulation.SessionSecretStore(),
     )
 
 
@@ -265,6 +266,15 @@ def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_pa
 
     platform = controller.snapshot({"context": {}})["platforms"][0]
     assert platform["defaultEmulatorId"] == "citron"
+    assert platform["configuredDefaultEmulatorId"] == "citron"
+    assert platform["primaryEmulator"] == {
+        "id": "citron",
+        "name": "Citron",
+        "state": "unavailable",
+        "statusLabel": "Não instalado",
+        "source": "configured-unavailable",
+    }
+    assert platform["fallbackArtworkAsset"] == "../assets/switch.svg"
     assert next(row for row in platform["emulators"] if row["id"] == "citron")["isDefault"] is True
     assert (
         next(row for row in platform["emulators"] if row["id"] == "eden")["actions"][0]["id"]
@@ -275,6 +285,24 @@ def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_pa
         "autoPublishSteam": True,
         "preferNativeNca": False,
     }
+
+
+def test_primary_emulator_falls_back_to_installed_precedence() -> None:
+    rows = [
+        {"id": "eden", "installState": "not-installed"},
+        {"id": "citron", "installState": "installed"},
+        {"id": "ryubing", "installState": "installed"},
+    ]
+    assert emulation._resolve_primary_emulator(rows, None) == ("citron", "precedence")
+    assert emulation._resolve_primary_emulator(rows, "ryubing") == (
+        "ryubing",
+        "configured",
+    )
+    assert emulation._resolve_primary_emulator(rows, "eden") == (
+        "eden",
+        "configured-unavailable",
+    )
+    assert emulation._resolve_primary_emulator([], "eden") == (None, "none")
 
 
 def test_nsz_manifest_is_valid_and_failed_install_leaves_no_partial_tool(
@@ -424,6 +452,8 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "updateVersion": None,
             "dlcCount": 0,
             "bannerAsset": "",
+            "platformId": "switch",
+            "fallbackArtworkUrl": "../assets/switch.svg",
             "steamSelected": False,
             "steamPublished": False,
             "playAction": {

@@ -5,6 +5,8 @@
   versão `26.05.05-0223` distribuída pelo BigLinux.
 - `steamzero-mark.png`: marca original gerada para o SteamZero em 2026-07-16,
   distribuída sob a mesma licença GPL-3.0 do projeto.
+- `switch.svg`: fallback de plataforma original do SteamZero, distribuído sob
+  GPL-3.0-or-later; não contém artwork de terceiros.
 - `eden.svg`: ícone oficial em
   [`eden-emu/eden`](https://git.eden-emu.dev/eden-emu/eden), arquivo
   `dist/dev.eden_emu.eden.svg`, distribuído com o projeto GPL-3.0-or-later.

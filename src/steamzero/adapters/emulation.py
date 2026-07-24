@@ -99,6 +99,28 @@ _EMULATOR_PRESENTATION = {
     "citron": ("Citron", "../assets/citron.svg"),
     "ryubing": ("Ryubing", "../assets/ryubing.png"),
 }
+
+
+def _resolve_primary_emulator(
+    rows: Sequence[Mapping[str, Any]],
+    configured_id: str | None,
+) -> tuple[str | None, str]:
+    installed = [
+        str(row["id"])
+        for row in rows
+        if row.get("installState") == "installed" and isinstance(row.get("id"), str)
+    ]
+    if configured_id in installed:
+        return configured_id, "configured"
+    if configured_id is not None and any(
+        row.get("id") == configured_id for row in rows
+    ):
+        return configured_id, "configured-unavailable"
+    if installed:
+        return installed[0], "precedence"
+    return None, "none"
+
+
 _TITLE_ID = re.compile(r"^[0-9A-F]{16}$")
 _FIRMWARE_VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){0,3}$")
 _KEY_LINE = re.compile(r"^\s*([a-z0-9_]+)\s*=\s*([0-9a-fA-F]{32,})\s*$")
@@ -284,10 +306,32 @@ class EmulationController:
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
-        platform["defaultEmulatorId"] = global_settings.get("defaultEmulatorId")
+        configured_default = global_settings.get("defaultEmulatorId")
+        primary_id, primary_source = _resolve_primary_emulator(
+            emulator_rows,
+            str(configured_default) if configured_default is not None else None,
+        )
+        primary_row = next(
+            (row for row in emulator_rows if row["id"] == primary_id),
+            None,
+        )
+        platform["configuredDefaultEmulatorId"] = configured_default
+        platform["defaultEmulatorId"] = configured_default or primary_id
+        platform["primaryEmulator"] = {
+            "id": primary_id,
+            "name": str(primary_row["name"]) if primary_row is not None else "",
+            "state": str(primary_row["state"]) if primary_row is not None else "unavailable",
+            "statusLabel": (
+                str(primary_row["statusLabel"])
+                if primary_row is not None
+                else "Nenhum emulador instalado"
+            ),
+            "source": primary_source,
+        }
+        platform["fallbackArtworkAsset"] = "../assets/switch.svg"
         for emulator in emulator_rows:
             installed = emulator["installState"] == "installed"
-            is_default = emulator["id"] == global_settings.get("defaultEmulatorId")
+            is_default = emulator["id"] == primary_id
             emulator["isDefault"] = is_default
             health = emulator["health"]
             health["firmwareReady"] = firmware_status["status"] == "ok"
@@ -4569,6 +4613,8 @@ class EmulationController:
                 ]
                 game.update(
                     {
+                        "platformId": "switch",
+                        "fallbackArtworkUrl": "../assets/switch.svg",
                         "emulatorId": emulator_id,
                         "steamSelected": selected.get("steamSelected") is True,
                         "steamPublished": game_id in published,
