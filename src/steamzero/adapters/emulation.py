@@ -2851,7 +2851,20 @@ class EmulationController:
                         ),
                         "ready",
                         "Dock" if dock else "Portátil",
-                    )
+                    ),
+                    self._card(
+                        "integer-scaling",
+                        "Escala inteira normativa",
+                        "Tabela de resolucao 1280x800 com escalonamento 1x, 2x e 3x "
+                        "conforme a experiencia retro declarativa.",
+                        "ready" if has_game else "attention",
+                        "1280x800",
+                        action=self._action(
+                            "emulation.refresh",
+                            "Ver tabela",
+                            enabled=True,
+                        ),
+                    ),
                 ],
                 "primaryAction": self._action("emulation.refresh", "Atualizar detecção"),
             },

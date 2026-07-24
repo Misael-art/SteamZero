@@ -726,10 +726,21 @@ Item {
             return overviewCards()
         if (selectedArea.id === "modsCheats" && scopeId() === "game")
             return gameExtraCards()
-        if (selectedArea.id === "graphicsPerformance"
-                && selectedPlatform.kind === "emulated"
-                && retroExperience.presets && retroExperience.presets.length > 0)
-            return retroPresetCards()
+        if (selectedArea.id === "graphicsPerformance") {
+            var merged = []
+            if (areaData.cards) {
+                for (var ci = 0; ci < areaData.cards.length; ci++)
+                    merged.push(areaData.cards[ci])
+            }
+            if (selectedPlatform.kind === "emulated"
+                    && retroExperience.presets && retroExperience.presets.length > 0) {
+                var retroCards = retroPresetCards()
+                for (var ri = 0; ri < retroCards.length; ri++)
+                    merged.push(retroCards[ri])
+            }
+            if (merged.length > 0)
+                return merged
+        }
         if (areaData.cards && areaData.cards.length > 0)
             return areaData.cards
         return defaultCards(selectedArea.id)
