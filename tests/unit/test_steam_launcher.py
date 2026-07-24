@@ -145,6 +145,17 @@ def test_compile_mangohud_without_gamescope_and_public_summary(tmp_path: Path) -
         "appliedEffects": ["MangoHud detailed"],
         "deferredEffects": list(spec.deferred_effects),
         "profileDigest": spec.profile_digest,
+        "environment": {
+            "schemaVersion": 1,
+            "layers": ["steamzero", "mangohud"],
+            "managedKeys": [
+                "MANGOHUD_CONFIG",
+                "STEAMZERO_GAME_ID",
+                "STEAMZERO_PROFILE_DIGEST",
+            ],
+            "collisionPolicy": "reject",
+            "shell": False,
+        },
     }
 
 

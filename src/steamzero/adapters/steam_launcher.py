@@ -38,6 +38,10 @@ from steamzero.core.session_state import (
 )
 from steamzero.core.state import StateStore
 from steamzero.domain.hud import MANGO_CONFIG
+from steamzero.domain.launch_environment import (
+    EnvironmentLayer,
+    compose_launch_environment,
+)
 
 StoreFactory = Callable[[], StateStore]
 Which = Callable[[str], str | None]
@@ -151,6 +155,7 @@ class LaunchSpec:
     applied_effects: tuple[str, ...]
     deferred_effects: tuple[str, ...]
     profile_digest: str
+    environment_plan: dict[str, object]
 
     def public(self) -> dict[str, Any]:
         return {
@@ -158,6 +163,7 @@ class LaunchSpec:
             "appliedEffects": list(self.applied_effects),
             "deferredEffects": list(self.deferred_effects),
             "profileDigest": self.profile_digest,
+            "environment": self.environment_plan,
         }
 
 
@@ -320,13 +326,15 @@ class SteamGameLauncher:
         profile = self._validated_profile(profile, app_id)
         profile_digest = self._profile_digest(profile)
         argv = list(original)
-        environment = self._environ()
-        environment.update(
-            {
-                "STEAMZERO_GAME_ID": app_id,
-                "STEAMZERO_PROFILE_DIGEST": profile_digest,
-            }
-        )
+        layers = [
+            EnvironmentLayer(
+                "steamzero",
+                {
+                    "STEAMZERO_GAME_ID": app_id,
+                    "STEAMZERO_PROFILE_DIGEST": profile_digest,
+                },
+            )
+        ]
         applied: list[str] = []
         deferred: list[str] = []
 
@@ -337,7 +345,7 @@ class SteamGameLauncher:
         mango = str(profile["mangoHud"])
         gamescope = bool(profile["gamescope"])
         if mango != "off":
-            environment["MANGOHUD_CONFIG"] = MANGO_CONFIG[mango]
+            layers.append(EnvironmentLayer("mangohud", {"MANGOHUD_CONFIG": MANGO_CONFIG[mango]}))
             if gamescope:
                 self._required_tool("mangoapp")
             else:
@@ -363,14 +371,17 @@ class SteamGameLauncher:
                 raise SteamZeroError(
                     "E-COMPONENT-DEGRADED", detail="Lossless.dll não foi observado na Steam"
                 )
-            environment.update(
-                {
-                    "LSFG_LEGACY": "1",
-                    "LSFG_DLL_PATH": str(dll),
-                    "LSFG_MULTIPLIER": _FRAME_MULTIPLIERS[frame_generation],
-                    "LSFG_FLOW_SCALE": "1.0",
-                    "LSFG_PERFORMANCE_MODE": ("1" if profile["profile"] == "economy" else "0"),
-                }
+            layers.append(
+                EnvironmentLayer(
+                    "frame-generation",
+                    {
+                        "LSFG_LEGACY": "1",
+                        "LSFG_DLL_PATH": str(dll),
+                        "LSFG_MULTIPLIER": _FRAME_MULTIPLIERS[frame_generation],
+                        "LSFG_FLOW_SCALE": "1.0",
+                        "LSFG_PERFORMANCE_MODE": ("1" if profile["profile"] == "economy" else "0"),
+                    },
+                )
             )
             applied.append(f"LSFG {_FRAME_MULTIPLIERS[frame_generation]}x")
 
@@ -381,14 +392,16 @@ class SteamGameLauncher:
         if profile["gpuMode"] == "manual":
             deferred.append("Clock da GPU aguarda transporte privilegiado validado em hardware")
 
+        environment = compose_launch_environment(self._environ(), layers)
         return LaunchSpec(
             app_id=app_id,
             profile=profile,
             argv=tuple(argv),
-            environment=environment,
+            environment=environment.values,
             applied_effects=tuple(applied),
             deferred_effects=tuple(deferred),
             profile_digest=profile_digest,
+            environment_plan=environment.public(),
         )
 
     def run(self, app_id: str, command: Sequence[str]) -> int:
