@@ -640,10 +640,18 @@ ApplicationWindow {
             notify(message, true)
             return
         }
-        request(action.method, action.endpoint, payload, callback, function(message) {
-            root.recordActionFailure(actionId, message)
+        request(action.method, action.endpoint, payload, callback, function(errArg) {
+            var errObj = (errArg && typeof errArg === "object" && errArg.code) ? errArg : null
+            var msg = errObj
+                ? root.errorMessage({"error": errObj}, qsTr("Ação recusada"))
+                : (typeof errArg === "string" ? errArg : qsTr("Ação recusada"))
+            root.recordActionFailure(actionId, msg)
+            if (errObj)
+                root.pushError(errObj)
+            else
+                root.notify(msg, true)
             if (errorCallback)
-                errorCallback(message)
+                errorCallback(msg)
         })
     }
 
