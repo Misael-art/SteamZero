@@ -53,6 +53,7 @@ def _title(kind: str) -> str:
         return _TITLES[kind]
     prefixes = (
         ("component.", "Componente"),
+        ("collections.", "Coleções e favoritos"),
         ("diagnostics.export.", "Exportação de diagnóstico"),
         ("emulation.game-delete:", "Exclusão de jogo"),
         ("emulation.", "Emulação"),

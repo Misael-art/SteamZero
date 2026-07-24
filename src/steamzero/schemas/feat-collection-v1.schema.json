@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "feat-collection-v1.schema.json",
+  "title": "SteamZero tags, favorites and smart collections v1",
+  "type": "object",
+  "required": [
+    "schemaVersion", "generatedAt", "revision", "tags",
+    "favorites", "assignments", "collections"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "revision": {"type": "integer", "minimum": 0},
+    "tags": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/tag"}
+    },
+    "favorites": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/gameRef"}
+    },
+    "assignments": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": ["gameRef", "tagIds"],
+        "properties": {
+          "gameRef": {"$ref": "#/$defs/gameRef"},
+          "tagIds": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/slug"}
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "collections": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "rule", "members"],
+        "properties": {
+          "id": {"$ref": "#/$defs/slug"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 64},
+          "rule": {"$ref": "#/$defs/rule"},
+          "members": {
+            "type": "array",
+            "maxItems": 10000,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/gameRef"}
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+    },
+    "gameRef": {
+      "type": "string",
+      "pattern": "^(steam|emulation|cloud|port):[A-Za-z0-9._:@+\\-]{1,160}$"
+    },
+    "tag": {
+      "type": "object",
+      "required": ["id", "name", "color"],
+      "properties": {
+        "id": {"$ref": "#/$defs/slug"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 48},
+        "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+      },
+      "additionalProperties": false
+    },
+    "predicate": {
+      "type": "object",
+      "required": ["field", "value"],
+      "properties": {
+        "field": {"enum": ["source", "platformId", "tag", "favorite"]},
+        "value": {"type": ["string", "boolean"], "maxLength": 160}
+      },
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "required": ["match", "predicates"],
+      "properties": {
+        "match": {"enum": ["all", "any"]},
+        "predicates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/predicate"}
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

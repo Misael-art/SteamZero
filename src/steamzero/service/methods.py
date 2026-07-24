@@ -115,6 +115,7 @@ _ORIENTATION = Field(
     required=False,
     choices=frozenset({"landscape", "portrait-left", "portrait-right"}),
 )
+_ACTION_JSON = Field("actionJson", "--action-json")
 
 METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("doctor.run", "doctor", None),
@@ -148,6 +149,21 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("session.recover", "session", "recover", (_GAME_ID,), mutation=True),
     MethodSpec("playtime.list", "playtime", "list", (_LIMIT, _CURSOR)),
     MethodSpec("playtime.show", "playtime", "show", (_GAME_ID,)),
+    MethodSpec("collections.list", "collections", "list"),
+    MethodSpec(
+        "collections.plan",
+        "collections",
+        "plan",
+        (_ACTION_JSON,),
+        mutation=True,
+    ),
+    MethodSpec(
+        "collections.apply",
+        "collections",
+        "apply",
+        (_PLAN_ID, _CONFIRM),
+        mutation=True,
+    ),
     MethodSpec("desktop.status", "desktop", "status"),
     MethodSpec(
         "desktop.plan",

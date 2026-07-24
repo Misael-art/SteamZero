@@ -93,6 +93,10 @@ def config_home() -> Path:
     return (Path(base) if base else _home() / ".config") / APP
 
 
+def collection_config_path() -> Path:
+    return config_home() / "collections-v1.json"
+
+
 def runtime_dir() -> Path:
     """Diretório de runtime (socket): ``$XDG_RUNTIME_DIR/steamzero``."""
     base = os.environ.get("XDG_RUNTIME_DIR")

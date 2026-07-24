@@ -77,8 +77,10 @@ Main {
                 "totalPlayedSeconds": 3661,
                 "games": [{
                     "gameId": "10",
+                    "gameRef": "steam:10",
                     "title": "Fixture",
                     "source": "steam",
+                    "favorite": true,
                     "playedSeconds": 3661,
                     "continueState": "interrupted",
                     "action": {
@@ -88,6 +90,20 @@ Main {
                         "enabled": true,
                         "reason": ""
                     }
+                }]
+            },
+            "collections": {
+                "schemaVersion": 1,
+                "favorites": ["steam:10"],
+                "tags": [{"id": "coop", "name": "Co-op", "color": "#13BDF2"}],
+                "collections": [{
+                    "id": "favorites",
+                    "name": "Favoritos",
+                    "rule": {
+                        "match": "all",
+                        "predicates": [{"field": "favorite", "value": true}]
+                    },
+                    "members": ["steam:10"]
                 }]
             },
             "uiContracts": {
@@ -228,6 +244,16 @@ Main {
             check(window.operationRollbackControl.width <= window.width - 48 + 0.5,
                   "preview de rollback não pode exceder o viewport")
             window.operationRollbackControl.close()
+            window.collectionManagerControl.open()
+            phase = 8
+            return
+        }
+        if (phase === 8) {
+            check(window.collectionManagerControl.visible,
+                  "gerenciador de coleções deve abrir no handheld")
+            check(window.collectionManagerControl.width <= window.width - 48 + 0.5,
+                  "gerenciador de coleções não pode exceder o viewport")
+            window.collectionManagerControl.close()
             viewportIndex += 1
             if (viewportIndex >= viewports.length) {
                 Qt.exit(failures === 0 ? 0 : firstFailure)

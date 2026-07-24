@@ -177,6 +177,47 @@ def test_playtime_enrichment_turns_dead_active_steam_session_into_recovery() -> 
     assert game["action"]["kind"] == "steam-recover"
 
 
+def test_collection_catalog_unifies_sources_and_enriches_recent_games() -> None:
+    catalog = DesktopDashboard._collection_games(  # type: ignore[attr-defined]
+        steam_games=[{"id": "10", "name": "Steam Game"}],
+        emulation={
+            "platforms": [
+                {"id": "switch", "games": [{"id": "abc", "name": "Emulated"}]}
+            ]
+        },
+    )
+    assert [item["gameRef"] for item in catalog] == ["steam:10", "emulation:abc"]
+    playtime = {
+        "games": [
+            {"gameId": "10", "source": "steam"},
+            {"gameId": "abc", "source": "emulation"},
+        ]
+    }
+    DesktopDashboard._enrich_collection_state(  # type: ignore[attr-defined]
+        playtime,
+        {
+            "favorites": ["steam:10"],
+            "assignments": [{"gameRef": "emulation:abc", "tagIds": ["retro"]}],
+        },
+    )
+    assert playtime["games"] == [
+        {
+            "gameId": "10",
+            "source": "steam",
+            "gameRef": "steam:10",
+            "favorite": True,
+            "tagIds": [],
+        },
+        {
+            "gameId": "abc",
+            "source": "emulation",
+            "gameRef": "emulation:abc",
+            "favorite": False,
+            "tagIds": ["retro"],
+        },
+    ]
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

@@ -64,6 +64,9 @@ Domínios (Fase 1):
   session recover        reconhece sessão interrompida (--game-id APPID)
   playtime list          lista recentes e playtime (--limit N --cursor CURSOR)
   playtime show          mostra um jogo e a última sessão (--game-id ID)
+  collections list       lista tags, favoritos e coleções inteligentes
+  collections plan       revisa mutação (--action-json JSON)
+  collections apply      aplica plano (--plan-id ID --confirm TOKEN)
   desktop status         contexto e perfil Desktop efetivo
   desktop plan           planeja perfil auto|handheld|dock|safe
   desktop apply          aplica plano confirmado
@@ -236,6 +239,64 @@ def _cmd_operations_rollback_apply(
             status="rolled-back",
             data=data,
             operation_id=operation_id,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _collection_manager() -> Any:
+    from steamzero.domain.collections import CollectionManager
+
+    return CollectionManager()
+
+
+def _cmd_collections_list(
+    _args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    data = _collection_manager().state()
+    return (
+        build_envelope(
+            "collections", "list", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_collections_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    raw = _required_flag(args, "--action-json")
+    if len(raw) > 16384:
+        raise SteamZeroError("E-CONTENT-LIMIT", detail="ação excede 16 KiB")
+    try:
+        action = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail="actionJson inválido") from exc
+    if not isinstance(action, dict):
+        raise SteamZeroError("E-API-SCHEMA", detail="actionJson precisa ser objeto")
+    data = _collection_manager().plan(action)
+    return (
+        build_envelope(
+            "collections", "plan", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_collections_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    data = _collection_manager().apply(plan_id, confirm_token)
+    return (
+        build_envelope(
+            "collections",
+            "apply",
+            status=str(data["status"]),
+            data=data,
+            operation_id=str(data["operationId"]),
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -1056,6 +1117,9 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("operations", "show"): _cmd_operations_show,
     ("operations", "rollback-plan"): _cmd_operations_rollback_plan,
     ("operations", "rollback-apply"): _cmd_operations_rollback_apply,
+    ("collections", "list"): _cmd_collections_list,
+    ("collections", "plan"): _cmd_collections_plan,
+    ("collections", "apply"): _cmd_collections_apply,
     ("events", "page"): _cmd_events_page,
     ("state", "export"): _cmd_state_export,
     ("component", "list"): _cmd_component_list,

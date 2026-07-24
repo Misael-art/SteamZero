@@ -39,6 +39,7 @@ def test_registry_loads_all_schemas() -> None:
         "retro-input-profile-v1.schema.json",
         "feat-playtime-v1.schema.json",
         "feat-operation-history-v1.schema.json",
+        "feat-collection-v1.schema.json",
     } <= got
 
 

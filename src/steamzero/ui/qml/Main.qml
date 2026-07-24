@@ -75,6 +75,7 @@ ApplicationWindow {
     property alias steamGameplayControl: steamGameplayPage
     property alias diagnosticsPreviewControl: diagnosticsPreviewDialog
     property alias operationRollbackControl: operationRollbackDialog
+    property alias collectionManagerControl: collectionManageDialog
     property alias credentialDialogControl: credentialDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
@@ -171,6 +172,10 @@ ApplicationWindow {
         && desktopStatus.dashboard.playtime
         ? desktopStatus.dashboard.playtime
         : ({"schemaVersion": 1, "totalPlayedSeconds": 0, "games": []})
+    readonly property var collectionData: desktopStatus.dashboard
+        && desktopStatus.dashboard.collections
+        ? desktopStatus.dashboard.collections
+        : ({"schemaVersion": 1, "favorites": [], "tags": [], "collections": []})
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     property var liveTasks: null
@@ -203,6 +208,7 @@ ApplicationWindow {
     property var diagnosticsPreview: ({})
     property var operationDetail: null
     property var operationRollbackPlan: null
+    property var collectionPlan: null
     property string diagnosticsKind: "state"
     property string apiUrl: ""
     property string apiToken: ""
@@ -292,6 +298,23 @@ ApplicationWindow {
                 ? qsTr("Sessão de %1 recuperada; já pode ser iniciada novamente.").arg(game.title)
                 : qsTr("%1 foi iniciado").arg(game.title), false)
             refreshStatus("")
+        })
+    }
+
+    function planFavorite(game) {
+        if (!game || !game.gameRef)
+            return
+        planCollectionAction({
+            "actionId": "favorite.set",
+            "gameRef": game.gameRef,
+            "value": game.favorite !== true
+        })
+    }
+
+    function planCollectionAction(action) {
+        requestAction("collections.plan", {"action": action}, function(response) {
+            root.collectionPlan = response
+            collectionPlanDialog.open()
         })
     }
 
@@ -1757,6 +1780,186 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: collectionManageDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
+        title: qsTr("Gerenciar tags e coleções")
+        modal: true
+        width: Math.min(root.width - 48, 680)
+        height: Math.min(root.height - 48, 620)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanDarkColor
+        }
+        contentItem: ScrollView {
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: parent.width
+                spacing: 12
+                Label {
+                    text: qsTr("Nova tag")
+                    color: root.textColor
+                    font.pixelSize: 19
+                    font.bold: true
+                }
+                TextField {
+                    id: tagIdField
+                    placeholderText: qsTr("ID curto, por exemplo coop")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+                TextField {
+                    id: tagNameField
+                    placeholderText: qsTr("Nome da tag")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+                Button {
+                    text: qsTr("Revisar nova tag")
+                    enabled: tagIdField.text.length > 0 && tagNameField.text.length > 0
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        collectionManageDialog.close()
+                        root.planCollectionAction({
+                            "actionId": "tag.upsert",
+                            "tagId": tagIdField.text,
+                            "name": tagNameField.text,
+                            "color": "#13BDF2"
+                        })
+                    }
+                }
+                Rectangle {
+                    color: root.borderColor
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                }
+                Label {
+                    text: qsTr("Nova coleção inteligente")
+                    color: root.textColor
+                    font.pixelSize: 19
+                    font.bold: true
+                }
+                TextField {
+                    id: collectionIdField
+                    placeholderText: qsTr("ID curto, por exemplo meus-favoritos")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+                TextField {
+                    id: collectionNameField
+                    placeholderText: qsTr("Nome da coleção")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+                ComboBox {
+                    id: collectionRuleField
+                    model: [
+                        qsTr("Jogos favoritos"),
+                        qsTr("Jogos Steam"),
+                        qsTr("Jogos emulados")
+                    ]
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                }
+                Button {
+                    text: qsTr("Revisar nova coleção")
+                    enabled: collectionIdField.text.length > 0
+                        && collectionNameField.text.length > 0
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        const predicate = collectionRuleField.currentIndex === 0
+                            ? {"field": "favorite", "value": true}
+                            : {"field": "source", "value":
+                                collectionRuleField.currentIndex === 1 ? "steam" : "emulation"}
+                        collectionManageDialog.close()
+                        root.planCollectionAction({
+                            "actionId": "collection.upsert",
+                            "collectionId": collectionIdField.text,
+                            "name": collectionNameField.text,
+                            "rule": {"match": "all", "predicates": [predicate]}
+                        })
+                    }
+                }
+                Button {
+                    text: qsTr("Fechar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: collectionManageDialog.close()
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: collectionPlanDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: {
+            root.collectionPlan = null
+            root.restoreDialogFocus()
+        }
+        title: qsTr("Revisar alteração da coleção")
+        modal: true
+        width: Math.min(root.width - 48, 620)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle {
+            color: root.raisedColor
+            radius: 12
+            border.color: root.cyanDarkColor
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: root.collectionPlan ? root.collectionPlan.summary : ""
+                color: root.textColor
+                font.pixelSize: 19
+                font.bold: true
+                Layout.fillWidth: true
+            }
+            Label {
+                text: root.collectionPlan
+                    ? qsTr("Revisão %1 → %2 • rollback %3")
+                        .arg(root.collectionPlan.beforeRevision)
+                        .arg(root.collectionPlan.afterRevision)
+                        .arg(root.collectionPlan.rollbackGuarantee)
+                    : ""
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: collectionPlanDialog.close()
+                }
+                Button {
+                    text: qsTr("Confirmar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    enabled: root.collectionPlan !== null
+                    onClicked: root.requestAction("collections.apply", {
+                        "planId": root.collectionPlan.planId,
+                        "confirmToken": root.collectionPlan.confirmToken
+                    }, function() {
+                        collectionPlanDialog.close()
+                        root.refreshStatus(qsTr("Coleção atualizada"))
+                    })
+                }
+            }
+        }
+    }
+
     Drawer {
         id: navigationDrawer
         edge: Qt.LeftEdge
@@ -2638,7 +2841,7 @@ ApplicationWindow {
                                         Layout.leftMargin: root.responsiveGutter
                                         Layout.rightMargin: root.responsiveGutter
                                         Layout.minimumHeight: 64
-                                        enabled: modelData.action && modelData.action.enabled === true
+                                        enabled: true
                                         Accessible.name: qsTr("%1, %2, %3")
                                             .arg(modelData.title)
                                             .arg(root.playtimeLabel(modelData.playedSeconds))
@@ -2675,9 +2878,71 @@ ApplicationWindow {
                                                     Layout.fillWidth: true
                                                 }
                                             }
+                                            ToolButton {
+                                                text: modelData.favorite === true ? "★" : "☆"
+                                                font.pixelSize: 24
+                                                Layout.minimumWidth: 48
+                                                Layout.minimumHeight: 48
+                                                Accessible.name: modelData.favorite === true
+                                                    ? qsTr("Remover %1 dos favoritos").arg(modelData.title)
+                                                    : qsTr("Adicionar %1 aos favoritos").arg(modelData.title)
+                                                onClicked: root.planFavorite(modelData)
+                                            }
                                             Label {
                                                 text: modelData.action ? modelData.action.label : qsTr("Detalhes")
-                                                color: enabled ? root.cyanColor : root.mutedColor
+                                                color: modelData.action
+                                                    && modelData.action.enabled === true
+                                                    ? root.cyanColor : root.mutedColor
+                                            }
+                                        }
+                                    }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    Label {
+                                        text: qsTr("Coleções")
+                                        color: root.textColor
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                        Layout.fillWidth: true
+                                    }
+                                    Button {
+                                        text: qsTr("Gerenciar")
+                                        Layout.minimumHeight: 48
+                                        onClicked: collectionManageDialog.open()
+                                    }
+                                    Label {
+                                        text: qsTr("%1 favorito(s) • %2 tag(s)")
+                                            .arg(root.collectionData.favorites.length)
+                                            .arg(root.collectionData.tags.length)
+                                        color: root.mutedColor
+                                    }
+                                }
+                                Repeater {
+                                    model: root.collectionData.collections || []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: root.responsiveGutter
+                                        Layout.rightMargin: root.responsiveGutter
+                                        Layout.minimumHeight: 54
+                                        color: root.surfaceColor
+                                        radius: 8
+                                        border.color: root.borderColor
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            Label {
+                                                text: modelData.name
+                                                color: root.textColor
+                                                font.bold: true
+                                                Layout.fillWidth: true
+                                            }
+                                            Label {
+                                                text: qsTr("%1 jogo(s)").arg(modelData.members.length)
+                                                color: root.cyanColor
                                             }
                                         }
                                     }

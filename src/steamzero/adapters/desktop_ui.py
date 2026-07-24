@@ -110,6 +110,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 self._dashboard().operations_history(page, page_size),
             )
+        elif path == "/collections":
+            self._send(HTTPStatus.OK, self._dashboard().collection_state())
         elif path == "/system/admin/health":
             self._send(HTTPStatus.OK, self._dashboard().admin_health())
         else:
@@ -336,6 +338,16 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/system/operations/rollback/apply":
             return self._dashboard().apply_operation_rollback(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/collections/plan":
+            action = payload.get("action")
+            if not isinstance(action, dict):
+                raise ValueError("campo obrigatório: action")
+            return self._dashboard().plan_collection_action(action)
+        if path == "/collections/apply":
+            return self._dashboard().apply_collection_action(
                 self._required_string(payload, "planId"),
                 self._required_string(payload, "confirmToken"),
             )

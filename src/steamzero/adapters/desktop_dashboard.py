@@ -27,6 +27,7 @@ from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
@@ -253,6 +254,7 @@ class DesktopDashboard:
         reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
         diagnostics: DiagnosticsService | None = None,
         playtime: PlaytimeCatalog | None = None,
+        collections: CollectionManager | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -280,6 +282,7 @@ class DesktopDashboard:
             store_factory, self._operation_history
         )
         self._playtime = playtime or PlaytimeCatalog(store_factory)
+        self._collections = collections or CollectionManager()
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -455,6 +458,25 @@ class DesktopDashboard:
                 "state": "degraded",
                 "detail": "O histórico de sessões está temporariamente indisponível.",
             }
+        try:
+            collections = self._collections.state(
+                self._collection_games(
+                    steam_games=steam_gameplay.get("games", []),
+                    emulation=emulation,
+                )
+            )
+            self._enrich_collection_state(playtime, collections)
+        except Exception:
+            collections = {
+                "schemaVersion": 1,
+                "generatedAt": None,
+                "revision": 0,
+                "tags": [],
+                "favorites": [],
+                "assignments": [],
+                "collections": [],
+                "state": "degraded",
+            }
 
         return {
             "uiContracts": handheld_ui_contracts(),
@@ -468,6 +490,7 @@ class DesktopDashboard:
             "inputMethod": im_status,
             "emulation": emulation,
             "playtime": playtime,
+            "collections": collections,
         }
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
@@ -537,6 +560,17 @@ class DesktopDashboard:
         self, plan_id: str, confirm_token: str
     ) -> dict[str, Any]:
         return self._operation_history.apply_rollback(plan_id, confirm_token)
+
+    def collection_state(self) -> dict[str, Any]:
+        return self._collections.state()
+
+    def plan_collection_action(self, action: dict[str, Any]) -> dict[str, Any]:
+        return self._collections.plan(action)
+
+    def apply_collection_action(
+        self, plan_id: str, confirm_token: str
+    ) -> dict[str, Any]:
+        return self._collections.apply(plan_id, confirm_token)
 
     def _rollback_component_for_history(self, operation_id: str) -> Any:
         with self._store_factory() as store:
@@ -745,6 +779,62 @@ class DesktopDashboard:
                     "enabled": True,
                     "reason": "",
                 }
+
+    @staticmethod
+    def _collection_games(
+        *, steam_games: object, emulation: object
+    ) -> list[dict[str, Any]]:
+        games: list[dict[str, Any]] = []
+        if isinstance(steam_games, list):
+            for game in steam_games:
+                if isinstance(game, dict) and isinstance(game.get("id"), str):
+                    games.append(
+                        {
+                            "gameRef": f"steam:{game['id']}",
+                            "source": "steam",
+                            "platformId": "steam",
+                            "title": str(game.get("name") or ""),
+                        }
+                    )
+        if isinstance(emulation, dict) and isinstance(emulation.get("platforms"), list):
+            for platform in emulation["platforms"]:
+                if not isinstance(platform, dict) or not isinstance(
+                    platform.get("games"), list
+                ):
+                    continue
+                platform_id = str(platform.get("id") or "unknown")
+                for game in platform["games"]:
+                    if isinstance(game, dict) and isinstance(game.get("id"), str):
+                        games.append(
+                            {
+                                "gameRef": f"emulation:{game['id']}",
+                                "source": "emulation",
+                                "platformId": platform_id,
+                                "title": str(game.get("name") or ""),
+                            }
+                        )
+        return games
+
+    @staticmethod
+    def _enrich_collection_state(
+        playtime: dict[str, Any], collections: dict[str, Any]
+    ) -> None:
+        favorites = set(collections.get("favorites", []))
+        assignments = {
+            item["gameRef"]: item["tagIds"]
+            for item in collections.get("assignments", [])
+            if isinstance(item, dict)
+        }
+        games = playtime.get("games")
+        if not isinstance(games, list):
+            return
+        for game in games:
+            if not isinstance(game, dict):
+                continue
+            game_ref = f"{game.get('source', '')}:{game.get('gameId', '')}"
+            game["gameRef"] = game_ref
+            game["favorite"] = game_ref in favorites
+            game["tagIds"] = assignments.get(game_ref, [])
 
     def _component_row(
         self, manifest: AdapterManifest, executor: FlatpakExecutor, *, conflicts: bool

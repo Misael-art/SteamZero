@@ -281,6 +281,20 @@ class FakeDashboard:
         self.calls.append(("operation-rollback-apply", plan_id, confirm_token))
         return {"result": {"status": "rolled-back", "verified": True}}
 
+    def collection_state(self) -> dict[str, object]:
+        self.calls.append(("collections-list",))
+        return {"schemaVersion": 1, "favorites": ["steam:10"]}
+
+    def plan_collection_action(self, action: dict[str, object]) -> dict[str, object]:
+        self.calls.append(("collections-plan", str(action["actionId"])))
+        return {"planId": "collection-plan", "confirmToken": "collection-confirm"}
+
+    def apply_collection_action(
+        self, plan_id: str, confirm_token: str
+    ) -> dict[str, object]:
+        self.calls.append(("collections-apply", plan_id, confirm_token))
+        return {"status": "ok", "operationId": "collection-operation"}
+
     def admin_health(self) -> dict[str, object]:
         self.calls.append(("admin-health",))
         return {"available": True, "state": "healthy"}
@@ -733,6 +747,20 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "rollback-plan", "confirmToken": "rollback-confirm"},
     )
     assert rollback_result["result"]["verified"] is True
+    assert request_json(base, token, "/collections")["favorites"] == ["steam:10"]
+    collection_plan = request_json(
+        base,
+        token,
+        "/collections/plan",
+        {"action": {"actionId": "favorite.set", "gameRef": "steam:10", "value": True}},
+    )
+    assert collection_plan["planId"] == "collection-plan"
+    request_json(
+        base,
+        token,
+        "/collections/apply",
+        {"planId": "collection-plan", "confirmToken": "collection-confirm"},
+    )
     assert request_json(base, token, "/system/admin/health") == {
         "available": True,
         "state": "healthy",
@@ -774,6 +802,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("operation-detail", "operation-1"),
         ("operation-rollback-plan", "operation-1"),
         ("operation-rollback-apply", "rollback-plan", "rollback-confirm"),
+        ("collections-list",),
+        ("collections-plan", "favorite.set"),
+        ("collections-apply", "collection-plan", "collection-confirm"),
         ("admin-health",),
     ]
 

@@ -355,6 +355,57 @@ def test_daemon_operation_history_previews_and_confirms_rollback(
     assert target.read_bytes() == b"before"
 
 
+def test_daemon_collections_roundtrip_is_closed_and_reversible(
+    inprocess_core: Path,
+) -> None:
+    del inprocess_core
+    action = json.dumps(
+        {"actionId": "favorite.set", "gameRef": "steam:10", "value": True},
+        separators=(",", ":"),
+    )
+    plan = invoke(
+        "collections.plan",
+        {
+            "actionJson": action,
+            "correlationId": "01J000000000000000000000AK",
+        },
+    ).envelope["data"]
+    applied = invoke(
+        "collections.apply",
+        {
+            "planId": plan["planId"],
+            "confirmToken": plan["confirmToken"],
+            "correlationId": "01J000000000000000000000AM",
+        },
+    ).envelope["data"]
+    state = invoke(
+        "collections.list",
+        {"correlationId": "01J000000000000000000000AN"},
+    ).envelope["data"]
+    assert state["favorites"] == ["steam:10"]
+
+    rollback = invoke(
+        "operations.rollback.plan",
+        {
+            "operationId": applied["operationId"],
+            "correlationId": "01J000000000000000000000AP",
+        },
+    ).envelope["data"]["plan"]
+    invoke(
+        "operations.rollback.apply",
+        {
+            "planId": rollback["planId"],
+            "confirmToken": rollback["confirmToken"],
+            "correlationId": "01J000000000000000000000AQ",
+        },
+    )
+    state = invoke(
+        "collections.list",
+        {"correlationId": "01J000000000000000000000AR"},
+    ).envelope["data"]
+    assert state["favorites"] == []
+
+
 def test_event_subscription_streams_valid_events_and_completes(
     inprocess_core: Path,
 ) -> None:
