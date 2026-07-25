@@ -63,8 +63,11 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-PRIV-PROTO-MISMATCH` versão de protocolo incompatível.
 
 ### API
-- `E-API-SCHEMA` parâmetro inválido (campo apontado).
-- `E-API-UNKNOWN-ACTION` método fora da allowlist.
+- `E-API-SCHEMA` parâmetro inválido (campo apontado). Só para pedido malformado —
+  pré-condição de estado que recusa a operação usa o código do domínio
+  correspondente (ex.: `E-TX-CONFIRM-REQUIRED` para token inválido ou expirado).
+- `E-API-UNKNOWN-ACTION` método fora da allowlist. Não reaproveite `E-API-SCHEMA`
+  aqui: rota inexistente e campo inválido são falhas diferentes para o usuário.
 - `E-API-CONTRACT` versão de contrato incompatível.
 
 ### JOBS

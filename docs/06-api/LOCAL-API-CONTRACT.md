@@ -44,6 +44,39 @@ Regras próprias do SteamZero (UI nunca importa funções do orquestrador; só c
 
 Formato único: `{code: "E-…", title, detail, impact, action, operationId?, docs?}` — códigos do ERROR-CATALOG. JSON-RPC `error.data` carrega esse objeto.
 
+### `operationId`: quando o erro carrega e quando não carrega
+
+`operationId` só existe depois que a transação gerou o seu id. A regra é
+posicional, não por código: o mesmo código pode sair com e sem id conforme onde
+falhou.
+
+- **Sem `operationId`** — erro de pré-condição, antes de a operação existir:
+  `confirmToken` inválido ou expirado, plano não pendente, espaço insuficiente
+  no preflight, validação de campo, conflito de owner, componente degradado.
+  Não há operação para agregar; a UI trata como falha do pedido.
+- **Com `operationId`** — erro dentro do pipeline de `apply` depois do id
+  gerado (backup, stage, apply_actions, verify), erro durante rollback, e falha
+  de efeito colateral **pós-commit** (persistência de import, jobs de mídia,
+  publicação no Steam). Nesse último caso a transação já comitou e não sofre
+  rollback automático — o id é herdado para que o ErrorCard agregue a falha à
+  operação que o usuário disparou.
+
+### Status HTTP da bridge transitória M10-H
+
+A bridge não é API pública, mas o mapeamento é contrato para quem a consome. O
+default é conflito: erro de domínio que recusa a operação no estado atual.
+
+| Status | Quando | Exemplo |
+| --- | --- | --- |
+| `400` | `E-API-SCHEMA` — o pedido está malformado | campo obrigatório ausente, corpo não-objeto, `Content-Length` não numérico, alvo fora do enum |
+| `404` | `E-API-UNKNOWN-ACTION` — rota fora da allowlist | `POST /nao/existe` |
+| `409` | qualquer outro código do catálogo — o pedido está bem formado, o estado é que não autoriza | `E-TX-CONFIRM-REQUIRED`, `E-DESKTOP-OWNER-CONFLICT`, `E-COMPONENT-DEGRADED` |
+| `500` | `E-INTERNAL-UNEXPECTED` | exceção não prevista |
+
+Desde `0.1.0a34`, `confirmToken` inválido ou expirado em `/session/select`
+responde `409` + `E-TX-CONFIRM-REQUIRED`. Antes respondia `E-API-SCHEMA`, o que
+classificava uma pré-condição de estado como pedido malformado.
+
 ## Disponibilidade
 
 Daemon ativável por `steamzero-core.socket` (systemd user) — a primeira chamada sobe o
