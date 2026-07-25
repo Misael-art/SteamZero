@@ -513,4 +513,9 @@ MESSAGES: dict[str, str] = {
     "error.E-CAST-UNAVAILABLE.impact": "A ação de compartilhamento não foi executada.",
     "error.E-CAST-UNAVAILABLE.cause": "O daemon SteamZero não iniciou o subsistema de transmissão.",
     "error.E-CAST-UNAVAILABLE.action": "Verifique se o daemon está rodando e os pré-requisitos ADR-0022 estão instalados.",
+    "error.E-CAST-UNKNOWN-PROTOCOL.title": "Protocolo de transmissão desconhecido",
+    "error.E-CAST-UNKNOWN-PROTOCOL.what": "O protocolo solicitado para a transmissão não é reconhecido.",
+    "error.E-CAST-UNKNOWN-PROTOCOL.impact": "O pedido de transmissão foi recusado.",
+    "error.E-CAST-UNKNOWN-PROTOCOL.cause": "O nome do protocolo informado não corresponde a nenhum provedor registrado.",
+    "error.E-CAST-UNKNOWN-PROTOCOL.action": "Verifique se o provedor de transmissão está instalado. Se o erro persistir, reporte ao suporte.",
 }
