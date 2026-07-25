@@ -81,6 +81,14 @@ referência é *hipótese datada*, não fato. Dos quatro itens acima, dois viera
 confiar num comentário sem verificar a data. Todo dossiê seguinte trata a
 árvore de scripts legados como pista a confirmar, nunca como fonte.
 
+## WIs propostos e seu estado
+
+| WI | Origem | Estado | Bloqueia |
+|---|---|---|---|
+| **WI-S0** | `switch.md` §14 | **prompt fechado** em `docs/expansion/WI-S0.md`, pronto para um agente implementador | os demais WIs de Switch |
+| **WI-R0** | `retroarch.md` §14 | proposto, é **pesquisa** e não implementação | `nes.md`, `snes` e mais quatro dossiês do MesenCE |
+| **WI-N1** | `nes.md` §14 | proposto, **bloqueado** pelo WI-R0 | — |
+
 ## Decisões do operador
 
 | Data | Decisão |
