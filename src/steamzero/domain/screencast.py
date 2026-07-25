@@ -44,6 +44,7 @@ class CastProtocol(Enum):
     STEAM_REMOTE_PLAY = "steam-remote-play"
     SCREEN_MIRROR = "screen-mirror"  # espelhamento (Miracast / Cast de tela)
     MEDIA_CAST = "media-cast"  # trailers, vídeos e músicas
+    WEB_RECEIVER = "web-receiver"  # navegador local via WebRTC (loopback)
 
 
 class CastMode(Enum):
@@ -223,6 +224,7 @@ def profile_for(profile_id: str) -> QualityProfile:
 # --- Capacidade observada -------------------------------------------------
 _PROTOCOL_MODES: dict[CastProtocol, frozenset[CastMode]] = {
     CastProtocol.GAME_STREAM: frozenset({CastMode.GAME, CastMode.GAME_WINDOW, CastMode.MIRROR}),
+    CastProtocol.WEB_RECEIVER: frozenset({CastMode.GAME, CastMode.GAME_WINDOW, CastMode.MIRROR}),
     CastProtocol.STEAM_REMOTE_PLAY: frozenset({CastMode.GAME}),
     CastProtocol.SCREEN_MIRROR: frozenset({CastMode.MIRROR}),
     CastProtocol.MEDIA_CAST: frozenset({CastMode.MEDIA}),
@@ -232,9 +234,9 @@ _PROTOCOL_MODES: dict[CastProtocol, frozenset[CastMode]] = {
 _MODE_PREFERENCE: dict[CastMode, tuple[CastProtocol, ...]] = {
     # Espelhamento não aparece aqui: quando nenhum receptor prova o modo Jogo,
     # a queda é de MODO (Jogo -> Espelhar), decidida em select_target.
-    CastMode.GAME: (CastProtocol.GAME_STREAM, CastProtocol.STEAM_REMOTE_PLAY),
-    CastMode.GAME_WINDOW: (CastProtocol.GAME_STREAM,),
-    CastMode.MIRROR: (CastProtocol.SCREEN_MIRROR, CastProtocol.GAME_STREAM),
+    CastMode.GAME: (CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER, CastProtocol.STEAM_REMOTE_PLAY),
+    CastMode.GAME_WINDOW: (CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER),
+    CastMode.MIRROR: (CastProtocol.SCREEN_MIRROR, CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER),
     CastMode.MEDIA: (CastProtocol.MEDIA_CAST,),
 }
 

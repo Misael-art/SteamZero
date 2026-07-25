@@ -20,7 +20,7 @@
   ],
   "properties": {
     "schemaVersion": {"const": 1},
-    "protocol": {"enum": ["game-stream", "steam-remote-play", "screen-mirror", "media-cast"]},
+    "protocol": {"enum": ["game-stream", "steam-remote-play", "screen-mirror", "media-cast", "web-receiver"]},
     "mode": {"enum": ["game", "game-window", "mirror", "media"]},
     "state": {
       "enum": [
