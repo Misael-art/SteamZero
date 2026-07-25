@@ -10,7 +10,7 @@ PIN vem de fora (``secrets``, no adapter).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -39,7 +39,7 @@ class TrustedReceiver:
     def is_expired(self, now: datetime | None = None) -> bool:
         if self.expires_at is None:
             return False
-        return (now or datetime.now(timezone.utc)) >= self.expires_at
+        return (now or datetime.now(UTC)) >= self.expires_at
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -60,7 +60,7 @@ class PairingState:
 
     @property
     def is_expired(self) -> bool:
-        age = datetime.now(timezone.utc) - self.generated_at
+        age = datetime.now(UTC) - self.generated_at
         return age.total_seconds() > PIN_VALIDITY_SECONDS
 
     @property
@@ -107,7 +107,7 @@ def decide_pairing(
 
 
 def pin_within_validity(generated_at: datetime) -> bool:
-    age = datetime.now(timezone.utc) - generated_at
+    age = datetime.now(UTC) - generated_at
     return age.total_seconds() < PIN_VALIDITY_SECONDS
 
 

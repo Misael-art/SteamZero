@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from steamzero.domain.screencast_pairing import (
     PIN_ALPHABET,
@@ -46,22 +44,22 @@ class TestPinPolicy:
 
 class TestPairingState:
     def test_fresh_state_not_expired(self) -> None:
-        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(timezone.utc))
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
         assert not state.is_expired
 
     def test_state_expired_after_validity_window(self) -> None:
-        old = datetime.now(timezone.utc) - timedelta(seconds=PIN_VALIDITY_SECONDS + 1)
+        old = datetime.now(UTC) - timedelta(seconds=PIN_VALIDITY_SECONDS + 1)
         state = PairingState(receiver_id="tv-1", generated_at=old)
         assert state.is_expired
 
     def test_not_exhausted_initially(self) -> None:
-        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(timezone.utc))
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
         assert not state.is_exhausted
 
     def test_exhausted_when_no_attempts_left(self) -> None:
         state = PairingState(
             receiver_id="tv-1",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             attempts_remaining=0,
         )
         assert state.is_exhausted
@@ -69,19 +67,19 @@ class TestPairingState:
 
 class TestDecidePairing:
     def test_accepts_correct_pin(self) -> None:
-        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(timezone.utc))
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
         decision, new_state = decide_pairing("123456", "123456", state)
         assert decision == PairingDecision.ACCEPTED
         assert new_state is state
 
     def test_refuses_wrong_pin(self) -> None:
-        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(timezone.utc))
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
         decision, new_state = decide_pairing("000000", "123456", state)
         assert decision == PairingDecision.REFUSED
         assert new_state.attempts_remaining == PIN_MAX_ATTEMPTS - 1
 
     def test_expired_pin(self) -> None:
-        old = datetime.now(timezone.utc) - timedelta(seconds=PIN_VALIDITY_SECONDS + 1)
+        old = datetime.now(UTC) - timedelta(seconds=PIN_VALIDITY_SECONDS + 1)
         state = PairingState(receiver_id="tv-1", generated_at=old)
         decision, new_state = decide_pairing("123456", "123456", state)
         assert decision == PairingDecision.EXPIRED
@@ -90,7 +88,7 @@ class TestDecidePairing:
     def test_exhausted_attempts(self) -> None:
         state = PairingState(
             receiver_id="tv-1",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             attempts_remaining=0,
         )
         decision, new_state = decide_pairing("123456", "123456", state)
@@ -98,7 +96,7 @@ class TestDecidePairing:
         assert new_state is state
 
     def test_exhausted_after_multiple_refusals(self) -> None:
-        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(timezone.utc))
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
         for i in range(PIN_MAX_ATTEMPTS + 1):
             decision, state = decide_pairing("000000", "123456", state)
             if i < PIN_MAX_ATTEMPTS:
@@ -109,7 +107,7 @@ class TestDecidePairing:
     def test_exhausted_when_decremented_to_zero(self) -> None:
         state = PairingState(
             receiver_id="tv-1",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             attempts_remaining=1,
         )
         decision, state = decide_pairing("000000", "123456", state)
@@ -121,7 +119,7 @@ class TestDecidePairing:
     def test_accepts_correct_pin_at_last_attempt(self) -> None:
         state = PairingState(
             receiver_id="tv-1",
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             attempts_remaining=1,
         )
         decision, new_state = decide_pairing("123456", "123456", state)
@@ -131,15 +129,15 @@ class TestDecidePairing:
 
 class TestPinWithinValidity:
     def test_recent_pin_is_valid(self) -> None:
-        generated = datetime.now(timezone.utc)
+        generated = datetime.now(UTC)
         assert pin_within_validity(generated)
 
     def test_old_pin_is_invalid(self) -> None:
-        old = datetime.now(timezone.utc) - timedelta(seconds=PIN_VALIDITY_SECONDS + 10)
+        old = datetime.now(UTC) - timedelta(seconds=PIN_VALIDITY_SECONDS + 10)
         assert not pin_within_validity(old)
 
     def test_boundary_pin_is_valid(self) -> None:
-        boundary = datetime.now(timezone.utc) - timedelta(seconds=PIN_VALIDITY_SECONDS - 1)
+        boundary = datetime.now(UTC) - timedelta(seconds=PIN_VALIDITY_SECONDS - 1)
         assert pin_within_validity(boundary)
 
 
@@ -150,7 +148,7 @@ class TestTrustedReceiver:
             display_name="TV Sala",
             protocol="web-receiver",
             transport="lan",
-            paired_at=datetime.now(timezone.utc),
+            paired_at=datetime.now(UTC),
         )
         assert not r.is_expired()
 
@@ -160,8 +158,8 @@ class TestTrustedReceiver:
             display_name="TV Sala",
             protocol="web-receiver",
             transport="lan",
-            paired_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            paired_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         assert r.is_expired()
 
@@ -171,13 +169,13 @@ class TestTrustedReceiver:
             display_name="TV Sala",
             protocol="web-receiver",
             transport="lan",
-            paired_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+            paired_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
         )
         assert not r.is_expired()
 
     def test_to_dict_includes_all_fields(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         r = TrustedReceiver(
             receiver_id="tv-1",
             display_name="TV Sala",

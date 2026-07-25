@@ -234,9 +234,17 @@ _PROTOCOL_MODES: dict[CastProtocol, frozenset[CastMode]] = {
 _MODE_PREFERENCE: dict[CastMode, tuple[CastProtocol, ...]] = {
     # Espelhamento não aparece aqui: quando nenhum receptor prova o modo Jogo,
     # a queda é de MODO (Jogo -> Espelhar), decidida em select_target.
-    CastMode.GAME: (CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER, CastProtocol.STEAM_REMOTE_PLAY),
+    CastMode.GAME: (
+        CastProtocol.GAME_STREAM,
+        CastProtocol.WEB_RECEIVER,
+        CastProtocol.STEAM_REMOTE_PLAY,
+    ),
     CastMode.GAME_WINDOW: (CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER),
-    CastMode.MIRROR: (CastProtocol.SCREEN_MIRROR, CastProtocol.GAME_STREAM, CastProtocol.WEB_RECEIVER),
+    CastMode.MIRROR: (
+        CastProtocol.SCREEN_MIRROR,
+        CastProtocol.GAME_STREAM,
+        CastProtocol.WEB_RECEIVER,
+    ),
     CastMode.MEDIA: (CastProtocol.MEDIA_CAST,),
 }
 
