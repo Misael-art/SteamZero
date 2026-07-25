@@ -2715,3 +2715,50 @@ nem funções de comunidade de B0, que segue `backlog-protected`.
 **Pendente com o operador:** escolher o primeiro receptor real de teste (Android
 TV/Google TV, Smart TV Tizen/webOS, outro PC ou navegador) para priorizar S1, e
 autorizar a instalação do motor como componente quando S1 chegar.
+
+## 2026-07-25 — Sessão WI-COV-S1: recuperação de cobertura global para 85%
+
+**Branch:** `codex/cobertura-steamzero`, descendente de `a07cf59` (tip da
+screencast branch). Base conferida sem sintomas de base obsoleta.
+
+**Problema:** a cobertura global regrediu de 85,62% (WI-S0) para **84,82%**
+(2707 miss, 1278 BrPart), abaixo do limiar `fail-under=85` do `make cov`.
+Módulos abaixo de 80% incluíam `doctor.py` (77%), `i18n/__init__.py` (76%),
+`runtime.py` (71%), `cast_orchestrator.py` (84%), `game_stream.py` (85%),
+`device.py` (80%), `mode.py` (78%) e `ports.py` (0% — não rastreado, excluído
+do incremento conforme AGENTS.md).
+
+**Resolução — 26 novos testes distribuídos entre 6 módulos:**
+
+| Alvo | Cobertura antes | Cobertura depois | Testes adicionados |
+|---|---|---|---|
+| `i18n/__init__.py` | 76,19% | **100%** | `has_key` locale missing, `t()` KeyError, `t()` com params |
+| `screencast_pairing.py` | 95,77% | **100%** | `constant_time_compare=False`, wrong PIN |
+| `media.py` | 91,25% | **100%** | `max_bytes<=0`, quarantine skip, WEBP detection, source==target |
+| `runtime.py` | 85,71% | **100%** | `device` not a dict branch |
+| `mode.py` | 77,78% | **92,65%** | `current()` returning `None` |
+| `device.py` | 80,00% | **100%** | `_quirks_for("deck-lcd")`, `_quirks_for("desktop")` |
+| `ports.py` | 0% → 100% (6 stmts rastreados) | **100%** | `DisplayProfile.as_dict()`, Protocol subclass for defaults |
+| `methods.py` | 93,10% | **100%** | `params_to_args(None)`, `args_to_params` required-field |
+| `envelope.py` | 90,00% | **100%** | `status_from_checks` fail/warn/ok, `build_envelope` |
+| `cast_orchestrator.py` | 84,44% | **93,07%** | `_provider_for` unknown protocol, `_active_provider` w/o providers |
+| `game_stream.py` | 85,52% | **86,61%** | `pair()` non-dict PIN, empty codec lists, OSError in discover |
+| `doctor.py` | 77,78% | **91,11%** | `_pending_operations` no journal dir, StateStore failure |
+| `errors.py` | — | **100%** | registered `E-CAST-UNKNOWN-PROTOCOL` |
+| `messages_pt_br.py` | — | **100%** | full P7 i18n for E-CAST-UNKNOWN-PROTOCOL |
+
+**Gates finais (make check):**
+- pytest: **1675 passed** (0 failures)
+- Cobertura: **85,04%** (≥ 85%)
+- Ruff format/check, mypy, independence, boundaries: verdes
+
+**Mudanças estruturais:** novo erro `E-CAST-UNKNOWN-PROTOCOL` catalogado em
+`core/errors.py` e i18n pt-BR. Três novos arquivos de teste:
+`tests/unit/test_i18n.py`, `tests/unit/test_runtime.py`,
+`tests/unit/test_doctor.py`. Arquivos de teste modificados: `test_ports.py`,
+`test_screencast_pairing.py`, `test_cast_orchestrator.py`,
+`test_game_stream.py`, `test_service_methods.py`, `test_media.py`,
+`test_mode.py`, `test_device.py`, `test_envelope.py`.
+
+**Host/release:** nenhuma instalação, build de wheel, `bigsudo` ou alteração
+de release foi executada. A release ativa permaneceu a da sessão anterior.
