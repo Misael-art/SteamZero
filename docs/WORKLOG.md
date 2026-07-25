@@ -2677,3 +2677,41 @@ teste físico permanece com o operador.
 estava untracked no início da sessão e foi varrido por engano para um commit; o
 commit foi refeito sem ele e o arquivo continua untracked, intacto. Escala de
 texto do host registrada como G12 em KNOWN-GAPS.
+
+## 2026-07-25 — Sessão: fundação do compartilhamento de tela com um toque
+
+**Branch:** `codex/compartilhar-tela-um-toque`, criada de `f5b15e6` (tip de
+`codex/steam-gameplay-readiness-ui`). Base conferida pelos marcadores de base
+obsoleta: `__version__ = "0.1.0a34"`, instalador com `schemaVersion: 4`,
+`steam_boot.py` e `steam_session.py` presentes.
+
+**Decisão do operador:** construir todas as vias de compartilhamento, começando
+pela estratégia de motor de baixa latência existente (host Sunshine, clientes
+Moonlight). Registrada em ADR-0022.
+
+| Item | Commit | O que prova |
+|---|---|---|
+| Portas + domínio puro + contrato + erros `E-CAST-*` | `68ed740` | `tests/unit/test_screencast.py` (42 testes, 100% do domínio novo); golden inclui `screen-cast-v1` |
+| ADR-0022, WI-S0, ledger track S, catálogo de erros, índice de schemas | `58d56ad` | documentação; gates reexecutados verdes |
+
+**Gates (reexecutados em cada item):** 1.518 testes aprovados; Ruff check e
+format; mypy em 156 módulos; `make independence boundaries` OK. Cobertura total
+85,62% (anterior 85,32%, sem regressão).
+
+**Sondagem read-only do host (não houve mutação):** portal do KDE expõe
+`ScreenCast` e `RemoteDesktop`; PipeWire 1.6.7; VA-API com encode de H.264 e
+HEVC Main/Main10 (AV1 só decode); sessão Wayland/KDE; Steam presente. Confirma
+que a via `game-stream` é viável no alvo com encoder por hardware.
+
+**Fora de escopo, registrado e não implementado:** emissor Windows/macOS e
+aplicativos receptores próprios para Android TV/tvOS descritos no prompt do
+operador permanecem fora por NON-GOAL N5 — receptores serão clientes de
+terceiros já publicados. O pareamento local desta função não abre a Web UI LAN
+nem funções de comunidade de B0, que segue `backlog-protected`.
+
+**Ações de host:** nenhuma. Nenhuma release construída ou instalada; nenhum
+`bigsudo` executado. `docs/diagnostics/` continua untracked e intocado.
+
+**Pendente com o operador:** escolher o primeiro receptor real de teste (Android
+TV/Google TV, Smart TV Tizen/webOS, outro PC ou navegador) para priorizar S1, e
+autorizar a instalação do motor como componente quando S1 chegar.
