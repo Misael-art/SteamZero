@@ -15,7 +15,8 @@ Status: `pendente` · `em-curso` · `revisão` · `verde` · `descoberta`.
 |---|---|---|---|---|---|
 | 0 | `switch` | Nintendo Switch | **verde** | — | Fechado em 2026-07-25: licenças dos três confirmadas (Eden GPLv3, Ryubing MIT, Citron GPL-3.0) e projetos ativos. WI-S0 agora tem entregáveis concretos: repinar Citron na estável, reconferir hash do Ryubing, declarar licença |
 | 1 | `nes` | NES / Famicom | **verde** | — | Revisado em 2026-07-25 com a coleta externa. Três afirmações anteriores estavam erradas e foram corrigidas (ver CORR-1..3). Riscos abertos declarados no dossiê: gyro sem precedente, HD Packs sem verificação em Linux, netplay sem doc |
-| 1 | `snes` | SNES | pendente | — | — |
+| — | `retroarch` | Frontend multi-sistema (transversal) | revisão | — | Dossiê de infraestrutura, não de sistema. Fecha em `verde` quando o WI-R0 responder se o core Mesen no libretro carrega a base de dados interna |
+| 1 | `snes` | SNES | **bloqueado** | — | Aguarda o **WI-R0**: a escolha MesenCE × RetroArch decide seis dossiês de uma vez. Estudar SNES antes seria escrever a §2 duas vezes |
 | 1 | `gb-gbc` | Game Boy / Color | pendente | — | MesenCE 2.2.0 anuncia link cable entre dois GB/GBC — gancho P3 forte |
 | 1 | `gba` | Game Boy Advance | pendente | — | — |
 | 1 | `mega-drive` | Mega Drive / 32X / CD | pendente | — | — |
@@ -57,6 +58,11 @@ Entram aqui, nunca mudam a fila no improviso.
 | DESC-9 | Gyro-como-mouse do Steam Input é **relativo**; pistola de luz precisa de **absoluto**. Nenhum precedente publicado de gyro→lightgun | O momento mágico do NES fica com dois veículos possíveis (gyro ou trackpad) e o spike vira "provar que é possível", com resultado negativo aceitável |
 | DESC-10 | **Nenhum** dos quatro emuladores estudados publica SHA-256 (MesenCE, Eden, Ryubing, Citron) | O hash é sempre calculado localmente no primeiro download. Isso precisa virar **política declarada** no `ADAPTER-MODEL.md`, não prática implícita |
 | DESC-11 | Assets do Ryubing 1.3.3 foram **recriados em 2026-03-30** (migração GitLab→Forgejo) sem mudar a versão | Hash pinado antes disso pode não bater. Classe de risco nova: *release imutável que não é imutável* |
+| DESC-12 | **O RetroArch é imune ao FM-27** — desenha o próprio menu dentro da janela, sem popups de toolkit | Reabre a decisão primária do NES e, por arrasto, dos seis sistemas do MesenCE. Ver `retroarch.md` e o WI-R0 |
+| DESC-13 | Netplay do RetroArch é **rollback documentado**; o do MesenCE é lockstep inferido | Se multiplayer online entrar na fila, a diferença é decisiva e não deve ser nivelada por baixo |
+| DESC-14 | **O RetroArch não lê giroscópio em Linux desktop** — a API libretro prevê os eixos, mas só os drivers `android`/`cocoa`/`vita`/`switch` os passam | Endurece DESC-9: a ponte gyro→absoluto teria de nascer *fora* do RetroArch, como componente próprio. Eleva o valor do plano B (trackpad) |
+| DESC-15 | FM-29 se aplica ao RetroArch **ampliado**: override `.cfg`, remap `.rmp`, opções `.opt` e preset de shader — quatro classes de sidecar, todas por nome de arquivo | O requisito do WI-5 passa a ser mover *conjunto* de sidecars, não arquivo único |
+| DESC-16 | Um integrador all-in-one em Flatpak monolítico é o "produto acabado" mais próximo do nosso — mas **não permite trocar builds individuais** | Colide com pinning fino por emulador, que é a nossa premissa. Validação de conceito, não caminho |
 
 ## Correções — o que a coleta de 2026-07-25 derrubou
 

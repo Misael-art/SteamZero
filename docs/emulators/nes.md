@@ -22,12 +22,30 @@
 **Este é o achado que muda a decisão óbvia.** Escolher "Mesen" por reputação
 levaria a um repositório arquivado. O adapter deve apontar para MesenCE.
 
-**Alternativa: RetroArch + core Mesen/Nestopia UE.** O SteamZero já tem manifesto
-`retroarch.adapter.json` commitado, o que reduz custo de adapter a zero para um
-caminho de fallback. `[validar no spike]` qual core RetroArch de NES está em
-melhor estado de manutenção em 2026 e se ele expõe as mesmas superfícies de
-periférico da §5 — o núcleo do argumento do MesenCE é a base de dados interna de
-jogos, que um core libretro pode não carregar.
+### ⚠️ Esta recomendação foi reaberta em 2026-07-25
+
+A coleta do Bloco E trouxe três fatos que enfraquecem o MesenCE como primário —
+ver [`retroarch.md`](retroarch.md) para o dossiê completo:
+
+1. **O RetroArch é imune ao FM-27.** Ele desenha o próprio menu dentro da janela
+   (RGUI/XMB/Ozone), sem popups de toolkit — a limitação do Gamescope que quebra
+   a UI do MesenCE em Game Mode **não o afeta**. Não é sorte, é arquitetura.
+2. **O netplay do RetroArch é rollback documentado**, contra o lockstep inferido
+   do MesenCE (§6).
+3. **Pistola de luz como eixo absoluto é primeira classe** no RetroArch, com
+   multi-mouse via `udev` — e `udev` funciona sem X11.
+
+E o pinning, que eu havia tratado como ponto fraco do RetroArch, **não é**: o
+nosso `retroarch.adapter.json` já pina o *commit* Flatpak, que é imutável.
+
+**O que segura a decisão:** o pilar deste dossiê é a auto-configuração de
+periférico pela base de dados interna do Mesen (§4). **Não se sabe se ela
+sobrevive no core libretro.** Essa pergunta decide o primário — e decide também
+os outros cinco sistemas cobertos pelo MesenCE. É o **WI-R0** proposto em
+`retroarch.md` §14: barato, e bloqueante para seis dossiês.
+
+Até o WI-R0 responder, este dossiê mantém o MesenCE como primário **por causa da
+§4**, e registra que a decisão está sub judice.
 
 **Critério de desempate aplicado:** experiência no Deck. O MesenCE traz a base de
 dados de jogos que configura periférico sozinho (§4) — é a diferença entre "Duck
