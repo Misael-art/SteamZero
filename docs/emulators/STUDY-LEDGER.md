@@ -45,3 +45,13 @@ Entram aqui, nunca mudam a fila no improviso.
 | DESC-1 | `SourMesen/Mesen2` foi **arquivado em 2026-06-04**; o desenvolvimento migrou para `nesdev-org/MesenCE` (fork comunitário, 255 commits à frente, stable 2.2.1). Consultado 2026-07-24 | NES, SNES, GB/GBC, GBA, PC Engine, Master System/GG — seis sistemas da Onda 1 dependem desta escolha |
 | DESC-2 | MesenCE 2.2.0 adicionou **link cable entre dois GB/GBC** e melhorou **MSU-1** no SNES | Ganchos P3 (GB/GBC) e P6 (SNES); avaliar nos dossiês respectivos |
 | DESC-3 | Upstream do Mesen documenta que os popups da UI Avalonia **não renderizam sob Gamescope** — menus de configuração inacessíveis em Game Mode | Reforça a tese do produto: config por arquivo torna a GUI dispensável. Vale para todos os sistemas cobertos pelo Mesen |
+| DESC-4 | Config por jogo endereçada por **serial** já existe em DuckStation, PCSX2 e Dolphin (`GameSettings/<serial>.ini`) | `ps1` e `gamecube-wii` consomem contrato conhecido em vez de pesquisar do zero. Ver `RESEARCH-INPUT-LEGACY-SCRIPTS.md` C1 |
+| DESC-5 | Emuladores de dois ecrãs podem rotear para dois monitores físicos, mas **só em Desktop Mode** — o compositor de Game Mode é single-output/single-focus | Momento mágico quase pronto para `wiiu` (GamePad na tela do Deck, jogo na TV) e `3ds`. Ver C2 |
+| DESC-6 | Somando DESC-3 e DESC-5: a restrição do compositor de Game Mode é **transversal**, não por emulador | Promover a capability de plataforma + FM próprio, em vez de redescobrir sistema a sistema |
+| DESC-7 | O giroscópio é **descartado** pelos scripts de referência (filtro explícito de IMU) | O mapa gyro→pistola de luz não tem precedente para portar: spike exploratório, risco declarado. Ver C3 |
+
+## Decisões do operador
+
+| Data | Decisão |
+|---|---|
+| 2026-07-24 | **Citron fica** como terceiro adapter, mesmo pinado em nightly. A lacuna de licença vira item do WI-S0 (bloco B3 do briefing de pesquisa), não motivo de remoção |
