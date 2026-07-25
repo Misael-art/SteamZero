@@ -2647,3 +2647,33 @@ G12 em KNOWN-GAPS.
 **Documentação:** `LOCAL-API-CONTRACT.md` ganhou a tabela de status HTTP e a
 regra posicional do `operationId`; `ERROR-CATALOG.md` ganhou a distinção entre
 `E-API-SCHEMA` e código de domínio.
+
+### Release e instalação
+
+| Item | Resultado |
+|---|---|
+| commit de origem | `66d15b1f8d57219bf71559fa100587338b2f23aa`, árvore rastreada limpa |
+| gates no commit instalado | 1476 testes, ruff check + format, mypy 155 arquivos, independence/boundaries |
+| wheel | SHA-256 `ca0ada185b29de03e18c129f0c6f4ce82a4640459ad8878876be4ed5a5fd6c74`, duas construções byte-idênticas |
+| entry points de boot | `steamzero-gamemode-boot` e `steamzero-gamemode-session` conferidos dentro do wheel |
+| wheelhouse | 6 wheels runtime, download com `--require-hashes` |
+| release canônica | `0.1.0a34-66d15b1f8d57`, manifesto v4 com `sourceTreeState=clean` |
+| instalação | `bigsudo /usr/bin/python3 tools/install_host.py install` retornou `ok=true` |
+| release anterior | `0.1.0a34-b2385a6fc3b4` |
+
+**Validação pós-instalação (read-only):** `current` aponta para a release nova;
+`steamzero --version` = 0.1.0a34; doctor `ok`, schema 13, zero operações
+pendentes, quatro checks `pass`, nenhum blocker; `steamzero-core.socket`
+habilitado e ativo com o backend resolvendo para
+`/opt/steamzero/releases/0.1.0a34-66d15b1f8d57/venv/bin/python3`; sessão Game
+Mode com marcador `X-SteamZero-Managed=true` e ambos os binários de boot
+resolvendo para a release nova.
+
+**Rollback disponível:** `0.1.0a34-b2385a6fc3b4`. Boot direto continua não
+ativado (`/etc/steamzero/gamemode-user` ausente). Nenhum reboot foi executado — o
+teste físico permanece com o operador.
+
+**Fora de escopo:** `docs/diagnostics/2026-07-23-catalogo-falhas-emulacao.md`
+estava untracked no início da sessão e foi varrido por engano para um commit; o
+commit foi refeito sem ele e o arquivo continua untracked, intacto. Escala de
+texto do host registrada como G12 em KNOWN-GAPS.
