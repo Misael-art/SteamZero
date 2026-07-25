@@ -655,6 +655,75 @@ def test_reduced_motion_reads_real_plasma_duration_factor() -> None:
     ]
 
 
+def test_high_contrast_reads_real_plasma_color_scheme() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        calls.append(tuple(argv))
+        return CommandResult(0, "HighContrastDark\n", "")
+
+    assert (
+        desktop_kde.high_contrast_enabled(
+            runner=runner, which=lambda command: f"/usr/bin/{command}"
+        )
+        is True
+    )
+    assert calls == [
+        (
+            "kreadconfig6",
+            "--file",
+            "kdeglobals",
+            "--group",
+            "General",
+            "--key",
+            "ColorScheme",
+        )
+    ]
+
+
+def test_high_contrast_is_false_for_ordinary_scheme_and_degrades_without_plasma() -> None:
+    """Esquema comum é falso; ausência de kreadconfig6 degrada sem executar nada."""
+
+    def runner(_argv: Sequence[str], _timeout: float) -> CommandResult:
+        return CommandResult(0, "BreezeDark\n", "")
+
+    assert (
+        desktop_kde.high_contrast_enabled(
+            runner=runner, which=lambda command: f"/usr/bin/{command}"
+        )
+        is False
+    )
+
+    def exploding(_argv: Sequence[str], _timeout: float) -> CommandResult:
+        raise AssertionError("não deve consultar o host sem kreadconfig6")
+
+    assert desktop_kde.high_contrast_enabled(runner=exploding, which=lambda _c: None) is False
+
+
+def test_high_contrast_ignores_separators_and_failed_read() -> None:
+    """ "High-Contrast" e "high contrast" contam; returncode != 0 degrada para falso."""
+
+    def spaced(_argv: Sequence[str], _timeout: float) -> CommandResult:
+        return CommandResult(0, "High-Contrast Light\n", "")
+
+    assert (
+        desktop_kde.high_contrast_enabled(
+            runner=spaced, which=lambda command: f"/usr/bin/{command}"
+        )
+        is True
+    )
+
+    def failing(_argv: Sequence[str], _timeout: float) -> CommandResult:
+        return CommandResult(1, "", "erro")
+
+    assert (
+        desktop_kde.high_contrast_enabled(
+            runner=failing, which=lambda command: f"/usr/bin/{command}"
+        )
+        is False
+    )
+
+
 def _minimal_context(
     capabilities: frozenset[str] = frozenset({"kde-plasma"}),
     displays: tuple[DisplayState, ...] = (),

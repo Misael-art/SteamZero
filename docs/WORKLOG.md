@@ -2586,3 +2586,64 @@ backend da release anterior residente.
 
 **Rollback disponível:** `0.1.0a33-d4ea3bee353d`. Nenhum reboot ou mudança de
 boot foi executado; o teste humano físico permanece com o operador.
+
+## 2026-07-24 — Sessão: revisão do ERROR-UX, normalização e acessibilidade
+
+**Branch:** `codex/steam-gameplay-readiness-ui`, a partir de `f2fc984`.
+
+### Revisão do `ba57df5` (branch `codex/id-errorux-estruturado`)
+
+O relatório do agente declarava os quatro gates verdes. Reexecutados: `ruff
+check` falhava com E501 + F841 no arquivo de teste que o próprio commit criou, e
+`ruff format --check` também. Os demais gates estavam de fato verdes.
+
+| Achado | Correção | Commit |
+|---|---|---|
+| gate de ruff declarado verde, vermelho | E501/F841 corrigidos, format aplicado | `9c5696d` |
+| teste tautológico (levantava o erro no próprio corpo) | substituído por teste que chama `rollback_action` | `9c5696d` |
+| `E-API-SCHEMA` para rota inexistente | `E-API-UNKNOWN-ACTION` + status 404 | `9c5696d` |
+| token de sessão inválido virou 400 e o teste foi ajustado para casar | `E-TX-CONFIRM-REQUIRED` + 409; expectativa do teste revertida | `9c5696d` |
+| `int(Content-Length)` caía em `ValueError` de stdlib | `E-API-SCHEMA` | `9c5696d` |
+| `operationId` ausente no efeito colateral pós-commit | `apply_action` dividido em `_apply_transaction` + `_settle_apply`, id herdado na fronteira | `9c5696d` |
+| testes gravando em `~/.local/state/steamzero` real | fixture com `XDG_STATE_HOME`; delta de planos medido 2 → 0 | `9c5696d` |
+
+O diagnóstico do relatório sobre a lacuna do `operationId` apontava
+`_content.apply_import()` e afins; esses delegam para `transaction.apply` e já
+herdavam o id. A lacuna real era o bloco pós-commit.
+
+### Normalização
+
+Levantamento de todas as branches: das 51, apenas 4 tinham trabalho não
+mergeado. Resultado da auditoria:
+
+| Branch | Destino | Razão |
+|---|---|---|
+| `codex/id-errorux-estruturado` | fast-forward | base atual, gates verdes |
+| `codex/desktop-ergonomia-d0` | 2 docs cherry-picked | o commit de ERROR-UX era duplicata exata do já integrado (`ErrorCard.qml` diferia só em `const`/`var`) |
+| `codex/midia-...-host-release-record` | 1 docs cherry-picked | conflito de WORKLOG resolvido preservando as duas sessões |
+| `codex/ui-emulacao` | **não mergeada** | 51 hunks / 2658 linhas de conflito no `Main.qml` entre a arquitetura de componentes de 18/07 e a atual; navegação responsiva e `reducedMotion` já reimplementados e melhores na linha atual |
+
+**Backend ↔ UI:** 68 endpoints no dispatch, 67 no contrato publicado; a única
+diferença é `/contracts`, o GET que serve o próprio contrato. Nenhum backend
+inalcançável pela UI, nenhuma entrada de contrato sem dispatch.
+
+### Acessibilidade portada do `ui-emulacao`
+
+Único código genuinamente perdido naquela branch. Portado para a arquitetura
+atual em vez de mergeado: `high_contrast_enabled()` lê o esquema de cores do
+Plasma read-only (mesmo padrão de `reduced_motion_enabled`), o dashboard expõe
+em `accessibility.highContrast` e o `Main.qml` reescreve as mesmas propriedades
+de cor que todo o QML já consome — nenhum consumidor precisou mudar. A abordagem
+do `ui-emulacao` (preferência local do QML, não persistida, divergindo do
+desktop) foi descartada.
+
+Verificado que `tests/qml/check_high_contrast.qml` falha (exit 3) com a
+correção desfeita e passa com ela.
+
+Escala de texto (`forceFontDPI`) **não** foi portada: exigiria helper de
+tipografia em ~72 pontos de `font.pixelSize` só no `Main.qml`. Registrada como
+G12 em KNOWN-GAPS.
+
+**Documentação:** `LOCAL-API-CONTRACT.md` ganhou a tabela de status HTTP e a
+regra posicional do `operationId`; `ERROR-CATALOG.md` ganhou a distinção entre
+`E-API-SCHEMA` e código de domínio.

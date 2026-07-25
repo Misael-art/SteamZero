@@ -1504,6 +1504,24 @@ def reduced_motion_enabled(*, runner: Runner = run_command, which: Which = shuti
         return False
 
 
+def high_contrast_enabled(*, runner: Runner = run_command, which: Which = shutil.which) -> bool:
+    """Lê o esquema de cores do Plasma sem alterar o host.
+
+    O Plasma não expõe um booleano de alto contraste: a preferência é o esquema
+    de cores escolhido. Tratamos como ativo quando o nome do esquema declara
+    contraste alto, que é o que os esquemas de acessibilidade do KDE usam.
+    """
+    if which("kreadconfig6") is None:
+        return False
+    result = runner(
+        ("kreadconfig6", "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"),
+        3.0,
+    )
+    if result.returncode != 0:
+        return False
+    return "highcontrast" in result.stdout.strip().replace(" ", "").replace("-", "").lower()
+
+
 def toggle_virtual_keyboard(
     language: str | None = None,
     *,

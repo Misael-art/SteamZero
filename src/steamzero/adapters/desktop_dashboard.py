@@ -18,7 +18,11 @@ from pathlib import Path
 from typing import Any
 
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
-from steamzero.adapters.desktop_kde import input_method_status, reduced_motion_enabled
+from steamzero.adapters.desktop_kde import (
+    high_contrast_enabled,
+    input_method_status,
+    reduced_motion_enabled,
+)
 from steamzero.adapters.diagnostics import DiagnosticsService
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
@@ -38,6 +42,7 @@ RegistryFactory = Callable[[], AdapterRegistry]
 DoctorRunner = Callable[[], tuple[dict[str, Any], list[dict[str, str]]]]
 EmulationBuilder = Callable[..., dict[str, Any]]
 ReducedMotionProbe = Callable[[], bool]
+HighContrastProbe = Callable[[], bool]
 _log = logging.getLogger(__name__)
 
 _COMPONENT_LABELS: dict[str, tuple[str, str, str]] = {
@@ -252,6 +257,7 @@ class DesktopDashboard:
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
         reduced_motion_probe: ReducedMotionProbe = reduced_motion_enabled,
+        high_contrast_probe: HighContrastProbe = high_contrast_enabled,
         diagnostics: DiagnosticsService | None = None,
         playtime: PlaytimeCatalog | None = None,
         collections: CollectionManager | None = None,
@@ -274,6 +280,7 @@ class DesktopDashboard:
         self._which = which
         self._spawn = spawn
         self._reduced_motion_probe = reduced_motion_probe
+        self._high_contrast_probe = high_contrast_probe
         self._operation_history = OperationHistory(
             store_factory,
             component_rollback=self._rollback_component_for_history,
@@ -440,10 +447,17 @@ class DesktopDashboard:
                 "limits": {"maxFiles": 8, "maxBytes": 2 * 1024**3, "maxSeconds": 20},
             }
 
+        # Sondas de acessibilidade são read-only e degradam para o padrão: a
+        # ausência da preferência no host nunca impede o dashboard de responder.
         try:
             reduced_motion = self._reduced_motion_probe()
         except Exception:
             reduced_motion = False
+
+        try:
+            high_contrast = self._high_contrast_probe()
+        except Exception:
+            high_contrast = False
 
         try:
             diagnostics = self._diagnostics.snapshot(doctor=doctor, desktop_status=desktop_status)
@@ -500,7 +514,10 @@ class DesktopDashboard:
 
         return {
             "uiContracts": handheld_ui_contracts(),
-            "accessibility": {"reducedMotion": reduced_motion},
+            "accessibility": {
+                "reducedMotion": reduced_motion,
+                "highContrast": high_contrast,
+            },
             "components": components,
             "steam": self._steam.rows(desktop_status),
             "steamGameplay": steam_gameplay,

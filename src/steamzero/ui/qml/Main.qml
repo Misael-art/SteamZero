@@ -28,24 +28,32 @@ ApplicationWindow {
     palette.disabled.buttonText: "#667481"
     palette.disabled.text: "#667481"
 
-    readonly property color backgroundColor: "#071019"
-    readonly property color sidebarColor: "#09131d"
-    readonly property color surfaceColor: "#0d1924"
-    readonly property color raisedColor: "#122131"
-    readonly property color borderColor: "#2a3a49"
-    readonly property color textColor: "#f2f6fb"
-    readonly property color mutedColor: "#9eabba"
-    readonly property color cyanColor: "#13bdf2"
-    readonly property color cyanDarkColor: "#0a5f85"
-    readonly property color amberColor: "#ff9f1a"
-    readonly property color greenColor: "#59d35d"
-    readonly property color redColor: "#ff6b73"
+    readonly property color backgroundColor: highContrast ? "#000000" : "#071019"
+    readonly property color sidebarColor: highContrast ? "#000000" : "#09131d"
+    readonly property color surfaceColor: highContrast ? "#000000" : "#0d1924"
+    readonly property color raisedColor: highContrast ? "#1a1a1a" : "#122131"
+    readonly property color borderColor: highContrast ? "#ffffff" : "#2a3a49"
+    readonly property color textColor: highContrast ? "#ffffff" : "#f2f6fb"
+    readonly property color mutedColor: highContrast ? "#e8e8e8" : "#9eabba"
+    readonly property color cyanColor: highContrast ? "#00e5ff" : "#13bdf2"
+    readonly property color cyanDarkColor: highContrast ? "#003d4d" : "#0a5f85"
+    readonly property color amberColor: highContrast ? "#ffc400" : "#ff9f1a"
+    readonly property color greenColor: highContrast ? "#5eff62" : "#59d35d"
+    readonly property color redColor: highContrast ? "#ff8a90" : "#ff6b73"
     readonly property bool compactLayout: width <= 1366 || height <= 850
     readonly property bool handheldLayout: width <= 1024 || height <= 640
-    readonly property bool reducedMotion: desktopStatus.dashboard
+    readonly property var accessibility: desktopStatus.dashboard
         && desktopStatus.dashboard.accessibility
-        && desktopStatus.dashboard.accessibility.reducedMotion === true
+        ? desktopStatus.dashboard.accessibility : null
+    readonly property bool reducedMotion: accessibility
+        && accessibility.reducedMotion === true
     readonly property int motionDuration: reducedMotion ? 0 : 180
+    // Alto contraste é preferência do host, read-only: a UI honra o esquema que
+    // o Plasma já declara em vez de manter um ajuste próprio que divergiria do
+    // resto do desktop. Nenhuma cor nova é introduzida aqui — as mesmas
+    // propriedades que todo o QML já consome mudam de valor.
+    readonly property bool highContrast: accessibility
+        && accessibility.highContrast === true
     readonly property int bottomSafeInset: compactLayout ? 60 : 24
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28

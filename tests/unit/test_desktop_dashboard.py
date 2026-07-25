@@ -235,6 +235,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
         which=lambda command: "/usr/bin/flatpak" if command == "flatpak" else None,
         spawn=lambda _argv: None,
         reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
     )
 
     snapshot = dashboard.snapshot(_status())
@@ -246,7 +247,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert duckstation["state"] == "unsupported"
     assert duckstation["action"]["enabled"] is False
     assert snapshot["doctor"]["state"] == "healthy"
-    assert snapshot["accessibility"] == {"reducedMotion": True}
+    assert snapshot["accessibility"] == {"reducedMotion": True, "highContrast": True}
     assert snapshot["steamGameplay"]["readiness"]["percent"] == 100
     assert snapshot["playtime"]["schemaVersion"] == 1
     assert snapshot["playtime"]["games"] == []
