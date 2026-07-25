@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "screen-cast-v1.schema.json",
+  "title": "SteamZero screen sharing session v1",
+  "description": "Estado publicável de uma sessão de compartilhamento. Proíbe por construção nome, endereço, PIN e qualquer conteúdo de tela ou áudio.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "protocol",
+    "mode",
+    "state",
+    "transport",
+    "receiverDigest",
+    "estimatedQuality",
+    "stream",
+    "consent",
+    "resilience",
+    "durationSeconds"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "protocol": {"enum": ["game-stream", "steam-remote-play", "screen-mirror", "media-cast"]},
+    "mode": {"enum": ["game", "game-window", "mirror", "media"]},
+    "state": {
+      "enum": [
+        "idle",
+        "checkingCapabilities",
+        "discovering",
+        "pairing",
+        "negotiating",
+        "streaming",
+        "degraded",
+        "recovering",
+        "reconnecting",
+        "stopping",
+        "failed"
+      ]
+    },
+    "transport": {"enum": ["wired", "lan", "wifi-direct", "unknown"]},
+    "receiverDigest": {"type": "string", "pattern": "^[0-9a-f]{12}$"},
+    "estimatedQuality": {"enum": ["excellent", "good", "limited", "unknown"]},
+    "stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "width",
+        "height",
+        "frameRate",
+        "bitrateKbps",
+        "videoCodec",
+        "audioCodec",
+        "hardwareEncoder",
+        "inputBackChannel"
+      ],
+      "properties": {
+        "profileId": {"enum": ["performance", "balanced", "quality"]},
+        "width": {"type": "integer", "minimum": 640, "maximum": 3840},
+        "height": {"type": "integer", "minimum": 360, "maximum": 2160},
+        "frameRate": {"type": "integer", "minimum": 24, "maximum": 120},
+        "bitrateKbps": {"type": "integer", "minimum": 1000, "maximum": 60000},
+        "videoCodec": {"enum": ["h264", "hevc", "av1"]},
+        "audioCodec": {"enum": ["opus", "aac", "pcm"]},
+        "hardwareEncoder": {"type": "boolean"},
+        "inputBackChannel": {"type": "boolean"}
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["granted", "scope"],
+      "properties": {
+        "granted": {"type": "boolean"},
+        "scope": {"enum": ["none", "monitor", "window", "virtual"]}
+      }
+    },
+    "resilience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["degraded", "attempt", "qualityExhausted", "reconnectDelaysSeconds"],
+      "properties": {
+        "degraded": {"type": "boolean"},
+        "attempt": {"type": "integer", "minimum": 0, "maximum": 5},
+        "qualityExhausted": {"type": "boolean"},
+        "reconnectDelaysSeconds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "integer", "minimum": 0, "maximum": 60}
+        }
+      }
+    },
+    "durationSeconds": {"type": "integer", "minimum": 0}
+  }
+}

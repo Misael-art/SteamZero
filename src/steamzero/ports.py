@@ -373,3 +373,115 @@ class SecretStorePort(Protocol):
     def is_available(self) -> bool:
         """True se o serviço de credencial do sistema está operacional."""
         ...
+
+
+# --- Compartilhamento de tela (ADR-0022) -----------------------------------
+@dataclass(frozen=True)
+class CastCapabilities:
+    """Capacidades OBSERVADAS de um lado do enlace — nunca presumidas.
+
+    Zero/vazio significa "não observado", não "ausente": o domínio trata isso
+    como desconhecido e recusa prometer o modo. Marca, modelo e ano do receptor
+    não entram aqui de propósito: não são evidência de capacidade.
+    """
+
+    full_screen: bool = False
+    application_window: bool = False
+    system_audio: bool = False
+    input_back_channel: bool = False
+    protected_content: bool = False
+    requires_receiver_app: bool = False
+    receiver_app_present: bool = False
+    hardware_encoder: bool = False
+    max_width: int = 0
+    max_height: int = 0
+    max_frame_rate: int = 0
+    video_codecs: tuple[str, ...] = ()
+    audio_codecs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ReceiverDescriptor:
+    """Receptor anunciado por um provedor, já normalizado.
+
+    ``display_name`` e ``address`` são para a UI local; jamais entram em
+    contrato público, log ou telemetria (SR-14 / spec §17).
+    """
+
+    receiver_id: str
+    display_name: str
+    protocol: str  # game-stream | steam-remote-play | screen-mirror | media-cast
+    address: str
+    transport: str  # wired | lan | wifi-direct | unknown
+    paired: bool
+    capabilities: CastCapabilities
+
+
+@dataclass(frozen=True)
+class LinkSample:
+    """Amostra de saúde do enlace. Nunca carrega conteúdo de tela ou áudio."""
+
+    rtt_ms: int = 0
+    jitter_ms: int = 0
+    packet_loss_pct: float = 0.0
+    decoder_queue_frames: int = 0
+    encoder_ms: float = 0.0
+    dropped_frames: int = 0
+
+
+@dataclass(frozen=True)
+class CaptureConsent:
+    """Autorização de captura concedida pelo usuário via portal do compositor.
+
+    Sem ``granted`` não existe sessão: o produto nunca captura em silêncio.
+    """
+
+    granted: bool = False
+    scope: str = "none"  # none | monitor | window | virtual
+    audio: bool = False
+
+
+class ScreenCastProviderPort(Protocol):
+    """Contrato de uma via de compartilhamento (Miracast, motor de jogo, Cast...).
+
+    O provedor é dono do plano de mídia; o domínio é dono da decisão. Toda
+    resposta é evidência observada — um provedor que não sabe responder devolve
+    capacidade vazia em vez de otimismo.
+    """
+
+    @property
+    def protocol(self) -> str:
+        """Id estável da via (ex.: ``game-stream``)."""
+        ...
+
+    def local_capabilities(self) -> CastCapabilities:
+        """O que ESTE host consegue capturar/codificar agora."""
+        ...
+
+    def preflight(self) -> tuple[bool, str]:
+        """(pronto, motivo estável quando não pronto) — ex.: ``engine-missing``."""
+        ...
+
+    def discover(self, timeout_ms: int) -> Sequence[ReceiverDescriptor]: ...
+
+    def pair(self, receiver_id: str, pin: Secret | None) -> bool: ...
+
+    def start(
+        self,
+        receiver_id: str,
+        profile_id: str,
+        mode: str,
+        consent: CaptureConsent,
+    ) -> str:
+        """Inicia a sessão e devolve o id opaco dela."""
+        ...
+
+    def sample(self, session_id: str) -> LinkSample | None: ...
+
+    def apply_stream(self, session_id: str, profile_id: str, bitrate_kbps: int) -> bool: ...
+
+    def request_keyframe(self, session_id: str) -> bool: ...
+
+    def stop(self, session_id: str) -> None:
+        """Idempotente: parar duas vezes não é erro (spec §19)."""
+        ...
