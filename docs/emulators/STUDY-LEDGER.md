@@ -1,5 +1,9 @@
 # STUDY-LEDGER — ciclo de estudo por sistema
 
+> **Leia junto:** [`STUDY-DIRECTIVE-ADDENDUM.md`](STUDY-DIRECTIVE-ADDENDUM.md)
+> corrige quatro pontos do direcionador de estudo e registra os achados
+> transversais que não devem ser redescobertos sistema a sistema.
+
 Um sistema por vez. O estudo **propõe**, a `EMULATOR-PORTING-DIRECTIVE` decide, o
 WI executa. Nenhuma linha de código de produto sai deste ciclo.
 
