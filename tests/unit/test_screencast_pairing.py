@@ -116,6 +116,12 @@ class TestDecidePairing:
         decision, state = decide_pairing("000000", "123456", state)
         assert decision == PairingDecision.EXCEEDED_ATTEMPTS
 
+    def test_refuses_when_constant_time_compare_false_and_wrong_pin(self) -> None:
+        state = PairingState(receiver_id="tv-1", generated_at=datetime.now(UTC))
+        decision, new_state = decide_pairing("000000", "123456", state, constant_time_compare=False)
+        assert decision == PairingDecision.REFUSED
+        assert new_state.attempts_remaining == PIN_MAX_ATTEMPTS - 1
+
     def test_accepts_correct_pin_at_last_attempt(self) -> None:
         state = PairingState(
             receiver_id="tv-1",

@@ -113,6 +113,15 @@ def test_preflight_nothing_available(provider: GameStreamProvider) -> None:
 # --- discover ---------------------------------------------------------------
 
 
+def test_discover_handles_oserror_gracefully(provider: GameStreamProvider) -> None:
+    with patch("socket.socket") as mock_sock_cls:
+        mock_sock = MagicMock()
+        mock_sock_cls.return_value = mock_sock
+        mock_sock.sendto.side_effect = OSError("network unreachable")
+        receivers = provider.discover(timeout_ms=100)
+    assert receivers == []
+
+
 def test_discover_finds_receivers(provider: GameStreamProvider) -> None:
     receiver_info = json.dumps(
         {
@@ -202,6 +211,16 @@ def test_pair_with_sunshine_pin(provider: GameStreamProvider) -> None:
     with patch("urllib.request.urlopen", side_effect=side_effect):
         result = provider.pair("192.168.1.50:48010")
     assert result is True
+
+
+def test_pair_fails_when_sunshine_pin_not_a_dict(provider: GameStreamProvider) -> None:
+    with patch("urllib.request.urlopen") as mock:
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.read.return_value = json.dumps(["not", "a", "dict"]).encode()
+        mock.return_value.__enter__.return_value = mock_resp
+        result = provider.pair("192.168.1.50:48010")
+    assert result is False
 
 
 def test_pair_failure(provider: GameStreamProvider) -> None:
@@ -387,6 +406,29 @@ def test_sunshine_api_unreachable_raises_e_cast_link_lost(
 
 
 # --- local_capabilities fallback -------------------------------------------
+
+
+def test_local_capabilities_with_empty_codecs_lists(provider: GameStreamProvider) -> None:
+    empty_info = json.dumps(
+        {
+            "video_codecs": [],
+            "audio_codecs": [],
+            "hardware_encoder": False,
+            "display_capture": False,
+        }
+    ).encode()
+    with (
+        patch.object(provider, "_vaapi_available", return_value=False),
+        patch.object(provider, "_pipewire_screencast_available", return_value=False),
+        patch("urllib.request.urlopen") as mock_urlopen,
+    ):
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.read.return_value = empty_info
+        mock_urlopen.return_value.__enter__.return_value = mock_resp
+        caps = provider.local_capabilities()
+    assert caps.video_codecs == ("h264",)
+    assert caps.audio_codecs == ("opus",)
 
 
 def test_local_caps_fallback_without_sunshine(provider: GameStreamProvider) -> None:

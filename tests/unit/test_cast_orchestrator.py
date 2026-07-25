@@ -330,3 +330,58 @@ def test_reconcile_cleans_orphan_sessions(tmp_path: Path) -> None:
     mock_provider.stop.assert_any_call("orphan-1")
     mock_provider.stop.assert_any_call("orphan-2")
     assert orch.has_active_session is False
+
+
+def test_start_stream_with_unknown_mode_falls_back_to_automatic(
+    orchestrator: CastOrchestrator, mock_provider: MagicMock, consent: CaptureConsent
+) -> None:
+    result = orchestrator.start_stream("tv-sala", "balanced", "invalid-mode", consent)
+    assert result["mode"] in ("game", "gameWindow", "mirror", "automatic")
+
+
+# --- provider resolution ---
+
+
+def test_provider_for_unknown_protocol_raises_error(tmp_path: Path) -> None:
+    with patch.dict(
+        CastOrchestrator._PROVIDER_PROTOCOLS,  # type: ignore[attr-defined]
+        {"game-stream": MagicMock},
+        clear=True,
+    ):
+        orch = CastOrchestrator(data_dir=tmp_path)
+    with pytest.raises(SteamZeroError, match="E-CAST-UNKNOWN-PROTOCOL"):
+        orch._provider_for("unknown-protocol")
+
+
+def test_provider_for_known_protocol_creates_provider(tmp_path: Path) -> None:
+    mock_cls = MagicMock()
+    mock_instance = MagicMock()
+    mock_cls.return_value = mock_instance
+    with patch.dict(
+        CastOrchestrator._PROVIDER_PROTOCOLS,  # type: ignore[attr-defined]
+        {"test-proto": mock_cls},
+        clear=True,
+    ):
+        orch = CastOrchestrator(data_dir=tmp_path)
+        result = orch._provider_for("test-proto")
+    assert result is mock_instance
+    mock_cls.assert_called_once_with(data_dir=tmp_path)
+
+
+def test_active_provider_calls_provider_for(tmp_path: Path) -> None:
+    mock_provider = MagicMock()
+    mock_provider.protocol = "test"
+    with (
+        patch.object(
+            CastOrchestrator,
+            "_all_providers",
+            return_value=[mock_provider],
+        ),
+        patch.object(
+            CastOrchestrator,
+            "_provider_for",
+            return_value=mock_provider,
+        ),
+    ):
+        orch = CastOrchestrator(data_dir=tmp_path)
+        assert orch._active_provider() is mock_provider
