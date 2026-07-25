@@ -8,11 +8,9 @@
 > `SWITCH-MEDIA-PROVIDER-PLAN.md` e os três manifestos de emulador — no formato
 > normativo do §5, e marca o que precisa de reverificação externa.
 
-> ⚠️ **Limite desta sessão:** os fatos abaixo vêm do repositório, onde estão
-> commitados com versão e SHA-256. O **estado upstream atual** dos três projetos
-> não foi reverificado (D4 do ledger: `WebSearch`/`WebFetch` indisponíveis;
-> `git.eden-emu.dev` respondeu 403 ao acesso automatizado). Tudo que dependa de
-> "o projeto ainda está vivo hoje" está marcado `[validar no spike]`.
+> ✅ **Reverificado em 2026-07-25** por coleta externa. Os três projetos estão
+> ativos, as licenças estão resolvidas — e apareceram dois problemas de
+> proveniência que não eram visíveis antes (§1).
 
 ---
 
@@ -37,12 +35,44 @@ estruturalmente mais seguro de fazer parser com diff do que INI, o que reduz o
 risco da invariante §2.2. Vale como segundo caminho para jogos onde o Eden
 falhar.
 
-**Citron: manter, com ressalva registrada.** Está pinado numa **nightly**
-(`2026.04.27`), e a regra 2 do `ADAPTER-MODEL.md` diz que `versionPolicy:
-latest`/nightly só é admissível em canal dev com checksum no lockfile. O
-manifesto pina SHA-256, o que satisfaz a parte do checksum. **Pendência:** o
-manifesto do Citron não declara `license` — os outros dois declaram.
-`[validar no spike]` a licença e se existe canal estável.
+**Citron: fica** (decisão do operador, 2026-07-24). A pendência de licença está
+**resolvida** e apareceu uma oportunidade.
+
+### Reverificação de 2026-07-25
+
+| Emulador | Estado upstream | Licença | Consultado |
+|---|---|---|---|
+| Eden | estável **v0.2.1** (2026-06-01); último commit **2026-07-25** — ativo. Publica AppImages dedicadas "Steam Deck (Zen 2)", standard e PGO | **GPLv3** (`LICENSE.txt`) | 2026-07-25 |
+| Ryubing | estável **1.3.3** (2025-10-11); último commit **2026-07-17** — ativo | **MIT** (`LICENSE.txt`) | 2026-07-25 |
+| Citron | último release **2026-04-27**; último push **2026-07-22** — ativo, mas ~3 meses sem release | **GPL-3.0** (campo de licença do repositório) | 2026-07-25 |
+
+**A licença do Citron é GPL-3.0.** O manifesto não a declara — é lacuna do nosso
+manifesto, não do projeto. Correção trivial no WI-S0.
+
+### ⚠️ Dois problemas de proveniência descobertos
+
+**1. Existe canal estável do Citron, e nós pinamos a nightly.** A release de
+2026-04-17 publicou assets `citron_stable-*` (AppImage x86_64, x86_64_v3,
+aarch64). A de 2026-04-27, que é a que pinamos, publicou **só** `citron_nightly-*`.
+Ou seja: dá para sair da nightly sem perder o adapter — basta repinar na
+2026-04-17. Isso resolve a tensão com a regra 2 do `ADAPTER-MODEL.md` que este
+dossiê havia registrado. *(Não há documento formal da política de canal; a
+distinção vem da nomenclatura dos assets — `[hipótese de processo, fato de
+nomenclatura]`.)*
+
+**2. Os assets do Ryubing 1.3.3 foram recriados depois da publicação.** A release
+é de 2025-10-11, mas os artefatos têm timestamp **2026-03-30**, da migração
+GitLab→Forgejo. **Um SHA-256 pinado antes de março/2026 pode não bater com o
+download atual.** O nosso manifesto pina `b4511f46…`; precisa ser reconferido
+contra o arquivo servido hoje — se divergir, a instalação falha no checksum, que
+é o comportamento correto, mas por um motivo que ninguém entenderia sem esta nota.
+
+**3. Nenhum dos três publica SHA-256.** Nem Eden (testados `SHA256SUMS`,
+`checksums.txt` e variantes — todos 404), nem Ryubing (a 1.3.2 tinha `.zsync`,
+que sumiu na 1.3.3), nem Citron. Os hashes dos nossos manifestos foram
+necessariamente calculados no primeiro download. Isso é aceitável, mas deve ser
+**declarado como política**, não ficar implícito — vale para o MesenCE também
+(ver `nes.md` §2).
 
 ## 2. Adapter: manifesto, canal, modelo de config + parser
 
@@ -164,20 +194,37 @@ store de keys intacto e nenhum hash completo em log algum.
 `docs/03-architecture/ADAPTER-MODEL.md` · `src/steamzero/core/errors.py`
 (catálogo `E-MOD-*`/`E-CHEAT-*`) · `src/steamzero/adapters/{mods,cheats}/`.
 
-**Externas:** nenhuma consultada nesta sessão. `stable.eden-emu.dev`,
-`git.ryujinx.app` e `github.com/citron-neo/emulator` constam nos manifestos mas
-**não foram reverificados** — ver D4 do ledger.
+**Externas (coleta de 2026-07-25):**
+
+| URL | Uso |
+|---|---|
+| `https://git.eden-emu.dev/api/v1/repos/eden-emu/eden/releases` e `/commits` | v0.2.1, builds Steam Deck, atividade |
+| `https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt` | GPLv3 |
+| `https://git.ryujinx.app/projects/Ryubing/releases/tag/1.3.3` | versão, assets recriados |
+| `https://git.ryujinx.app/projects/Ryubing/raw/branch/master/LICENSE.txt` | MIT |
+| `https://api.github.com/repos/citron-neo/emulator` | licença GPL-3.0 |
+| `https://github.com/citron-neo/emulator/releases/tag/2026-04-17` | existência de assets `citron_stable-*` |
+
+Nota de método: `git.ryujinx.app` tem anti-bot (Anubis PoW) e exigiu navegador
+real; `git.eden-emu.dev` respondeu bem à API REST — o 403 anterior era da UI
+HTML, não da API.
 
 ## 14. WI proposto para a PORTING-DIRECTIVE
 
 **WI-S0 — Reverificação de proveniência dos adapters de Switch**
 
-- **Objetivo:** trazer os três manifestos ao estado corrente e fechar as lacunas
-  de licença/canal, antes de qualquer novo trabalho de Switch.
-- **Entregáveis:** estado upstream dos três projetos com fonte e data; licença do
-  Citron declarada ou adapter removido; versões e SHA-256 reconferidos; decisão
-  registrada sobre nightly do Citron.
-- **Gates:** os quatro de sempre; `component-lock.json` coerente.
+- **Objetivo:** corrigir os manifestos com o que a coleta de 2026-07-25 apurou.
+- **Entregáveis (agora concretos, não mais exploratórios):**
+  1. declarar `"license": "GPL-3.0"` no manifesto do Citron;
+  2. **repinar o Citron na release estável de 2026-04-17** (`citron_stable-*`),
+     saindo da nightly — resolve a tensão com a regra 2 do `ADAPTER-MODEL.md`;
+  3. **reconferir o SHA-256 do Ryubing 1.3.3** contra o arquivo servido hoje: os
+     assets foram recriados em 2026-03-30 e o hash pinado pode estar obsoleto;
+  4. confirmar que o Eden segue na `v0.2.1` PGO para Steam Deck;
+  5. registrar em `ADAPTER-MODEL.md` a **política de hash calculado localmente**,
+     já que nenhum dos quatro emuladores estudados publica SHA-256.
+- **Gates:** os quatro de sempre; `component-lock.json` coerente; instalação de
+  cada adapter exercitada com o hash novo.
 - **Dependências:** nenhuma. É pré-requisito dos demais WIs de Switch.
 
 Os WI-0 a WI-9 da porting-directive **já cobrem** keys/firmware, conversão NSZ,

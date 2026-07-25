@@ -45,22 +45,40 @@ e depois o caminho Flatpak. Vale para o `detect`/`status` dos adapters.
 
 ## C2 — Dois ecrãs físicos para emuladores de dois ecrãs (P4) — **o achado mais forte**
 
-**A restrição arquitetural, verificada:** o compositor do Game Mode é
-single-output e single-focus — não consegue rotear duas janelas para dois
-conectores. O compositor do Desktop Mode (KWin/Wayland) é multi-output de
-verdade e tem regra de janela por "Screen". **Portanto este recurso é Desktop
-Mode apenas.** Índices de tela resolvidos dinamicamente via `kscreen-doctor`,
-para sobreviver a reordenação de saída.
+**A restrição arquitetural, verificada — e confirmada upstream em 2026-07-25:**
+o compositor do Game Mode é single-output e single-focus, e **continua sendo**.
+As issues canônicas do Gamescope seguem abertas: #645 "Select monitor for
+gamescope to appear on" (2022, última atividade 2026-06-28) e #737 "unable to
+span or stretch across multiple monitors" (2023). Não há flag de seleção de
+monitor nem spanning na série 3.16.x.
+
+O compositor do Desktop Mode (KWin/Wayland) é multi-output de verdade e tem
+regra de janela por "Screen". **Portanto este recurso é Desktop Mode apenas** —
+e isso não é limitação temporária a contornar, é propriedade do compositor.
+Índices de tela resolvidos dinamicamente via `kscreen-doctor`, para sobreviver a
+reordenação de saída.
 
 Capacidades observadas por sistema:
 
 | Sistema | Emulador | Modo |
 |---|---|---|
-| Wii U | Cemu | GamePad abre como **2ª janela** (`open_pad=true`) → tela interna do Deck vira o GamePad enquanto o jogo fica na TV |
-| 3DS | Azahar | layout "Separate Windows" (`layout_option=5`) → dois ecrãs físicos |
+| Wii U | Cemu | GamePad abre como **2ª janela** ("Separate GamePad View", `PadViewFrame`). Chaves em `~/.config/Cemu/settings.xml`: `open_pad`, `pad_position`, `pad_size`, `pad_maximized` |
+| 3DS | Azahar | layout "Separate Windows" em `qt-config.ini`, seção `[Layout]`, chave `layout_option`. ⚠️ **O valor correto é `4`, não `5`** — o enum é `Default=0, SingleScreen=1, LargeScreen=2, SideScreen=3, SeparateWindows=4, HybridScreen=5, CustomLayout=6`. O `5` do script legado é HybridScreen |
 | PSP | PPSSPP | duas instâncias posicionadas em duas telas |
 | GBA | mGBA | duas instâncias posicionadas — **base para link cable** (P3) |
-| NDS | melonDS | **não tem** modo nativo de duas janelas — limite documentado, não contornado |
+| NDS | melonDS | **TEM, sim.** Desde a linha 1.0: "View → Open New Window" abre outra janela da mesma instância, cada uma com *Screen Sizing* independente (Top/Bottom Only), layout salvo entre sessões |
+
+> **Correção de 2026-07-25.** A versão anterior desta tabela afirmava que o
+> melonDS "não tem" modo de duas janelas, e citava `layout_option=5` para o
+> Azahar. Ambos vinham dos comentários do script legado e **ambos estavam
+> errados**: o melonDS ganhou multi-janela na 1.0, e o `5` é HybridScreen.
+> Lição de método: comentário de script de referência é *hipótese datada*, não
+> fato — o script foi escrito antes da 1.0 do melonDS e envelheceu em silêncio.
+>
+> Limitações reais do Azahar (fonte: `azahar-emu/azahar#1485`, aberta desde
+> 2025-11-28): não lembra posição/maximização entre sessões e não tem fullscreen
+> dedicado por monitor. Separate Windows não combina com Custom Layout (#251).
+> Chave exata do `melonDS.ini`: `NÃO ENCONTRADO`.
 
 **Por que ninguém usa.** Exige regra de janela do compositor, resolução de
 índice de conector e conhecimento de qual emulador aceita segunda janela. É

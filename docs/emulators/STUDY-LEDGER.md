@@ -9,8 +9,8 @@ Status: `pendente` · `em-curso` · `revisão` · `verde` · `descoberta`.
 
 | Onda | Slug | Sistema | Status | Commit | Pendências |
 |---|---|---|---|---|---|
-| 0 | `switch` | Nintendo Switch | **revisão** | — | **Não fecha em `verde`:** o §7 exige licença e manutenção verificadas com fonte e data — a licença do Citron não é declarada no manifesto e o estado upstream dos três não foi reverificado (D4). Resolver no WI-S0 |
-| 1 | `nes` | NES / Famicom | **verde** | — | Checklist §7 completo. Docs oficiais consultadas são da linha 0.9.9 (2020) e a aplicabilidade ao MesenCE 2.2.1 está marcada `[validar no spike]` em cada uso |
+| 0 | `switch` | Nintendo Switch | **verde** | — | Fechado em 2026-07-25: licenças dos três confirmadas (Eden GPLv3, Ryubing MIT, Citron GPL-3.0) e projetos ativos. WI-S0 agora tem entregáveis concretos: repinar Citron na estável, reconferir hash do Ryubing, declarar licença |
+| 1 | `nes` | NES / Famicom | **verde** | — | Revisado em 2026-07-25 com a coleta externa. Três afirmações anteriores estavam erradas e foram corrigidas (ver CORR-1..3). Riscos abertos declarados no dossiê: gyro sem precedente, HD Packs sem verificação em Linux, netplay sem doc |
 | 1 | `snes` | SNES | pendente | — | — |
 | 1 | `gb-gbc` | Game Boy / Color | pendente | — | MesenCE 2.2.0 anuncia link cable entre dois GB/GBC — gancho P3 forte |
 | 1 | `gba` | Game Boy Advance | pendente | — | — |
@@ -49,6 +49,27 @@ Entram aqui, nunca mudam a fila no improviso.
 | DESC-5 | Emuladores de dois ecrãs podem rotear para dois monitores físicos, mas **só em Desktop Mode** — o compositor de Game Mode é single-output/single-focus | Momento mágico quase pronto para `wiiu` (GamePad na tela do Deck, jogo na TV) e `3ds`. Ver C2 |
 | DESC-6 | Somando DESC-3 e DESC-5: a restrição do compositor de Game Mode é **transversal**, não por emulador | Promover a capability de plataforma + FM próprio, em vez de redescobrir sistema a sistema |
 | DESC-7 | O giroscópio é **descartado** pelos scripts de referência (filtro explícito de IMU) | O mapa gyro→pistola de luz não tem precedente para portar: spike exploratório, risco declarado. Ver C3 |
+| DESC-8 | **O rename No-Intro do WI-5 órfã a config por jogo de emuladores que a endereçam por nome de arquivo** — silenciosamente, sem erro | O achado de maior impacto do ciclo. Impõe requisito novo ao WI-5 (mover o sidecar na mesma transação) e vira **FM-29**. Ver `nes.md` §4 |
+| DESC-9 | Gyro-como-mouse do Steam Input é **relativo**; pistola de luz precisa de **absoluto**. Nenhum precedente publicado de gyro→lightgun | O momento mágico do NES fica com dois veículos possíveis (gyro ou trackpad) e o spike vira "provar que é possível", com resultado negativo aceitável |
+| DESC-10 | **Nenhum** dos quatro emuladores estudados publica SHA-256 (MesenCE, Eden, Ryubing, Citron) | O hash é sempre calculado localmente no primeiro download. Isso precisa virar **política declarada** no `ADAPTER-MODEL.md`, não prática implícita |
+| DESC-11 | Assets do Ryubing 1.3.3 foram **recriados em 2026-03-30** (migração GitLab→Forgejo) sem mudar a versão | Hash pinado antes disso pode não bater. Classe de risco nova: *release imutável que não é imutável* |
+
+## Correções — o que a coleta de 2026-07-25 derrubou
+
+Registro do que este ciclo **afirmou errado** e corrigiu. Existe para que o
+padrão fique visível, não só o resultado.
+
+| # | Eu afirmei | Na verdade | Origem do erro |
+|---|---|---|---|
+| CORR-1 | "AppImage das releases do MesenCE, pinado por SHA-256" | A estável **não tem AppImage** (só `.zip`), o AppImage é nightly, e o projeto **não publica hash nenhum** | Assumi que o padrão dos manifestos de Switch valia para outro projeto. Analogia, não verificação |
+| CORR-2 | melonDS "não tem" modo de duas janelas | **Tem desde a 1.0** — multi-janela com top/bottom independentes | Copiei o comentário de um script de referência sem datar. O script foi escrito antes da 1.0 e envelheceu em silêncio |
+| CORR-3 | Azahar usa `layout_option=5` para Separate Windows | O valor é **`4`**; `5` é HybridScreen | Mesma fonte, mesmo erro de método |
+| CORR-4 | Config por jogo do MesenCE: formato desconhecido | JSON, `GameConfig/<nome-da-ROM>.json`, **endereçada por nome de arquivo** — e isso colide com o WI-5 (ver DESC-8) | Não era erro, era lacuna; a coleta fechou |
+
+**Lição de método, aplicável ao resto das ondas:** comentário em script de
+referência é *hipótese datada*, não fato. Dos quatro itens acima, dois vieram de
+confiar num comentário sem verificar a data. Todo dossiê seguinte trata a
+árvore de scripts legados como pista a confirmar, nunca como fonte.
 
 ## Decisões do operador
 
