@@ -508,4 +508,9 @@ MESSAGES: dict[str, str] = {
     "error.E-CAST-STATE-INVALID.impact": "O pedido foi recusado e a sessão permaneceu no estado anterior.",
     "error.E-CAST-STATE-INVALID.cause": "Comando fora de ordem, repetido ou vindo de uma sessão já encerrada.",
     "error.E-CAST-STATE-INVALID.action": "Encerre a transmissão e inicie novamente; o relatório de suporte tem a sequência registrada.",
+    "error.E-CAST-UNAVAILABLE.title": "Compartilhamento de tela indisponível",
+    "error.E-CAST-UNAVAILABLE.what": "O orquestrador de compartilhamento não foi configurado na bridge Desktop.",
+    "error.E-CAST-UNAVAILABLE.impact": "A ação de compartilhamento não foi executada.",
+    "error.E-CAST-UNAVAILABLE.cause": "O daemon SteamZero não iniciou o subsistema de transmissão.",
+    "error.E-CAST-UNAVAILABLE.action": "Verifique se o daemon está rodando e os pré-requisitos ADR-0022 estão instalados.",
 }

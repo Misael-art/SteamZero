@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "sunshine",
+  "kind": "tool",
+  "platforms": ["linux"],
+  "capabilities": [
+    "detect",
+    "status"
+  ],
+  "sources": [
+    {
+      "type": "native",
+      "version": "2026.516.143833",
+      "priority": 1,
+      "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.516.143833/sunshine-ubuntu-24.04-amd64.deb",
+      "sha256": "6df8900f23c9c056252eea51639507b8239a1d1241308ab8923cb402b0ca653b"
+    }
+  ],
+  "license": "GPL-3.0-or-later",
+  "upstream": "https://github.com/LizardByte/Sunshine"
+}

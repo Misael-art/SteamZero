@@ -17,6 +17,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.cast_orchestrator import CastOrchestrator
 from steamzero.adapters.desktop_contracts import handheld_ui_contracts
 from steamzero.adapters.desktop_kde import (
     high_contrast_enabled,
@@ -29,6 +30,7 @@ from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.collections import CollectionManager
@@ -261,6 +263,7 @@ class DesktopDashboard:
         diagnostics: DiagnosticsService | None = None,
         playtime: PlaytimeCatalog | None = None,
         collections: CollectionManager | None = None,
+        cast_orchestrator: CastOrchestrator | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -290,6 +293,7 @@ class DesktopDashboard:
         )
         self._playtime = playtime or PlaytimeCatalog(store_factory)
         self._collections = collections or CollectionManager()
+        self._cast = cast_orchestrator
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -512,6 +516,29 @@ class DesktopDashboard:
                 "state": "degraded",
             }
 
+        try:
+            if self._cast is not None:
+                cast = {
+                    "state": "available",
+                    "status": self._cast.session_status(),
+                    "activeSessions": self._cast.active_sessions(),
+                    "detail": None,
+                }
+            else:
+                cast = {
+                    "state": "unavailable",
+                    "status": None,
+                    "activeSessions": [],
+                    "detail": "O orquestrador de compartilhamento não foi configurado.",
+                }
+        except Exception as exc:
+            cast = {
+                "state": "degraded",
+                "status": None,
+                "activeSessions": [],
+                "detail": str(exc)[:240],
+            }
+
         return {
             "uiContracts": handheld_ui_contracts(),
             "accessibility": {
@@ -529,6 +556,7 @@ class DesktopDashboard:
             "playtime": playtime,
             "collections": collections,
             "libraryHealth": library_health,
+            "cast": cast,
         }
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
@@ -617,6 +645,44 @@ class DesktopDashboard:
 
     def apply_library_health(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._emulation.apply_action(plan_id, confirm_token)
+
+    def cast_discover(self, timeout_ms: int = 5000) -> list[dict[str, Any]]:
+        if self._cast is None:
+            return []
+        return self._cast.discover_receivers(timeout_ms=timeout_ms)
+
+    def cast_pair(self, receiver_id: str, pin: str | None = None) -> dict[str, Any]:
+        if self._cast is None:
+            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
+        secret_pin = Secret(pin) if pin is not None else None
+        paired = self._cast.pair_receiver(receiver_id, pin=secret_pin)
+        return {"paired": paired, "receiverId": receiver_id}
+
+    def cast_start(
+        self, receiver_id: str, profile_id: str = "balanced", mode: str = "game"
+    ) -> dict[str, Any]:
+        if self._cast is None:
+            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
+        return self._cast.start_stream(receiver_id, profile_id=profile_id, mode=mode)
+
+    def cast_stop(self) -> dict[str, Any]:
+        if self._cast is None:
+            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
+        self._cast.stop_stream()
+        return {"stopped": True}
+
+    def cast_status(self) -> dict[str, Any]:
+        if self._cast is None:
+            return {"state": "unavailable", "detail": "Orquestrador não configurado."}
+        result = self._cast.session_status()
+        if result is None:
+            return {"state": "idle", "detail": "Nenhuma sessão ativa."}
+        return result
+
+    def cast_sessions(self) -> list[dict[str, Any]]:
+        if self._cast is None:
+            return []
+        return list(self._cast.active_sessions())
 
     def _rollback_component_for_history(self, operation_id: str) -> Any:
         with self._store_factory() as store:

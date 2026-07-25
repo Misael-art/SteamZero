@@ -319,6 +319,32 @@ class FakeDashboard:
         self.calls.append(("admin-health",))
         return {"available": True, "state": "healthy"}
 
+    def cast_discover(self, timeout_ms: int = 5000) -> list[dict[str, object]]:
+        self.calls.append(("cast-discover", str(timeout_ms)))
+        return [{"receiverId": "tv-sala", "name": "TV Sala", "kind": "miracast"}]
+
+    def cast_pair(self, receiver_id: str, pin: object = None) -> dict[str, object]:
+        self.calls.append(("cast-pair", receiver_id, str(pin) if pin is not None else ""))
+        return {"paired": True, "receiverId": receiver_id}
+
+    def cast_start(
+        self, receiver_id: str, profile_id: str = "balanced", mode: str = "game"
+    ) -> dict[str, object]:
+        self.calls.append(("cast-start", receiver_id, profile_id, mode))
+        return {"started": True, "receiverId": receiver_id}
+
+    def cast_stop(self) -> dict[str, object]:
+        self.calls.append(("cast-stop",))
+        return {"stopped": True}
+
+    def cast_status(self) -> dict[str, object]:
+        self.calls.append(("cast-status",))
+        return {"state": "idle", "receivers": []}
+
+    def cast_sessions(self) -> list[dict[str, object]]:
+        self.calls.append(("cast-sessions",))
+        return []
+
 
 @pytest.fixture
 def bridge(tmp_path: Path) -> tuple[str, str]:
@@ -845,6 +871,36 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("library-health-plan",),
         ("library-health-apply", "health-plan", "health-confirm"),
         ("admin-health",),
+    ]
+
+
+def test_bridge_exposes_cast_endpoints(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    discover = request_json(base, token, "/cast/discover?timeout=3000")
+    assert discover == {
+        "receivers": [{"receiverId": "tv-sala", "name": "TV Sala", "kind": "miracast"}]
+    }
+    pair = request_json(base, token, "/cast/pair", {"receiverId": "tv-sala"})
+    assert pair == {"paired": True, "receiverId": "tv-sala"}
+    start = request_json(base, token, "/cast/start", {"receiverId": "tv-sala"})
+    assert start == {"started": True, "receiverId": "tv-sala"}
+    stop = request_json(base, token, "/cast/stop", {})
+    assert stop == {"stopped": True}
+    status = request_json(base, token, "/cast/status")
+    assert status == {"state": "idle", "receivers": []}
+    sessions = request_json(base, token, "/cast/sessions")
+    assert sessions == {"sessions": []}
+
+    assert dashboard.calls == [
+        ("cast-discover", "3000"),
+        ("cast-pair", "tv-sala", ""),
+        ("cast-start", "tv-sala", "balanced", "game"),
+        ("cast-stop",),
+        ("cast-status",),
+        ("cast-sessions",),
     ]
 
 

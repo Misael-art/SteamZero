@@ -127,6 +127,13 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, self._dashboard().hud_presets())
         elif path == "/system/admin/health":
             self._send(HTTPStatus.OK, self._dashboard().admin_health())
+        elif path == "/cast/discover":
+            timeout_ms = int(parse_qs(parsed.query).get("timeout", ["5000"])[0])
+            self._send(HTTPStatus.OK, {"receivers": self._dashboard().cast_discover(timeout_ms)})
+        elif path == "/cast/status":
+            self._send(HTTPStatus.OK, self._dashboard().cast_status())
+        elif path == "/cast/sessions":
+            self._send(HTTPStatus.OK, {"sessions": self._dashboard().cast_sessions()})
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
 
@@ -453,6 +460,27 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             provider = self._required_string(payload, "provider")
             link = self._required_string(payload, "link")
             return self._dashboard().scraping_provider_link(provider, link)
+        if path == "/cast/pair":
+            receiver_id = self._required_string(payload, "receiverId")
+            pin = payload.get("pin")
+            if pin is not None and not isinstance(pin, str):
+                raise SteamZeroError("E-API-SCHEMA", detail="pin precisa ser string")
+            return self._dashboard().cast_pair(receiver_id, pin)
+        if path == "/cast/start":
+            receiver_id = self._required_string(payload, "receiverId")
+            profile = payload.get("profile")
+            mode = payload.get("mode")
+            if profile is not None and not isinstance(profile, str):
+                raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
+            if mode is not None and not isinstance(mode, str):
+                raise SteamZeroError("E-API-SCHEMA", detail="mode precisa ser string")
+            return self._dashboard().cast_start(
+                receiver_id,
+                profile_id=profile or "balanced",
+                mode=mode or "game",
+            )
+        if path == "/cast/stop":
+            return self._dashboard().cast_stop()
         raise SteamZeroError("E-API-UNKNOWN-ACTION", detail=f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})

@@ -39,7 +39,7 @@ Main {
               "movimento deve respeitar a faixa reduzida")
         check(responsiveDrawer.width <= width * 0.82 + 0.5,
               "drawer não pode cobrir toda a tela")
-        check(responsiveDrawerNavigation.count === 6,
+        check(responsiveDrawerNavigation.count === 7,
               "drawer deve publicar todas as áreas principais")
         check(responsiveTaskDrawer.width <= width * 0.94 + 0.5,
               "central de tarefas deve respeitar a largura handheld")

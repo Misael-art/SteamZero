@@ -482,6 +482,23 @@ class ScreenCastProviderPort(Protocol):
 
     def request_keyframe(self, session_id: str) -> bool: ...
 
+    def sessions(self) -> Sequence[str]:
+        """Sessoes ativas atualmente; lista vazia quando nenhuma. Idempotente.
+
+        Sobrevive a reinicio da UI: o provedor persiste o identificador e o
+        verifica contra o motor ao ser (re)criado. O dominio usa esse metodo
+        para reconciliar sessao apos restart da interface (ADR-0022 §8).
+        """
+        return []
+
+    def ensure_running(self) -> bool:
+        """Garante que o motor esta rodando; inicia se necessario (idempotente).
+
+        Retorna True se o motor estava ou ficou disponivel, False se o motor
+        nao pode ser iniciado (binario ausente, falha no startup).
+        """
+        return True
+
     def stop(self, session_id: str) -> None:
         """Idempotente: parar duas vezes não é erro (spec §19)."""
         ...

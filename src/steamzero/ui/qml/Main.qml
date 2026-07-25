@@ -74,6 +74,7 @@ ApplicationWindow {
     property alias playtimeRepeaterControl: playtimeRepeater
     property alias profilesScrollControl: profilesScroll
     property alias syncScrollControl: syncScroll
+    property alias castScrollControl: castScroll
     property alias systemScrollControl: systemScroll
     property alias syncProviderControl: providerStatusCard
     property alias syncUpdateControl: syncUpdateButton
@@ -175,6 +176,12 @@ ApplicationWindow {
         "impact": {"battery": "—", "resolution": "1280×800", "fluidity": "40 FPS estáveis"},
         "lsfgInstaller": {"id": "lsfg-vk", "state": "missing", "statusLabel": "Não instalado", "detail": "Camada Vulkan LSFG-VK ainda não preparada.", "version": null, "source": "PancakeTAS/lsfg-vk", "archiveSha256": "", "losslessScalingInstalled": false, "supportedHardware": true, "installable": false, "lastOperationId": null}
     })
+    property var fallbackCast: ({
+        "state": "unavailable",
+        "status": null,
+        "activeSessions": [],
+        "detail": "O orquestrador de compartilhamento não foi configurado."
+    })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
     readonly property var emulationData: desktopStatus.dashboard
@@ -206,6 +213,8 @@ ApplicationWindow {
                 "error": 0, "unavailable": 0, "unchecked": 0}})
     readonly property var lsfgSystemData: steamGameplayData && steamGameplayData.lsfgInstaller
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
+    readonly property var castData: desktopStatus.dashboard && desktopStatus.dashboard.cast
+        ? desktopStatus.dashboard.cast : fallbackCast
     property var liveTasks: null
     readonly property var taskItems: liveTasks !== null ? liveTasks
         : emulationData && emulationData.jobs ? emulationData.jobs : []
@@ -246,6 +255,9 @@ ApplicationWindow {
     property int pendingRequests: 0
     property bool bridgeUnavailable: false
     property var activeErrors: []
+    property var castReceivers: []
+    property string selectedReceiverId: ""
+    property string selectedReceiverName: ""
 
     function pushError(errorObj) {
         if (!errorObj || typeof errorObj !== "object" || !errorObj.code)
@@ -282,7 +294,8 @@ ApplicationWindow {
     function sectionLabel(index) {
         return [
             qsTr("Visão geral"), qsTr("Emulação"), qsTr("Steam"),
-            qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Sistema")
+            qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Transmissão"),
+            qsTr("Sistema")
         ][index] || qsTr("Central")
     }
 
@@ -494,7 +507,7 @@ ApplicationWindow {
         if (tokenMarker >= 0 && tokenMarker + 1 < args.length)
             apiToken = args[tokenMarker + 1]
         if (sectionMarker >= 0 && sectionMarker + 1 < args.length) {
-            const sections = {"overview": 0, "emulators": 1, "steam": 2, "profiles": 3, "sync": 4, "system": 5}
+            const sections = {"overview": 0, "emulators": 1, "steam": 2, "profiles": 3, "sync": 4, "cast": 5, "system": 6}
             if (sections[args[sectionMarker + 1]] !== undefined)
                 sectionIndex = sections[args[sectionMarker + 1]]
         }
@@ -2128,6 +2141,71 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: castPinDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onClosed: root.restoreDialogFocus()
+        title: qsTr("Parear com %1").arg(root.selectedReceiverName)
+        modal: true
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(root.width - 48, 480)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+        background: Rectangle { color: root.raisedColor; radius: 12; border.color: root.cyanDarkColor }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                text: qsTr("Informe o código exibido no receptor:")
+                color: root.textColor
+                font.pixelSize: 16
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextField {
+                id: castPinField
+                placeholderText: qsTr("Código PIN")
+                maximumLength: 8
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+                Layout.preferredHeight: 48
+                color: root.textColor
+                background: Rectangle { color: root.surfaceColor; radius: 6; border.color: root.borderColor }
+                Accessible.name: text
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: castPinDialog.close()
+                }
+                Button {
+                    id: castPinConfirmButton
+                    text: qsTr("Parear")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        var payload = {"receiverId": root.selectedReceiverId}
+                        if (castPinField.text.trim().length > 0)
+                            payload.pin = castPinField.text.trim()
+                        root.requestAction("cast.pair", payload,
+                            function(reply) {
+                                castPinDialog.close()
+                                castPinField.text = ""
+                                root.notify(qsTr("Receptor pareado com sucesso"))
+                            },
+                            function(err) {
+                                root.pushError(err)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     Drawer {
         id: navigationDrawer
         edge: Qt.LeftEdge
@@ -2202,6 +2280,7 @@ ApplicationWindow {
                     {"label": qsTr("Steam"), "icon": "steam"},
                     {"label": qsTr("Perfis"), "icon": "preferences-system"},
                     {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
+                    {"label": qsTr("Transmissão"), "icon": "video-display"},
                     {"label": qsTr("Sistema"), "icon": "configure"}
                 ]
                 delegate: Button {
@@ -2500,8 +2579,9 @@ ApplicationWindow {
                             {"label": qsTr("Emulação"), "icon": "input-gaming"},
                             {"label": qsTr("Steam"), "icon": "steam"},
                             {"label": qsTr("Perfis"), "icon": "preferences-system"},
-                            {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
-                            {"label": qsTr("Sistema"), "icon": "configure"}
+                    {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
+                    {"label": qsTr("Transmissão"), "icon": "video-display"},
+                    {"label": qsTr("Sistema"), "icon": "configure"}
                         ]
                         delegate: Button {
                             required property int index
@@ -4209,6 +4289,167 @@ ApplicationWindow {
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     onClicked: root.refreshStatus(qsTr("Status de sincronização atualizado"))
+                                }
+                            }
+                        }
+
+                        // Transmissão
+                        ScrollView {
+                            id: castScroll
+                            clip: true
+                            contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
+                            ColumnLayout {
+                                width: parent.width
+                                spacing: 16
+                                Label {
+                                    text: qsTr("Compartilhamento de tela")
+                                    color: root.textColor
+                                    font.pixelSize: 30
+                                    font.bold: true
+                                    Layout.topMargin: 28
+                                    Layout.leftMargin: 28
+                                }
+                                Label {
+                                    text: root.castData.detail || ""
+                                    visible: !!root.castData.detail
+                                    color: root.mutedColor
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                Rectangle {
+                                    color: root.castData.status && root.castData.status.state === "streaming"
+                                        ? "#0d6e42" : root.surfaceColor
+                                    radius: 8
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.preferredHeight: 48
+                                    visible: root.castData.state === "available"
+                                    Label {
+                                        text: root.castData.status && root.castData.status.state === "streaming"
+                                            ? qsTr("Transmitindo") : qsTr("Pronto para transmitir")
+                                        color: root.textColor
+                                        anchors.centerIn: parent
+                                        font.pixelSize: 14
+                                    }
+                                }
+                                Pane {
+                                    visible: root.castReceivers.length > 0
+                                    width: parent.width
+                                    padding: 16
+                                    background: Rectangle { color: root.surfaceColor; radius: 6 }
+                                    ColumnLayout { spacing: 8
+                                        Label { text: qsTr("Receptores encontrados"); font.bold: true; color: root.textColor }
+                                        Repeater {
+                                            model: root.castReceivers
+                                            delegate: Rectangle {
+                                                required property int index
+                                                required property var modelData
+                                                color: root.selectedReceiverId === (modelData.receiver_id || "")
+                                                    ? root.cyanDarkColor : "transparent"
+                                                radius: 6
+                                                height: 44
+                                                Layout.fillWidth: true
+                                                border.color: root.selectedReceiverId === (modelData.receiver_id || "")
+                                                    ? root.cyanColor : root.borderColor
+                                                Label {
+                                                    text: (modelData.display_name || modelData.name || modelData.receiver_id || "")
+                                                        + " — " + (modelData.protocol || "")
+                                                    color: root.textColor
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    x: 12
+                                                    font.pixelSize: 14
+                                                }
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    onClicked: {
+                                                        root.selectedReceiverId = modelData.receiver_id || ""
+                                                        root.selectedReceiverName = modelData.display_name || modelData.name || ""
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Button {
+                                    text: root.castReceivers.length > 0
+                                        ? qsTr("Atualizar lista de receptores")
+                                        : qsTr("Descobrir receptores")
+                                    icon.name: "network-wireless"
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: root.requestAction("cast.discover", {},
+                                        function(reply) {
+                                            root.castReceivers = reply.receivers || reply || []
+                                            root.notify(qsTr("Receptores encontrados: %1").arg(root.castReceivers.length))
+                                        },
+                                        function(err) { root.pushError(err) }
+                                    )
+                                }
+                                Button {
+                                    id: castPairButton
+                                    text: qsTr("Parear receptor")
+                                    icon.name: "bluetooth"
+                                    enabled: root.selectedReceiverId.length > 0
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: castPinDialog.open()
+                                }
+                                Button {
+                                    id: castStartButton
+                                    text: qsTr("Iniciar transmissão")
+                                    icon.name: "media-playback-start"
+                                    enabled: root.selectedReceiverId.length > 0
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: {
+                                        root.requestAction("cast.start", {"receiverId": root.selectedReceiverId},
+                                            function(reply) {
+                                                root.notify(qsTr("Transmissão iniciada para %1").arg(root.selectedReceiverName))
+                                            },
+                                            function(err) { root.pushError(err) }
+                                        )
+                                    }
+                                }
+                                Button {
+                                    text: qsTr("Parar transmissão")
+                                    icon.name: "media-playback-stop"
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: root.requestAction("cast.stop", {},
+                                        function(reply) { root.notify(qsTr("Transmissão parada")) },
+                                        function(err) { root.pushError(err) }
+                                    )
+                                }
+                                Button {
+                                    text: qsTr("Status")
+                                    icon.name: "view-refresh"
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: root.requestAction("cast.status", {},
+                                        function(reply) { root.notify(qsTr("Status atualizado")) },
+                                        function(err) { root.pushError(err) }
+                                    )
+                                }
+                                Button {
+                                    text: qsTr("Sessões ativas")
+                                    icon.name: "network-server"
+                                    Layout.leftMargin: 28
+                                    Layout.minimumHeight: 48
+                                    Accessible.name: text
+                                    onClicked: root.requestAction("cast.sessions", {},
+                                        function(reply) { root.notify(qsTr("Sessões listadas")) },
+                                        function(err) { root.pushError(err) }
+                                    )
                                 }
                             }
                         }

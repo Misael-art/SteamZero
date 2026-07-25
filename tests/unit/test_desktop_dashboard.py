@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
+from steamzero.adapters.cast_orchestrator import CastOrchestrator
 from steamzero.adapters.desktop_dashboard import DesktopDashboard, SteamDesktopController
 from steamzero.adapters.flatpak import FlatpakState
 from steamzero.adapters.steam_gameplay import SteamGameplayController
@@ -661,3 +663,215 @@ def test_gameplay_apply_refuses_plan_after_library_changes(tmp_path: Path) -> No
     with pytest.raises(SteamZeroError) as error:
         controller.apply(str(plan["planId"]), str(plan["confirmToken"]), status)
     assert error.value.code == "E-TX-STALE-PLAN"
+
+
+class TestCastDashboardIntegration:
+    """Testes de integração entre DesktopDashboard e CastOrchestrator."""
+
+    @pytest.fixture
+    def mock_cast(self) -> MagicMock:
+        cast = MagicMock(spec=CastOrchestrator)
+        cast.discover_receivers.return_value = [{"receiverId": "tv-sala", "name": "TV Sala"}]
+        cast.pair_receiver.return_value = True
+        cast.start_stream.return_value = {"started": True, "receiverId": "tv-sala"}
+        cast.session_status.return_value = {"state": "streaming", "receiverId": "tv-sala"}
+        cast.active_sessions.return_value = [
+            {"sessionId": "sess-1", "receiverId": "tv-sala", "state": "streaming"}
+        ]
+        return cast
+
+    def test_cast_section_is_unavailable_when_orchestrator_not_configured(
+        self, tmp_path: Path
+    ) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        snapshot = dashboard.snapshot({"context": {"deviceKind": "deck-lcd"}})
+        cast = snapshot.get("cast", {})
+        assert cast.get("state") == "unavailable"
+        assert cast.get("detail") is not None
+
+    def test_cast_section_is_available_when_orchestrator_configured(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        snapshot = dashboard.snapshot({"context": {"deviceKind": "deck-lcd"}})
+        cast = snapshot.get("cast", {})
+        assert cast.get("state") == "available"
+        assert cast.get("status") == {"state": "streaming", "receiverId": "tv-sala"}
+        assert len(cast.get("activeSessions", [])) == 1
+
+    def test_cast_section_degrades_on_orchestrator_error(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        mock_cast.session_status.side_effect = RuntimeError("connection lost")
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        snapshot = dashboard.snapshot({"context": {"deviceKind": "deck-lcd"}})
+        cast = snapshot.get("cast", {})
+        assert cast.get("state") == "degraded"
+        assert "connection lost" in cast.get("detail", "")
+
+    def test_cast_discover_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        receivers = dashboard.cast_discover(timeout_ms=3000)
+        mock_cast.discover_receivers.assert_called_once_with(timeout_ms=3000)
+        assert receivers == [{"receiverId": "tv-sala", "name": "TV Sala"}]
+
+    def test_cast_pair_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_pair("tv-sala", pin="1234")
+        mock_cast.pair_receiver.assert_called_once()
+        args, kwargs = mock_cast.pair_receiver.call_args
+        assert args == ("tv-sala",)
+        assert "pin" in kwargs
+        secret = kwargs["pin"]
+        assert secret is not None
+        assert secret.reveal() == "1234"
+        assert result == {"paired": True, "receiverId": "tv-sala"}
+
+    def test_cast_start_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_start("tv-sala", profile_id="game", mode="mirror")
+        mock_cast.start_stream.assert_called_once_with("tv-sala", profile_id="game", mode="mirror")
+        assert result == {"started": True, "receiverId": "tv-sala"}
+
+    def test_cast_stop_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_stop()
+        mock_cast.stop_stream.assert_called_once_with()
+        assert result == {"stopped": True}
+
+    def test_cast_status_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_status()
+        mock_cast.session_status.assert_called_once_with()
+        assert result == {"state": "streaming", "receiverId": "tv-sala"}
+
+    def test_cast_sessions_delegates_to_orchestrator(
+        self, tmp_path: Path, mock_cast: MagicMock
+    ) -> None:
+        dashboard = DesktopDashboard(
+            cast_orchestrator=mock_cast,
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_sessions()
+        mock_cast.active_sessions.assert_called_once_with()
+        assert len(result) == 1
+
+    def test_cast_methods_raise_when_orchestrator_not_configured(self, tmp_path: Path) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        with pytest.raises(SteamZeroError) as exc:
+            dashboard.cast_pair("tv-sala")
+        assert exc.value.code == "E-CAST-UNAVAILABLE"
+
+        with pytest.raises(SteamZeroError) as exc:
+            dashboard.cast_start("tv-sala")
+        assert exc.value.code == "E-CAST-UNAVAILABLE"
+
+        with pytest.raises(SteamZeroError) as exc:
+            dashboard.cast_stop()
+        assert exc.value.code == "E-CAST-UNAVAILABLE"
+
+    def test_cast_discover_returns_empty_when_not_configured(self, tmp_path: Path) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        assert dashboard.cast_discover() == []
+
+    def test_cast_sessions_returns_empty_when_not_configured(self, tmp_path: Path) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        assert dashboard.cast_sessions() == []
+
+    def test_cast_status_returns_unavailable_when_not_configured(self, tmp_path: Path) -> None:
+        dashboard = DesktopDashboard(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            flatpak_factory=lambda: MagicMock(),
+            doctor_runner=lambda: ({"version": "test"}, []),
+            which=lambda _: None,
+            spawn=lambda _argv: None,
+        )
+        result = dashboard.cast_status()
+        assert result.get("state") == "unavailable"

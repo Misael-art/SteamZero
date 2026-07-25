@@ -86,7 +86,8 @@ def make_engine(
 
 def test_bundled_registry_loads_verified_emulation_adapters() -> None:
     registry = AdapterRegistry.bundled()
-    assert [manifest.id for manifest in registry.list()] == [
+    emulators = [m for m in registry.list() if m.kind == "emulator"]
+    assert [manifest.id for manifest in emulators] == [
         "citron",
         "dolphin",
         "duckstation",
@@ -94,9 +95,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "retroarch",
         "ryubing",
     ]
-    assert all(
-        {"detect", "status", "install", "verify"} <= item.capabilities for item in registry.list()
-    )
+    assert all({"detect", "status", "install", "verify"} <= item.capabilities for item in emulators)
     assert registry.get("duckstation").sources[0].end_of_life is True
 
 
@@ -110,6 +109,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "eden",
         "retroarch",
         "ryubing",
+        "sunshine",
     ]
 
 

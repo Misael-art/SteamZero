@@ -37,6 +37,10 @@ PROC_PORT_PREFIXES = (
     "steamzero.privileged.client",
 )
 NET_PORT = "steamzero.core.net"
+# Adaptadores que falam HTTP LAN (descoberta mDNS / pareamento GFE) — protocolo
+# exige HTTP puro; core.net exige HTTPS. A exceção é nominal por módulo porque
+# o código LAN HTTP cruza a fronteira de segurança de forma controlada.
+_NET_EXEMPT_MODULES = frozenset({"steamzero.adapters.game_stream"})
 _HTTP_IMPORTS = frozenset({"urllib.request", "http.client", "requests", "httpx", "aiohttp"})
 
 _OS_WRITE_FUNCS = frozenset(
@@ -133,9 +137,13 @@ class _Visitor(ast.NodeVisitor):
             name.startswith("steamzero.adapters") or name == "steamzero.adapters"
         ):
             self._add("BND-DOMAIN-ADAPTER", node, "domain importa adapters (proibido)")
-        if not self._is_net_port and (
-            name in _HTTP_IMPORTS
-            or any(name.startswith(f"{prefix}.") for prefix in {"requests", "httpx", "aiohttp"})
+        if (
+            not self._is_net_port
+            and self.module not in _NET_EXEMPT_MODULES
+            and (
+                name in _HTTP_IMPORTS
+                or any(name.startswith(f"{prefix}.") for prefix in {"requests", "httpx", "aiohttp"})
+            )
         ):
             self._add("BND-NET", node, "cliente HTTP fora de core.net")
 

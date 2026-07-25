@@ -74,6 +74,8 @@ ERROR_CATALOG: dict[str, str] = {
     "E-API-SCHEMA": "API",
     "E-API-UNKNOWN-ACTION": "API",
     "E-API-CONTRACT": "API",
+    # CAST
+    "E-CAST-UNAVAILABLE": "CAST",
     # JOBS
     "E-JOBS-BLOCKED-GAMEPLAY": "JOBS",
     "E-JOBS-BLOCKED-BATTERY": "JOBS",

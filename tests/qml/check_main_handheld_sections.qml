@@ -235,6 +235,12 @@ Main {
             return
         }
         if (phase === 6) {
+            checkScrollWidth(window.castScrollControl, "Transmissão")
+            window.sectionIndex = 6
+            phase = 7
+            return
+        }
+        if (phase === 7) {
             checkScrollWidth(window.systemScrollControl, "Sistema")
             window.operationRollbackPlan = {
                 "planId": "01J0000000000000000000000B",
@@ -247,20 +253,20 @@ Main {
                 "rollbackGuarantee": "G-FULL"
             }
             window.operationRollbackControl.open()
-            phase = 7
+            phase = 8
             return
         }
-        if (phase === 7) {
+        if (phase === 8) {
             check(window.operationRollbackControl.visible,
                   "preview de rollback contextual deve abrir no handheld")
             check(window.operationRollbackControl.width <= window.width - 48 + 0.5,
                   "preview de rollback não pode exceder o viewport")
             window.operationRollbackControl.close()
             window.collectionManagerControl.open()
-            phase = 8
+            phase = 9
             return
         }
-        if (phase === 8) {
+        if (phase === 9) {
             check(window.collectionManagerControl.visible,
                   "gerenciador de coleções deve abrir no handheld")
             check(window.collectionManagerControl.width <= window.width - 48 + 0.5,
@@ -272,10 +278,10 @@ Main {
                 "preview": "Amostragem limitada e somente leitura."
             }
             window.libraryHealthPlanControl.open()
-            phase = 9
+            phase = 10
             return
         }
-        if (phase === 9) {
+        if (phase === 10) {
             check(window.libraryHealthPlanControl.visible,
                   "preview anti-bitrot deve abrir no handheld")
             check(window.libraryHealthPlanControl.width <= window.width - 48 + 0.5,
