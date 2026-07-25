@@ -1043,11 +1043,15 @@ def test_bridge_session_select_rejects_bad_target_and_token(
     monkeypatch.setattr(
         "steamzero.adapters.desktop_ui.session_readiness", lambda: dict(_READY_SESSION)
     )
+    # Alvo fora da allowlist é pedido malformado: 400 + E-API-SCHEMA.
     with pytest.raises(urllib.error.HTTPError) as bad_target:
         request_json(base, token, "/session/select", {"target": "shutdown"})
     assert bad_target.value.code == 400
+    assert json.loads(bad_target.value.read())["error"]["code"] == "E-API-SCHEMA"
     bad_target.value.close()
 
+    # Token de confirmação errado/expirado é pré-condição de conflito, não schema:
+    # o pedido está bem formado, o estado é que não autoriza. 409 + E-TX-CONFIRM-REQUIRED.
     plan = request_json(base, token, "/session/select", {"target": "steam"})
     with pytest.raises(urllib.error.HTTPError) as bad_token:
         request_json(
@@ -1056,5 +1060,16 @@ def test_bridge_session_select_rejects_bad_target_and_token(
             "/session/select",
             {"target": "steam", "planId": str(plan["planId"]), "confirmToken": "errado"},
         )
-    assert bad_token.value.code == 400
+    assert bad_token.value.code == 409
+    assert json.loads(bad_token.value.read())["error"]["code"] == "E-TX-CONFIRM-REQUIRED"
     bad_token.value.close()
+
+
+def test_bridge_unknown_action_is_not_found(bridge: tuple[str, str]) -> None:
+    """Rota fora da allowlist: 404 + E-API-UNKNOWN-ACTION (não E-API-SCHEMA)."""
+    base, token = bridge
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request_json(base, token, "/nao/existe", {})
+    assert error.value.code == 404
+    assert json.loads(error.value.read())["error"]["code"] == "E-API-UNKNOWN-ACTION"
+    error.value.close()

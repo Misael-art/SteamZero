@@ -1545,6 +1545,26 @@ class EmulationController:
         return self._plan_view(plan, action, **plan_extra)
 
     def apply_action(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        """Aplica o plano confirmado e liquida os efeitos colaterais da operação.
+
+        Erro levantado DEPOIS do commit da transação (persistência de import,
+        jobs de mídia, publicação no Steam) herda o operationId da operação já
+        comitada. Sem isso o ErrorCard não agrega a falha à operação que o
+        usuário acabou de disparar e o rollback fica sem alvo visível na UI.
+        """
+        result, plan = self._apply_transaction(plan_id, confirm_token)
+        try:
+            return self._settle_apply(plan_id, plan, result)
+        except SteamZeroError as exc:
+            if exc.operation_id is None:
+                exc.operation_id = result.operation_id
+            raise
+
+    def _apply_transaction(
+        self, plan_id: str, confirm_token: str
+    ) -> tuple[transaction.ApplyResult, transaction.Plan]:
+        """Chain de despacho até o commit. Erros aqui já saem com operationId
+        anexado pelo próprio ``transaction.apply`` quando ocorrem pós-op_id."""
         plan = transaction.load_plan(plan_id)
         pending = self._pending.get(plan_id)
         if pending is not None and pending.kind == "nsz":
@@ -1585,6 +1605,13 @@ class EmulationController:
             result = transaction.apply(plan_id, confirm_token)
         else:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence à emulação")
+        return result, plan
+
+    def _settle_apply(
+        self, plan_id: str, plan: transaction.Plan, result: transaction.ApplyResult
+    ) -> dict[str, Any]:
+        """Efeitos colaterais pós-commit. A transação já está comitada: falha
+        aqui não sofre rollback automático, apenas herda o operationId."""
         pending = self._pending.pop(plan_id, None)
         response: dict[str, Any] = {
             "status": result.status,

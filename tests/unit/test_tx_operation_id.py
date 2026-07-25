@@ -4,56 +4,54 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from steamzero.core import errors, fs, transaction
+from steamzero.core import errors, transaction
 
 
-def test_apply_precondition_error_has_no_operation_id(tmp_path: Path) -> None:
+@pytest.fixture
+def isolated_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Estado do SteamZero em tmp_path: planos e journal não vazam para o host."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+    return sandbox
+
+
+def test_apply_precondition_error_has_no_operation_id(isolated_state: Path) -> None:
     """Erro de pré-condição (antes de op_id existir) NÃO carrega operationId."""
-    plan = transaction.plan_write_files(
-        {tmp_path / "cfg.ini": b"novo"}, root=tmp_path
-    )
+    plan = transaction.plan_write_files({isolated_state / "cfg.ini": b"novo"}, root=isolated_state)
     with pytest.raises(errors.SteamZeroError) as exc:
         transaction.apply(plan.plan_id, "token-errado")
     assert exc.value.code == "E-TX-CONFIRM-REQUIRED"
     assert exc.value.operation_id is None
 
 
-def test_apply_mid_pipeline_error_carries_operation_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apply_mid_pipeline_error_carries_operation_id(
+    isolated_state: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Erro SteamZeroError DENTRO do pipeline apply (após op_id) carrega operationId."""
-    fs.ensure_state_layout()
-    sandbox = tmp_path / "sandbox"
-    sandbox.mkdir()
-    target = sandbox / "cfg.ini"
+    target = isolated_state / "cfg.ini"
     target.write_text("v0")
+    plan = transaction.plan_write_files({target: b"v1"}, root=isolated_state)
 
-    plan = transaction.plan_write_files({target: b"v1"}, root=sandbox)
-
-    injected_code = "E-TX-STALE-PLAN"
     injected_detail = "falha simulada mid-apply pós-op_id"
 
-    original_stage = transaction._stage
-
-    def _stage_failing(op_id: str, plan, jrnl) -> None:
-        raise errors.SteamZeroError(injected_code, detail=injected_detail)
+    def _stage_failing(op_id: str, plan: Any, jrnl: Any) -> None:
+        raise errors.SteamZeroError("E-TX-STALE-PLAN", detail=injected_detail)
 
     monkeypatch.setattr(transaction, "_stage", _stage_failing)
     with pytest.raises(errors.SteamZeroError) as exc:
         transaction.apply(plan.plan_id, plan.confirm_token)
-    assert exc.value.code == injected_code
-    assert exc.value.operation_id is not None
-    assert len(exc.value.operation_id) > 0
+    assert exc.value.code == "E-TX-STALE-PLAN"
     assert exc.value.detail == injected_detail
-
-
-def test_rollback_precondition_error_carries_no_operation_id(tmp_path: Path) -> None:
-    """Erro de validação em rollback_action (operationId inválido) NÃO tem operationId
-    porque a operação não existe; o código E-API-SCHEMA é de pré-condição, não de domínio."""
-    with pytest.raises(errors.SteamZeroError) as exc:
-        # Simula o que rollback_action faz: valida ULID antes de usar
-        from steamzero.core import ids
-        if not ids.is_ulid("invalido"):
-            raise errors.SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
-    assert exc.value.operation_id is None
+    assert exc.value.operation_id
+    # O rollback rodou sob o mesmo op_id: o conteúdo original permanece.
+    assert target.read_text() == "v0"

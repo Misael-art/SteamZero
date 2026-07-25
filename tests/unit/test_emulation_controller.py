@@ -426,6 +426,50 @@ def test_keys_import_projects_optional_title_keys(monkeypatch, tmp_path: Path) -
         assert target.read_text(encoding="utf-8") == title_content
 
 
+def test_rollback_action_rejects_non_ulid_without_operation_id(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """operationId malformado é pré-condição: E-API-SCHEMA e sem operationId agregável."""
+    controller = _controller(monkeypatch, tmp_path)
+    with pytest.raises(SteamZeroError) as exc:
+        controller.rollback_action("invalido")
+    assert exc.value.code == "E-API-SCHEMA"
+    assert exc.value.operation_id is None
+
+
+def test_post_commit_side_effect_error_inherits_operation_id(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Falha no efeito colateral pós-commit herda o operationId da transação comitada.
+
+    A transação já foi aplicada quando ``_persist_import`` roda; sem herdar o id
+    o ErrorCard não consegue agregar a falha à operação que o usuário disparou.
+    """
+    home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local/share"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    source = home / "owned-keys"
+    source.mkdir(parents=True)
+    (source / "prod.keys").write_text(
+        "master_key_00 = " + "01" * 16 + "\n"
+        "master_key_01 = " + "02" * 16 + "\n"
+        "header_key = " + "03" * 16 + "\n"
+        "titlekek_00 = " + "04" * 16 + "\n",
+        encoding="utf-8",
+    )
+
+    def _persist_failing(_pending) -> None:  # type: ignore[no-untyped-def]
+        raise SteamZeroError("E-STATE-INTEGRITY", detail="falha simulada pós-commit")
+
+    monkeypatch.setattr(controller, "_persist_import", _persist_failing)
+    plan = controller.plan_action({"actionId": "keys.import", "path": str(source)})
+    with pytest.raises(SteamZeroError) as exc:
+        _apply(controller, plan)
+    assert exc.value.code == "E-STATE-INTEGRITY"
+    assert exc.value.operation_id
+    # As chaves foram gravadas: a transação comitou, só o efeito colateral falhou.
+    assert (home / ".switch/prod.keys").exists()
+
+
 def test_nsz_private_install_is_idempotent_after_verified_publication(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

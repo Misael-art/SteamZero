@@ -39,6 +39,15 @@ from steamzero.domain.desktop import (
 
 _MAX_BODY = 64 * 1024
 
+# Status HTTP por código do catálogo. O default é CONFLICT: erro de domínio que
+# recusa a operação no estado atual. Só o que é de fato malformado vira 400 e só
+# rota inexistente vira 404 — o cliente distingue "corrija o pedido" de
+# "o pedido está certo, o estado é que não permite".
+_STATUS_BY_CODE = {
+    "E-API-SCHEMA": HTTPStatus.BAD_REQUEST,
+    "E-API-UNKNOWN-ACTION": HTTPStatus.NOT_FOUND,
+}
+
 
 class DesktopControlServer(HTTPServer):
     coordinator: ExperienceCoordinator
@@ -129,7 +138,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             payload = self._read_payload()
             result = self._dispatch(urlparse(self.path).path, payload)
         except SteamZeroError as exc:
-            status = HTTPStatus.BAD_REQUEST if exc.code == "E-API-SCHEMA" else HTTPStatus.CONFLICT
+            status = _STATUS_BY_CODE.get(exc.code, HTTPStatus.CONFLICT)
             self._send(status, {"error": exc.to_error_object()})
             return
         except (json.JSONDecodeError, TypeError, ValueError) as exc:
@@ -153,7 +162,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
 
     def _read_payload(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length", "0")
-        length = int(raw_length)
+        try:
+            length = int(raw_length)
+        except ValueError:
+            raise SteamZeroError("E-API-SCHEMA", detail="Content-Length não numérico") from None
         if length < 0 or length > _MAX_BODY:
             raise SteamZeroError("E-API-SCHEMA", detail="corpo fora do limite")
         if length == 0:
@@ -441,7 +453,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             provider = self._required_string(payload, "provider")
             link = self._required_string(payload, "link")
             return self._dashboard().scraping_provider_link(provider, link)
-        raise SteamZeroError("E-API-SCHEMA", detail=f"ação não permitida: {path}")
+        raise SteamZeroError("E-API-UNKNOWN-ACTION", detail=f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})
 
@@ -475,10 +487,13 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         stored = plans.pop(str(plan_id), None)
         if stored is None or not secrets.compare_digest(stored[0], str(confirm)):
             raise SteamZeroError(
-                "E-API-SCHEMA", detail="confirmação de troca de sessão inválida ou expirada"
+                "E-TX-CONFIRM-REQUIRED",
+                detail="confirmação de troca de sessão inválida ou expirada",
             )
         if stored[1] != target:
-            raise SteamZeroError("E-API-SCHEMA", detail="alvo divergente do plano confirmado")
+            raise SteamZeroError(
+                "E-TX-CONFIRM-REQUIRED", detail="alvo divergente do plano confirmado"
+            )
         result = request_target(target)
         logged_out = logout_desktop_session()
         return {**result, "logout": logged_out}
