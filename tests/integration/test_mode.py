@@ -66,6 +66,11 @@ def test_all_external_fail_falls_to_internal(store: state.StateStore) -> None:
     assert result.degraded is True
 
 
+def test_current_is_none_when_no_mode_applied(store: state.StateStore) -> None:
+    cur = ModeManager(FakeDisplayPort(), store).current()
+    assert cur is None
+
+
 def test_current_mode_persisted(store: state.StateStore) -> None:
     ModeManager(FakeDisplayPort(), store).apply_mode("desktop")
     cur = ModeManager(FakeDisplayPort(), store).current()

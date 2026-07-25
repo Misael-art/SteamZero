@@ -59,6 +59,21 @@ def test_detect_persists_device(store: state.StateStore) -> None:
     assert persisted["kind"] == "deck-oled"
 
 
+def test_detect_deck_lcd_includes_tdp_range(store: state.StateStore) -> None:
+    mgr = DeviceManager(FakeDevicePort({"sys_vendor": "Valve", "product_name": "Jupiter"}), store)
+    device = mgr.detect()
+    assert device.kind == "deck-lcd"
+    assert device.quirks["tdpRange"] == [3, 15]
+    assert device.quirks["hasOled"] is False
+
+
+def test_detect_desktop_returns_empty_tdp(store: state.StateStore) -> None:
+    mgr = DeviceManager(FakeDevicePort({"sys_vendor": "Dell", "product_name": "XPS"}), store)
+    device = mgr.detect()
+    assert device.kind == "desktop"
+    assert device.quirks["tdpRange"] == []
+
+
 def test_is_steam_deck(store: state.StateStore) -> None:
     deck = DeviceManager(FakeDevicePort({"sys_vendor": "Valve", "product_name": "Jupiter"}), store)
     desktop = DeviceManager(FakeDevicePort({"sys_vendor": "Asus", "product_name": "PC"}), store)

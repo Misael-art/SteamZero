@@ -67,6 +67,17 @@ def test_method_specs_reject_untyped_unknown_missing_and_duplicate_values() -> N
         session.args_to_params(["--command", "rm"], "correlation")
 
 
+def test_params_to_args_accepts_none_and_returns_empty() -> None:
+    spec = next(s for s in METHOD_SPECS if s.method == "doctor.run")
+    assert spec.params_to_args(None) == []
+
+
+def test_args_to_params_requires_required_fields() -> None:
+    spec = next(s for s in METHOD_SPECS if s.method == "session.status")
+    with pytest.raises(InvalidParams, match="obrigatória"):
+        spec.args_to_params([], "correlation")
+
+
 def test_optional_profile_and_choices_are_validated() -> None:
     desktop = next(spec for spec in METHOD_SPECS if spec.method == "desktop.plan")
     assert desktop.params_to_args({}) == []

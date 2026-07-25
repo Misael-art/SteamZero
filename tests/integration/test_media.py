@@ -14,6 +14,7 @@ from steamzero.domain.media import MediaAssignment, MediaLibrary
 
 _PNG = b"\x89PNG\r\n\x1a\n" + b"synthetic-png"
 _JPG = b"\xff\xd8\xff" + b"synthetic-jpeg"
+_WEBP = b"RIFF\x00\x00\x00\x00WEBP" + b"synthetic-webp"
 
 
 def _assignment(game_id: str, kind: str = "boxart") -> MediaAssignment:
@@ -93,3 +94,37 @@ def test_st06_bad_magic_oversize_and_bidi_are_quarantined(tmp_path: Path) -> Non
     assert all(path.name.isascii() for path in quarantined)
     assert not (root / "canonical" / game_id).exists()
     MediaLibrary.rollback(result.operation_id)
+
+
+def test_media_library_rejects_zero_max_bytes() -> None:
+    with pytest.raises(ValueError, match="max_bytes precisa ser positivo"):
+        MediaLibrary(max_bytes=0)
+
+
+def test_quarantine_files_are_skipped_during_reconcile(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    quarantined = root / ".quarantine" / "orphans" / "existing.bin"
+    fs.write_atomic(quarantined, _PNG)
+    media = MediaLibrary()
+    plan = media.plan_reconcile(root, {})
+    assert len(plan.actions) == 0  # quarantine files should not trigger moves
+
+
+def test_reconcile_when_source_already_at_target_does_nothing(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    game_id = ids.new_ulid()
+    canonical = root / "canonical" / game_id / "boxart.png"
+    fs.write_atomic(canonical, _PNG)
+    media = MediaLibrary()
+    plan = media.plan_reconcile(root, {f"canonical/{game_id}/boxart.png": _assignment(game_id)})
+    assert len(plan.actions) == 0
+
+
+def test_media_extension_detects_webp(tmp_path: Path) -> None:
+    root = tmp_path / "media"
+    target = root / "artwork.payload"
+    fs.write_atomic(target, _WEBP)
+    from steamzero.domain.media import _media_extension
+
+    ext = _media_extension(target, max_bytes=2**20)
+    assert ext == ".webp"
