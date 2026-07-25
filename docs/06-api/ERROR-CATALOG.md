@@ -88,6 +88,24 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-SCRAPE-HTTP-ERROR` provedor respondeu com erro HTTP inesperado; fallback continua.
 - `E-SCRAPE-OFFLINE` conexão com o provedor indisponível; operações locais continuam.
 
+### CAST (compartilhamento de tela, ADR-0022)
+- `E-CAST-NO-RECEIVER` nenhum receptor comprovou o modo pedido; a mensagem indica
+  ligar a TV na mesma rede ou usar espelhamento — nunca "erro desconhecido".
+- `E-CAST-RECEIVER-INCOMPATIBLE` capacidade observada não cobre modo, resolução ou
+  codec. Emitido também quando falta interseção de codec com o piso H.264/Opus.
+- `E-CAST-ENGINE-MISSING` a via depende de um motor de transmissão ausente; a ação é
+  instalar pelo próprio produto, de forma reversível.
+- `E-CAST-PAIRING-REJECTED` receptor recusou o pareamento ou o código expirou; nenhum
+  dispositivo é salvo como confiável.
+- `E-CAST-CONSENT-REQUIRED` sem autorização do portal, ou escopo concedido não cobre o
+  modo (janela não autoriza espelhar a tela inteira). Também é o código da revogação
+  de consentimento durante a sessão.
+- `E-CAST-PROTECTED-CONTENT` conteúdo protegido: o envio pausa e a sessão continua;
+  nenhum contorno de HDCP/DRM é tentado.
+- `E-CAST-LINK-LOST` enlace perdido após o backoff completo (0, 1, 2, 4, 8 s).
+- `E-CAST-STATE-INVALID` transição não declarada na máquina de sessão; o pedido é
+  recusado e o estado anterior permanece.
+
 ## Governança
 
 Novo código exige: entrada neste catálogo + textos pt-BR/en + teste que o dispara. CI falha se código emitido não consta no catálogo.

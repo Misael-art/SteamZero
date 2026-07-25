@@ -45,7 +45,21 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | R6 | Perfis automáticos de controles especializados | retro-input-profile-v1 | pending | — |
 | R7 | Latência/torneio, netplay e melhorias 3D | retro-experience-v1 | pending | — |
 | R8 | Registry compartilhado de shaders/bezels | media-registry-v1 | pending | — |
+| S0 | Fundação pura do compartilhamento de tela multi-provedor | screen-cast-v1 | verified-dev | `docs/expansion/WI-S0.md` |
+| S1 | Via `game-stream`: motor reversível, descoberta e pareamento local | screen-cast-v1 | pending | — |
+| S2 | Motor fora do processo da UI, comandos idempotentes | screen-cast-v1 | pending | — |
+| S3 | UI de um toque por gamepad, cartões honestos e overlay | screen-cast-v1 | pending | — |
+| S4 | Via `steam-remote-play` | screen-cast-v1 | pending | — |
+| S5 | Via `screen-mirror` para TV sem aplicativo receptor | screen-cast-v1 | pending | — |
+| S6 | Via `media-cast` para trailers, vídeos e músicas | screen-cast-v1 | pending | — |
+| S7 | Retorno de gamepad e monitor virtual | screen-cast-v1 | pending | — |
 | B0 | Web UI LAN, família/kiosk, comunidade, pareamento | nenhum (protegido) | backlog-protected | — |
+
+O track S nasce do prompt de compartilhamento de tela recebido do operador em
+2026-07-24 e da decisão ADR-0022. Ele **não** libera B0: o pareamento do
+compartilhamento é local à função e não abre Web UI LAN nem comunidade. O emissor
+segue Linux/Wayland (NON-GOAL N5): receptores em outras plataformas são clientes de
+terceiros já publicados, não aplicativos deste projeto.
 
 ## Diagnóstico de emulação incorporado
 
