@@ -132,6 +132,8 @@ class WebReceiverProvider(ScreenCastProviderPort):
         self._engine: EngineInstance | None = None
         self._lock = threading.Lock()
         self._session_id: str | None = None
+        self._session_phase = "idle"
+        self._session_failure = ""
         self._engine_socket: str = str(self._data_dir / "engine.sock")
 
         self._receiver_server: ThreadingHTTPServer | None = None
@@ -236,13 +238,17 @@ class WebReceiverProvider(ScreenCastProviderPort):
             if self._session_id is not None:
                 return self._session_id
             self._session_id = secrets.token_urlsafe(16)
-            self._send_ipc(
+            self._session_phase = "negotiating"
+            self._session_failure = ""
+            if not self._send_ipc(
                 {
                     "type": "START_SESSION",
                     "scope": consent.scope,
                     "audio": consent.audio,
                 }
-            )
+            ):
+                self._session_phase = "failed"
+                self._session_failure = "engine-unavailable"
             return self._session_id
 
     def sample(self, session_id: str) -> LinkSample | None:
@@ -254,6 +260,12 @@ class WebReceiverProvider(ScreenCastProviderPort):
             encoder_ms=0.5,
             dropped_frames=0,
         )
+
+    def session_phase(self, session_id: str) -> tuple[str, str]:
+        with self._lock:
+            if session_id != self._session_id:
+                return ("idle", "")
+            return (self._session_phase, self._session_failure)
 
     def apply_stream(self, session_id: str, profile_id: str, bitrate_kbps: int) -> bool:
         self._send_ipc({"type": "SET_QUALITY", "bitrate_kbps": bitrate_kbps})
@@ -276,6 +288,8 @@ class WebReceiverProvider(ScreenCastProviderPort):
         self._stop_ipc_listener()
         with self._lock:
             self._session_id = None
+            self._session_phase = "idle"
+            self._session_failure = ""
 
     # --- Signaling bridge --------------------------------------------------
 
@@ -361,7 +375,21 @@ class WebReceiverProvider(ScreenCastProviderPort):
         msg_type = msg.get("type", "")
         if msg_type == "OFFER_CREATED":
             self._push_sse("offer", {"sdp": msg.get("sdp", "")})
-        elif msg_type in ("ERROR", "error"):
+        elif msg_type == "PIPELINE_STARTED":
+            with self._lock:
+                self._session_phase = "streaming"
+                self._session_failure = ""
+        elif msg_type in (
+            "CAPTURE_DENIED",
+            "CAPTURE_CANCELLED",
+            "CAPTURE_REVOKED",
+            "SESSION_FAILED",
+            "ERROR",
+            "error",
+        ):
+            with self._lock:
+                self._session_phase = "failed"
+                self._session_failure = str(msg.get("detail", "engine-error"))
             self._push_sse("error", {"detail": msg.get("detail", "engine error")})
         elif msg_type == "CANDIDATE":
             self._push_sse("candidate", {"candidate": msg.get("candidate", "")})

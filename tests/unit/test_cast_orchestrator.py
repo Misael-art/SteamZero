@@ -57,6 +57,7 @@ def mock_provider() -> MagicMock:
         ),
     ]
     provider.start.return_value = "sess-001"
+    provider.session_phase.return_value = ("streaming", "")
     provider.sample.return_value = LinkSample(
         rtt_ms=10,
         jitter_ms=2,
@@ -179,6 +180,25 @@ def test_start_stream_full_flow(
     assert result["stream"]["videoCodec"] == "h264"
     assert result["resilience"]["degraded"] is False
     assert orchestrator.has_active_session is True
+
+
+def test_web_style_provider_stays_negotiating_until_capture_is_observed(
+    orchestrator: CastOrchestrator, mock_provider: MagicMock, consent: CaptureConsent
+) -> None:
+    mock_provider.session_phase.return_value = ("negotiating", "")
+
+    started = orchestrator.start_stream("tv-sala", "balanced", "game", consent)
+    pending = orchestrator.session_status()
+
+    assert started["state"] == "negotiating"
+    assert pending is not None
+    assert pending["state"] == "negotiating"
+    mock_provider.sample.assert_not_called()
+
+    mock_provider.session_phase.return_value = ("streaming", "")
+    observed = orchestrator.session_status()
+    assert observed is not None
+    assert observed["state"] == "streaming"
 
 
 def test_start_stream_receiver_not_found(

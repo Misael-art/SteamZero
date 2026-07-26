@@ -483,6 +483,10 @@ class ScreenCastProviderPort(Protocol):
 
     def sample(self, session_id: str) -> LinkSample | None: ...
 
+    def session_phase(self, session_id: str) -> tuple[str, str]:
+        """Fase observada e causa estável; providers síncronos devolvem streaming."""
+        return ("streaming", "")
+
     def apply_stream(self, session_id: str, profile_id: str, bitrate_kbps: int) -> bool: ...
 
     def request_keyframe(self, session_id: str) -> bool: ...

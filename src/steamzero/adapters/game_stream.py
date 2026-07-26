@@ -205,6 +205,9 @@ class GameStreamProvider:
             dropped_frames=int(data.get("dropped_frames", 0)),
         )
 
+    def session_phase(self, session_id: str) -> tuple[str, str]:
+        return ("streaming", "") if self._session_alive(session_id) else ("failed", "link-lost")
+
     def apply_stream(self, session_id: str, profile_id: str, bitrate_kbps: int) -> bool:
         try:
             result = self._sunshine_api(

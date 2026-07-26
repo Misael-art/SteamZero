@@ -183,12 +183,14 @@ class CastOrchestrator:
         )
 
         self._session = CastSession.opened(selection, stream, effective_consent)
-        self._session = self._session.moved_to(CastState.STREAMING)
         self._provider_session_id = sid
         self._active_protocol = target_desc.protocol
         self._quality_profile = (profile_id, profile)
         self._local_caps = local_caps
         self._started_at = time.monotonic()
+        phase, _cause = provider.session_phase(sid)
+        if phase == "streaming":
+            self._session = self._session.moved_to(CastState.STREAMING)
         return self._public_session()
 
     def _active_provider(self) -> ScreenCastProviderPort:
@@ -216,8 +218,18 @@ class CastOrchestrator:
             return None
         provider = self._active_provider()
 
-        alive = self._provider_session_id is not None and self._session_alive(
-            provider, self._provider_session_id
+        sid = self._provider_session_id
+        phase, cause = provider.session_phase(sid) if sid is not None else ("idle", "")
+        if phase == "streaming" and self._session.state is CastState.NEGOTIATING:
+            self._session = self._session.moved_to(CastState.STREAMING)
+        if phase == "failed":
+            self._session = self._session.moved_to(CastState.FAILED)
+            return {**self._public_session(), "fault": cause or "capture-failed"}
+        if phase == "negotiating":
+            return self._public_session()
+
+        alive = sid is not None and (
+            self._session_alive(provider, sid)
         )
         if not alive or self._provider_session_id is None:
             self._session = self._session.moved_to(CastState.RECONNECTING)
@@ -228,7 +240,7 @@ class CastOrchestrator:
                 "recovery": [a.value for a in plan.actions],
             }
 
-        sid: str = self._provider_session_id
+        sid = self._provider_session_id
         sample = provider.sample(sid)
         if sample is None:
             return self._public_session()

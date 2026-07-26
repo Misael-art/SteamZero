@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import socket
 import tempfile
 import threading
 import time
+from contextlib import suppress
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -20,7 +22,9 @@ class _MockPortalOK:
     def capture(
         self, scope: str = "monitor", audio: bool = False, cancel: threading.Event | None = None
     ) -> dict:
-        return {"fd": 3, "node_id": 42, "serial": None}
+        read_fd, write_fd = os.pipe()
+        os.close(write_fd)
+        return {"fd": read_fd, "node_id": 42, "serial": None}
 
 
 def _mock_gi_modules() -> dict[str, MagicMock]:
@@ -169,6 +173,86 @@ class TestCastEngineUnit:
         assert "path=42" in description
         assert "bitrate=3500" in description
 
+    def test_pipeline_prefers_pipewire_serial_over_legacy_node(self) -> None:
+        ce = _reload_engine()
+        description = ce.build_pipeline_description(
+            {"pipewire_fd": 12, "pipewire_node": 42, "pipewire_serial": 9001}
+        )
+
+        assert "target-object=9001" in description
+        assert "path=42" not in description
+
+    def test_portal_response_codes_and_stream_shapes(self) -> None:
+        ce = _reload_engine()
+        client = ce.PortalScreenCastClient()
+
+        assert client._unpack_response((0, {"ok": True})) == (0, {"ok": True})
+        with pytest.raises(ce.PortalError, match="capture-denied"):
+            client._unpack_response((1, {}))
+        with pytest.raises(ce.PortalError, match="capture-cancelled"):
+            client._unpack_response((2, {}))
+
+        assert client._unpack_stream_results(
+            (0, {"streams": [(42, {"pipewire-serial": 9001})]})
+        ) == {"node_id": 42, "serial": 9001}
+        assert client._unpack_stream_results(
+            (0, {"streams": [(42, {})]})
+        ) == {"node_id": 42, "serial": None}
+
+    def test_portal_scope_and_cursor_selection_never_degrade(self) -> None:
+        ce = _reload_engine()
+        client = ce.PortalScreenCastClient()
+
+        assert client._SCOPE_BITS == {"monitor": 1, "window": 2, "virtual": 4}
+        assert client._pick_cursor_mode(7) == 4
+        assert client._pick_cursor_mode(3) == 2
+        assert client._pick_cursor_mode(1) == 1
+        assert client._pick_cursor_mode(0) is None
+
+    def test_teardown_invalidates_generation_and_closes_owned_resources(self) -> None:
+        ce = _reload_engine()
+        eng = ce.CastEngine(self._tmp_sock("teardown.sock"))
+        read_fd, write_fd = os.pipe()
+        os.close(write_fd)
+        pipeline = MagicMock()
+        portal = MagicMock()
+        eng._session = ce.SessionState(
+            pipeline=pipeline,
+            portal_fd=read_fd,
+            portal_session="/private/session",
+            portal_client=portal,
+            portal_closed_subscription=17,
+            generation=4,
+        )
+
+        eng._teardown_session(4)
+
+        pipeline.set_state.assert_called_once_with(ce.Gst.State.NULL)
+        portal.unwatch_closed.assert_called_once_with(17)
+        portal.close.assert_called_once_with("/private/session")
+        with pytest.raises(OSError):
+            os.fstat(read_fd)
+        assert eng._session.generation == 5
+
+        eng._teardown_session(4)
+        pipeline.set_state.assert_called_once()
+
+    def test_public_status_never_contains_portal_resources(self) -> None:
+        ce = _reload_engine()
+        eng = ce.CastEngine(self._tmp_sock("public-status.sock"))
+        eng._session.portal_phase = ce.PORTAL_PHASE_PENDING
+        eng._session.portal_fd = 123
+        eng._session.portal_session = "/private/session"
+        conn = MagicMock()
+
+        eng._cmd_get_status(conn, 1)
+
+        payload = json.loads(conn.sendall.call_args.args[0])
+        assert payload["capture_state"] == "requesting"
+        assert "portal_phase" not in payload
+        assert "portal_fd" not in payload
+        assert "portal_session" not in payload
+
     def test_pipeline_adds_opus_only_with_valid_audio_node(self) -> None:
         ce = _reload_engine()
         with_audio = ce.build_pipeline_description({"audio": True, "audio_pipewire_node": 77})
@@ -313,6 +397,7 @@ def _engine_module():
 
 @pytest.fixture
 def engine_env(_engine_module):
+    _engine_module._portal_client_factory = _MockPortalOK
     sock_path = str(Path(tempfile.mkdtemp()) / "engine.sock")
     eng = _engine_module.CastEngine(sock_path)
     t = threading.Thread(target=eng.run, daemon=True)
@@ -323,12 +408,11 @@ def engine_env(_engine_module):
             break
         time.sleep(0.05)
     yield sock_path, _engine_module
-    try:
-        import os
-
+    eng._cmd_stop()
+    t.join(timeout=1)
+    _engine_module._portal_client_factory = _MockPortalOK
+    with suppress(FileNotFoundError):
         os.unlink(sock_path)
-    except FileNotFoundError:
-        pass
 
 
 def _ipc_call(sock_path: str, msg: dict, timeout: float = 2.0) -> dict:
@@ -573,6 +657,10 @@ def test_provider_and_engine_exchange_signaling_on_persistent_connection(
     provider._engine_socket = socket_path
     provider._ipc_conn = None
     provider._ipc_lock = threading.Lock()
+    provider._lock = threading.Lock()
+    provider._session_id = "integration-session"
+    provider._session_phase = "negotiating"
+    provider._session_failure = ""
     provider._ipc_listener = None
     provider._ipc_stop = threading.Event()
     provider._sse_writers = []
