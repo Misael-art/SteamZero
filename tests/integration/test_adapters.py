@@ -101,6 +101,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "retroarch",
         "rpcs3",
         "ryubing",
+        "xemu",
     ]
     assert all({"detect", "status", "install", "verify"} <= item.capabilities for item in emulators)
     assert registry.get("duckstation").sources[0].end_of_life is True
@@ -124,6 +125,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "rpcs3",
         "ryubing",
         "sunshine",
+        "xemu",
     ]
 
 

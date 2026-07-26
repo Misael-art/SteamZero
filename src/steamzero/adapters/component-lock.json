@@ -155,6 +155,17 @@
         "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.516.143833/sunshine-ubuntu-24.04-amd64.deb",
         "sha256": "6df8900f23c9c056252eea51639507b8239a1d1241308ab8923cb402b0ca653b"
       }
+    },
+    {
+      "id": "xemu",
+      "manifestHash": "e712706dd7107640edb92a18edf9a31168342caeb9203682188b543663f314a0",
+      "source": {
+        "type": "flatpak",
+        "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9",
+        "priority": 1,
+        "ref": "app.xemu.xemu",
+        "remote": "flathub"
+      }
     }
   ]
 }
