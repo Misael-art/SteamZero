@@ -29,7 +29,15 @@ import gi  # type: ignore[import-not-found]
 gi.require_version("Gst", "1.0")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
-from gi.repository import Gio, GLib, Gst  # type: ignore[import-not-found]  # noqa: E402
+gi.require_version("GstSdp", "1.0")
+gi.require_version("GstWebRTC", "1.0")
+from gi.repository import (  # type: ignore[import-not-found]  # noqa: E402
+    Gio,
+    GLib,
+    Gst,
+    GstSdp,
+    GstWebRTC,
+)
 
 FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -72,7 +80,7 @@ def build_pipeline_description(msg: dict[str, Any]) -> str:
     video = (
         f"{' '.join(source_parts)} ! "
         "queue leaky=downstream max-size-buffers=2 ! "
-        "videoconvert ! video/x-raw,format=I420,framerate=30/1 ! "
+        "videoconvert ! videorate ! video/x-raw,format=I420,framerate=30/1 ! "
         f"x264enc name=encoder tune=zerolatency speed-preset=superfast bitrate={bitrate} "
         "key-int-max=60 byte-stream=true ! "
         "h264parse ! rtph264pay config-interval=-1 pt=96 ! "
@@ -317,6 +325,7 @@ class PortalScreenCastClient:
         except PortalError as exc:
             error.append(exc)
         except Exception:
+            _log.exception("portal capture failed")
             error.append(PortalError("portal-invalid-response"))
         finally:
             done.set()
@@ -345,7 +354,7 @@ class PortalScreenCastClient:
         return None
 
     def _request_path(self, bus: Any, token: str) -> str:
-        sender = bus.get_unique_name().replace(".", "_")
+        sender = bus.get_unique_name().lstrip(":").replace(".", "_")
         return f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
 
     def _call_with_response(
@@ -382,7 +391,7 @@ class PortalScreenCastClient:
         def _subscribe(path: str) -> None:
             sub_ids.append(
                 bus.signal_subscribe(
-                    self.PORTAL_BUS_NAME,
+                    None,
                     self.REQUEST_IFACE,
                     "Response",
                     path,
@@ -408,9 +417,10 @@ class PortalScreenCastClient:
             raise PortalError("portal-invalid-response") from exc
 
         deadline = time.monotonic() + 120.0
+        context = loop.get_context()
         while not signal_data and not cancel.is_set() and time.monotonic() < deadline:
-            while loop.pending():
-                loop.iteration(False)
+            while context.pending():
+                context.iteration(False)
             time.sleep(0.01)
 
         for subscription_id in sub_ids:
@@ -428,20 +438,27 @@ class PortalScreenCastClient:
     def _merge_options(self, variant: Any, extra_opts: Any) -> Any:
         type_str = variant.get_type_string()
         if type_str == "(a{sv})":
-            existing = variant.get_child_value(0).unpack()
-            merged = dict(existing)
-            extra_dict = extra_opts.unpack()
-            merged.update(extra_dict)
+            merged = self._variant_dict(variant.get_child_value(0))
+            merged.update(self._variant_dict(extra_opts))
             return GLib.Variant("(a{sv})", (merged,))
         if type_str in ("(osa{sv})", "(o sa{sv})"):
             obj = variant.get_child_value(0).unpack()
             parent = variant.get_child_value(1).unpack()
-            existing = variant.get_child_value(2).unpack()
-            merged = dict(existing)
-            extra_dict = extra_opts.unpack()
-            merged.update(extra_dict)
+            merged = self._variant_dict(variant.get_child_value(2))
+            merged.update(self._variant_dict(extra_opts))
             return GLib.Variant("(osa{sv})", (obj, parent, merged))
         return variant
+
+    @staticmethod
+    def _variant_dict(value: Any) -> dict[str, Any]:
+        """Return an ``a{sv}`` mapping without unboxing its variant values."""
+        result: dict[str, Any] = {}
+        for index in range(value.n_children()):
+            entry = value.get_child_value(index)
+            key = str(entry.get_child_value(0).unpack())
+            wrapped = entry.get_child_value(1)
+            result[key] = wrapped.get_variant()
+        return result
 
     @staticmethod
     def _unpack_response(response: Any) -> tuple[int, dict[str, Any]]:
@@ -603,20 +620,24 @@ class CastEngine:
     def run(self) -> None:
         self._running = True
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        server.bind(self._socket_path)
-        server.listen(5)
-        self._server = server
-        _log.info("engine ready on %s", self._socket_path)
-        server.settimeout(POLL_INTERVAL)
-        while self._running:
-            try:
-                conn, _addr = server.accept()
-            except TimeoutError:
-                continue
-            except OSError:
-                break
-            t = threading.Thread(target=self._handle_client, args=(conn,), daemon=True)
-            t.start()
+        try:
+            server.bind(self._socket_path)
+            server.listen(5)
+            self._server = server
+            _log.info("engine ready on %s", self._socket_path)
+            server.settimeout(POLL_INTERVAL)
+            while self._running:
+                try:
+                    conn, _addr = server.accept()
+                except TimeoutError:
+                    continue
+                except OSError:
+                    break
+                t = threading.Thread(target=self._handle_client, args=(conn,), daemon=True)
+                t.start()
+        finally:
+            server.close()
+            self._server = None
 
     def _handle_client(self, conn: socket.socket) -> None:
         buf = b""
@@ -889,7 +910,13 @@ class CastEngine:
         }
         if node_id is not None:
             pipeline_msg["pipewire_node"] = node_id
+        _log.info(
+            "building pipeline (pipewire node=%s, serial=%s)",
+            node_id,
+            serial,
+        )
         pipeline = Gst.parse_launch(build_pipeline_description(pipeline_msg))
+        _log.info("pipeline parsed")
         webrtc = pipeline.get_by_name("webrtc")
         if webrtc is None:
             raise RuntimeError("pipeline did not create webrtcbin")
@@ -897,7 +924,9 @@ class CastEngine:
         def on_offer_created(promise: Any, _webrtc: Any) -> None:
             try:
                 reply = promise.get_reply()
-                offer = reply["offer"]
+                offer = reply.get_value("offer")
+                if offer is None:
+                    raise RuntimeError("offer missing from WebRTC promise")
                 offer_sdp = offer.sdp.as_text()
                 local_promise = Gst.Promise.new()
                 webrtc.emit("set-local-description", offer, local_promise)
@@ -914,6 +943,13 @@ class CastEngine:
                 )
             except Exception as exc:
                 _log.error("offer creation failed: %s", exc)
+                self._send_control_event(
+                    {
+                        "version": IPC_VERSION,
+                        "type": "SESSION_FAILED",
+                        "detail": "offer-creation-failed",
+                    }
+                )
 
         def on_negotiation_needed(element: Any) -> None:
             promise = Gst.Promise.new_with_change_func(on_offer_created, element)
@@ -935,13 +971,16 @@ class CastEngine:
 
         webrtc.connect("on-ice-candidate", on_ice_candidate)
 
-        pipeline.set_state(Gst.State.PLAYING)
+        _log.info("starting pipeline")
+        state_result = pipeline.set_state(Gst.State.PLAYING)
+        if state_result == Gst.StateChangeReturn.FAILURE:
+            pipeline.set_state(Gst.State.NULL)
+            raise RuntimeError("pipeline rejected PLAYING state")
         with self._lock:
             self._session.pipeline = pipeline
             self._session.running = True
             self._session.start_time = time.monotonic()
         _log.info("pipeline started")
-        self._send_control_event({"version": IPC_VERSION, "type": "PIPELINE_STARTED"})
 
     def _send_control_event(self, payload: dict[str, Any]) -> None:
         with self._lock:
@@ -1056,8 +1095,6 @@ class CastEngine:
         self._session.answer = msg.get("sdp", "")
         if self._session.pipeline is not None and msg.get("sdp"):
             try:
-                from gi.repository import GstSdp, GstWebRTC
-
                 webrtc = self._session.pipeline.get_by_name("webrtc")
                 if webrtc is not None:
                     result, sdp_message = GstSdp.SDPMessage.new_from_text(msg["sdp"])
@@ -1071,6 +1108,7 @@ class CastEngine:
                     webrtc.emit("set-remote-description", answer, promise)
                     promise.wait()
                     _log.info("remote description set from answer")
+                    self._send_control_event({"version": IPC_VERSION, "type": "PIPELINE_STARTED"})
             except Exception as exc:
                 _log.error("set remote description failed: %s", exc)
         self._send(conn, {"version": IPC_VERSION, "type": "ANSWER_OK", "seq": seq})
@@ -1110,6 +1148,7 @@ def main() -> None:
     args = parser.parse_args()
 
     logging.getLogger().setLevel(getattr(logging, args.log_level.upper(), logging.INFO))
+    Gst.init(None)
 
     engine = CastEngine(args.socket)
     global _INSTANCE

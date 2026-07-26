@@ -378,9 +378,11 @@ def test_virtual_keyboard_tries_to_start_maliit_server(
         frozenset({"kwin-virtual-keyboard"}),
     )
     monkeypatch.setattr("steamzero.adapters.desktop_kde._process_running", lambda _name: False)
-    monkeypatch.setattr("steamzero.adapters.desktop_kde.spawner_env", spawner_env)
     controller = VirtualKeyboardController(
-        runner=runner, which=lambda command: command, delay=lambda _s: None
+        runner=runner,
+        which=lambda command: command,
+        env_spawner=spawner_env,
+        delay=lambda _s: None,
     )
     assert controller.activate(context, language="us") == "kwin-maliit"
     assert spawns == [("maliit-server",)]
@@ -414,7 +416,11 @@ def test_virtual_keyboard_falls_back_to_wvkbd(monkeypatch: pytest.MonkeyPatch) -
         lambda name: name == "wvkbd-mobintl" and bool(spawns),
     )
     controller = VirtualKeyboardController(
-        runner=runner, which=lambda command: command, spawner=spawner, delay=lambda _s: None
+        runner=runner,
+        which=lambda command: command,
+        spawner=spawner,
+        env_spawner=lambda _argv, _env: False,
+        delay=lambda _s: None,
     )
     assert controller.activate(context, language="us") == "wvkbd"
     assert len(spawns) == 1

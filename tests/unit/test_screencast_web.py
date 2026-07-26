@@ -15,6 +15,7 @@ import pytest
 import steamzero.adapters.screencast_web as sw_mod
 from steamzero.adapters.screencast_web import (
     IPC_VERSION,
+    EngineInstance,
     WebReceiverProvider,
     _ReceiverHandler,
 )
@@ -25,31 +26,29 @@ from steamzero.ports import CaptureConsent, ReceiverDescriptor
 def mocked_provider(tmp_path: Any) -> WebReceiverProvider:
     with (
         patch("steamzero.adapters.screencast_web.ThreadingHTTPServer"),
-        patch.object(WebReceiverProvider, "_ensure_engine", return_value=None),
+        patch.object(WebReceiverProvider, "_ensure_engine", return_value=MagicMock()),
         patch.object(WebReceiverProvider, "_ensure_ipc_connection"),
         patch.object(WebReceiverProvider, "_send_ipc"),
         patch.object(WebReceiverProvider, "_spawn_engine", return_value=None),
         patch.object(WebReceiverProvider, "_stop_ipc_listener"),
     ):
         p = WebReceiverProvider(data_dir=str(tmp_path))
-        return p
+        yield p
+        p.close()
 
 
 @pytest.fixture
 def provider(tmp_path: Any) -> WebReceiverProvider:
     """Real HTTP server, mocked engine/IPC internals."""
-    with (
-        patch.object(WebReceiverProvider, "_ensure_engine", return_value=None),
-        patch.object(WebReceiverProvider, "_ensure_ipc_connection"),
-        patch.object(WebReceiverProvider, "_send_ipc"),
-        patch.object(WebReceiverProvider, "_spawn_engine", return_value=None),
-        patch.object(WebReceiverProvider, "_stop_ipc_listener"),
-    ):
-        p = WebReceiverProvider(data_dir=str(tmp_path))
+    p = WebReceiverProvider(data_dir=str(tmp_path))
+    p._engine = EngineInstance(
+        process=None,
+        socket_path=p._engine_socket,
+        started_at=0.0,
+        healthy=True,
+    )
     yield p
-    p._ipc_stop.set()
-    if p._receiver_server is not None:
-        p._receiver_server.shutdown()
+    p.close()
 
 
 class TestWebReceiverProvider:
@@ -528,7 +527,7 @@ class TestWebReceiverProvider:
 
     def test_close_kills_engine_on_timeout(self, provider: WebReceiverProvider) -> None:
         proc = MagicMock()
-        proc.wait.side_effect = subprocess.TimeoutExpired(["cmd"], 5)
+        proc.wait.side_effect = [subprocess.TimeoutExpired(["cmd"], 5), None]
         provider._engine = MagicMock()
         provider._engine.process = proc
         provider.close()

@@ -258,6 +258,7 @@ ApplicationWindow {
     property var castReceivers: []
     property string selectedReceiverId: ""
     property string selectedReceiverName: ""
+    property string castCaptureScope: "monitor"
 
     function pushError(errorObj) {
         if (!errorObj || typeof errorObj !== "object" || !errorObj.code)
@@ -1534,25 +1535,6 @@ ApplicationWindow {
             close()
         }
 
-        Keys.onUpPressed: function(event) {
-            credentialDialog.moveFocus(false)
-            event.accepted = true
-        }
-        Keys.onDownPressed: function(event) {
-            credentialDialog.moveFocus(true)
-            event.accepted = true
-        }
-        Keys.onEscapePressed: function(event) {
-            credentialDialog.closeFromBack()
-            event.accepted = true
-        }
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Back) {
-                credentialDialog.closeFromBack()
-                event.accepted = true
-            }
-        }
-
         function refresh() {
             root.requestAction("credential.status", {}, function(resp) {
                 credentialDialog.providers = resp.providers || []
@@ -1563,6 +1545,25 @@ ApplicationWindow {
             id: credentialScroll
             clip: true
             contentWidth: availableWidth
+            focus: true
+            Keys.onUpPressed: function(event) {
+                credentialDialog.moveFocus(false)
+                event.accepted = true
+            }
+            Keys.onDownPressed: function(event) {
+                credentialDialog.moveFocus(true)
+                event.accepted = true
+            }
+            Keys.onEscapePressed: function(event) {
+                credentialDialog.closeFromBack()
+                event.accepted = true
+            }
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Back) {
+                    credentialDialog.closeFromBack()
+                    event.accepted = true
+                }
+            }
             ColumnLayout {
                 width: credentialScroll.availableWidth
                 spacing: 12
@@ -2215,7 +2216,6 @@ ApplicationWindow {
         height: root.height
         dim: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        Accessible.name: qsTr("Navegação principal")
         onOpened: {
             const current = drawerNavRepeater.itemAt(root.sectionIndex)
             if (current)
@@ -2234,6 +2234,7 @@ ApplicationWindow {
             border.color: root.borderColor
         }
         contentItem: ColumnLayout {
+            Accessible.name: qsTr("Navegação principal")
             spacing: 8
             anchors.margins: 12
 
@@ -2333,7 +2334,6 @@ ApplicationWindow {
         width: Math.min(460, root.width * 0.94)
         height: root.height
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        Accessible.name: qsTr("Central de tarefas")
         onOpened: {
             root.refreshTasks()
             Qt.callLater(function() { taskCloseButton.forceActiveFocus(Qt.PopupFocusReason) })
@@ -2353,6 +2353,7 @@ ApplicationWindow {
         }
         background: Rectangle { color: root.sidebarColor; border.color: root.borderColor }
         contentItem: ColumnLayout {
+            Accessible.name: qsTr("Central de tarefas")
             spacing: 10
 
             RowLayout {
@@ -4395,6 +4396,28 @@ ApplicationWindow {
                                     Accessible.name: text
                                     onClicked: castPinDialog.open()
                                 }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Label {
+                                        text: qsTr("Capturar")
+                                        color: root.textColor
+                                    }
+                                    ComboBox {
+                                        id: castScopeSelector
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: 48
+                                        textRole: "label"
+                                        valueRole: "value"
+                                        model: [
+                                            {"label": qsTr("Monitor"), "value": "monitor"},
+                                            {"label": qsTr("Janela"), "value": "window"}
+                                        ]
+                                        Accessible.name: qsTr("Origem da captura")
+                                        onActivated: root.castCaptureScope = currentValue
+                                    }
+                                }
                                 Button {
                                     id: castStartButton
                                     text: qsTr("Iniciar transmissão")
@@ -4404,7 +4427,14 @@ ApplicationWindow {
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     onClicked: {
-                                        root.requestAction("cast.start", {"receiverId": root.selectedReceiverId},
+                                        root.requestAction("cast.start", {
+                                                "receiverId": root.selectedReceiverId,
+                                                "consent": {
+                                                    "granted": true,
+                                                    "scope": root.castCaptureScope,
+                                                    "audio": false
+                                                }
+                                            },
                                             function(reply) {
                                                 root.notify(qsTr("Transmissão iniciada para %1").arg(root.selectedReceiverName))
                                             },

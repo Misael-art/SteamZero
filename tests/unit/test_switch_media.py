@@ -290,7 +290,8 @@ class TestStateStorePersistence:
                 updated_at TEXT NOT NULL DEFAULT ''
             )"""
         )
-        return c
+        yield c
+        c.close()
 
     def test_save_and_load(self, conn: sqlite3.Connection) -> None:
         adapter = StateStoreGameMediaAdapter(conn)

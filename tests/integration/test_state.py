@@ -387,6 +387,23 @@ def test_export_json(db_path: Path) -> None:
     store.close()
 
 
+def test_close_is_idempotent_and_finalizer_closes_abandoned_connection(
+    db_path: Path,
+) -> None:
+    store = state.open_state(db_path)
+    connection = store.adapter_connection()
+    store.close()
+    store.close()
+    with pytest.raises(sqlite3.ProgrammingError):
+        connection.execute("SELECT 1")
+
+    abandoned = state.open_state(db_path)
+    abandoned_connection = abandoned.adapter_connection()
+    del abandoned
+    with pytest.raises(sqlite3.ProgrammingError):
+        abandoned_connection.execute("SELECT 1")
+
+
 def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # RT-14 (conceito): migração falha => backup restaurado, versão anterior operante
     store = state.open_state(db_path)  # versão atual

@@ -9,7 +9,8 @@ Main {
     height: 593
     property int captureIndex: 0
     readonly property var sections: [
-        "overview", "emulation", "steam", "profiles", "saves-sync", "system"
+        "overview", "emulation", "steam", "profiles", "saves-sync",
+        "transmission", "system"
     ]
     readonly property var captures: [
         {"width": 949, "height": 593, "section": 0},
@@ -18,12 +19,14 @@ Main {
         {"width": 949, "height": 593, "section": 3},
         {"width": 949, "height": 593, "section": 4},
         {"width": 949, "height": 593, "section": 5},
+        {"width": 949, "height": 593, "section": 6},
         {"width": 1280, "height": 800, "section": 0},
         {"width": 1280, "height": 800, "section": 1},
         {"width": 1280, "height": 800, "section": 2},
         {"width": 1280, "height": 800, "section": 3},
         {"width": 1280, "height": 800, "section": 4},
-        {"width": 1280, "height": 800, "section": 5}
+        {"width": 1280, "height": 800, "section": 5},
+        {"width": 1280, "height": 800, "section": 6}
     ]
 
     function prepareCapture() {

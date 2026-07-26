@@ -37,6 +37,7 @@ def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_webrtc = MagicMock()
     mock_webrtc.WebRTCSessionDescription = MagicMock()
     mock_webrtc.WebRTCSDPType.ANSWER = 1
+    mock_sdp = MagicMock()
 
     mock_glib = MagicMock()
     mock_glib.MainLoop = MagicMock()
@@ -61,6 +62,7 @@ def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_repo = MagicMock()
     mock_repo.Gst = mock_gst
     mock_repo.GstWebRTC = mock_webrtc
+    mock_repo.GstSdp = mock_sdp
     mock_repo.GLib = mock_glib
     mock_repo.Gio = mock_gio
 
@@ -69,6 +71,7 @@ def _mock_gi_modules() -> dict[str, MagicMock]:
         "gi.repository": mock_repo,
         "gi.repository.Gst": mock_gst,
         "gi.repository.GstWebRTC": mock_webrtc,
+        "gi.repository.GstSdp": mock_sdp,
         "gi.repository.GLib": mock_glib,
         "gi.repository.Gio": mock_gio,
     }
@@ -94,6 +97,7 @@ class TestCastEngineUnit:
             patch.object(ce.CastEngine, "run") as mock_run,
         ):
             ce.main()
+            ce.Gst.init.assert_called_once_with(None)
             mock_run.assert_called_once()
 
     def test_main_sigterm_stops_engine(self) -> None:
@@ -161,6 +165,7 @@ class TestCastEngineUnit:
         for element in (
             "pipewiresrc",
             "videoconvert",
+            "videorate",
             "x264enc name=encoder",
             "h264parse",
             "rtph264pay",
@@ -210,6 +215,52 @@ class TestCastEngineUnit:
         assert client._pick_cursor_mode(1) == 1
         assert client._pick_cursor_mode(0) is None
 
+    def test_portal_request_path_sanitizes_unique_bus_name(self) -> None:
+        ce = _reload_engine()
+        client = ce.PortalScreenCastClient()
+        bus = MagicMock()
+        bus.get_unique_name.return_value = ":1.204"
+
+        path = client._request_path(bus, "request_token")
+
+        assert path == "/org/freedesktop/portal/desktop/request/1_204/request_token"
+
+    def test_portal_option_merge_preserves_variant_values(self) -> None:
+        ce = _reload_engine()
+        client = ce.PortalScreenCastClient()
+        session_value = object()
+        request_value = object()
+
+        def variant_dict(key: str, value: object) -> MagicMock:
+            key_child = MagicMock()
+            key_child.unpack.return_value = key
+            value_child = MagicMock()
+            value_child.get_variant.return_value = value
+            entry = MagicMock()
+            entry.get_child_value.side_effect = [key_child, value_child]
+            result = MagicMock()
+            result.n_children.return_value = 1
+            result.get_child_value.return_value = entry
+            return result
+
+        original = MagicMock()
+        original.get_type_string.return_value = "(a{sv})"
+        original.get_child_value.return_value = variant_dict("session_handle_token", session_value)
+        extra = variant_dict("handle_token", request_value)
+        merged = object()
+        ce.GLib.Variant.return_value = merged
+
+        assert client._merge_options(original, extra) is merged
+        ce.GLib.Variant.assert_called_once_with(
+            "(a{sv})",
+            (
+                {
+                    "session_handle_token": session_value,
+                    "handle_token": request_value,
+                },
+            ),
+        )
+
     def test_teardown_invalidates_generation_and_closes_owned_resources(self) -> None:
         ce = _reload_engine()
         eng = ce.CastEngine(self._tmp_sock("teardown.sock"))
@@ -237,6 +288,26 @@ class TestCastEngineUnit:
 
         eng._teardown_session(4)
         pipeline.set_state.assert_called_once()
+
+    def test_portal_closed_reports_revocation_before_teardown(self) -> None:
+        ce = _reload_engine()
+        eng = ce.CastEngine(self._tmp_sock("revoked.sock"))
+        eng._session.generation = 7
+
+        with (
+            patch.object(eng, "_send_control_event") as send_event,
+            patch.object(eng, "_teardown_session") as teardown,
+        ):
+            eng._on_portal_closed(7)
+
+        send_event.assert_called_once_with(
+            {
+                "version": ce.IPC_VERSION,
+                "type": "CAPTURE_REVOKED",
+                "detail": "capture-revoked",
+            }
+        )
+        teardown.assert_called_once_with(7)
 
     def test_public_status_never_contains_portal_resources(self) -> None:
         ce = _reload_engine()

@@ -38,6 +38,7 @@ from steamzero.domain.desktop import (
     automatic_profile,
     profile_for,
 )
+from steamzero.ports import CaptureConsent
 
 _MAX_BODY = 64 * 1024
 
@@ -494,10 +495,32 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
             if mode is not None and not isinstance(mode, str):
                 raise SteamZeroError("E-API-SCHEMA", detail="mode precisa ser string")
+            raw_consent = payload.get("consent")
+            if not isinstance(raw_consent, dict):
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="consentimento explícito de captura é obrigatório",
+                )
+            granted = raw_consent.get("granted")
+            scope = raw_consent.get("scope")
+            audio = raw_consent.get("audio", False)
+            if granted is not True:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="consent.granted precisa ser true após ação explícita",
+                )
+            if scope not in {"monitor", "window", "virtual"}:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="consent.scope precisa ser monitor, window ou virtual",
+                )
+            if not isinstance(audio, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="consent.audio precisa ser booleano")
             return self._dashboard().cast_start(
                 receiver_id,
                 profile_id=profile or "balanced",
                 mode=mode or "game",
+                consent=CaptureConsent(granted=True, scope=scope, audio=audio),
             )
         if path == "/cast/stop":
             return self._dashboard().cast_stop()

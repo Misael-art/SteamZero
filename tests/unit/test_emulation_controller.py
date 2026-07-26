@@ -1719,6 +1719,7 @@ def test_media_search_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     stored = jobs.get(job.id)
     assert stored is not None
     assert stored.state == "queued"
+    store.close()
 
 
 def test_media_search_plan_does_not_require_fixed_remote_provider(
@@ -1765,6 +1766,7 @@ def test_get_job_status_returns_none_for_missing(monkeypatch, tmp_path: Path) ->
     controller = _controller(monkeypatch, tmp_path)
     controller._jobs = JobManager(store)
     assert controller.get_job_status("nonexistent") is None
+    store.close()
 
 
 def test_validate_mime_jpeg(tmp_path: Path) -> None:
@@ -1840,6 +1842,7 @@ def test_rom_scan_job_created_in_plan(monkeypatch, tmp_path: Path) -> None:
     job = controller.get_job_status(result["jobId"])
     assert job is not None
     assert job["type"] == "rom.scan"
+    store.close()
 
 
 def test_library_scan_publishes_global_job_progress(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
