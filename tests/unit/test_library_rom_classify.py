@@ -101,11 +101,13 @@ class TestExclusiveExtension:
         assert kind == "base"
         assert ev == "exclusive-ext"
 
-    def test_pbp_is_playstation(self, ext_map: dict[str, list[str]]) -> None:
+    def test_pbp_shared_with_psp_requires_more_evidence(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
         plat, kind, ev = classify_rom("game.pbp", {"game.pbp"}, ext_map)
-        assert plat == "playstation"
-        assert kind == "base"
-        assert ev == "exclusive-ext"
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-ext"
 
 
 class TestAmbiguousExtensions:

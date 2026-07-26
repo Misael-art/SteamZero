@@ -58,6 +58,17 @@
       }
     },
     {
+      "id": "ppsspp",
+      "manifestHash": "171e37eadef8db504e46e45498f8bb0b93de1797a57c7db7743e6dd5bb7c6629",
+      "source": {
+        "type": "flatpak",
+        "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3",
+        "priority": 1,
+        "ref": "org.ppsspp.PPSSPP",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "retroarch",
       "manifestHash": "aaa073f99f0e9580030e11ae563ddd6885c34fe282919652d8759b89a15a594c",
       "source": {
