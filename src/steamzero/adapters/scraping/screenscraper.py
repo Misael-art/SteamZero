@@ -4,16 +4,20 @@
 
 API v2 (``https://www.screenscraper.fr/api2/jeuInfos.php``):
 - Matching por SHA1, MD5, CRC32, nome de ROM, Title ID.
-- Tipos de mídia: box-2D, box-3D, box-scan, wheel, wheel-hd, screenshot,
-  screenshot-title, fanart, video, marquee, support-texture, manuel, map, flyer.
+- Output principal: JSON (``output=json``); XML como fallback.
 - Autenticação por ``devid``/``devpassword`` (conta desenvolvedor, grátis)
   e ``ssid``/``sspassword`` (conta de usuário, para cotas elevadas).
+
+Estrutura JSON: ``{"response":{"jeu":{"medias":[{"type":"...","url":"..."}]}}}``
+
+Estrutura XML fallback: ``<Data><jeu><medias><media ...>URL</media></medias></jeu></Data>``
 
 Rate limits: 50k req/dia (grátis), até +5 threads por €10/mês.
 """
 
 from __future__ import annotations
 
+import json
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 
@@ -26,98 +30,101 @@ _API_PATH = "jeuInfos.php"
 _API_TEST_PATH = "ssuserInfos.php"
 
 _PLATFORM_MAP: dict[str, int | str] = {
-    "3do": "1",
-    "amiga": "105",
-    "amstradcpc": "107",
-    "android": "310",
-    "apple2": "108",
-    "arcade": "75",
-    "atari2600": "27",
-    "atari5200": "28",
-    "atari7800": "29",
-    "atarijaguar": "30",
-    "atarilynx": "31",
-    "atarist": "106",
-    "bbc": "110",
-    "c64": "40",
-    "cd32": "111",
-    "cdtv": "129",
-    "coleco": "32",
-    "cps1": "76",
-    "cps2": "77",
-    "cps3": "78",
-    "daphne": "82",
-    "desktop": "135",
-    "dolphin": "83",
-    "dos": "84",
-    "dreamcast": "23",
-    "fds": "99",
-    "gameandwatch": "33",
-    "gameboy": "9",
-    "gameboyadvance": "12",
-    "gameboycolor": "10",
-    "gamegear": "21",
-    "gamingplatform": "500",
-    "gmaster": "109",
-    "gx4000": "130",
-    "intellivision": "34",
-    "j2me": "123",
-    "mastersystem": "18",
-    "megacd": "36",
-    "megadrive": "1",
-    "msx": "38",
-    "n64": "6",
-    "nds": "11",
-    "neogeo": "25",
-    "neogeocd": "42",
+    # --- Nintendo ---
+    "switch": "225",
     "nes": "3",
-    "ngp": "41",
-    "ngpc": "41",
-    "openbor": "131",
-    "pcengine": "35",
-    "pcenginecd": "42",
-    "pcenginefx": "132",
-    "pcfx": "39",
-    "pico8": "133",
-    "playstation": "2",
-    "playstation2": "15",
-    "playstation3": "134",
-    "playstation4": "296",
-    "playstation5": "502",
-    "playstationportable": "13",
-    "playstationvita": "104",
-    "psx": "2",
-    "satellaview": "136",
-    "saturn": "4",
-    "sega32x": "20",
-    "segacd": "36",
-    "sg1000": "114",
     "snes": "4",
-    "steam": "135",
-    "sufami": "137",
-    "supergrafx": "132",
-    "switch": "311",
-    "tg16": "35",
-    "tgcd": "42",
-    "triforce": "139",
-    "vectrex": "43",
-    "vic20": "115",
-    "videopac": "116",
-    "virtualboy": "26",
-    "wii": "14",
-    "wiiu": "138",
-    "windows": "135",
-    "wonderswan": "24",
-    "wonderswancolor": "24",
-    "xbox": "22",
-    "xbox360": "140",
+    "n64": "14",
+    "gamecube": "13",
+    "wii": "16",
+    "wiiu": "18",
+    "n3ds": "17",
+    "nds": "15",
+    "fds": "106",
+    "gameboy": "9",
+    "gameboycolor": "10",
+    "gameboyadvance": "12",
+    "virtualboy": "11",
+    "gameandwatch": "52",
+    "pokemonmini": "211",
+    # --- Sega ---
+    "megadrive": "1",
+    "mastersystem": "2",
+    "saturn": "22",
+    "dreamcast": "23",
+    "gamegear": "21",
+    "sega32x": "19",
+    "megacd": "20",
+    "segacd": "20",
+    "sg1000": "109",
+    # --- Sony ---
+    "playstation": "57",
+    "playstation2": "58",
+    "playstation3": "59",
+    "playstation4": "60",
+    "playstation5": "502",
+    "playstationportable": "61",
+    "playstationvita": "62",
+    # --- SNK ---
+    "neogeo": "142",
+    "neogeocd": "70",
+    "ngp": "25",
+    "ngpc": "82",
+    # --- NEC ---
+    "pcengine": "31",
+    "pcenginecd": "114",
+    "pcfx": "72",
+    "supergrafx": "105",
+    # --- Atari ---
+    "atari2600": "26",
+    "atari5200": "40",
+    "atari7800": "41",
+    "atarijaguar": "27",
+    "atarilynx": "28",
+    "atarist": "42",
+    "atari800": "43",
+    # --- Microsoft ---
+    "xbox": "32",
+    "xbox360": "33",
     "xboxone": "300",
     "xboxseries": "499",
-    "zmachine": "118",
-    "zx81": "117",
-    "zxspectrum": "37",
+    # --- Other consoles ---
+    "3do": "29",
+    "coleco": "48",
+    "intellivision": "115",
+    "vectrex": "102",
+    "videopac": "104",
+    # --- Arcade ---
+    # cps1/cps2/cps3 saíram: os IDs que ocupavam (76/77/78) pertencem ao ZX
+    # Spectrum e ao ZX81 na referência, e não há fonte para os IDs corretos do
+    # Capcom Play System. Slug ausente omite ``systemeid`` e a busca degrada para
+    # nome em todos os sistemas; slug com ID errado devolve o jogo de outro
+    # sistema. Reinserir só com ID conferido contra payload real.
+    "arcade": "75",
+    # --- Bandai ---
+    "wonderswan": "45",
+    "wonderswancolor": "46",
+    # --- Computer ---
+    "amiga": "134",
+    "amstradcpc": "65",
+    "apple2": "86",
+    "bbc": "37",
+    "c64": "66",
+    "cd32": "130",
+    "desktop": "135",
+    "steam": "135",
+    "windows": "135",
+    "dos": "135",
+    "macintosh": "146",
+    "msx": "113",
+    "pico8": "234",
+    "scummvm": "123",
+    "zx81": "77",
+    "zxspectrum": "76",
+    # --- Handhelds & other ---
+    "openbor": "214",
+    "android": "310",
 }
-
 _MEDIA_KIND_MAP: dict[str, str] = {
     "boxart": "box-2D",
     "boxart3d": "box-3D",
@@ -139,11 +146,7 @@ _SUPPORTED_KINDS = frozenset(_MEDIA_KIND_MAP)
 
 
 class ScreenScraperAdapter(BaseMediaProvider):
-    """Adapter para ScreenScraper.fr API v2.
-
-    Requer credenciais ``devid``/``devpassword`` (conta desenvolvedor obrigatória)
-    e opcionalmente ``ssid``/``sspassword`` (conta de usuário para cota elevada).
-    """
+    """Adapter para ScreenScraper.fr API v2."""
 
     def __init__(
         self,
@@ -171,7 +174,6 @@ class ScreenScraperAdapter(BaseMediaProvider):
         return frozenset(_PLATFORM_MAP)
 
     def test_connection(self) -> bool:
-        """Valida credenciais em endpoint leve, sem pesquisar ou baixar mídia."""
         if self._devid is None or self._devpassword is None:
             raise SteamZeroError(
                 "E-SCRAPE-CREDENTIAL-MISSING",
@@ -218,6 +220,93 @@ class ScreenScraperAdapter(BaseMediaProvider):
         url = f"{_API_BASE}/{_API_PATH}?{urlencode(params)}"
         raw = self._fetch_url(url)
 
+        body_text = raw.decode("utf-8", errors="replace")
+        if body_text.startswith("Erreur"):
+            return []
+
+        try:
+            payload = json.loads(body_text)
+        except json.JSONDecodeError:
+            return self._search_from_xml(raw, identity, media_kinds, region_priority)
+
+        jeu_raw = _json_get(payload, "response", "jeu")
+        jeu: dict[str, object] = {}
+        if isinstance(jeu_raw, dict):
+            jeu = jeu_raw
+        if not jeu:
+            err = _json_get(payload, "error")
+            if isinstance(err, dict):
+                code = err.get("code", "")
+                if code in ("429", "rate limit"):
+                    raise SteamZeroError("E-SCRAPE-RATE-LIMITED", detail=f"ScreenScraper: {code}")
+                if code in ("403", "quota"):
+                    raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED", detail=f"ScreenScraper: {code}")
+            return []
+
+        medias_raw = jeu.get("medias", [])
+        medias_list: list[dict[str, object]] = (
+            medias_raw if isinstance(medias_raw, list) else []
+        )
+        candidates: list[MediaCandidate] = []
+        kinds_to_fetch = set(media_kinds) & _SUPPORTED_KINDS
+
+        for kind in kinds_to_fetch:
+            accepted_types = _accepted_media_types(kind)
+            for media in medias_list:
+                typ = str(media.get("type", "")).lower()
+                if not typ or typ not in accepted_types:
+                    continue
+                url_text = str(media.get("url", "")).strip()
+                if not url_text:
+                    continue
+                url_text = url_text.replace("http://", "https://")
+                region = str(media.get("region", "")).strip()
+                region_code = _region_normalize(region) if region else None
+                language = str(media.get("language", "")) or None
+                try:
+                    width = int(str(media.get("width", 0) or 0)) or None
+                    height = int(str(media.get("height", 0) or 0)) or None
+                except (ValueError, TypeError):
+                    width = height = None
+                if kind == "wheel":
+                    confidence = 0.9 if "hd" in url_text.lower() else 0.8
+                else:
+                    confidence = 1.0 if identity.serial or identity.hashes else 0.85
+                candidates.append(
+                    MediaCandidate(
+                        url=url_text,
+                        media_kind=kind,
+                        provider=self.name,
+                        confidence=confidence,
+                        width=width,
+                        height=height,
+                        region=region_code,
+                        language=language,
+                        license="CC-BY-NC-SA",
+                        attribution="ScreenScraper.fr",
+                        hash=None,
+                    )
+                )
+
+        if region_priority and len(candidates) > 1:
+            candidates.sort(
+                key=lambda c: (
+                    region_priority.index(c.region) if c.region in region_priority else 99,
+                    -c.confidence,
+                )
+            )
+        else:
+            candidates.sort(key=lambda c: -c.confidence)
+
+        return candidates
+
+    def _search_from_xml(
+        self,
+        raw: bytes,
+        identity: GameIdentity,
+        media_kinds: list[str],
+        region_priority: list[str] | None = None,
+    ) -> list[MediaCandidate]:
         try:
             root = ET.fromstring(raw)  # noqa: S314 — trusted API, not user input
         except ET.ParseError as exc:
@@ -246,14 +335,15 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 typ = (media.get("type") or "").lower()
                 if typ not in accepted_types:
                     continue
-                url_text = media.findtext("url", "").strip()
+                url_text = (media.text or "").strip()
+                if not url_text:
+                    url_text = media.findtext("url", "").strip()
                 if not url_text:
                     continue
                 url_text = url_text.replace("http://", "https://")
-                crc = media.findtext("crc", "").strip()
-                region = media.get("region", "") or media.findtext("region", "")
+                region = media.get("region", "") or ""
                 region_code = _region_normalize(region) if region else None
-                language = media.findtext("language", "") or None
+                language = media.get("language") or media.findtext("language", "") or None
                 try:
                     width = int(media.get("width", 0) or 0) or None
                     height = int(media.get("height", 0) or 0) or None
@@ -275,7 +365,7 @@ class ScreenScraperAdapter(BaseMediaProvider):
                         language=language,
                         license="CC-BY-NC-SA",
                         attribution="ScreenScraper.fr",
-                        hash=crc or None,
+                        hash=None,
                     )
                 )
 
@@ -297,7 +387,8 @@ class ScreenScraperAdapter(BaseMediaProvider):
         params = self._authentication_params()
         params.update(
             {
-                "output": "xml",
+                "output": "json",
+                "romtype": "rom",
             }
         )
 
@@ -336,6 +427,16 @@ class ScreenScraperAdapter(BaseMediaProvider):
             params["ssid"] = self._ssid
             params["sspassword"] = self._sspassword
         return params
+
+
+def _json_get(obj: object, *keys: str) -> object | None:
+    current: object = obj
+    for key in keys:
+        if isinstance(current, dict):
+            current = current.get(key)
+        else:
+            return None
+    return current
 
 
 def _region_normalize(region: str) -> str:
