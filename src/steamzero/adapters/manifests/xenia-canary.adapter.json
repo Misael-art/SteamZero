@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1, "id": "xenia-canary", "kind": "emulator", "platforms": ["xbox-360"],
+  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "sources": [{
+    "type": "appimage", "version": "8f55b4a", "priority": 1,
+    "url": "https://github.com/xenia-canary/xenia-canary/releases/download/8f55b4a/xenia_canary_linux.AppImage",
+    "sha256": "e4fc915054b0bf98f95fba22c0b9684a5fbca909306a378dc3f1dd0a6fe726c4"
+  }],
+  "verify": {"smokeTest": ["--help"]}, "compat": ["steamos", "bazzite", "linux"],
+  "license": "BSD-3-Clause", "upstream": "https://github.com/xenia-canary/xenia-canary",
+  "notes": "AppImage Linux oficial fixado no release 8f55b4a e validado pelo digest publicado no GitHub."
+}

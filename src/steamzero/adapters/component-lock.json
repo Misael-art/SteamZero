@@ -166,6 +166,17 @@
         "ref": "app.xemu.xemu",
         "remote": "flathub"
       }
+    },
+    {
+      "id": "xenia-canary",
+      "manifestHash": "7820b8b87a29cf1f43b42cd6af1dba993567affd9262dc8b38bc19f43694c10f",
+      "source": {
+        "type": "appimage",
+        "version": "8f55b4a",
+        "priority": 1,
+        "url": "https://github.com/xenia-canary/xenia-canary/releases/download/8f55b4a/xenia_canary_linux.AppImage",
+        "sha256": "e4fc915054b0bf98f95fba22c0b9684a5fbca909306a378dc3f1dd0a6fe726c4"
+      }
     }
   ]
 }

@@ -12,6 +12,7 @@
   `playstation.svg`,
   `playstation-2.svg`,
   `playstation-3.svg`, `playstation-portable.svg`, `wii-u.svg`, `xbox.svg`,
+  `xbox-360.svg`,
   `geforce-now.svg`,
   `xbox-cloud-gaming.svg` e `amazon-luna.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem

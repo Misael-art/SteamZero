@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1, "id": "xbox-360-gamepad", "revision": 1, "label": "Controle Xbox 360",
+  "platforms": ["xbox-360"], "source": {"kind": "builtin", "license": "GPL-3.0-or-later"},
+  "layout": "dual-analog", "maxPlayers": 4,
+  "bindings": [
+    {"action": "game.up", "input": "hat.up", "required": true}, {"action": "game.right", "input": "hat.right", "required": true},
+    {"action": "game.down", "input": "hat.down", "required": true}, {"action": "game.left", "input": "hat.left", "required": true},
+    {"action": "game.primary", "input": "button.south", "required": true}, {"action": "game.secondary", "input": "button.east", "required": true},
+    {"action": "game.tertiary", "input": "button.west", "required": true}, {"action": "game.quaternary", "input": "button.north", "required": true},
+    {"action": "game.start", "input": "button.start", "required": true}, {"action": "game.select", "input": "button.select", "required": true},
+    {"action": "game.axis-x", "input": "axis.left-x", "required": true}, {"action": "game.axis-y", "input": "axis.left-y", "required": true}
+  ],
+  "rotation": {"allowedOrientations": ["landscape"], "defaultOrientation": "landscape", "directionalRemap": "preserve"}
+}
