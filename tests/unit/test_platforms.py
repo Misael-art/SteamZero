@@ -49,9 +49,26 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "xbox-cloud-gaming",
         "amazon-luna",
         "nintendo-console",
+        "master-system",
+        "game-gear",
+        "pc-engine-turbografx",
+        "atari-classics",
+        "neo-geo-pocket",
+        "wonderswan",
+        "msx",
+        "zx-spectrum",
+        "commodore-64",
+        "amiga",
+        "colecovision",
+        "intellivision",
+        "virtual-boy",
+        "three-do",
+        "sega-cd-32x",
+        "nintendo-64",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
-    assert len(artwork) == len(set(artwork))
+    shared_artwork = {asset for asset in artwork if artwork.count(asset) > 1}
+    assert shared_artwork == {"../assets/retroarch.svg"}
     assert all((ASSETS / Path(asset).name).is_file() for asset in artwork)
     adapter_ids = {manifest.id for manifest in AdapterRegistry.bundled().list()}
     referenced_adapters = {
@@ -65,6 +82,45 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
     assert "zip" in registry.get("switch").media["extensions"]
     with pytest.raises(SteamZeroError, match="plataforma desconhecida"):
         registry.get("missing")
+
+
+def test_retroarch_group_one_is_fully_declarative() -> None:
+    registry = PlatformRegistry.bundled()
+    group_ids = [
+        "master-system",
+        "game-gear",
+        "pc-engine-turbografx",
+        "atari-classics",
+        "neo-geo-pocket",
+        "wonderswan",
+        "msx",
+        "zx-spectrum",
+        "commodore-64",
+        "amiga",
+        "colecovision",
+        "intellivision",
+        "virtual-boy",
+        "three-do",
+        "sega-cd-32x",
+        "nintendo-64",
+    ]
+
+    manifests = [registry.get(platform_id) for platform_id in group_ids]
+    assert all(manifest.artwork_asset == "../assets/retroarch.svg" for manifest in manifests)
+    assert all(
+        [(emulator["id"], emulator["adapterId"]) for emulator in manifest.emulators]
+        == [("retroarch", "retroarch")]
+        for manifest in manifests
+    )
+    assert all(
+        manifest.controls["profiles"] == ["retroarch-classic-gamepad"] for manifest in manifests
+    )
+    assert all(manifest.media["extensions"] for manifest in manifests)
+    assert "sms" in registry.get("master-system").media["extensions"]
+    assert "gg" in registry.get("game-gear").media["extensions"]
+    assert "pce" in registry.get("pc-engine-turbografx").media["extensions"]
+    assert "j64" in registry.get("atari-classics").media["extensions"]
+    assert "z64" in registry.get("nintendo-64").media["extensions"]
 
 
 def test_emulation_ui_has_no_switch_specific_routing_or_copy() -> None:

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "nintendo-64",
+  "kind": "emulated",
+  "name": "Nintendo 64",
+  "shortName": "Nintendo 64",
+  "iconKey": "input-gaming",
+  "artworkAsset": "../assets/retroarch.svg",
+  "systems": ["n64", "nintendo64", "nintendo-64"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca Nintendo 64 composta pelo scanner declarativo.", "action": null},
+    {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "Região, resolução e plugins permanecem configuráveis no RetroArch.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível com analógico e acessórios declarados.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Formatos de cartucho e 64DD são reconhecidos pelo scanner declarativo.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "graphicsPerformance", "label": "Vídeo e timing", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
+  "media": {"extensions": ["bin", "d64", "n64", "ndd", "u1", "v64", "z64", "7z", "zip"], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["retroarch-classic-gamepad"], "maxPlayers": 4, "specialized": ["analog-stick", "controller-pak", "rumble-pak"]},
+  "timing": {"standards": ["ntsc", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez sem alterar timing."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+  ],
+  "cloud": null
+}

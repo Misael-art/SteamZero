@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "retroarch-classic-gamepad",
+  "revision": 1,
+  "label": "RetroArch — controle clássico",
+  "platforms": [
+    "master-system",
+    "game-gear",
+    "pc-engine-turbografx",
+    "atari-classics",
+    "neo-geo-pocket",
+    "wonderswan",
+    "msx",
+    "zx-spectrum",
+    "commodore-64",
+    "amiga",
+    "colecovision",
+    "intellivision",
+    "virtual-boy",
+    "three-do",
+    "sega-cd-32x",
+    "nintendo-64"
+  ],
+  "source": {"kind": "builtin", "license": "GPL-3.0-or-later"},
+  "layout": "standard-gamepad",
+  "maxPlayers": 1,
+  "bindings": [
+    {"action": "game.up", "input": "hat.up", "required": true},
+    {"action": "game.right", "input": "hat.right", "required": true},
+    {"action": "game.down", "input": "hat.down", "required": true},
+    {"action": "game.left", "input": "hat.left", "required": true},
+    {"action": "game.primary", "input": "button.south", "required": true},
+    {"action": "game.secondary", "input": "button.east", "required": true},
+    {"action": "game.tertiary", "input": "button.west", "required": false},
+    {"action": "game.quaternary", "input": "button.north", "required": false},
+    {"action": "game.start", "input": "button.start", "required": true},
+    {"action": "game.select", "input": "button.select", "required": false},
+    {"action": "game.shoulder-left", "input": "button.shoulder-left", "required": false},
+    {"action": "game.shoulder-right", "input": "button.shoulder-right", "required": false}
+  ],
+  "rotation": {
+    "allowedOrientations": ["landscape", "portrait-left", "portrait-right"],
+    "defaultOrientation": "landscape",
+    "directionalRemap": "rotate-with-display"
+  }
+}
