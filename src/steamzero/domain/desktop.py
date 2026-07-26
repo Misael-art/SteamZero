@@ -14,6 +14,7 @@ import json
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import TracebackType
 from typing import Any, Protocol
 
@@ -428,6 +429,20 @@ class ExperienceCoordinator:
 
     def close(self) -> None:
         self._store.close()
+
+    @property
+    def store_path(self) -> Path:
+        """Return the state path used to create request-local coordinators."""
+        return self._store.path
+
+    def for_store(self, store: StateStore) -> ExperienceCoordinator:
+        """Clone the coordinator ports while isolating the SQLite connection."""
+        return ExperienceCoordinator(
+            self._context,
+            self._effects,
+            store,
+            self._conflict_resolver,
+        )
 
     def __enter__(self) -> ExperienceCoordinator:
         return self

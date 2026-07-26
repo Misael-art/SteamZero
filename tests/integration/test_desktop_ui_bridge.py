@@ -629,6 +629,52 @@ def test_bridge_conflict_resolution_requires_confirmation_and_refreshes_status(
     assert refreshed["conflictActions"] == []
 
 
+def test_slow_apply_does_not_block_concurrent_status(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base, token, dashboard = dashboard_bridge
+    apply_started = threading.Event()
+    release_apply = threading.Event()
+    apply_finished = threading.Event()
+    apply_errors: queue.Queue[BaseException] = queue.Queue()
+
+    def slow_apply(_plan_id: str, _confirm_token: str) -> dict[str, object]:
+        apply_started.set()
+        if not release_apply.wait(timeout=10):
+            raise RuntimeError("teste não liberou a aplicação lenta")
+        return {"status": "ok"}
+
+    monkeypatch.setattr(dashboard, "apply_component", slow_apply)
+
+    def request_apply() -> None:
+        try:
+            request_json(
+                base,
+                token,
+                "/component/apply",
+                {"planId": "slow-plan", "confirmToken": "slow-confirm"},
+            )
+        except BaseException as exc:
+            apply_errors.put(exc)
+        finally:
+            apply_finished.set()
+
+    apply_thread = threading.Thread(target=request_apply, daemon=True)
+    apply_thread.start()
+    assert apply_started.wait(timeout=1)
+
+    status = request_json(base, token, "/status")
+
+    assert status["truthState"] in {"ready", "unapplied"}
+    assert not apply_finished.is_set()
+
+    release_apply.set()
+    apply_thread.join(timeout=2)
+    assert apply_finished.is_set()
+    assert apply_errors.empty()
+
+
 def test_bridge_returns_structured_error_instead_of_closing_connection(
     broken_bridge: tuple[str, str],
 ) -> None:

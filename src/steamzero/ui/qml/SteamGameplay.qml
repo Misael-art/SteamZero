@@ -69,6 +69,7 @@ Item {
     property string profileLastOperationId: ""
     property var launchOptionsPlan: null
     property var maintenancePlan: null
+    property var selectedMaintenanceCategories: ["shader-cache"]
     property var mediaPlan: null
     property string mediaPackagePath: ""
     property string mediaLastOperationId: ""
@@ -91,6 +92,7 @@ Item {
     property alias desktopModeControl: desktopModePanel
     property alias fpsControlRepeater: gameplayFpsRepeater
     property alias vkBasaltControl: vkBasaltPicker
+    property alias maintenanceReviewControl: maintenanceReviewButton
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -251,6 +253,17 @@ Item {
         if (bytes < 1024 * 1024 * 1024)
             return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
         return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+    }
+
+    function selectedMaintenanceBytes() {
+        var total = 0
+        var categories = page.maintenance.categories || []
+        for (var index = 0; index < categories.length; index++) {
+            var category = categories[index]
+            if (page.selectedMaintenanceCategories.indexOf(category.id) >= 0)
+                total += Number(category.sizeBytes) || 0
+        }
+        return total
     }
 
     function choosePerformance(index) {
@@ -1578,9 +1591,18 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 48
                                 CheckBox {
-                                    checked: modelData.id === "shader-cache"
-                                    enabled: false
+                                    checked: page.selectedMaintenanceCategories.indexOf(modelData.id) >= 0
+                                    enabled: modelData.sizeBytes > 0
                                     Accessible.name: modelData.id
+                                    onToggled: {
+                                        var selected = page.selectedMaintenanceCategories.slice()
+                                        var index = selected.indexOf(modelData.id)
+                                        if (checked && index < 0)
+                                            selected.push(modelData.id)
+                                        else if (!checked && index >= 0)
+                                            selected.splice(index, 1)
+                                        page.selectedMaintenanceCategories = selected
+                                    }
                                 }
                                 Label {
                                     text: modelData.id === "shader-cache" ? qsTr("Shader cache") : qsTr("Crash dumps")
@@ -1607,15 +1629,16 @@ Item {
                             onClicked: page.maintenanceRecoveryRequested()
                         }
                         Button {
+                            id: maintenanceReviewButton
                             text: page.maintenance.steamRunning ? qsTr("Feche a Steam") : qsTr("Revisar limpeza")
                             enabled: !page.maintenance.steamRunning
-                                && page.maintenance.totalBytes > 0
+                                && page.selectedMaintenanceBytes() > 0
                                 && Boolean(page.selectedGame.id)
                             Layout.fillWidth: true
                             Layout.minimumHeight: 50
                             Accessible.name: text
                             onClicked: page.maintenancePlanRequested(
-                                String(page.selectedGame.id), ["shader-cache"]
+                                String(page.selectedGame.id), page.selectedMaintenanceCategories
                             )
                         }
                     }

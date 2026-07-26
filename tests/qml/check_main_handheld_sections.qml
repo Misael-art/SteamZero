@@ -236,6 +236,13 @@ Main {
         }
         if (phase === 6) {
             checkScrollWidth(window.castScrollControl, "Transmissão")
+            window.emulationControl.systemRequested()
+            check(window.sectionIndex === 6,
+                  "atalho de Emulação para Sistema não pode abrir Transmissão")
+            window.sectionIndex = 2
+            window.steamGameplayControl.systemRequested()
+            check(window.sectionIndex === 6,
+                  "atalho de Steam para Sistema não pode abrir Transmissão")
             window.sectionIndex = 6
             phase = 7
             return

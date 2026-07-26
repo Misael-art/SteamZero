@@ -2811,3 +2811,43 @@ e WI-S1 screencast.
 para teste Game Mode; teste físico de boot autologin SDDM (plano B greeter),
 handoff Desktop, central de emulação (ID ERROR-UX), ErrorCard em falha
 transacional, e seção cast/transmissão para receptor navegador.
+
+## 2026-07-26 — UI: correções de navegação e operações concorrentes
+
+**Branch:** `codex/ui-regression-remediation`.
+
+**Resolução:** os sete atalhos contextuais de Sistema passaram a selecionar a
+seção 6 (Sistema), preservando a seção 5 para Transmissão. A bridge desktop usa
+`ThreadingHTTPServer`, com a conexão SQLite habilitada para os workers da bridge,
+para que polling e cancelamento não aguardem operações longas. O histórico de
+operações agora expõe rollback quando disponível; a manutenção permite escolher
+as categorias publicadas; ações do ErrorCard deixam de ser apenas `console.log`.
+
+**Testes:** bridge + QML offscreen: 30 passed; mypy, independence e boundaries
+verdes. O `ruff check src tools tests` permanece bloqueado por cinco E501 em
+`tools/capture_screenscraper_payload.py`, arquivo pré-existente e fora deste
+escopo.
+
+**Host/release:** nenhuma instalação, build de wheel ou ação de host executada.
+
+## 2026-07-26 — Revisão independente da correção de UI
+
+**Branch:** `codex/ui-regression-remediation`.
+
+**Correções após revisão:** restaurado o `check_same_thread` padrão do SQLite.
+O `ExperienceCoordinator`, única dependência longa da bridge que retém um
+`StateStore`, passou a receber um coordenador e uma conexão isolados por thread
+de requisição; a conexão é fechada ao concluir o handler. O teste da bridge
+agora bloqueia um POST real de aplicação e prova que `/status` responde antes
+de liberá-lo.
+
+O `manualAction` do ErrorCard voltou a ser orientação textual, sem botão que
+encaminhava indevidamente para Sistema. A manutenção Steam calcula a
+habilitação a partir dos bytes das categorias efetivamente selecionadas,
+incluindo cobertura para shader cache vazio e crash dumps não vazios.
+
+**Testes:** bridge + coordenador + QML offscreen: 46 passed; teste focal de
+concorrência + QML: 11 passed; Ruff completo, mypy, independence e boundaries
+verdes no worktree isolado.
+
+**Host/release:** nenhuma instalação, build de wheel ou ação de host executada.

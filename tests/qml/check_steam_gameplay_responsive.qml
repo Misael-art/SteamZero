@@ -36,7 +36,18 @@ Window {
                     "humanReview": {"state": "PENDING-HUMAN"}}
             },
             "hardware": {"tdpMin": 3, "tdpMax": 15, "refreshHz": 60},
-            "currentProfile": {"gameId": "3311720", "scope": "game"}
+            "currentProfile": {"gameId": "3311720", "scope": "game"},
+            "maintenance": {
+                "totalBytes": 524288000,
+                "categories": [{
+                    "id": "shader-cache",
+                    "sizeBytes": 0
+                }, {
+                    "id": "crash-dumps",
+                    "sizeBytes": 524288000
+                }],
+                "excluded": []
+            }
         })
         desktopStatus: ({})
         backgroundColor: "#071019"
@@ -69,6 +80,11 @@ Window {
                   "vkBasalt deve iniciar completamente desligado")
             check(page.vkBasaltControl.Accessible.description.length > 0,
                   "vkBasalt indisponível deve explicar a dependência")
+            check(page.selectedMaintenanceBytes() === 0,
+                  "categoria vazia selecionada não deve herdar bytes de outra categoria")
+            check(!page.maintenanceReviewControl.enabled,
+                  "limpeza deve ficar desabilitada quando só a categoria vazia está selecionada")
+            page.selectedMaintenanceCategories = ["crash-dumps"]
             width = 1656
             height = 954
             phase = 1
@@ -78,6 +94,10 @@ Window {
             check(!page.compactLayout, "Full HD deve preservar Steam Gameplay desktop")
             check(page.showSupplementaryPanels,
                   "Full HD deve recuperar painéis suplementares")
+            check(page.selectedMaintenanceBytes() === 524288000,
+                  "limpeza deve somar somente as categorias selecionadas")
+            check(page.maintenanceReviewControl.enabled,
+                  "limpeza deve habilitar quando a categoria selecionada contém dados")
             width = 2296
             height = 954
             phase = 2
