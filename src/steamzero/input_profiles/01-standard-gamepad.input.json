@@ -3,7 +3,7 @@
   "id": "standard-gamepad",
   "revision": 1,
   "label": "Controle padrão",
-  "platforms": ["switch", "nintendo-handheld", "nes-famicom", "snes"],
+  "platforms": ["switch", "nintendo-handheld", "nes-famicom", "snes", "nintendo-console"],
   "source": {"kind": "builtin", "license": "GPL-3.0-or-later"},
   "layout": "standard-gamepad",
   "maxPlayers": 4,

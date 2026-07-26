@@ -34,6 +34,20 @@ Which = Callable[[str], str | None]
 CommandRunner = Callable[[Sequence[str], float], int]
 ToolProbe = Callable[[Sequence[str], float], tuple[int, str]]
 
+_FLATPAK_BIN_DIRS: tuple[str, ...] = ()
+
+
+def flatpak_which(name: str) -> str | None:
+    resolved = shutil.which(name)
+    if resolved is not None:
+        return resolved
+    for d in _FLATPAK_BIN_DIRS:
+        candidate = Path(d) / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate.resolve())
+    return None
+
+
 # Conversões allowlisted por ferramenta (nunca aceitar par arbitrário).
 _NSZ_CONVERSIONS = frozenset({("nsp", "nsz"), ("nsz", "nsp")})
 _NSZ_VERSION = "4.6.1"

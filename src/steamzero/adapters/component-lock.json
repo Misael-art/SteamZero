@@ -14,7 +14,7 @@
     },
     {
       "id": "dolphin",
-      "manifestHash": "f092a59c858b62376c1fdbcc09883955d5e0892cf5fa9b54cf8bb7ddef94ecfb",
+      "manifestHash": "14c55fc097b3ca566c1fa0e96493f17aa51b1ea66622057c8f16388c964ba1ec",
       "source": {
         "type": "flatpak",
         "version": "377c3e63506ebc51c6eb8ae717f216514f3fdbdd634d69c00c4c0173fb0629e5",
