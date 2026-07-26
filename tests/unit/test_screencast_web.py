@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import http.client
 import json
+import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -236,34 +238,72 @@ class TestWebReceiverProvider:
     # --- IPC / signaling ----------------------------------------------------
 
     def test_send_ipc_encodes_message(self, provider: WebReceiverProvider) -> None:
-        with patch("steamzero.adapters.screencast_web.socket.socket") as mock_sock:
-            mock_sock_instance = MagicMock()
-            mock_sock.return_value = mock_sock_instance
-            provider._send_ipc({"type": "TEST"})
-            mock_sock_instance.connect.assert_called_once()
-            sent_data = mock_sock_instance.sendall.call_args[0][0]
-            decoded = json.loads(sent_data.decode("utf-8").strip())
-            assert decoded["type"] == "TEST"
-            assert decoded["version"] == IPC_VERSION
+        ipc_conn = MagicMock()
+        provider._ipc_conn = ipc_conn
+
+        assert provider._send_ipc({"type": "TEST"}) is True
+
+        sent_data = ipc_conn.sendall.call_args[0][0]
+        decoded = json.loads(sent_data.decode("utf-8").strip())
+        assert decoded["type"] == "TEST"
+        assert decoded["version"] == IPC_VERSION
 
     def test_send_ipc_handles_exception(self, provider: WebReceiverProvider) -> None:
-        with patch("steamzero.adapters.screencast_web.socket.socket") as mock_sock:
-            mock_sock.side_effect = OSError("no socket")
-            provider._send_ipc({"type": "TEST"})
+        ipc_conn = MagicMock()
+        ipc_conn.sendall.side_effect = OSError("disconnected")
+        provider._ipc_conn = ipc_conn
+
+        assert provider._send_ipc({"type": "TEST"}) is False
+        assert provider._ipc_conn is None
+
+    def test_persistent_ipc_socket_carries_commands_and_engine_events(
+        self, provider: WebReceiverProvider
+    ) -> None:
+        engine_conn, provider_conn = socket.socketpair()
+        provider._ipc_conn = provider_conn
+        provider._ipc_stop.clear()
+        offer_received = threading.Event()
+
+        def record_message(raw: str) -> None:
+            message = json.loads(raw)
+            if message.get("type") == "OFFER_CREATED":
+                offer_received.set()
+
+        with patch.object(provider, "_on_ipc_message", side_effect=record_message):
+            listener = threading.Thread(target=provider._ipc_listen_loop, daemon=True)
+            listener.start()
+
+            assert provider._send_ipc({"type": "START_SESSION"}) is True
+            first = json.loads(engine_conn.recv(4096).split(b"\n", 1)[0])
+            assert first["type"] == "START_SESSION"
+
+            engine_conn.sendall(b'{"version":1,"type":"OFFER_CREATED","sdp":"v=0"}\n')
+            assert offer_received.wait(timeout=1)
+
+            assert provider._send_ipc({"type": "ANSWER", "sdp": "v=0"}) is True
+            second = json.loads(engine_conn.recv(4096).split(b"\n", 1)[0])
+            assert second["type"] == "ANSWER"
+
+            provider._ipc_stop.set()
+            engine_conn.shutdown(socket.SHUT_RDWR)
+            engine_conn.close()
+            listener.join(timeout=1)
+
+        assert not listener.is_alive()
 
     def test_on_signal_message_answer(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "_send_ipc") as mock_send:
             provider._on_signal_message(
                 json.dumps({"type": "answer", "sdp": "v=0"}).encode("utf-8")
             )
-            mock_send.assert_called_once_with({"type": "answer", "sdp": "v=0"})
+            mock_send.assert_called_once_with({"type": "ANSWER", "sdp": "v=0"})
 
     def test_on_signal_message_candidate(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "_send_ipc") as mock_send:
             provider._on_signal_message(
                 json.dumps({"type": "candidate", "candidate": "cand:1"}).encode("utf-8")
             )
-            mock_send.assert_called_once_with({"type": "candidate", "candidate": "cand:1"})
+            mock_send.assert_called_once_with({"type": "CANDIDATE", "candidate": "cand:1"})
 
     def test_on_signal_message_stop(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "stop") as mock_stop:
@@ -289,6 +329,13 @@ class TestWebReceiverProvider:
                 json.dumps({"type": "ERROR", "detail": "engine oom"}).encode("utf-8")
             )
             mock_push.assert_called_once_with("error", {"detail": "engine oom"})
+
+    def test_on_ipc_message_lowercase_command_error(self, provider: WebReceiverProvider) -> None:
+        with patch.object(provider, "_push_sse") as mock_push:
+            provider._on_ipc_message(
+                json.dumps({"type": "error", "detail": "pipeline failed"}).encode("utf-8")
+            )
+            mock_push.assert_called_once_with("error", {"detail": "pipeline failed"})
 
     def test_on_ipc_message_candidate(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "_push_sse") as mock_push:

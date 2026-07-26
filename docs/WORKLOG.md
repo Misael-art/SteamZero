@@ -2851,3 +2851,35 @@ concorrência + QML: 11 passed; Ruff completo, mypy, independence e boundaries
 verdes no worktree isolado.
 
 **Host/release:** nenhuma instalação, build de wheel ou ação de host executada.
+
+## 2026-07-26 — Web receiver: pipeline emissor e sinalização persistente
+
+**Branch:** `codex/screencast-web-pipeline-signaling`, base `496eb36`.
+
+**Pipeline (`4f81e48`):** o motor deixou de montar um receptor local
+(`depay → decode → videosink`) e passou a construir uma cadeia send-only:
+`pipewiresrc → videoconvert → x264enc → h264parse → rtph264pay → webrtcbin`.
+O encoder é nomeado e responde a `SET_QUALITY`; fd e node PipeWire são aceitos
+somente como inteiros validados. Áudio Opus é acrescentado quando o portal
+publica um node de áudio válido. Offer local, answer remota e ICE usam as APIs
+reais de `webrtcbin`; a assinatura de `Gst.Promise` foi conferida contra o
+PyGObject instalado.
+
+**Sinalização (`76bfc51`):** comandos e eventos usam a mesma conexão Unix
+persistente. O adapter normaliza `answer/candidate` do navegador para o
+vocabulário do motor, encaminha erros e preserva a conexão que recebe offer e
+ICE. STOP encerra o listener, libera o socket e permite nova sessão.
+
+**Evidência:** 37 testes do motor; teste integrado adapter↔motor prova START,
+offer, ICE nos dois sentidos, answer e STOP na mesma conexão. O GStreamer real
+construiu `GstPipeWireSrc`, `GstX264Enc` e `GstWebRTCBin` sem iniciar captura.
+`pytest tests -q`, Ruff check/format, mypy (162 arquivos), independence e
+boundaries passaram nos dois commits.
+
+**Limite conhecido:** o contrato atual de `CaptureConsent` ainda não transporta
+o fd/node concedido pelo portal. O pipeline está pronto para consumi-los, mas a
+abertura da sessão `xdg-desktop-portal` continua sendo o próximo item para
+quadros reais em Wayland. Nenhuma captura foi iniciada nesta sessão.
+
+**Host/release:** nenhuma instalação, build de wheel, alteração de release ou
+ação privilegiada foi executada.

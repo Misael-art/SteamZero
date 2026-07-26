@@ -14,15 +14,21 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import signal
 import socket
 import threading
 import time
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
-from gi.repository import Gst  # type: ignore[import-not-found]
+import gi  # type: ignore[import-not-found]
+
+gi.require_version("Gst", "1.0")
+gi.require_version("Gio", "2.0")
+gi.require_version("GLib", "2.0")
+from gi.repository import Gio, GLib, Gst  # type: ignore[import-not-found]  # noqa: E402
 
 FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -32,6 +38,441 @@ IPC_VERSION = 1
 POLL_INTERVAL = 0.05
 HEARTBEAT_SECONDS = 5
 MAX_MESSAGE_BYTES = 65536
+DEFAULT_VIDEO_BITRATE_KBPS = 4000
+
+
+def _nonnegative_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return None
+
+
+def build_pipeline_description(msg: dict[str, Any]) -> str:
+    """Build the send-only WebRTC pipeline from validated scalar inputs."""
+    source_parts = ["pipewiresrc", "name=capture", "do-timestamp=true"]
+    pipewire_fd = _nonnegative_int(msg.get("pipewire_fd"))
+    pipewire_node = _nonnegative_int(msg.get("pipewire_node"))
+    if pipewire_fd is not None:
+        source_parts.append(f"fd={pipewire_fd}")
+    if pipewire_node is not None:
+        source_parts.append(f"path={pipewire_node}")
+
+    bitrate = _nonnegative_int(msg.get("bitrate_kbps"))
+    if bitrate is None or bitrate == 0:
+        bitrate = DEFAULT_VIDEO_BITRATE_KBPS
+
+    video = (
+        f"{' '.join(source_parts)} ! "
+        "queue leaky=downstream max-size-buffers=2 ! "
+        "videoconvert ! video/x-raw,format=I420,framerate=30/1 ! "
+        f"x264enc name=encoder tune=zerolatency speed-preset=superfast bitrate={bitrate} "
+        "key-int-max=60 byte-stream=true ! "
+        "h264parse ! rtph264pay config-interval=-1 pt=96 ! "
+        "application/x-rtp,media=video,encoding-name=H264,payload=96 ! webrtc."
+    )
+
+    audio = ""
+    audio_node = _nonnegative_int(msg.get("audio_pipewire_node"))
+    if msg.get("audio") is True and audio_node is not None:
+        audio = (
+            f" pipewiresrc name=audio_capture do-timestamp=true path={audio_node} ! "
+            "queue leaky=downstream max-size-buffers=8 ! "
+            "audioconvert ! audioresample ! "
+            "opusenc name=audio_encoder bitrate=96000 ! rtpopuspay pt=97 ! "
+            "application/x-rtp,media=audio,encoding-name=OPUS,payload=97 ! webrtc."
+        )
+
+    return f"webrtcbin name=webrtc bundle-policy=max-bundle {video}{audio}"
+
+
+# --- Portal phases (internal, never serialized to IPC) --------------------
+PORTAL_PHASE_IDLE = "idle"
+PORTAL_PHASE_PENDING = "pending"
+PORTAL_PHASE_CAPTURE_READY = "capture_ready"
+PORTAL_PHASE_DENIED = "denied"
+PORTAL_PHASE_CANCELLED = "cancelled"
+
+
+class PortalError(Exception):
+    """Erro do portal xdg-desktop-portal, com causa estável (RFC 9457)."""
+
+    def __init__(self, cause: str) -> None:
+        self.cause = cause
+        super().__init__(cause)
+
+
+class PortalScreenCastClient:
+    """Cliente assíncrono do xdg-desktop-portal ScreenCast.
+
+    Abre uma sessão no portal do compositor Wayland, solicita consentimento
+    do usuário e retorna o descritor remoto do PipeWire (fd + node/serial).
+
+    Toda comunicação D-Bus acontece num GLib MainLoop dedicado — nunca
+    bloqueia o handler IPC. O cancelamento é seguro via ``threading.Event``.
+    """
+
+    PORTAL_BUS_NAME = "org.freedesktop.portal.Desktop"
+    PORTAL_OBJ_PATH = "/org/freedesktop/portal/desktop"
+    PORTAL_IFACE = "org.freedesktop.portal.ScreenCast"
+    REQUEST_IFACE = "org.freedesktop.portal.Request"
+
+    _SCOPE_BITS: ClassVar[dict[str, int]] = {
+        "monitor": 1,
+        "window": 2,
+        "virtual": 4,
+    }
+
+    def capture(
+        self,
+        scope: str,
+        audio: bool,
+        cancel: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        """Executa o fluxo do portal num thread dedicado com GLib MainLoop.
+
+        Retorna ``{"fd": int, "node_id": int | None, "serial": int | None}``.
+        Levanta ``PortalError`` com causa estável em caso de falha.
+        """
+        result: list[dict[str, Any]] = []
+        error: list[PortalError] = []
+        done = threading.Event()
+        cancel = cancel or threading.Event()
+
+        thread = threading.Thread(
+            target=self._run_portal_loop,
+            args=(scope, audio, result, error, done, cancel),
+            daemon=True,
+        )
+        thread.start()
+        done.wait(timeout=120.0)
+
+        if error:
+            raise error[0]
+        if not result:
+            raise PortalError("portal-timeout")
+        return result[0]
+
+    # --- Loop GLib dedicado ------------------------------------------------
+
+    def _run_portal_loop(
+        self,
+        scope: str,
+        audio: bool,
+        result: list[dict[str, Any]],
+        error: list[PortalError],
+        done: threading.Event,
+        cancel: threading.Event,
+    ) -> None:
+        loop = GLib.MainLoop.new(None, False)
+        GLib.idle_add(
+            lambda: self._do_capture(
+                scope, audio, result, error, done, cancel, loop
+            )
+        )
+        loop.run()
+
+    def _do_capture(
+        self,
+        scope: str,
+        audio: bool,
+        result: list[dict[str, Any]],
+        error: list[PortalError],
+        done: threading.Event,
+        cancel: threading.Event,
+        loop: Any,
+    ) -> None:
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            portal = Gio.DBusProxy.new_sync(
+                bus,
+                Gio.DBusProxyFlags.NONE,
+                None,
+                self.PORTAL_BUS_NAME,
+                self.PORTAL_OBJ_PATH,
+                self.PORTAL_IFACE,
+                None,
+            )
+
+            version_prop = portal.get_cached_property("version")
+            if version_prop is None:
+                raise PortalError("portal-missing")
+
+            avail_sources = self._query_uint32(
+                bus, portal, "AvailableSourceTypes"
+            )
+            avail_cursors = self._query_uint32(
+                bus, portal, "AvailableCursorModes"
+            )
+
+            scope_bit = self._SCOPE_BITS.get(scope, 0)
+            if not scope_bit or not (avail_sources & scope_bit):
+                raise PortalError("source-type-unavailable")
+
+            cursor_mode = self._pick_cursor_mode(avail_cursors)
+            if cursor_mode is None:
+                raise PortalError("portal-missing")
+
+            if cancel.is_set():
+                raise PortalError("capture-cancelled")
+
+            # --- CreateSession ---
+            session_resp = self._call_with_response(
+                bus, portal,
+                "CreateSession",
+                GLib.Variant("(a{sv})", (
+                    {"session_handle_token": GLib.Variant("s", secrets.token_hex(16))},
+                )),
+                loop, cancel,
+            )
+            session_handle = self._unpack_session_handle(session_resp)
+            if not session_handle:
+                raise PortalError("portal-invalid-response")
+
+            if cancel.is_set():
+                self._close_session(bus, session_handle)
+                raise PortalError("capture-cancelled")
+
+            # --- SelectSources ---
+            select_opts: dict[str, GLib.Variant] = {
+                "types": GLib.Variant("u", scope_bit),
+                "cursor_mode": GLib.Variant("u", cursor_mode),
+                "multiple": GLib.Variant("b", False),
+            }
+            if audio:
+                select_opts["enable_audio"] = GLib.Variant("b", True)
+            portal.call_sync(
+                "SelectSources",
+                GLib.Variant("(oa{sv})", (session_handle, select_opts)),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                None,
+            )
+
+            if cancel.is_set():
+                self._close_session(bus, session_handle)
+                raise PortalError("capture-cancelled")
+
+            # --- Start ---
+            start_resp = self._call_with_response(
+                bus, portal,
+                "Start",
+                GLib.Variant("(o sa{sv})", (
+                    session_handle, "",
+                    {"multiple": GLib.Variant("b", False)},
+                )),
+                loop, cancel,
+            )
+            if cancel.is_set():
+                self._close_session(bus, session_handle)
+                raise PortalError("capture-cancelled")
+
+            stream_results = self._unpack_stream_results(start_resp)
+            if not stream_results:
+                self._close_session(bus, session_handle)
+                raise PortalError("portal-invalid-response")
+
+            # --- OpenPipeWireRemote ---
+            pw_result = portal.call_sync(
+                "OpenPipeWireRemote",
+                GLib.Variant("(oa{sv})", (session_handle, {})),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                None,
+            )
+            fd_list = pw_result.get_fd_list()
+            if fd_list is None or fd_list.get(0) < 0:
+                self._close_session(bus, session_handle)
+                raise PortalError("pipewire-remote-failed")
+            fd = fd_list.get(0)
+
+            result.append({
+                "fd": fd,
+                "node_id": stream_results.get("node_id"),
+                "serial": stream_results.get("serial"),
+                "session_handle": session_handle,
+            })
+        except PortalError as exc:
+            error.append(exc)
+        except Exception as exc:
+            error.append(PortalError(f"pipeline-start-failed: {exc}"))
+        finally:
+            done.set()
+            loop.quit()
+
+    # --- Helpers D-Bus -----------------------------------------------------
+
+    def _query_uint32(self, bus: Any, portal: Any, prop: str = "AvailableSourceTypes") -> int:
+        try:
+            result = portal.call_sync(
+                "org.freedesktop.DBus.Properties.Get",
+                GLib.Variant(
+                    "(ss)", (self.PORTAL_IFACE, prop)
+                ),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                None,
+            )
+            val = result.unpack()[0]
+            return int(val) if val is not None else 0
+        except Exception:
+            return 0
+
+    def _pick_cursor_mode(self, available: int) -> int | None:
+        for mode in (1, 2, 4):
+            if available & mode:
+                return mode
+        return None
+
+    def _request_path(self, bus: Any, token: str) -> str:
+        sender = bus.get_unique_name().replace(".", "_")
+        return f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
+
+    def _call_with_response(
+        self,
+        bus: Any,
+        proxy: Any,
+        method: str,
+        variant: Any,
+        loop: Any,
+        cancel: threading.Event,
+    ) -> Any:
+        token = secrets.token_hex(16)
+        request_path = self._request_path(bus, token)
+
+        options_v = GLib.Variant("a{sv}", {"handle_token": GLib.Variant("s", token)})
+
+        signal_data: list[Any] = []
+        sub_id: list[int | None] = [None]
+
+        def _on_response(
+            _connection: Any,
+            _sender: str,
+            _obj_path: str,
+            _iface: str,
+            _sig_name: str,
+            params: Any,
+            _user_data: Any,
+        ) -> None:
+            if params is not None:
+                signal_data.append(params)
+            loop.quit()
+
+        sub_id[0] = bus.signal_subscribe(
+            self.PORTAL_BUS_NAME,
+            self.REQUEST_IFACE,
+            "Response",
+            request_path,
+            None,
+            Gio.DBusSignalFlags.NONE,
+            _on_response,
+            None,
+        )
+
+        merged = self._merge_options(variant, options_v)
+        proxy.call_sync(method, merged, Gio.DBusCallFlags.NONE, -1, None)
+
+        while not signal_data and not cancel.is_set():
+            loop.iteration(True)
+
+        if sub_id[0] is not None:
+            bus.signal_unsubscribe(sub_id[0])
+
+        if cancel.is_set():
+            raise PortalError("capture-cancelled")
+        if not signal_data:
+            raise PortalError("portal-invalid-response")
+
+        return signal_data[0]
+
+    def _merge_options(self, variant: Any, extra_opts: Any) -> Any:
+        type_str = variant.get_type_string()
+        if type_str == "(a{sv})":
+            existing = variant.get_child_value(0).unpack()
+            merged = dict(existing)
+            extra_dict = extra_opts.unpack()
+            merged.update(extra_dict)
+            return GLib.Variant("(a{sv})", (merged,))
+        if type_str == "(o sa{sv})":
+            obj = variant.get_child_value(0)
+            parent = variant.get_child_value(1)
+            existing = variant.get_child_value(2).unpack()
+            merged = dict(existing)
+            extra_dict = extra_opts.unpack()
+            merged.update(extra_dict)
+            return GLib.Variant("(o sa{sv})", (obj, parent, merged))
+        return variant
+
+    def _unpack_session_handle(self, response: Any) -> str | None:
+        try:
+            return str(response[1].get("session_handle", ""))
+        except Exception:
+            return None
+
+    def _unpack_stream_results(self, response: Any) -> dict[str, Any] | None:
+        try:
+            result_code = int(response[0])
+            if result_code == 1:
+                raise PortalError("capture-denied")
+            if result_code == 2:
+                raise PortalError("capture-cancelled")
+
+            results = response[1] if len(response) > 1 else {}
+            streams_raw = results.get("streams", [])
+            if not streams_raw:
+                return None
+
+            for stream_info in streams_raw:
+                if isinstance(stream_info, dict):
+                    props = stream_info.get("properties", {})
+                elif isinstance(stream_info, (list, tuple)):
+                    props = {}
+                    for item in stream_info:
+                        if isinstance(item, dict):
+                            props.update(item)
+                else:
+                    props = {}
+
+                if props.get("source_type", 0) in (1, 2, 4):
+                    node_id = int(props.get("source_id", 0)) or None
+                    serial = None
+                    pw_serial_raw = props.get("pipewire-serial", props.get("pipewire.serial"))
+                    if pw_serial_raw is not None:
+                        serial = int(pw_serial_raw)
+                    return {
+                        "node_id": node_id,
+                        "serial": serial,
+                    }
+
+            return None
+        except PortalError:
+            raise
+        except Exception:
+            return None
+
+    def _close_session(self, bus: Any, session_handle: str) -> None:
+        try:
+            session_proxy = Gio.DBusProxy.new_sync(
+                bus,
+                Gio.DBusProxyFlags.NONE,
+                None,
+                self.PORTAL_BUS_NAME,
+                session_handle,
+                "org.freedesktop.portal.Session",
+                None,
+            )
+            session_proxy.call_sync(
+                "Close",
+                GLib.Variant("()", ()),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                None,
+            )
+        except Exception as exc:
+            _log.debug("close session ignored: %s", exc)
 
 
 @dataclass
@@ -44,10 +485,17 @@ class SessionState:
     start_time: float = 0.0
     portal_session: Any = None
     portal_fd: int | None = None
+    portal_serial: int | None = None
+    portal_node_id: int | None = None
+    portal_phase: str = PORTAL_PHASE_IDLE
+    portal_cancel: threading.Event | None = None
+    portal_thread: threading.Thread | None = None
+    generation: int = 0
     control_conn: socket.socket | None = None
 
 
 _INSTANCE: CastEngine | None = None
+_portal_client_factory: Any = None  # test injection point
 
 
 class CastEngine:
@@ -55,7 +503,7 @@ class CastEngine:
         self._socket_path = socket_path
         self._running = False
         self._session = SessionState()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._server: socket.socket | None = None
         self._main_bus_watch: Any = None
         self._loop: Any = None
@@ -90,6 +538,16 @@ class CastEngine:
                 if not data:
                     break
                 buf += data
+                if len(buf) > MAX_MESSAGE_BYTES:
+                    self._send(
+                        conn,
+                        {
+                            "version": IPC_VERSION,
+                            "type": "error",
+                            "detail": "message too large",
+                        },
+                    )
+                    break
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
                     if not line.strip():
@@ -98,6 +556,9 @@ class CastEngine:
         except Exception as exc:
             _log.error("client error: %s", exc)
         finally:
+            with self._lock:
+                if self._session.control_conn is conn:
+                    self._session.control_conn = None
             conn.close()
 
     def _dispatch(self, conn: socket.socket, raw: str) -> None:
@@ -163,7 +624,7 @@ class CastEngine:
             conn.sendall(data)
 
     def _cmd_start_session(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
-        if self._session.running:
+        if self._session.running or self._session.portal_phase == PORTAL_PHASE_PENDING:
             self._send(
                 conn,
                 {
@@ -175,61 +636,28 @@ class CastEngine:
             )
             return
         try:
-            import gi  # type: ignore[import-not-found]
+            scope = msg.get("scope", "monitor")
+            audio = msg.get("audio", False)
 
-            gi.require_version("GstWebRTC", "1.0")
+            if scope not in ("monitor", "window", "virtual"):
+                raise ValueError(f"invalid scope: {scope}")
 
-            Gst.init(None)
-            pipeline = Gst.parse_launch(
-                "webrtcbin name=webrtc bundle-policy=max-bundle ! "
-                "rtph264depay ! avdec_h264 ! videoconvert ! "
-                "autovideosink"
-            )
-            webrtc = pipeline.get_by_name("webrtc")
-
-            def on_offer_created(_webrtc: Any, promise: Any) -> None:
-                try:
-                    reply = promise.wait()
-                    offer = reply["offer"]
-                    self._session.offer = offer.sdp.as_text()
-                    _log.info("offer created")
-                    if self._session.control_conn is not None:
-                        self._send(
-                            self._session.control_conn,
-                            {
-                                "version": IPC_VERSION,
-                                "type": "OFFER_CREATED",
-                                "sdp": self._session.offer,
-                            },
-                        )
-                except Exception as exc:
-                    _log.error("offer creation failed: %s", exc)
-
-            webrtc.connect(
-                "on-negotiation-needed",
-                lambda w: w.create_offer(None, on_offer_created, None),
+            cancel = threading.Event()
+            generation = self._session.generation + 1
+            self._session = SessionState(
+                control_conn=conn,
+                portal_phase=PORTAL_PHASE_PENDING,
+                portal_cancel=cancel,
+                generation=generation,
             )
 
-            def on_ice_candidate(_webrtc: Any, sdp_mline_index: int, candidate: str) -> None:
-                if self._session.control_conn is not None:
-                    self._send(
-                        self._session.control_conn,
-                        {
-                            "version": IPC_VERSION,
-                            "type": "CANDIDATE",
-                            "candidate": {"candidate": candidate, "sdpMLineIndex": sdp_mline_index},
-                        },
-                    )
+            self._start_portal_async(scope, audio, conn, generation, cancel)
 
-            webrtc.connect("on-ice-candidate", on_ice_candidate)
-
-            pipeline.set_state(Gst.State.PLAYING)
-            self._session.pipeline = pipeline
-            self._session.running = True
-            self._session.start_time = time.monotonic()
-            self._session.control_conn = conn
-            _log.info("session started")
-            self._send(conn, {"version": IPC_VERSION, "type": "START_SESSION_OK", "seq": seq})
+            _log.info("portal session pending (scope=%s, audio=%s)", scope, audio)
+            self._send(
+                conn,
+                {"version": IPC_VERSION, "type": "START_SESSION_OK", "seq": seq},
+            )
         except Exception as exc:
             _log.error("start session failed: %s", exc)
             self._send(
@@ -242,8 +670,159 @@ class CastEngine:
                 },
             )
 
+    def _start_portal_async(
+        self,
+        scope: str,
+        audio: bool,
+        conn: socket.socket,
+        generation: int,
+        cancel: threading.Event,
+    ) -> None:
+        global _portal_client_factory
+        portal_cls = (
+            _portal_client_factory
+            if _portal_client_factory is not None
+            else PortalScreenCastClient
+        )
+        portal = portal_cls() if callable(portal_cls) else portal_cls
+
+        def _portal_worker() -> None:
+            try:
+                caps = portal.capture(scope=scope, audio=audio, cancel=cancel)
+                self._on_portal_ready(
+                    caps["fd"], caps.get("serial"), caps.get("node_id"), conn, generation
+                )
+            except PortalError as exc:
+                _log.warning("portal failed: %s", exc.cause)
+                with self._lock:
+                    if self._session.generation != generation:
+                        return
+                    self._session.portal_phase = PORTAL_PHASE_IDLE
+                self._send_control_event(
+                    {
+                        "version": IPC_VERSION,
+                        "type": "CAPTURE_ERROR",
+                        "detail": exc.cause,
+                    }
+                )
+            except Exception as exc:
+                _log.error("portal worker error: %s", exc)
+
+        t = threading.Thread(target=_portal_worker, daemon=True)
+        t.start()
+
+    def _on_portal_ready(
+        self,
+        fd: int,
+        serial: int | None,
+        node_id: int | None,
+        conn: socket.socket,
+        generation: int,
+    ) -> None:
+        with self._lock:
+            if self._session.generation != generation:
+                import os
+                with suppress(OSError):
+                    os.close(fd)
+                return
+            self._session.portal_fd = fd
+            self._session.portal_serial = serial
+            self._session.portal_node_id = node_id
+            self._session.portal_phase = PORTAL_PHASE_CAPTURE_READY
+        _log.info("portal capture ready (fd=%d)", fd)
+        self._send_control_event(
+            {"version": IPC_VERSION, "type": "CAPTURE_READY"}
+        )
+        try:
+            self._build_and_start_pipeline(conn, fd, serial, node_id)
+        except Exception as exc:
+            _log.error("pipeline build failed: %s", exc)
+            self._send_control_event(
+                {
+                    "version": IPC_VERSION,
+                    "type": "CAPTURE_ERROR",
+                    "detail": f"pipeline-start-failed: {exc}",
+                }
+            )
+
+    def _build_and_start_pipeline(
+        self,
+        conn: socket.socket,
+        fd: int,
+        serial: int | None,
+        node_id: int | None,
+    ) -> None:
+        pipeline_msg: dict[str, Any] = {
+            "pipewire_fd": fd,
+            "pipewire_node": node_id if node_id else 0,
+        }
+        pipeline = Gst.parse_launch(build_pipeline_description(pipeline_msg))
+        webrtc = pipeline.get_by_name("webrtc")
+        if webrtc is None:
+            raise RuntimeError("pipeline did not create webrtcbin")
+
+        def on_offer_created(promise: Any, _webrtc: Any) -> None:
+            try:
+                reply = promise.get_reply()
+                offer = reply["offer"]
+                offer_sdp = offer.sdp.as_text()
+                local_promise = Gst.Promise.new()
+                webrtc.emit("set-local-description", offer, local_promise)
+                local_promise.interrupt()
+                with self._lock:
+                    self._session.offer = offer_sdp
+                _log.info("offer created")
+                self._send_control_event(
+                    {
+                        "version": IPC_VERSION,
+                        "type": "OFFER_CREATED",
+                        "sdp": offer_sdp,
+                    }
+                )
+            except Exception as exc:
+                _log.error("offer creation failed: %s", exc)
+
+        def on_negotiation_needed(element: Any) -> None:
+            promise = Gst.Promise.new_with_change_func(on_offer_created, element)
+            element.emit("create-offer", None, promise)
+
+        webrtc.connect("on-negotiation-needed", on_negotiation_needed)
+
+        def on_ice_candidate(_webrtc: Any, sdp_mline_index: int, candidate: str) -> None:
+            self._send_control_event(
+                {
+                    "version": IPC_VERSION,
+                    "type": "CANDIDATE",
+                    "candidate": {
+                        "candidate": candidate,
+                        "sdpMLineIndex": sdp_mline_index,
+                    },
+                }
+            )
+
+        webrtc.connect("on-ice-candidate", on_ice_candidate)
+
+        pipeline.set_state(Gst.State.PLAYING)
+        with self._lock:
+            self._session.pipeline = pipeline
+            self._session.running = True
+            self._session.start_time = time.monotonic()
+        _log.info("pipeline started (fd=%d)", fd)
+        self._send_control_event(
+            {"version": IPC_VERSION, "type": "PIPELINE_STARTED"}
+        )
+
+    def _send_control_event(self, payload: dict[str, Any]) -> None:
+        with self._lock:
+            conn = self._session.control_conn
+        if conn is not None:
+            self._send(conn, payload)
+
     def _cmd_stop_session(self, conn: socket.socket, seq: int) -> None:
-        if not self._session.running and self._session.pipeline is None:
+        is_idle = not self._session.running
+        is_idle = is_idle and self._session.pipeline is None
+        is_idle = is_idle and self._session.portal_phase != PORTAL_PHASE_PENDING
+        if is_idle:
             self._send(
                 conn,
                 {
@@ -255,8 +834,14 @@ class CastEngine:
             )
             return
         try:
+            if self._session.portal_cancel is not None:
+                self._session.portal_cancel.set()
             if self._session.pipeline is not None:
                 self._session.pipeline.set_state(Gst.State.NULL)
+            if self._session.portal_fd is not None:
+                with suppress(OSError):
+                    import os
+                    os.close(self._session.portal_fd)
             self._session = SessionState()
             _log.info("session stopped")
         except Exception as exc:
@@ -297,6 +882,7 @@ class CastEngine:
         status: dict[str, Any] = {
             "running": self._session.running,
             "paused": self._session.paused,
+            "portal_phase": self._session.portal_phase,
             "duration_seconds": (
                 int(time.monotonic() - self._session.start_time) if self._session.start_time else 0
             ),
@@ -317,15 +903,19 @@ class CastEngine:
         self._session.answer = msg.get("sdp", "")
         if self._session.pipeline is not None and msg.get("sdp"):
             try:
-                from gi.repository import GstWebRTC
+                from gi.repository import GstSdp, GstWebRTC
 
                 webrtc = self._session.pipeline.get_by_name("webrtc")
                 if webrtc is not None:
+                    result, sdp_message = GstSdp.SDPMessage.new_from_text(msg["sdp"])
+                    if result != GstSdp.SDPResult.OK:
+                        raise RuntimeError("invalid answer SDP")
                     answer = GstWebRTC.WebRTCSessionDescription.new(
-                        GstWebRTC.WebRTCSDPType.ANSWER, msg["sdp"]
+                        GstWebRTC.WebRTCSDPType.ANSWER,
+                        sdp_message,
                     )
                     promise = Gst.Promise.new()
-                    webrtc.set_remote_description(answer, promise)
+                    webrtc.emit("set-remote-description", answer, promise)
                     promise.wait()
                     _log.info("remote description set from answer")
             except Exception as exc:
@@ -339,20 +929,30 @@ class CastEngine:
                 if webrtc is not None:
                     candidate = msg["candidate"]
                     if isinstance(candidate, dict):
-                        sdp = candidate.get("candidate", "")
-                        mid = candidate.get("sdpMid", "")
-                        webrtc.add_ice_candidate(sdp, mid)
+                        value = str(candidate.get("candidate", ""))
+                        mline_index = _nonnegative_int(candidate.get("sdpMLineIndex"))
+                        webrtc.emit(
+                            "add-ice-candidate",
+                            mline_index if mline_index is not None else 0,
+                            value,
+                        )
                     else:
-                        webrtc.add_ice_candidate(str(candidate), "")
+                        webrtc.emit("add-ice-candidate", 0, str(candidate))
             except Exception as exc:
                 _log.error("add ice candidate failed: %s", exc)
         self._send(conn, {"version": IPC_VERSION, "type": "CANDIDATE_OK", "seq": seq})
 
     def _cmd_stop(self) -> None:
         _log.info("engine stop requested")
+        if self._session.portal_cancel is not None:
+            self._session.portal_cancel.set()
         if self._session.pipeline is not None:
             with suppress(Exception):
                 self._session.pipeline.set_state(Gst.State.NULL)
+        if self._session.portal_fd is not None:
+            with suppress(OSError):
+                import os
+                os.close(self._session.portal_fd)
         self._running = False
 
 

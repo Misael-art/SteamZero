@@ -17,8 +17,10 @@ Conteúdo é sempre do usuário (CONTENT-POLICY): nada é obtido, sugerido ou ba
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from steamzero.core import fs, ids, paths, safezip, transaction
 from steamzero.core.errors import SteamZeroError
@@ -45,6 +47,115 @@ _FORMAT_BY_EXT = {
 
 def detect_format(name: str) -> str:
     return _FORMAT_BY_EXT.get(Path(name).suffix.lower(), "unknown")
+
+
+_ARCHIVE_EXTS = frozenset({".zip", ".7z"})
+
+_M3U_RE = re.compile(r"\.m3u$", re.IGNORECASE)
+
+
+def build_ext_map(manifests: list[dict[str, Any]]) -> dict[str, list[str]]:
+    ext_map: dict[str, list[str]] = {}
+    for m in manifests:
+        for ext in m.get("media", {}).get("extensions", []):
+            ext_map.setdefault(f".{ext.lower()}", []).append(m["id"])
+    return ext_map
+
+
+def classify_rom(
+    name: str,
+    siblings: set[str],
+    ext_map: dict[str, list[str]],
+    *,
+    root_platform: str | None = None,
+) -> tuple[str | None, str, str]:
+    ext = Path(name).suffix.lower()
+
+    if ext in _ARCHIVE_EXTS:
+        return None, "unknown", "archived"
+
+    stem = Path(name).stem.lower()
+    has_bin = any(
+        Path(s).stem.lower() == stem and Path(s).suffix.lower() == ".bin" for s in siblings
+    )
+    has_cue = any(
+        Path(s).stem.lower() == stem and Path(s).suffix.lower() == ".cue" for s in siblings
+    )
+
+    if ext == ".cue":
+        if has_bin:
+            return "playstation", "base", "cue-pair"
+        return None, "unknown", "cue-orphan"
+
+    if ext == ".bin":
+        if has_cue:
+            return "playstation", "base", "cue-pair"
+        if root_platform is not None:
+            return root_platform, "base", "root-wins"
+        return None, "unknown", "bin-orphan"
+
+    platforms = ext_map.get(ext, [])
+    if not platforms:
+        return None, "unknown", "no-ext-match"
+
+    if root_platform is not None:
+        return root_platform, "base", "root-wins"
+
+    if len(platforms) == 1:
+        return platforms[0], "base", "exclusive-ext"
+
+    return None, "unknown", "ambiguous-ext"
+
+
+@dataclass(frozen=True)
+class RomCandidate:
+    path: Path
+    format: str
+    platform: str | None
+    content_kind: str
+    evidence: str
+
+
+class PlatformRomScanner:
+    def __init__(self, ext_map: dict[str, list[str]]) -> None:
+        self._ext_map = ext_map
+
+    @classmethod
+    def from_manifests(cls, manifests: list[dict[str, Any]]) -> PlatformRomScanner:
+        return cls(build_ext_map(manifests))
+
+    def inventory(self, root: Path, *, root_platform: str | None = None) -> list[RomCandidate]:
+        results: list[RomCandidate] = []
+        for path in self._iter_files(root):
+            siblings = self._siblings(root, path)
+            plat, kind, ev = classify_rom(
+                path.name, siblings, self._ext_map, root_platform=root_platform
+            )
+            fmt = _FORMAT_BY_EXT.get(path.suffix.lower(), "unknown")
+            results.append(
+                RomCandidate(
+                    path=path,
+                    format=fmt,
+                    platform=plat,
+                    content_kind=kind,
+                    evidence=ev,
+                )
+            )
+        return results
+
+    @staticmethod
+    def _iter_files(root: Path) -> Iterator[Path]:
+        if not root.is_dir():
+            return
+        for child in sorted(root.iterdir(), key=lambda p: p.name):
+            if child.is_file():
+                yield child
+
+    @staticmethod
+    def _siblings(root: Path, path: Path) -> set[str]:
+        if not root.is_dir():
+            return {path.name}
+        return {p.name for p in root.iterdir() if p.is_file()}
 
 
 def disc_group(title: str) -> tuple[str, int | None]:

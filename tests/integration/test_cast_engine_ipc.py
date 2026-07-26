@@ -11,6 +11,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from steamzero.adapters.screencast_web import WebReceiverProvider
+
+
+class _MockPortalOK:
+    """Mock portal that returns success immediately."""
+
+    def capture(
+        self, scope: str = "monitor", audio: bool = False, cancel: threading.Event | None = None
+    ) -> dict:
+        return {"fd": 3, "node_id": 42, "serial": None}
+
 
 def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_gst = MagicMock()
@@ -23,11 +34,39 @@ def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_webrtc.WebRTCSessionDescription = MagicMock()
     mock_webrtc.WebRTCSDPType.ANSWER = 1
 
+    mock_glib = MagicMock()
+    mock_glib.MainLoop = MagicMock()
+    mock_glib.MainLoop.new = MagicMock(return_value=MagicMock())
+    mock_glib.MainLoop.new.return_value.run = MagicMock()
+    mock_glib.MainLoop.new.return_value.quit = MagicMock()
+    mock_glib.idle_add = MagicMock(side_effect=lambda fn: fn())
+    mock_glib.Variant = MagicMock()
+
+    mock_gio = MagicMock()
+    mock_gio.BusType = MagicMock()
+    mock_gio.BusType.SESSION = 1
+    mock_gio.DBusProxyFlags = MagicMock()
+    mock_gio.DBusProxyFlags.NONE = 0
+    mock_gio.DBusCallFlags = MagicMock()
+    mock_gio.DBusCallFlags.NONE = 0
+    mock_gio.bus_get_sync = MagicMock()
+    mock_gio.DBusProxy = MagicMock()
+    mock_gio.DBusProxy.new_sync = MagicMock(return_value=MagicMock())
+    mock_gio.UnixFDList = MagicMock()
+
+    mock_repo = MagicMock()
+    mock_repo.Gst = mock_gst
+    mock_repo.GstWebRTC = mock_webrtc
+    mock_repo.GLib = mock_glib
+    mock_repo.Gio = mock_gio
+
     return {
         "gi": MagicMock(),
-        "gi.repository": MagicMock(),
+        "gi.repository": mock_repo,
         "gi.repository.Gst": mock_gst,
         "gi.repository.GstWebRTC": mock_webrtc,
+        "gi.repository.GLib": mock_glib,
+        "gi.repository.Gio": mock_gio,
     }
 
 
@@ -73,17 +112,85 @@ class TestCastEngineUnit:
         mock_pipeline.set_state.assert_called_once_with(ce.Gst.State.NULL)
         assert eng._running is False
 
-    def test_start_session_error_logs_and_sends_error(self, _gi_patch) -> None:
+    def test_start_session_invalid_scope_returns_error(self, _gi_patch) -> None:
         ce = _reload_engine()
         eng = ce.CastEngine(self._tmp_sock("start_error.sock"))
         mock_conn = MagicMock()
-        mock_msg = {"type": "START_SESSION"}
-        with patch.object(ce.Gst, "parse_launch", side_effect=RuntimeError("boom")):
-            eng._cmd_start_session(mock_conn, mock_msg, 1)
+        mock_msg = {"type": "START_SESSION", "scope": "invalid"}
+        eng._cmd_start_session(mock_conn, mock_msg, 1)
         mock_conn.sendall.assert_called_once()
         sent = json.loads(mock_conn.sendall.call_args[0][0].decode("utf-8"))
         assert sent.get("type") == "error"
-        assert "boom" in sent.get("detail", "")
+
+    def test_negotiation_uses_installed_pygobject_promise_signature(self) -> None:
+        ce = _reload_engine()
+        eng = ce.CastEngine(self._tmp_sock("negotiation-signature.sock"))
+        pipeline = MagicMock()
+        webrtc = MagicMock()
+        pipeline.get_by_name.return_value = webrtc
+        conn = MagicMock()
+
+        with patch.object(ce.Gst, "parse_launch", return_value=pipeline):
+            eng._build_and_start_pipeline(conn, fd=3, serial=None, node_id=42)
+
+        negotiation_callback = next(
+            call.args[1]
+            for call in webrtc.connect.call_args_list
+            if call.args[0] == "on-negotiation-needed"
+        )
+        negotiation_callback(webrtc)
+
+        promise_call = ce.Gst.Promise.new_with_change_func.call_args
+        assert len(promise_call.args) == 2
+        webrtc.emit.assert_called_with(
+            "create-offer",
+            None,
+            ce.Gst.Promise.new_with_change_func.return_value,
+        )
+
+    def test_pipeline_is_send_only_capture_encode_and_rtp(self) -> None:
+        ce = _reload_engine()
+        description = ce.build_pipeline_description(
+            {"pipewire_fd": 12, "pipewire_node": 42, "bitrate_kbps": 3500}
+        )
+
+        for element in (
+            "pipewiresrc",
+            "videoconvert",
+            "x264enc name=encoder",
+            "h264parse",
+            "rtph264pay",
+            "webrtcbin name=webrtc",
+        ):
+            assert element in description
+        for receiver_element in ("rtph264depay", "avdec_h264", "autovideosink"):
+            assert receiver_element not in description
+        assert "fd=12" in description
+        assert "path=42" in description
+        assert "bitrate=3500" in description
+
+    def test_pipeline_adds_opus_only_with_valid_audio_node(self) -> None:
+        ce = _reload_engine()
+        with_audio = ce.build_pipeline_description({"audio": True, "audio_pipewire_node": 77})
+        without_audio_node = ce.build_pipeline_description({"audio": True})
+
+        assert "opusenc name=audio_encoder" in with_audio
+        assert "rtpopuspay" in with_audio
+        assert "audio_capture" not in without_audio_node
+
+    def test_pipeline_rejects_untrusted_pipewire_scalars(self) -> None:
+        ce = _reload_engine()
+        description = ce.build_pipeline_description(
+            {
+                "pipewire_fd": "12 ! fakesink",
+                "pipewire_node": -1,
+                "bitrate_kbps": "4000 ! filesink",
+            }
+        )
+
+        assert "fakesink" not in description
+        assert "filesink" not in description
+        assert f"bitrate={ce.DEFAULT_VIDEO_BITRATE_KBPS}" in description
 
     def test_client_handle_empty_line_skips(self) -> None:
         ce = _reload_engine()
@@ -128,10 +235,10 @@ class TestCastEngineUnit:
             "type": "CANDIDATE",
             "candidate": {"candidate": "c:1", "sdpMid": "0"},
         }
-        mock_webrtc.add_ice_candidate.side_effect = RuntimeError("add failed")
         eng._cmd_candidate(mock_conn, mock_msg, 1)
         sent = json.loads(mock_conn.sendall.call_args[0][0].decode("utf-8"))
         assert sent.get("type") == "CANDIDATE_OK"
+        mock_webrtc.emit.assert_called_once_with("add-ice-candidate", 0, "c:1")
 
     def test_set_quality_without_encoder(self) -> None:
         ce = _reload_engine()
@@ -247,6 +354,15 @@ def _ipc_call(sock_path: str, msg: dict, timeout: float = 2.0) -> dict:
     return json.loads(line.decode("utf-8")) if line else {}
 
 
+def _wait_until(predicate, timeout: float = 2.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return False
+
+
 class TestEngineProtocol:
     def test_start_session_success(self, engine_env) -> None:
         sock_path, ce = engine_env
@@ -276,8 +392,13 @@ class TestEngineProtocol:
 
     def test_pause_resume_with_pipeline(self, engine_env) -> None:
         sock_path, ce = engine_env
+        ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+        def _paused_false() -> bool:
+            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+            return status.get("paused") is False
+        assert _wait_until(_paused_false)
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "PAUSE_SESSION"})
         assert resp.get("type") == "PAUSE_SESSION_OK"
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
@@ -331,8 +452,13 @@ class TestEngineProtocol:
 
     def test_get_status_running(self, engine_env) -> None:
         sock_path, ce = engine_env
+        ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+        def _running_true() -> bool:
+            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+            return status.get("running") is True
+        assert _wait_until(_running_true)
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
         assert status.get("running") is True
 
@@ -431,3 +557,85 @@ class TestEngineProtocol:
         sock_path, ce = engine_env
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "STOP"})
         assert resp == {}
+
+
+def test_provider_and_engine_exchange_signaling_on_persistent_connection(
+    _engine_module,
+) -> None:
+    socket_dir = Path(tempfile.mkdtemp())
+    socket_path = str(socket_dir / "persistent-engine.sock")
+    engine = _engine_module.CastEngine(socket_path)
+    engine_thread = threading.Thread(target=engine.run, daemon=True)
+    engine_thread.start()
+    assert _wait_until(lambda: Path(socket_path).is_socket())
+
+    provider = WebReceiverProvider.__new__(WebReceiverProvider)
+    provider._engine_socket = socket_path
+    provider._ipc_conn = None
+    provider._ipc_lock = threading.Lock()
+    provider._ipc_listener = None
+    provider._ipc_stop = threading.Event()
+    provider._sse_writers = []
+
+    with patch.object(provider, "_push_sse") as push_sse:
+        provider._ensure_ipc_connection()
+        _engine_module._portal_client_factory = _MockPortalOK
+        assert provider._send_ipc({"type": "START_SESSION"}) is True
+        assert _wait_until(lambda: engine._session.running)
+
+        engine._send_control_event(
+            {"version": _engine_module.IPC_VERSION, "type": "OFFER_CREATED", "sdp": "v=0"}
+        )
+        assert _wait_until(lambda: push_sse.call_count == 1)
+        push_sse.assert_called_once_with("offer", {"sdp": "v=0"})
+
+        engine._send_control_event(
+            {
+                "version": _engine_module.IPC_VERSION,
+                "type": "CANDIDATE",
+                "candidate": {
+                    "candidate": "candidate:engine",
+                    "sdpMLineIndex": 0,
+                },
+            }
+        )
+        assert _wait_until(lambda: push_sse.call_count == 2)
+        push_sse.assert_any_call(
+            "candidate",
+            {
+                "candidate": {
+                    "candidate": "candidate:engine",
+                    "sdpMLineIndex": 0,
+                }
+            },
+        )
+
+        provider._on_signal_message(
+            json.dumps({"type": "answer", "sdp": "v=0\no=browser\n"}).encode("utf-8")
+        )
+        assert _wait_until(lambda: engine._session.answer == "v=0\no=browser\n")
+
+        provider._on_signal_message(
+            json.dumps(
+                {
+                    "type": "candidate",
+                    "candidate": {
+                        "candidate": "candidate:browser",
+                        "sdpMLineIndex": 0,
+                    },
+                }
+            ).encode("utf-8")
+        )
+        webrtc = engine._session.pipeline.get_by_name("webrtc")
+        assert _wait_until(
+            lambda: any(
+                call.args == ("add-ice-candidate", 0, "candidate:browser")
+                for call in webrtc.emit.call_args_list
+            )
+        )
+
+    provider._stop_ipc_listener()
+    assert provider._ipc_conn is None
+    engine._cmd_stop()
+    engine_thread.join(timeout=1)
+    assert not engine_thread.is_alive()

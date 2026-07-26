@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Nintendo GameCube e Wii — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#171b27"/>
+  <circle cx="160" cy="90" r="66" fill="#d8d9dc"/>
+  <rect x="116" y="62" width="88" height="56" rx="8" fill="none" stroke="#6a0dad" stroke-width="8"/>
+  <rect x="134" y="76" width="52" height="8" rx="3" fill="#6a0dad" opacity=".6"/>
+  <path d="M106 126c22-14 40-14 54 0m0 0c14-14 32-14 54 0" fill="none" stroke="#00a8e8" stroke-width="6" stroke-linecap="round"/>
+</svg>

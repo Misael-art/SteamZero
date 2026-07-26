@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dolphin",
   "kind": "emulator",
-  "platforms": ["gamecube", "wii"],
+  "platforms": ["nintendo-console"],
   "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
   "sources": [
     {

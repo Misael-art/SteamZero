@@ -61,7 +61,9 @@ from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.input_profiles import InputProfileManager
+from steamzero.domain.library import PlatformRomScanner
 from steamzero.domain.media_pipeline import MediaPipeline
+from steamzero.domain.platforms import PlatformRegistry
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
     CheatType,
@@ -863,6 +865,9 @@ class EmulationController:
 
     def _scan_library_now(self, ctx: JobContext | None = None) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
+        registry = PlatformRegistry.bundled()
+        manifest_dicts = [{"id": m.id, "media": dict(m.media)} for m in registry.list()]
+        platform_scanner = PlatformRomScanner.from_manifests(manifest_dicts)
         emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
         auxiliary: list[Any] = []
@@ -890,6 +895,53 @@ class EmulationController:
             except (OSError, SteamZeroError) as exc:
                 errors.append(f"{root}: {exc}")
                 counts["errors"] += 1
+                root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
+                continue
+            switch_base_count = sum(1 for m in matches if m.content_kind == "base")
+            if switch_base_count == 0:
+                plat_matches = platform_scanner.inventory(root)
+                for pm in plat_matches:
+                    if pm.content_kind != "base":
+                        continue
+                    counts["base"] += 1
+                    try:
+                        stat = pm.path.stat()
+                    except OSError as exc:
+                        errors.append(f"{pm.path}: {exc}")
+                        counts["errors"] += 1
+                        continue
+                    fingerprint = hashlib.sha256(
+                        f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+                    ).hexdigest()
+                    stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                    discovered[str(pm.path)] = {
+                        "id": stable_id,
+                        "titleId": None,
+                        "name": pm.path.stem,
+                        "state": "unverified",
+                        "statusLabel": (
+                            f"{pm.format.upper()} · Platform: {pm.platform}"
+                            if pm.platform
+                            else pm.format.upper()
+                        ),
+                        "emulatorId": None,
+                        "path": str(pm.path),
+                        "fingerprint": fingerprint,
+                        "size": stat.st_size,
+                        "format": pm.format,
+                        "identityVerified": False,
+                        "contentKind": "base",
+                        "metadataSource": None,
+                        "version": None,
+                        "updateCount": 0,
+                        "updateVersion": None,
+                        "dlcCount": 0,
+                        "bannerAsset": None,
+                        "coverUrl": None,
+                        "mediaSource": None,
+                        "platform": pm.platform,
+                        "evidence": pm.evidence,
+                    }
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
