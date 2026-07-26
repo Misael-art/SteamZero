@@ -14,6 +14,15 @@ import pytest
 from steamzero.adapters.screencast_web import WebReceiverProvider
 
 
+class _MockPortalOK:
+    """Mock portal that returns success immediately."""
+
+    def capture(
+        self, scope: str = "monitor", audio: bool = False, cancel: threading.Event | None = None
+    ) -> dict:
+        return {"fd": 3, "node_id": 42, "serial": None}
+
+
 def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_gst = MagicMock()
     mock_gst.State.NULL = 0
@@ -25,11 +34,39 @@ def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_webrtc.WebRTCSessionDescription = MagicMock()
     mock_webrtc.WebRTCSDPType.ANSWER = 1
 
+    mock_glib = MagicMock()
+    mock_glib.MainLoop = MagicMock()
+    mock_glib.MainLoop.new = MagicMock(return_value=MagicMock())
+    mock_glib.MainLoop.new.return_value.run = MagicMock()
+    mock_glib.MainLoop.new.return_value.quit = MagicMock()
+    mock_glib.idle_add = MagicMock(side_effect=lambda fn: fn())
+    mock_glib.Variant = MagicMock()
+
+    mock_gio = MagicMock()
+    mock_gio.BusType = MagicMock()
+    mock_gio.BusType.SESSION = 1
+    mock_gio.DBusProxyFlags = MagicMock()
+    mock_gio.DBusProxyFlags.NONE = 0
+    mock_gio.DBusCallFlags = MagicMock()
+    mock_gio.DBusCallFlags.NONE = 0
+    mock_gio.bus_get_sync = MagicMock()
+    mock_gio.DBusProxy = MagicMock()
+    mock_gio.DBusProxy.new_sync = MagicMock(return_value=MagicMock())
+    mock_gio.UnixFDList = MagicMock()
+
+    mock_repo = MagicMock()
+    mock_repo.Gst = mock_gst
+    mock_repo.GstWebRTC = mock_webrtc
+    mock_repo.GLib = mock_glib
+    mock_repo.Gio = mock_gio
+
     return {
         "gi": MagicMock(),
-        "gi.repository": MagicMock(),
+        "gi.repository": mock_repo,
         "gi.repository.Gst": mock_gst,
         "gi.repository.GstWebRTC": mock_webrtc,
+        "gi.repository.GLib": mock_glib,
+        "gi.repository.Gio": mock_gio,
     }
 
 
@@ -75,17 +112,15 @@ class TestCastEngineUnit:
         mock_pipeline.set_state.assert_called_once_with(ce.Gst.State.NULL)
         assert eng._running is False
 
-    def test_start_session_error_logs_and_sends_error(self, _gi_patch) -> None:
+    def test_start_session_invalid_scope_returns_error(self, _gi_patch) -> None:
         ce = _reload_engine()
         eng = ce.CastEngine(self._tmp_sock("start_error.sock"))
         mock_conn = MagicMock()
-        mock_msg = {"type": "START_SESSION"}
-        with patch.object(ce.Gst, "parse_launch", side_effect=RuntimeError("boom")):
-            eng._cmd_start_session(mock_conn, mock_msg, 1)
+        mock_msg = {"type": "START_SESSION", "scope": "invalid"}
+        eng._cmd_start_session(mock_conn, mock_msg, 1)
         mock_conn.sendall.assert_called_once()
         sent = json.loads(mock_conn.sendall.call_args[0][0].decode("utf-8"))
         assert sent.get("type") == "error"
-        assert "boom" in sent.get("detail", "")
 
     def test_negotiation_uses_installed_pygobject_promise_signature(self) -> None:
         ce = _reload_engine()
@@ -96,7 +131,7 @@ class TestCastEngineUnit:
         conn = MagicMock()
 
         with patch.object(ce.Gst, "parse_launch", return_value=pipeline):
-            eng._cmd_start_session(conn, {"type": "START_SESSION"}, 1)
+            eng._build_and_start_pipeline(conn, fd=3, serial=None, node_id=42)
 
         negotiation_callback = next(
             call.args[1]
@@ -357,8 +392,13 @@ class TestEngineProtocol:
 
     def test_pause_resume_with_pipeline(self, engine_env) -> None:
         sock_path, ce = engine_env
+        ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+        def _paused_false() -> bool:
+            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+            return status.get("paused") is False
+        assert _wait_until(_paused_false)
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "PAUSE_SESSION"})
         assert resp.get("type") == "PAUSE_SESSION_OK"
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
@@ -412,8 +452,13 @@ class TestEngineProtocol:
 
     def test_get_status_running(self, engine_env) -> None:
         sock_path, ce = engine_env
+        ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+        def _running_true() -> bool:
+            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+            return status.get("running") is True
+        assert _wait_until(_running_true)
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
         assert status.get("running") is True
 
@@ -534,6 +579,7 @@ def test_provider_and_engine_exchange_signaling_on_persistent_connection(
 
     with patch.object(provider, "_push_sse") as push_sse:
         provider._ensure_ipc_connection()
+        _engine_module._portal_client_factory = _MockPortalOK
         assert provider._send_ipc({"type": "START_SESSION"}) is True
         assert _wait_until(lambda: engine._session.running)
 
