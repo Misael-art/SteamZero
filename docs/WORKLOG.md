@@ -3019,3 +3019,22 @@ rendezvous/TURN, domínio, certificado e orçamento autorizados pelo operador.
 confirmar ausência de sessões ativas. Nenhuma instalação, rollback, wheel,
 wheelhouse, `sudo` ou `bigsudo` foi executado. A release publicada permanece
 `0.1.0a36`; a release instalada no host não foi alterada.
+
+## 2026-07-26 — Release 0.1.0a37
+
+**Branch:** `main` em `f4c2ba7` (merge de `codex/post-release-validation-hygiene`,
+commit `faff0df062df7c5e73099c7f8231b75fdd3786f2`).
+
+**Mudanças:** transporte explícito de `CaptureConsent` da UI ao orquestrador;
+correções do fluxo KDE/xdg-desktop-portal e `GLib.Variant`; inicialização de
+GStreamer e carregamento de GstWebRTC/GstSdp; negociação PipeWire com `videorate`;
+offer/answer reais e publicação de `streaming` somente após a answer; stderr
+observável do motor; fechamento explícito de SQLite, sockets, subprocessos e
+servidores; correções do harness QML 1280×800; documentação de validação física
+e especificação WI-S2.
+
+**Gates:** 1844 testes passaram com `ResourceWarning` e
+`PytestUnraisableExceptionWarning` fatais; Ruff check/format; mypy 162 arquivos;
+independência e fronteiras.
+
+**Host:** release instalada via `bigsudo`.
