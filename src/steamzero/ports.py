@@ -431,7 +431,12 @@ class LinkSample:
 
 @dataclass(frozen=True)
 class CaptureConsent:
-    """Autorização de captura concedida pelo usuário via portal do compositor.
+    """Intenção explícita do usuário para captura de tela.
+
+    ``granted`` representa a intenção do usuário, NÃO a conclusão do portal.
+    A autorização efetiva só existe após ``ScreenCast.Start`` retornar
+    ``Response`` bem-sucedido — o motor (``cast_engine``) é quem de fato
+    negocia com ``xdg-desktop-portal`` e possui a sessão.
 
     Sem ``granted`` não existe sessão: o produto nunca captura em silêncio.
     """

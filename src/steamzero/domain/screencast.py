@@ -703,7 +703,11 @@ _CONSENT_SCOPES = {
 
 
 def guard_consent(consent: CaptureConsent, mode: CastMode) -> CaptureConsent:
-    """Sem autorização do portal para o escopo pedido, não há sessão."""
+    """Sem intenção do usuário no escopo pedido, não há sessão.
+
+    A autorização efetiva (portal ``Response``) é conferida pelo motor;
+    esta guarda valida apenas a intenção declarada.
+    """
 
     if mode is CastMode.MEDIA and not consent.granted:
         # Mídia não captura a tela: o receptor busca o conteúdo por conta dele.
