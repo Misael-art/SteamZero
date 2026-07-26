@@ -47,6 +47,17 @@
       }
     },
     {
+      "id": "pcsx2",
+      "manifestHash": "eb8292c1eb0defdc85e1b7fb834fc2c14400b43fd966e46344c748ca60865a3d",
+      "source": {
+        "type": "flatpak",
+        "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
+        "priority": 1,
+        "ref": "net.pcsx2.PCSX2",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "retroarch",
       "manifestHash": "aaa073f99f0e9580030e11ae563ddd6885c34fe282919652d8759b89a15a594c",
       "source": {

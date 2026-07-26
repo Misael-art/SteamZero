@@ -92,6 +92,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "dolphin",
         "duckstation",
         "eden",
+        "pcsx2",
         "retroarch",
         "ryubing",
     ]
@@ -107,6 +108,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "dolphin",
         "duckstation",
         "eden",
+        "pcsx2",
         "retroarch",
         "ryubing",
         "sunshine",
