@@ -2883,3 +2883,31 @@ quadros reais em Wayland. Nenhuma captura foi iniciada nesta sessão.
 
 **Host/release:** nenhuma instalação, build de wheel, alteração de release ou
 ação privilegiada foi executada.
+
+## 2026-07-26 — Grupo 1 RetroArch: plataformas clássicas declarativas
+
+**Branch:** `codex/emulacao-grupo1`, criada em worktree isolado a partir de
+`496eb36`. Base conferida sem sintomas de obsolescência.
+
+**Entrega:** 16 manifests de plataforma para Master System, Game Gear,
+PC Engine/TurboGrafx-16, família Atari, Neo Geo Pocket, WonderSwan, MSX,
+ZX Spectrum, Commodore 64, Amiga, ColecoVision, Intellivision, Virtual Boy,
+3DO, Sega CD/32X e Nintendo 64. Todos consomem o adapter `retroarch` existente
+e reutilizam seu artwork; nenhuma linha Python de produção foi adicionada.
+
+Foi acrescentado um único perfil declarativo
+`retroarch-classic-gamepad`, cobrindo as 16 plataformas sem ampliar
+indevidamente o perfil `standard-gamepad` preexistente. Os formatos foram
+derivados do `es_systems.xml` oficial do ES-DE; extensões compartilhadas como
+`iso`, `bin`, `cue` e `chd` continuam ambíguas sem raiz/assinatura, enquanto
+formatos fortes como `sms`, `gg`, `pce`, `j64` e `z64` classificam diretamente.
+O ID canônico do 3DO é `three-do`, pois o schema exige letra inicial; o slug
+externo permanece `3do`.
+
+**Testes:** contratos de plataforma, workspace, perfis de input e classificação
+foram atualizados para o registry de 27 plataformas. Gates finais: **1790
+passed**, Ruff check/format, mypy (162 arquivos), independência e fronteiras
+verdes (0 violações).
+
+**Host/release:** nenhuma instalação, `bigsudo`, build de wheel/wheelhouse ou
+alteração da release ativa foi executada.

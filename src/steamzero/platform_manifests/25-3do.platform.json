@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "three-do",
+  "kind": "emulated",
+  "name": "3DO Interactive Multiplayer",
+  "shortName": "3DO",
+  "iconKey": "input-gaming",
+  "artworkAsset": "../assets/retroarch.svg",
+  "systems": ["3do"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca 3DO composta pelo scanner declarativo.", "action": null},
+    {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "Região, resolução e saída de vídeo permanecem configuráveis no RetroArch.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível com cadeia de controles declarada.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Imagens de disco são declaradas sem presumir plataforma por formato compartilhado.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "graphicsPerformance", "label": "Vídeo e timing", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
+  "media": {"extensions": ["bin", "chd", "cue", "iso", "7z", "zip"], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["retroarch-classic-gamepad"], "maxPlayers": 8, "specialized": ["controller-chain"]},
+  "timing": {"standards": ["ntsc", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez sem alterar timing."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+  ],
+  "cloud": null
+}

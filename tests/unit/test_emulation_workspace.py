@@ -52,11 +52,17 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     assert set(platform["areaData"]) == {area["id"] for area in platform["areas"]}
     assert platform["emulators"][0]["name"] == "Eden"
     assert platform["emulators"][0]["state"] == "ready"
-    assert len(payload["platforms"]) == 11
+    assert len(payload["platforms"]) == 27
     assert payload["platforms"][1]["areas"][0]["id"] == "overview"
     cloud_platforms = [p for p in payload["platforms"] if p.get("cloud")]
     assert any(p["cloud"]["allowedHosts"] == ["luna.amazon.com"] for p in cloud_platforms)
-    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 11
+    retroarch_artwork = [
+        item
+        for item in payload["platforms"]
+        if item["fallbackArtworkAsset"].endswith("/retroarch.svg")
+    ]
+    assert len(retroarch_artwork) == 16
+    assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 12
 
 
 def test_workspace_accepts_visible_game_with_unverified_identity() -> None:

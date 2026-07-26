@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "pc-engine-turbografx",
+  "kind": "emulated",
+  "name": "NEC PC Engine e TurboGrafx-16",
+  "shortName": "PC Engine · TG-16",
+  "iconKey": "input-gaming",
+  "artworkAsset": "../assets/retroarch.svg",
+  "systems": ["pcengine", "tg16", "pcenginecd", "tg-cd", "turbografx-16"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PC Engine e TurboGrafx composta pelo scanner declarativo.", "action": null},
+    {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "Região, SuperGrafx e saída de vídeo permanecem configuráveis no RetroArch.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível com suporte declarativo a multitap.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Cartões e imagens de disco são reconhecidos sem presumir plataforma por formato compartilhado.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "graphicsPerformance", "label": "Vídeo e timing", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
+  "media": {"extensions": ["pce", "sgx", "ccd", "chd", "cue", "img", "iso", "m3u", "rom", "toc", "7z", "zip"], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["retroarch-classic-gamepad"], "maxPlayers": 5, "specialized": ["multitap"]},
+  "timing": {"standards": ["ntsc"], "defaultStandard": "ntsc", "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez sem alterar timing."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+  ],
+  "cloud": null
+}
