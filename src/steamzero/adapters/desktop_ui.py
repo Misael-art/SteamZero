@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from dataclasses import replace
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
@@ -49,7 +49,9 @@ _STATUS_BY_CODE = {
 }
 
 
-class DesktopControlServer(HTTPServer):
+class DesktopControlServer(ThreadingHTTPServer):
+    # Long-running mutations must not block status polling or cancellation.
+    daemon_threads = True
     coordinator: ExperienceCoordinator
     token: str
     dashboard: DesktopDashboard | None

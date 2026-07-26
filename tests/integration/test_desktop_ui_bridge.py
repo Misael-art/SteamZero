@@ -8,6 +8,7 @@ import queue
 import threading
 import urllib.error
 import urllib.request
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, cast
 
@@ -24,6 +25,12 @@ from steamzero.domain.desktop import (
     DisplayState,
     ExperienceCoordinator,
 )
+
+
+def test_control_server_handles_requests_concurrently() -> None:
+    """Long-running mutations must leave the loopback control plane responsive."""
+    assert issubclass(DesktopControlServer, ThreadingHTTPServer)
+    assert DesktopControlServer.daemon_threads is True
 
 
 class Context:

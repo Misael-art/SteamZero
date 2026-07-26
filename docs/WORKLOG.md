@@ -2811,3 +2811,21 @@ e WI-S1 screencast.
 para teste Game Mode; teste físico de boot autologin SDDM (plano B greeter),
 handoff Desktop, central de emulação (ID ERROR-UX), ErrorCard em falha
 transacional, e seção cast/transmissão para receptor navegador.
+
+## 2026-07-26 — UI: correções de navegação e operações concorrentes
+
+**Branch:** `codex/ui-regression-remediation`.
+
+**Resolução:** os sete atalhos contextuais de Sistema passaram a selecionar a
+seção 6 (Sistema), preservando a seção 5 para Transmissão. A bridge desktop usa
+`ThreadingHTTPServer`, com a conexão SQLite habilitada para os workers da bridge,
+para que polling e cancelamento não aguardem operações longas. O histórico de
+operações agora expõe rollback quando disponível; a manutenção permite escolher
+as categorias publicadas; ações do ErrorCard deixam de ser apenas `console.log`.
+
+**Testes:** bridge + QML offscreen: 30 passed; mypy, independence e boundaries
+verdes. O `ruff check src tools tests` permanece bloqueado por cinco E501 em
+`tools/capture_screenscraper_payload.py`, arquivo pré-existente e fora deste
+escopo.
+
+**Host/release:** nenhuma instalação, build de wheel ou ação de host executada.

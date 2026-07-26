@@ -58,7 +58,10 @@ class StateStore:
     def __init__(self, path: Path | None = None) -> None:
         self._path = path or paths.state_db()
         fs.ensure_dir(self._path.parent)
-        self._conn = sqlite3.connect(self._path, isolation_level=None)
+        # The loopback desktop bridge serves requests in worker threads. SQLite
+        # remains serialized by its connection mutex and the configured WAL /
+        # busy timeout, but must allow that trusted in-process use.
+        self._conn = sqlite3.connect(self._path, isolation_level=None, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._apply_pragmas()
 
@@ -121,7 +124,7 @@ class StateStore:
     def _restore_from_backup(self, backup: Path) -> None:
         self._conn.close()
         fs.write_atomic(self._path, backup.read_bytes())
-        self._conn = sqlite3.connect(self._path, isolation_level=None)
+        self._conn = sqlite3.connect(self._path, isolation_level=None, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._apply_pragmas()
 

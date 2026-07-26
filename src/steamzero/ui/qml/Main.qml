@@ -2512,7 +2512,7 @@ ApplicationWindow {
         id: taskRefreshTimer
         interval: 1500
         repeat: true
-        running: taskDrawer.opened && root.activeTaskCount() > 0
+        running: root.activeTaskCount() > 0
         onTriggered: root.refreshTasks()
     }
 
@@ -2675,7 +2675,7 @@ ApplicationWindow {
                         Accessible.name: text
                         KeyNavigation.up: navRepeater.itemAt(navRepeater.count - 1)
                         KeyNavigation.down: quickResetButton
-                        onClicked: root.sectionIndex = 5
+                        onClicked: root.sectionIndex = 6
                         background: Rectangle { color: "#211a10"; radius: 7; border.color: "#59401f" }
                         contentItem: RowLayout {
                             ToolButton {
@@ -2769,7 +2769,7 @@ ApplicationWindow {
                         }
                         KeyNavigation.up: cloudSyncButton
                         KeyNavigation.down: navRepeater.itemAt(0)
-                        onClicked: root.sectionIndex = 5
+                        onClicked: root.sectionIndex = 6
                     }
                     RowLayout {
                         visible: !root.compactLayout
@@ -2875,7 +2875,7 @@ ApplicationWindow {
                                 Layout.minimumHeight: 48
                                 Accessible.name: root.needsAttention
                                     ? qsTr("Abrir pendência do sistema") : qsTr("Abrir sistema")
-                                onClicked: root.sectionIndex = 5
+                                onClicked: root.sectionIndex = 6
                             }
                         }
                     }
@@ -2962,7 +2962,7 @@ ApplicationWindow {
                                     if (root.hasConflicts)
                                         root.beginConflictResolution()
                                     else
-                                        root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 5 : 3
+                                        root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 6 : 3
                                 }
                             }
                         }
@@ -3014,14 +3014,8 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 errorObject: modelData
                                 onDismiss: root.dismissError(errorObject ? errorObject.code : "")
-                                onShowDiagnostics: {
-                                    var code = errorObject ? errorObject.code : ""
-                                    console.log("Diagnóstico exportado para", code)
-                                }
-                                onExecuteAction: {
-                                    var action = errorObject ? errorObject.manualAction : ""
-                                    console.log("Ação executada:", action)
-                                }
+                                onShowDiagnostics: root.beginDiagnosticsExport("support")
+                                onExecuteAction: root.sectionIndex = 6
                                 Component.onCompleted: resolve(modelData)
                             }
                         }
@@ -3097,7 +3091,7 @@ ApplicationWindow {
                                                 if (root.hasConflicts)
                                                     root.beginConflictResolution()
                                                 else
-                                                    root.sectionIndex = root.desktopTruthNeedsAttention ? 3 : 5
+                                                    root.sectionIndex = root.desktopTruthNeedsAttention ? 3 : 6
                                             }
                                         }
                                     }
@@ -3374,7 +3368,7 @@ ApplicationWindow {
                                 onActionRequested: function(action) {
                                     root.performEmulationAction(action)
                                 }
-                                onSystemRequested: root.sectionIndex = 5
+                                onSystemRequested: root.sectionIndex = 6
                             }
                             ColumnLayout {
                                 visible: false
@@ -3679,7 +3673,7 @@ ApplicationWindow {
                                         root.refreshStatus(qsTr("Perfil Steam restaurado"))
                                     })
                                 }
-                                onSystemRequested: root.sectionIndex = 5
+                                onSystemRequested: root.sectionIndex = 6
                                 onDesktopProfilePlanRequested: function(profile) {
                                     root.requestAction("desktop.profile.plan", {"profile": profile}, function(response) {
                                         steamGameplayPage.showDesktopPlan(response.plan)
@@ -4668,6 +4662,21 @@ ApplicationWindow {
                                                 color: root.mutedColor
                                                 wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
+                                            }
+                                            Button {
+                                                visible: modelData.rollback
+                                                    ? modelData.rollback.available
+                                                    : modelData.rollbackAvailable
+                                                text: qsTr("Desfazer")
+                                                Layout.minimumHeight: 48
+                                                Accessible.name: qsTr("Desfazer %1").arg(modelData.operation)
+                                                onClicked: root.requestAction("operations.rollback.plan",
+                                                    {"operationId": modelData.operationId},
+                                                    function(response) {
+                                                        root.operationRollbackPlan = response.plan
+                                                        operationRollbackDialog.open()
+                                                    }
+                                                )
                                             }
                                         }
                                     }
