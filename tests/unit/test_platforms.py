@@ -53,6 +53,7 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "playstation-portable",
         "dreamcast",
         "nintendo-ds",
+        "nintendo-3ds",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
     assert len(artwork) == len(set(artwork))

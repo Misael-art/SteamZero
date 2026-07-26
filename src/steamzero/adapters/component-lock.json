@@ -2,6 +2,17 @@
   "schemaVersion": 1,
   "components": [
     {
+      "id": "azahar",
+      "manifestHash": "e34bf59785c70115871c44159b2a66388aa5bbba69509dacd561eecbe4c351a2",
+      "source": {
+        "type": "flatpak",
+        "version": "fd0b3050e4da6a7df8915f63fb8c1d551c7ca8c684568dc62c1681fd316a288c",
+        "priority": 1,
+        "ref": "org.azahar_emu.Azahar",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "citron",
       "manifestHash": "0b711b5b3df671856b5b63ca2d228456d22798fc0d2a3d4b12146cc4001ce877",
       "source": {
