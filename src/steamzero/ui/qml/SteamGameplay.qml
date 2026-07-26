@@ -993,7 +993,7 @@ Item {
                         }
                         Label {
                             text: page.gameplay && page.gameplay.readiness
-                                ? page.gameplay.readiness.detail : ""
+                                ? String(page.gameplay.readiness.detail || "") : ""
                             color: page.mutedColor
                         }
                     }
@@ -1199,7 +1199,7 @@ Item {
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
-                                    enabled: index === 0 || page.hardware.gpuMax
+                                    enabled: index === 0 || Boolean(page.hardware.gpuMax)
                                     onClicked: page.gpuModeIndex = index
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
@@ -1254,7 +1254,7 @@ Item {
                             }
                         }
                         Label {
-                            visible: gameplay && gameplay.hud && gameplay.hud.evidence
+                            visible: Boolean(gameplay && gameplay.hud && gameplay.hud.evidence)
                             text: qsTr("HUD 1280×800 · encaixe automatizado · revisão visual pendente")
                             color: page.amberColor
                             wrapMode: Text.WordWrap

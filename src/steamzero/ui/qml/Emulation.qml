@@ -43,6 +43,7 @@ Item {
     property string pendingEmulatorId: ""
     property string steamUserId: ""
     property string expandedRetroPresetId: ""
+    property int gameWindowSize: 60
     property var localActionMessages: ({})
     property bool reducedMotion: false
     property Item gameDetailsInvoker: null
@@ -134,11 +135,16 @@ Item {
             "id": "", "name": qsTr("Nenhum emulador verificado"), "state": "unsupported",
             "statusLabel": qsTr("Indisponível")
         })
-    readonly property var selectedGame: games.length > 0 && gameIndex < games.length
-        ? games[gameIndex] : ({
+    readonly property var emptyGame: ({
             "id": "", "titleId": "", "name": qsTr("Nenhum jogo detectado"),
             "state": "empty", "statusLabel": qsTr("Biblioteca vazia")
         })
+    readonly property var selectedGame: games.length > 0 && gameIndex < games.length
+        && games[gameIndex] ? games[gameIndex] : emptyGame
+    readonly property var filteredGameRows: filteredGames()
+    readonly property var visibleGameRows: filteredGameRows.slice(0, gameWindowSize)
+    readonly property int renderedGameCount:
+        compactGameRepeater.count + desktopGameRepeater.count
     readonly property var selectedArea: areas.length > 0 && areaIndex < areas.length
         ? areas[areaIndex] : defaultAreas[0]
     readonly property var readiness: selectedPlatform.readiness || ({
@@ -248,7 +254,13 @@ Item {
     }
 
     onSelectedPlatformChanged: Qt.callLater(syncPublishedSelection)
-    onGamesChanged: Qt.callLater(syncGameSelection)
+    onGamesChanged: {
+        resetGameWindow()
+        Qt.callLater(syncGameSelection)
+    }
+    onGameSearchTextChanged: resetGameWindow()
+    onGameSortKeyChanged: resetGameWindow()
+    onGameSortAscendingChanged: resetGameWindow()
     Component.onCompleted: syncPublishedSelection()
 
     function moveVerticalFocus(forward) {
@@ -424,6 +436,16 @@ Item {
         return rows
     }
 
+    function resetGameWindow() {
+        gameWindowSize = 60
+    }
+
+    function growGameWindow() {
+        if (!isGameLibrary() || gameWindowSize >= filteredGameRows.length)
+            return
+        gameWindowSize = Math.min(filteredGameRows.length, gameWindowSize + 60)
+    }
+
     function setGameSort(key) {
         if (gameSortKey === key)
             gameSortAscending = !gameSortAscending
@@ -589,8 +611,16 @@ Item {
 
     function scopedRuntimeProfile() {
         if (scopeId() !== "handheld" && scopeId() !== "dock")
-            return null
-        return runtimeProfiles[scopeId()] || null
+            return ({
+                "resolution": {"width": 0, "height": 0},
+                "renderScale": 1,
+                "controllers": {"activePlayers": 0, "maximumPlayers": 0}
+            })
+        return runtimeProfiles[scopeId()] || ({
+            "resolution": {"width": 0, "height": 0},
+            "renderScale": 1,
+            "controllers": {"activePlayers": 0, "maximumPlayers": 0}
+        })
     }
 
     function inheritedValue(field, suffix) {
@@ -1103,6 +1133,7 @@ Item {
 
     Dialog {
         id: sourceChoiceDialog
+        width: Math.min(560, Math.max(320, page.width - 48))
         title: qsTr("Escolher origem local")
         modal: true
         anchors.centerIn: parent
@@ -1113,7 +1144,7 @@ Item {
                 text: qsTr("Selecione um arquivo real, um ZIP ou uma pasta. O conteúdo será validado antes da importação.")
                 color: page.textColor
                 wrapMode: Text.WordWrap
-                Layout.preferredWidth: 480
+                Layout.fillWidth: true
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -1596,6 +1627,15 @@ Item {
                 contentWidth: availableWidth
                 bottomPadding: page.bottomSafeInset
                 background: Rectangle { color: page.backgroundColor }
+                Connections {
+                    target: contentScroll.contentItem
+                    function onContentYChanged() {
+                        const flickable = contentScroll.contentItem
+                        if (flickable.contentY + flickable.height
+                                >= flickable.contentHeight - 240)
+                            page.growGameWindow()
+                    }
+                }
 
                 ColumnLayout {
                     width: Math.min(contentScroll.availableWidth, page.contentMaxWidth)
@@ -1668,7 +1708,7 @@ Item {
                                 }
                                 Label {
                                     text: qsTr("%1 de %2 jogo(s) • %3 capa(s) reais • selecione uma linha para abrir os ajustes")
-                                        .arg(page.filteredGames().length).arg(page.games.length)
+                                        .arg(page.filteredGameRows.length).arg(page.games.length)
                                         .arg(page.coverCount())
                                     color: page.mutedColor
                                     font.pixelSize: 12
@@ -1751,7 +1791,7 @@ Item {
                             }
                             Label {
                                 text: qsTr("%1 de %2 jogo(s) • %3 capa(s)")
-                                    .arg(page.filteredGames().length).arg(page.games.length)
+                                    .arg(page.filteredGameRows.length).arg(page.games.length)
                                     .arg(page.coverCount())
                                 color: page.mutedColor
                                 font.pixelSize: 12
@@ -1931,7 +1971,7 @@ Item {
                         }
 
                         Rectangle {
-                            visible: page.filteredGames().length === 0
+                            visible: page.filteredGameRows.length === 0
                             Layout.fillWidth: true
                             Layout.minimumHeight: 120
                             color: page.surfaceColor
@@ -1967,7 +2007,7 @@ Item {
 
                         Repeater {
                             id: compactGameRepeater
-                            model: page.compactLayout ? page.filteredGames() : []
+                            model: page.compactLayout ? page.visibleGameRows : []
                             delegate: Rectangle {
                                 id: compactGameCard
                                 required property var modelData
@@ -2170,7 +2210,7 @@ Item {
 
                         Repeater {
                             id: desktopGameRepeater
-                            model: page.compactLayout ? [] : page.filteredGames()
+                            model: page.compactLayout ? [] : page.visibleGameRows
                             delegate: Rectangle {
                                 id: gameRow
                                 required property var modelData
@@ -2413,6 +2453,19 @@ Item {
                             }
                         }
 
+                        Button {
+                            visible: page.gameWindowSize < page.filteredGameRows.length
+                            text: qsTr("Carregar mais (%1 restantes)").arg(
+                                page.filteredGameRows.length - page.gameWindowSize)
+                            icon.name: "go-down"
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.minimumWidth: 240
+                            Layout.minimumHeight: page.minimumTouchTarget
+                            Accessible.description: qsTr(
+                                "Amplia a janela da biblioteca sem carregar todos os jogos de uma vez.")
+                            onClicked: page.growGameWindow()
+                        }
+
                         Item { Layout.preferredHeight: 8 }
                     }
 
@@ -2559,7 +2612,7 @@ Item {
                                 Label { text: qsTr("Áudio herdado do sistema"); color: page.mutedColor }
                             }
                             Label {
-                                visible: page.runtimeProfiles.autoTransition
+                                visible: Boolean(page.runtimeProfiles.autoTransition)
                                     && page.runtimeProfiles.autoTransition.supported !== true
                                 text: page.runtimeProfiles.autoTransition
                                     ? page.runtimeProfiles.autoTransition.reason : ""
@@ -2707,7 +2760,7 @@ Item {
                                         Layout.fillWidth: true
                                     }
                                     Button {
-                                        visible: modelData.differences
+                                        visible: Boolean(modelData.differences)
                                             && modelData.differences.length > 0
                                         text: page.expandedRetroPresetId === modelData.id
                                             ? qsTr("Ocultar diferenças")
@@ -2974,7 +3027,7 @@ Item {
                                         Layout.fillWidth: true
                                         Label {
                                             text: emulatorRow.modelData.health
-                                                ? emulatorRow.modelData.health.reason : ""
+                                                ? String(emulatorRow.modelData.health.reason || "") : ""
                                             color: page.mutedColor
                                             wrapMode: Text.WordWrap
                                             Layout.fillWidth: true
@@ -2985,7 +3038,7 @@ Item {
                                                 emulatorRow.modelData.actions
                                                     ? emulatorRow.modelData.actions.length : 0)
                                             icon.name: "application-menu"
-                                            enabled: emulatorRow.modelData.actions
+                                            enabled: Boolean(emulatorRow.modelData.actions)
                                                 && emulatorRow.modelData.actions.length > 0
                                             palette.button: page.raisedColor
                                             palette.buttonText: page.textColor
@@ -3624,8 +3677,8 @@ Item {
                                     Label {
                                         visible: page.selectedGame.mediaErrors !== undefined
                                             && Object.keys(page.selectedGame.mediaErrors).length > 0
-                                        text: qsTr("Provedores com erro: %1")
-                                            .arg(Object.keys(page.selectedGame.mediaErrors).join(", "))
+                                        text: qsTr("Provedores com erro: %1").arg(
+                                            Object.keys(page.selectedGame.mediaErrors || {}).join(", "))
                                         color: page.amberColor
                                         font.pixelSize: 10
                                         Layout.fillWidth: true

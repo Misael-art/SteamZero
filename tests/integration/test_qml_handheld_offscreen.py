@@ -17,6 +17,40 @@ QML = shutil.which("qml6")
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _qml_environment() -> dict[str, str]:
+    """Keep Qt diagnostics observable even when the host routes them to journald."""
+    env = os.environ.copy()
+    env.update(
+        {
+            "QT_FORCE_STDERR_LOGGING": "1",
+            "QT_LOGGING_RULES": "",
+            "QT_QPA_PLATFORM": "offscreen",
+            "QML_DISABLE_DISK_CACHE": "1",
+        }
+    )
+    return env
+
+
+def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
+    diagnostics = (
+        "Binding loop",
+        "Unable to assign",
+        "TypeError:",
+        "ReferenceError:",
+        "Cannot open:",
+    )
+    assert completed.returncode == 0, (
+        f"{label} falhou ({completed.returncode})\n"
+        f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+    )
+    unexpected = [line for line in completed.stderr.splitlines() if any(
+        marker in line for marker in diagnostics
+    )]
+    assert not unexpected, (
+        f"{label} publicou diagnósticos QML inesperados:\n" + "\n".join(unexpected)
+    )
+
+
 class _ErrorServerHandler(BaseHTTPRequestHandler):
     """Retorna 200 em /status e 400 com error-v1 em /emulation/action/plan."""
 
@@ -99,26 +133,16 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:
-    env = os.environ.copy()
-    env.update(
-        {
-            "QT_QPA_PLATFORM": "offscreen",
-            "QML_DISABLE_DISK_CACHE": "1",
-        }
-    )
     completed = subprocess.run(
         [str(QML), f"tests/qml/{harness}"],
         cwd=ROOT,
-        env=env,
+        env=_qml_environment(),
         capture_output=True,
         text=True,
         timeout=30,
         check=False,
     )
-    assert completed.returncode == 0, (
-        f"{harness} falhou ({completed.returncode})\n"
-        f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
-    )
+    _assert_qml_clean(completed, harness)
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
@@ -126,13 +150,6 @@ def test_qml_emulation_error_card_via_transactional_failure(
     _error_server: tuple[int, threading.Thread, HTTPServer],
 ) -> None:
     port, _thread, _server = _error_server
-    env = os.environ.copy()
-    env.update(
-        {
-            "QT_QPA_PLATFORM": "offscreen",
-            "QML_DISABLE_DISK_CACHE": "1",
-        }
-    )
     completed = subprocess.run(
         [
             str(QML),
@@ -143,13 +160,10 @@ def test_qml_emulation_error_card_via_transactional_failure(
             "test",
         ],
         cwd=ROOT,
-        env=env,
+        env=_qml_environment(),
         capture_output=True,
         text=True,
         timeout=30,
         check=False,
     )
-    assert completed.returncode == 0, (
-        f"Harness ErrorCard transacional falhou ({completed.returncode})\n"
-        f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
-    )
+    _assert_qml_clean(completed, "Harness ErrorCard transacional")

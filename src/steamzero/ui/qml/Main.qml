@@ -221,12 +221,12 @@ ApplicationWindow {
     readonly property var uiContracts: desktopStatus.dashboard
         && desktopStatus.dashboard.uiContracts
         ? desktopStatus.dashboard.uiContracts : ({"actions": [], "byId": {}})
-    readonly property bool hasConflicts: desktopStatus.context
-        && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0
+    readonly property bool hasConflicts: Boolean(desktopStatus.context
+        && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0)
     readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
         .indexOf(desktopStatus.truthState) >= 0
-    readonly property bool needsAttention: hasConflicts || desktopTruthNeedsAttention
-        || desktopStatus.recoveryRequired
+    readonly property bool needsAttention: Boolean(hasConflicts || desktopTruthNeedsAttention
+        || desktopStatus.recoveryRequired)
 
     property int sectionIndex: 1
     property int emulatorFilter: 0
@@ -2422,6 +2422,7 @@ ApplicationWindow {
                     Repeater {
                         model: root.taskItems
                         delegate: Rectangle {
+                            required property int index
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.leftMargin: 12
@@ -2934,7 +2935,7 @@ ApplicationWindow {
                                 Label {
                                     text: root.hasConflicts
                                         ? qsTr("Várias ações estão bloqueadas até o conflito ser resolvido.")
-                                        : root.desktopStatus.statusReasons.length > 0
+                                        : (root.desktopStatus.statusReasons || []).length > 0
                                             ? root.desktopStatus.statusReasons[0]
                                             : qsTr("Revise o perfil desejado, aplicado e observado.")
                                     color: root.textColor
@@ -3215,8 +3216,8 @@ ApplicationWindow {
                                     }
                                     Label {
                                         text: qsTr("%1 favorito(s) • %2 tag(s)")
-                                            .arg(root.collectionData.favorites.length)
-                                            .arg(root.collectionData.tags.length)
+                                            .arg((root.collectionData.favorites || []).length)
+                                            .arg((root.collectionData.tags || []).length)
                                         color: root.mutedColor
                                     }
                                 }
@@ -3387,7 +3388,7 @@ ApplicationWindow {
                                             Label { text: qsTr("Instale, atualize e restaure configurações com segurança."); color: root.mutedColor; font.pixelSize: 15 }
                                         }
                                         Button {
-                                            visible: root.desktopStatus.recoveryRequired
+                                            visible: Boolean(root.desktopStatus.recoveryRequired)
                                             text: qsTr("Estado seguro disponível")
                                             icon.name: "security-medium"
                                             Layout.minimumHeight: 48
@@ -4248,9 +4249,9 @@ ApplicationWindow {
                                                 Item { Layout.fillWidth: true }
                                                 Button {
                                                     text: qsTr("Desfazer")
-                                                    enabled: modelData.rollback
+                                                    enabled: Boolean(modelData.rollback
                                                         ? modelData.rollback.available
-                                                        : modelData.rollbackAvailable
+                                                        : modelData.rollbackAvailable)
                                                     Layout.minimumHeight: 48
                                                     onClicked: root.requestAction("operations.rollback.plan",
                                                         {"operationId": modelData.operationId},
@@ -4747,7 +4748,7 @@ ApplicationWindow {
                                         onClicked: root.openKeyboard()
                                     }
                                     Button {
-                                        visible: root.desktopStatus.recoveryRequired
+                                        visible: Boolean(root.desktopStatus.recoveryRequired)
                                         text: qsTr("Restaurar estado seguro")
                                         icon.name: "security-medium"
                                         Layout.minimumHeight: 48

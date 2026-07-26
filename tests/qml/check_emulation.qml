@@ -284,7 +284,7 @@ Window {
                 "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
                 "games": [
                     {"id": "b", "path": "/roms/b.nsp", "name": "Zelda", "titleId": "010000000000B000", "size": 20, "format": "nsp", "state": "ready", "statusLabel": "NSP", "steamSelected": true, "steamPublished": true},
-                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ", "coverUrl": "file:///tmp/cover.png", "playAction": {"id": "game.launch:a", "label": "Jogar", "enabled": true}}
+                    {"id": "a", "path": "/roms/a.nsz", "name": "Mario", "titleId": "010000000000A000", "size": 10, "format": "nsz", "state": "ready", "statusLabel": "NSZ", "coverUrl": Qt.resolvedUrl("../../src/steamzero/ui/assets/switch.svg"), "playAction": {"id": "game.launch:a", "label": "Jogar", "enabled": true}}
                 ]
             }]
         })
@@ -565,6 +565,46 @@ Window {
         object.destroy()
     }
 
+    function testLargeLibraryUsesBoundedWindow() {
+        const games = []
+        for (let index = 0; index < 1000; index++) {
+            games.push({
+                "id": "game-" + index,
+                "path": "/roms/game-" + index + ".nsp",
+                "name": "Jogo " + index,
+                "format": "nsp",
+                "state": "ready",
+                "statusLabel": "Pronto"
+            })
+        }
+        const object = makePage({
+            "platforms": [{
+                "id": "switch",
+                "name": "Nintendo Switch",
+                "iconKey": "switch",
+                "state": "ready",
+                "selectedScope": "game",
+                "selectedArea": "overview",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [{"id": "eden", "name": "Eden", "state": "ready"}],
+                "games": games
+            }]
+        })
+        if (!object)
+            return
+        object.syncPublishedSelection()
+        check(object.filteredGameRows.length === 1000,
+              "a busca deve preservar os mil jogos")
+        check(object.visibleGameRows.length === 60,
+              "a janela inicial deve limitar os dados visíveis")
+        check(object.renderedGameCount <= 60,
+              "a biblioteca não deve instanciar delegates fora da janela")
+        object.growGameWindow()
+        check(object.visibleGameRows.length === 120,
+              "o crescimento explícito deve ampliar a janela incrementalmente")
+        object.destroy()
+    }
+
     Component {
         id: pageComponent
         Emulation {
@@ -600,6 +640,7 @@ Window {
             testResponsiveProfiles()
             testPublishedStateFixtures()
             testRemoteExtrasCatalogPresentation()
+            testLargeLibraryUsesBoundedWindow()
             if (failures === 0)
                 console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
             Qt.exit(failures === 0 ? 0 : firstFailure)
