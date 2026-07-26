@@ -58,6 +58,17 @@
       }
     },
     {
+      "id": "melonds",
+      "manifestHash": "f07740c395ba4b4c3c9c89bcf832bdc8af6cce109f5191349b1e8fae006e736b",
+      "source": {
+        "type": "flatpak",
+        "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
+        "priority": 1,
+        "ref": "net.kuribo64.melonDS",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "pcsx2",
       "manifestHash": "eb8292c1eb0defdc85e1b7fb834fc2c14400b43fd966e46344c748ca60865a3d",
       "source": {
