@@ -85,6 +85,76 @@ class TestCastEngineUnit:
         assert sent.get("type") == "error"
         assert "boom" in sent.get("detail", "")
 
+    def test_negotiation_uses_installed_pygobject_promise_signature(self) -> None:
+        ce = _reload_engine()
+        eng = ce.CastEngine(self._tmp_sock("negotiation-signature.sock"))
+        pipeline = MagicMock()
+        webrtc = MagicMock()
+        pipeline.get_by_name.return_value = webrtc
+        conn = MagicMock()
+
+        with patch.object(ce.Gst, "parse_launch", return_value=pipeline):
+            eng._cmd_start_session(conn, {"type": "START_SESSION"}, 1)
+
+        negotiation_callback = next(
+            call.args[1]
+            for call in webrtc.connect.call_args_list
+            if call.args[0] == "on-negotiation-needed"
+        )
+        negotiation_callback(webrtc)
+
+        promise_call = ce.Gst.Promise.new_with_change_func.call_args
+        assert len(promise_call.args) == 2
+        webrtc.emit.assert_called_with(
+            "create-offer",
+            None,
+            ce.Gst.Promise.new_with_change_func.return_value,
+        )
+
+    def test_pipeline_is_send_only_capture_encode_and_rtp(self) -> None:
+        ce = _reload_engine()
+        description = ce.build_pipeline_description(
+            {"pipewire_fd": 12, "pipewire_node": 42, "bitrate_kbps": 3500}
+        )
+
+        for element in (
+            "pipewiresrc",
+            "videoconvert",
+            "x264enc name=encoder",
+            "h264parse",
+            "rtph264pay",
+            "webrtcbin name=webrtc",
+        ):
+            assert element in description
+        for receiver_element in ("rtph264depay", "avdec_h264", "autovideosink"):
+            assert receiver_element not in description
+        assert "fd=12" in description
+        assert "path=42" in description
+        assert "bitrate=3500" in description
+
+    def test_pipeline_adds_opus_only_with_valid_audio_node(self) -> None:
+        ce = _reload_engine()
+        with_audio = ce.build_pipeline_description({"audio": True, "audio_pipewire_node": 77})
+        without_audio_node = ce.build_pipeline_description({"audio": True})
+
+        assert "opusenc name=audio_encoder" in with_audio
+        assert "rtpopuspay" in with_audio
+        assert "audio_capture" not in without_audio_node
+
+    def test_pipeline_rejects_untrusted_pipewire_scalars(self) -> None:
+        ce = _reload_engine()
+        description = ce.build_pipeline_description(
+            {
+                "pipewire_fd": "12 ! fakesink",
+                "pipewire_node": -1,
+                "bitrate_kbps": "4000 ! filesink",
+            }
+        )
+
+        assert "fakesink" not in description
+        assert "filesink" not in description
+        assert f"bitrate={ce.DEFAULT_VIDEO_BITRATE_KBPS}" in description
+
     def test_client_handle_empty_line_skips(self) -> None:
         ce = _reload_engine()
         eng = ce.CastEngine(self._tmp_sock("skip_line.sock"))
@@ -128,10 +198,10 @@ class TestCastEngineUnit:
             "type": "CANDIDATE",
             "candidate": {"candidate": "c:1", "sdpMid": "0"},
         }
-        mock_webrtc.add_ice_candidate.side_effect = RuntimeError("add failed")
         eng._cmd_candidate(mock_conn, mock_msg, 1)
         sent = json.loads(mock_conn.sendall.call_args[0][0].decode("utf-8"))
         assert sent.get("type") == "CANDIDATE_OK"
+        mock_webrtc.emit.assert_called_once_with("add-ice-candidate", 0, "c:1")
 
     def test_set_quality_without_encoder(self) -> None:
         ce = _reload_engine()

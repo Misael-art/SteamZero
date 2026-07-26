@@ -22,7 +22,10 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
-from gi.repository import Gst  # type: ignore[import-not-found]
+import gi  # type: ignore[import-not-found]
+
+gi.require_version("Gst", "1.0")
+from gi.repository import Gst  # type: ignore[import-not-found]  # noqa: E402
 
 FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -32,6 +35,55 @@ IPC_VERSION = 1
 POLL_INTERVAL = 0.05
 HEARTBEAT_SECONDS = 5
 MAX_MESSAGE_BYTES = 65536
+DEFAULT_VIDEO_BITRATE_KBPS = 4000
+
+
+def _nonnegative_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, str) and value.isdecimal():
+        return int(value)
+    return None
+
+
+def build_pipeline_description(msg: dict[str, Any]) -> str:
+    """Build the send-only WebRTC pipeline from validated scalar inputs."""
+    source_parts = ["pipewiresrc", "name=capture", "do-timestamp=true"]
+    pipewire_fd = _nonnegative_int(msg.get("pipewire_fd"))
+    pipewire_node = _nonnegative_int(msg.get("pipewire_node"))
+    if pipewire_fd is not None:
+        source_parts.append(f"fd={pipewire_fd}")
+    if pipewire_node is not None:
+        source_parts.append(f"path={pipewire_node}")
+
+    bitrate = _nonnegative_int(msg.get("bitrate_kbps"))
+    if bitrate is None or bitrate == 0:
+        bitrate = DEFAULT_VIDEO_BITRATE_KBPS
+
+    video = (
+        f"{' '.join(source_parts)} ! "
+        "queue leaky=downstream max-size-buffers=2 ! "
+        "videoconvert ! video/x-raw,format=I420,framerate=30/1 ! "
+        f"x264enc name=encoder tune=zerolatency speed-preset=superfast bitrate={bitrate} "
+        "key-int-max=60 byte-stream=true ! "
+        "h264parse ! rtph264pay config-interval=-1 pt=96 ! "
+        "application/x-rtp,media=video,encoding-name=H264,payload=96 ! webrtc."
+    )
+
+    audio = ""
+    audio_node = _nonnegative_int(msg.get("audio_pipewire_node"))
+    if msg.get("audio") is True and audio_node is not None:
+        audio = (
+            f" pipewiresrc name=audio_capture do-timestamp=true path={audio_node} ! "
+            "queue leaky=downstream max-size-buffers=8 ! "
+            "audioconvert ! audioresample ! "
+            "opusenc name=audio_encoder bitrate=96000 ! rtpopuspay pt=97 ! "
+            "application/x-rtp,media=audio,encoding-name=OPUS,payload=97 ! webrtc."
+        )
+
+    return f"webrtcbin name=webrtc bundle-policy=max-bundle {video}{audio}"
 
 
 @dataclass
@@ -55,7 +107,7 @@ class CastEngine:
         self._socket_path = socket_path
         self._running = False
         self._session = SessionState()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._server: socket.socket | None = None
         self._main_bus_watch: Any = None
         self._loop: Any = None
@@ -90,6 +142,16 @@ class CastEngine:
                 if not data:
                     break
                 buf += data
+                if len(buf) > MAX_MESSAGE_BYTES:
+                    self._send(
+                        conn,
+                        {
+                            "version": IPC_VERSION,
+                            "type": "error",
+                            "detail": "message too large",
+                        },
+                    )
+                    break
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
                     if not line.strip():
@@ -98,6 +160,9 @@ class CastEngine:
         except Exception as exc:
             _log.error("client error: %s", exc)
         finally:
+            with self._lock:
+                if self._session.control_conn is conn:
+                    self._session.control_conn = None
             conn.close()
 
     def _dispatch(self, conn: socket.socket, raw: str) -> None:
@@ -175,59 +240,60 @@ class CastEngine:
             )
             return
         try:
-            import gi  # type: ignore[import-not-found]
-
             gi.require_version("GstWebRTC", "1.0")
 
             Gst.init(None)
-            pipeline = Gst.parse_launch(
-                "webrtcbin name=webrtc bundle-policy=max-bundle ! "
-                "rtph264depay ! avdec_h264 ! videoconvert ! "
-                "autovideosink"
-            )
+            pipeline = Gst.parse_launch(build_pipeline_description(msg))
             webrtc = pipeline.get_by_name("webrtc")
+            if webrtc is None:
+                raise RuntimeError("pipeline did not create webrtcbin")
 
-            def on_offer_created(_webrtc: Any, promise: Any) -> None:
+            def on_offer_created(promise: Any, _webrtc: Any) -> None:
                 try:
-                    reply = promise.wait()
+                    reply = promise.get_reply()
                     offer = reply["offer"]
-                    self._session.offer = offer.sdp.as_text()
+                    offer_sdp = offer.sdp.as_text()
+                    local_promise = Gst.Promise.new()
+                    webrtc.emit("set-local-description", offer, local_promise)
+                    local_promise.interrupt()
+                    with self._lock:
+                        self._session.offer = offer_sdp
                     _log.info("offer created")
-                    if self._session.control_conn is not None:
-                        self._send(
-                            self._session.control_conn,
-                            {
-                                "version": IPC_VERSION,
-                                "type": "OFFER_CREATED",
-                                "sdp": self._session.offer,
-                            },
-                        )
+                    self._send_control_event(
+                        {
+                            "version": IPC_VERSION,
+                            "type": "OFFER_CREATED",
+                            "sdp": offer_sdp,
+                        }
+                    )
                 except Exception as exc:
                     _log.error("offer creation failed: %s", exc)
 
-            webrtc.connect(
-                "on-negotiation-needed",
-                lambda w: w.create_offer(None, on_offer_created, None),
-            )
+            def on_negotiation_needed(element: Any) -> None:
+                promise = Gst.Promise.new_with_change_func(on_offer_created, element)
+                element.emit("create-offer", None, promise)
+
+            webrtc.connect("on-negotiation-needed", on_negotiation_needed)
 
             def on_ice_candidate(_webrtc: Any, sdp_mline_index: int, candidate: str) -> None:
-                if self._session.control_conn is not None:
-                    self._send(
-                        self._session.control_conn,
-                        {
-                            "version": IPC_VERSION,
-                            "type": "CANDIDATE",
-                            "candidate": {"candidate": candidate, "sdpMLineIndex": sdp_mline_index},
+                self._send_control_event(
+                    {
+                        "version": IPC_VERSION,
+                        "type": "CANDIDATE",
+                        "candidate": {
+                            "candidate": candidate,
+                            "sdpMLineIndex": sdp_mline_index,
                         },
-                    )
+                    }
+                )
 
             webrtc.connect("on-ice-candidate", on_ice_candidate)
 
+            self._session.control_conn = conn
             pipeline.set_state(Gst.State.PLAYING)
             self._session.pipeline = pipeline
             self._session.running = True
             self._session.start_time = time.monotonic()
-            self._session.control_conn = conn
             _log.info("session started")
             self._send(conn, {"version": IPC_VERSION, "type": "START_SESSION_OK", "seq": seq})
         except Exception as exc:
@@ -241,6 +307,12 @@ class CastEngine:
                     "detail": str(exc),
                 },
             )
+
+    def _send_control_event(self, payload: dict[str, Any]) -> None:
+        with self._lock:
+            conn = self._session.control_conn
+        if conn is not None:
+            self._send(conn, payload)
 
     def _cmd_stop_session(self, conn: socket.socket, seq: int) -> None:
         if not self._session.running and self._session.pipeline is None:
@@ -317,15 +389,19 @@ class CastEngine:
         self._session.answer = msg.get("sdp", "")
         if self._session.pipeline is not None and msg.get("sdp"):
             try:
-                from gi.repository import GstWebRTC
+                from gi.repository import GstSdp, GstWebRTC
 
                 webrtc = self._session.pipeline.get_by_name("webrtc")
                 if webrtc is not None:
+                    result, sdp_message = GstSdp.SDPMessage.new_from_text(msg["sdp"])
+                    if result != GstSdp.SDPResult.OK:
+                        raise RuntimeError("invalid answer SDP")
                     answer = GstWebRTC.WebRTCSessionDescription.new(
-                        GstWebRTC.WebRTCSDPType.ANSWER, msg["sdp"]
+                        GstWebRTC.WebRTCSDPType.ANSWER,
+                        sdp_message,
                     )
                     promise = Gst.Promise.new()
-                    webrtc.set_remote_description(answer, promise)
+                    webrtc.emit("set-remote-description", answer, promise)
                     promise.wait()
                     _log.info("remote description set from answer")
             except Exception as exc:
@@ -339,11 +415,15 @@ class CastEngine:
                 if webrtc is not None:
                     candidate = msg["candidate"]
                     if isinstance(candidate, dict):
-                        sdp = candidate.get("candidate", "")
-                        mid = candidate.get("sdpMid", "")
-                        webrtc.add_ice_candidate(sdp, mid)
+                        value = str(candidate.get("candidate", ""))
+                        mline_index = _nonnegative_int(candidate.get("sdpMLineIndex"))
+                        webrtc.emit(
+                            "add-ice-candidate",
+                            mline_index if mline_index is not None else 0,
+                            value,
+                        )
                     else:
-                        webrtc.add_ice_candidate(str(candidate), "")
+                        webrtc.emit("add-ice-candidate", 0, str(candidate))
             except Exception as exc:
                 _log.error("add ice candidate failed: %s", exc)
         self._send(conn, {"version": IPC_VERSION, "type": "CANDIDATE_OK", "seq": seq})
