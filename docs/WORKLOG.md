@@ -2974,3 +2974,12 @@ nenhuma instalação no host foi autorizada ou executada.
 quadros reais no navegador, revogação pelo compositor, jogabilidade P2P pela
 internet e inspeção visual em 1280×800. Esses itens não são substituídos pela
 suíte sem portal real.
+
+### Supply chain da a36
+
+A auditoria pré-tag detectou Pillow 12.2.0 vulnerável e bloqueou a promoção.
+`requirements-runtime.in` e o lock hash-pinado foram atualizados para Pillow
+12.3.0, release publicada por Trusted Publishing. A suíte completa foi
+reexecutada no ambiente descartável com a nova versão: 1839 testes, Ruff,
+mypy, independência e fronteiras verdes. A auditoria OSV deve retornar zero
+vulnerabilidades antes da tag.
