@@ -11,7 +11,7 @@
   `arcade.svg`, `dreamcast.svg`, `nintendo-ds.svg`, `nintendo-3ds.svg`,
   `playstation.svg`,
   `playstation-2.svg`,
-  `playstation-portable.svg`, `geforce-now.svg`,
+  `playstation-portable.svg`, `wii-u.svg`, `geforce-now.svg`,
   `xbox-cloud-gaming.svg` e `amazon-luna.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem
   logotipos oficiais de terceiros.

@@ -13,6 +13,17 @@
       }
     },
     {
+      "id": "cemu",
+      "manifestHash": "44ebce76416595ddc91aad59c7b5f64b86c34bb0dc803164ce71a0ebc26133e9",
+      "source": {
+        "type": "flatpak",
+        "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f",
+        "priority": 1,
+        "ref": "info.cemu.Cemu",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "citron",
       "manifestHash": "0b711b5b3df671856b5b63ca2d228456d22798fc0d2a3d4b12146cc4001ce877",
       "source": {

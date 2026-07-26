@@ -89,6 +89,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
     emulators = [m for m in registry.list() if m.kind == "emulator"]
     assert [manifest.id for manifest in emulators] == [
         "azahar",
+        "cemu",
         "citron",
         "dolphin",
         "duckstation",
@@ -109,6 +110,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
     locked = validate_registry_lock(registry.list())
     assert [item.id for item in locked.components] == [
         "azahar",
+        "cemu",
         "citron",
         "dolphin",
         "duckstation",
