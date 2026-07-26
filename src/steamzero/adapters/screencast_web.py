@@ -183,7 +183,16 @@ class WebReceiverProvider(ScreenCastProviderPort):
             from gi.repository import Gst  # type: ignore[import-not-found]
 
             Gst.init(None)
-            for elem in ("webrtcbin", "x264enc", "opusenc", "rtph264pay", "avdec_h264"):
+            for elem in (
+                "webrtcbin",
+                "pipewiresrc",
+                "videoconvert",
+                "x264enc",
+                "h264parse",
+                "rtph264pay",
+                "opusenc",
+                "rtpopuspay",
+            ):
                 if Gst.ElementFactory.find(elem) is None:
                     return False, f"element-missing: {elem}"
             return True, ""
@@ -227,7 +236,13 @@ class WebReceiverProvider(ScreenCastProviderPort):
             if self._session_id is not None:
                 return self._session_id
             self._session_id = secrets.token_urlsafe(16)
-            self._send_ipc({"type": "START_SESSION"})
+            self._send_ipc(
+                {
+                    "type": "START_SESSION",
+                    "scope": consent.scope,
+                    "audio": consent.audio,
+                }
+            )
             return self._session_id
 
     def sample(self, session_id: str) -> LinkSample | None:
@@ -288,7 +303,7 @@ class WebReceiverProvider(ScreenCastProviderPort):
             msg = json.loads(body.decode("utf-8"))
             msg_type = msg.get("type", "")
             if msg_type in ("answer", "candidate"):
-                self._send_ipc(msg)
+                self._send_ipc({**msg, "type": msg_type.upper()})
             elif msg_type == "stop":
                 self.stop(self._session_id or "")
         except Exception as exc:
@@ -335,7 +350,8 @@ class WebReceiverProvider(ScreenCastProviderPort):
         with self._ipc_lock:
             with suppress(OSError):
                 conn.close()
-            self._ipc_conn = None
+            if self._ipc_conn is conn:
+                self._ipc_conn = None
 
     def _on_ipc_message(self, raw: str) -> None:
         try:
@@ -345,14 +361,29 @@ class WebReceiverProvider(ScreenCastProviderPort):
         msg_type = msg.get("type", "")
         if msg_type == "OFFER_CREATED":
             self._push_sse("offer", {"sdp": msg.get("sdp", "")})
-        elif msg_type == "ERROR":
+        elif msg_type in ("ERROR", "error"):
             self._push_sse("error", {"detail": msg.get("detail", "engine error")})
         elif msg_type == "CANDIDATE":
             self._push_sse("candidate", {"candidate": msg.get("candidate", "")})
 
     def _stop_ipc_listener(self) -> None:
-        self._ipc_stop.set()
         self._send_ipc({"type": "STOP_SESSION"})
+        self._ipc_stop.set()
+        with self._ipc_lock:
+            conn = self._ipc_conn
+        if conn is not None:
+            with suppress(OSError):
+                conn.shutdown(socket.SHUT_RDWR)
+        listener = self._ipc_listener
+        if listener is not None and listener is not threading.current_thread():
+            listener.join(timeout=2.0)
+        with self._ipc_lock:
+            if self._ipc_conn is conn:
+                if conn is not None:
+                    with suppress(OSError):
+                        conn.close()
+                self._ipc_conn = None
+            self._ipc_listener = None
 
     # --- Engine lifecycle ---------------------------------------------------
 
@@ -403,17 +434,24 @@ class WebReceiverProvider(ScreenCastProviderPort):
         _log.info("engine started (pid=%d)", proc.pid)
         return inst
 
-    def _send_ipc(self, msg: dict[str, Any]) -> None:
-        msg["version"] = IPC_VERSION
-        try:
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.settimeout(2.0)
-            sock.connect(self._engine_socket)
-            data = json.dumps(msg, default=str).encode("utf-8") + b"\n"
-            sock.sendall(data)
-            sock.close()
-        except Exception as exc:
-            _log.warning("ipc send failed: %s", exc)
+    def _send_ipc(self, msg: dict[str, Any]) -> bool:
+        self._ensure_ipc_connection()
+        payload = {**msg, "version": IPC_VERSION}
+        data = json.dumps(payload, default=str).encode("utf-8") + b"\n"
+        with self._ipc_lock:
+            conn = self._ipc_conn
+            if conn is None:
+                return False
+            try:
+                conn.sendall(data)
+                return True
+            except OSError as exc:
+                _log.warning("ipc send failed: %s", exc)
+                with suppress(OSError):
+                    conn.close()
+                if self._ipc_conn is conn:
+                    self._ipc_conn = None
+                return False
 
     def _resolve_engine_path(self) -> str | None:
         try:

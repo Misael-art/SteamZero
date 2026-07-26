@@ -11,6 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from steamzero.adapters.screencast_web import WebReceiverProvider
+
 
 def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_gst = MagicMock()
@@ -317,6 +319,15 @@ def _ipc_call(sock_path: str, msg: dict, timeout: float = 2.0) -> dict:
     return json.loads(line.decode("utf-8")) if line else {}
 
 
+def _wait_until(predicate, timeout: float = 2.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return False
+
+
 class TestEngineProtocol:
     def test_start_session_success(self, engine_env) -> None:
         sock_path, ce = engine_env
@@ -501,3 +512,84 @@ class TestEngineProtocol:
         sock_path, ce = engine_env
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "STOP"})
         assert resp == {}
+
+
+def test_provider_and_engine_exchange_signaling_on_persistent_connection(
+    _engine_module,
+) -> None:
+    socket_dir = Path(tempfile.mkdtemp())
+    socket_path = str(socket_dir / "persistent-engine.sock")
+    engine = _engine_module.CastEngine(socket_path)
+    engine_thread = threading.Thread(target=engine.run, daemon=True)
+    engine_thread.start()
+    assert _wait_until(lambda: Path(socket_path).is_socket())
+
+    provider = WebReceiverProvider.__new__(WebReceiverProvider)
+    provider._engine_socket = socket_path
+    provider._ipc_conn = None
+    provider._ipc_lock = threading.Lock()
+    provider._ipc_listener = None
+    provider._ipc_stop = threading.Event()
+    provider._sse_writers = []
+
+    with patch.object(provider, "_push_sse") as push_sse:
+        provider._ensure_ipc_connection()
+        assert provider._send_ipc({"type": "START_SESSION"}) is True
+        assert _wait_until(lambda: engine._session.running)
+
+        engine._send_control_event(
+            {"version": _engine_module.IPC_VERSION, "type": "OFFER_CREATED", "sdp": "v=0"}
+        )
+        assert _wait_until(lambda: push_sse.call_count == 1)
+        push_sse.assert_called_once_with("offer", {"sdp": "v=0"})
+
+        engine._send_control_event(
+            {
+                "version": _engine_module.IPC_VERSION,
+                "type": "CANDIDATE",
+                "candidate": {
+                    "candidate": "candidate:engine",
+                    "sdpMLineIndex": 0,
+                },
+            }
+        )
+        assert _wait_until(lambda: push_sse.call_count == 2)
+        push_sse.assert_any_call(
+            "candidate",
+            {
+                "candidate": {
+                    "candidate": "candidate:engine",
+                    "sdpMLineIndex": 0,
+                }
+            },
+        )
+
+        provider._on_signal_message(
+            json.dumps({"type": "answer", "sdp": "v=0\no=browser\n"}).encode("utf-8")
+        )
+        assert _wait_until(lambda: engine._session.answer == "v=0\no=browser\n")
+
+        provider._on_signal_message(
+            json.dumps(
+                {
+                    "type": "candidate",
+                    "candidate": {
+                        "candidate": "candidate:browser",
+                        "sdpMLineIndex": 0,
+                    },
+                }
+            ).encode("utf-8")
+        )
+        webrtc = engine._session.pipeline.get_by_name("webrtc")
+        assert _wait_until(
+            lambda: any(
+                call.args == ("add-ice-candidate", 0, "candidate:browser")
+                for call in webrtc.emit.call_args_list
+            )
+        )
+
+    provider._stop_ipc_listener()
+    assert provider._ipc_conn is None
+    engine._cmd_stop()
+    engine_thread.join(timeout=1)
+    assert not engine_thread.is_alive()
