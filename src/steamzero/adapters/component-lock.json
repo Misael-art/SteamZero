@@ -124,6 +124,17 @@
       }
     },
     {
+      "id": "rpcs3",
+      "manifestHash": "c8083304843e474b2f893170d10f37c362ed66bf1af229e90173768029ccc552",
+      "source": {
+        "type": "flatpak",
+        "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4",
+        "priority": 1,
+        "ref": "net.rpcs3.RPCS3",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "ryubing",
       "manifestHash": "280af890325f5b0fad7c354d66519d93979e9b032e3f33e89a845138e72bbea2",
       "source": {

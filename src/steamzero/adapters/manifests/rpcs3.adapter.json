@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1, "id": "rpcs3", "kind": "emulator", "platforms": ["playstation-3"],
+  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "sources": [{"type": "flatpak", "ref": "net.rpcs3.RPCS3", "remote": "flathub", "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4", "priority": 1}],
+  "verify": {"smokeTest": ["--version"]}, "compat": ["steamos", "bazzite", "linux"],
+  "license": "GPL-2.0-only", "upstream": "https://github.com/RPCS3/rpcs3",
+  "notes": "Fonte Flathub fixada no commit da série 0.0.41."
+}

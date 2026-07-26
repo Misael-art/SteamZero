@@ -99,6 +99,7 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "pcsx2",
         "ppsspp",
         "retroarch",
+        "rpcs3",
         "ryubing",
     ]
     assert all({"detect", "status", "install", "verify"} <= item.capabilities for item in emulators)
@@ -120,6 +121,7 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
         "pcsx2",
         "ppsspp",
         "retroarch",
+        "rpcs3",
         "ryubing",
         "sunshine",
     ]
