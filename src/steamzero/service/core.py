@@ -439,11 +439,12 @@ def serve(*, systemd: bool = False) -> int:
     if server is None:
         socket_path = _safe_socket_path()
         if socket_path.exists():
+            probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             try:
-                probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 probe.settimeout(0.2)
                 probe.connect(str(socket_path))
             except OSError:
+                probe.close()
                 fs.remove_file(socket_path)
             else:
                 probe.close()

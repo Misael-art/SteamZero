@@ -214,7 +214,8 @@ class TestStateStoreModsAdapter:
         c.row_factory = sqlite3.Row
         m0008_up(c)
         c.execute("PRAGMA user_version=8")
-        return c
+        yield c
+        c.close()
 
     def test_save_and_list_installed(self, conn: sqlite3.Connection, tmp_path: Path) -> None:
         adapter = StateStoreModsAdapter(conn)
@@ -315,9 +316,14 @@ class TestStateStoreModsAdapter:
 
 
 class TestMigrationV8:
-    def test_creates_expected_tables(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    @pytest.fixture
+    def conn(self) -> sqlite3.Connection:
+        value = sqlite3.connect(":memory:")
+        value.row_factory = sqlite3.Row
+        yield value
+        value.close()
+
+    def test_creates_expected_tables(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         tables = {
             r["name"]
@@ -326,9 +332,7 @@ class TestMigrationV8:
         for expected in ("switch_mod", "switch_mod_catalog", "switch_game_build_id"):
             assert expected in tables
 
-    def test_creates_indexes(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    def test_creates_indexes(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         idxs = {
             r["name"]
@@ -343,9 +347,7 @@ class TestMigrationV8:
         ):
             assert expected in idxs
 
-    def test_switch_mod_constraints(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    def test_switch_mod_constraints(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         conn.execute(
             "INSERT INTO switch_mod (id,game_id,title_id,name,mod_type,source,state,installed_at) "
@@ -354,8 +356,7 @@ class TestMigrationV8:
         row = conn.execute("SELECT * FROM switch_mod WHERE id='m1'").fetchone()
         assert row["mod_type"] == "performance"
 
-    def test_switch_mod_state_check(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_switch_mod_state_check(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
@@ -364,8 +365,7 @@ class TestMigrationV8:
                 "VALUES ('m1','g1','0100','Mod','performance','test','invalid_state','2026-01-01')"
             )
 
-    def test_switch_mod_type_check(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_switch_mod_type_check(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
@@ -374,8 +374,7 @@ class TestMigrationV8:
                 "VALUES ('m1','g1','0100','Mod','invalid_type','test','installed','2026-01-01')"
             )
 
-    def test_idempotent(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_idempotent(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         m0008_up(conn)  # segunda execução não deve falhar
         tables = {
@@ -384,9 +383,7 @@ class TestMigrationV8:
         }
         assert "switch_mod" in tables
 
-    def test_catalog_table(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    def test_catalog_table(self, conn: sqlite3.Connection) -> None:
         m0008_up(conn)
         conn.execute(
             "INSERT INTO switch_mod_catalog (id,title_id,name,mod_type,source,"

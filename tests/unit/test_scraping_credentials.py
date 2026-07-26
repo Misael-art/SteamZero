@@ -401,3 +401,5 @@ class TestMediaSearchJobHandlerErrors:
         assert result.get("provider_errors") == {}
         assert result.get("candidate_count") == 0
         assert result.get("remote_state") == "degraded"
+        media_store.close()
+        job_store.close()

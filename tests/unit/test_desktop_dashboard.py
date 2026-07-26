@@ -17,6 +17,7 @@ from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain.saves import SavesStore
+from steamzero.ports import CaptureConsent
 
 
 class FakeFlatpak:
@@ -776,8 +777,19 @@ class TestCastDashboardIntegration:
             which=lambda _: None,
             spawn=lambda _argv: None,
         )
-        result = dashboard.cast_start("tv-sala", profile_id="game", mode="mirror")
-        mock_cast.start_stream.assert_called_once_with("tv-sala", profile_id="game", mode="mirror")
+        consent = CaptureConsent(granted=True, scope="window", audio=False)
+        result = dashboard.cast_start(
+            "tv-sala",
+            profile_id="game",
+            mode="mirror",
+            consent=consent,
+        )
+        mock_cast.start_stream.assert_called_once_with(
+            "tv-sala",
+            profile_id="game",
+            mode="mirror",
+            consent=consent,
+        )
         assert result == {"started": True, "receiverId": "tv-sala"}
 
     def test_cast_stop_delegates_to_orchestrator(

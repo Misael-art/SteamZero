@@ -230,7 +230,8 @@ class TestStateStoreCheatsAdapter:
         c.row_factory = sqlite3.Row
         m0009_up(c)
         c.execute("PRAGMA user_version=9")
-        return c
+        yield c
+        c.close()
 
     def test_save_and_list(self, conn: sqlite3.Connection) -> None:
         adapter = StateStoreCheatsAdapter(conn)
@@ -312,9 +313,14 @@ class TestStateStoreCheatsAdapter:
 
 
 class TestMigrationV9:
-    def test_creates_expected_tables(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    @pytest.fixture
+    def conn(self) -> sqlite3.Connection:
+        value = sqlite3.connect(":memory:")
+        value.row_factory = sqlite3.Row
+        yield value
+        value.close()
+
+    def test_creates_expected_tables(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         tables = {
             r["name"]
@@ -323,9 +329,7 @@ class TestMigrationV9:
         for expected in ("switch_cheat", "switch_cheat_catalog"):
             assert expected in tables
 
-    def test_creates_indexes(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    def test_creates_indexes(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         idxs = {
             r["name"]
@@ -339,8 +343,7 @@ class TestMigrationV9:
         ):
             assert expected in idxs
 
-    def test_switch_cheat_constraints(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_switch_cheat_constraints(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         conn.execute(
             "INSERT INTO switch_cheat (id,game_id,title_id,name,cheat_type,"
@@ -350,8 +353,7 @@ class TestMigrationV9:
         row = conn.execute("SELECT cheat_type FROM switch_cheat WHERE id='c1'").fetchone()
         assert row[0] == "gold"
 
-    def test_invalid_cheat_type_rejected(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_invalid_cheat_type_rejected(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
@@ -360,8 +362,7 @@ class TestMigrationV9:
                 "VALUES ('c1','g1','0100','Cheat','invalid','test','installed','2026-01-01')"
             )
 
-    def test_idempotent(self) -> None:
-        conn = sqlite3.connect(":memory:")
+    def test_idempotent(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         m0009_up(conn)
         tables = {
@@ -370,9 +371,7 @@ class TestMigrationV9:
         }
         assert "switch_cheat" in tables
 
-    def test_enabled_defaults_to_false(self) -> None:
-        conn = sqlite3.connect(":memory:")
-        conn.row_factory = sqlite3.Row
+    def test_enabled_defaults_to_false(self, conn: sqlite3.Connection) -> None:
         m0009_up(conn)
         conn.execute(
             "INSERT INTO switch_cheat (id,game_id,title_id,name,cheat_type,"

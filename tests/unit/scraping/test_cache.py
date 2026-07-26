@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,9 @@ from steamzero.ports import MediaCandidate
 
 @pytest.fixture
 def cache(tmp_path: Path) -> ScrapingCache:
-    return ScrapingCache(db_path=tmp_path / "test-scrape.db")
+    value = ScrapingCache(db_path=tmp_path / "test-scrape.db")
+    yield value
+    value.close()
 
 
 def test_cache_save_and_retrieve(cache: ScrapingCache) -> None:
@@ -100,7 +103,7 @@ def test_save_and_commit_media(cache: ScrapingCache) -> None:
 def test_cache_schema_does_not_serialize_credentials(cache: ScrapingCache) -> None:
     import sqlite3
 
-    with sqlite3.connect(cache.path) as connection:
+    with closing(sqlite3.connect(cache.path)) as connection:
         tables = {
             str(row[0])
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")

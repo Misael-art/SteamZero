@@ -37,6 +37,7 @@ from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
+from steamzero.ports import CaptureConsent
 
 Spawn = Callable[[Sequence[str]], None]
 StoreFactory = Callable[[], StateStore]
@@ -659,11 +660,20 @@ class DesktopDashboard:
         return {"paired": paired, "receiverId": receiver_id}
 
     def cast_start(
-        self, receiver_id: str, profile_id: str = "balanced", mode: str = "game"
+        self,
+        receiver_id: str,
+        profile_id: str = "balanced",
+        mode: str = "game",
+        consent: CaptureConsent | None = None,
     ) -> dict[str, Any]:
         if self._cast is None:
             raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
-        return self._cast.start_stream(receiver_id, profile_id=profile_id, mode=mode)
+        return self._cast.start_stream(
+            receiver_id,
+            profile_id=profile_id,
+            mode=mode,
+            consent=consent,
+        )
 
     def cast_stop(self) -> dict[str, Any]:
         if self._cast is None:

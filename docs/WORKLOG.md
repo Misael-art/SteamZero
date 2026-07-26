@@ -2983,3 +2983,39 @@ A auditoria pré-tag detectou Pillow 12.2.0 vulnerável e bloqueou a promoção.
 reexecutada no ambiente descartável com a nova versão: 1839 testes, Ruff,
 mypy, independência e fronteiras verdes. A auditoria OSV deve retornar zero
 vulnerabilidades antes da tag.
+
+## 2026-07-26 — Validação física pós-a36 e higiene de recursos
+
+**Branch:** `codex/post-release-validation-hygiene`, baseada no `main`
+`206df3287382c2231a9499c342e566a315ae681a`.
+
+**Streaming:** o contrato de consentimento monitor/janela passou da UI para o
+orquestrador. O cliente KDE corrigiu path e variantes D-Bus; o motor passou a
+inicializar GStreamer, carregar GstWebRTC/GstSdp, negociar a taxa nativa via
+`videorate`, preservar stderr e só publicar `streaming` depois da answer. Monitor
+e janela retornaram FD/node PipeWire reais; offer/answer e quadros reais foram
+observados no Edge.
+
+**UI:** as sete seções foram capturadas em 1280×800, com stderr Qt real e sem
+diagnósticos QML, clipping ou sobreposição. O harness passou a incluir
+Transmissão e Sistema separadamente.
+
+**Higiene:** stores/cache SQLite, HTTP errors, sockets, subprocess pipes,
+servidores, motor de cast e maliit dos testes agora têm ownership e fechamento
+explícitos. A suíte completa passou com `ResourceWarning` e
+`PytestUnraisableExceptionWarning` promovidos a erro; nenhum processo residual
+de cast ou maliit permaneceu.
+
+**Gates:** 1844 testes passaram; Ruff check e format passaram; mypy passou em
+162 arquivos; independência e fronteiras passaram com zero violações.
+
+**Pendências honestas:** a revogação pelo compositor segue fisicamente pendente
+porque este KDE não expôs um controle persistente de “Parar compartilhamento”;
+o evento `Session.Closed` e o teardown têm cobertura automatizada. P2P pela
+internet não existe no WI-S1 e foi especificado como WI-S2, dependente de
+rendezvous/TURN, domínio, certificado e orçamento autorizados pelo operador.
+
+**Host/release:** houve apenas restart transitório do portal de usuário, após
+confirmar ausência de sessões ativas. Nenhuma instalação, rollback, wheel,
+wheelhouse, `sudo` ou `bigsudo` foi executado. A release publicada permanece
+`0.1.0a36`; a release instalada no host não foi alterada.

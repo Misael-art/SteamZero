@@ -24,6 +24,7 @@ from steamzero.domain.desktop import (
     DisplayState,
     ExperienceCoordinator,
 )
+from steamzero.ports import CaptureConsent
 
 
 class Context:
@@ -328,9 +329,22 @@ class FakeDashboard:
         return {"paired": True, "receiverId": receiver_id}
 
     def cast_start(
-        self, receiver_id: str, profile_id: str = "balanced", mode: str = "game"
+        self,
+        receiver_id: str,
+        profile_id: str = "balanced",
+        mode: str = "game",
+        consent: CaptureConsent | None = None,
     ) -> dict[str, object]:
-        self.calls.append(("cast-start", receiver_id, profile_id, mode))
+        self.calls.append(
+            (
+                "cast-start",
+                receiver_id,
+                profile_id,
+                mode,
+                consent.scope if consent is not None else "",
+                str(consent.audio) if consent is not None else "",
+            )
+        )
         return {"started": True, "receiverId": receiver_id}
 
     def cast_stop(self) -> dict[str, object]:
@@ -931,7 +945,19 @@ def test_bridge_exposes_cast_endpoints(
     }
     pair = request_json(base, token, "/cast/pair", {"receiverId": "tv-sala"})
     assert pair == {"paired": True, "receiverId": "tv-sala"}
-    start = request_json(base, token, "/cast/start", {"receiverId": "tv-sala"})
+    with pytest.raises(urllib.error.HTTPError) as missing_consent:
+        request_json(base, token, "/cast/start", {"receiverId": "tv-sala"})
+    assert missing_consent.value.code == 400
+    missing_consent.value.close()
+    start = request_json(
+        base,
+        token,
+        "/cast/start",
+        {
+            "receiverId": "tv-sala",
+            "consent": {"granted": True, "scope": "window", "audio": False},
+        },
+    )
     assert start == {"started": True, "receiverId": "tv-sala"}
     stop = request_json(base, token, "/cast/stop", {})
     assert stop == {"stopped": True}
@@ -943,7 +969,7 @@ def test_bridge_exposes_cast_endpoints(
     assert dashboard.calls == [
         ("cast-discover", "3000"),
         ("cast-pair", "tv-sala", ""),
-        ("cast-start", "tv-sala", "balanced", "game"),
+        ("cast-start", "tv-sala", "balanced", "game", "window", "False"),
         ("cast-stop",),
         ("cast-status",),
         ("cast-sessions",),

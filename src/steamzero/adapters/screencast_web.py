@@ -128,6 +128,7 @@ class WebReceiverProvider(ScreenCastProviderPort):
         base = Path(data_dir) if data_dir else Path(tempfile.gettempdir()) / "steamzero-cast"
         self._data_dir = base
         ensure_dir(self._data_dir)
+        self._closed = False
 
         self._engine: EngineInstance | None = None
         self._lock = threading.Lock()
@@ -189,6 +190,7 @@ class WebReceiverProvider(ScreenCastProviderPort):
                 "webrtcbin",
                 "pipewiresrc",
                 "videoconvert",
+                "videorate",
                 "x264enc",
                 "h264parse",
                 "rtph264pay",
@@ -329,6 +331,7 @@ class WebReceiverProvider(ScreenCastProviderPort):
         with self._ipc_lock:
             if self._ipc_conn is not None:
                 return
+            sock: socket.socket | None = None
             try:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.settimeout(2.0)
@@ -338,6 +341,9 @@ class WebReceiverProvider(ScreenCastProviderPort):
                 self._ipc_listener = threading.Thread(target=self._ipc_listen_loop, daemon=True)
                 self._ipc_listener.start()
             except Exception as exc:
+                if sock is not None:
+                    with suppress(OSError):
+                        sock.close()
                 _log.warning("ipc connect failed: %s", exc)
 
     def _ipc_listen_loop(self) -> None:
@@ -434,7 +440,7 @@ class WebReceiverProvider(ScreenCastProviderPort):
                 [python, engine_path, "--socket", self._engine_socket],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=None,
                 start_new_session=True,
             )
         except FileNotFoundError:
@@ -491,13 +497,28 @@ class WebReceiverProvider(ScreenCastProviderPort):
         remove_file(Path(self._engine_socket))
 
     def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
         self._ipc_stop.set()
+        self._stop_ipc_listener()
         if self._receiver_server is not None:
             self._receiver_server.shutdown()
+            self._receiver_server.server_close()
+            self._receiver_server = None
+        if self._receiver_thread is not None:
+            self._receiver_thread.join(timeout=2.0)
+            self._receiver_thread = None
         if self._engine is not None and self._engine.process is not None:
             self._engine.process.terminate()
             try:
                 self._engine.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._engine.process.kill()
+                self._engine.process.wait(timeout=5)
+        self._engine = None
         self._cleanup_socket()
+
+    def __del__(self) -> None:
+        with suppress(Exception):
+            self.close()

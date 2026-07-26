@@ -172,3 +172,13 @@ def test_qml_fallback_rows_do_not_publish_decorative_actions() -> None:
     fallback_region = fallback_region[: fallback_region.index("property var fallbackSteamGameplay")]
     assert '"label": "Ver detalhes", "enabled": true' not in fallback_region
     assert fallback_region.count('"enabled": false') >= 4
+
+
+def test_qml_cast_start_transports_explicit_capture_intent() -> None:
+    qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
+
+    assert 'property string castCaptureScope: "monitor"' in qml
+    assert '"value": "monitor"' in qml
+    assert '"value": "window"' in qml
+    assert '"granted": true' in qml
+    assert '"scope": root.castCaptureScope' in qml

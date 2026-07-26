@@ -14,6 +14,7 @@ pode ser refeita.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -68,6 +69,7 @@ class ScrapingCache:
         self._path = db_path or (paths.state_home() / "scraping-cache.db")
         fs.ensure_dir(self._path.parent)
         self._conn = sqlite3.connect(self._path, isolation_level=None)
+        self._closed = False
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
@@ -356,7 +358,14 @@ class ScrapingCache:
         return self._path
 
     def close(self) -> None:
+        if self._closed:
+            return
         self._conn.close()
+        self._closed = True
+
+    def __del__(self) -> None:
+        with suppress(Exception):
+            self.close()
 
     def __enter__(self) -> ScrapingCache:
         return self

@@ -58,6 +58,7 @@ class CommandResult:
 Runner = Callable[[Sequence[str], float], CommandResult]
 Which = Callable[[str], str | None]
 Spawner = Callable[[Sequence[str]], bool]
+EnvSpawner = Callable[[Sequence[str], dict[str, str]], bool]
 Delay = Callable[[float], None]
 
 
@@ -915,11 +916,13 @@ class VirtualKeyboardController:
         runner: Runner = run_command,
         which: Which = shutil.which,
         spawner: Spawner = spawn_command,
+        env_spawner: EnvSpawner | None = None,
         delay: Delay = time.sleep,
     ) -> None:
         self._runner = runner
         self._which = which
         self._spawner = spawner
+        self._env_spawner = env_spawner or spawner_env
         self._delay = delay
 
     def activate(self, context: DesktopContext, *, language: str | None = None) -> str:
@@ -1000,7 +1003,7 @@ class VirtualKeyboardController:
         scale = geometry.get("scale", 100) / 100.0
         if scale > 0:
             env["QT_SCREEN_SCALE_FACTORS"] = f"{scale}"
-        if not spawner_env(("maliit-server",), env):
+        if not self._env_spawner(("maliit-server",), env):
             return False
         for attempt in range(10):
             if _kwin_vk_available(self._runner, self._which):

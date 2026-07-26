@@ -64,10 +64,10 @@ def core_service(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Pa
     finally:
         process.terminate()
         try:
-            process.wait(timeout=5)
+            process.communicate(timeout=5)
         except subprocess.TimeoutExpired:
             process.kill()
-            process.wait(timeout=5)
+            process.communicate(timeout=5)
 
 
 def _rpc(socket_path: Path, request: dict[str, object]) -> dict[str, object]:

@@ -237,6 +237,7 @@ class HttpClient:
                     status=exc.code,
                     retryable=retryable,
                 )
+                exc.close()
             except TimeoutError as exc:
                 failure = NetworkFailure("E-NET-TIMEOUT", "tempo limite excedido", retryable=True)
                 failure.__cause__ = exc
