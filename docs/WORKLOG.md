@@ -2943,3 +2943,34 @@ violações de fronteira.
 **Host/release:** nenhuma instalação, build de wheel, alteração de release,
 `sudo` ou `bigsudo` foi executada. Não houve teste físico; instalação e boot
 permanecem fora do escopo desta sessão.
+
+## 2026-07-26 — Normalização das frentes e release 0.1.0a36
+
+**Branch:** `codex/normalize-main-release`, criada a partir de `main` e integrada
+somente por merges explícitos das linhas de UI, ScreenScraper, portal/web receiver
+e dos grupos declarativos de emulação.
+
+**Integração:** foram consolidadas 36 plataformas, 16 adapters, o scanner de ROMs,
+o parser ScreenScraper, o receptor WebRTC/P2P e as correções de UI. Conflitos
+foram aditivos em `WORKLOG.md` e nos testes de registry, preservando as coberturas
+das duas famílias de emuladores.
+
+**Correções de normalização:** o QML offscreen passou a capturar os diagnósticos
+reais do Qt; a biblioteca renderiza uma janela incremental de 60 jogos e mantém
+o layout responsivo. O motor de cast agora mantém fd, sessão e subscriptions do
+portal no processo correto, prefere `pipewire-serial`, observa revogação, executa
+teardown idempotente e não publica recursos privados. O domínio permanece em
+`negotiating` até o provider observar o pipeline em execução.
+
+**Gates antes do bump:** 1839 testes passaram; Ruff, mypy (162 arquivos),
+independência e fronteiras passaram. A formatação integrada também foi
+normalizada para reproduzir o gate do CI.
+
+**Release:** versão avançada para `0.1.0a36`. O wheel, SBOM, auditoria OSV,
+proveniência e checksums devem ser produzidos a partir do commit limpo tagueado;
+nenhuma instalação no host foi autorizada ou executada.
+
+**Validação física pendente:** consentimento monitor/janela no portal KDE,
+quadros reais no navegador, revogação pelo compositor, jogabilidade P2P pela
+internet e inspeção visual em 1280×800. Esses itens não são substituídos pela
+suíte sem portal real.
