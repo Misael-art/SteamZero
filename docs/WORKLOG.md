@@ -2829,3 +2829,25 @@ verdes. O `ruff check src tools tests` permanece bloqueado por cinco E501 em
 escopo.
 
 **Host/release:** nenhuma instalação, build de wheel ou ação de host executada.
+
+## 2026-07-26 — Revisão independente da correção de UI
+
+**Branch:** `codex/ui-regression-remediation`.
+
+**Correções após revisão:** restaurado o `check_same_thread` padrão do SQLite.
+O `ExperienceCoordinator`, única dependência longa da bridge que retém um
+`StateStore`, passou a receber um coordenador e uma conexão isolados por thread
+de requisição; a conexão é fechada ao concluir o handler. O teste da bridge
+agora bloqueia um POST real de aplicação e prova que `/status` responde antes
+de liberá-lo.
+
+O `manualAction` do ErrorCard voltou a ser orientação textual, sem botão que
+encaminhava indevidamente para Sistema. A manutenção Steam calcula a
+habilitação a partir dos bytes das categorias efetivamente selecionadas,
+incluindo cobertura para shader cache vazio e crash dumps não vazios.
+
+**Testes:** bridge + coordenador + QML offscreen: 46 passed; teste focal de
+concorrência + QML: 11 passed; Ruff completo, mypy, independence e boundaries
+verdes no worktree isolado.
+
+**Host/release:** nenhuma instalação, build de wheel ou ação de host executada.

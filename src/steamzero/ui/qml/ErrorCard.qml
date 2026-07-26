@@ -22,7 +22,6 @@ Rectangle {
 
     signal dismiss()
     signal showDiagnostics()
-    signal executeAction()
 
     function resolve(error) {
         if (!error || typeof error !== "object") {
@@ -140,25 +139,20 @@ Rectangle {
             Layout.leftMargin: 36
         }
 
+        Label {
+            visible: manualActionLabel.length > 0
+            text: qsTr("Orientação: ") + manualActionLabel
+            color: "#f2f6fb"
+            font.pixelSize: 11
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.leftMargin: 36
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 36
             spacing: 8
-            Button {
-                id: actionButton
-                visible: manualActionLabel.length > 0
-                text: manualActionLabel
-                palette.buttonText: "#f2f6fb"
-                Layout.minimumHeight: 36
-                Accessible.name: text
-                onClicked: card.executeAction()
-                background: Rectangle {
-                    color: actionButton.activeFocus ? "#3b2b18" : "#201a13"
-                    radius: 6
-                    border.color: actionButton.activeFocus ? "#13bdf2" : "#705127"
-                    border.width: actionButton.activeFocus ? 2 : 1
-                }
-            }
             Button {
                 id: detailButton
                 text: detailed ? qsTr("Ocultar detalhes") : qsTr("Ver detalhes")

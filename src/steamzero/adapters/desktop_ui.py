@@ -9,6 +9,7 @@ import json
 import secrets
 import shutil
 import subprocess
+import threading
 from dataclasses import replace
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +30,7 @@ from steamzero.adapters.desktop_kde import (
 from steamzero.adapters.steam_session import readiness as session_readiness
 from steamzero.adapters.steam_session import request_target
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
     DesktopContext,
     DisplayState,
@@ -52,7 +54,6 @@ _STATUS_BY_CODE = {
 class DesktopControlServer(ThreadingHTTPServer):
     # Long-running mutations must not block status polling or cancellation.
     daemon_threads = True
-    coordinator: ExperienceCoordinator
     token: str
     dashboard: DesktopDashboard | None
     session_plans: dict[str, tuple[str, str]]
@@ -63,11 +64,28 @@ class DesktopControlServer(ThreadingHTTPServer):
         token: str,
         dashboard: DesktopDashboard | None = None,
     ) -> None:
-        self.coordinator = coordinator
+        self._coordinator_template = coordinator
+        self._request_context = threading.local()
         self.token = token
         self.dashboard = dashboard
         self.session_plans = {}
         super().__init__(("127.0.0.1", 0), DesktopControlHandler)
+
+    @property
+    def coordinator(self) -> ExperienceCoordinator:
+        coordinator = getattr(self._request_context, "coordinator", None)
+        if coordinator is None:
+            store = StateStore(self._coordinator_template.store_path)
+            store.migrate()
+            coordinator = self._coordinator_template.for_store(store)
+            self._request_context.coordinator = coordinator
+        return cast(ExperienceCoordinator, coordinator)
+
+    def close_request_context(self) -> None:
+        coordinator = getattr(self._request_context, "coordinator", None)
+        if coordinator is not None:
+            coordinator.close()
+            del self._request_context.coordinator
 
 
 class DesktopControlHandler(BaseHTTPRequestHandler):
@@ -587,6 +605,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         # A bridge local não grava URLs/tokens no log HTTP padrão.
         return
+
+    def finish(self) -> None:
+        try:
+            super().finish()
+        finally:
+            self._control_server.close_request_context()
 
 
 def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:

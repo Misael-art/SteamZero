@@ -3015,7 +3015,6 @@ ApplicationWindow {
                                 errorObject: modelData
                                 onDismiss: root.dismissError(errorObject ? errorObject.code : "")
                                 onShowDiagnostics: root.beginDiagnosticsExport("support")
-                                onExecuteAction: root.sectionIndex = 6
                                 Component.onCompleted: resolve(modelData)
                             }
                         }

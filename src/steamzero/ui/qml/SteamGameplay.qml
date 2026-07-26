@@ -92,6 +92,7 @@ Item {
     property alias desktopModeControl: desktopModePanel
     property alias fpsControlRepeater: gameplayFpsRepeater
     property alias vkBasaltControl: vkBasaltPicker
+    property alias maintenanceReviewControl: maintenanceReviewButton
 
     readonly property var games: gameplay && gameplay.games ? gameplay.games : []
     readonly property var environment: gameplay && gameplay.environment ? gameplay.environment : []
@@ -252,6 +253,17 @@ Item {
         if (bytes < 1024 * 1024 * 1024)
             return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
         return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+    }
+
+    function selectedMaintenanceBytes() {
+        var total = 0
+        var categories = page.maintenance.categories || []
+        for (var index = 0; index < categories.length; index++) {
+            var category = categories[index]
+            if (page.selectedMaintenanceCategories.indexOf(category.id) >= 0)
+                total += Number(category.sizeBytes) || 0
+        }
+        return total
     }
 
     function choosePerformance(index) {
@@ -1617,10 +1629,10 @@ Item {
                             onClicked: page.maintenanceRecoveryRequested()
                         }
                         Button {
+                            id: maintenanceReviewButton
                             text: page.maintenance.steamRunning ? qsTr("Feche a Steam") : qsTr("Revisar limpeza")
                             enabled: !page.maintenance.steamRunning
-                                && page.maintenance.totalBytes > 0
-                                && page.selectedMaintenanceCategories.length > 0
+                                && page.selectedMaintenanceBytes() > 0
                                 && Boolean(page.selectedGame.id)
                             Layout.fillWidth: true
                             Layout.minimumHeight: 50
