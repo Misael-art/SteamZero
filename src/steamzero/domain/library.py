@@ -17,7 +17,7 @@ Conteúdo é sempre do usuário (CONTENT-POLICY): nada é obtido, sugerido ou ba
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -62,12 +62,44 @@ def build_ext_map(manifests: list[dict[str, Any]]) -> dict[str, list[str]]:
     return ext_map
 
 
+#: Assinaturas de cabeçalho que desambiguam extensões disputadas (D1 passo 2b).
+#: ``.iso`` é reivindicada por várias plataformas; só a assinatura decide. Cada
+#: entrada é (offset, magic, plataforma) e o offset é lido sob demanda — nunca se
+#: lê o arquivo inteiro (AC-LB-01).
+_HEADER_MAGICS: tuple[tuple[int, bytes, str], ...] = (
+    (0x18, b"\x5d\x1c\x9e\xa3", "nintendo-console"),  # disco Wii
+    (0x1C, b"\xc2\x33\x9f\x3d", "nintendo-console"),  # disco GameCube
+    (0x10000, b"MICROSOFT*XBOX*MEDIA", "xbox"),
+)
+
+#: Lê ``length`` bytes a partir de ``offset``; devolve menos que isso no EOF.
+MagicReader = Callable[[int, int], bytes]
+
+
+def platform_from_magic(read_at: MagicReader) -> str | None:
+    """Identifica a plataforma pela assinatura do cabeçalho, ou ``None``.
+
+    Recebe o leitor injetado em vez de um caminho: a função continua pura e os
+    testes exercitam cada assinatura sem tocar em disco. Erro de leitura é
+    tratado como "não identificado" — desambiguar é oportunista e nunca falha o
+    scan (P9).
+    """
+    for offset, magic, platform_id in _HEADER_MAGICS:
+        try:
+            if read_at(offset, len(magic)) == magic:
+                return platform_id
+        except OSError:
+            return None
+    return None
+
+
 def classify_rom(
     name: str,
     siblings: set[str],
     ext_map: dict[str, list[str]],
     *,
     root_platform: str | None = None,
+    header_platform: str | None = None,
 ) -> tuple[str | None, str, str]:
     ext = Path(name).suffix.lower()
 
@@ -104,6 +136,12 @@ def classify_rom(
     if len(platforms) == 1:
         return platforms[0], "base", "exclusive-ext"
 
+    # Extensão disputada: só a assinatura decide, e apenas entre as candidatas
+    # daquela extensão — um header que aponta para plataforma que não reivindica
+    # a extensão é ignorado em vez de sobrepor o mapa declarado.
+    if header_platform is not None and header_platform in platforms:
+        return header_platform, "base", "magic-header"
+
     return None, "unknown", "ambiguous-ext"
 
 
@@ -129,7 +167,11 @@ class PlatformRomScanner:
         for path in self._iter_files(root):
             siblings = self._siblings(root, path)
             plat, kind, ev = classify_rom(
-                path.name, siblings, self._ext_map, root_platform=root_platform
+                path.name,
+                siblings,
+                self._ext_map,
+                root_platform=root_platform,
+                header_platform=self._header_platform(path, root_platform=root_platform),
             )
             fmt = _FORMAT_BY_EXT.get(path.suffix.lower(), "unknown")
             results.append(
@@ -142,6 +184,31 @@ class PlatformRomScanner:
                 )
             )
         return results
+
+    def _header_platform(self, path: Path, *, root_platform: str | None) -> str | None:
+        """Lê a assinatura só quando ela pode mudar a decisão.
+
+        Root explícito já resolve, e extensão com uma dona só não tem o que
+        desambiguar: nos dois casos nenhum byte é lido. Symlink nunca é aberto
+        (FM-13). Falha de I/O devolve ``None`` — o scan degrada para
+        ``ambiguous-ext``, nunca levanta.
+        """
+        if root_platform is not None:
+            return None
+        if len(self._ext_map.get(path.suffix.lower(), [])) < 2:
+            return None
+        if path.is_symlink():
+            return None
+        try:
+            with path.open("rb") as handle:
+
+                def read_at(offset: int, length: int) -> bytes:
+                    handle.seek(offset)
+                    return handle.read(length)
+
+                return platform_from_magic(read_at)
+        except OSError:
+            return None
 
     @staticmethod
     def _iter_files(root: Path) -> Iterator[Path]:

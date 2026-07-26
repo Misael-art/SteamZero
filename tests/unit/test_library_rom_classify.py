@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from steamzero.domain.library import (
     RomCandidate,
     build_ext_map,
     classify_rom,
+    platform_from_magic,
 )
 from steamzero.domain.platforms import PlatformRegistry
 
@@ -279,3 +281,107 @@ class TestPlatformRomScanner:
         assert by_name["game.iso"].evidence == "root-wins"
         assert by_name["readme.txt"].platform is None
         assert by_name["readme.txt"].evidence == "no-ext-match"
+
+
+# ── Desambiguação por assinatura de cabeçalho (D1 passo 2b) ──────────────────
+
+
+def _fake_reader(blob: bytes) -> Callable[[int, int], bytes]:
+    """Leitor injetado: devolve fatias de um buffer sintético, sem tocar disco."""
+
+    def read_at(offset: int, length: int) -> bytes:
+        return blob[offset : offset + length]
+
+    return read_at
+
+
+def _disc_image(offset: int, magic: bytes) -> bytes:
+    """Imagem mínima com a assinatura no offset esperado e zeros no resto."""
+    blob = bytearray(offset + len(magic))
+    blob[offset : offset + len(magic)] = magic
+    return bytes(blob)
+
+
+class TestPlatformFromMagic:
+    def test_gamecube_magic(self) -> None:
+        blob = _disc_image(0x1C, b"\xc2\x33\x9f\x3d")
+        assert platform_from_magic(_fake_reader(blob)) == "nintendo-console"
+
+    def test_wii_magic(self) -> None:
+        blob = _disc_image(0x18, b"\x5d\x1c\x9e\xa3")
+        assert platform_from_magic(_fake_reader(blob)) == "nintendo-console"
+
+    def test_xbox_magic(self) -> None:
+        blob = _disc_image(0x10000, b"MICROSOFT*XBOX*MEDIA")
+        assert platform_from_magic(_fake_reader(blob)) == "xbox"
+
+    def test_no_signature_is_none(self) -> None:
+        assert platform_from_magic(_fake_reader(bytes(0x20000))) is None
+
+    def test_truncated_file_is_none(self) -> None:
+        """Arquivo menor que o offset não pode levantar — só não identifica."""
+        assert platform_from_magic(_fake_reader(b"\x00" * 8)) is None
+
+    def test_io_error_degrades_to_none(self) -> None:
+        def broken(_offset: int, _length: int) -> bytes:
+            raise OSError("disco removido no meio do scan")
+
+        assert platform_from_magic(broken) is None
+
+
+class TestClassifyWithHeader:
+    def test_header_resolves_ambiguous_ext(self) -> None:
+        ext_map = {".iso": ["nintendo-console", "ps2"]}
+        plat, kind, ev = classify_rom(
+            "game.iso", set(), ext_map, header_platform="nintendo-console"
+        )
+        assert (plat, kind, ev) == ("nintendo-console", "base", "magic-header")
+
+    def test_header_outside_claimants_is_ignored(self) -> None:
+        """Header apontando plataforma que não reivindica a extensão não vence."""
+        ext_map = {".iso": ["ps2", "psp"]}
+        plat, _kind, ev = classify_rom("game.iso", set(), ext_map, header_platform="xbox")
+        assert plat is None
+        assert ev == "ambiguous-ext"
+
+    def test_header_ignored_when_ext_exclusive(self) -> None:
+        ext_map = {".gcm": ["nintendo-console"]}
+        _plat, _kind, ev = classify_rom("game.gcm", set(), ext_map, header_platform="xbox")
+        assert ev == "exclusive-ext"
+
+    def test_root_still_wins_over_header(self) -> None:
+        ext_map = {".iso": ["nintendo-console", "ps2"]}
+        plat, _kind, ev = classify_rom(
+            "game.iso", set(), ext_map, root_platform="ps2", header_platform="nintendo-console"
+        )
+        assert (plat, ev) == ("ps2", "root-wins")
+
+    def test_ambiguous_without_header_stays_unknown(self) -> None:
+        ext_map = {".iso": ["nintendo-console", "ps2"]}
+        plat, kind, ev = classify_rom("game.iso", set(), ext_map)
+        assert (plat, kind, ev) == (None, "unknown", "ambiguous-ext")
+
+
+class TestInventoryReadsHeader:
+    def test_inventory_disambiguates_iso_by_header(self, tmp_path: Path) -> None:
+        ext_map = {".iso": ["nintendo-console", "ps2"]}
+        (tmp_path / "zelda.iso").write_bytes(_disc_image(0x1C, b"\xc2\x33\x9f\x3d"))
+        (tmp_path / "sem-assinatura.iso").write_bytes(bytes(0x40))
+        results = {r.path.name: r for r in PlatformRomScanner(ext_map).inventory(tmp_path)}
+        assert results["zelda.iso"].platform == "nintendo-console"
+        assert results["zelda.iso"].evidence == "magic-header"
+        assert results["sem-assinatura.iso"].platform is None
+        assert results["sem-assinatura.iso"].evidence == "ambiguous-ext"
+
+    def test_exclusive_ext_never_opens_the_file(self, tmp_path: Path) -> None:
+        """Extensão com dona única não paga leitura: o arquivo nem precisa abrir."""
+        ext_map = {".gcm": ["nintendo-console"]}
+        target = tmp_path / "game.gcm"
+        target.write_bytes(b"")
+        target.chmod(0o000)
+        try:
+            results = PlatformRomScanner(ext_map).inventory(tmp_path)
+        finally:
+            target.chmod(0o600)
+        assert results[0].platform == "nintendo-console"
+        assert results[0].evidence == "exclusive-ext"
