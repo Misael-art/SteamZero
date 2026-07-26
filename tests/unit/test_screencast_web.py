@@ -81,9 +81,7 @@ class TestWebReceiverProvider:
 
         with pytest.raises(SteamZeroError, match="E-CAST-CONSENT-REQUIRED"):
             mock_consent = CaptureConsent(granted=False)
-            mocked_provider.start(
-                "local-browser", "balanced", "game", mock_consent
-            )
+            mocked_provider.start("local-browser", "balanced", "game", mock_consent)
 
     def test_sessions_empty(self, mocked_provider: WebReceiverProvider) -> None:
         assert mocked_provider.sessions() == []
@@ -196,10 +194,7 @@ class TestWebReceiverProvider:
     def test_preflight_gi_missing(self, provider: WebReceiverProvider) -> None:
         # Also remove from sys.modules for isolation against other test
         # suites that may have injected gi into sys.modules.
-        saved = {
-            k: sys.modules.pop(k, None)
-            for k in ("gi", "gi.repository", "gi.repository.Gst")
-        }
+        saved = {k: sys.modules.pop(k, None) for k in ("gi", "gi.repository", "gi.repository.Gst")}
         for attr in ("gi", "Gst"):
             if hasattr(sw_mod, attr):
                 delattr(sw_mod, attr)
@@ -272,18 +267,14 @@ class TestWebReceiverProvider:
 
     def test_on_signal_message_stop(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "stop") as mock_stop:
-            provider._on_signal_message(
-                json.dumps({"type": "stop"}).encode("utf-8")
-            )
+            provider._on_signal_message(json.dumps({"type": "stop"}).encode("utf-8"))
             mock_stop.assert_called_once()
 
     def test_on_signal_message_invalid_json(self, provider: WebReceiverProvider) -> None:
         provider._on_signal_message(b"not json")
 
     def test_on_signal_message_unknown_type(self, provider: WebReceiverProvider) -> None:
-        provider._on_signal_message(
-            json.dumps({"type": "unknown_type"}).encode("utf-8")
-        )
+        provider._on_signal_message(json.dumps({"type": "unknown_type"}).encode("utf-8"))
 
     def test_on_ipc_message_offer_created(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "_push_sse") as mock_push:
@@ -311,9 +302,7 @@ class TestWebReceiverProvider:
 
     def test_on_ipc_message_unknown_type(self, provider: WebReceiverProvider) -> None:
         with patch.object(provider, "_push_sse") as mock_push:
-            provider._on_ipc_message(
-                json.dumps({"type": "UNKNOWN_EVENT"}).encode("utf-8")
-            )
+            provider._on_ipc_message(json.dumps({"type": "UNKNOWN_EVENT"}).encode("utf-8"))
             mock_push.assert_not_called()
 
     def test_push_sse(self, provider: WebReceiverProvider) -> None:
@@ -461,9 +450,7 @@ class TestWebReceiverProvider:
         provider.close()
         proc.terminate.assert_called_once()
 
-    def test_sessions_returns_id_when_session_active(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_sessions_returns_id_when_session_active(self, provider: WebReceiverProvider) -> None:
         provider._session_id = "test-session"
         assert provider.sessions() == ["test-session"]
 
@@ -478,33 +465,21 @@ class TestWebReceiverProvider:
             assert resp.status == 500
             conn.close()
 
-    def test_start_with_consent_creates_session(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_start_with_consent_creates_session(self, provider: WebReceiverProvider) -> None:
         consent = CaptureConsent(granted=True)
-        session_id = provider.start(
-            "local-browser", "balanced", "game", consent
-        )
+        session_id = provider.start("local-browser", "balanced", "game", consent)
         assert session_id is not None
         assert len(session_id) > 0
         assert provider.sessions() == [session_id]
 
-    def test_start_twice_returns_same_session(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_start_twice_returns_same_session(self, provider: WebReceiverProvider) -> None:
         consent = CaptureConsent(granted=True)
-        s1 = provider.start(
-            "local-browser", "balanced", "game", consent
-        )
-        s2 = provider.start(
-            "local-browser", "high", "desktop", consent
-        )
+        s1 = provider.start("local-browser", "balanced", "game", consent)
+        s2 = provider.start("local-browser", "high", "desktop", consent)
         assert s1 == s2
         assert provider.sessions() == [s1]
 
-    def test_close_kills_engine_on_timeout(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_close_kills_engine_on_timeout(self, provider: WebReceiverProvider) -> None:
         proc = MagicMock()
         proc.wait.side_effect = subprocess.TimeoutExpired(["cmd"], 5)
         provider._engine = MagicMock()
@@ -558,18 +533,14 @@ class TestWebReceiverProvider:
         provider._ipc_conn = mock_sock
         provider._ipc_listen_loop()
 
-    def test_ipc_listen_loop_timeout_continues(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_ipc_listen_loop_timeout_continues(self, provider: WebReceiverProvider) -> None:
         mock_sock = MagicMock()
         mock_sock.settimeout = MagicMock()
         mock_sock.recv.side_effect = [TimeoutError(), b""]
         provider._ipc_conn = mock_sock
         provider._ipc_listen_loop()
 
-    def test_ipc_listen_loop_parses_lines(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_ipc_listen_loop_parses_lines(self, provider: WebReceiverProvider) -> None:
         mock_sock = MagicMock()
         mock_sock.settimeout = MagicMock()
         msg = json.dumps({"type": "OFFER_CREATED", "sdp": "v=0"})
@@ -579,18 +550,14 @@ class TestWebReceiverProvider:
             provider._ipc_listen_loop()
             mock_dispatch.assert_called_once_with(msg)
 
-    def test_ipc_listen_loop_skips_empty_lines(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_ipc_listen_loop_skips_empty_lines(self, provider: WebReceiverProvider) -> None:
         mock_sock = MagicMock()
         mock_sock.settimeout = MagicMock()
         mock_sock.recv.side_effect = [b"\n\n", b""]
         provider._ipc_conn = mock_sock
         provider._ipc_listen_loop()
 
-    def test_ipc_listen_loop_no_conn(
-        self, provider: WebReceiverProvider
-    ) -> None:
+    def test_ipc_listen_loop_no_conn(self, provider: WebReceiverProvider) -> None:
         provider._ipc_conn = None
         provider._ipc_listen_loop()
 
