@@ -18,6 +18,10 @@ docs/12-roadmap/
 venv/
 env/
 
+# Environment secrets (never commit)
+.env
+.env.local
+
 # Tool caches
 .mypy_cache/
 .ruff_cache/
