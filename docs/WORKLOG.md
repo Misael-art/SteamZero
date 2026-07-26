@@ -2762,3 +2762,52 @@ do incremento conforme AGENTS.md).
 
 **Host/release:** nenhuma instalação, build de wheel, `bigsudo` ou alteração
 de release foi executada. A release ativa permaneceu a da sessão anterior.
+
+## 2026-07-25 — Sessão WI-COV-STAGE2: cobertura screencast_web + cast_engine e release 0.1.0a35
+
+**Branch:** `codex/compartilhar-tela-s1-web-receiver` (continuada da WI-S1).
+
+**Problema:** `screencast_web.py` (40,48%) e `cast_engine.py` (55,79%) estavam
+abaixo de 85%, impedindo o gate de cobertura global.
+
+**Resolução — 55 novos testes (67 screencast_web + 33 cast_engine):**
+
+| Alvo | Antes | Depois | Testes |
+|---|---|---|---|
+| `screencast_web.py` | 40,48% (86/312) | **99,21%** (0/312) | 67 testes unitários |
+| `cast_engine.py` | 55,79% (111/254) | **89,63%** (24/254) | 12 unitários + 21 IPC |
+| Global | ~85,04% | **86,21%** | 1754 passed |
+
+**Release construída e validada (não instalada):**
+- Versão: `0.1.0a35`
+- Source commit: `7a1916e1e711debe20b9d5d4fb65fbbcb829c11e`
+- Wheel: `dist/steamzero-0.1.0a35-py3-none-any.whl` (928508 bytes)
+- SHA-256: `23838f31971b1f1a86384fd4d1254faece909260f25ec01240ff78760a2d8be0`
+- Wheelhouse: 6 wheels runtime hash-pinados (cp314) em `wheelhouse/`
+- Entry points de boot: `steamzero-gamemode-boot`, `steamzero-gamemode-session`,
+  `steamos-session-select`, `steamzero-launch` confirmados no wheel
+- Manifesto: schemaVersion 4, sourceCommit completo, estado `clean` (artefato
+  wheel gerado, wheelhouse publicado para `install_host.py --source-commit`)
+
+**Promoção:** `codex/steam-gameplay-readiness-ui` movido FF puro para
+`7a1916e` (tip do bump). A promoção inclui todos os commits de ID ERROR-UX
+e WI-S1 screencast.
+
+**Rollback plan (se operador autorizar ativação):**
+- Release ativa: `0.1.0a34-66d15b1f8d57` (vira rollback automático)
+- Rollback anterior: `0.1.0a34-b2385a6fc3b4`
+- Reboot é do operador
+
+**Preflights atendidos (AGENTS.md §1):**
+- Branch e commit de origem identificados: `7a1916e`, sem base obsoleta
+- Quatro gates verdes (pytest 1754, ruff, mypy, independence/boundaries)
+- Cobertura global 86,19% (≥ 85%)
+- Wheel gerado de fonte commitada (`7a1916e`), entry points de boot conferidos
+- Release canônica vinculada ao source-commit completo
+- Marcadores de ownership: instalador verifica marcadores em arquivos de host
+- Plano de rollback conhecido
+
+**Pendente com o operador:** autorizar instalação da `0.1.0a35` no host BigLinux
+para teste Game Mode; teste físico de boot autologin SDDM (plano B greeter),
+handoff Desktop, central de emulação (ID ERROR-UX), ErrorCard em falha
+transacional, e seção cast/transmissão para receptor navegador.
