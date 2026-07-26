@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="PlayStation 2 — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#111827"/>
+  <path d="M55 124h210M72 104h176l-24-48H96z" fill="none" stroke="#d8dee9" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M116 82h34m20 0h34" stroke="#5e81ff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="210" cy="82" r="5" fill="#74d680"/>
+</svg>

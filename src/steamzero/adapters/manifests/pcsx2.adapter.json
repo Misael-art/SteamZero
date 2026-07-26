@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "pcsx2",
+  "kind": "emulator",
+  "platforms": ["playstation-2"],
+  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "net.pcsx2.PCSX2",
+      "remote": "flathub",
+      "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
+      "priority": 1
+    }
+  ],
+  "paths": {"config": "{XDG_CONFIG_HOME}/PCSX2/inis/PCSX2.ini"},
+  "configFormat": "ini",
+  "verify": {"smokeTest": ["--version"]},
+  "compat": ["steamos", "bazzite", "linux"],
+  "license": "GPL-3.0-or-later",
+  "upstream": "https://github.com/PCSX2/pcsx2",
+  "notes": "Fonte Flathub fixada no commit correspondente à versão v2.6.3."
+}

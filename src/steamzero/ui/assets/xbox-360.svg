@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Xbox 360 — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#eef3ed"/>
+  <circle cx="160" cy="90" r="66" fill="#243129"/>
+  <path d="M122 49c20 9 38 30 38 30s18-21 38-30M113 131c18-34 47-52 47-52s29 18 47 52" fill="none" stroke="#73bb44" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="160" cy="90" r="8" fill="#dfe8dc"/>
+</svg>

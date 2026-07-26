@@ -8,7 +8,12 @@
 - `switch.svg`: fallback de plataforma original do SteamZero, distribuído sob
   GPL-3.0-or-later; não contém artwork de terceiros.
 - `nintendo-handheld.svg`, `nes-famicom.svg`, `snes.svg`, `mega-drive.svg`,
-  `arcade.svg`, `playstation.svg`, `geforce-now.svg`,
+  `arcade.svg`, `dreamcast.svg`, `nintendo-ds.svg`, `nintendo-3ds.svg`,
+  `playstation.svg`,
+  `playstation-2.svg`,
+  `playstation-3.svg`, `playstation-portable.svg`, `wii-u.svg`, `xbox.svg`,
+  `xbox-360.svg`,
+  `geforce-now.svg`,
   `xbox-cloud-gaming.svg` e `amazon-luna.svg`: fallbacks geométricos originais
   do SteamZero, distribuídos sob GPL-3.0-or-later; não reproduzem artwork nem
   logotipos oficiais de terceiros.

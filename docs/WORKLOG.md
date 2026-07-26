@@ -2911,3 +2911,35 @@ verdes (0 violações).
 
 **Host/release:** nenhuma instalação, `bigsudo`, build de wheel/wheelhouse ou
 alteração da release ativa foi executada.
+
+## 2026-07-26 — Grupo 2 de plataformas standalone
+
+**Branch:** `codex/emulacao-grupo2-codex`, baseada em `6f3c8de`.
+
+Foram declaradas nove plataformas e seus adapters fixados, artwork geométrico
+original, perfil de input e cobertura dos registries:
+
+| Plataforma | Adapter | Commit |
+|---|---|---|
+| PlayStation 2 | PCSX2 v2.6.3 / Flathub `31307c3e…` | `a12cb56` |
+| PlayStation Portable | PPSSPP 1.20.4 / Flathub `193bbe95…` | `5b405e7` |
+| Dreamcast | Flycast v2.6 / Flathub `5bb79aad…` | `fd48153` |
+| Nintendo DS | melonDS 1.1 / Flathub `66752a19…` | `b0339dc` |
+| Nintendo 3DS | Azahar 2125.1.1 / Flathub `fd0b3050…` | `e4b9e64` |
+| Wii U | Cemu 2.6 / Flathub `cbadbaba…` | `003f511` |
+| PlayStation 3 | RPCS3 0.0.41 / Flathub `27d554ca…` | `3d21182` |
+| Xbox | xemu 0.8.136 / Flathub `2f8b8889…` | `de2afa0` |
+| Xbox 360 | Xenia Canary `8f55b4a` / AppImage `e4fc9150…` | `82888c8` |
+
+As extensões vieram do catálogo Linux do ES-DE. `iso` e `pbp` passaram a
+degradar para `ambiguous-ext` fora de uma raiz de plataforma, evitando
+classificação silenciosa incorreta quando mais de um sistema reivindica a mídia.
+
+**Gates por plataforma:** após cada item, `pytest tests -q` terminou com
+**1802 passed**; Ruff terminou sem violações; mypy terminou sem erros em 162
+arquivos; `make independence boundaries` terminou com independência OK e zero
+violações de fronteira.
+
+**Host/release:** nenhuma instalação, build de wheel, alteração de release,
+`sudo` ou `bigsudo` foi executada. Não houve teste físico; instalação e boot
+permanecem fora do escopo desta sessão.

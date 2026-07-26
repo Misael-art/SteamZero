@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1, "id": "nintendo-3ds", "kind": "emulated", "name": "Nintendo 3DS", "shortName": "Nintendo 3DS",
+  "iconKey": "gamepad", "artworkAsset": "../assets/nintendo-3ds.svg", "systems": ["n3ds"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca Nintendo 3DS será composta pelo scanner declarativo.", "action": null},
+    {"id": "requirements", "label": "Sistema e chaves", "state": "planned", "detail": "Materiais fornecidos pelo usuário serão verificados localmente.", "action": null},
+    {"id": "graphics", "label": "Telas e desempenho", "state": "planned", "detail": "Arranjo das telas e escala permanecem opt-in.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil 3DS aceita paisagem e retrato com remapeamento direcional.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e metadados serão compostos pelo catálogo.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "keysFirmware", "label": "Sistema e chaves", "iconKey": "key", "capabilityId": "requirements"},
+    {"id": "graphicsPerformance", "label": "Telas e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [
+    {"id": "azahar", "name": "Azahar", "adapterId": "azahar", "precedence": 1, "role": "primary"},
+    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+  ],
+  "media": {"extensions": ["3ds", "3dsx", "app", "axf", "cci", "cxi", "elf", "z3dsx", "zcci", "zcxi"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["nintendo-3ds-handheld"], "maxPlayers": 1, "specialized": ["touchscreen", "microphone", "motion"]},
+  "timing": {"standards": ["ntsc-progressive"], "defaultStandard": "ntsc-progressive", "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Duas telas na proporção original."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Arranjo legível com compatibilidade prioritária."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Escala e filtragem elevadas de forma explícita."}
+  ], "cloud": null
+}

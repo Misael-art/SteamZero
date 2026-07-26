@@ -65,6 +65,15 @@ def test_bundled_registry_covers_required_platforms_with_unique_artwork() -> Non
         "three-do",
         "sega-cd-32x",
         "nintendo-64",
+        "playstation-2",
+        "playstation-portable",
+        "dreamcast",
+        "nintendo-ds",
+        "nintendo-3ds",
+        "wii-u",
+        "playstation-3",
+        "xbox",
+        "xbox-360",
     ]
     artwork = [manifest.artwork_asset for manifest in manifests]
     shared_artwork = {asset for asset in artwork if artwork.count(asset) > 1}

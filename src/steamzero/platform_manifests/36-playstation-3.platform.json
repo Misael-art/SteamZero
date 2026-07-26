@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1, "id": "playstation-3", "kind": "emulated", "name": "Sony PlayStation 3", "shortName": "PlayStation 3",
+  "iconKey": "media-optical", "artworkAsset": "../assets/playstation-3.svg", "systems": ["ps3"],
+  "capabilities": [
+    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PlayStation 3 será composta pelo scanner declarativo.", "action": null},
+    {"id": "requirements", "label": "Firmware", "state": "planned", "detail": "Firmware fornecido pelo usuário será verificado localmente.", "action": null},
+    {"id": "graphics", "label": "Vídeo e desempenho", "state": "planned", "detail": "Renderizador e patches por jogo permanecem opt-in.", "action": null},
+    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil DualShock 3 declarativo e reversível.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
+    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Diretórios, imagens e atalhos serão compostos pelo catálogo.", "action": null}
+  ],
+  "areas": [
+    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
+    {"id": "keysFirmware", "label": "Firmware", "iconKey": "key", "capabilityId": "requirements"},
+    {"id": "graphicsPerformance", "label": "Vídeo e desempenho", "iconKey": "video-display", "capabilityId": "graphics"},
+    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
+    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+  ],
+  "emulators": [{"id": "rpcs3", "name": "RPCS3", "adapterId": "rpcs3", "precedence": 1, "role": "primary"}],
+  "media": {"extensions": ["iso", "ps3", "ps3dir"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
+  "controls": {"profiles": ["dualshock-3"], "maxPlayers": 7, "specialized": ["motion", "guitar", "drums", "light-gun"]},
+  "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "presets": [
+    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Resolução e temporização originais."},
+    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Configuração conservadora com compatibilidade prioritária."},
+    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Escala e patches identificados e opt-in."}
+  ], "cloud": null
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1, "id": "cemu", "kind": "emulator", "platforms": ["wii-u"],
+  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "sources": [{"type": "flatpak", "ref": "info.cemu.Cemu", "remote": "flathub", "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f", "priority": 1}],
+  "paths": {"config": "{XDG_CONFIG_HOME}/Cemu/settings.xml"}, "configFormat": "xml",
+  "verify": {"smokeTest": ["--version"]}, "compat": ["steamos", "bazzite", "linux"],
+  "license": "MPL-2.0", "upstream": "https://github.com/cemu-project/Cemu",
+  "notes": "Fonte Flathub fixada no commit correspondente à versão 2.6."
+}

@@ -101,15 +101,19 @@ class TestExclusiveExtension:
         assert kind == "base"
         assert ev == "exclusive-ext"
 
-    def test_pbp_is_playstation(self, ext_map: dict[str, list[str]]) -> None:
+    def test_pbp_shared_with_psp_requires_more_evidence(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
         plat, kind, ev = classify_rom("game.pbp", {"game.pbp"}, ext_map)
-        assert plat == "playstation"
-        assert kind == "base"
-        assert ev == "exclusive-ext"
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-ext"
 
 
 class TestAmbiguousExtensions:
-    def test_iso_shared_by_disc_platforms_is_unknown(self, ext_map: dict[str, list[str]]) -> None:
+    def test_iso_shared_with_playstation_2_requires_more_evidence(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
         plat, kind, ev = classify_rom("game.iso", {"game.iso"}, ext_map)
         assert plat is None
         assert kind == "unknown"
@@ -183,9 +187,15 @@ class TestRootWins:
 
 
 class TestCaseInsensitivity:
-    def test_uppercase_extension(self, ext_map: dict[str, list[str]]) -> None:
+    def test_uppercase_exclusive_extension(self, ext_map: dict[str, list[str]]) -> None:
         plat, _kind, _ev = classify_rom("GAME.Z64", {"GAME.Z64"}, ext_map)
         assert plat == "nintendo-64"
+
+    def test_uppercase_ambiguous_extension(self, ext_map: dict[str, list[str]]) -> None:
+        plat, kind, ev = classify_rom("GAME.ISO", {"GAME.ISO"}, ext_map)
+        assert plat is None
+        assert kind == "unknown"
+        assert ev == "ambiguous-ext"
 
     def test_mixed_case_cue_bin(self, ext_map: dict[str, list[str]]) -> None:
         siblings = _mksiblings("Game.CUE", "Game.BIN")

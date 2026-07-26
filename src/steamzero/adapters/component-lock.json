@@ -2,6 +2,28 @@
   "schemaVersion": 1,
   "components": [
     {
+      "id": "azahar",
+      "manifestHash": "e34bf59785c70115871c44159b2a66388aa5bbba69509dacd561eecbe4c351a2",
+      "source": {
+        "type": "flatpak",
+        "version": "fd0b3050e4da6a7df8915f63fb8c1d551c7ca8c684568dc62c1681fd316a288c",
+        "priority": 1,
+        "ref": "org.azahar_emu.Azahar",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "cemu",
+      "manifestHash": "44ebce76416595ddc91aad59c7b5f64b86c34bb0dc803164ce71a0ebc26133e9",
+      "source": {
+        "type": "flatpak",
+        "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f",
+        "priority": 1,
+        "ref": "info.cemu.Cemu",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "citron",
       "manifestHash": "0b711b5b3df671856b5b63ca2d228456d22798fc0d2a3d4b12146cc4001ce877",
       "source": {
@@ -47,6 +69,50 @@
       }
     },
     {
+      "id": "flycast",
+      "manifestHash": "e60af985462def63a502c163ded79603842393f0b21f151f9fde7a5b1b8ef650",
+      "source": {
+        "type": "flatpak",
+        "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",
+        "priority": 1,
+        "ref": "org.flycast.Flycast",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "melonds",
+      "manifestHash": "f07740c395ba4b4c3c9c89bcf832bdc8af6cce109f5191349b1e8fae006e736b",
+      "source": {
+        "type": "flatpak",
+        "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
+        "priority": 1,
+        "ref": "net.kuribo64.melonDS",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "pcsx2",
+      "manifestHash": "eb8292c1eb0defdc85e1b7fb834fc2c14400b43fd966e46344c748ca60865a3d",
+      "source": {
+        "type": "flatpak",
+        "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
+        "priority": 1,
+        "ref": "net.pcsx2.PCSX2",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "ppsspp",
+      "manifestHash": "171e37eadef8db504e46e45498f8bb0b93de1797a57c7db7743e6dd5bb7c6629",
+      "source": {
+        "type": "flatpak",
+        "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3",
+        "priority": 1,
+        "ref": "org.ppsspp.PPSSPP",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "retroarch",
       "manifestHash": "aaa073f99f0e9580030e11ae563ddd6885c34fe282919652d8759b89a15a594c",
       "source": {
@@ -54,6 +120,17 @@
         "version": "56fdd2ed2f5ae5d7bb887f38858c68757e27afcc8e86e830e338e14cd4988522",
         "priority": 1,
         "ref": "org.libretro.RetroArch",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "rpcs3",
+      "manifestHash": "c8083304843e474b2f893170d10f37c362ed66bf1af229e90173768029ccc552",
+      "source": {
+        "type": "flatpak",
+        "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4",
+        "priority": 1,
+        "ref": "net.rpcs3.RPCS3",
         "remote": "flathub"
       }
     },
@@ -77,6 +154,28 @@
         "priority": 1,
         "url": "https://github.com/LizardByte/Sunshine/releases/download/v2026.516.143833/sunshine-ubuntu-24.04-amd64.deb",
         "sha256": "6df8900f23c9c056252eea51639507b8239a1d1241308ab8923cb402b0ca653b"
+      }
+    },
+    {
+      "id": "xemu",
+      "manifestHash": "e712706dd7107640edb92a18edf9a31168342caeb9203682188b543663f314a0",
+      "source": {
+        "type": "flatpak",
+        "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9",
+        "priority": 1,
+        "ref": "app.xemu.xemu",
+        "remote": "flathub"
+      }
+    },
+    {
+      "id": "xenia-canary",
+      "manifestHash": "7820b8b87a29cf1f43b42cd6af1dba993567affd9262dc8b38bc19f43694c10f",
+      "source": {
+        "type": "appimage",
+        "version": "8f55b4a",
+        "priority": 1,
+        "url": "https://github.com/xenia-canary/xenia-canary/releases/download/8f55b4a/xenia_canary_linux.AppImage",
+        "sha256": "e4fc915054b0bf98f95fba22c0b9684a5fbca909306a378dc3f1dd0a6fe726c4"
       }
     }
   ]
