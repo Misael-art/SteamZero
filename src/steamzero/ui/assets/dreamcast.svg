@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="Dreamcast — artwork padrão SteamZero">
+  <rect width="320" height="180" rx="20" fill="#eef2f7"/>
+  <path d="M160 42c46 0 67 50 34 79-27 23-77 8-73-25 3-25 40-34 54-13 10 15-5 34-22 27" fill="none" stroke="#e56a38" stroke-width="11" stroke-linecap="round"/>
+  <path d="M70 140h180" stroke="#26344a" stroke-width="8" stroke-linecap="round"/>
+</svg>

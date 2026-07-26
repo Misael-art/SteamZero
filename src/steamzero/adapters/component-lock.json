@@ -47,6 +47,17 @@
       }
     },
     {
+      "id": "flycast",
+      "manifestHash": "e60af985462def63a502c163ded79603842393f0b21f151f9fde7a5b1b8ef650",
+      "source": {
+        "type": "flatpak",
+        "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",
+        "priority": 1,
+        "ref": "org.flycast.Flycast",
+        "remote": "flathub"
+      }
+    },
+    {
       "id": "pcsx2",
       "manifestHash": "eb8292c1eb0defdc85e1b7fb834fc2c14400b43fd966e46344c748ca60865a3d",
       "source": {
