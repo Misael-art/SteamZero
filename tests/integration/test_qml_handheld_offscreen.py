@@ -43,11 +43,13 @@ def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -
         f"{label} falhou ({completed.returncode})\n"
         f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
     )
-    unexpected = [line for line in completed.stderr.splitlines() if any(
-        marker in line for marker in diagnostics
-    )]
-    assert not unexpected, (
-        f"{label} publicou diagnósticos QML inesperados:\n" + "\n".join(unexpected)
+    unexpected = [
+        line
+        for line in completed.stderr.splitlines()
+        if any(marker in line for marker in diagnostics)
+    ]
+    assert not unexpected, f"{label} publicou diagnósticos QML inesperados:\n" + "\n".join(
+        unexpected
     )
 
 

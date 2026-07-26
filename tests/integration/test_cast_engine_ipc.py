@@ -195,9 +195,10 @@ class TestCastEngineUnit:
         assert client._unpack_stream_results(
             (0, {"streams": [(42, {"pipewire-serial": 9001})]})
         ) == {"node_id": 42, "serial": 9001}
-        assert client._unpack_stream_results(
-            (0, {"streams": [(42, {})]})
-        ) == {"node_id": 42, "serial": None}
+        assert client._unpack_stream_results((0, {"streams": [(42, {})]})) == {
+            "node_id": 42,
+            "serial": None,
+        }
 
     def test_portal_scope_and_cursor_selection_never_degrade(self) -> None:
         ce = _reload_engine()
@@ -479,9 +480,11 @@ class TestEngineProtocol:
         ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+
         def _paused_false() -> bool:
             status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
             return status.get("paused") is False
+
         assert _wait_until(_paused_false)
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "PAUSE_SESSION"})
         assert resp.get("type") == "PAUSE_SESSION_OK"
@@ -539,9 +542,11 @@ class TestEngineProtocol:
         ce._portal_client_factory = _MockPortalOK
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+
         def _running_true() -> bool:
             status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
             return status.get("running") is True
+
         assert _wait_until(_running_true)
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
         assert status.get("running") is True

@@ -24,12 +24,30 @@ _JSON_OK = json.dumps(
             "jeu": {
                 "id": 1234,
                 "medias": [
-                    {"type": "box-2d", "region": "us", "format": "png",
-                     "url": "https://example.com/box2d.png", "width": 400, "height": 300},
-                    {"type": "ss", "region": "us", "format": "jpg",
-                     "url": "https://example.com/ss.jpg", "width": 640, "height": 480},
-                    {"type": "wheel", "region": "us", "format": "png",
-                     "url": "https://example.com/wheel.png", "width": 200, "height": 200},
+                    {
+                        "type": "box-2d",
+                        "region": "us",
+                        "format": "png",
+                        "url": "https://example.com/box2d.png",
+                        "width": 400,
+                        "height": 300,
+                    },
+                    {
+                        "type": "ss",
+                        "region": "us",
+                        "format": "jpg",
+                        "url": "https://example.com/ss.jpg",
+                        "width": 640,
+                        "height": 480,
+                    },
+                    {
+                        "type": "wheel",
+                        "region": "us",
+                        "format": "png",
+                        "url": "https://example.com/wheel.png",
+                        "width": 200,
+                        "height": 200,
+                    },
                 ],
             }
         }
@@ -192,21 +210,13 @@ def test_search_empty_response(adapter: ScreenScraperAdapter) -> None:
     assert results == []
 
 
-def test_search_build_params_uses_json_output(
-    adapter: ScreenScraperAdapter
-) -> None:
-    params = adapter._build_params(
-        GameIdentity(game_id="g1", title="Test", platform_slug="switch")
-    )
+def test_search_build_params_uses_json_output(adapter: ScreenScraperAdapter) -> None:
+    params = adapter._build_params(GameIdentity(game_id="g1", title="Test", platform_slug="switch"))
     assert params.get("output") == "json"
 
 
-def test_search_build_params_includes_romtype(
-    adapter: ScreenScraperAdapter
-) -> None:
-    params = adapter._build_params(
-        GameIdentity(game_id="g1", title="Test", platform_slug="switch")
-    )
+def test_search_build_params_includes_romtype(adapter: ScreenScraperAdapter) -> None:
+    params = adapter._build_params(GameIdentity(game_id="g1", title="Test", platform_slug="switch"))
     assert params.get("romtype") == "rom"
 
 
@@ -225,9 +235,7 @@ def test_build_params_falls_back_to_romnom(adapter: ScreenScraperAdapter) -> Non
     assert "crc" not in params
 
 
-def test_search_xml_fallback(
-    adapter: ScreenScraperAdapter, identity: GameIdentity
-) -> None:
+def test_search_xml_fallback(adapter: ScreenScraperAdapter, identity: GameIdentity) -> None:
     with patch.object(adapter, "_fetch_url", return_value=_XML_OK):
         results = adapter.search(identity, ["boxart", "screenshot", "wheel"])
     assert len(results) == 3

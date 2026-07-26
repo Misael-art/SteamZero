@@ -228,9 +228,7 @@ class CastOrchestrator:
         if phase == "negotiating":
             return self._public_session()
 
-        alive = sid is not None and (
-            self._session_alive(provider, sid)
-        )
+        alive = sid is not None and (self._session_alive(provider, sid))
         if not alive or self._provider_session_id is None:
             self._session = self._session.moved_to(CastState.RECONNECTING)
             plan = plan_recovery(FaultKind.LINK_LOST)

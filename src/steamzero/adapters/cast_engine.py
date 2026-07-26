@@ -177,11 +177,7 @@ class PortalScreenCastClient:
         cancel: threading.Event,
     ) -> None:
         loop = GLib.MainLoop.new(None, False)
-        GLib.idle_add(
-            lambda: self._do_capture(
-                scope, audio, result, error, done, cancel, loop
-            )
-        )
+        GLib.idle_add(lambda: self._do_capture(scope, audio, result, error, done, cancel, loop))
         loop.run()
 
     def _do_capture(
@@ -211,12 +207,8 @@ class PortalScreenCastClient:
             if version_prop is None:
                 raise PortalError("portal-missing")
 
-            avail_sources = self._query_uint32(
-                bus, portal, "AvailableSourceTypes"
-            )
-            avail_cursors = self._query_uint32(
-                bus, portal, "AvailableCursorModes"
-            )
+            avail_sources = self._query_uint32(bus, portal, "AvailableSourceTypes")
+            avail_cursors = self._query_uint32(bus, portal, "AvailableCursorModes")
 
             scope_bit = self._SCOPE_BITS.get(scope, 0)
             if not scope_bit or not (avail_sources & scope_bit):
@@ -231,12 +223,14 @@ class PortalScreenCastClient:
 
             # --- CreateSession ---
             session_resp = self._call_with_response(
-                bus, portal,
+                bus,
+                portal,
                 "CreateSession",
-                GLib.Variant("(a{sv})", (
-                    {"session_handle_token": GLib.Variant("s", secrets.token_hex(16))},
-                )),
-                loop, cancel,
+                GLib.Variant(
+                    "(a{sv})", ({"session_handle_token": GLib.Variant("s", secrets.token_hex(16))},)
+                ),
+                loop,
+                cancel,
             )
             session_handle = self._unpack_session_handle(session_resp)
             if not session_handle:
@@ -269,13 +263,19 @@ class PortalScreenCastClient:
 
             # --- Start ---
             start_resp = self._call_with_response(
-                bus, portal,
+                bus,
+                portal,
                 "Start",
-                GLib.Variant("(osa{sv})", (
-                    session_handle, "",
-                    {"multiple": GLib.Variant("b", False)},
-                )),
-                loop, cancel,
+                GLib.Variant(
+                    "(osa{sv})",
+                    (
+                        session_handle,
+                        "",
+                        {"multiple": GLib.Variant("b", False)},
+                    ),
+                ),
+                loop,
+                cancel,
             )
             if cancel.is_set():
                 self._close_session(bus, session_handle)
@@ -306,12 +306,14 @@ class PortalScreenCastClient:
                 self._close_session(bus, session_handle)
                 raise PortalError("pipewire-remote-failed")
 
-            result.append({
-                "fd": fd,
-                "node_id": stream_results.get("node_id"),
-                "serial": stream_results.get("serial"),
-                "session_handle": session_handle,
-            })
+            result.append(
+                {
+                    "fd": fd,
+                    "node_id": stream_results.get("node_id"),
+                    "serial": stream_results.get("serial"),
+                    "session_handle": session_handle,
+                }
+            )
         except PortalError as exc:
             error.append(exc)
         except Exception:
@@ -326,9 +328,7 @@ class PortalScreenCastClient:
         try:
             result = portal.call_sync(
                 "org.freedesktop.DBus.Properties.Get",
-                GLib.Variant(
-                    "(ss)", (self.PORTAL_IFACE, prop)
-                ),
+                GLib.Variant("(ss)", (self.PORTAL_IFACE, prop)),
                 Gio.DBusCallFlags.NONE,
                 -1,
                 None,
@@ -396,9 +396,7 @@ class PortalScreenCastClient:
         _subscribe(request_path)
         merged = self._merge_options(variant, options_v)
         try:
-            call_result = proxy.call_sync(
-                method, merged, Gio.DBusCallFlags.NONE, -1, None
-            )
+            call_result = proxy.call_sync(method, merged, Gio.DBusCallFlags.NONE, -1, None)
             returned = call_result.unpack()
             actual_path = str(returned[0]) if returned else request_path
             if actual_path and actual_path != request_path:
@@ -410,11 +408,7 @@ class PortalScreenCastClient:
             raise PortalError("portal-invalid-response") from exc
 
         deadline = time.monotonic() + 120.0
-        while (
-            not signal_data
-            and not cancel.is_set()
-            and time.monotonic() < deadline
-        ):
+        while not signal_data and not cancel.is_set() and time.monotonic() < deadline:
             while loop.pending():
                 loop.iteration(False)
             time.sleep(0.01)
@@ -534,9 +528,7 @@ class PortalScreenCastClient:
                 self.REQUEST_IFACE,
                 None,
             )
-            request.call_sync(
-                "Close", GLib.Variant("()", ()), Gio.DBusCallFlags.NONE, -1, None
-            )
+            request.call_sync("Close", GLib.Variant("()", ()), Gio.DBusCallFlags.NONE, -1, None)
         except Exception as exc:
             _log.debug("close request ignored: %s", exc)
 
@@ -778,9 +770,7 @@ class CastEngine:
     ) -> None:
         global _portal_client_factory
         portal_cls = (
-            _portal_client_factory
-            if _portal_client_factory is not None
-            else PortalScreenCastClient
+            _portal_client_factory if _portal_client_factory is not None else PortalScreenCastClient
         )
         portal = portal_cls() if callable(portal_cls) else portal_cls
 
@@ -859,9 +849,7 @@ class CastEngine:
                     lambda: self._on_portal_closed(generation),
                 )
         _log.info("portal capture ready")
-        self._send_control_event(
-            {"version": IPC_VERSION, "type": "CAPTURE_READY"}
-        )
+        self._send_control_event({"version": IPC_VERSION, "type": "CAPTURE_READY"})
         try:
             self._build_and_start_pipeline(conn, fd, serial, node_id)
         except Exception:
@@ -953,9 +941,7 @@ class CastEngine:
             self._session.running = True
             self._session.start_time = time.monotonic()
         _log.info("pipeline started")
-        self._send_control_event(
-            {"version": IPC_VERSION, "type": "PIPELINE_STARTED"}
-        )
+        self._send_control_event({"version": IPC_VERSION, "type": "PIPELINE_STARTED"})
 
     def _send_control_event(self, payload: dict[str, Any]) -> None:
         with self._lock:

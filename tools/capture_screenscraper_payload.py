@@ -24,11 +24,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 FIXTURE_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "tests"
-    / "fixtures"
-    / "scraping"
-    / "screenscraper"
+    Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "scraping" / "screenscraper"
 )
 RAW_DIR = FIXTURE_DIR / "raw"
 _API_BASE = "https://www.screenscraper.fr/api2"
@@ -39,9 +35,7 @@ _CRED_PLACEHOLDER = "SANITIZED"
 _CRED_RE = re.compile(
     r"(<(?:devid|devpassword|ssid|sspassword)>)(.*?)(</(?:devid|devpassword|ssid|sspassword)>)"
 )
-_URL_RE = re.compile(
-    r"https://(?:[a-zA-Z0-9._-]+\.)+[a-zA-Z]{2,}(?:/[^\s<>\"]*)?"
-)
+_URL_RE = re.compile(r"https://(?:[a-zA-Z0-9._-]+\.)+[a-zA-Z]{2,}(?:/[^\s<>\"]*)?")
 _CRED_PARAM_RE = re.compile(r"(devid|devpassword|ssid|sspassword)=[^&\s<>\"]+")
 
 # O bloco ssuser é a conta do operador (login, e-mail, cotas). Nada dele pode ir
@@ -82,10 +76,12 @@ def _sanitize_xml(raw: bytes) -> bytes:
     text = _CRED_RE.sub(r"\1" + _CRED_PLACEHOLDER + r"\3", text)
     # Erase the whole account block (login, quotas, contribution counters)
     text = _redact_ssuser_xml(text)
+
     # Replace media URLs with placeholders
     def _replace_url(m: re.Match) -> str:
         original = m.group(0)
         return _sanitize_url(original)
+
     text = _URL_RE.sub(_replace_url, text)
     # Also erase credentials from any URL query strings in text content
     text = _CRED_PARAM_RE.sub(r"\1=" + _CRED_PLACEHOLDER, text)
@@ -146,9 +142,7 @@ def _xml_to_json_tree(elem: ET.Element, max_text: int = 120) -> object:
     if children:
         child_groups: dict[str, list[object]] = {}
         for child in children:
-            child_groups.setdefault(child.tag, []).append(
-                _xml_to_json_tree(child, max_text)
-            )
+            child_groups.setdefault(child.tag, []).append(_xml_to_json_tree(child, max_text))
         result["children"] = child_groups
     return result
 
@@ -168,9 +162,7 @@ def _fetch(url: str) -> bytes:
         return resp.read()
 
 
-def _capture_and_sanitize(
-    name: str, url: str, raw_dir: Path
-) -> tuple[bytes | None, str]:
+def _capture_and_sanitize(name: str, url: str, raw_dir: Path) -> tuple[bytes | None, str]:
     """Fetch URL, save raw copy, sanitize, return (sanitized_bytes, extension)."""
     print(f"  Fetching {_mask_url(url)}")
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -253,9 +245,7 @@ def main() -> None:
 
     results = {}
     for name, params in queries:
-        endpoint = (
-            "ssuserInfos.php" if "ssuserInfos" in name else "jeuInfos.php"
-        )
+        endpoint = "ssuserInfos.php" if "ssuserInfos" in name else "jeuInfos.php"
         url = f"{_API_BASE}/{endpoint}?{urlencode(params)}"
         sanitized, ext = _capture_and_sanitize(name, url, RAW_DIR)
         if sanitized is not None and ext == "xml":
@@ -265,9 +255,7 @@ def main() -> None:
             except ET.ParseError as exc:
                 results[name] = {
                     "error": str(exc),
-                    "raw_preview": sanitized[:200].decode(
-                        "utf-8", errors="replace"
-                    ),
+                    "raw_preview": sanitized[:200].decode("utf-8", errors="replace"),
                 }
         elif sanitized is not None and ext == "json":
             try:
@@ -275,9 +263,7 @@ def main() -> None:
             except json.JSONDecodeError as exc:
                 results[name] = {
                     "error": str(exc),
-                    "raw_preview": sanitized[:200].decode(
-                        "utf-8", errors="replace"
-                    ),
+                    "raw_preview": sanitized[:200].decode("utf-8", errors="replace"),
                 }
         print()
 

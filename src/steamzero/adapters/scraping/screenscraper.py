@@ -244,9 +244,7 @@ class ScreenScraperAdapter(BaseMediaProvider):
             return []
 
         medias_raw = jeu.get("medias", [])
-        medias_list: list[dict[str, object]] = (
-            medias_raw if isinstance(medias_raw, list) else []
-        )
+        medias_list: list[dict[str, object]] = medias_raw if isinstance(medias_raw, list) else []
         candidates: list[MediaCandidate] = []
         kinds_to_fetch = set(media_kinds) & _SUPPORTED_KINDS
 
