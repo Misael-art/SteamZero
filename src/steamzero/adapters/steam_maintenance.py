@@ -44,7 +44,9 @@ def _default_roots() -> tuple[Path, ...]:
 def _steam_running() -> bool:
     proc = Path("/proc")
     try:
-        entries = proc.iterdir()
+        # ``iterdir`` é preguiçoso em Python 3.11/3.12: materializar dentro do
+        # try garante que o OSError seja tratado em todas as versões.
+        entries = list(proc.iterdir())
     except OSError:
         return False
     for entry in entries:

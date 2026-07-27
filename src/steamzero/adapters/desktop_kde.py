@@ -781,7 +781,9 @@ def _process_running(name: str, *, proc: Path = Path("/proc"), uid: int | None =
     """Verifica um processo do usuário atual, sem aceitar providers de outra sessão."""
     expected_uid = os.getuid() if uid is None else uid
     try:
-        entries = proc.iterdir()
+        # ``iterdir`` é preguiçoso em Python 3.11/3.12: materializar dentro do
+        # try garante que o OSError seja tratado em todas as versões.
+        entries = list(proc.iterdir())
     except OSError:
         return False
     for entry in entries:
@@ -804,7 +806,9 @@ def _signal_process(name: str, sig: int, *, proc: Path = Path("/proc")) -> None:
     """Envia um sinal para todos os processos do usuário com o nome dado."""
     expected_uid = os.getuid()
     try:
-        entries = proc.iterdir()
+        # ``iterdir`` é preguiçoso em Python 3.11/3.12: materializar dentro do
+        # try garante que o OSError seja tratado em todas as versões.
+        entries = list(proc.iterdir())
     except OSError:
         return
     for entry in entries:

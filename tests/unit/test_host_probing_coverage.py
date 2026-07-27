@@ -456,3 +456,31 @@ class TestBootStateReadErrors:
         target.mkdir()
         with pytest.raises(SteamZeroError, match="inseguro"):
             steam_boot._read_owned_json(target)
+
+
+class TestLazyIterdirDegradesOnEveryPython:
+    """Diretório ausente precisa degradar, não estourar.
+
+    ``Path.iterdir`` é preguiçoso em Python 3.11/3.12: o OSError surge ao
+    consumir o gerador, escapando de um ``try`` posto apenas na chamada. Em 3.14
+    ele surge antes. O CI pegou a diferença — a mesma função degradava numa
+    versão e estourava na outra. Estes testes travam o comportamento nas duas.
+    """
+
+    def test_desktop_kde_process_probe(self, tmp_path: Path) -> None:
+        from steamzero.adapters import desktop_kde
+
+        assert desktop_kde._process_running("qualquer", proc=tmp_path / "x") is False
+
+    def test_desktop_kde_signal_is_silent(self, tmp_path: Path) -> None:
+        import signal
+
+        from steamzero.adapters import desktop_kde
+
+        desktop_kde._signal_process("qualquer", signal.SIGTERM, proc=tmp_path / "x")
+
+    def test_steam_maintenance_probe(self, tmp_path: Path, monkeypatch) -> None:
+        from steamzero.adapters import steam_maintenance
+
+        monkeypatch.setattr(steam_maintenance, "Path", lambda _p="": tmp_path / "x")
+        assert steam_maintenance._steam_running() is False

@@ -87,8 +87,10 @@ def _steam_process_running(proc_root: Path | None = None) -> bool:
     aberto na máquina, e a cobertura passa a depender do que está rodando.
     """
     proc = proc_root if proc_root is not None else Path("/proc")
+    # Iteração dentro do try: ``iterdir`` é preguiçoso em Python 3.11/3.12 e o
+    # OSError escaparia de um try posto só na chamada.
     try:
-        entries = proc.iterdir()
+        entries = list(proc.iterdir())
     except OSError:
         return False
     for entry in entries:

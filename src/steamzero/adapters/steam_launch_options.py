@@ -36,8 +36,13 @@ def _default_roots() -> tuple[Path, ...]:
 def _steam_running(proc_root: Path | None = None) -> bool:
     """``proc_root`` injetável: sem ele o ramo positivo só executa em máquina com
     Steam aberto, e a cobertura passa a depender do que está rodando."""
+    root = proc_root if proc_root is not None else Path("/proc")
+    # A iteração fica DENTRO do try: em Python 3.11/3.12 ``iterdir`` é preguiçoso
+    # e o OSError só surge ao consumir o gerador, escapando de um try posto
+    # apenas na chamada. Em 3.14 ele surge antes — a diferença fazia a função
+    # degradar em uma versão e estourar na outra.
     try:
-        entries = (proc_root if proc_root is not None else Path("/proc")).iterdir()
+        entries = list(root.iterdir())
     except OSError:
         return False
     for entry in entries:
