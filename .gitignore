@@ -50,3 +50,6 @@ coverage.xml
 *~
 .idea/
 .vscode/
+
+# Gerado pelo hook de build (hatch_build.py); a origem vem do git, não do disco.
+src/steamzero/_build_info.py
