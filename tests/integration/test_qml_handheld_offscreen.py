@@ -132,6 +132,8 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_credentials.qml",
         "check_credential_dialog_responsive.qml",
         "check_high_contrast.qml",
+        # Prova Image.Ready de cada asset empacotado, não apenas o caminho.
+        "check_packaged_assets.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:

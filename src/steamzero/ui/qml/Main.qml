@@ -41,6 +41,13 @@ ApplicationWindow {
             ? desktopStatus.dashboard.accessibility : null
     }
 
+    // Resolução allowlisted dos assets empacotados. Caminho vindo de manifesto
+    // é dado externo e nunca vai direto para Image.source.
+    readonly property var packagedAssets: PackagedAssets {}
+    function assetSource(declared) {
+        return packagedAssets.resolve(declared)
+    }
+
     readonly property color backgroundColor: _themeBridge.background
     readonly property color sidebarColor: _themeBridge.sidebar
     readonly property color surfaceColor: _themeBridge.surface
