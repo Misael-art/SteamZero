@@ -31,6 +31,7 @@ from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog
+from steamzero.core import log
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
@@ -253,6 +254,27 @@ class SteamDesktopController:
         return {"status": "started", "gameId": game_id, "uri": uri}
 
 
+def _unreadable_workspace() -> dict[str, Any]:
+    """Central de emulação quando a composição real falhou.
+
+    O estado é ``unverified``, que significa "não sabemos" — mas o detalhe diz
+    que a LEITURA falhou, não que falta importar keys. A distinção importa: um
+    usuário que vê "importe suas keys" quando as keys estão instaladas conclui
+    que os dados foram perdidos.
+    """
+    payload = build_switch_workspace()
+    for platform in payload["platforms"]:
+        requirements = platform.get("requirements")
+        if not isinstance(requirements, dict):
+            continue
+        for requirement in requirements.values():
+            requirement["detail"] = (
+                "Não foi possível consultar o ambiente agora. "
+                "Nenhum dado foi alterado; tente novamente."
+            )
+    return payload
+
+
 class DesktopDashboard:
     """Compõe o read model da central e delega mutações aos serviços existentes."""
 
@@ -286,6 +308,11 @@ class DesktopDashboard:
             which=which, store_factory=store_factory
         )
         self._emulation_builder = emulation_builder
+        # Último snapshot de emulação que foi realmente composto. Ver o
+        # tratamento de falha em snapshot(): rebaixar keys/firmware verificados
+        # para "unverified" por causa de uma exceção é como dados válidos
+        # "somem" da UI sem terem sido apagados.
+        self._last_emulation: dict[str, Any] | None = None
         self._emulation = emulation or EmulationController(
             store_factory=store_factory,
             registry_factory=registry_factory,
@@ -441,10 +468,26 @@ class DesktopDashboard:
                 )
             else:
                 emulation = self._emulation.snapshot(desktop_status)
-        except Exception:
-            # Um provider defeituoso não derruba o dashboard. O builder padrão
-            # sem probe produz estado unverified e mantém a navegação disponível.
-            emulation = build_switch_workspace()
+            self._last_emulation = emulation
+        except Exception as exc:
+            # Um provider defeituoso não derruba o dashboard — mas também não
+            # pode reescrever a verdade. O builder sem argumentos produz
+            # keys/firmware "unverified" e biblioteca vazia: para o usuário isso
+            # é indistinguível de "minhas keys sumiram", que foi exatamente o
+            # sintoma relatado na a37.
+            #
+            # Preservar a última composição real mantém a UI honesta; a causa vai
+            # para o log em vez de ser engolida (AGENTS.md §8).
+            log.get_logger().warning(
+                "dashboard.emulation-snapshot-failed", error=type(exc).__name__
+            )
+            if self._last_emulation is not None:
+                emulation = self._last_emulation
+            else:
+                # Primeira composição já falhou: não há verdade a preservar. O
+                # estado vazio é legítimo aqui, e o detalhe diz que a leitura
+                # falhou, não que o usuário precisa importar algo.
+                emulation = _unreadable_workspace()
         try:
             library_health = self._emulation.library_health()
         except Exception:
