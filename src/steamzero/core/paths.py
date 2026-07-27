@@ -99,6 +99,10 @@ def collection_config_path() -> Path:
     return config_home() / "collections-v1.json"
 
 
+def theme_preference_path() -> Path:
+    return config_home() / "theme-preference-v1.json"
+
+
 def bitrot_state_path() -> Path:
     return state_home() / "bitrot-v1.json"
 
