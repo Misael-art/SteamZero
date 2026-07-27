@@ -39,6 +39,7 @@ from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
+from steamzero.domain.theme_editor import ThemeEditorManager
 from steamzero.domain.theme_preferences import ThemePreferenceManager
 from steamzero.ports import CaptureConsent
 
@@ -268,6 +269,7 @@ class DesktopDashboard:
         playtime: PlaytimeCatalog | None = None,
         collections: CollectionManager | None = None,
         cast_orchestrator: CastOrchestrator | None = None,
+        theme_editor: ThemeEditorManager | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -300,6 +302,7 @@ class DesktopDashboard:
         self._cast = cast_orchestrator
         self._theme_catalog = ThemeCatalog()
         self._theme_prefs = ThemePreferenceManager()
+        self._theme_editor = theme_editor or ThemeEditorManager()
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -1118,6 +1121,40 @@ class DesktopDashboard:
 
     def theme_list(self) -> list[dict[str, Any]]:
         return self._theme_catalog.list_catalog()
+
+    # -- theme editor --------------------------------------------------
+
+    def editor_load(self, theme_id: str) -> dict[str, object]:
+        return self._theme_editor.load(theme_id)
+
+    def editor_create(self, name: str, extends: str = "org.steamzero.default") -> dict[str, object]:
+        return self._theme_editor.create(name, extends)
+
+    def editor_set_tokens(
+        self, session_id: str, category: str, values: dict[str, object]
+    ) -> dict[str, object]:
+        return self._theme_editor.set_tokens(session_id, category, values)
+
+    def editor_set_metadata(
+        self, session_id: str, meta_field: str, value: object
+    ) -> dict[str, object]:
+        return self._theme_editor.set_metadata(session_id, meta_field, value)
+
+    def editor_preview(
+        self, session_id: str, *, high_contrast: bool = False, reduced_motion: bool = False
+    ) -> dict[str, object]:
+        return self._theme_editor.preview(
+            session_id, high_contrast=high_contrast, reduced_motion=reduced_motion
+        )
+
+    def editor_save(self, session_id: str, *, overwrite: bool = False) -> dict[str, str]:
+        return self._theme_editor.save(session_id, overwrite=overwrite)
+
+    def editor_export_zip(self, session_id: str) -> bytes:
+        return self._theme_editor.export_zip(session_id)
+
+    def editor_cancel(self, session_id: str) -> dict[str, str]:
+        return self._theme_editor.cancel(session_id)
 
     def plan_theme_apply(self, theme_id: str) -> dict[str, Any]:
         previous = self._theme_prefs._read_preference()

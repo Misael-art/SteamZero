@@ -157,6 +157,19 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, {"sessions": self._dashboard().cast_sessions()})
         elif path == "/theme/list":
             self._send(HTTPStatus.OK, {"themes": self._dashboard().theme_list()})
+        elif path == "/theme/editor/load":
+            query = parse_qs(parsed.query)
+            vals: list[str] | list[None] = query.get("themeId") or []
+            theme_id = vals[0] if vals else None
+            if not theme_id:
+                self._send(HTTPStatus.BAD_REQUEST, {"error": "themeId ausente"})
+                return
+            try:
+                result = self._dashboard().editor_load(theme_id)
+            except SteamZeroError as exc:
+                self._send(HTTPStatus.NOT_FOUND, {"error": exc.to_error_object()})
+                return
+            self._send(HTTPStatus.OK, result)
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
 
@@ -526,6 +539,46 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/cast/stop":
             return self._dashboard().cast_stop()
+        if path == "/theme/editor/create":
+            return self._dashboard().editor_create(
+                self._required_string(payload, "name"),
+                str(payload.get("extends", "org.steamzero.default")),
+            )
+        if path == "/theme/editor/set-tokens":
+            return self._dashboard().editor_set_tokens(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "category"),
+                self._required_dict(payload, "values"),
+            )
+        if path == "/theme/editor/set-metadata":
+            return self._dashboard().editor_set_metadata(
+                self._required_string(payload, "sessionId"),
+                self._required_string(payload, "field"),
+                payload.get("value"),
+            )
+        if path == "/theme/editor/preview":
+            sid = self._required_string(payload, "sessionId")
+            hc = bool(payload.get("highContrast", False))
+            rm = bool(payload.get("reducedMotion", False))
+            return self._dashboard().editor_preview(sid, high_contrast=hc, reduced_motion=rm)
+        if path == "/theme/editor/save":
+            return self._dashboard().editor_save(
+                self._required_string(payload, "sessionId"),
+                overwrite=bool(payload.get("overwrite", False)),
+            )
+        if path == "/theme/editor/export":
+            zip_data = self._dashboard().editor_export_zip(
+                self._required_string(payload, "sessionId"),
+            )
+            import base64
+            return {
+                "zip": base64.b64encode(zip_data).decode("ascii"),
+                "filename": f"theme-{payload['sessionId'][:8]}.zip",
+            }
+        if path == "/theme/editor/cancel":
+            return self._dashboard().editor_cancel(
+                self._required_string(payload, "sessionId"),
+            )
         if path == "/theme/apply":
             return self._dashboard().plan_theme_apply(self._required_string(payload, "themeId"))
         if path == "/theme/apply/confirm":
@@ -624,6 +677,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
     def _required_string(self, payload: dict[str, Any], key: str) -> str:
         value = payload.get(key)
         if not isinstance(value, str) or not value:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
+        return value
+
+    def _required_dict(self, payload: dict[str, Any], key: str) -> dict[str, Any]:
+        value = payload.get(key)
+        if not isinstance(value, dict):
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value
 
