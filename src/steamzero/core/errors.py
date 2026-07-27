@@ -135,6 +135,7 @@ ERROR_CATALOG: dict[str, str] = {
     "E-THEME-NOT-FOUND": "THEME",
     "E-THEME-ACTIVE": "THEME",
     "E-THEME-DOWNLOAD-FAILED": "THEME",
+    "E-THEME-CATALOG-FAILED": "THEME",
     # --- Compartilhamento de tela (ADR-0022)
     "E-CAST-NO-RECEIVER": "CAST",
     "E-CAST-RECEIVER-INCOMPATIBLE": "CAST",

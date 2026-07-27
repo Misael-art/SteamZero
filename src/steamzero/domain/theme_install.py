@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.parse
 from collections.abc import Callable
@@ -15,10 +16,10 @@ from steamzero.core.net import HttpClient, NetworkPolicy, RetryPolicy, fetch_byt
 from steamzero.core.safezip import SafeZipLimits, extract_safe
 from steamzero.domain.themes import ThemeManifest
 
-_THEME_PACKAGE_MAX = 64 * 1024 * 1024
+THEME_PACKAGE_MAX = 64 * 1024 * 1024
 _THEME_EXTRACT_LIMITS = SafeZipLimits(
     max_entries=128,
-    max_total_bytes=_THEME_PACKAGE_MAX,
+    max_total_bytes=THEME_PACKAGE_MAX,
     max_entry_bytes=16 * 1024 * 1024,
     max_depth=8,
 )
@@ -46,6 +47,7 @@ class ThemeInstaller:
         *,
         force: bool = False,
         yes: bool = False,
+        checksum_sha256: str | None = None,
         http_client: HttpClient | None = None,
     ) -> dict[str, str]:
         op_id = ids.new_ulid()
@@ -56,6 +58,13 @@ class ThemeInstaller:
             if not yes:
                 self._check_size(source, http_client=http_client)
             zip_bytes = self._download(source, http_client=http_client)
+            if checksum_sha256:
+                digest = hashlib.sha256(zip_bytes).hexdigest()
+                if digest != checksum_sha256:
+                    raise SteamZeroError(
+                        "E-CONTENT-INCOMPLETE",
+                        detail="checksum SHA-256 do pacote não confere",
+                    )
         elif Path(source).is_file():
             zip_bytes = Path(source).read_bytes()
         else:
@@ -141,7 +150,7 @@ class ThemeInstaller:
     ) -> bytes:
         return fetch_bytes(
             url,
-            max_bytes=_THEME_PACKAGE_MAX,
+            max_bytes=THEME_PACKAGE_MAX,
             client=http_client,
         )
 

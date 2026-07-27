@@ -554,4 +554,9 @@ MESSAGES: dict[str, str] = {
     "error.E-THEME-DOWNLOAD-FAILED.impact": "O tema não foi instalado. Nenhum tema foi alterado.",
     "error.E-THEME-DOWNLOAD-FAILED.cause": "URL inacessível, ZIP inválido, checksum divergente ou extração insegura.",
     "error.E-THEME-DOWNLOAD-FAILED.action": "Verifique a URL e a integridade do pacote. Tente novamente.",
+    "error.E-THEME-CATALOG-FAILED.title": "Falha no catálogo remoto",
+    "error.E-THEME-CATALOG-FAILED.what": "Não foi possível obter o catálogo de temas do servidor remoto.",
+    "error.E-THEME-CATALOG-FAILED.impact": "A busca e instalação por ID estão indisponíveis até o catálogo ser carregado.",
+    "error.E-THEME-CATALOG-FAILED.cause": "Servidor inacessível, resposta inválida ou cache corrompido.",
+    "error.E-THEME-CATALOG-FAILED.action": "Verifique sua conexão e tente novamente.",
 }

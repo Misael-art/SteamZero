@@ -136,6 +136,16 @@ def quarantine_dir() -> Path:
     return state_home() / "quarantine"
 
 
+def cache_home() -> Path:
+    """Raiz de cache: ``$XDG_CACHE_HOME/steamzero`` (default ~/.cache)."""
+    base = os.environ.get("XDG_CACHE_HOME")
+    return (Path(base) if base else _home() / ".cache") / APP
+
+
+def theme_catalog_cache_path() -> Path:
+    return cache_home() / "theme-catalog-v1.json"
+
+
 def logs_dir() -> Path:
     return state_home() / "logs"
 

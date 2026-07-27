@@ -89,13 +89,13 @@ Domínios (Fase 1):
   controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
   controls rollback      desfaz seleção (--operation-id ID)
   theme list             lista temas disponíveis (builtin + usuário)
+  theme search           busca temas no marketplace remoto [--query Q] [--refresh]
+  theme info             mostra detalhes de um tema do marketplace (--theme-id ID)
+  theme install          instala tema de URL, caminho local ou ID do marketplace
   theme status           mostra tema ativo e tokens resolvidos
-   theme list             lista temas disponíveis (builtin + usuário)
-   theme install          instala tema de URL ou caminho local (<source> [--force] [--yes])
-   theme status           mostra tema ativo e tokens resolvidos
-   theme plan             planeja ativação de tema (--theme-id ID)
-   theme apply            aplica plano de tema (--plan-id ID --confirm TOKEN)
-   theme rollback         reverte ativação de tema (--operation-id ID)
+  theme plan             planeja ativação de tema (--theme-id ID)
+  theme apply            aplica plano de tema (--plan-id ID --confirm TOKEN)
+  theme rollback         reverte ativação de tema (--operation-id ID)
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -1250,8 +1250,12 @@ def _theme_pref_mgr() -> Any:
 
 
 def _cmd_theme_install(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    import urllib.parse
+    from pathlib import Path
+
     from steamzero.adapters.theme_catalog import validate_theme_directory
     from steamzero.domain.theme_install import ThemeInstaller
+    from steamzero.domain.theme_marketplace import ThemeMarketplace
 
     source = _flag_value(args, "--source")
     if source is None:
@@ -1262,13 +1266,54 @@ def _cmd_theme_install(args: list[str], correlation_id: str) -> tuple[dict[str, 
         raise SteamZeroError("E-CLI-USAGE", detail=msg)
     force = "--force" in args
     yes = "--yes" in args
-    installer = ThemeInstaller(validate=validate_theme_directory)
-    result = installer.install(source, force=force, yes=yes)
+    parsed = urllib.parse.urlparse(source)
+    is_url = parsed.scheme in ("http", "https")
+    if is_url or Path(source).is_file():
+        installer = ThemeInstaller(validate=validate_theme_directory)
+        result = installer.install(source, force=force, yes=yes)
+    else:
+        marketplace = ThemeMarketplace()
+        result = marketplace.install(
+            source, force=force, yes=yes, validate=validate_theme_directory,
+        )
     return (
         build_envelope(
             "theme", "install",
             status="ok",
             data=result,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_search(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.domain.theme_marketplace import ThemeMarketplace
+
+    query = _flag_value(args, "--query") or ""
+    refresh = "--refresh" in args
+    marketplace = ThemeMarketplace()
+    results = marketplace.search(query, refresh=refresh)
+    data = {
+        "query": query,
+        "count": len(results),
+        "results": [r.to_dict() for r in results],
+    }
+    return (
+        build_envelope("theme", "search", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_info(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.domain.theme_marketplace import ThemeMarketplace
+
+    theme_id = _required_flag(args, "--theme-id")
+    marketplace = ThemeMarketplace()
+    entry = marketplace.get(theme_id)
+    return (
+        build_envelope(
+            "theme", "info", status="ok", data=entry.to_dict(),
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -1398,6 +1443,8 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("controls", "apply"): _cmd_controls_apply,
     ("controls", "rollback"): _cmd_controls_rollback,
     ("theme", "install"): _cmd_theme_install,
+    ("theme", "search"): _cmd_theme_search,
+    ("theme", "info"): _cmd_theme_info,
     ("theme", "list"): _cmd_theme_list,
     ("theme", "status"): _cmd_theme_status,
     ("theme", "plan"): _cmd_theme_plan,
