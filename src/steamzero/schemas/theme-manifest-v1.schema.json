@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/theme-manifest-v1.schema.json",
+  "title": "Theme Manifest v1",
+  "description": "Manifesto declarativo de tema SteamZero. Temas builtin e externos usam o mesmo schema.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "id",
+    "name",
+    "version",
+    "author",
+    "license",
+    "compatibility"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Versão do schema do manifesto."
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^steamzero-theme-v1$",
+      "description": "Tipo do artefato. Fixo para temas v1."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$",
+      "description": "Identificador único do tema, estilo DNS reverso. Ex.: org.steamzero.default"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Nome legível do tema."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer estrito do tema."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Autor ou organização do tema."
+    },
+    "license": {
+      "type": "string",
+      "pattern": "^(LicenseRef-[a-zA-Z0-9._-]+|[A-Za-z0-9._+-]+)$",
+      "description": "Identificador SPDX ou LicenseRef-*."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "Descrição opcional do tema."
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 1024,
+      "description": "URL opcional do projeto."
+    },
+    "compatibility": {
+      "type": "object",
+      "required": ["themeApi"],
+      "properties": {
+        "themeApi": {
+          "type": "integer",
+          "const": 1,
+          "description": "Versão da API de temas que este manifesto implementa."
+        },
+        "minimumSteamZeroVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+[a-zA-Z0-9]*$",
+          "description": "Versão mínima do SteamZero requerida."
+        }
+      },
+      "additionalProperties": false
+    },
+    "extends": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$",
+      "description": "ID do tema base para herança. Profundidade máxima 2."
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "object",
+          "properties": {
+            "background": { "$ref": "#/$defs/colorHex" },
+            "sidebar": { "$ref": "#/$defs/colorHex" },
+            "surface": { "$ref": "#/$defs/colorHex" },
+            "surfaceRaised": { "$ref": "#/$defs/colorHex" },
+            "surfaceSelected": { "$ref": "#/$defs/colorHex" },
+            "border": { "$ref": "#/$defs/colorHex" },
+            "text": { "$ref": "#/$defs/colorHex" },
+            "textMuted": { "$ref": "#/$defs/colorHex" },
+            "textDisabled": { "$ref": "#/$defs/colorHex" },
+            "accent": { "$ref": "#/$defs/colorHex" },
+            "accentStrong": { "$ref": "#/$defs/colorHex" },
+            "success": { "$ref": "#/$defs/colorHex" },
+            "successSurface": { "$ref": "#/$defs/colorHex" },
+            "warning": { "$ref": "#/$defs/colorHex" },
+            "warningSurface": { "$ref": "#/$defs/colorHex" },
+            "danger": { "$ref": "#/$defs/colorHex" },
+            "dangerSurface": { "$ref": "#/$defs/colorHex" },
+            "focus": { "$ref": "#/$defs/colorHex" }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "radiusSmall": { "$ref": "#/$defs/positiveInt" },
+            "radiusMedium": { "$ref": "#/$defs/positiveInt" },
+            "radiusLarge": { "$ref": "#/$defs/positiveInt" },
+            "borderWidth": { "$ref": "#/$defs/positiveInt" },
+            "focusWidth": { "$ref": "#/$defs/positiveInt" },
+            "minimumTarget": { "$ref": "#/$defs/positiveInt" },
+            "spacingSmall": { "$ref": "#/$defs/positiveInt" },
+            "spacingMedium": { "$ref": "#/$defs/positiveInt" },
+            "spacingLarge": { "$ref": "#/$defs/positiveInt" }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "typography": {
+          "type": "object",
+          "properties": {
+            "scale": { "type": "number", "minimum": 0.5, "maximum": 2.0 },
+            "weightBody": { "type": "integer", "minimum": 100, "maximum": 900 },
+            "weightStrong": { "type": "integer", "minimum": 100, "maximum": 900 },
+            "weightHeading": { "type": "integer", "minimum": 100, "maximum": 900 },
+            "family": { "type": "string", "maxLength": 128 }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "motion": {
+          "type": "object",
+          "properties": {
+            "durationFast": { "type": "integer", "minimum": 0 },
+            "durationNormal": { "type": "integer", "minimum": 0 },
+            "durationLong": { "type": "integer", "minimum": 0 },
+            "hoverIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "focusIntensity": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "background": { "$ref": "#/$defs/assetPath" },
+        "logo": { "$ref": "#/$defs/assetPath" },
+        "sidebar": { "$ref": "#/$defs/assetPath" }
+      },
+      "additionalProperties": false,
+      "propertyNames": {
+        "pattern": "^[a-zA-Z][a-zA-Z0-9]*$"
+      },
+      "maxProperties": 8
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "colorHex": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "Cor hexadecimal de 6 dígitos com #."
+    },
+    "positiveInt": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 999
+    },
+    "assetPath": {
+      "type": "string",
+      "pattern": "^assets/[a-zA-Z0-9_./-]+\\.(png|jpg|jpeg|webp|svg)$",
+      "maxLength": 256,
+      "description": "Caminho relativo a um asset dentro do pacote, sob assets/."
+    }
+  }
+}
