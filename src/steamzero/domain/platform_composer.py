@@ -97,11 +97,27 @@ def compose_platform(
     declared = sorted(manifest.emulators, key=lambda item: item["precedence"])
     for emulator in declared:
         adapter_id = str(emulator["adapterId"])
-        facts = facts_for(adapter_id)
+        # A falha de UM adapter degrada apenas as plataformas dele. Deixar a
+        # exceção subir derrubaria a central inteira por causa de um componente
+        # que não respondeu — degradação pior que a informação faltante
+        # (AGENTS.md §8).
+        try:
+            facts = facts_for(adapter_id)
+        except Exception:
+            facts = EmulatorFacts(
+                adapter_id=adapter_id,
+                display_name=str(emulator["name"]),
+                reason="não foi possível consultar este componente agora",
+            )
         state, status_label, install_state = _emulator_state(facts)
         any_installed = any_installed or facts.installed
 
-        profile = parse_launch(manifest.id, adapter_id, emulator.get("launch"))
+        try:
+            profile = parse_launch(manifest.id, adapter_id, emulator.get("launch"))
+        except Exception:
+            # Perfil de launch malformado invalida o lançamento desta plataforma,
+            # não a listagem dela nem as demais.
+            profile = None
         core_present: bool | None = None
         if profile is not None and profile.requires_core and core_present_for is not None:
             core_present = core_present_for(profile.core or "")

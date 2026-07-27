@@ -63,8 +63,10 @@ from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.input_profiles import InputProfileManager
+from steamzero.domain.launch_profile import find_core
 from steamzero.domain.library import PlatformRomScanner
 from steamzero.domain.media_pipeline import MediaPipeline
+from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
 from steamzero.domain.scraping_providers import PROVIDERS, allowed_external_url, provider_by_id
 from steamzero.domain.switch_cheats import (
@@ -416,6 +418,8 @@ class EmulationController:
             keys=key_status,
             firmware=firmware_status,
             games=games,
+            emulator_facts=self._platform_facts_provider(self._registry_factory()),
+            core_present=self._core_present,
         )
         composed_cloud = {row["id"]: row for row in self._cloud.platforms()}
         workspace["platforms"] = [
@@ -524,6 +528,71 @@ class EmulationController:
         workspace["jobs"] = self.list_jobs()
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
+
+    def _platform_facts_provider(self, registry: AdapterRegistry) -> Callable[[str], EmulatorFacts]:
+        """Fatos reais de cada adapter, para o composer de plataforma.
+
+        A rota de lifecycle diz se é instalável e por quê; o manifesto diz nome e
+        ícone. Status de instalação só é consultado para quem tem executor — para
+        os demais o motivo já é a resposta, e sondar o host seria trabalho inútil.
+        """
+        by_id = {manifest.id: manifest for manifest in registry.list()}
+        cache: dict[str, EmulatorFacts] = {}
+
+        def provide(adapter_id: str) -> EmulatorFacts:
+            if adapter_id in cache:
+                return cache[adapter_id]
+            manifest = by_id.get(adapter_id)
+            if manifest is None:
+                facts = EmulatorFacts(
+                    adapter_id=adapter_id,
+                    reason="componente não declarado no registry de adapters",
+                )
+            else:
+                route = lifecycle.route_for(manifest)
+                presentation = manifest.presentation
+                facts = EmulatorFacts(
+                    adapter_id=adapter_id,
+                    display_name=presentation.display_name if presentation else None,
+                    icon_asset=presentation.icon_asset if presentation else None,
+                    installable=route.installable,
+                    installed=self._adapter_installed(adapter_id, route),
+                    reason=route.reason,
+                )
+            cache[adapter_id] = facts
+            return facts
+
+        return provide
+
+    def _adapter_installed(self, adapter_id: str, route: lifecycle.LifecycleRoute) -> bool:
+        """Instalação real, consultada pelo executor da família da fonte.
+
+        Falha de sondagem devolve False em vez de propagar: um componente que não
+        respondeu não é um componente instalado, e derrubar a central inteira por
+        causa de um adapter seria degradação pior que a informação faltante.
+        """
+        if not route.installable:
+            return False
+        try:
+            with self._store_factory() as store:
+                store.migrate()
+                registry = self._registry_factory()
+                if route.executor == "flatpak":
+                    executor = FlatpakExecutor(store, registry, self._flatpak_factory())
+                    return str(executor.status(adapter_id).get("state")) == "installed"
+                engine = AdapterEngine(store, registry, self._artifacts)
+                return str(engine.status(adapter_id).get("state")) == "installed"
+        except Exception:
+            _log.warning("status do adapter %s não pôde ser consultado", adapter_id)
+            return False
+
+    @staticmethod
+    def _core_present(core: str) -> bool:
+        """Se o core libretro existe no host. Ausência não é erro: é motivo."""
+        try:
+            return find_core(core) is not None
+        except SteamZeroError:
+            return False
 
     def _plan_flatpak_emulator(
         self, store: StateStore, registry: AdapterRegistry, emulator_id: str, action: str
