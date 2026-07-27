@@ -175,6 +175,29 @@ class TestBuildHook:
         assert "SOURCE_COMMIT" in written.read_text(encoding="utf-8")
 
 
+class TestPackagingDeclaresProvenance:
+    """Guarda contra remover silenciosamente a injeção de origem."""
+
+    def _pyproject(self) -> str:
+        root = Path(__file__).resolve().parents[2]
+        return (root / "pyproject.toml").read_text(encoding="utf-8")
+
+    def test_build_hook_is_wired(self) -> None:
+        text = self._pyproject()
+        assert 'path = "hatch_build.py"' in text
+
+    def test_generated_module_is_declared_as_artifact(self) -> None:
+        """Sem isto o hatchling excluiria o arquivo do wheel por respeitar o
+        .gitignore, e o pacote instalado ficaria sem identidade — falhando de
+        volta para 'unknown' silenciosamente."""
+        assert 'artifacts = ["src/steamzero/_build_info.py"]' in self._pyproject()
+
+    def test_backend_path_is_not_set(self) -> None:
+        """backend-path restringe onde o backend é procurado e quebrou o build:
+        'Cannot find module hatchling.build'. O hook não precisa dele."""
+        assert "backend-path" not in self._pyproject()
+
+
 class TestGeneratedModuleIsNotCommitted:
     def test_build_info_is_ignored_by_git(self) -> None:
         """A origem vem do git no build, nunca de um arquivo versionado."""

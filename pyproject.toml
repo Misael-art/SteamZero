@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [build-system]
 requires = ["hatchling==1.31.0"]
-backend-path = ["."]
 build-backend = "hatchling.build"
 
 [project]
@@ -32,6 +31,9 @@ path = "src/steamzero/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/steamzero"]
+# Gerado pelo hook e gitignored; sem isto o hatchling o excluiria do wheel por
+# respeitar o .gitignore, e o pacote instalado ficaria sem identidade.
+artifacts = ["src/steamzero/_build_info.py"]
 
 # Grava src/steamzero/_build_info.py com o commit de origem. Ver hatch_build.py.
 [tool.hatch.build.targets.wheel.hooks.custom]
