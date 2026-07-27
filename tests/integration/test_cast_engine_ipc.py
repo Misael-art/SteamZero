@@ -467,19 +467,15 @@ def _engine_module():
     return _reload_engine()
 
 
-@pytest.fixture
-def engine_env(_engine_module):
-    _engine_module._portal_client_factory = _MockPortalOK
-    sock_path = str(Path(tempfile.mkdtemp()) / "engine.sock")
-    eng = _engine_module.CastEngine(sock_path)
-    t = threading.Thread(target=eng.run, daemon=True)
-    t.start()
-    # Esperar o ARQUIVO de socket aparecer não basta: ele existe a partir do
-    # bind(), antes do listen(). Conectar nessa janela devolve
-    # ConnectionRefusedError — foi assim que este arquivo ficou instável no CI,
-    # reprovando só no runner mais lento. A prontidão real é aceitar conexão.
-    deadline = time.monotonic() + 5
-    ready = False
+def _wait_accepting(sock_path: str, timeout: float = 5.0) -> bool:
+    """Espera o engine ACEITAR conexão, não o arquivo de socket aparecer.
+
+    O arquivo existe a partir do ``bind()``, antes do ``listen()``: conectar
+    nessa janela devolve ConnectionRefusedError. Foi assim que este arquivo
+    ficou instável no CI, reprovando ora num teste ora noutro, sempre no runner
+    mais lento. A prontidão real é aceitar conexão.
+    """
+    deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if Path(sock_path).is_socket():
             probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -489,14 +485,22 @@ def engine_env(_engine_module):
             except OSError:
                 pass
             else:
-                ready = True
                 probe.close()
-                break
+                return True
             finally:
-                if not ready:
-                    probe.close()
+                probe.close()
         time.sleep(0.02)
-    assert ready, "engine não passou a aceitar conexões dentro do tempo limite"
+    return False
+
+
+@pytest.fixture
+def engine_env(_engine_module):
+    _engine_module._portal_client_factory = _MockPortalOK
+    sock_path = str(Path(tempfile.mkdtemp()) / "engine.sock")
+    eng = _engine_module.CastEngine(sock_path)
+    t = threading.Thread(target=eng.run, daemon=True)
+    t.start()
+    assert _wait_accepting(sock_path), "engine não passou a aceitar conexões"
     yield sock_path, _engine_module
     eng._cmd_stop()
     t.join(timeout=1)
@@ -745,7 +749,7 @@ def test_provider_and_engine_exchange_signaling_on_persistent_connection(
     engine = _engine_module.CastEngine(socket_path)
     engine_thread = threading.Thread(target=engine.run, daemon=True)
     engine_thread.start()
-    assert _wait_until(lambda: Path(socket_path).is_socket())
+    assert _wait_accepting(socket_path)
 
     provider = WebReceiverProvider.__new__(WebReceiverProvider)
     provider._engine_socket = socket_path
