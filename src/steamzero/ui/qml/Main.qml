@@ -610,7 +610,7 @@ ApplicationWindow {
             return fallback
         if (typeof response.error === "string")
             return response.error
-        var err = response.error
+        const err = response.error
         return err.title || err.detail || err.code || fallback
     }
 
