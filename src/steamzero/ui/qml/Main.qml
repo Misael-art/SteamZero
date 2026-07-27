@@ -67,6 +67,28 @@ ApplicationWindow {
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1920
     readonly property int navigationWidth: compactLayout ? 72
         : width >= 1400 ? 264 : 228
+
+    // Fonte única das seções. A ordem define o índice usado por sectionIndex,
+    // pelos dois modelos de navegação e pelo argumento --steamzero-section.
+    // Acrescentar seção aqui é suficiente: nada mais precisa ser sincronizado.
+    readonly property var navigationSections: [
+        {"id": "overview", "label": qsTr("Visão geral"), "icon": "view-dashboard"},
+        {"id": "emulators", "label": qsTr("Emulação"), "icon": "input-gaming"},
+        {"id": "steam", "label": qsTr("Steam"), "icon": "steam"},
+        {"id": "profiles", "label": qsTr("Perfis"), "icon": "preferences-system"},
+        {"id": "sync", "label": qsTr("Saves e Sync"), "icon": "folder-sync"},
+        {"id": "cast", "label": qsTr("Transmissão"), "icon": "video-display"},
+        {"id": "system", "label": qsTr("Sistema"), "icon": "configure"},
+        {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"}
+    ]
+
+    function sectionIndexOf(sectionId) {
+        for (let i = 0; i < navigationSections.length; i++) {
+            if (navigationSections[i].id === sectionId)
+                return i
+        }
+        return -1
+    }
     property alias responsiveShell: appShell
     property alias responsiveNavigation: navRepeater
     property alias responsiveDrawer: navigationDrawer
@@ -515,9 +537,9 @@ ApplicationWindow {
         if (tokenMarker >= 0 && tokenMarker + 1 < args.length)
             apiToken = args[tokenMarker + 1]
         if (sectionMarker >= 0 && sectionMarker + 1 < args.length) {
-            const sections = {"overview": 0, "emulators": 1, "steam": 2, "profiles": 3, "sync": 4, "cast": 5, "system": 6}
-            if (sections[args[sectionMarker + 1]] !== undefined)
-                sectionIndex = sections[args[sectionMarker + 1]]
+            const requested = sectionIndexOf(args[sectionMarker + 1])
+            if (requested >= 0)
+                sectionIndex = requested
         }
         if (steamAreaMarker >= 0 && steamAreaMarker + 1 < args.length
                 && ["performance", "controls", "library", "desktop"]
@@ -598,7 +620,12 @@ ApplicationWindow {
         const xhr = new XMLHttpRequest()
         let completed = false
         pendingRequests += 1
-        xhr.open(method, apiUrl + path)
+        // GET não carrega corpo: o payload vira query string codificada. Sem
+        // isto, ações declaradas com method=GET precisariam montar a URL à mão
+        // e escapariam do envelope de ações.
+        const isGet = String(method).toUpperCase() === "GET"
+        const query = isGet ? queryStringFor(payload) : ""
+        xhr.open(method, apiUrl + path + query)
         xhr.setRequestHeader("Content-Type", "application/json")
         xhr.setRequestHeader("X-SteamZero-Token", apiToken)
         xhr.timeout = path === "/component/apply" ? 1900000 : 60000
@@ -648,7 +675,20 @@ ApplicationWindow {
                 root.notify(message, true)
             }
         }
-        xhr.send(JSON.stringify(payload || {}))
+        xhr.send(isGet ? "" : JSON.stringify(payload || {}))
+    }
+
+    function queryStringFor(payload) {
+        if (!payload || typeof payload !== "object")
+            return ""
+        const parts = []
+        for (const key in payload) {
+            const value = payload[key]
+            if (value === undefined || value === null)
+                continue
+            parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(String(value)))
+        }
+        return parts.length > 0 ? "?" + parts.join("&") : ""
     }
 
     function backendAction(actionId) {
@@ -2282,15 +2322,7 @@ ApplicationWindow {
 
             Repeater {
                 id: drawerNavRepeater
-                model: [
-                    {"label": qsTr("Visão geral"), "icon": "view-dashboard"},
-                    {"label": qsTr("Emulação"), "icon": "input-gaming"},
-                    {"label": qsTr("Steam"), "icon": "steam"},
-                    {"label": qsTr("Perfis"), "icon": "preferences-system"},
-                    {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
-                    {"label": qsTr("Transmissão"), "icon": "video-display"},
-                    {"label": qsTr("Sistema"), "icon": "configure"}
-                ]
+                model: root.navigationSections
                 delegate: Button {
                     required property int index
                     required property var modelData
@@ -2583,15 +2615,7 @@ ApplicationWindow {
 
                     Repeater {
                         id: navRepeater
-                        model: [
-                            {"label": qsTr("Visão geral"), "icon": "view-dashboard"},
-                            {"label": qsTr("Emulação"), "icon": "input-gaming"},
-                            {"label": qsTr("Steam"), "icon": "steam"},
-                            {"label": qsTr("Perfis"), "icon": "preferences-system"},
-                    {"label": qsTr("Saves e Sync"), "icon": "folder-sync"},
-                    {"label": qsTr("Transmissão"), "icon": "video-display"},
-                    {"label": qsTr("Sistema"), "icon": "configure"}
-                        ]
+                        model: root.navigationSections
                         delegate: Button {
                             required property int index
                             required property var modelData
@@ -4793,6 +4817,31 @@ ApplicationWindow {
                                         onClicked: recoveryDialog.open()
                                     }
                                 }
+                            }
+                        }
+                        // Temas
+                        ScrollView {
+                            id: themeEditorScroll
+                            clip: true
+                            contentWidth: availableWidth
+                            bottomPadding: root.bottomSafeInset
+                            ThemeEditorPanel {
+                                width: Math.min(parent.width, root.contentMaxWidth)
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                backgroundColor: root.backgroundColor
+                                surfaceColor: root.surfaceColor
+                                raisedColor: root.raisedColor
+                                borderColor: root.borderColor
+                                textColor: root.textColor
+                                mutedColor: root.mutedColor
+                                cyanColor: root.cyanColor
+                                cyanDarkColor: root.cyanDarkColor
+                                greenColor: root.greenColor
+                                amberColor: root.amberColor
+                                redColor: root.redColor
+                                compactLayout: root.compactLayout
+                                requestAction: root.requestAction
+                                request: root.request
                             }
                         }
                     }

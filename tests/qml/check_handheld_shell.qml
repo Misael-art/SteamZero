@@ -39,8 +39,16 @@ Main {
               "movimento deve respeitar a faixa reduzida")
         check(responsiveDrawer.width <= width * 0.82 + 0.5,
               "drawer não pode cobrir toda a tela")
-        check(responsiveDrawerNavigation.count === 7,
+        // Deriva da fonte única: acrescentar seção não exige editar este teste,
+        // mas navegação que divirja do contrato de seções continua reprovando.
+        check(responsiveDrawerNavigation.count === navigationSections.length,
               "drawer deve publicar todas as áreas principais")
+        check(responsiveNavigation.count === navigationSections.length,
+              "rail e drawer devem publicar as mesmas seções")
+        check(sectionIndexOf("themes") === navigationSections.length - 1,
+              "a seção de temas precisa ser resolvível por id")
+        check(sectionIndexOf("inexistente") === -1,
+              "id de seção desconhecido não pode resolver para índice válido")
         check(responsiveTaskDrawer.width <= width * 0.94 + 0.5,
               "central de tarefas deve respeitar a largura handheld")
         liveTasks = [

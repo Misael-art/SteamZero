@@ -186,6 +186,22 @@ Canvas {
             context.lineTo(w * 0.44, h * 0.66)
             context.lineTo(w * 0.73, h * 0.34)
             context.stroke()
+        } else if (iconName === "preferences-desktop-theme") {
+            context.beginPath()
+            context.ellipse(w * 0.15, h * 0.12, w * 0.72, h * 0.55)
+            context.stroke()
+            context.beginPath()
+            context.ellipse(w * 0.05, h * 0.12, w * 0.14, h * 0.18)
+            context.fill()
+            const dots = [
+                [0.35, 0.24], [0.55, 0.18], [0.72, 0.28],
+                [0.68, 0.50], [0.45, 0.56], [0.28, 0.44]
+            ]
+            for (let i = 0; i < dots.length; i++) {
+                context.beginPath()
+                context.arc(w * dots[i][0], h * dots[i][1], w * 0.045, 0, Math.PI * 2)
+                context.fill()
+            }
         } else if (iconName === "dialog-warning") {
             context.beginPath()
             context.moveTo(cx, h * 0.1)
