@@ -155,6 +155,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, self._dashboard().cast_status())
         elif path == "/cast/sessions":
             self._send(HTTPStatus.OK, {"sessions": self._dashboard().cast_sessions()})
+        elif path == "/theme/list":
+            self._send(HTTPStatus.OK, {"themes": self._dashboard().theme_list()})
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "not-found"})
 
@@ -524,6 +526,15 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/cast/stop":
             return self._dashboard().cast_stop()
+        if path == "/theme/apply":
+            return self._dashboard().plan_theme_apply(self._required_string(payload, "themeId"))
+        if path == "/theme/apply/confirm":
+            return self._dashboard().apply_theme_preference(
+                self._required_string(payload, "planId"),
+                self._required_string(payload, "confirmToken"),
+            )
+        if path == "/theme/apply/rollback":
+            return self._dashboard().rollback_theme(self._required_string(payload, "operationId"))
         raise SteamZeroError("E-API-UNKNOWN-ACTION", detail=f"ação não permitida: {path}")
 
     _SESSION_TARGETS = frozenset({"steam", "gamepadui"})
