@@ -559,4 +559,9 @@ MESSAGES: dict[str, str] = {
     "error.E-THEME-CATALOG-FAILED.impact": "A busca e instalação por ID estão indisponíveis até o catálogo ser carregado.",
     "error.E-THEME-CATALOG-FAILED.cause": "Servidor inacessível, resposta inválida ou cache corrompido.",
     "error.E-THEME-CATALOG-FAILED.action": "Verifique sua conexão e tente novamente.",
+    "error.E-THEME-MARKETPLACE-DISABLED.title": "Marketplace remoto desligado",
+    "error.E-THEME-MARKETPLACE-DISABLED.what": "O catálogo remoto de temas não está habilitado nesta instalação.",
+    "error.E-THEME-MARKETPLACE-DISABLED.impact": "Busca e instalação por ID estão indisponíveis. Instalar por URL ou arquivo local continua funcionando.",
+    "error.E-THEME-MARKETPLACE-DISABLED.cause": "O marketplace remoto vem desligado de fábrica e exige configuração explícita com endereço de catálogo confiável.",
+    "error.E-THEME-MARKETPLACE-DISABLED.action": "Habilite o marketplace na configuração informando um catálogo em que você confia, ou instale o tema por URL ou caminho local.",
 }

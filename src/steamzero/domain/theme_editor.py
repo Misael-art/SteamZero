@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,11 @@ from steamzero.domain.themes import (
 
 _TOKEN_CATEGORIES = frozenset({"color", "geometry", "typography", "motion"})
 _ASSET_MAX_SIZE = 16 * 1024 * 1024
+# Espelha "pattern" de theme-manifest-v1.schema.json (propriedade "id").
+THEME_ID_RE = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$")
+
+
+_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 
 
 @dataclass
@@ -37,6 +43,9 @@ class EditorSession:
     tokens: dict[str, dict[str, object]]
     assets: dict[str, str]
     dirty: bool = False
+    # Bytes recebidos por ``set_asset`` que ainda não foram gravados em disco.
+    # slot -> (nome de arquivo derivado do slot, conteúdo)
+    pending_assets: dict[str, tuple[str, bytes]] = field(default_factory=dict)
 
 
 def _default_session_id() -> str:
@@ -193,13 +202,20 @@ class ThemeEditorManager:
         session = self._get_session(session_id)
         if slot not in ASSET_SLOTS_ALLOWED:
             raise SteamZeroError("E-API-SCHEMA", detail=f"slot inválido: {slot}")
+        if not data:
+            raise SteamZeroError("E-API-SCHEMA", detail="asset vazio")
         if len(data) > _ASSET_MAX_SIZE:
             raise SteamZeroError("E-THEME-LIMIT", detail="asset excede 16 MiB")
         ext = Path(filename).suffix.lower()
-        if ext not in {".png", ".jpg", ".jpeg", ".webp", ".svg"}:
+        if ext not in _ASSET_EXTENSIONS:
             raise SteamZeroError("E-API-SCHEMA", detail=f"extensão não permitida: {ext}")
+        # O nome gravado é derivado do slot, nunca do nome enviado: o filename
+        # externo só contribui com a extensão, já validada acima.
+        stored_name = f"{slot}{ext}"
+        session.pending_assets[slot] = (stored_name, data)
+        session.assets[slot] = f"assets/{stored_name}"
         session.dirty = True
-        return {"asset": {"slot": slot, "filename": filename, "size": len(data)}}
+        return {"asset": {"slot": slot, "filename": stored_name, "size": len(data)}}
 
     def preview(
         self,
@@ -236,12 +252,18 @@ class ThemeEditorManager:
         if validation:
             raise SteamZeroError("E-THEME-MANIFEST", detail=validation)
 
+        # O id já foi validado por padrão ancorado, mas o alvo é um caminho que
+        # será criado e possivelmente REMOVIDO: reconfirme o confinamento antes
+        # de qualquer efeito em disco.
+        _assert_within_themes_dir(target)
+
         if target.exists() and not overwrite:
             raise SteamZeroError(
                 "E-THEME-DOWNLOAD-FAILED",
                 detail=f"tema '{theme_id}' já existe. Use overwrite=true para substituir.",
             )
 
+        # Assets já em disco no tema de origem, preservados na regravação.
         pending_assets: list[tuple[str, bytes]] = []
         if session.theme_dir and session.theme_dir.is_dir():
             assets_src = session.theme_dir / "assets"
@@ -249,6 +271,10 @@ class ThemeEditorManager:
                 for entry in assets_src.iterdir():
                     if entry.is_file():
                         pending_assets.append((entry.name, entry.read_bytes()))
+        # Assets enviados nesta sessão vencem os homônimos já existentes.
+        uploaded = {name: data for name, data in session.pending_assets.values()}
+        pending_assets = [item for item in pending_assets if item[0] not in uploaded]
+        pending_assets.extend(uploaded.items())
 
         if target.exists():
             fs.remove_tree(target)
@@ -263,6 +289,7 @@ class ThemeEditorManager:
                 fs.write_atomic(assets_dst / name, data)
 
         session.theme_dir = target
+        session.pending_assets.clear()
         session.dirty = False
         return {"themeId": theme_id, "path": str(target)}
 
@@ -287,13 +314,26 @@ class ThemeEditorManager:
             else:
                 manifest_dict.pop("assets", None)
             zf.writestr(f"{theme_id}/theme.json", json.dumps(manifest_dict, indent=2))
+            # Tudo precisa ficar sob {theme_id}/, porque é esse o diretório que
+            # ``ThemeInstaller._find_theme_dir`` elege ao reinstalar. Gravar os
+            # assets na raiz do zip faz o ciclo export→install perdê-los.
+            written: set[str] = set()
+            for stored_name, data in session.pending_assets.values():
+                arcname = f"{theme_id}/assets/{stored_name}"
+                zf.writestr(arcname, data)
+                written.add(arcname)
             if session.theme_dir and session.theme_dir.is_dir():
                 assets_dir = session.theme_dir / "assets"
                 if assets_dir.is_dir():
-                    for asset_path in assets_dir.rglob("*"):
-                        if asset_path.is_file():
-                            rel = asset_path.relative_to(session.theme_dir)
-                            zf.write(asset_path, str(rel))
+                    for asset_path in sorted(assets_dir.rglob("*")):
+                        if not asset_path.is_file():
+                            continue
+                        rel = asset_path.relative_to(session.theme_dir)
+                        arcname = f"{theme_id}/{rel.as_posix()}"
+                        if arcname in written:
+                            continue
+                        zf.write(asset_path, arcname)
+                        written.add(arcname)
         return buf.getvalue()
 
     def cancel(self, session_id: str) -> dict[str, str]:
@@ -331,6 +371,24 @@ def _validate_save(manifest_dict: dict[str, object]) -> str | None:
         if not manifest_dict.get(req):
             return f"campo obrigatório ausente: {req}"
     mid = str(manifest_dict["id"])
-    if not mid.replace(".", "").replace("-", "").isalnum():
+    # Mesmo padrão ancorado de ``theme-manifest-v1.schema.json``. Não troque por
+    # heurística: ``str.isalnum()`` é Unicode-aware e aceitaria ids não-ASCII
+    # que depois viram caminho de filesystem e alvo de remoção.
+    if not THEME_ID_RE.fullmatch(mid):
         return f"ID inválido: {mid}"
     return None
+
+
+def _assert_within_themes_dir(target: Path) -> None:
+    """Garante que o alvo de escrita/remoção não escapa de ``themes_dir()``."""
+    root = paths.themes_dir()
+    try:
+        resolved_root = root.resolve()
+        resolved = target.resolve()
+    except OSError as exc:  # pragma: no cover - filesystem degradado
+        raise SteamZeroError("E-THEME-UNSAFE", detail="alvo inacessível") from exc
+    if resolved != resolved_root and resolved_root not in resolved.parents:
+        raise SteamZeroError(
+            "E-THEME-UNSAFE",
+            detail="caminho do tema escapa do diretório de temas",
+        )

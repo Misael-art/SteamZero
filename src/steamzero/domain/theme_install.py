@@ -126,8 +126,14 @@ class ThemeInstaller:
 
     def _check_size(self, url: str, *, http_client: HttpClient | None = None) -> None:
         try:
+            # A allowlist é derivada do próprio host pedido, como em
+            # ``core.net.fetch_bytes``: impede que um redirect leve a sondagem
+            # para outro host. Curinga aqui anularia a fronteira de rede.
+            host = (urllib.parse.urlsplit(url).hostname or "").casefold().rstrip(".")
+            if not host:
+                return
             policy = NetworkPolicy(
-                allowed_hosts=frozenset({"*"}),
+                allowed_hosts=frozenset({host}),
                 timeout_seconds=15.0,
                 max_bytes=1,
                 retry=RetryPolicy(attempts=1),

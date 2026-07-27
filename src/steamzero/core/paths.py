@@ -146,6 +146,15 @@ def theme_catalog_cache_path() -> Path:
     return cache_home() / "theme-catalog-v1.json"
 
 
+def theme_marketplace_config_path() -> Path:
+    """Opt-in explícito do marketplace remoto.
+
+    O marketplace nasce DESLIGADO: sem este arquivo não há catálogo remoto e
+    nenhum host embutido é assumido. Ligar é decisão registrada do operador.
+    """
+    return config_home() / "theme-marketplace-v1.json"
+
+
 def logs_dir() -> Path:
     return state_home() / "logs"
 

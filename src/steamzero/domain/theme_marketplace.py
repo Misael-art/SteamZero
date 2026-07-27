@@ -8,6 +8,7 @@ import contextlib
 import json
 import os
 import time
+import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,13 +18,109 @@ from steamzero.core.errors import SteamZeroError
 from steamzero.core.net import HttpClient, fetch_bytes
 from steamzero.domain.themes import ThemeManifest
 
-_DEFAULT_CATALOG_URL = "https://themes.steamzero.org/catalog-v1.json"
 _CATALOG_TTL_SECS = 3600
 _CATALOG_MAX_BYTES = 2 * 1024 * 1024
 
+# Não existe catálogo embutido. O marketplace remoto nasce desligado e só passa
+# a existir quando o operador registra, por configuração, um endereço em que
+# confia. Nunca reintroduza um host default aqui: um domínio que o projeto não
+# opera é superfície de supply chain, não conveniência.
+_CONFIG_SCHEMA_VERSION = 1
 
-def _catalog_url() -> str:
-    return os.environ.get("STEAMZERO_THEMES_CATALOG_URL") or _DEFAULT_CATALOG_URL
+
+def _validate_catalog_url(url: str) -> str:
+    """Aceita apenas HTTPS, com host, sem credencial embutida na URL."""
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme.casefold() != "https":
+        raise SteamZeroError(
+            "E-THEME-CATALOG-FAILED",
+            detail="o catálogo de temas exige HTTPS",
+        )
+    if not parsed.hostname:
+        raise SteamZeroError(
+            "E-THEME-CATALOG-FAILED",
+            detail="endereço de catálogo sem host",
+        )
+    if parsed.username or parsed.password:
+        raise SteamZeroError(
+            "E-THEME-CATALOG-FAILED",
+            detail="endereço de catálogo não pode conter credencial",
+        )
+    return url
+
+
+@dataclass(frozen=True)
+class MarketplaceConfig:
+    """Opt-in do marketplace. Ausente ou desabilitado significa: sem catálogo."""
+
+    enabled: bool = False
+    catalog_url: str = ""
+
+    @classmethod
+    def load(cls) -> MarketplaceConfig:
+        path = paths.theme_marketplace_config_path()
+        if not path.is_file():
+            return cls()
+        try:
+            raw = json.loads(path.read_bytes())
+        except (OSError, json.JSONDecodeError):
+            log.get_logger().warning("theme_marketplace.config-unreadable")
+            return cls()
+        if not isinstance(raw, dict) or not bool(raw.get("enabled", False)):
+            return cls()
+        url = str(raw.get("catalogUrl", "") or "")
+        # A variável de ambiente escolhe o endereço, mas NUNCA habilita nada:
+        # o opt-in continua sendo a configuração persistida.
+        override = os.environ.get("STEAMZERO_THEMES_CATALOG_URL")
+        if override:
+            log.get_logger().warning(
+                "theme_marketplace.catalog-url-override", source="environment"
+            )
+            url = override
+        if not url:
+            return cls()
+        return cls(enabled=True, catalog_url=_validate_catalog_url(url))
+
+
+def _require_enabled(config: MarketplaceConfig) -> str:
+    if not config.enabled or not config.catalog_url:
+        raise SteamZeroError(
+            "E-THEME-MARKETPLACE-DISABLED",
+            detail=(
+                "nenhum catálogo remoto configurado em "
+                f"{paths.theme_marketplace_config_path()}"
+            ),
+        )
+    return config.catalog_url
+
+
+def _numeric_failure(entry_id: str, field_name: str) -> SteamZeroError:
+    return SteamZeroError(
+        "E-THEME-CATALOG-FAILED",
+        detail=f"campo '{field_name}' inválido no tema '{entry_id}'",
+    )
+
+
+def _as_int(value: object, entry_id: str, field_name: str) -> int:
+    if value is None or value == "":
+        return 0
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise _numeric_failure(entry_id, field_name)
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise _numeric_failure(entry_id, field_name) from exc
+
+
+def _as_float(value: object, entry_id: str, field_name: str) -> float:
+    if value is None or value == "":
+        return 0.0
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise _numeric_failure(entry_id, field_name)
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise _numeric_failure(entry_id, field_name) from exc
 
 
 @dataclass
@@ -47,10 +144,18 @@ class MarketplaceTheme:
 
     @classmethod
     def from_dict(cls, raw: dict[str, object]) -> MarketplaceTheme:
+        # Catálogo remoto é dado hostil: nenhuma conversão pode escapar como
+        # KeyError/ValueError cru. Entrada malformada vira erro estruturado.
+        entry_id = raw.get("id")
+        if not isinstance(entry_id, str) or not entry_id.strip():
+            raise SteamZeroError(
+                "E-THEME-CATALOG-FAILED",
+                detail="entrada de catálogo sem 'id' textual",
+            )
         compat = raw.get("compatibility")
         raw_tags = raw.get("tags")
         return cls(
-            id=str(raw["id"]),
+            id=entry_id,
             name=str(raw.get("name", "")),
             version=str(raw.get("version", "")),
             author=str(raw.get("author", "")),
@@ -61,10 +166,10 @@ class MarketplaceTheme:
             verified=bool(raw.get("verified", False)),
             download_url=str(raw.get("downloadUrl", "")),
             checksum_sha256=str(raw.get("checksumSha256", "")),
-            size=int(str(raw.get("size") or 0)),
-            tags=list(raw_tags) if isinstance(raw_tags, list) else [],
-            rating=float(str(raw.get("rating") or 0.0)),
-            download_count=int(str(raw.get("downloadCount") or 0)),
+            size=_as_int(raw.get("size"), entry_id, "size"),
+            tags=[str(tag) for tag in raw_tags] if isinstance(raw_tags, list) else [],
+            rating=_as_float(raw.get("rating"), entry_id, "rating"),
+            download_count=_as_int(raw.get("downloadCount"), entry_id, "downloadCount"),
             homepage=str(raw.get("homepage", "")),
         )
 
@@ -94,12 +199,29 @@ class ThemeMarketplace:
         self,
         catalog_url: str | None = None,
         http_client: HttpClient | None = None,
+        config: MarketplaceConfig | None = None,
     ) -> None:
-        self._catalog_url = catalog_url or _catalog_url()
+        if catalog_url:
+            # Endereço explícito do chamador continua sendo um opt-in — só que
+            # feito em código/teste em vez de arquivo de configuração.
+            self._config = MarketplaceConfig(
+                enabled=True, catalog_url=_validate_catalog_url(catalog_url)
+            )
+        else:
+            self._config = config if config is not None else MarketplaceConfig.load()
         self._http_client = http_client
         self._entries: list[MarketplaceTheme] | None = None
 
+    @property
+    def enabled(self) -> bool:
+        return self._config.enabled and bool(self._config.catalog_url)
+
+    @property
+    def _catalog_url(self) -> str:
+        return _require_enabled(self._config)
+
     def search(self, query: str = "", *, refresh: bool = False) -> list[MarketplaceTheme]:
+        _require_enabled(self._config)
         if self._entries is None or refresh:
             self._entries = self._load_catalog()
         q = query.strip().casefold()
@@ -141,14 +263,20 @@ class ThemeMarketplace:
                 "E-THEME-DOWNLOAD-FAILED",
                 detail=f"tema '{theme_id}' não possui URL de download",
             )
+        # Instalação vinda de catálogo remoto SEMPRE verifica integridade. Sem
+        # checksum declarado a origem é inverificável: falhe fechado.
+        if not entry.checksum_sha256:
+            raise SteamZeroError(
+                "E-SUPPLY-NO-CHECKSUM",
+                detail=f"tema '{theme_id}' não declara checksumSha256 no catálogo",
+            )
 
-        checksum = entry.checksum_sha256 or None
         installer = _ThemeInstaller(validate=validate)
         return installer.install(
             entry.download_url,
             force=force,
             yes=yes,
-            checksum_sha256=checksum,
+            checksum_sha256=entry.checksum_sha256,
             http_client=self._http_client,
         )
 

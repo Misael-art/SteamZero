@@ -57,15 +57,27 @@ def _catalog_bytes() -> bytes:
     return json.dumps(_CATALOG).encode()
 
 
+def _enable_marketplace(url: str = "https://themes.example.org/catalog-v1.json") -> None:
+    """Escreve o opt-in explícito. Sem ele o marketplace nasce desligado."""
+    from steamzero.core import paths
+
+    path = paths.theme_marketplace_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schemaVersion": 1, "enabled": True, "catalogUrl": url}))
+
+
 @pytest.fixture(autouse=True)
 def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.delenv("STEAMZERO_THEMES_CATALOG_URL", raising=False)
     monkeypatch.setattr(
         "steamzero.domain.theme_marketplace.fetch_bytes",
         lambda url, **kw: _catalog_bytes(),
     )
+    _enable_marketplace()
 
 
 class TestMarketplaceTheme:
@@ -232,3 +244,112 @@ class TestThemeMarketplaceInstall:
         m = ThemeMarketplace()
         m.install("org.steamzero.steamdeck")
         assert captured["checksum_sha256"] == "a" * 64
+
+    def test_install_without_checksum_fails_closed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Catálogo sem checksum é origem inverificável: recusar, não instalar."""
+        from steamzero.domain.theme_install import ThemeInstaller
+
+        def explode(self_inst, source, **kw):  # pragma: no cover - não deve rodar
+            raise AssertionError("install não pode ser alcançado sem checksum")
+
+        monkeypatch.setattr(ThemeInstaller, "install", explode)
+        m = ThemeMarketplace()
+        with pytest.raises(SteamZeroError, match=r"E-SUPPLY-NO-CHECKSUM"):
+            m.install("org.steamzero.minimal")
+
+
+class TestMarketplaceDisabledByDefault:
+    """O marketplace remoto não existe até o operador habilitá-lo."""
+
+    def test_disabled_without_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from steamzero.core import paths
+
+        paths.theme_marketplace_config_path().unlink()
+        m = ThemeMarketplace()
+        assert m.enabled is False
+        with pytest.raises(SteamZeroError, match=r"E-THEME-MARKETPLACE-DISABLED"):
+            m.search()
+
+    def test_disabled_config_present_but_off(self) -> None:
+        from steamzero.core import paths
+
+        paths.theme_marketplace_config_path().write_text(
+            json.dumps({"schemaVersion": 1, "enabled": False, "catalogUrl": "https://x.test/c"})
+        )
+        m = ThemeMarketplace()
+        assert m.enabled is False
+        with pytest.raises(SteamZeroError, match=r"E-THEME-MARKETPLACE-DISABLED"):
+            m.get("org.steamzero.steamdeck")
+
+    def test_env_var_alone_does_not_enable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A variável escolhe endereço; quem habilita é a configuração."""
+        from steamzero.core import paths
+
+        paths.theme_marketplace_config_path().unlink()
+        monkeypatch.setenv("STEAMZERO_THEMES_CATALOG_URL", "https://evil.test/catalog.json")
+        m = ThemeMarketplace()
+        assert m.enabled is False
+        with pytest.raises(SteamZeroError, match=r"E-THEME-MARKETPLACE-DISABLED"):
+            m.search()
+
+    def test_enabled_without_url_stays_disabled(self) -> None:
+        from steamzero.core import paths
+
+        paths.theme_marketplace_config_path().write_text(
+            json.dumps({"schemaVersion": 1, "enabled": True, "catalogUrl": ""})
+        )
+        assert ThemeMarketplace().enabled is False
+
+    def test_no_builtin_catalog_host(self) -> None:
+        """Nenhum host embutido pode voltar como default."""
+        import steamzero.domain.theme_marketplace as mod
+
+        source = Path(mod.__file__).read_text(encoding="utf-8")
+        assert "steamzero.org" not in source
+
+
+class TestCatalogUrlValidation:
+    def test_rejects_plain_http(self) -> None:
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            ThemeMarketplace(catalog_url="http://themes.example.org/c.json")
+
+    def test_rejects_url_without_host(self) -> None:
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            ThemeMarketplace(catalog_url="https:///c.json")
+
+    def test_rejects_embedded_credentials(self) -> None:
+        with pytest.raises(SteamZeroError, match=r"credencial"):
+            ThemeMarketplace(catalog_url="https://user:pw@themes.example.org/c.json")
+
+
+class TestCatalogHostileInput:
+    """Catálogo malformado degrada em erro estruturado, nunca exceção crua."""
+
+    def _serve(self, monkeypatch: pytest.MonkeyPatch, doc: object) -> ThemeMarketplace:
+        monkeypatch.setattr(
+            "steamzero.domain.theme_marketplace.fetch_bytes",
+            lambda url, **kw: json.dumps(doc).encode(),
+        )
+        return ThemeMarketplace()
+
+    def test_entry_without_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        m = self._serve(monkeypatch, {"entries": [{"name": "sem id"}]})
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            m.search()
+
+    def test_entry_with_non_numeric_size(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        m = self._serve(monkeypatch, {"entries": [{"id": "a.b", "size": "muito grande"}]})
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            m.search()
+
+    def test_entry_with_non_numeric_rating(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        m = self._serve(monkeypatch, {"entries": [{"id": "a.b", "rating": "ótimo"}]})
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            m.search()
+
+    def test_entry_with_non_string_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        m = self._serve(monkeypatch, {"entries": [{"id": 42}]})
+        with pytest.raises(SteamZeroError, match=r"E-THEME-CATALOG-FAILED"):
+            m.search()

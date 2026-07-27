@@ -89,8 +89,8 @@ Domínios (Fase 1):
   controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
   controls rollback      desfaz seleção (--operation-id ID)
   theme list             lista temas disponíveis (builtin + usuário)
-  theme search           busca temas no marketplace remoto [--query Q] [--refresh]
-  theme info             mostra detalhes de um tema do marketplace (--theme-id ID)
+  theme search           busca no marketplace remoto (exige opt-in) [--query Q] [--refresh]
+  theme info             detalhes de um tema do marketplace (exige opt-in) (--theme-id ID)
   theme install          instala tema de URL, caminho local ou ID do marketplace
   theme status           mostra tema ativo e tokens resolvidos
   theme plan             planeja ativação de tema (--theme-id ID)

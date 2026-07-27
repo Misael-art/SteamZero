@@ -246,3 +246,165 @@ class TestEditorPreview:
         mgr = ThemeEditorManager()
         with pytest.raises(SteamZeroError, match=r"E-API-SCHEMA"):
             mgr.preview("nope")
+
+
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+    "890000000a49444154789c6360000002000100ffff03000006000557bfabd400"
+    "00000049454e44ae426082"
+)
+
+
+class TestEditorAssetsPersist:
+    """set_asset precisa gravar de verdade; sucesso sem efeito é defeito."""
+
+    def test_set_asset_survives_save(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = str(mgr.create("Com Asset")["sessionId"])
+        mgr.set_asset(sid, "background", _PNG, "qualquer-coisa.png")
+        saved = mgr.save(sid)
+
+        target = Path(saved["path"])
+        stored = target / "assets" / "background.png"
+        assert stored.is_file(), "os bytes do asset precisam chegar ao disco"
+        assert stored.read_bytes() == _PNG
+
+        manifest = json.loads((target / "theme.json").read_text())
+        assert manifest["assets"]["background"] == "assets/background.png"
+
+    def test_stored_name_derives_from_slot_not_filename(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = str(mgr.create("Nome Hostil")["sessionId"])
+        result = mgr.set_asset(sid, "background", _PNG, "../../escape.png")
+        asset = result["asset"]
+        assert isinstance(asset, dict)
+        assert asset["filename"] == "background.png"
+
+        target = Path(mgr.save(sid)["path"])
+        assert (target / "assets" / "background.png").is_file()
+        assert not (tmp_path / "escape.png").exists()
+
+    def test_rejects_disallowed_extension(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = str(mgr.create("X")["sessionId"])
+        with pytest.raises(SteamZeroError, match=r"extensão não permitida"):
+            mgr.set_asset(sid, "background", b"MZ", "payload.exe")
+
+    def test_rejects_empty_asset(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = str(mgr.create("X")["sessionId"])
+        with pytest.raises(SteamZeroError, match=r"asset vazio"):
+            mgr.set_asset(sid, "background", b"", "vazio.png")
+
+
+class TestEditorExportRoundTrip:
+    """Export precisa produzir pacote que o instalador consegue reinstalar."""
+
+    def test_export_layout_is_installable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import zipfile
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        created = mgr.create("Exportavel")
+        sid = str(created["sessionId"])
+        manifest = created["manifest"]
+        assert isinstance(manifest, dict)
+        theme_id = str(manifest["id"])
+        mgr.set_asset(sid, "background", _PNG, "bg.png")
+
+        with zipfile.ZipFile(__import__("io").BytesIO(mgr.export_zip(sid))) as zf:
+            names = set(zf.namelist())
+
+        assert f"{theme_id}/theme.json" in names
+        # O asset precisa estar SOB o mesmo diretório do manifesto, senão
+        # _find_theme_dir elege {theme_id}/ e o asset fica órfão na reinstalação.
+        assert f"{theme_id}/assets/background.png" in names
+        assert "assets/background.png" not in names
+
+    def test_export_then_install_preserves_assets(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.core import paths
+        from steamzero.domain.theme_install import ThemeInstaller
+
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        mgr = ThemeEditorManager()
+        created = mgr.create("Round Trip")
+        sid = str(created["sessionId"])
+        manifest = created["manifest"]
+        assert isinstance(manifest, dict)
+        theme_id = str(manifest["id"])
+        mgr.set_asset(sid, "background", _PNG, "bg.png")
+
+        package = tmp_path / "pacote.zip"
+        package.write_bytes(mgr.export_zip(sid))
+
+        installed = ThemeInstaller().install(str(package), force=True)
+        assert installed["themeId"] == theme_id
+
+        target = paths.themes_dir() / theme_id
+        asset = target / "assets" / "background.png"
+        assert asset.is_file(), "o asset precisa sobreviver ao ciclo export→install"
+        assert asset.read_bytes() == _PNG
+
+
+class TestEditorIdValidation:
+    """O id vira caminho e alvo de remoção: precisa do padrão do schema."""
+
+    def _session_with_id(self, mgr: ThemeEditorManager, theme_id: str) -> str:
+        sid = str(mgr.create("X")["sessionId"])
+        mgr._sessions[sid].manifest["id"] = theme_id
+        return sid
+
+    @pytest.mark.parametrize(
+        "bad_id",
+        [
+            "semseparador",
+            "TEMA.MAIUSCULO",
+            "org..vazio",
+            "org.test/escape",
+            "org.test\\escape",
+            "",
+        ],
+    )
+    def test_rejects_invalid_ids(
+        self, bad_id: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = self._session_with_id(mgr, bad_id)
+        with pytest.raises(SteamZeroError, match=r"E-THEME-MANIFEST"):
+            mgr.save(sid, overwrite=True)
+
+    def test_rejects_non_ascii_id(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """isalnum() é Unicode-aware e aceitava isto; o padrão do schema não."""
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = self._session_with_id(mgr, "org.tema.ção")
+        with pytest.raises(SteamZeroError, match=r"E-THEME-MANIFEST"):
+            mgr.save(sid, overwrite=True)
+
+    def test_accepts_schema_conformant_id(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+        mgr = ThemeEditorManager()
+        sid = self._session_with_id(mgr, "org.steamzero.valido-2")
+        assert mgr.save(sid)["themeId"] == "org.steamzero.valido-2"
