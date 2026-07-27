@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
+from steamzero.adapters import lifecycle
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
@@ -34,6 +35,7 @@ from steamzero.adapters.converters import (
     nsz_tool_manifest,
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
+from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.mods.build_id_scanner import BuildIdScanner
 from steamzero.adapters.mods.composite_catalog import CompositeModCatalog
 from steamzero.adapters.mods.github_mod_source import GithubModSource
@@ -287,10 +289,12 @@ class EmulationController:
         cheat_catalog: CheatCatalogPort | None = None,
         input_profiles: InputProfileManager | None = None,
         cloud_platforms: CloudPlatformService | None = None,
+        flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
         self._artifacts = artifacts or HttpsArtifactPort()
+        self._flatpak_factory = flatpak_factory
         self._which = which
         self._spawn = spawn
         self._process_waiter = (
@@ -521,11 +525,42 @@ class EmulationController:
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
 
+    def _plan_flatpak_emulator(
+        self, store: StateStore, registry: AdapterRegistry, emulator_id: str, action: str
+    ) -> dict[str, Any]:
+        """Planeja via FlatpakExecutor, preservando o formato de plano da UI."""
+        if action not in {"install", "update"}:
+            # Desinstalação Flatpak existe no executor, mas ainda não tem
+            # verificação de propriedade equivalente à do caminho portátil.
+            # Recusar declarado é melhor que oferecer meia operação.
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"ação '{action}' ainda não disponível para componentes Flatpak",
+            )
+        executor = FlatpakExecutor(store, registry, self._flatpak_factory())
+        plan = executor.plan_install(emulator_id)
+        payload = plan.to_dict()
+        payload["action"] = f"emulator.{action}"
+        return payload
+
     def plan_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
         self._require_managed_emulator(emulator_id)
         with self._store_factory() as store:
             store.migrate()
-            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
+            registry = self._registry_factory()
+            # A família da fonte decide o executor. Antes o caminho de emulador
+            # ia direto para o engine portátil, e uma fonte Flatpak morria em
+            # "executor ainda não está habilitado" — apesar de FlatpakExecutor
+            # existir, testado, e já ser usado pela superfície de componentes.
+            route = lifecycle.route_for(registry.get(emulator_id))
+            if not route.installable:
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail=route.reason or "componente sem executor de lifecycle",
+                )
+            if route.executor == "flatpak":
+                return self._plan_flatpak_emulator(store, registry, emulator_id, action)
+            engine = AdapterEngine(store, registry, self._artifacts)
             if action in {"install", "update"}:
                 prepared = engine.plan_install(emulator_id)
             elif action == "uninstall":
