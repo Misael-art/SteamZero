@@ -474,11 +474,29 @@ def engine_env(_engine_module):
     eng = _engine_module.CastEngine(sock_path)
     t = threading.Thread(target=eng.run, daemon=True)
     t.start()
-    deadline = time.monotonic() + 3
+    # Esperar o ARQUIVO de socket aparecer não basta: ele existe a partir do
+    # bind(), antes do listen(). Conectar nessa janela devolve
+    # ConnectionRefusedError — foi assim que este arquivo ficou instável no CI,
+    # reprovando só no runner mais lento. A prontidão real é aceitar conexão.
+    deadline = time.monotonic() + 5
+    ready = False
     while time.monotonic() < deadline:
         if Path(sock_path).is_socket():
-            break
-        time.sleep(0.05)
+            probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            probe.settimeout(0.2)
+            try:
+                probe.connect(sock_path)
+            except OSError:
+                pass
+            else:
+                ready = True
+                probe.close()
+                break
+            finally:
+                if not ready:
+                    probe.close()
+        time.sleep(0.02)
+    assert ready, "engine não passou a aceitar conexões dentro do tempo limite"
     yield sock_path, _engine_module
     eng._cmd_stop()
     t.join(timeout=1)
