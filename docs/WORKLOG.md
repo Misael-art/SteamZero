@@ -3038,3 +3038,88 @@ e especificação WI-S2.
 independência e fronteiras.
 
 **Host:** release instalada via `bigsudo`.
+## 2026-07-18 — Sessão 11: refinamento responsivo da UI Desktop
+
+**Escopo isolado:** implementação realizada em worktree dedicado da branch
+`codex/ui-emulacao`. Somente `src/steamzero/ui/qml/`, este registro e a seção correspondente
+do relatório de implementação foram alterados. Adapters, domínio, bridge, schemas e
+contratos de payload permaneceram intactos.
+
+**Entregue:** tokens lógicos de composição/tipografia/densidade; rail portátil de 72 px;
+container central limitado e balanceado em ultrawide/4K; preset TV; footer adaptativo;
+cards com altura implícita; inspector lateral de 320–420 px e drawer no Deck; filtro vazio
+sem seleção residual; estados vazios de emuladores, sync e diagnóstico; cards de perfis
+com recomendado/desejado/aplicado/não verificado; alerta expandido/compacto sem explicação
+duplicada na tela de Sistema; header sticky; navegador semântico por seções; preferências
+de alto contraste e redução de movimento; termos técnicos humanizados no primeiro nível.
+
+Operações reais agora exibem, após 280 ms, uma tela de carregamento indeterminada com
+contexto preservado. A UI não estima porcentagem e não altera a bridge: o overlay deriva
+exclusivamente de `pendingRequests`, inclusive em erro e timeout.
+
+**Evidência visual:** nove goldens inspecionados cobrem Deck 1280×800, filtro vazio,
+drawer, carregamento, Full HD, ultrawide, 4K desktop e 4K TV. O teste Qt Quick cobre
+breakpoints, escala/orientação do Deck, filtro vazio, carregamento tardio e preferências
+de acessibilidade.
+
+**Gates (`verified-dev`):**
+```text
+qmllint src/steamzero/ui/qml/*.qml src/steamzero/ui/qml/tests/*.qml → OK
+qmltestrunner → 6 passed, 0 failed/skipped
+QML Qt 6 offscreen smoke → processo permaneceu ativo, sem diagnóstico de runtime
+make check → format/lint/boundaries/independence/mypy OK · pytest 367 passed
+git diff --check -- src/steamzero/ui/qml → OK
+```
+
+**Limites preservados:** o payload atual não expõe capability/lifecycle para coordenação
+da janela de configuração de controles da Steam nem read model de “Lançamento gerenciado”.
+Esses fluxos não foram simulados na QML. `/steam/open` continua sendo o fallback allowlisted
+existente, preservando seção e seleção. Wayland, X11, gamepad, touch, dock/hotplug e hardware
+real não foram exercitados nesta sessão.
+
+## 2026-07-18 — Sessão 12: navegação, foco e matriz visual final da UI
+
+**Navegação concluída:** a troca de áreas registra histórico e mantém o scroll de cada
+tela; `Escape` fecha primeiro popup, drawer ou modal cancelável e só depois volta à área
+anterior. O recovery obrigatório continua impossível de dispensar. Todos os modais agora
+devolvem foco ao controle que iniciou a ação, inclusive depois de resposta assíncrona.
+
+**Seções e footer:** o navegador semântico ganhou uma lista acessível com nomes e posição,
+aberta por `F6`; `PgUp/PgDown` percorrem anchors, e o footer anuncia esses atalhos somente
+quando o conteúdo realmente exige navegação vertical. Os botões de confirmação refluem
+para uma coluna no Deck. O runtime não possui `QtGamepad`, então não foi feita alegação
+falsa de suporte bruto a LT/RT/View; controle e hot-swap seguem para validação em hardware.
+
+**QA final (`verified-dev`):** `qmllint` verde; Qt Quick Test com **10 passed**, incluindo
+histórico/voltar, anchors, retorno de foco, filtro vazio, loading tardio, breakpoints,
+reduced motion e razões de contraste; smoke Qt 6 offscreen sem diagnóstico; `make check`
+com **367 passed** e todos os gates estáticos verdes; `git diff --check` verde.
+
+**Evidência visual:** **16 goldens** inspecionados cobrem Deck com dados/empty/drawer,
+loading, contraste, alertas compacto/expandido e menu de seções; Full HD com Steam,
+perfis, sync com dados e conflito; ultrawide vazio; 4K desktop e preset TV. Nenhum adapter,
+domínio, schema ou contrato de payload foi alterado nesta sessão.
+
+## 2026-07-18 — Sessão 13: ícones modernos no rail portátil e verdade operacional
+
+**Rail do Steam Deck:** as iniciais textuais da navegação compacta foram substituídas por
+seis glifos vetoriais distintos para Visão geral, Emuladores, Steam, Perfis, Saves e Sync
+e Sistema. Seleção, foco, contraste, tooltip e nomes acessíveis continuam preservados; os
+alvos permanecem com no mínimo 48 px. O footer compacto passou a respeitar tipografia de
+12 px e o navegador semântico aplica a mesma métrica mínima a todos os controles.
+
+**Verdade operacional:** a QML não fabrica mais Dolphin, DuckStation, RetroArch, Steam,
+perfil ou prontidão enquanto o read model não chegou. Estado ausente ou malformado produz
+coleções vazias, doctor `unverified` e ambiente não pronto. Fixtures sintéticas continuam
+restritas aos testes e às capturas, sem alterar adapters, domínio ou contratos de payload.
+
+**Acessibilidade acionável:** o rail expõe preferências visuais com retorno de foco para
+alto contraste, redução de movimento e escala de interface entre 100% e 150%. As opções
+são estritamente apresentacionais e não disparam nem simulam mudanças operacionais.
+
+**QA (`verified-dev`):** os goldens do Deck para overview, lista com dados e empty state
+foram atualizados, e uma captura dedicada documenta os ícones do rail em 1280×800.
+`qmllint` passou; Qt Quick Test terminou com **17 passed**, incluindo cobertura dos seis
+glifos, preferências visuais, ausência de fallback operacional e métricas portáteis; `make check` passou com
+**367 testes**, format/lint/boundaries/independence/mypy verdes. O smoke Qt 6 offscreen
+permaneceu ativo até o timeout esperado, sem diagnóstico de runtime.
