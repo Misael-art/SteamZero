@@ -6,27 +6,143 @@
   "shortName": "SNES",
   "iconKey": "input-gaming",
   "artworkAsset": "../assets/snes.svg",
-  "systems": ["snes", "super-famicom"],
+  "systems": [
+    "snes",
+    "super-famicom"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca SNES ainda será composta.", "action": null},
-    {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "PAR, NTSC/PAL e slowdown pertencem ao track R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível; Super Scope e mouse permanecem no R6.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork será composto no A7/A12.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca SNES ainda será composta.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e timing",
+      "state": "planned",
+      "detail": "PAR, NTSC/PAL e slowdown pertencem ao track R.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil base reversível; Super Scope e mouse permanecem no R6.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork será composto no A7/A12.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "graphicsPerformance", "label": "Vídeo e timing", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e timing",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
-  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
-  "media": {"extensions": ["sfc", "smc", "fig", "zip"], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["standard-gamepad"], "maxPlayers": 5, "specialized": ["superscope", "mouse"]},
-  "timing": {"standards": ["ntsc", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "emulators": [
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 1,
+      "role": "multi-system",
+      "launch": {
+        "core": "snes9x",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "sfc",
+      "smc",
+      "fig",
+      "zip"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ]
+  },
+  "controls": {
+    "profiles": [
+      "standard-gamepad"
+    ],
+    "maxPlayers": 5,
+    "specialized": [
+      "superscope",
+      "mouse"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez sem alterar timing."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída histórica por região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Nitidez sem alterar timing."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in."
+    }
   ],
   "cloud": null
 }

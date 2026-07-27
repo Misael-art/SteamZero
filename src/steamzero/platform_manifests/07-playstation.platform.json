@@ -6,32 +6,172 @@
   "shortName": "PlayStation",
   "iconKey": "media-optical",
   "artworkAsset": "../assets/playstation.svg",
-  "systems": ["psx"],
+  "systems": [
+    "psx"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Biblioteca PlayStation ainda será composta.", "action": null},
-    {"id": "requirements", "label": "BIOS", "state": "planned", "detail": "BIOS do usuário será verificada por hash sem expor conteúdo.", "action": null},
-    {"id": "graphics", "label": "Vídeo e melhorias 3D", "state": "planned", "detail": "PAR, CRT e melhorias 3D pertencem ao track R.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfis Digital e DualShock reversíveis; acessórios permanecem no R6.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Artwork e multidisco serão compostos no A7/A12.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Biblioteca PlayStation ainda será composta.",
+      "action": null
+    },
+    {
+      "id": "requirements",
+      "label": "BIOS",
+      "state": "planned",
+      "detail": "BIOS do usuário será verificada por hash sem expor conteúdo.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e melhorias 3D",
+      "state": "planned",
+      "detail": "PAR, CRT e melhorias 3D pertencem ao track R.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfis Digital e DualShock reversíveis; acessórios permanecem no R6.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Artwork e multidisco serão compostos no A7/A12.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "keysFirmware", "label": "BIOS", "iconKey": "key", "capabilityId": "requirements"},
-    {"id": "graphicsPerformance", "label": "Vídeo e melhorias 3D", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "keysFirmware",
+      "label": "BIOS",
+      "iconKey": "key",
+      "capabilityId": "requirements"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e melhorias 3D",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
   "emulators": [
-    {"id": "duckstation", "name": "DuckStation", "adapterId": "duckstation", "precedence": 1, "role": "primary"},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+    {
+      "id": "duckstation",
+      "name": "DuckStation",
+      "adapterId": "duckstation",
+      "precedence": 1,
+      "role": "primary"
+    },
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 2,
+      "role": "fallback",
+      "launch": {
+        "core": "swanstation",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ],
+        "requiresBios": [
+          "scph5500.bin",
+          "scph5501.bin",
+          "scph5502.bin"
+        ]
+      }
+    }
   ],
-  "media": {"extensions": ["cue", "bin", "chd", "m3u", "pbp"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["psx-digital", "dualshock"], "maxPlayers": 8, "specialized": ["negcon", "mouse", "light-gun"]},
-  "timing": {"standards": ["ntsc-u", "ntsc-j", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "media": {
+    "extensions": [
+      "cue",
+      "bin",
+      "chd",
+      "m3u",
+      "pbp"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon",
+      "video"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ]
+  },
+  "controls": {
+    "profiles": [
+      "psx-digital",
+      "dualshock"
+    ],
+    "maxPlayers": 8,
+    "specialized": [
+      "negcon",
+      "mouse",
+      "light-gun"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc-u",
+      "ntsc-j",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por região."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez e estabilidade conservadoras."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos 3D opt-in e identificados."}
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída histórica por região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Nitidez e estabilidade conservadoras."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos 3D opt-in e identificados."
+    }
   ],
   "cloud": null
 }

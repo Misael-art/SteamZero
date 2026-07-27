@@ -6,27 +6,172 @@
   "shortName": "Atari clássicos",
   "iconKey": "input-gaming",
   "artworkAsset": "../assets/retroarch.svg",
-  "systems": ["atari2600", "atari5200", "atari7800", "atarilynx", "jaguar", "atarijaguar"],
+  "systems": [
+    "atari2600",
+    "atari5200",
+    "atari7800",
+    "atarilynx",
+    "jaguar",
+    "atarijaguar"
+  ],
   "capabilities": [
-    {"id": "overview", "label": "Visão geral", "state": "planned", "detail": "Família Atari composta pelo scanner declarativo.", "action": null},
-    {"id": "graphics", "label": "Vídeo e timing", "state": "planned", "detail": "Região e saída histórica permanecem configuráveis no RetroArch.", "action": null},
-    {"id": "controls", "label": "Controles", "state": "ready", "detail": "Perfil base reversível e periféricos históricos declarados.", "action": {"id": "controls.profile.activate", "label": "Selecionar perfil", "requiresConfirmation": true}},
-    {"id": "media", "label": "Mídia", "state": "planned", "detail": "Formatos das cinco famílias são declarados sem promover extensões ambíguas.", "action": null}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "state": "planned",
+      "detail": "Família Atari composta pelo scanner declarativo.",
+      "action": null
+    },
+    {
+      "id": "graphics",
+      "label": "Vídeo e timing",
+      "state": "planned",
+      "detail": "Região e saída histórica permanecem configuráveis no RetroArch.",
+      "action": null
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "state": "ready",
+      "detail": "Perfil base reversível e periféricos históricos declarados.",
+      "action": {
+        "id": "controls.profile.activate",
+        "label": "Selecionar perfil",
+        "requiresConfirmation": true
+      }
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "state": "planned",
+      "detail": "Formatos das cinco famílias são declarados sem promover extensões ambíguas.",
+      "action": null
+    }
   ],
   "areas": [
-    {"id": "overview", "label": "Visão geral", "iconKey": "dashboard", "capabilityId": "overview"},
-    {"id": "graphicsPerformance", "label": "Vídeo e timing", "iconKey": "video-display", "capabilityId": "graphics"},
-    {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
-    {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
+    {
+      "id": "overview",
+      "label": "Visão geral",
+      "iconKey": "dashboard",
+      "capabilityId": "overview"
+    },
+    {
+      "id": "graphicsPerformance",
+      "label": "Vídeo e timing",
+      "iconKey": "video-display",
+      "capabilityId": "graphics"
+    },
+    {
+      "id": "controls",
+      "label": "Controles",
+      "iconKey": "gamepad",
+      "capabilityId": "controls"
+    },
+    {
+      "id": "media",
+      "label": "Mídia",
+      "iconKey": "image",
+      "capabilityId": "media"
+    }
   ],
-  "emulators": [{"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 1, "role": "multi-system"}],
-  "media": {"extensions": ["a26", "a52", "atr", "atx", "car", "cas", "cdm", "com", "xex", "xfd", "a78", "lnx", "lyx", "o", "abs", "bigpimg", "cdi", "cof", "cue", "j64", "jag", "prg", "rom", "bin", "7z", "zip"], "artworkKinds": ["cover", "background", "logo", "icon"], "providers": ["screenscraper", "steamgriddb"]},
-  "controls": {"profiles": ["retroarch-classic-gamepad"], "maxPlayers": 4, "specialized": ["joystick", "paddle", "trackball", "light-gun", "keypad"]},
-  "timing": {"standards": ["ntsc", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
+  "emulators": [
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "adapterId": "retroarch",
+      "precedence": 1,
+      "role": "multi-system",
+      "launch": {
+        "core": "stella",
+        "openArgs": [],
+        "gameArgs": [
+          "-L",
+          "{core}",
+          "{rom}"
+        ]
+      }
+    }
+  ],
+  "media": {
+    "extensions": [
+      "a26",
+      "a52",
+      "atr",
+      "atx",
+      "car",
+      "cas",
+      "cdm",
+      "com",
+      "xex",
+      "xfd",
+      "a78",
+      "lnx",
+      "lyx",
+      "o",
+      "abs",
+      "bigpimg",
+      "cdi",
+      "cof",
+      "cue",
+      "j64",
+      "jag",
+      "prg",
+      "rom",
+      "bin",
+      "7z",
+      "zip"
+    ],
+    "artworkKinds": [
+      "cover",
+      "background",
+      "logo",
+      "icon"
+    ],
+    "providers": [
+      "screenscraper",
+      "steamgriddb"
+    ]
+  },
+  "controls": {
+    "profiles": [
+      "retroarch-classic-gamepad"
+    ],
+    "maxPlayers": 4,
+    "specialized": [
+      "joystick",
+      "paddle",
+      "trackball",
+      "light-gun",
+      "keypad"
+    ]
+  },
+  "timing": {
+    "standards": [
+      "ntsc",
+      "pal"
+    ],
+    "defaultStandard": null,
+    "unknownFallback": "unknown-explicit"
+  },
   "presets": [
-    {"id": "como-era", "label": "Como era", "state": "planned", "detail": "Saída histórica por sistema e região."},
-    {"id": "equilibrado", "label": "Equilibrado", "state": "planned", "detail": "Nitidez sem alterar timing."},
-    {"id": "melhorado", "label": "Melhorado", "state": "planned", "detail": "Aprimoramentos opt-in."}
+    {
+      "id": "como-era",
+      "label": "Como era",
+      "state": "planned",
+      "detail": "Saída histórica por sistema e região."
+    },
+    {
+      "id": "equilibrado",
+      "label": "Equilibrado",
+      "state": "planned",
+      "detail": "Nitidez sem alterar timing."
+    },
+    {
+      "id": "melhorado",
+      "label": "Melhorado",
+      "state": "planned",
+      "detail": "Aprimoramentos opt-in."
+    }
   ],
   "cloud": null
 }
