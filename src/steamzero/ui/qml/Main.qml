@@ -31,10 +31,14 @@ ApplicationWindow {
     // Bridge de tema: lê do dashboard JSON se disponível, fallback para tokens
     // embutidos. Tema e alto contraste coexist: highContrast sobrepõe o tema
     // tanto no backend (apply_accessibility) quanto no fallback inline.
+    // Quando não há tema, a acessibilidade é lida do dashboard.accessibility.
     readonly property var _themeBridge: ThemeBridge {
         _source: desktopStatus.dashboard
             && desktopStatus.dashboard.theme
             ? desktopStatus.dashboard.theme : null
+        _fallbackAccessibility: desktopStatus.dashboard
+            && desktopStatus.dashboard.accessibility
+            ? desktopStatus.dashboard.accessibility : null
     }
 
     readonly property color backgroundColor: _themeBridge.background

@@ -8,10 +8,6 @@ QtObject {
         ? resolved.themeId : "org.steamzero.default"
     readonly property string themeVersion: resolved
         ? resolved.themeVersion : "1.0.0"
-    readonly property bool highContrast: resolved
-        ? resolved.highContrast : false
-    readonly property bool reducedMotion: resolved
-        ? resolved.reducedMotion : false
 
     // Tokens do tema resolvido
     readonly property var tokens: resolved
@@ -20,22 +16,33 @@ QtObject {
     // Expõe se há um tema carregado (não só fallback)
     readonly property bool active: resolved !== null
 
-    // Cores
-    readonly property color background: _get("color", "background", "#071019")
-    readonly property color sidebar: _get("color", "sidebar", "#09131d")
-    readonly property color surface: _get("color", "surface", "#0d1924")
-    readonly property color surfaceRaised: _get("color", "surfaceRaised", "#122131")
-    readonly property color surfaceSelected: _get("color", "surfaceSelected", "#1a2b3c")
-    readonly property color border: _get("color", "border", "#2a3a49")
-    readonly property color text: _get("color", "text", "#f2f6fb")
-    readonly property color textMuted: _get("color", "textMuted", "#9eabba")
-    readonly property color textDisabled: _get("color", "textDisabled", "#667481")
-    readonly property color accent: _get("color", "accent", "#13bdf2")
-    readonly property color accentStrong: _get("color", "accentStrong", "#0a5f85")
-    readonly property color success: _get("color", "success", "#59d35d")
-    readonly property color warning: _get("color", "warning", "#ff9f1a")
-    readonly property color danger: _get("color", "danger", "#ff6b73")
-    readonly property color focus: _get("color", "focus", "#13bdf2")
+    // Fallback de acessibilidade quando não há tema ativo
+    property var _fallbackAccessibility: null  // atualizado pelo binding em Main.qml
+
+    // Alto contraste e movimento reduzido: prioriza tema, fallback para accessibility
+    readonly property bool highContrast: resolved
+        ? resolved.highContrast
+        : _fallbackAccessibility && _fallbackAccessibility.highContrast === true
+    readonly property bool reducedMotion: resolved
+        ? resolved.reducedMotion
+        : _fallbackAccessibility && _fallbackAccessibility.reducedMotion === true
+
+    // Cores — alto contraste sobrepõe quando ativo
+    readonly property color background: highContrast ? "#000000" : _get("color", "background", "#071019")
+    readonly property color sidebar: highContrast ? "#000000" : _get("color", "sidebar", "#09131d")
+    readonly property color surface: highContrast ? "#000000" : _get("color", "surface", "#0d1924")
+    readonly property color surfaceRaised: highContrast ? "#1a1a1a" : _get("color", "surfaceRaised", "#122131")
+    readonly property color surfaceSelected: highContrast ? "#2a2a2a" : _get("color", "surfaceSelected", "#1a2b3c")
+    readonly property color border: highContrast ? "#ffffff" : _get("color", "border", "#2a3a49")
+    readonly property color text: highContrast ? "#ffffff" : _get("color", "text", "#f2f6fb")
+    readonly property color textMuted: highContrast ? "#e8e8e8" : _get("color", "textMuted", "#9eabba")
+    readonly property color textDisabled: highContrast ? "#aaaaaa" : _get("color", "textDisabled", "#667481")
+    readonly property color accent: highContrast ? "#00e5ff" : _get("color", "accent", "#13bdf2")
+    readonly property color accentStrong: highContrast ? "#003d4d" : _get("color", "accentStrong", "#0a5f85")
+    readonly property color success: highContrast ? "#5eff62" : _get("color", "success", "#59d35d")
+    readonly property color warning: highContrast ? "#ffc400" : _get("color", "warning", "#ff9f1a")
+    readonly property color danger: highContrast ? "#ff8a90" : _get("color", "danger", "#ff6b73")
+    readonly property color focus: highContrast ? "#00e5ff" : _get("color", "focus", "#13bdf2")
 
     // Geometria
     readonly property int radiusSmall: _get("geometry", "radiusSmall", 6)
@@ -61,7 +68,7 @@ QtObject {
 
     // --- Internals ---------------------------------------------------------
 
-    property var _source: null   // define pelo binding em Main.qml
+    property var _source: null   // atualizado pelo binding em Main.qml
 
     readonly property var resolved: _source && _source.resolved
         ? _source.resolved : null

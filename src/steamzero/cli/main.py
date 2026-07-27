@@ -88,6 +88,11 @@ Domínios (Fase 1):
   controls plan          revisa seleção de perfil (--platform ID --profile ID)
   controls apply         aplica plano confirmado (--plan-id ID --confirm TOKEN)
   controls rollback      desfaz seleção (--operation-id ID)
+  theme list             lista temas disponíveis (builtin + usuário)
+  theme status           mostra tema ativo e tokens resolvidos
+  theme plan             planeja ativação de tema (--theme-id ID)
+  theme apply            aplica plano de tema (--plan-id ID --confirm TOKEN)
+  theme rollback         reverte ativação de tema (--operation-id ID)
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -1229,6 +1234,94 @@ def _run_follow(domain: str, args: list[str], *, json_out: bool) -> int:
     return EXIT_OK
 
 
+def _theme_catalog_mgr() -> Any:
+    from steamzero.adapters.theme_catalog import ThemeCatalog
+
+    return ThemeCatalog()
+
+
+def _theme_pref_mgr() -> Any:
+    from steamzero.domain.theme_preferences import ThemePreferenceManager
+
+    return ThemePreferenceManager()
+
+
+def _cmd_theme_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    data = _theme_catalog_mgr().list_catalog()
+    return (
+        build_envelope("theme", "list", status="ok",
+                       data={"themes": data}, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_status(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    pref = _theme_pref_mgr()._read_preference()
+    active_id = str(pref.get("themeId")) if pref else "org.steamzero.default"
+    try:
+        resolved = _theme_catalog_mgr().resolve(active_id)
+        tokens = resolved.to_dict()
+    except Exception:
+        tokens = None
+    data = {
+        "activeId": active_id,
+        "activeVersion": str(pref.get("themeVersion", "")) if pref else "",
+        "resolved": tokens,
+    }
+    return (
+        build_envelope("theme", "status", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    theme_id = _required_flag(args, "--theme-id")
+    mgr = _theme_pref_mgr()
+    previous = mgr._read_preference()
+    version = "1.0.0"
+    for entry in _theme_catalog_mgr().list_catalog():
+        if entry["id"] == theme_id and entry["compatible"]:
+            version = entry["version"]
+            break
+    else:
+        raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"tema {theme_id} não encontrado")
+    plan = mgr.plan_activate(theme_id, version, previous=previous)
+    data = {
+        "planId": plan.plan_id,
+        "confirmToken": plan.confirm_token,
+        "kind": plan.kind,
+        "preview": plan.preview,
+        "rollbackGuarantee": plan.rollback_guarantee,
+    }
+    return (
+        build_envelope("theme", "plan", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    result = _theme_pref_mgr().apply(plan_id, confirm_token)
+    data = {"status": result.status, "operationId": result.operation_id}
+    return (
+        build_envelope("theme", "apply", status=result.status,
+                       data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_theme_rollback(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    operation_id = _required_flag(args, "--operation-id")
+    result = _theme_pref_mgr().rollback(operation_id)
+    data = {"status": result.status, "operationId": result.operation_id}
+    return (
+        build_envelope("theme", "rollback", status=result.status,
+                       data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
 #: Allowlist de ações. Chave (domínio, ação|None).
 HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
@@ -1275,6 +1368,11 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("controls", "plan"): _cmd_controls_plan,
     ("controls", "apply"): _cmd_controls_apply,
     ("controls", "rollback"): _cmd_controls_rollback,
+    ("theme", "list"): _cmd_theme_list,
+    ("theme", "status"): _cmd_theme_status,
+    ("theme", "plan"): _cmd_theme_plan,
+    ("theme", "apply"): _cmd_theme_apply,
+    ("theme", "rollback"): _cmd_theme_rollback,
 }
 
 
