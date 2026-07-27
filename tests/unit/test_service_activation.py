@@ -186,3 +186,42 @@ class TestOnlyManagedUnitsAreTouched:
             assert call[0] == "systemctl"
             assert "--user" in call
             assert "sudo" not in call and "bigsudo" not in call
+
+
+class TestInstallerDeclaresPendingRefresh:
+    """O instalador não reinicia — mas precisa DIZER que não reiniciou.
+
+    Foi o silêncio que produziu a a37: `current` passou a apontar para a release
+    nova e o daemon seguiu na anterior, sem nada avisar.
+    """
+
+    def _installer(self):  # type: ignore[no-untyped-def]
+        import sys
+        from pathlib import Path as _Path
+
+        sys.path.insert(0, str(_Path(__file__).resolve().parents[2] / "tools"))
+        import install_host
+
+        return install_host
+
+    def test_notice_marks_refresh_as_pending(self) -> None:
+        installer = self._installer()
+        result = installer._activation_notice({"packageVersion": "0.1.0a37"})
+        assert result["daemonRefresh"]["state"] == "pending"
+
+    def test_notice_names_the_command_to_run(self) -> None:
+        installer = self._installer()
+        result = installer._activation_notice({})
+        assert result["daemonRefresh"]["command"] == "steamzero service refresh"
+
+    def test_notice_preserves_the_manifest(self) -> None:
+        installer = self._installer()
+        manifest = {"packageVersion": "0.1.0a37", "sourceCommit": "a" * 40}
+        result = installer._activation_notice(manifest)
+        for key, value in manifest.items():
+            assert result[key] == value
+
+    def test_detail_explains_the_consequence(self) -> None:
+        installer = self._installer()
+        detail = installer._activation_notice({})["daemonRefresh"]["detail"]
+        assert "geração anterior" in detail

@@ -1002,23 +1002,50 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+PENDING_REFRESH_NOTICE = (
+    "release publicada, mas o serviço em segundo plano ainda executa a geração "
+    "anterior; execute 'steamzero service refresh' na sessão do usuário para que "
+    "ele passe a usar esta versão"
+)
+
+
+def _activation_notice(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Declara explicitamente que a publicação NÃO reiniciou o daemon.
+
+    O instalador roda como root e as units são de escopo de usuário, válidas para
+    todos os usuários da máquina: ele não sabe qual sessão reiniciar. Declarar o
+    estado é o que impede o silêncio que produziu a a37, em que ``current``
+    apontava para a release nova e o daemon seguia na anterior sem nada avisar.
+    """
+    return {
+        **manifest,
+        "daemonRefresh": {
+            "state": "pending",
+            "command": "steamzero service refresh",
+            "detail": PENDING_REFRESH_NOTICE,
+        },
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         _require_root()
         layout = Layout()
         if args.action == "install":
-            result = install(
-                layout,
-                release=args.release,
-                wheel=args.wheel,
-                wheel_sha256=args.wheel_sha256,
-                requirements=args.requirements,
-                wheelhouse=args.wheelhouse,
-                source_commit=args.source_commit,
+            result = _activation_notice(
+                install(
+                    layout,
+                    release=args.release,
+                    wheel=args.wheel,
+                    wheel_sha256=args.wheel_sha256,
+                    requirements=args.requirements,
+                    wheelhouse=args.wheelhouse,
+                    source_commit=args.source_commit,
+                )
             )
         elif args.action == "rollback":
-            result = rollback(layout, args.release)
+            result = _activation_notice(rollback(layout, args.release))
         else:
             result = status(layout)
     except Exception as exc:
