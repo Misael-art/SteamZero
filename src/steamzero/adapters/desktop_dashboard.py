@@ -29,6 +29,7 @@ from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
+from steamzero.adapters.theme_catalog import ThemeCatalog
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
 from steamzero.core.state import StateStore
@@ -37,6 +38,7 @@ from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
+from steamzero.domain.theme_preferences import ThemePreferenceManager
 from steamzero.ports import CaptureConsent
 
 Spawn = Callable[[Sequence[str]], None]
@@ -295,6 +297,8 @@ class DesktopDashboard:
         self._playtime = playtime or PlaytimeCatalog(store_factory)
         self._collections = collections or CollectionManager()
         self._cast = cast_orchestrator
+        self._theme_catalog = ThemeCatalog()
+        self._theme_prefs = ThemePreferenceManager()
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
@@ -540,8 +544,20 @@ class DesktopDashboard:
                 "detail": str(exc)[:240],
             }
 
+        try:
+            theme = self._theme_state()
+        except Exception:
+            theme = {
+                "activeId": "org.steamzero.default",
+                "activeName": "Padrão",
+                "available": [],
+                "state": "degraded",
+                "detail": "Catálogo de temas temporariamente indisponível.",
+            }
+
         return {
             "uiContracts": handheld_ui_contracts(),
+            "theme": theme,
             "accessibility": {
                 "reducedMotion": reduced_motion,
                 "highContrast": high_contrast,
@@ -1054,6 +1070,65 @@ class DesktopDashboard:
             "blockedReason": "Verifique o runtime Flatpak antes de continuar.",
             "action": {"kind": "detail", "label": "Ver detalhes", "enabled": True},
         }
+
+    def _theme_state(self) -> dict[str, Any]:
+        catalog = self._theme_catalog.list_catalog()
+        preference = self._theme_prefs._read_preference()
+        active_id = (
+            preference.get("themeId") if preference else "org.steamzero.default"
+        )
+        active_name = active_id
+        for entry in catalog:
+            if entry["id"] == active_id and entry["state"] == "available":
+                active_name = entry["name"]
+                break
+        available = [
+            {"id": e["id"], "name": e["name"], "version": e["version"],
+             "author": e["author"], "origin": e["origin"],
+             "state": e["state"], "compatible": e["compatible"],
+             "active": e["id"] == active_id}
+            for e in catalog
+        ]
+        return {
+            "activeId": active_id,
+            "activeName": active_name,
+            "available": available,
+            "state": "ready",
+            "detail": None,
+        }
+
+    def theme_list(self) -> list[dict[str, Any]]:
+        return self._theme_catalog.list_catalog()
+
+    def plan_theme_apply(self, theme_id: str) -> dict[str, Any]:
+        previous = self._theme_prefs._read_preference()
+        version = "1.0.0"
+        for entry in self._theme_catalog.list_catalog():
+            if entry["id"] == theme_id and entry["compatible"]:
+                version = entry["version"]
+                break
+        else:
+            raise SteamZeroError(
+                "E-THEME-NOT-FOUND",
+                detail=f"tema {theme_id} não encontrado ou incompatível",
+            )
+        plan = self._theme_prefs.plan_activate(theme_id, version, previous=previous)
+        return {
+            "planId": plan.plan_id,
+            "confirmToken": plan.confirm_token,
+            "preview": plan.preview,
+            "rollbackGuarantee": plan.rollback_guarantee,
+        }
+
+    @staticmethod
+    def apply_theme_preference(plan_id: str, confirm_token: str) -> dict[str, Any]:
+        result = ThemePreferenceManager().apply(plan_id, confirm_token)
+        return {"status": result.status, "operationId": result.operation_id}
+
+    @staticmethod
+    def rollback_theme(operation_id: str) -> dict[str, Any]:
+        result = ThemePreferenceManager().rollback(operation_id)
+        return {"status": result.status, "operationId": result.operation_id}
 
     @staticmethod
     def _conflicts(desktop_status: dict[str, Any]) -> list[str]:
