@@ -2,8 +2,24 @@
   "schemaVersion": 1,
   "id": "retroarch",
   "kind": "emulator",
-  "platforms": ["multi"],
-  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
+  "presentation": {
+    "displayName": "RetroArch",
+    "iconAsset": "../assets/retroarch.svg"
+  },
+  "platforms": [
+    "multi"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
   "sources": [
     {
       "type": "flatpak",
@@ -13,10 +29,20 @@
       "priority": 1
     }
   ],
-  "paths": {"config": "{XDG_CONFIG_HOME}/retroarch/retroarch.cfg"},
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/retroarch/retroarch.cfg"
+  },
   "configFormat": "ini",
-  "verify": {"smokeTest": ["--version"]},
-  "compat": ["steamos", "bazzite", "linux"],
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
   "license": "GPL-3.0-only",
   "upstream": "https://github.com/libretro/RetroArch"
 }

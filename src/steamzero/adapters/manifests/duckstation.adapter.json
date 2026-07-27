@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "id": "duckstation",
   "kind": "emulator",
-  "platforms": ["psx"],
-  "capabilities": ["detect", "status", "install", "update", "verify"],
+  "presentation": {
+    "displayName": "DuckStation",
+    "iconAsset": "../assets/duckstation.svg"
+  },
+  "platforms": [
+    "psx"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "verify"
+  ],
   "sources": [
     {
       "type": "flatpak",
@@ -14,10 +26,20 @@
       "endOfLife": true
     }
   ],
-  "paths": {"config": "{XDG_CONFIG_HOME}/duckstation/settings.ini"},
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/duckstation/settings.ini"
+  },
   "configFormat": "ini",
-  "verify": {"smokeTest": ["--version"]},
-  "compat": ["steamos", "bazzite", "linux"],
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
   "license": "CC-BY-NC-ND-4.0",
   "upstream": "https://github.com/stenzek/duckstation",
   "notes": "O ref Flathub está marcado end-of-life desde 2025-08-13; não promover sem nova fonte validada."

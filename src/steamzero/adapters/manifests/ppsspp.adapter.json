@@ -2,13 +2,47 @@
   "schemaVersion": 1,
   "id": "ppsspp",
   "kind": "emulator",
-  "platforms": ["playstation-portable"],
-  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
-  "sources": [{"type": "flatpak", "ref": "org.ppsspp.PPSSPP", "remote": "flathub", "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3", "priority": 1}],
-  "paths": {"config": "{XDG_CONFIG_HOME}/ppsspp/PSP/SYSTEM/ppsspp.ini"},
+  "presentation": {
+    "displayName": "PPSSPP",
+    "iconAsset": "../assets/playstation-portable.svg"
+  },
+  "platforms": [
+    "playstation-portable"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "org.ppsspp.PPSSPP",
+      "remote": "flathub",
+      "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3",
+      "priority": 1
+    }
+  ],
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/ppsspp/PSP/SYSTEM/ppsspp.ini"
+  },
   "configFormat": "ini",
-  "verify": {"smokeTest": ["--version"]},
-  "compat": ["steamos", "bazzite", "linux"],
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
   "license": "GPL-2.0-or-later",
   "upstream": "https://github.com/hrydgard/ppsspp",
   "notes": "Fonte Flathub fixada no commit correspondente à versão 1.20.4."

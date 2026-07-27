@@ -101,24 +101,60 @@ class TestManifestReferences:
         assert len(sharing) > 1, "retroarch deveria servir mais de uma plataforma"
 
 
-class TestEmulatorPresentationAssets:
-    def test_presentation_icons_are_packaged(self) -> None:
-        from steamzero.adapters.emulation import _EMULATOR_PRESENTATION
+class TestAdapterPresentationAssets:
+    """Apresentação vem do manifesto e precisa apontar para asset empacotado.
 
+    Antes esta checagem só alcançava os três emuladores do dict hardcoded. Agora
+    cobre os 16 adapters declarados, que é o ponto de mover apresentação para o
+    contrato: um adapter novo não pode entrar sem nome e sem ícone.
+    """
+
+    def _manifests(self):  # type: ignore[no-untyped-def]
+        from steamzero.adapters.registry import AdapterRegistry
+
+        return AdapterRegistry.bundled().list()
+
+    def test_every_adapter_declares_presentation(self) -> None:
+        missing = [m.id for m in self._manifests() if m.presentation is None]
+        assert not missing, f"adapters sem apresentação declarada: {missing}"
+
+    def test_every_declared_icon_is_packaged(self) -> None:
         packaged = _packaged_assets()
-        for emulator_id, (_name, icon_asset) in _EMULATOR_PRESENTATION.items():
-            assert Path(icon_asset).name in packaged, (
-                f"ícone de {emulator_id} não está empacotado: {icon_asset}"
-            )
+        for manifest in self._manifests():
+            assert manifest.presentation is not None
+            icon = Path(manifest.presentation.icon_asset).name
+            assert icon in packaged, f"{manifest.id} cita asset ausente: {icon}"
 
-    def test_presentation_icons_are_allowlisted(self) -> None:
-        from steamzero.adapters.emulation import _EMULATOR_PRESENTATION
-
+    def test_every_declared_icon_is_allowlisted(self) -> None:
         allowed = set(_qml_allowlist())
-        for emulator_id, (_name, icon_asset) in _EMULATOR_PRESENTATION.items():
-            assert Path(icon_asset).name in allowed, (
-                f"ícone de {emulator_id} seria descartado pela allowlist: {icon_asset}"
+        for manifest in self._manifests():
+            assert manifest.presentation is not None
+            icon = Path(manifest.presentation.icon_asset).name
+            assert icon in allowed, f"{manifest.id} seria descartado pela allowlist: {icon}"
+
+    def test_display_names_are_not_raw_slugs(self) -> None:
+        """Vários produtos se chamam igual ao id ("Azahar", "Cemu"), então
+        exigir nome diferente seria errado. O que denuncia id cru colado é o
+        separador de slug sobrevivendo no nome: "xenia-canary" em vez de
+        "Xenia Canary".
+        """
+        for manifest in self._manifests():
+            assert manifest.presentation is not None
+            name = manifest.presentation.display_name
+            assert name.strip(), f"{manifest.id} sem nome"
+            assert "-" not in name and "_" not in name, (
+                f"{manifest.id} parece ter recebido o id cru como nome: {name}"
             )
+
+    def test_operational_emulators_resolve_through_the_contract(self) -> None:
+        """A função que a UI consome deriva do registry, não de dict paralelo."""
+        from steamzero.adapters.emulation import _emulator_presentation
+
+        rows = _emulator_presentation()
+        assert set(rows) == {"eden", "citron", "ryubing"}
+        for emulator_id, (name, icon) in rows.items():
+            assert name, f"{emulator_id} sem nome"
+            assert Path(icon).name in _packaged_assets()
 
 
 class TestAssetsAreReadable:
@@ -138,3 +174,32 @@ class TestAssetsAreReadable:
         """
         head = (_ASSETS_DIR / name).read_text(encoding="utf-8", errors="replace")[:512]
         assert "<svg" in head, f"{name} não declara elemento <svg>"
+
+
+class TestDisplayOrderIsDeclared:
+    """A ordem dos emuladores na central é contrato, não acidente.
+
+    Antes vinha da ordem de inserção de um dict literal. Ao derivar do registry,
+    viraria ordem alfabética e a UI mudaria sem ninguém decidir — um teste de
+    dashboard pegou isso ao afirmar que o primeiro emulador é o Eden.
+    """
+
+    def test_order_follows_the_declaration(self) -> None:
+        from steamzero.adapters.emulation import _MANAGED_EMULATORS, _emulator_presentation
+
+        assert list(_emulator_presentation()) == list(_MANAGED_EMULATORS)
+
+    def test_order_is_not_alphabetical_by_accident(self) -> None:
+        from steamzero.adapters.emulation import _emulator_presentation
+
+        rows = list(_emulator_presentation())
+        assert rows != sorted(rows), "se a ordem virar alfabética, foi o registry vazando para a UI"
+
+    def test_unknown_id_in_the_declaration_is_skipped_not_fatal(self) -> None:
+        """Declarar um id inexistente degrada, não derruba a central."""
+        from steamzero.adapters.emulation import _emulator_presentation
+        from steamzero.adapters.registry import AdapterRegistry
+
+        registry = AdapterRegistry.bundled()
+        rows = _emulator_presentation(registry)
+        assert set(rows) <= {m.id for m in registry.list()}

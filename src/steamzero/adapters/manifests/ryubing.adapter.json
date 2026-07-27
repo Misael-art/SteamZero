@@ -2,7 +2,13 @@
   "schemaVersion": 1,
   "id": "ryubing",
   "kind": "emulator",
-  "platforms": ["switch"],
+  "presentation": {
+    "displayName": "Ryubing",
+    "iconAsset": "../assets/ryubing.png"
+  },
+  "platforms": [
+    "switch"
+  ],
   "capabilities": [
     "detect",
     "status",
@@ -25,9 +31,18 @@
     }
   ],
   "configFormat": "json",
-  "verify": {"smokeTest": ["--appimage-version"]},
-  "requiresKeys": {"platform": "switch", "keyset": "prod"},
-  "requiresFirmware": {"platform": "switch"},
+  "verify": {
+    "smokeTest": [
+      "--appimage-version"
+    ]
+  },
+  "requiresKeys": {
+    "platform": "switch",
+    "keyset": "prod"
+  },
+  "requiresFirmware": {
+    "platform": "switch"
+  },
   "license": "MIT",
   "upstream": "https://git.ryujinx.app/projects/Ryubing",
   "notes": "AppImage estável oficial x86-64, fixado por versão e SHA-256."

@@ -1,9 +1,49 @@
 {
-  "schemaVersion": 1, "id": "flycast", "kind": "emulator", "platforms": ["dreamcast"],
-  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
-  "sources": [{"type": "flatpak", "ref": "org.flycast.Flycast", "remote": "flathub", "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc", "priority": 1}],
-  "paths": {"config": "{XDG_CONFIG_HOME}/flycast/emu.cfg"}, "configFormat": "ini",
-  "verify": {"smokeTest": ["--version"]}, "compat": ["steamos", "bazzite", "linux"],
-  "license": "GPL-2.0-only", "upstream": "https://github.com/flyinghead/flycast",
+  "schemaVersion": 1,
+  "id": "flycast",
+  "kind": "emulator",
+  "presentation": {
+    "displayName": "Flycast",
+    "iconAsset": "../assets/dreamcast.svg"
+  },
+  "platforms": [
+    "dreamcast"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "org.flycast.Flycast",
+      "remote": "flathub",
+      "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",
+      "priority": 1
+    }
+  ],
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/flycast/emu.cfg"
+  },
+  "configFormat": "ini",
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
+  "license": "GPL-2.0-only",
+  "upstream": "https://github.com/flyinghead/flycast",
   "notes": "Fonte Flathub fixada no commit correspondente à versão v2.6."
 }

@@ -2,7 +2,13 @@
   "schemaVersion": 1,
   "id": "eden",
   "kind": "emulator",
-  "platforms": ["switch"],
+  "presentation": {
+    "displayName": "Eden",
+    "iconAsset": "../assets/eden.svg"
+  },
+  "platforms": [
+    "switch"
+  ],
   "capabilities": [
     "detect",
     "status",
@@ -25,9 +31,18 @@
     }
   ],
   "configFormat": "ini",
-  "verify": {"smokeTest": ["--appimage-version"]},
-  "requiresKeys": {"platform": "switch", "keyset": "prod"},
-  "requiresFirmware": {"platform": "switch"},
+  "verify": {
+    "smokeTest": [
+      "--appimage-version"
+    ]
+  },
+  "requiresKeys": {
+    "platform": "switch",
+    "keyset": "prod"
+  },
+  "requiresFirmware": {
+    "platform": "switch"
+  },
   "license": "GPL-3.0-or-later",
   "upstream": "https://git.eden-emu.dev/eden-emu/eden",
   "notes": "AppImage oficial otimizado para Steam Deck, fixado por SHA-256."

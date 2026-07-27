@@ -124,13 +124,43 @@ class SessionSecretStore:
         return True
 
 
-_MANAGED_EMULATORS = frozenset({"eden", "citron", "ryubing"})
+#: Emuladores com lifecycle operacional COMPLETO hoje: instalação transacional
+#: por AppImage, projeção de keys/firmware e launch verificado. Não é a lista do
+#: que existe — o registry declara 16 adapters — é a lista do que já funciona de
+#: ponta a ponta. Habilitar um id aqui sem o lifecycle correspondente produz
+#: exatamente a ação que termina em stub, proibida por AGENTS.md.
+#:
+#: N5 e N6 movem os demais para cá conforme cada lifecycle fica real.
+#: A ORDEM é a de exibição na central. Era acidental antes — vinha da ordem de
+#: inserção de um dict literal — e passar a derivar do registry a teria trocado
+#: por ordem alfabética, mudando a UI sem intenção. Declarada aqui, é decisão.
+_MANAGED_EMULATORS: tuple[str, ...] = ("eden", "citron", "ryubing")
 
-_EMULATOR_PRESENTATION = {
-    "eden": ("Eden", "../assets/eden.svg"),
-    "citron": ("Citron", "../assets/citron.svg"),
-    "ryubing": ("Ryubing", "../assets/ryubing.png"),
-}
+
+def _emulator_presentation(
+    registry: AdapterRegistry | None = None,
+) -> dict[str, tuple[str, str]]:
+    """Nome e ícone de cada emulador operacional, lidos do CONTRATO.
+
+    Antes isto era um dict Python paralelo ao manifesto, o que fazia dele uma
+    allowlist implícita: um adapter declarado mas ausente do dict apareceria sem
+    nome e sem ícone, sem nada falhar. Agora a fonte é
+    ``AdapterManifest.presentation``, versionada em ``adapter-v1.schema.json`` e
+    verificada contra a allowlist de assets empacotados.
+    """
+    source = registry or AdapterRegistry.bundled()
+    by_id = {manifest.id: manifest for manifest in source.list()}
+    rows: dict[str, tuple[str, str]] = {}
+    # Percorre na ordem declarada, não na do registry: a ordem é contrato de UI.
+    for emulator_id in _MANAGED_EMULATORS:
+        manifest = by_id.get(emulator_id)
+        if manifest is None or manifest.presentation is None:
+            continue
+        rows[emulator_id] = (
+            manifest.presentation.display_name,
+            manifest.presentation.icon_asset,
+        )
+    return rows
 
 
 def _resolve_primary_emulator(
@@ -2264,7 +2294,7 @@ class EmulationController:
         with self._store_factory() as store:
             store.migrate()
             engine = AdapterEngine(store, registry, self._artifacts)
-            for emulator_id, (name, icon_asset) in _EMULATOR_PRESENTATION.items():
+            for emulator_id, (name, icon_asset) in _emulator_presentation(registry).items():
                 manifest = registry.get(emulator_id)
                 status = engine.status(emulator_id)
                 source = manifest.preferred_source("appimage", allow_eol=False)

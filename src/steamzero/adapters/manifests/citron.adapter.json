@@ -2,7 +2,13 @@
   "schemaVersion": 1,
   "id": "citron",
   "kind": "emulator",
-  "platforms": ["switch"],
+  "presentation": {
+    "displayName": "Citron",
+    "iconAsset": "../assets/citron.svg"
+  },
+  "platforms": [
+    "switch"
+  ],
   "capabilities": [
     "detect",
     "status",
@@ -25,9 +31,18 @@
     }
   ],
   "configFormat": "ini",
-  "verify": {"smokeTest": ["--appimage-version"]},
-  "requiresKeys": {"platform": "switch", "keyset": "prod"},
-  "requiresFirmware": {"platform": "switch"},
+  "verify": {
+    "smokeTest": [
+      "--appimage-version"
+    ]
+  },
+  "requiresKeys": {
+    "platform": "switch",
+    "keyset": "prod"
+  },
+  "requiresFirmware": {
+    "platform": "switch"
+  },
   "license": "GPL-3.0-or-later",
   "upstream": "https://github.com/citron-neo/emulator",
   "notes": "AppImage x86_64 publicado em release verificado e fixado por SHA-256."

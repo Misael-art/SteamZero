@@ -35,6 +35,48 @@ adapters/emulators/duckstation/
 }
 ```
 
+## Apresentação declarada
+
+Nome e ícone de cada adapter vivem no próprio manifesto, no bloco
+`presentation`, versionado por `adapter-v1.schema.json`:
+
+```json
+"presentation": {
+  "displayName": "Xenia Canary",
+  "iconAsset": "../assets/xbox-360.svg"
+}
+```
+
+Antes isso era um dicionário Python (`_EMULATOR_PRESENTATION`) paralelo ao
+contrato, e essa duplicação tinha uma consequência silenciosa: um adapter
+declarado em manifesto mas ausente do dicionário apareceria **sem nome e sem
+ícone**, sem que nada falhasse. Apresentação hardcoded é allowlist implícita.
+
+Regras:
+
+- `iconAsset` precisa apontar para um asset **empacotado** e presente na
+  allowlist de `PackagedAssets.qml`. O schema restringe o formato do caminho, e
+  `tests/unit/test_packaged_assets.py` cruza as três listas — arquivos reais,
+  allowlist do QML e manifestos — recusando qualquer divergência;
+- `displayName` é o nome do produto. Vários coincidem com o id (`Azahar`,
+  `Cemu`); o que denuncia id cru colado é separador de slug sobrevivendo no
+  nome (`xenia-canary` em vez de `Xenia Canary`);
+- alterar `presentation` muda o `manifestHash` e **exige atualizar
+  `component-lock.json`**. É proposital: o lock existe para que nenhuma mudança
+  de manifesto passe despercebida. Ao atualizar, confirme que apenas o hash
+  mudou e que `source` (ref, versão, sha256) permanece intocada.
+
+### Apresentação não é habilitação
+
+Declarar `presentation` não torna o adapter operacional. A lista do que funciona
+de ponta a ponta — instalação transacional, projeção de requisitos e launch
+verificado — é `_MANAGED_EMULATORS`, e a ordem dessa tupla é a **ordem de
+exibição** na central, decidida e não incidental.
+
+Hoje o registry declara 16 adapters e três são operacionais. Mover um adapter
+para `_MANAGED_EMULATORS` sem o lifecycle correspondente produz exatamente a
+ação que termina em stub, proibida pelo `AGENTS.md`.
+
 ## Contrato de capacidades
 
 Interface única; adapter declara o que implementa (nem todos implementam tudo — capacidade ausente = ação indisponível na UI, não erro em runtime):

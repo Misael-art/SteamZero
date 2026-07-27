@@ -1,9 +1,49 @@
 {
-  "schemaVersion": 1, "id": "melonds", "kind": "emulator", "platforms": ["nintendo-ds"],
-  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
-  "sources": [{"type": "flatpak", "ref": "net.kuribo64.melonDS", "remote": "flathub", "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7", "priority": 1}],
-  "paths": {"config": "{XDG_CONFIG_HOME}/melonDS/melonDS.ini"}, "configFormat": "ini",
-  "verify": {"smokeTest": ["--version"]}, "compat": ["steamos", "bazzite", "linux"],
-  "license": "GPL-3.0-or-later", "upstream": "https://github.com/melonDS-emu/melonDS",
+  "schemaVersion": 1,
+  "id": "melonds",
+  "kind": "emulator",
+  "presentation": {
+    "displayName": "melonDS",
+    "iconAsset": "../assets/nintendo-ds.svg"
+  },
+  "platforms": [
+    "nintendo-ds"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "net.kuribo64.melonDS",
+      "remote": "flathub",
+      "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
+      "priority": 1
+    }
+  ],
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/melonDS/melonDS.ini"
+  },
+  "configFormat": "ini",
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
+  "license": "GPL-3.0-or-later",
+  "upstream": "https://github.com/melonDS-emu/melonDS",
   "notes": "Fonte Flathub fixada no commit correspondente à versão 1.1."
 }

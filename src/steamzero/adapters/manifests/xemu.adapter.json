@@ -1,9 +1,49 @@
 {
-  "schemaVersion": 1, "id": "xemu", "kind": "emulator", "platforms": ["xbox"],
-  "capabilities": ["detect", "status", "install", "update", "configure", "verify", "repair", "backup", "restore"],
-  "sources": [{"type": "flatpak", "ref": "app.xemu.xemu", "remote": "flathub", "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9", "priority": 1}],
-  "paths": {"config": "{XDG_CONFIG_HOME}/xemu/xemu.toml"}, "configFormat": "toml",
-  "verify": {"smokeTest": ["--version"]}, "compat": ["steamos", "bazzite", "linux"],
-  "license": "GPL-2.0-only", "upstream": "https://github.com/xemu-project/xemu",
+  "schemaVersion": 1,
+  "id": "xemu",
+  "kind": "emulator",
+  "presentation": {
+    "displayName": "xemu",
+    "iconAsset": "../assets/xbox.svg"
+  },
+  "platforms": [
+    "xbox"
+  ],
+  "capabilities": [
+    "detect",
+    "status",
+    "install",
+    "update",
+    "configure",
+    "verify",
+    "repair",
+    "backup",
+    "restore"
+  ],
+  "sources": [
+    {
+      "type": "flatpak",
+      "ref": "app.xemu.xemu",
+      "remote": "flathub",
+      "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9",
+      "priority": 1
+    }
+  ],
+  "paths": {
+    "config": "{XDG_CONFIG_HOME}/xemu/xemu.toml"
+  },
+  "configFormat": "toml",
+  "verify": {
+    "smokeTest": [
+      "--version"
+    ]
+  },
+  "compat": [
+    "steamos",
+    "bazzite",
+    "linux"
+  ],
+  "license": "GPL-2.0-only",
+  "upstream": "https://github.com/xemu-project/xemu",
   "notes": "Fonte Flathub fixada no commit correspondente à versão 0.8.136."
 }

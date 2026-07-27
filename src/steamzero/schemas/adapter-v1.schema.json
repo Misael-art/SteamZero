@@ -15,12 +15,26 @@
     "upstream"
   ],
   "properties": {
-    "schemaVersion": {"const": 1},
-    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
-    "kind": {"enum": ["emulator", "frontend", "tool"]},
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+    },
+    "kind": {
+      "enum": [
+        "emulator",
+        "frontend",
+        "tool"
+      ]
+    },
     "platforms": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+      },
       "uniqueItems": true
     },
     "capabilities": {
@@ -45,90 +59,215 @@
     "sources": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "#/$defs/source"}
+      "items": {
+        "$ref": "#/$defs/source"
+      }
     },
     "paths": {
       "type": "object",
-      "additionalProperties": {"type": "string"}
+      "additionalProperties": {
+        "type": "string"
+      }
     },
-    "configFormat": {"enum": ["ini", "json", "toml", "xml", "none"]},
+    "configFormat": {
+      "enum": [
+        "ini",
+        "json",
+        "toml",
+        "xml",
+        "none"
+      ]
+    },
     "verify": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["smokeTest"],
+      "required": [
+        "smokeTest"
+      ],
       "properties": {
         "smokeTest": {
           "type": "array",
           "minItems": 1,
-          "items": {"type": "string", "minLength": 1}
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
     "compat": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+      }
     },
     "conflicts": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+      }
     },
     "requires": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"}
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+      }
     },
-    "requiresKeys": {"$ref": "#/$defs/keyRequirement"},
-    "requiresFirmware": {"$ref": "#/$defs/firmwareRequirement"},
-    "license": {"type": "string", "minLength": 1},
-    "upstream": {"type": "string", "format": "uri"},
-    "notes": {"type": "string"}
+    "requiresKeys": {
+      "$ref": "#/$defs/keyRequirement"
+    },
+    "requiresFirmware": {
+      "$ref": "#/$defs/firmwareRequirement"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upstream": {
+      "type": "string",
+      "format": "uri"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Como o adapter se apresenta na UI. Vive aqui, versionado, e não num dict Python paralelo ao manifesto: apresentação hardcoded é allowlist implícita e faz emulador declarado aparecer sem nome nem ícone.",
+      "required": [
+        "displayName",
+        "iconAsset"
+      ],
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "iconAsset": {
+          "type": "string",
+          "pattern": "^\\.\\./assets/[a-z0-9][a-z0-9.-]*\\.(svg|png)$",
+          "description": "Caminho relativo de asset EMPACOTADO. A resolução em runtime é allowlisted por PackagedAssets.qml; valor fora da lista não carrega."
+        }
+      }
+    }
   },
   "$defs": {
     "keyRequirement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["platform", "keyset"],
+      "required": [
+        "platform",
+        "keyset"
+      ],
       "properties": {
-        "platform": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
-        "keyset": {"enum": ["prod", "title", "dev"]},
-        "minimumKeyRevision": {"type": "integer", "minimum": 0, "maximum": 255}
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+        },
+        "keyset": {
+          "enum": [
+            "prod",
+            "title",
+            "dev"
+          ]
+        },
+        "minimumKeyRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
       }
     },
     "firmwareRequirement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["platform"],
+      "required": [
+        "platform"
+      ],
       "properties": {
-        "platform": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
-        "minimumVersion": {"type": "string", "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){0,3}$"}
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+        },
+        "minimumVersion": {
+          "type": "string",
+          "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){0,3}$"
+        }
       }
     },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "version", "priority"],
+      "required": [
+        "type",
+        "version",
+        "priority"
+      ],
       "properties": {
-        "type": {"enum": ["flatpak", "appimage", "native"]},
+        "type": {
+          "enum": [
+            "flatpak",
+            "appimage",
+            "native"
+          ]
+        },
         "version": {
           "type": "string",
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"
         },
-        "priority": {"type": "integer", "minimum": 1},
-        "ref": {"type": "string", "minLength": 1},
-        "remote": {"type": "string", "minLength": 1},
-        "url": {"type": "string", "format": "uri"},
-        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "endOfLife": {"type": "boolean"}
+        "priority": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "endOfLife": {
+          "type": "boolean"
+        }
       },
       "allOf": [
         {
-          "if": {"properties": {"type": {"const": "flatpak"}}},
-          "then": {"required": ["ref", "remote"]},
-          "else": {"required": ["url"]}
+          "if": {
+            "properties": {
+              "type": {
+                "const": "flatpak"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "ref",
+              "remote"
+            ]
+          },
+          "else": {
+            "required": [
+              "url"
+            ]
+          }
         }
       ]
     }

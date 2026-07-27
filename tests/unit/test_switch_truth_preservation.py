@@ -76,16 +76,20 @@ class TestHealthySnapshotIsComplete:
             assert by_id[emulator_id]["installState"] == "installed"
 
     def test_emulator_icons_come_from_the_adapter_contract(self) -> None:
-        """O builder de domínio não publica ícone: quem o faz é o adapter, via
-        _EMULATOR_PRESENTATION. Registrado aqui para que a divergência de camada
-        seja explícita — test_packaged_assets.py garante que esses ícones estão
-        empacotados e allowlistados."""
-        from steamzero.adapters.emulation import _EMULATOR_PRESENTATION
+        """O builder de domínio não publica ícone.
 
+        Quem publica é o adapter, via _emulator_presentation(), derivado do
+        manifesto. A divergência de camada fica registrada aqui;
+        test_packaged_assets.py garante que os ícones estão empacotados e
+        allowlistados.
+        """
+        from steamzero.adapters.emulation import _emulator_presentation
+
+        presentation = _emulator_presentation()
         rows = {row["id"] for row in _switch(_healthy_workspace())["emulators"]}
         assert {"eden", "citron", "ryubing"} <= rows
-        for emulator_id in rows & set(_EMULATOR_PRESENTATION):
-            assert _EMULATOR_PRESENTATION[emulator_id][1], f"{emulator_id} sem ícone declarado"
+        for emulator_id in rows & set(presentation):
+            assert presentation[emulator_id][1], f"{emulator_id} sem ícone declarado"
 
     def test_switch_declares_fallback_artwork(self) -> None:
         assert _switch(_healthy_workspace())["fallbackArtworkAsset"]

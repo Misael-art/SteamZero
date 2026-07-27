@@ -2,7 +2,13 @@
   "schemaVersion": 1,
   "id": "sunshine",
   "kind": "tool",
-  "platforms": ["linux"],
+  "presentation": {
+    "displayName": "Sunshine",
+    "iconAsset": "../assets/steam.svg"
+  },
+  "platforms": [
+    "linux"
+  ],
   "capabilities": [
     "detect",
     "status"

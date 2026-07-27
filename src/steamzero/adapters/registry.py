@@ -52,6 +52,20 @@ class FirmwareRequirement:
 
 
 @dataclass(frozen=True)
+class AdapterPresentation:
+    """Como o adapter se apresenta na UI, declarado no manifesto.
+
+    Existe para tirar nome e ícone de um dict Python paralelo ao contrato.
+    Apresentação hardcoded funciona como allowlist implícita: um emulador
+    declarado em manifesto mas ausente do dict aparece sem nome e sem ícone, e a
+    causa fica invisível porque nada falha.
+    """
+
+    display_name: str
+    icon_asset: str
+
+
+@dataclass(frozen=True)
 class AdapterManifest:
     schema_version: int
     id: str
@@ -68,6 +82,7 @@ class AdapterManifest:
     raw: dict[str, Any]
     requires_keys: KeyRequirement | None = None
     requires_firmware: FirmwareRequirement | None = None
+    presentation: AdapterPresentation | None = None
 
     def preferred_source(
         self, source_type: str | None = None, *, allow_eol: bool = True
@@ -182,7 +197,23 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         raw=data,
         requires_keys=requires_keys,
         requires_firmware=requires_firmware,
+        presentation=_parse_presentation(data.get("presentation")),
     )
+
+
+def _parse_presentation(value: Any) -> AdapterPresentation | None:
+    """Apresentação declarada, quando o manifesto a traz.
+
+    Opcional por compatibilidade: manifesto sem ``presentation`` continua válido
+    e a ausência é visível como ``None``, em vez de virar nome vazio silencioso.
+    """
+    if not isinstance(value, dict):
+        return None
+    name = value.get("displayName")
+    icon = value.get("iconAsset")
+    if not isinstance(name, str) or not isinstance(icon, str) or not name or not icon:
+        return None
+    return AdapterPresentation(display_name=name, icon_asset=icon)
 
 
 def _parse_key_requirement(
