@@ -77,6 +77,7 @@ class DesktopContext:
     external_mouse: bool
     capabilities: frozenset[str]
     conflicts: tuple[str, ...] = ()
+    deck_input_keys: bool = False
 
     @property
     def external_display(self) -> bool:
@@ -92,6 +93,7 @@ class DesktopContext:
             "externalMouse": self.external_mouse,
             "capabilities": sorted(self.capabilities),
             "conflicts": list(self.conflicts),
+            "deckInputKeys": self.deck_input_keys,
         }
 
     def fingerprint(self) -> str:
@@ -498,6 +500,14 @@ class ExperienceCoordinator:
             reasons.append("o estado observado não identifica um único perfil")
         if context.conflicts:
             reasons.append("há conflito de ownership no Desktop")
+        if (
+            context.device_kind.startswith("deck-")
+            and not context.deck_input_keys
+            and profile_for(recommended, context).preferred_input_owner == "kde-shortcuts"
+        ):
+            reasons.append(
+                "botões físicos do Deck não chegam como teclas; atalhos KDE podem não funcionar"
+            )
 
         if recovery_required:
             truth_state = "recovery-required"

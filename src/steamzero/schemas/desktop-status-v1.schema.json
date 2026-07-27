@@ -14,8 +14,12 @@
       "type": "object",
       "required": [
         "deviceKind", "sessionType", "displays", "physicalDock",
-        "externalKeyboard", "externalMouse", "capabilities", "conflicts"
-      ]
+        "externalKeyboard", "externalMouse", "capabilities", "conflicts",
+        "deckInputKeys"
+      ],
+      "properties": {
+        "deckInputKeys": { "type": "boolean" }
+      }
     },
     "truthState": {
       "enum": ["ready", "stale", "degraded", "unapplied", "recovery-required"]

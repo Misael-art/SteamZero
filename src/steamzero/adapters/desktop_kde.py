@@ -173,6 +173,27 @@ def _external_input_state() -> tuple[bool, bool]:
     return keyboard, mouse
 
 
+def detect_deck_input_keys() -> bool:
+    """True se o gamepad do Steam Deck expõe handlers de teclado no kernel.
+
+    Quando Steam Input está ativo em background, os botões físicos do Deck
+    chegam ao Plasma como eventos de tecla (kbd) além de joystick/gamepad.
+    Se só houver js0/event*, os botões não acionarão atalhos KDE globais e
+    o caminho futuro é InputPlumber.
+    """
+    text = _read_text(Path("/proc/bus/input/devices"))
+    for block in text.split("\n\n"):
+        lowered = block.lower()
+        if "vendor=28de" not in lowered or "valve" not in lowered:
+            continue
+        handlers = next(
+            (line.lower() for line in block.splitlines() if "handlers=" in line.lower()), ""
+        )
+        if "kbd" in handlers:
+            return True
+    return False
+
+
 def _physical_dock_present() -> bool:
     override = os.environ.get("STEAMZERO_DOCK_PRESENT")
     if override is not None:
@@ -327,6 +348,7 @@ class LinuxDesktopContext:
             external_mouse=external_mouse,
             capabilities=capabilities,
             conflicts=conflicts,
+            deck_input_keys=detect_deck_input_keys(),
         )
 
     def _capabilities(self) -> frozenset[str]:
@@ -351,6 +373,8 @@ class LinuxDesktopContext:
             available.add("inputplumber-validated")
         if os.environ.get("KDE_FULL_SESSION") == "true":
             available.add("kde-plasma")
+        if detect_deck_input_keys():
+            available.add("deck-keys-available")
         return frozenset(available)
 
 

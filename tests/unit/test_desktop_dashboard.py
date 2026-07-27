@@ -887,3 +887,25 @@ class TestCastDashboardIntegration:
         )
         result = dashboard.cast_status()
         assert result.get("state") == "unavailable"
+
+def test_dashboard_snapshot_includes_touch_mode_from_profile(tmp_path: Path) -> None:
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+    )
+
+    status = {
+        "context": {"capabilities": [], "conflicts": []},
+        "current": {"profile": {"touchMode": True}},
+    }
+    snapshot = dashboard.snapshot(status)
+    assert snapshot["touchMode"] is True

@@ -3123,3 +3123,48 @@ foram atualizados, e uma captura dedicada documenta os ícones do rail em 1280×
 glifos, preferências visuais, ausência de fallback operacional e métricas portáteis; `make check` passou com
 **367 testes**, format/lint/boundaries/independence/mypy verdes. O smoke Qt 6 offscreen
 permaneceu ativo até o timeout esperado, sem diagnóstico de runtime.
+## 2026-07-19 — Sessão 31: Experiência do Modo Desktop — toque, OSK e atalhos do Steam Deck
+
+**Objetivo:** fechar a infraestrutura de input/teclado virtual para o Modo
+Desktop no Deck, usando KDE Shortcuts como owner e wvkbd como fallback de OSK,
+sem introduzir InputPlumber nem shell desktop próprio (decisões confirmadas).
+
+**Itens implementados e commits:**
+
+| Item | Commit | Testes |
+|---|---|---|
+| 1 — wvkbd/onboard standalone | `492902e` | `tests/unit/test_desktop_kde.py` (wvkbd sozinho, fallback, erro) |
+| 4 — detector deckInputKeys | `c75d406` | detecção com/sem handler kbd; integração no snapshot; doctor check |
+| 2 — KDEShortcutsEffect | `fd2fa48` | apply/restore/delete/unavailable; rollback de integração |
+| 3 — UX de toque QML | `9a809c4` | `touchMode` no dashboard; `qmllint` verde |
+| 5 — runbook operador | `7dae770` | — |
+| 6 — governança (este registro) | a seguir | — |
+
+**Fora de escopo (registrado):**
+
+- Shell Desktop próprio SteamZero: continua usando Plasma do host via
+  `_desktop_command()`; não criamos sessão wayland-sessions separada.
+- InputPlumber / hhd / evdev direto: adiado pela decisão do operador; o
+  detector `deckInputKeys` fornece a base para a decisão futura.
+- Plugin Decky / QAM: mantido como opt-in por ADR-0008.
+- Build de release, wheel, manifesto e instalação em `/opt`/`/etc`/`/boot`:
+  exclusivo do operador (Regras 1 e 4).
+
+**Passos que exigem o operador:**
+
+1. Build do wheel + wheelhouse + manifesto (fluxo de release vigente).
+2. `sudo ./tools/install_host.py install` no host físico.
+3. Teste físico no Deck:
+   - `steamzero desktop keyboard` → wvkbd abre se Plasma OSK ausente.
+   - `Meta+Ctrl+K/D/L` e `Meta+D` funcionam.
+   - Foco em TextField com touch mode ativo → OSK auto-show se Maliit presente.
+   - `steamzero desktop status` / `steamzero doctor` → anotar `deckInputKeys`.
+4. Anexar saída de `steamzero doctor` ao WORKLOG para fechar a sessão.
+
+**Limitação honesta:** com KDE Shortcuts e sem InputPlumber, os botões físicos do
+Deck só disparam atalhos se chegarem ao Plasma como teclas. O detector reporta
+isso em `deckInputKeys`; se for `false` no hardware, o caminho futuro é
+InputPlumber (decisão adiada) e o estado será `degraded` com causa registrada.
+
+**Gates:** 580 passed, Ruff, mypy estrito, fronteiras, independência e
+`qmllint` verdes.

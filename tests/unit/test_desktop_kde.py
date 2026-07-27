@@ -20,6 +20,7 @@ from steamzero.adapters.desktop_kde import (
     LinuxDesktopContext,
     VirtualKeyboardController,
     build_desktop_coordinator,
+    detect_deck_input_keys,
     parse_kscreen_outputs,
     run_command,
     spawn_command,
@@ -1422,3 +1423,67 @@ def test_build_desktop_coordinator_includes_edge_gesture_effect(tmp_path: Path) 
     assert any(
         isinstance(effect, desktop_kde.KDEEdgeGestureEffect) for effect in coordinator._effects
     )
+
+
+DECK_INPUT_DEVICES_WITH_KEYS = """I: Bus=0018 Vendor=28de Product=1205 Version=0100
+N: Name="Valve Software Steam Deck Controller"
+P: Phys=usb-0000:03:00.3-1/input0
+U: Uniq=
+H: Handlers=event0 js0 kbd
+B: PROP=0
+B: EV=10001b
+B: KEY=7fff800000000000 e0ffdfdbe7ffffff 1ffffffffffffe78
+"""
+
+DECK_INPUT_DEVICES_PURE_GAMEPAD = """I: Bus=0003 Vendor=28de Product=1205 Version=0100
+N: Name="Valve Software Steam Deck Controller"
+H: Handlers=event0 js0
+B: PROP=0
+"""
+
+
+def test_detect_deck_input_keys_finds_valve_keyboard_handler() -> None:
+    def read_text(_path: Path) -> str:
+        return DECK_INPUT_DEVICES_WITH_KEYS
+
+    import steamzero.adapters.desktop_kde as desktop_kde
+
+    original = desktop_kde._read_text
+    desktop_kde._read_text = read_text
+    try:
+        assert detect_deck_input_keys() is True
+    finally:
+        desktop_kde._read_text = original
+
+
+def test_detect_deck_input_keys_reports_false_for_pure_gamepad() -> None:
+    def read_text(_path: Path) -> str:
+        return DECK_INPUT_DEVICES_PURE_GAMEPAD
+
+    import steamzero.adapters.desktop_kde as desktop_kde
+
+    original = desktop_kde._read_text
+    desktop_kde._read_text = read_text
+    try:
+        assert detect_deck_input_keys() is False
+    finally:
+        desktop_kde._read_text = original
+
+
+def test_status_reports_deck_input_keys_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        if argv[0] == "kscreen-doctor":
+            return CommandResult(0, KSCREEN)
+        if argv[0] == "systemctl":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    monkeypatch.setattr("steamzero.adapters.desktop_kde.detect_deck_input_keys", lambda: True)
+    present = {"kscreen-doctor", "systemctl"}
+    context = LinuxDesktopContext(
+        runner=runner,
+        which=lambda command: command if command in present else None,
+    ).snapshot()
+    assert context.deck_input_keys is True
+    assert "deck-keys-available" in context.capabilities
+    assert context.to_dict()["deckInputKeys"] is True

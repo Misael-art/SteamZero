@@ -559,6 +559,9 @@ class DesktopDashboard:
                 "detail": "Catálogo de temas temporariamente indisponível.",
             }
 
+        current = desktop_status.get("current") if isinstance(desktop_status, dict) else {}
+        profile = current.get("profile") if isinstance(current, dict) else {}
+        touch_mode = bool(profile.get("touchMode")) if isinstance(profile, dict) else False
         return {
             "uiContracts": handheld_ui_contracts(),
             "theme": theme,
@@ -578,6 +581,7 @@ class DesktopDashboard:
             "collections": collections,
             "libraryHealth": library_health,
             "cast": cast,
+            "touchMode": touch_mode,
         }
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:

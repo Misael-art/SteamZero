@@ -13,6 +13,7 @@ import sys
 from typing import Any
 
 from steamzero import __version__
+from steamzero.adapters.desktop_kde import detect_deck_input_keys
 from steamzero.core import fs as corefs
 from steamzero.core import journal, paths
 from steamzero.core.state import StateStore
@@ -75,10 +76,28 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
         )
     )
 
+    try:
+        deck_keys = detect_deck_input_keys()
+        checks.append(
+            _check(
+                "deck.input.keys",
+                "pass" if deck_keys else "warn",
+                (
+                    "botões do Deck chegam como teclas: sim"
+                    if deck_keys
+                    else "botões do Deck chegam como teclas: não; considere InputPlumber"
+                ),
+            )
+        )
+    except Exception as exc:  # doctor nunca deve crashar
+        deck_keys = False
+        checks.append(_check("deck.input.keys", "warn", f"não foi possível detectar: {exc}"))
+
     data: dict[str, Any] = {
         "version": __version__,
         "stateHome": str(paths.state_home()),
         "schemaVersion": schema_version,
         "pendingOperations": pending,
+        "deckInputKeys": deck_keys,
     }
     return data, checks
