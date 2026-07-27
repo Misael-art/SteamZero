@@ -88,7 +88,10 @@ jobs:
             --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
             --cov-report=json:build/coverage-${{ matrix.python-version }}.json
       - name: Publicar cobertura
-        if: matrix.python-version == '3.14'
+        # always(): quando a cobertura reprova, o relatório é justamente o que
+        # se precisa para descobrir POR QUE. Publicar só no sucesso esconde o
+        # dado no único momento em que ele importa.
+        if: always() && matrix.python-version == '3.14'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-python-3.14
