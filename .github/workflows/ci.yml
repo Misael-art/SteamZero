@@ -67,7 +67,14 @@ jobs:
             qml6-module-qtquick-templates \
             qml6-module-qtqml-workerscript \
             libgl1 libegl1
-          qml6 --version || qml --version
+          # No Ubuntu o binário fica em /usr/lib/qt6/bin e não entra no PATH; o
+          # harness procura por "qml6" via shutil.which.
+          qt_bin=$(dirname "$(find /usr/lib/qt6/bin /usr/bin -name 'qml*' -type f -executable 2>/dev/null | head -1)")
+          if [ -n "$qt_bin" ] && [ ! -x "$qt_bin/qml6" ] && [ -x "$qt_bin/qml" ]; then
+            sudo ln -sf "$qt_bin/qml" "$qt_bin/qml6"
+          fi
+          echo "$qt_bin" >> "$GITHUB_PATH"
+          "$qt_bin/qml6" --version
       - name: Testes e cobertura
         run: |
           mkdir -p build
