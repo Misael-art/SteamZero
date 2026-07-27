@@ -358,3 +358,101 @@ class TestDockDetection:
 
         monkeypatch.delenv("STEAMZERO_DOCK_PRESENT", raising=False)
         assert desktop_kde._physical_dock_present(usb_root=tmp_path / "ausente") is False
+
+
+class TestVdfStringEscapes:
+    """Escapes do VDF, com bytes sintéticos em vez de arquivo real de Steam."""
+
+    def _parse(self, raw: bytes):  # type: ignore[no-untyped-def]
+        from steamzero.adapters.steam_launch_options import _VdfDocument
+
+        return _VdfDocument(raw)
+
+    def test_escaped_quote_is_decoded(self) -> None:
+        doc = self._parse(b'"root"\n{\n"chave"\t\t"valor \\" com aspas"\n}\n')
+        assert doc is not None
+
+    def test_escaped_backslash_is_decoded(self) -> None:
+        doc = self._parse(b'"root"\n{\n"chave"\t\t"C:\\\\Jogos"\n}\n')
+        assert doc is not None
+
+    def test_unknown_escape_keeps_the_character(self) -> None:
+        """\\n e afins não são especiais aqui: o byte segue literal."""
+        doc = self._parse(b'"root"\n{\n"chave"\t\t"linha\\nquebra"\n}\n')
+        assert doc is not None
+
+    def test_incomplete_escape_is_rejected(self) -> None:
+        import pytest
+
+        from steamzero.core.errors import SteamZeroError
+
+        with pytest.raises(SteamZeroError):
+            self._parse(b'"root"\n{\n"chave"\t\t"fim\\')
+
+    def test_nul_inside_string_is_rejected(self) -> None:
+        import pytest
+
+        from steamzero.core.errors import SteamZeroError
+
+        with pytest.raises(SteamZeroError):
+            self._parse(b'"root"\n{\n"chave"\t\t"a\x00b"\n}\n')
+
+
+class TestDashboardSteamProbe:
+    """A dashboard tem seu próprio detector de Steam; mesmo tratamento."""
+
+    def _proc(self, root: Path, pid: str, comm: str) -> None:
+        entry = root / pid
+        entry.mkdir(parents=True)
+        (entry / "comm").write_text(f"{comm}\n", encoding="utf-8")
+
+    def test_detects_steam(self, tmp_path: Path) -> None:
+        from steamzero.adapters import desktop_dashboard
+
+        self._proc(tmp_path, "1", "systemd")
+        self._proc(tmp_path, "500", "steam")
+        assert desktop_dashboard._steam_process_running(proc_root=tmp_path) is True
+
+    def test_absent_steam_reports_false(self, tmp_path: Path) -> None:
+        from steamzero.adapters import desktop_dashboard
+
+        self._proc(tmp_path, "1", "systemd")
+        assert desktop_dashboard._steam_process_running(proc_root=tmp_path) is False
+
+    def test_missing_proc_is_not_fatal(self, tmp_path: Path) -> None:
+        from steamzero.adapters import desktop_dashboard
+
+        assert desktop_dashboard._steam_process_running(proc_root=tmp_path / "x") is False
+
+
+class TestBootStateReadErrors:
+    """Estado de boot ilegível vira erro estruturado, não crash."""
+
+    def test_absent_state_is_none(self, tmp_path: Path) -> None:
+        from steamzero.adapters import steam_boot
+
+        assert steam_boot._read_owned_json(tmp_path / "ausente.json") is None
+
+    def test_symlink_is_refused(self, tmp_path: Path) -> None:
+        import pytest
+
+        from steamzero.adapters import steam_boot
+        from steamzero.core.errors import SteamZeroError
+
+        real = tmp_path / "real.json"
+        real.write_text("{}", encoding="utf-8")
+        link = tmp_path / "link.json"
+        link.symlink_to(real)
+        with pytest.raises(SteamZeroError, match="inseguro"):
+            steam_boot._read_owned_json(link)
+
+    def test_directory_in_place_of_state_is_refused(self, tmp_path: Path) -> None:
+        import pytest
+
+        from steamzero.adapters import steam_boot
+        from steamzero.core.errors import SteamZeroError
+
+        target = tmp_path / "estado.json"
+        target.mkdir()
+        with pytest.raises(SteamZeroError, match="inseguro"):
+            steam_boot._read_owned_json(target)

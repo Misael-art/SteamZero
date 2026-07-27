@@ -80,9 +80,13 @@ def _spawn_detached(argv: Sequence[str]) -> None:
     )
 
 
-def _steam_process_running() -> bool:
-    """Detecta Steam sem depender de pgrep, DBus ou serviço systemd."""
-    proc = Path("/proc")
+def _steam_process_running(proc_root: Path | None = None) -> bool:
+    """Detecta Steam sem depender de pgrep, DBus ou serviço systemd.
+
+    ``proc_root`` injetável: sem ele o ramo positivo só executa quando há Steam
+    aberto na máquina, e a cobertura passa a depender do que está rodando.
+    """
+    proc = proc_root if proc_root is not None else Path("/proc")
     try:
         entries = proc.iterdir()
     except OSError:
