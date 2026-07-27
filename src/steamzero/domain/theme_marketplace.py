@@ -73,9 +73,7 @@ class MarketplaceConfig:
         # o opt-in continua sendo a configuração persistida.
         override = os.environ.get("STEAMZERO_THEMES_CATALOG_URL")
         if override:
-            log.get_logger().warning(
-                "theme_marketplace.catalog-url-override", source="environment"
-            )
+            log.get_logger().warning("theme_marketplace.catalog-url-override", source="environment")
             url = override
         if not url:
             return cls()
@@ -87,8 +85,7 @@ def _require_enabled(config: MarketplaceConfig) -> str:
         raise SteamZeroError(
             "E-THEME-MARKETPLACE-DISABLED",
             detail=(
-                "nenhum catálogo remoto configurado em "
-                f"{paths.theme_marketplace_config_path()}"
+                f"nenhum catálogo remoto configurado em {paths.theme_marketplace_config_path()}"
             ),
         )
     return config.catalog_url
@@ -229,11 +226,13 @@ class ThemeMarketplace:
             return list(self._entries)
         results: list[MarketplaceTheme] = []
         for entry in self._entries:
-            if (q in entry.id.casefold()
-                    or q in entry.name.casefold()
-                    or q in entry.author.casefold()
-                    or q in entry.description.casefold()
-                    or any(q in t.casefold() for t in entry.tags)):
+            if (
+                q in entry.id.casefold()
+                or q in entry.name.casefold()
+                or q in entry.author.casefold()
+                or q in entry.description.casefold()
+                or any(q in t.casefold() for t in entry.tags)
+            ):
                 results.append(entry)
         return results
 

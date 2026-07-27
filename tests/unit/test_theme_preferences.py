@@ -69,7 +69,9 @@ class TestThemePreferenceApplyRollback:
         mgr = _make_manager(tmp_path)
         target = mgr._preference_path()
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text('{"schemaVersion":1,"themeId":"org.steamzero.default","themeVersion":"1.0.0","revision":0}')
+        target.write_text(
+            '{"schemaVersion":1,"themeId":"org.steamzero.default","themeVersion":"1.0.0","revision":0}'
+        )
 
         plan = mgr.plan_activate("org.steamzero.steamdeck", "1.0.0", previous=None)
         result = mgr.apply(plan.plan_id, plan.confirm_token)

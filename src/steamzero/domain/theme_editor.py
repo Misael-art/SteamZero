@@ -183,9 +183,7 @@ class ThemeEditorManager:
         session.dirty = True
         return {"preview": self._preview(session)}
 
-    def set_metadata(
-        self, session_id: str, meta_field: str, value: object
-    ) -> dict[str, object]:
+    def set_metadata(self, session_id: str, meta_field: str, value: object) -> dict[str, object]:
         session = self._get_session(session_id)
         allowed = {"name", "author", "license", "description", "homepage", "version", "extends"}
         if meta_field not in allowed:

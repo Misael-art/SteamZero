@@ -1082,19 +1082,23 @@ class DesktopDashboard:
     def _theme_state(self) -> dict[str, Any]:
         catalog = self._theme_catalog.list_catalog()
         preference = self._theme_prefs._read_preference()
-        active_id: str = (
-            str(preference.get("themeId")) if preference else "org.steamzero.default"
-        )
+        active_id: str = str(preference.get("themeId")) if preference else "org.steamzero.default"
         active_name = active_id
         for entry in catalog:
             if entry["id"] == active_id and entry["state"] == "available":
                 active_name = entry["name"]
                 break
         available = [
-            {"id": e["id"], "name": e["name"], "version": e["version"],
-             "author": e["author"], "origin": e["origin"],
-             "state": e["state"], "compatible": e["compatible"],
-             "active": e["id"] == active_id}
+            {
+                "id": e["id"],
+                "name": e["name"],
+                "version": e["version"],
+                "author": e["author"],
+                "origin": e["origin"],
+                "state": e["state"],
+                "compatible": e["compatible"],
+                "active": e["id"] == active_id,
+            }
             for e in catalog
         ]
         try:
@@ -1102,9 +1106,12 @@ class DesktopDashboard:
         except Exception:
             qml_object = None
             return {
-                "activeId": active_id, "activeName": active_name,
-                "available": available, "resolved": None,
-                "state": "ready", "detail": None,
+                "activeId": active_id,
+                "activeName": active_name,
+                "available": available,
+                "resolved": None,
+                "state": "ready",
+                "detail": None,
             }
         high_contrast = False
         reduced_motion = False

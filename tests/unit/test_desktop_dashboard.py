@@ -888,6 +888,7 @@ class TestCastDashboardIntegration:
         result = dashboard.cast_status()
         assert result.get("state") == "unavailable"
 
+
 def test_dashboard_snapshot_includes_touch_mode_from_profile(tmp_path: Path) -> None:
     dashboard = DesktopDashboard(
         store_factory=lambda: StateStore(tmp_path / "state.db"),

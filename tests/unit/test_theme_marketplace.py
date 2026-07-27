@@ -191,6 +191,7 @@ class TestThemeMarketplaceCatalog:
 
     def test_stale_cache_fallback(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         from steamzero.core import paths
+
         cache_path = paths.theme_catalog_cache_path()
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache_path.write_bytes(_catalog_bytes())
@@ -234,6 +235,7 @@ class TestThemeMarketplaceInstall:
 
     def test_install_passes_checksum(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from steamzero.domain.theme_install import ThemeInstaller
+
         captured: dict[str, object] = {}
 
         def fake_install(self_inst, source, **kw):
@@ -245,9 +247,7 @@ class TestThemeMarketplaceInstall:
         m.install("org.steamzero.steamdeck")
         assert captured["checksum_sha256"] == "a" * 64
 
-    def test_install_without_checksum_fails_closed(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_install_without_checksum_fails_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Catálogo sem checksum é origem inverificável: recusar, não instalar."""
         from steamzero.domain.theme_install import ThemeInstaller
 

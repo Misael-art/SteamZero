@@ -88,7 +88,8 @@ class TestEditorSetTokens:
         session = mgr.create("Test")
         sid = session["sessionId"]
         result = mgr.set_tokens(
-            sid, "color",
+            sid,
+            "color",
             {"background": "#111111", "primary": "#222222"},
         )
         preview = result["preview"]
@@ -258,9 +259,7 @@ _PNG = bytes.fromhex(
 class TestEditorAssetsPersist:
     """set_asset precisa gravar de verdade; sucesso sem efeito é defeito."""
 
-    def test_set_asset_survives_save(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_set_asset_survives_save(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         mgr = ThemeEditorManager()
         sid = str(mgr.create("Com Asset")["sessionId"])
@@ -299,9 +298,7 @@ class TestEditorAssetsPersist:
         with pytest.raises(SteamZeroError, match=r"extensão não permitida"):
             mgr.set_asset(sid, "background", b"MZ", "payload.exe")
 
-    def test_rejects_empty_asset(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_rejects_empty_asset(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         mgr = ThemeEditorManager()
         sid = str(mgr.create("X")["sessionId"])
@@ -391,9 +388,7 @@ class TestEditorIdValidation:
         with pytest.raises(SteamZeroError, match=r"E-THEME-MANIFEST"):
             mgr.save(sid, overwrite=True)
 
-    def test_rejects_non_ascii_id(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_rejects_non_ascii_id(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """isalnum() é Unicode-aware e aceitava isto; o padrão do schema não."""
         monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
         mgr = ThemeEditorManager()

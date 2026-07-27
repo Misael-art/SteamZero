@@ -39,16 +39,23 @@ def _make_theme_zip(
 
 @pytest.fixture(autouse=True)
 def env_vars(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("steamzero.domain.theme_install.fetch_bytes",
-                        lambda url, **kw: _make_theme_zip())
+    monkeypatch.setattr(
+        "steamzero.domain.theme_install.fetch_bytes", lambda url, **kw: _make_theme_zip()
+    )
     monkeypatch.setattr(
         "steamzero.domain.theme_install.HttpClient",
-        lambda: type("FakeClient", (), {
-            "get": lambda self, url, policy: FakeResponse(
-                body=b"", url=url, status=200,
-                headers={"Content-Length": "5000"},
-            ),
-        })(),
+        lambda: type(
+            "FakeClient",
+            (),
+            {
+                "get": lambda self, url, policy: FakeResponse(
+                    body=b"",
+                    url=url,
+                    status=200,
+                    headers={"Content-Length": "5000"},
+                ),
+            },
+        )(),
     )
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
@@ -83,8 +90,9 @@ class TestThemeInstall:
         assert (themes_dir / "org.test.installed" / "theme.json").is_file()
 
     def test_invalid_zip_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("steamzero.domain.theme_install.fetch_bytes",
-                            lambda url, **kw: b"not-a-zip")
+        monkeypatch.setattr(
+            "steamzero.domain.theme_install.fetch_bytes", lambda url, **kw: b"not-a-zip"
+        )
         with pytest.raises(SteamZeroError, match=r"não é um zip"):
             ThemeInstaller().install("https://example.com/bad.zip")
 
@@ -92,8 +100,9 @@ class TestThemeInstall:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
             zf.writestr("../evil.txt", b"pwned")
-        monkeypatch.setattr("steamzero.domain.theme_install.fetch_bytes",
-                            lambda url, **kw: buf.getvalue())
+        monkeypatch.setattr(
+            "steamzero.domain.theme_install.fetch_bytes", lambda url, **kw: buf.getvalue()
+        )
         with pytest.raises(SteamZeroError, match=r"E-CONTENT-UNSAFE-PATH"):
             ThemeInstaller().install("https://example.com/evil.zip")
 
@@ -101,16 +110,20 @@ class TestThemeInstall:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
             zf.writestr("some-dir/random.txt", b"no theme.json")
-        monkeypatch.setattr("steamzero.domain.theme_install.fetch_bytes",
-                            lambda url, **kw: buf.getvalue())
+        monkeypatch.setattr(
+            "steamzero.domain.theme_install.fetch_bytes", lambda url, **kw: buf.getvalue()
+        )
         with pytest.raises(SteamZeroError, match=r"theme\.json"):
             ThemeInstaller().install("https://example.com/no-theme.zip")
 
     def test_incompatible_theme_api_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from steamzero.adapters.theme_catalog import validate_theme_directory
+
         bad = dict(_VALID_MANIFEST, compatibility={"themeApi": 99})
-        monkeypatch.setattr("steamzero.domain.theme_install.fetch_bytes",
-                            lambda url, **kw: _make_theme_zip(manifest=bad))
+        monkeypatch.setattr(
+            "steamzero.domain.theme_install.fetch_bytes",
+            lambda url, **kw: _make_theme_zip(manifest=bad),
+        )
         installer = ThemeInstaller(validate=validate_theme_directory)
         with pytest.raises(SteamZeroError):
             installer.install("https://example.com/bad-api.zip")

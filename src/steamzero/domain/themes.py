@@ -381,9 +381,7 @@ class ThemeResolver:
             if manifest.assets:
                 assets.update(manifest.assets)
 
-        resolved_assets = {
-            slot: ThemeAsset(slot=slot, path=path) for slot, path in assets.items()
-        }
+        resolved_assets = {slot: ThemeAsset(slot=slot, path=path) for slot, path in assets.items()}
         top = chain[-1]
         return ResolvedTheme(
             id=top.id,

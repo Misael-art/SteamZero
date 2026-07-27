@@ -26,8 +26,22 @@ _MAX_DIR_DEPTH = 4
 _MAX_THEMES = 100
 _ALLOWED_RASTER = frozenset({".png", ".jpg", ".jpeg", ".webp"})
 _ALLOWED_SVG_EXT = ".svg"
-_PROHIBITED_FILES = frozenset({".qml", ".js", ".py", ".so", ".wasm", ".wasm64",
-                                ".html", ".htm", ".sh", ".bash", ".zsh", ".fish"})
+_PROHIBITED_FILES = frozenset(
+    {
+        ".qml",
+        ".js",
+        ".py",
+        ".so",
+        ".wasm",
+        ".wasm64",
+        ".html",
+        ".htm",
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".fish",
+    }
+)
 
 
 def _load_manifest_schema() -> dict[str, Any]:
@@ -124,8 +138,9 @@ def _validate_manifest(raw: dict[str, Any]) -> None:
         raise SteamZeroError("E-THEME-MANIFEST", detail=str(exc)) from exc
     api = raw.get("compatibility", {}).get("themeApi", 0)
     if api != THEME_API_VERSION:
-        raise SteamZeroError("E-THEME-INCOMPATIBLE",
-                             detail=f"tema requer themeApi={api}, atual={THEME_API_VERSION}")
+        raise SteamZeroError(
+            "E-THEME-INCOMPATIBLE", detail=f"tema requer themeApi={api}, atual={THEME_API_VERSION}"
+        )
 
 
 def _check_path_safety(directory: Path) -> None:
@@ -136,24 +151,25 @@ def _check_path_safety(directory: Path) -> None:
             continue
         depth = len(entry.relative_to(directory).parts)
         if depth > _MAX_DIR_DEPTH:
-            raise SteamZeroError("E-THEME-LIMIT",
-                                 detail=f"profundidade excedida: {depth} > {_MAX_DIR_DEPTH}")
+            raise SteamZeroError(
+                "E-THEME-LIMIT", detail=f"profundidade excedida: {depth} > {_MAX_DIR_DEPTH}"
+            )
         try:
             resolved = entry.resolve()
         except OSError as exc:
             raise SteamZeroError("E-THEME-UNSAFE", detail=str(exc)) from exc
         if resolved_root not in resolved.parents and resolved != resolved_root:
-            raise SteamZeroError("E-THEME-UNSAFE",
-                                 detail=f"caminho fora da raiz: {entry}")
+            raise SteamZeroError("E-THEME-UNSAFE", detail=f"caminho fora da raiz: {entry}")
         if entry.is_symlink():
-            raise SteamZeroError("E-THEME-UNSAFE",
-                                 detail=f"symlink não permitido: {entry}")
+            raise SteamZeroError("E-THEME-UNSAFE", detail=f"symlink não permitido: {entry}")
         if entry.is_socket() or entry.is_fifo():
-            raise SteamZeroError("E-THEME-UNSAFE",
-                                 detail=f"arquivo especial não permitido: {entry}")
+            raise SteamZeroError(
+                "E-THEME-UNSAFE", detail=f"arquivo especial não permitido: {entry}"
+            )
         if entry.is_block_device() or entry.is_char_device():
-            raise SteamZeroError("E-THEME-UNSAFE",
-                                 detail=f"arquivo especial não permitido: {entry}")
+            raise SteamZeroError(
+                "E-THEME-UNSAFE", detail=f"arquivo especial não permitido: {entry}"
+            )
 
 
 def _check_file_limits(directory: Path) -> tuple[int, int]:
@@ -164,20 +180,20 @@ def _check_file_limits(directory: Path) -> tuple[int, int]:
             continue
         file_count += 1
         if file_count > _MAX_FILES:
-            raise SteamZeroError("E-THEME-LIMIT",
-                                 detail=f"número de arquivos excedido: {file_count}")
+            raise SteamZeroError(
+                "E-THEME-LIMIT", detail=f"número de arquivos excedido: {file_count}"
+            )
         size = entry.stat().st_size
         total_bytes += size
         if total_bytes > _MAX_TOTAL_BYTES:
-            raise SteamZeroError("E-THEME-LIMIT",
-                                 detail=f"tamanho total excedido: {total_bytes}")
+            raise SteamZeroError("E-THEME-LIMIT", detail=f"tamanho total excedido: {total_bytes}")
         ext = entry.suffix.lower()
         if ext in _PROHIBITED_FILES:
-            raise SteamZeroError("E-THEME-UNSAFE",
-                                 detail=f"tipo de arquivo proibido: {ext}")
+            raise SteamZeroError("E-THEME-UNSAFE", detail=f"tipo de arquivo proibido: {ext}")
         if ext in _ALLOWED_RASTER and size > _MAX_ASSET_BYTES:
-            raise SteamZeroError("E-THEME-LIMIT",
-                                 detail=f"asset muito grande: {entry.name} ({size} bytes)")
+            raise SteamZeroError(
+                "E-THEME-LIMIT", detail=f"asset muito grande: {entry.name} ({size} bytes)"
+            )
     return file_count, total_bytes
 
 
@@ -210,6 +226,7 @@ class ThemeCatalog:
 
     def __init__(self, user_themes_dir: Path | None = None) -> None:
         from steamzero.core import paths
+
         self._user_themes_dir = user_themes_dir or paths.themes_dir()
 
     def list_catalog(self) -> list[dict[str, Any]]:
@@ -219,28 +236,32 @@ class ThemeCatalog:
             try:
                 manifest = read_builtin_manifest(tid)
                 seen.add(tid)
-                entries.append({
-                    "id": tid,
-                    "name": manifest.name,
-                    "version": manifest.version,
-                    "author": manifest.author,
-                    "license": manifest.license,
-                    "state": "available",
-                    "origin": "builtin",
-                    "compatible": True,
-                })
+                entries.append(
+                    {
+                        "id": tid,
+                        "name": manifest.name,
+                        "version": manifest.version,
+                        "author": manifest.author,
+                        "license": manifest.license,
+                        "state": "available",
+                        "origin": "builtin",
+                        "compatible": True,
+                    }
+                )
             except SteamZeroError as exc:
-                entries.append({
-                    "id": tid,
-                    "name": tid,
-                    "version": "",
-                    "author": "",
-                    "license": "",
-                    "state": "invalid",
-                    "origin": "builtin",
-                    "compatible": False,
-                    "error": exc.detail,
-                })
+                entries.append(
+                    {
+                        "id": tid,
+                        "name": tid,
+                        "version": "",
+                        "author": "",
+                        "license": "",
+                        "state": "invalid",
+                        "origin": "builtin",
+                        "compatible": False,
+                        "error": exc.detail,
+                    }
+                )
         if self._user_themes_dir is not None and self._user_themes_dir.is_dir():
             for entry in sorted(self._user_themes_dir.iterdir(), key=str):
                 if not entry.is_dir():
@@ -253,28 +274,32 @@ class ThemeCatalog:
                     seen.add(tid)
                     api = manifest.compatibility.get("themeApi", 0)
                     compatible = api == THEME_API_VERSION
-                    entries.append({
-                        "id": tid,
-                        "name": manifest.name,
-                        "version": manifest.version,
-                        "author": manifest.author,
-                        "license": manifest.license,
-                        "state": "available" if compatible else "incompatible",
-                        "origin": "user",
-                        "compatible": compatible,
-                    })
+                    entries.append(
+                        {
+                            "id": tid,
+                            "name": manifest.name,
+                            "version": manifest.version,
+                            "author": manifest.author,
+                            "license": manifest.license,
+                            "state": "available" if compatible else "incompatible",
+                            "origin": "user",
+                            "compatible": compatible,
+                        }
+                    )
                 except SteamZeroError as exc:
-                    entries.append({
-                        "id": tid,
-                        "name": tid,
-                        "version": "",
-                        "author": "",
-                        "license": "",
-                        "state": "invalid",
-                        "origin": "user",
-                        "compatible": False,
-                        "error": exc.detail,
-                    })
+                    entries.append(
+                        {
+                            "id": tid,
+                            "name": tid,
+                            "version": "",
+                            "author": "",
+                            "license": "",
+                            "state": "invalid",
+                            "origin": "user",
+                            "compatible": False,
+                            "error": exc.detail,
+                        }
+                    )
         return entries
 
     def resolve(self, theme_id: str) -> ResolvedTheme:

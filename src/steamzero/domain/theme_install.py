@@ -29,8 +29,10 @@ def _confirm_size(url: str, content_length: int | None) -> None:
     if content_length is not None and content_length > 5 * 1024 * 1024:
         raise SteamZeroError(
             "E-THEME-DOWNLOAD-FAILED",
-            detail=(f"o pacote tem {content_length / 1024 / 1024:.1f} MiB. "
-                    "Use --yes para confirmar o download."),
+            detail=(
+                f"o pacote tem {content_length / 1024 / 1024:.1f} MiB. "
+                "Use --yes para confirmar o download."
+            ),
         )
 
 

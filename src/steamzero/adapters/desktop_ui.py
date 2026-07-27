@@ -571,6 +571,7 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "sessionId"),
             )
             import base64
+
             return {
                 "zip": base64.b64encode(zip_data).decode("ascii"),
                 "filename": f"theme-{payload['sessionId'][:8]}.zip",

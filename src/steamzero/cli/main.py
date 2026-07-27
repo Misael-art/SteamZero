@@ -1274,11 +1274,15 @@ def _cmd_theme_install(args: list[str], correlation_id: str) -> tuple[dict[str, 
     else:
         marketplace = ThemeMarketplace()
         result = marketplace.install(
-            source, force=force, yes=yes, validate=validate_theme_directory,
+            source,
+            force=force,
+            yes=yes,
+            validate=validate_theme_directory,
         )
     return (
         build_envelope(
-            "theme", "install",
+            "theme",
+            "install",
             status="ok",
             data=result,
             correlation_id=correlation_id,
@@ -1313,7 +1317,10 @@ def _cmd_theme_info(args: list[str], correlation_id: str) -> tuple[dict[str, Any
     entry = marketplace.get(theme_id)
     return (
         build_envelope(
-            "theme", "info", status="ok", data=entry.to_dict(),
+            "theme",
+            "info",
+            status="ok",
+            data=entry.to_dict(),
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -1323,8 +1330,9 @@ def _cmd_theme_info(args: list[str], correlation_id: str) -> tuple[dict[str, Any
 def _cmd_theme_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     data = _theme_catalog_mgr().list_catalog()
     return (
-        build_envelope("theme", "list", status="ok",
-                       data={"themes": data}, correlation_id=correlation_id),
+        build_envelope(
+            "theme", "list", status="ok", data={"themes": data}, correlation_id=correlation_id
+        ),
         EXIT_OK,
     )
 
@@ -1379,8 +1387,9 @@ def _cmd_theme_apply(args: list[str], correlation_id: str) -> tuple[dict[str, An
     result = _theme_pref_mgr().apply(plan_id, confirm_token)
     data = {"status": result.status, "operationId": result.operation_id}
     return (
-        build_envelope("theme", "apply", status=result.status,
-                       data=data, correlation_id=correlation_id),
+        build_envelope(
+            "theme", "apply", status=result.status, data=data, correlation_id=correlation_id
+        ),
         EXIT_OK,
     )
 
@@ -1390,8 +1399,9 @@ def _cmd_theme_rollback(args: list[str], correlation_id: str) -> tuple[dict[str,
     result = _theme_pref_mgr().rollback(operation_id)
     data = {"status": result.status, "operationId": result.operation_id}
     return (
-        build_envelope("theme", "rollback", status=result.status,
-                       data=data, correlation_id=correlation_id),
+        build_envelope(
+            "theme", "rollback", status=result.status, data=data, correlation_id=correlation_id
+        ),
         EXIT_OK,
     )
 
