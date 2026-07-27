@@ -10,6 +10,7 @@ qualquer provider degrada somente a linha correspondente.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import shutil
 import subprocess
@@ -1074,8 +1075,8 @@ class DesktopDashboard:
     def _theme_state(self) -> dict[str, Any]:
         catalog = self._theme_catalog.list_catalog()
         preference = self._theme_prefs._read_preference()
-        active_id = (
-            preference.get("themeId") if preference else "org.steamzero.default"
+        active_id: str = (
+            str(preference.get("themeId")) if preference else "org.steamzero.default"
         )
         active_name = active_id
         for entry in catalog:
@@ -1089,10 +1090,28 @@ class DesktopDashboard:
              "active": e["id"] == active_id}
             for e in catalog
         ]
+        try:
+            resolved = self._theme_catalog.resolve(active_id)
+        except Exception:
+            qml_object = None
+            return {
+                "activeId": active_id, "activeName": active_name,
+                "available": available, "resolved": None,
+                "state": "ready", "detail": None,
+            }
+        high_contrast = False
+        reduced_motion = False
+        with contextlib.suppress(Exception):
+            high_contrast = self._high_contrast_probe()
+        with contextlib.suppress(Exception):
+            reduced_motion = self._reduced_motion_probe()
+        resolved = resolved.apply_accessibility(high_contrast, reduced_motion)
+        qml_object = resolved.to_theme_qml_object()
         return {
             "activeId": active_id,
             "activeName": active_name,
             "available": available,
+            "resolved": qml_object,
             "state": "ready",
             "detail": None,
         }

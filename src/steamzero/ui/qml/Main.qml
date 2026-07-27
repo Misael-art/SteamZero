@@ -28,32 +28,35 @@ ApplicationWindow {
     palette.disabled.buttonText: "#667481"
     palette.disabled.text: "#667481"
 
-    readonly property color backgroundColor: highContrast ? "#000000" : "#071019"
-    readonly property color sidebarColor: highContrast ? "#000000" : "#09131d"
-    readonly property color surfaceColor: highContrast ? "#000000" : "#0d1924"
-    readonly property color raisedColor: highContrast ? "#1a1a1a" : "#122131"
-    readonly property color borderColor: highContrast ? "#ffffff" : "#2a3a49"
-    readonly property color textColor: highContrast ? "#ffffff" : "#f2f6fb"
-    readonly property color mutedColor: highContrast ? "#e8e8e8" : "#9eabba"
-    readonly property color cyanColor: highContrast ? "#00e5ff" : "#13bdf2"
-    readonly property color cyanDarkColor: highContrast ? "#003d4d" : "#0a5f85"
-    readonly property color amberColor: highContrast ? "#ffc400" : "#ff9f1a"
-    readonly property color greenColor: highContrast ? "#5eff62" : "#59d35d"
-    readonly property color redColor: highContrast ? "#ff8a90" : "#ff6b73"
+    // Bridge de tema: lê do dashboard JSON se disponível, fallback para tokens
+    // embutidos. Tema e alto contraste coexist: highContrast sobrepõe o tema
+    // tanto no backend (apply_accessibility) quanto no fallback inline.
+    readonly property var _themeBridge: ThemeBridge {
+        _source: desktopStatus.dashboard
+            && desktopStatus.dashboard.theme
+            ? desktopStatus.dashboard.theme : null
+    }
+
+    readonly property color backgroundColor: _themeBridge.background
+    readonly property color sidebarColor: _themeBridge.sidebar
+    readonly property color surfaceColor: _themeBridge.surface
+    readonly property color raisedColor: _themeBridge.surfaceRaised
+    readonly property color borderColor: _themeBridge.border
+    readonly property color textColor: _themeBridge.text
+    readonly property color mutedColor: _themeBridge.textMuted
+    readonly property color cyanColor: _themeBridge.accent
+    readonly property color cyanDarkColor: _themeBridge.accentStrong
+    readonly property color amberColor: _themeBridge.warning
+    readonly property color greenColor: _themeBridge.success
+    readonly property color redColor: _themeBridge.danger
     readonly property bool compactLayout: width <= 1366 || height <= 850
     readonly property bool handheldLayout: width <= 1024 || height <= 640
     readonly property var accessibility: desktopStatus.dashboard
         && desktopStatus.dashboard.accessibility
         ? desktopStatus.dashboard.accessibility : null
-    readonly property bool reducedMotion: accessibility
-        && accessibility.reducedMotion === true
-    readonly property int motionDuration: reducedMotion ? 0 : 180
-    // Alto contraste é preferência do host, read-only: a UI honra o esquema que
-    // o Plasma já declara em vez de manter um ajuste próprio que divergiria do
-    // resto do desktop. Nenhuma cor nova é introduzida aqui — as mesmas
-    // propriedades que todo o QML já consome mudam de valor.
-    readonly property bool highContrast: accessibility
-        && accessibility.highContrast === true
+    readonly property bool reducedMotion: _themeBridge.reducedMotion
+    readonly property int motionDuration: _themeBridge.motionDuration
+    readonly property bool highContrast: _themeBridge.highContrast
     readonly property int bottomSafeInset: compactLayout ? 60 : 24
     readonly property bool ultrawideLayout: width >= 2200
     readonly property int responsiveGutter: compactLayout ? 12 : 28
