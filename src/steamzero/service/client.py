@@ -26,14 +26,87 @@ class CoreProtocolError(RuntimeError):
     """Resposta do daemon não respeita o contrato JSON-RPC."""
 
 
+class CoreGenerationMismatch(RuntimeError):
+    """O daemon em execução pertence a outra geração da release.
+
+    Foi exatamente este estado que produziu a regressão da a37: ``current``
+    apontava para a a37 enquanto ``steamzero-core.service`` seguia executando o
+    Python da a35. Nada falhava — a UI apenas recebia snapshots antigos, e o
+    sintoma apareceu como "ícones sumiram" e "keys apagadas".
+
+    Preferimos recusar barulhento a responder mentindo.
+    """
+
+    def __init__(self, client: dict[str, Any], daemon: dict[str, Any]) -> None:
+        self.client = client
+        self.daemon = daemon
+        super().__init__(
+            "daemon de outra geração: cliente "
+            f"{client.get('releaseId') or client.get('packageVersion')} "
+            f"contra daemon {daemon.get('releaseId') or daemon.get('packageVersion')}"
+        )
+
+
 @dataclass(frozen=True)
 class Invocation:
     envelope: dict[str, Any]
     exit_code: int
 
 
-def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invocation:
-    request_id = 1
+def daemon_identity(*, timeout: float = 2.0) -> dict[str, Any]:
+    """Identidade declarada pelo daemon em execução, via ``system.hello``."""
+    result = _call(1, "system.hello", {}, timeout=timeout)
+    identity = result.get("identity")
+    if isinstance(identity, dict):
+        return identity
+    # Daemon anterior à publicação de identidade: o que ele sabe dizer é a
+    # versão. Melhor um dado parcial declarado que assumir compatibilidade.
+    return {
+        "packageVersion": str(result.get("daemonVersion") or ""),
+        "sourceCommit": "",
+        "releaseId": "",
+    }
+
+
+def verify_generation(*, timeout: float = 2.0) -> dict[str, Any]:
+    """Confronta a identidade do processo local com a do daemon.
+
+    Levanta ``CoreGenerationMismatch`` quando divergem. Identidade desconhecida
+    de qualquer lado também recusa: não sabemos o que estamos comparando, e
+    assumir compatibilidade sem prova é o erro que se quer evitar.
+    """
+    from steamzero.core.identity import UNKNOWN_COMMIT, runtime_identity
+
+    mine = runtime_identity()
+    theirs = daemon_identity(timeout=timeout)
+    their_commit = str(theirs.get("sourceCommit") or "")
+    their_known = bool(their_commit) and their_commit != UNKNOWN_COMMIT
+
+    if mine.known and their_known:
+        # Caminho verificado: os dois lados sabem sua origem e ela precisa bater.
+        if mine.source_commit == their_commit and mine.release_id == theirs.get("releaseId"):
+            return theirs
+        raise CoreGenerationMismatch(mine.to_dict(), theirs)
+
+    if not mine.known and not their_known:
+        # Nenhum dos lados carrega proveniência: árvore de desenvolvimento ou
+        # instalação cujo hook de build não rodou. Não há release para proteger
+        # nem evidência de divergência, e recusar tornaria o daemon inutilizável
+        # em desenvolvimento. Exigir proveniência é papel do preflight de
+        # promoção, que reprova identidade ausente antes de instalar.
+        if mine.package_version == str(theirs.get("packageVersion") or ""):
+            return theirs
+        raise CoreGenerationMismatch(mine.to_dict(), theirs)
+
+    # Um lado sabe e o outro não: é justamente a assimetria da a37, em que a
+    # release nova conhecia sua origem e o processo sobrevivente não.
+    raise CoreGenerationMismatch(mine.to_dict(), theirs)
+
+
+def _call(
+    request_id: int, method: str, params: dict[str, Any], *, timeout: float
+) -> dict[str, Any]:
+    """Um round-trip JSON-RPC, com o envelope já validado."""
     request = (
         json.dumps(
             {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params},
@@ -66,6 +139,11 @@ def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invo
     result = response.get("result")
     if not isinstance(result, dict):
         raise CoreProtocolError("resultado ausente")
+    return result
+
+
+def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invocation:
+    result = _call(1, method, dict(params), timeout=timeout)
     envelope = result.get("envelope")
     exit_code = result.get("exitCode")
     if not isinstance(envelope, dict) or not isinstance(exit_code, int):

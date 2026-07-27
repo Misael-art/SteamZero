@@ -33,6 +33,7 @@ from steamzero.api.events import (
 )
 from steamzero.core import fs, ids
 from steamzero.core.errors import SteamZeroError, build_error
+from steamzero.core.identity import runtime_identity
 from steamzero.core.state import StateStore
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
 from steamzero.service.reconciler import SessionEnvironmentReconciler
@@ -327,6 +328,12 @@ def _dispatch(raw: bytes) -> tuple[dict[str, Any], bool]:
     if method == "system.hello":
         if params not in ({}, None):
             return _rpc_error(request_id, -32602, "system.hello não aceita parâmetros"), False
+        # A identidade completa — não só a versão — porque duas releases podem
+        # compartilhar packageVersion e divergir em commit. Ver
+        # steamzero.core.identity: o valor é carregado do próprio pacote em
+        # tempo de build, nunca lido de manifesto ao lado de `current`, que o
+        # processo antigo leria como se fosse dele.
+        identity = runtime_identity()
         return _rpc_result(
             request_id,
             {
@@ -334,6 +341,7 @@ def _dispatch(raw: bytes) -> tuple[dict[str, Any], bool]:
                 "daemonVersion": __version__,
                 "pid": os.getpid(),
                 "transport": "unix-peercred",
+                "identity": identity.to_dict(),
             },
         ), False
     if method == "system.capabilities":

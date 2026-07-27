@@ -1606,7 +1606,13 @@ def _try_daemon(
     """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente."""
     if os.environ.get("STEAMZERO_NO_DAEMON") == "1":
         return None
-    from steamzero.service.client import CoreProtocolError, CoreUnavailable, invoke
+    from steamzero.service.client import (
+        CoreGenerationMismatch,
+        CoreProtocolError,
+        CoreUnavailable,
+        invoke,
+        verify_generation,
+    )
     from steamzero.service.methods import CLI_METHODS, InvalidParams
 
     spec = CLI_METHODS.get((domain, action))
@@ -1617,6 +1623,35 @@ def _try_daemon(
     except InvalidParams:
         # A CLI local pode ter uma opção deliberadamente não exposta pelo daemon.
         return None
+
+    # Handshake antes de confiar no daemon. Na a37 o processo da geração anterior
+    # sobreviveu à troca de release e seguiu respondendo: nada falhava, a UI só
+    # recebia snapshots antigos.
+    try:
+        verify_generation()
+    except CoreUnavailable:
+        return None
+    except CoreProtocolError:
+        return None
+    except CoreGenerationMismatch as exc:
+        if not spec.mutation:
+            # Leitura pode degradar para o caminho local, que é o código desta
+            # mesma geração: resposta correta, apenas sem o daemon.
+            return None
+        # Mutação NUNCA vai para o daemon errado, e também não é repetida
+        # localmente — repetir é como se produz efeito duplicado.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-GENERATION-MISMATCH", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+
     try:
         invocation = invoke(spec.method, params)
     except CoreUnavailable:
