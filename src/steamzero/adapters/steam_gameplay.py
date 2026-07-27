@@ -846,8 +846,13 @@ class SteamGameplayController:
         return None
 
     @staticmethod
-    def _battery_percent() -> int | None:
-        for path in Path("/sys/class/power_supply").glob("BAT*/capacity"):
+    def _battery_percent(power_supply_root: Path | None = None) -> int | None:
+        """``power_supply_root`` injetável: runner e desktop não têm bateria, então
+        sem ele o ramo positivo nunca é exercitado fora de um portátil."""
+        root = (
+            power_supply_root if power_supply_root is not None else Path("/sys/class/power_supply")
+        )
+        for path in sorted(root.glob("BAT*/capacity")):
             try:
                 value = int(path.read_text(encoding="utf-8").strip())
             except (OSError, ValueError):

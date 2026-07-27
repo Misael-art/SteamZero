@@ -261,14 +261,21 @@ class PreservationService:
         )
 
 
-def host_driver_fingerprint() -> str:
+def host_driver_fingerprint(drm_root: Path | None = None) -> str:
+    """Impressão do driver gráfico do host.
+
+    ``drm_root`` existe para teste: sem ponto de injeção esta função só é
+    exercitada em máquina com GPU real, e a cobertura passa a depender do
+    hardware de quem roda a suíte em vez do código.
+    """
     material: dict[str, object] = {
         "kernel": platform.release(),
         "machine": platform.machine(),
         "drm": [],
     }
     drm: list[str] = []
-    for uevent in sorted(Path("/sys/class/drm").glob("card*/device/uevent")):
+    root = drm_root if drm_root is not None else Path("/sys/class/drm")
+    for uevent in sorted(root.glob("card*/device/uevent")):
         try:
             rows = [
                 line
@@ -291,8 +298,11 @@ def _discover_targets(
     kind: str,
     *,
     emulator_version: str,
+    home: Path | None = None,
 ) -> list[PreservationTarget]:
-    home = Path.home()
+    # ``home`` injetável: caminhar o diretório real do usuário torna a cobertura
+    # dependente de quais emuladores estão instalados na máquina.
+    home = home if home is not None else Path.home()
     roots = _candidate_roots(home, emulator_id, kind)
     matches: list[PreservationTarget] = []
     wanted = title_id.casefold()

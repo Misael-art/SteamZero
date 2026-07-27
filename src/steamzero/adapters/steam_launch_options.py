@@ -33,9 +33,11 @@ def _default_roots() -> tuple[Path, ...]:
     )
 
 
-def _steam_running() -> bool:
+def _steam_running(proc_root: Path | None = None) -> bool:
+    """``proc_root`` injetável: sem ele o ramo positivo só executa em máquina com
+    Steam aberto, e a cobertura passa a depender do que está rodando."""
     try:
-        entries = Path("/proc").iterdir()
+        entries = (proc_root if proc_root is not None else Path("/proc")).iterdir()
     except OSError:
         return False
     for entry in entries:

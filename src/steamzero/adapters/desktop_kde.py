@@ -194,11 +194,14 @@ def detect_deck_input_keys() -> bool:
     return False
 
 
-def _physical_dock_present() -> bool:
+def _physical_dock_present(usb_root: Path | None = None) -> bool:
+    """``usb_root`` injetável: a varredura de USB só encontra dock em host que
+    tem um, então sem ele este ramo nunca é exercitado num runner."""
     override = os.environ.get("STEAMZERO_DOCK_PRESENT")
     if override is not None:
         return override == "1"
-    for product in Path("/sys/bus/usb/devices").glob("*/product"):
+    root = usb_root if usb_root is not None else Path("/sys/bus/usb/devices")
+    for product in sorted(root.glob("*/product")):
         name = _read_text(product).lower()
         if any(marker in name for marker in ("dock", "docking", "usb-c hub", "type-c hub")):
             return True
