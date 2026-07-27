@@ -546,6 +546,7 @@ def test_disable_removes_only_owned_integration(
             layout,
             runner=runner,
             which=lambda name: f"/usr/bin/{name}",
+            user_lookup=_user,
         )["state"]
         == "disabled"
     )
