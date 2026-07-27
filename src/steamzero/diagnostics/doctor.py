@@ -14,8 +14,10 @@ from typing import Any
 
 from steamzero import __version__
 from steamzero.adapters.desktop_kde import detect_deck_input_keys
+from steamzero.adapters.service_activation import read_quarantine
 from steamzero.core import fs as corefs
 from steamzero.core import journal, paths
+from steamzero.core.identity import runtime_identity
 from steamzero.core.state import StateStore
 
 
@@ -44,6 +46,32 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
             "runtime.python",
             "pass" if py >= (3, 11) else "fail",
             f"Python {platform.python_version()}",
+        )
+    )
+
+    # Identidade do código em execução: sem ela não há como confrontar gerações,
+    # e foi a ausência dessa comparação que deixou a a37 passar em silêncio.
+    identity = runtime_identity()
+    checks.append(
+        _check(
+            "runtime.provenance",
+            "pass" if identity.known else "warn",
+            f"{identity.release_id or identity.package_version}"
+            + (" (árvore alterada)" if identity.source_dirty else "")
+            if identity.known
+            else "origem do pacote desconhecida; promoção será recusada pelo preflight",
+        )
+    )
+
+    # C3: quarentena é anunciada, não descoberta.
+    quarantine = read_quarantine()
+    checks.append(
+        _check(
+            "service.generation",
+            "fail" if quarantine else "pass",
+            str(quarantine.get("reason", "serviço em quarentena"))
+            if quarantine
+            else "Serviço na mesma versão do pacote instalado.",
         )
     )
 

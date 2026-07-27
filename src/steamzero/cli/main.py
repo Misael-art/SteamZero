@@ -43,6 +43,7 @@ _USAGE = f"""steamzero <domínio> <ação> [flags]
 
 Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
+  service refresh        reinicia o serviço local na versão instalada
   jobs list              lista jobs paginados (--limit N --cursor ID --state STATE)
   jobs list --follow     segue eventos em NDJSON (--job-id ID --cursor SEQ)
   operations list        lista operações paginadas (--limit N --cursor ID)
@@ -103,6 +104,31 @@ Flags globais:
   --version              imprime a versão
   -h, --help             esta ajuda
 """
+
+
+def _cmd_service_refresh(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    """Reinicia as units gerenciadas e confirma que a geração confere.
+
+    Roda em escopo de usuário: as units valem para todos os usuários da máquina e
+    o instalador, que roda como root, não sabe qual sessão reiniciar. Quem age é
+    o manager do próprio usuário.
+    """
+    from steamzero.adapters.service_activation import refresh
+
+    result = refresh()
+    ok = result.state == "ready"
+    return (
+        build_envelope(
+            "service",
+            "refresh",
+            status="ok" if ok else "failed",
+            ok=ok,
+            data=result.to_dict(),
+            error=None if ok else build_error("E-API-GENERATION-MISMATCH", detail=result.detail),
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK if ok else EXIT_FAILURE,
+    )
 
 
 def _cmd_doctor(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
@@ -1409,6 +1435,7 @@ def _cmd_theme_rollback(args: list[str], correlation_id: str) -> tuple[dict[str,
 #: Allowlist de ações. Chave (domínio, ação|None).
 HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
+    ("service", "refresh"): _cmd_service_refresh,
     ("jobs", "list"): _cmd_jobs_list,
     ("operations", "list"): _cmd_operations_list,
     ("operations", "show"): _cmd_operations_show,
