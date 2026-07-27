@@ -209,7 +209,8 @@ class ThemeCatalog:
     """Catálogo que descobre temas builtin e do usuário."""
 
     def __init__(self, user_themes_dir: Path | None = None) -> None:
-        self._user_themes_dir = user_themes_dir
+        from steamzero.core import paths
+        self._user_themes_dir = user_themes_dir or paths.themes_dir()
 
     def list_catalog(self) -> list[dict[str, Any]]:
         entries: list[dict[str, Any]] = []

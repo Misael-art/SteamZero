@@ -549,4 +549,9 @@ MESSAGES: dict[str, str] = {
     "error.E-THEME-ACTIVE.impact": "A remoção foi recusada. Nenhuma mudança foi feita.",
     "error.E-THEME-ACTIVE.cause": "Tentativa de remover o tema que está em uso no momento.",
     "error.E-THEME-ACTIVE.action": "Selecione outro tema primeiro e então remova este.",
+    "error.E-THEME-DOWNLOAD-FAILED.title": "Falha no download do tema",
+    "error.E-THEME-DOWNLOAD-FAILED.what": "Não foi possível baixar ou extrair o pacote do tema.",
+    "error.E-THEME-DOWNLOAD-FAILED.impact": "O tema não foi instalado. Nenhum tema foi alterado.",
+    "error.E-THEME-DOWNLOAD-FAILED.cause": "URL inacessível, ZIP inválido, checksum divergente ou extração insegura.",
+    "error.E-THEME-DOWNLOAD-FAILED.action": "Verifique a URL e a integridade do pacote. Tente novamente.",
 }

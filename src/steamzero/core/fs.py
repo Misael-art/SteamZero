@@ -202,6 +202,23 @@ def remove_tree(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def move_tree(src: Path, dest: Path) -> None:
+    """Move uma árvore para outro local, suportando cross-filesystem.
+
+    Tenta rename atômico primeiro; se cruzar filesystems, faz cópia+remoção.
+    """
+    if not src.exists():
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"origem inválida: {src}")
+    if dest.exists() or dest.is_symlink():
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {dest}")
+    ensure_dir(dest.parent)
+    try:
+        src.rename(dest)
+    except OSError:
+        shutil.copytree(src, dest, symlinks=False, dirs_exist_ok=False)
+        remove_tree(src)
+
+
 def copy_file_atomic(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
     """Copia um arquivo em streaming e publica ``dest`` atomicamente.
 

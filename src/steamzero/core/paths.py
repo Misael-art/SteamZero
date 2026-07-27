@@ -90,6 +90,10 @@ def mods_dir() -> Path:
     return data_home() / "mods"
 
 
+def themes_dir() -> Path:
+    return data_home() / "themes"
+
+
 def config_home() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME")
     return (Path(base) if base else _home() / ".config") / APP

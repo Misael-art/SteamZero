@@ -90,9 +90,12 @@ Domínios (Fase 1):
   controls rollback      desfaz seleção (--operation-id ID)
   theme list             lista temas disponíveis (builtin + usuário)
   theme status           mostra tema ativo e tokens resolvidos
-  theme plan             planeja ativação de tema (--theme-id ID)
-  theme apply            aplica plano de tema (--plan-id ID --confirm TOKEN)
-  theme rollback         reverte ativação de tema (--operation-id ID)
+   theme list             lista temas disponíveis (builtin + usuário)
+   theme install          instala tema de URL ou caminho local (<source> [--force] [--yes])
+   theme status           mostra tema ativo e tokens resolvidos
+   theme plan             planeja ativação de tema (--theme-id ID)
+   theme apply            aplica plano de tema (--plan-id ID --confirm TOKEN)
+   theme rollback         reverte ativação de tema (--operation-id ID)
 
 Flags globais:
   --json                 emite envelope v2 (stdout puro)
@@ -1246,6 +1249,32 @@ def _theme_pref_mgr() -> Any:
     return ThemePreferenceManager()
 
 
+def _cmd_theme_install(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.theme_catalog import validate_theme_directory
+    from steamzero.domain.theme_install import ThemeInstaller
+
+    source = _flag_value(args, "--source")
+    if source is None:
+        positional = [a for a in args if not a.startswith("-")]
+        source = positional[0] if positional else None
+    if source is None:
+        msg = "use theme install <url-ou-caminho> [--force] [--yes]"
+        raise SteamZeroError("E-CLI-USAGE", detail=msg)
+    force = "--force" in args
+    yes = "--yes" in args
+    installer = ThemeInstaller(validate=validate_theme_directory)
+    result = installer.install(source, force=force, yes=yes)
+    return (
+        build_envelope(
+            "theme", "install",
+            status="ok",
+            data=result,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_theme_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     data = _theme_catalog_mgr().list_catalog()
     return (
@@ -1368,6 +1397,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("controls", "plan"): _cmd_controls_plan,
     ("controls", "apply"): _cmd_controls_apply,
     ("controls", "rollback"): _cmd_controls_rollback,
+    ("theme", "install"): _cmd_theme_install,
     ("theme", "list"): _cmd_theme_list,
     ("theme", "status"): _cmd_theme_status,
     ("theme", "plan"): _cmd_theme_plan,
