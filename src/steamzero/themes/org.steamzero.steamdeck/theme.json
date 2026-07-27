@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-theme-v1",
+  "id": "org.steamzero.steamdeck",
+  "name": "Steam Deck",
+  "version": "1.0.0",
+  "author": "SteamZero contributors",
+  "license": "GPL-3.0-or-later",
+  "description": "Tema inspirado no Steam Deck com acentos verdes e fundo escuro.",
+  "compatibility": { "themeApi": 1 },
+  "extends": "org.steamzero.default",
+  "tokens": {
+    "color": {
+      "accent": "#1b9e4a",
+      "accentStrong": "#0f6a30",
+      "focus": "#1b9e4a"
+    }
+  },
+  "assets": {}
+}

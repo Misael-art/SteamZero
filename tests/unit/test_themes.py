@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import tempfile
 from pathlib import Path
 
 import jsonschema
 import pytest
 
+from steamzero.adapters.theme_catalog import (
+    ThemeCatalog,
+    list_builtin_theme_ids,
+    read_builtin_manifest,
+    validate_theme_directory,
+)
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.themes import (
     MAX_EXTENDS_DEPTH,
     THEME_API_VERSION,
@@ -234,3 +243,112 @@ class TestResolution:
              version="1.0.0", author="SZ", license="GPL-3.0-or-later")}
         with pytest.raises(ValueError, match="não encontrado"):
             ThemeResolver(m).resolve("org.nonexistent")
+
+
+class TestBuiltinThemes:
+    """WI-T1: temas builtin empacotados."""
+
+    def test_list_builtins(self) -> None:
+        ids = list_builtin_theme_ids()
+        assert THEME_DEFAULT_ID in ids
+
+    def test_default_builtin_reads(self) -> None:
+        manifest = read_builtin_manifest(THEME_DEFAULT_ID)
+        assert manifest.id == THEME_DEFAULT_ID
+        assert manifest.version == "1.0.0"
+        assert manifest.name == "SteamZero"
+
+    def test_second_builtin_exists(self) -> None:
+        ids = list_builtin_theme_ids()
+        assert "org.steamzero.steamdeck" in ids
+
+    def test_second_builtin_reads(self) -> None:
+        manifest = read_builtin_manifest("org.steamzero.steamdeck")
+        assert manifest.id == "org.steamzero.steamdeck"
+        assert manifest.extends == THEME_DEFAULT_ID
+
+    def test_catalog_lists_builtins(self) -> None:
+        catalog = ThemeCatalog()
+        entries = catalog.list_catalog()
+        ids = [e["id"] for e in entries]
+        assert THEME_DEFAULT_ID in ids
+        assert "org.steamzero.steamdeck" in ids
+
+    def test_default_builtin_is_always_available(self) -> None:
+        catalog = ThemeCatalog()
+        entries = catalog.list_catalog()
+        default = next(e for e in entries if e["id"] == THEME_DEFAULT_ID)
+        assert default["state"] == "available"
+
+    def test_resolve_default_from_catalog(self) -> None:
+        catalog = ThemeCatalog()
+        resolved = catalog.resolve(THEME_DEFAULT_ID)
+        assert resolved.id == THEME_DEFAULT_ID
+        assert resolved.color.background == "#071019"
+
+
+class TestUserThemeValidation:
+    """WI-T2: validação de pacote local e segurança."""
+
+    @pytest.fixture
+    def tmp_theme(self) -> Path:
+        d = Path(tempfile.mkdtemp())
+        theme_dir = d / "org.test.valid"
+        theme_dir.mkdir(parents=True)
+        (theme_dir / "theme.json").write_text(json.dumps({
+            "schemaVersion": 1,
+            "kind": "steamzero-theme-v1",
+            "id": "org.test.valid",
+            "name": "Valid",
+            "version": "1.0.0",
+            "author": "Tester",
+            "license": "MIT",
+            "compatibility": {"themeApi": 1},
+            "tokens": {"color": {"background": "#ff0000"}},
+        }))
+        (theme_dir / "assets").mkdir()
+        yield theme_dir
+        import shutil
+        shutil.rmtree(d, ignore_errors=True)
+
+    def test_valid_user_theme(self, tmp_theme: Path) -> None:
+        manifest = validate_theme_directory(tmp_theme)
+        assert manifest.id == "org.test.valid"
+        assert manifest.author == "Tester"
+
+    def test_catalog_lists_user_theme(self, tmp_theme: Path) -> None:
+        catalog = ThemeCatalog(user_themes_dir=tmp_theme.parent)
+        entries = catalog.list_catalog()
+        ids = [e["id"] for e in entries]
+        assert "org.test.valid" in ids
+
+    def test_missing_manifest_rejected(self, tmp_theme: Path) -> None:
+        (tmp_theme / "theme.json").unlink()
+        with pytest.raises(SteamZeroError, match=r"theme\.json"):
+            validate_theme_directory(tmp_theme)
+
+    def test_symlink_rejected(self, tmp_theme: Path) -> None:
+        link = tmp_theme / "evil.link"
+        link.symlink_to("/etc/passwd")
+        with pytest.raises(SteamZeroError):
+            validate_theme_directory(tmp_theme)
+
+    def test_outside_root_rejected(self, tmp_theme: Path) -> None:
+        outside = tmp_theme.parent.parent / "outside.txt"
+        outside.write_text("outside")
+        link = tmp_theme / "ref"
+        with contextlib.suppress(OSError):
+            link.symlink_to(outside)
+        with pytest.raises(SteamZeroError):
+            validate_theme_directory(tmp_theme)
+
+    def test_prohibited_extension_rejected(self, tmp_theme: Path) -> None:
+        (tmp_theme / "script.qml").write_text("import QtQuick 2.0")
+        with pytest.raises(SteamZeroError, match=r"proibido|unsafe"):
+            validate_theme_directory(tmp_theme)
+
+    def test_directory_name_mismatch_rejected(self, tmp_theme: Path) -> None:
+        renamed = tmp_theme.parent / "wrong-name"
+        tmp_theme.rename(renamed)
+        with pytest.raises(SteamZeroError, match="difere"):
+            validate_theme_directory(renamed)

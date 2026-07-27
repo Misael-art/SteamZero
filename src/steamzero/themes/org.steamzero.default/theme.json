@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-theme-v1",
+  "id": "org.steamzero.default",
+  "name": "SteamZero",
+  "version": "1.0.0",
+  "author": "SteamZero contributors",
+  "license": "GPL-3.0-or-later",
+  "description": "Tema padrão do SteamZero — preserva o visual original pixel a pixel.",
+  "compatibility": { "themeApi": 1 },
+  "tokens": {
+    "color": {
+      "background": "#071019",
+      "sidebar": "#09131d",
+      "surface": "#0d1924",
+      "surfaceRaised": "#122131",
+      "surfaceSelected": "#1a2b3c",
+      "border": "#2a3a49",
+      "text": "#f2f6fb",
+      "textMuted": "#9eabba",
+      "textDisabled": "#667481",
+      "accent": "#13bdf2",
+      "accentStrong": "#0a5f85",
+      "success": "#59d35d",
+      "successSurface": "#1a3a1e",
+      "warning": "#ff9f1a",
+      "warningSurface": "#3a2a0a",
+      "danger": "#ff6b73",
+      "dangerSurface": "#3a1518",
+      "focus": "#13bdf2"
+    },
+    "geometry": {
+      "radiusSmall": 6,
+      "radiusMedium": 10,
+      "radiusLarge": 16,
+      "borderWidth": 1,
+      "focusWidth": 2,
+      "minimumTarget": 48,
+      "spacingSmall": 8,
+      "spacingMedium": 16,
+      "spacingLarge": 24
+    },
+    "typography": {
+      "scale": 1.0,
+      "weightBody": 400,
+      "weightStrong": 600,
+      "weightHeading": 700
+    },
+    "motion": {
+      "durationFast": 120,
+      "durationNormal": 180,
+      "durationLong": 300,
+      "hoverIntensity": 0.05,
+      "focusIntensity": 0.1
+    }
+  },
+  "assets": {}
+}
