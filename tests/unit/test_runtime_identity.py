@@ -232,3 +232,40 @@ def test_preflight_rejects_missing_identity_field(field: str) -> None:
     report = Report()
     check_identity_coherence(identity, report)
     assert not report.ok
+
+
+class TestBuildInfoIsRead:
+    """Caminho em que o módulo gravado pelo build EXISTE."""
+
+    def _with_build_info(self, monkeypatch: pytest.MonkeyPatch, commit: str, dirty: bool) -> None:
+        import types
+
+        module = types.ModuleType("steamzero._build_info")
+        module.SOURCE_COMMIT = commit  # type: ignore[attr-defined]
+        module.SOURCE_DIRTY = dirty  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "steamzero._build_info", module)
+
+    def test_identity_uses_injected_commit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._with_build_info(monkeypatch, _A37, False)
+        identity = runtime_identity()
+        assert identity.source_commit == _A37
+        assert identity.source_dirty is False
+        assert identity.known is True
+        assert identity.release_id == "0.1.0a37-2aaa01d9d8b6"
+
+    def test_dirty_flag_is_propagated(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._with_build_info(monkeypatch, _A37, True)
+        assert runtime_identity().source_dirty is True
+
+    def test_empty_commit_in_module_degrades_to_unknown(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._with_build_info(monkeypatch, "", False)
+        identity = runtime_identity()
+        assert identity.source_commit == UNKNOWN_COMMIT
+        assert identity.known is False
+
+    def test_short_commit_yields_no_release_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Hash truncado não deriva releaseId: melhor vazio que id inventado."""
+        self._with_build_info(monkeypatch, "abc123", False)
+        assert runtime_identity().release_id == ""

@@ -50,6 +50,24 @@ jobs:
         run: python tools/check_independence.py
       - name: Tipos estritos
         run: mypy
+      - name: Runtime QML para os harnesses offscreen
+        # Sem qml6 os 11 harnesses são pulados, e justamente eles provam o que os
+        # testes Python não alcançam: que o artwork de emulação chega a
+        # Image.Ready e que a shell carrega sem warning. Pular no CI deixaria a
+        # verificação restrita à máquina do operador.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qt6-declarative-dev-tools \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window \
+            qml6-module-qtquick-dialogs \
+            qml6-module-qtquick-templates \
+            qml6-module-qtqml-workerscript \
+            libgl1 libegl1
+          qml6 --version || qml --version
       - name: Testes e cobertura
         run: |
           mkdir -p build
