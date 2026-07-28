@@ -25,9 +25,10 @@ from steamzero.domain.resolved_node import (
     TextVerticalAlignment,
 )
 
-#: Fonte do sistema, presente em qualquer Linux com fontconfig. Empacotar uma
-#: fonte própria é do VS-07; fixar a família aqui já faz a substituição
-#: silenciosa reprovar, que é o risco imediato.
+#: A fonte EMPACOTADA em tests/fixtures/fonts/liberation-sans-2.1.5.
+#: O harness isola o fontconfig nela, então é o arquivo do repositório que
+#: renderiza — não o pacote da distribuição, que tem o mesmo nome de família e
+#: hash diferente.
 TEST_FONT = "Liberation Sans"
 
 

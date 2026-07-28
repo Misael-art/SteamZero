@@ -262,7 +262,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             qt6-declarative-dev-tools qml6-module-qtquick \
             qml6-module-qtquick-window qml6-module-qtqml-workerscript \
-            fonts-dejavu-core libgl1 libegl1
+            fontconfig libgl1 libegl1
           runner=$(command -v qml6 || find /usr/lib/qt6/bin -maxdepth 1 -name qml -type f | head -1)
           if [ -z "$runner" ]; then
             echo "QML-VISUAL-ENVIRONMENT-001: runtime QML ausente após a instalação" >&2
@@ -274,9 +274,24 @@ jobs:
       - name: Ambiente registrado
         # O registro do ambiente é parte do artefato: uma divergência de golden
         # sem saber a versão do Qt que a produziu é impossível de investigar.
+        #
+        # Nenhuma fonte do sistema é instalada de propósito. O harness isola o
+        # fontconfig na fonte EMPACOTADA — verificado que, sem isolar, a
+        # Liberation Sans do sistema sombreava a do repositório mesmo com o
+        # arquivo certo carregado, e o golden congelaria a métrica errada.
         run: |
           qml6 --version
-          fc-match "DejaVu Sans"
+          fc-list --version
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root = pathlib.Path("tests/fixtures/fonts/liberation-sans-2.1.5")
+          manifest = json.loads((root / "manifest.json").read_text())
+          print(f"fonte de teste: {manifest['family']} {manifest['version']} ({manifest['licenseSpdx']})")
+          for entry in manifest["files"]:
+              digest = hashlib.sha256((root / entry["name"]).read_bytes()).hexdigest()
+              status = "ok" if digest == entry["sha256"] else "DIVERGENTE"
+              print(f"  {entry['name']}: {status}")
+          PY
       - name: Gate visual
         run: |
           pytest tests/integration/test_qml_visual_capture.py --tb=short -q

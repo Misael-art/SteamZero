@@ -55,9 +55,10 @@ from qml_capture_runner import (  # noqa: E402
     write_artifacts,
 )
 
-#: Fonte do sistema, presente em qualquer runner Linux com fontconfig. O
-#: empacotamento de uma fonte própria do projeto é do VS-07, junto dos goldens:
-#: fixar a família aqui já garante que a substituição silenciosa reprove.
+#: A fonte EMPACOTADA em tests/fixtures/fonts/liberation-sans-2.1.5.
+#: O harness isola o fontconfig nela, então é o arquivo do repositório que
+#: renderiza — não o pacote da distribuição, que tem o mesmo nome e hash
+#: diferente.
 TEST_FONT = "Liberation Sans"
 
 GOLDEN_DIR = ROOT / "tests" / "qml" / "golden"

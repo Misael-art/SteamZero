@@ -51,9 +51,17 @@ DIAG_CAPTURE = "QML-VISUAL-CAPTURE-005"
 DIAG_EMPTY_IMAGE = "QML-VISUAL-EMPTY-IMAGE-006"
 DIAG_WARNING = "QML-VISUAL-WARNING-007"
 DIAG_GOLDEN_MISSING = "QML-VISUAL-GOLDEN-MISSING-008"
+DIAG_FONT_MISSING = "QML-VISUAL-FONT-MISSING-010"
+DIAG_FONT_HASH = "QML-VISUAL-FONT-HASH-011"
+DIAG_FONT_REGISTRATION = "QML-VISUAL-FONT-REGISTRATION-012"
+DIAG_FONT_FALLBACK_USED = "QML-VISUAL-FONT-FALLBACK-013"
+DIAG_FONT_LICENSE = "QML-VISUAL-FONT-LICENSE-014"
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "qml_capture" / "CaptureHarness.qml"
+
+#: Fixture de fonte determinística. Ver `SOURCE.md` no diretório.
+FONT_FIXTURE = ROOT / "tests" / "fixtures" / "fonts" / "liberation-sans-2.1.5"
 
 #: Versão mínima do Qt. Abaixo disto o comportamento de `grabToImage` sob o
 #: backend software difere, e um golden gerado numa versão não vale na outra.
@@ -118,6 +126,14 @@ class CanonicalEnvironment:
 
     platform: str = "offscreen"
     backend: Backend = Backend.SOFTWARE
+    #: Isola o fontconfig na fonte empacotada.
+    #:
+    #: Verificado nesta bancada: SEM isolamento, a Liberation Sans do SISTEMA
+    #: sombreava a empacotada mesmo com o arquivo certo carregado — as larguras
+    #: mudaram de 320.08 para 323 ao isolar. O golden teria congelado a métrica
+    #: da fonte errada, sem sintoma nenhum: a imagem sai, parece certa, e só
+    #: não reproduz noutra máquina.
+    isolate_fonts: bool = True
     device_pixel_ratio: float = 1.0
     font_dpi: int = 96
     locale: str = "C.UTF-8"
@@ -159,6 +175,8 @@ class CanonicalEnvironment:
                 "LANG": self.locale,
             }
         )
+        if self.isolate_fonts:
+            preserved["FONTCONFIG_FILE"] = str(_fontconfig_file())
         return preserved
 
     def to_dict(self) -> dict[str, Any]:
@@ -173,6 +191,70 @@ class CanonicalEnvironment:
             "reducedMotion": self.reduced_motion,
             "highContrast": self.high_contrast,
         }
+
+
+def _fontconfig_file() -> Path:
+    """Gera a configuração que expõe SOMENTE a fonte empacotada.
+
+    Escrita em tempo de execução, e não versionada, porque contém caminhos
+    absolutos da máquina. O conteúdo é derivado do diretório da fixture, então
+    não há como divergir dele.
+    """
+    work = ROOT / "build" / "qml-fontconfig"
+    work.mkdir(parents=True, exist_ok=True)
+    config = work / "fonts.conf"
+    config.write_text(
+        '<?xml version="1.0"?>\n'
+        '<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">\n'
+        "<fontconfig>\n"
+        f"  <dir>{FONT_FIXTURE}</dir>\n"
+        f"  <cachedir>{work / 'cache'}</cachedir>\n"
+        "</fontconfig>\n",
+        encoding="utf-8",
+    )
+    return config
+
+
+def load_font_manifest() -> dict[str, Any]:
+    """Lê e valida o manifesto da fonte empacotada.
+
+    Cada recusa aqui evita um golden congelado sobre a fonte errada — e esse
+    defeito não tem sintoma: a imagem sai, parece certa, e só não reproduz.
+    """
+    manifest_path = FONT_FIXTURE / "manifest.json"
+    if not manifest_path.is_file():
+        raise CaptureError(DIAG_FONT_MISSING, f"manifesto ausente: {manifest_path}")
+    manifest: dict[str, Any] = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    for required in ("family", "version", "licenseSpdx", "files", "artifactSha256"):
+        if not manifest.get(required):
+            raise CaptureError(DIAG_FONT_MISSING, f"manifesto sem {required!r}")
+
+    license_path = FONT_FIXTURE / str(manifest.get("licenseFile", "OFL.txt"))
+    if not license_path.is_file():
+        raise CaptureError(
+            DIAG_FONT_LICENSE,
+            f"licença ausente: {license_path}. Redistribuir a fonte sem o texto "
+            "da OFL viola a própria licença que permite redistribuí-la.",
+        )
+
+    for entry in manifest["files"]:
+        path = FONT_FIXTURE / entry["name"]
+        if not path.is_file():
+            raise CaptureError(DIAG_FONT_MISSING, f"face ausente: {path}")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != entry["sha256"]:
+            raise CaptureError(
+                DIAG_FONT_HASH,
+                f"{entry['name']} não confere com o manifesto: {digest} != {entry['sha256']}",
+            )
+        size = path.stat().st_size
+        if size != entry["byteSize"]:
+            raise CaptureError(
+                DIAG_FONT_HASH,
+                f"{entry['name']} tem {size} bytes, manifesto diz {entry['byteSize']}",
+            )
+    return manifest
 
 
 @dataclass(frozen=True)
@@ -279,6 +361,10 @@ def font_fingerprint(family: str) -> dict[str, str]:
     pareceria regressão de código.
     """
     record: dict[str, str] = {"family": family}
+    packaged = FONT_FIXTURE / "LiberationSans-Regular.ttf"
+    if packaged.is_file():
+        record["packagedFile"] = str(packaged)
+        record["packagedSha256"] = hashlib.sha256(packaged.read_bytes()).hexdigest()
     matcher = shutil.which("fc-match")
     if matcher is None:
         record["file"] = "fc-match indisponível"
@@ -365,6 +451,9 @@ def capture(
     """
     _reject_pending_payload(model)
     env_spec = environment or CanonicalEnvironment()
+    # Integridade ANTES de renderizar. Descobrir que o hash não confere depois
+    # da captura significaria ter uma imagem que parece boa e não vale nada.
+    manifest = load_font_manifest() if env_spec.isolate_fonts else {}
     # RHI sob `offscreen` não tem GPU para inicializar e simplesmente NÃO
     # retorna — verificado, consome o timeout inteiro e reporta "layout não
     # estabilizou", que manda quem investiga para o lugar errado. Recusar a
@@ -450,6 +539,13 @@ def capture(
         "fontFamilyRequested": geometry.get("fontFamilyRequested", ""),
         "fontFamilyResolved": geometry.get("fontFamilyResolved", ""),
         "fontFile": font_fingerprint(str(geometry.get("fontFamilyRequested", ""))),
+        "fontFixture": {
+            "family": manifest.get("family", ""),
+            "version": manifest.get("version", ""),
+            "licenseSpdx": manifest.get("licenseSpdx", ""),
+            "isolated": env_spec.isolate_fonts,
+            "faces": [entry["name"] for entry in manifest.get("files", [])],
+        },
         "requestedFontFamily": geometry.get("fontFamilyRequested", ""),
         "availableFontFamilyCount": geometry.get("availableFontFamilyCount", 0),
         "testFontAvailable": geometry.get("testFontAvailable", False),
