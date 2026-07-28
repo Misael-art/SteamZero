@@ -83,6 +83,7 @@ jobs:
         run: |
           mkdir -p build
           pytest \
+            -m "not visual" \
             --cov=steamzero \
             --cov-report=term-missing \
             --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
@@ -263,9 +264,19 @@ jobs:
             qt6-declarative-dev-tools qml6-module-qtquick \
             qml6-module-qtquick-window qml6-module-qtqml-workerscript \
             fontconfig libgl1 libegl1
-          runner=$(command -v qml6 || find /usr/lib/qt6/bin -maxdepth 1 -name qml -type f | head -1)
+          # A detecção anterior procurava só `/usr/lib/qt6/bin/qml`. O runner do
+          # Ubuntu 24.04 tem qmldom, qmllint, qmltestrunner e mais nove ali — e
+          # NENHUM `qml`. A provisão nunca funcionou; o `skipif` dos harnesses
+          # legados escondeu isso desde sempre.
+          echo "--- binários qml* encontrados ---"
+          find /usr/lib/qt6/bin /usr/lib/*/qt6/bin /usr/bin -maxdepth 1 \
+               \( -name 'qml' -o -name 'qml6' \) 2>/dev/null || true
+          runner=$(command -v qml6 || command -v qml \
+                   || find /usr/lib/qt6/bin /usr/lib/*/qt6/bin /usr/bin -maxdepth 1 \
+                          \( -name qml -o -name qml6 \) 2>/dev/null | head -1)
           if [ -z "$runner" ]; then
             echo "QML-VISUAL-ENVIRONMENT-001: runtime QML ausente após a instalação" >&2
+            echo "Pacotes instalados não trazem o executável do runtime QML." >&2
             exit 1
           fi
           dir=$(dirname "$runner")
@@ -294,7 +305,7 @@ jobs:
           PY
       - name: Gate visual
         run: |
-          pytest tests/integration/test_qml_visual_capture.py --tb=short -q
+          pytest -m visual --tb=short -q
       - name: Publicar artefatos visuais
         # always(): em falha estes arquivos são a ÚNICA forma de descobrir o que
         # aconteceu numa máquina que não é a sua. Publicar só no sucesso esconde

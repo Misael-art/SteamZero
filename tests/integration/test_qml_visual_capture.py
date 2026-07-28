@@ -31,6 +31,10 @@ from steamzero.domain.resolved_node import (
     TextVerticalAlignment,
 )
 
+#: Exigem runtime QML. Roteados para o gate visual dedicado, que reprova
+#: quando o Qt falta — não são pulados em lugar nenhum.
+pytestmark = pytest.mark.visual
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 

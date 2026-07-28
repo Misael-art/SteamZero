@@ -20,6 +20,10 @@ import pytest
 from steamzero.domain.resolved_node import ASSET_HANDLE
 from steamzero.domain.text_node_builder import FontProvider
 
+#: Exigem runtime QML. Roteados para o gate visual dedicado, que reprova
+#: quando o Qt falta — não são pulados em lugar nenhum.
+pytestmark = pytest.mark.visual
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 

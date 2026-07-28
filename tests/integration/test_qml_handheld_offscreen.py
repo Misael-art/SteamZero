@@ -180,6 +180,7 @@ def test_qml_emulation_error_card_via_transactional_failure(
     _assert_qml_clean(completed, "Harness ErrorCard transacional")
 
 
+@pytest.mark.visual
 def test_scene_text_renders_what_the_adapter_emits() -> None:
     """VS-02 — o Qt precisa ACEITAR o payload do adapter, não só recebê-lo.
 

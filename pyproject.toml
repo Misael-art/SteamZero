@@ -95,6 +95,11 @@ markers = [
   "golden: contract golden-file tests",
   "security: security tests (SECURITY-TESTS.md, ST-*)",
   "slow: long-running",
+  # Exigem runtime QML. NÃO são pulados: rodam no job `qml-visual-linux`, que
+  # reprova quando o Qt falta. O marcador ROTEIA, não dispensa — o job `quality`
+  # não provisiona Qt, e deixá-los lá faria a cobertura reprovar por ambiente em
+  # vez de por código.
+  "visual: require a QML runtime; run in the dedicated visual gate",
 ]
 
 [tool.coverage.run]

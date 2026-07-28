@@ -28,6 +28,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
+#: Exigem runtime QML. Roteados para o gate visual dedicado, que reprova
+#: quando o Qt falta — não são pulados em lugar nenhum.
+pytestmark = pytest.mark.visual
+
 from qml_capture_fixtures import (  # noqa: E402
     FIXTURES,
     FIXTURES_BY_NAME,
