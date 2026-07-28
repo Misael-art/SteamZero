@@ -137,6 +137,17 @@ class TestDimensionIsClosed:
     def test_supported_units(self, dimension: DimensionValue) -> None:
         assert dimension.to_dict()["kind"] in {"logicalPx", "percent", "auto"}
 
+    @pytest.mark.parametrize("bad", ["em", "rem", "vw", 50, None, "logicalpx"])
+    def test_unit_outside_the_contract_is_refused(self, bad: object) -> None:
+        """Fechado quer dizer fechado.
+
+        Sem esta checagem, `unit="em"` de um tema importado não casa com nenhuma
+        comparação `is` da validação, sobrevive à construção e só falha na
+        conversão para float — longe da causa e sem dizer qual tema errou.
+        """
+        with pytest.raises(ValueError, match="unidade fora do contrato"):
+            DimensionValue(bad, 10)  # type: ignore[arg-type]
+
     def test_auto_carries_no_value(self) -> None:
         with pytest.raises(ValueError, match="auto não aceita valor"):
             DimensionValue(DimensionUnit.AUTO, 10)

@@ -47,6 +47,15 @@ class DimensionValue:
     value: float | None = None
 
     def __post_init__(self) -> None:
+        # O conjunto só é fechado se alguém fechar. Sem esta checagem, um
+        # `unit="em"` vindo de um tema importado passa por todas as comparações
+        # `is` abaixo sem casar com nenhuma, sobrevive à construção, e só falha
+        # na conversão para float — longe da causa e sem dizer qual tema errou.
+        if not isinstance(self.unit, DimensionUnit):
+            raise ValueError(
+                f"unidade fora do contrato: {self.unit!r}; "
+                f"conhecidas: {[member.value for member in DimensionUnit]}"
+            )
         if self.unit is DimensionUnit.AUTO:
             if self.value is not None:
                 raise ValueError("auto não aceita valor numérico")
