@@ -132,7 +132,7 @@ class TestDeferredValueCarriesItsContract:
 class TestDimensionIsClosed:
     @pytest.mark.parametrize(
         "dimension",
-        [DimensionValue.px(64), DimensionValue.percent(50), DimensionValue.auto()],
+        [DimensionValue.logical_px(64), DimensionValue.percent(50), DimensionValue.auto()],
     )
     def test_supported_units(self, dimension: DimensionValue) -> None:
         assert dimension.to_dict()["kind"] in {"logicalPx", "percent", "auto"}
@@ -146,15 +146,52 @@ class TestDimensionIsClosed:
         conversão para float — longe da causa e sem dizer qual tema errou.
         """
         with pytest.raises(ValueError, match="unidade fora do contrato"):
-            DimensionValue(bad, 10)  # type: ignore[arg-type]
+            DimensionValue(unit=bad, value=10)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("bad", ["em", "rem", None, "logicalpx"])
+    def test_unit_outside_the_contract_is_refused_when_parsing(self, bad: object) -> None:
+        """A desserialização é a outra porta de entrada.
+
+        Sem `from_dict` validando, um payload com `"kind": "em"` entraria pelo
+        round-trip sem nunca passar pela validação da construção.
+        """
+        with pytest.raises(ValueError, match="unidade fora do contrato"):
+            DimensionValue.from_dict({"kind": bad, "value": 10})
+
+    @pytest.mark.parametrize(
+        "dimension",
+        [DimensionValue.logical_px(64), DimensionValue.percent(50), DimensionValue.auto()],
+    )
+    def test_round_trip_through_the_payload(self, dimension: DimensionValue) -> None:
+        assert DimensionValue.from_dict(dimension.to_dict()) == dimension
+
+    def test_positional_construction_is_refused(self) -> None:
+        """Os campos são `unit, value`, mas a leitura natural é a ordem inversa.
+
+        `DimensionValue(50, PERCENT)` passava pela validação inteira e só
+        explodia na conversão para float, longe da causa.
+        """
+        with pytest.raises(TypeError, match="positional"):
+            DimensionValue(DimensionUnit.PERCENT, 50)  # type: ignore[misc]
+
+    @pytest.mark.parametrize("factory", [DimensionValue.logical_px, DimensionValue.percent])
+    @pytest.mark.parametrize("bad", [True, False, "50", None, float("nan"), float("inf")])
+    def test_measured_units_require_a_finite_number(self, factory: object, bad: object) -> None:
+        """`bool` é subclasse de `int`.
+
+        Sem a checagem explícita, `percent(True)` viraria 1.0 e ninguém saberia
+        que o tema declarou um booleano.
+        """
+        with pytest.raises(ValueError, match=r"exige (número|valor)"):
+            factory(bad)  # type: ignore[operator]
 
     def test_auto_carries_no_value(self) -> None:
         with pytest.raises(ValueError, match="auto não aceita valor"):
-            DimensionValue(DimensionUnit.AUTO, 10)
+            DimensionValue(unit=DimensionUnit.AUTO, value=10)
 
     def test_px_requires_a_value(self) -> None:
         with pytest.raises(ValueError, match="exige valor"):
-            DimensionValue(DimensionUnit.LOGICAL_PX)
+            DimensionValue(unit=DimensionUnit.LOGICAL_PX)
 
     def test_out_of_range_percent_is_refused(self) -> None:
         with pytest.raises(ValueError, match="percentual fora da faixa"):
@@ -221,17 +258,21 @@ class TestGradient:
 class TestLayoutValidation:
     def test_min_greater_than_max_is_refused(self) -> None:
         """Contradição que renderizaria silenciosamente errado."""
-        layout = LayoutSpec(min_width=DimensionValue.px(500), max_width=DimensionValue.px(100))
+        layout = LayoutSpec(
+            min_width=DimensionValue.logical_px(500), max_width=DimensionValue.logical_px(100)
+        )
         with pytest.raises(ValueError, match="mínima maior que a máxima"):
             layout.validate()
 
     def test_consistent_bounds_pass(self) -> None:
-        LayoutSpec(min_width=DimensionValue.px(100), max_width=DimensionValue.px(500)).validate()
+        LayoutSpec(
+            min_width=DimensionValue.logical_px(100), max_width=DimensionValue.logical_px(500)
+        ).validate()
 
     def test_different_units_are_not_compared(self) -> None:
         """px contra percent não é comparável sem a caixa do pai."""
         LayoutSpec(
-            min_width=DimensionValue.px(500), max_width=DimensionValue.percent(10)
+            min_width=DimensionValue.logical_px(500), max_width=DimensionValue.percent(10)
         ).validate()
 
 

@@ -78,7 +78,7 @@ def _element(**overrides: object) -> ElementContract:
         "type": "text",
         "source_reference": SourceReference("layouts/arcade.xml", line=183, element="gameTitle"),
         "text_content": value.bind("game.title"),
-        "layout": LayoutSpec(x=DimensionValue.percent(50), y=DimensionValue.px(120)),
+        "layout": LayoutSpec(x=DimensionValue.percent(50), y=DimensionValue.logical_px(120)),
         "typography": TypographySpec(
             font_family="Gilroy", font_size=48, color=value.token("color.text.primary")
         ),
