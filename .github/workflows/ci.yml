@@ -227,3 +227,70 @@ jobs:
           /tmp/steamzero-distro/bin/python -m pip check
           /tmp/steamzero-distro/bin/steamzero --version
           /tmp/steamzero-distro/bin/steamzero doctor --json
+
+  qml-visual-linux:
+    # Gate visual. Nasce SEM `continue-on-error`, e a diferença não é estilo.
+    #
+    # O passo de provisão do Qt no job `quality` é best-effort de propósito: lá
+    # os harnesses legados pulam por `skipif` quando o runtime falta, e um
+    # runtime opcional não deve derrubar a cobertura. Herdar essa tolerância
+    # aqui anularia o job — ele existe justamente para que ambiente ausente
+    # REPROVE, em vez de produzir verde num host onde nada visual rodou.
+    #
+    # Foi assim que a regressão de ícones da a37 atravessou os gates: caminho de
+    # asset correto, teste verde, imagem nunca renderizada.
+    name: Gate visual QML (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Python 3.14
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Dependências verificadas por hash
+        run: python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Runtime QML obrigatório
+        # Sem `continue-on-error` e sem `|| true`: falha na provisão é falha do
+        # gate. O ambiente canônico exige o plugin offscreen e o backend
+        # software, e a ausência de qualquer um invalida a comparação com as
+        # baselines — que foram geradas exatamente nessa combinação.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qt6-declarative-dev-tools qml6-module-qtquick \
+            qml6-module-qtquick-window qml6-module-qtqml-workerscript \
+            fonts-dejavu-core libgl1 libegl1
+          runner=$(command -v qml6 || find /usr/lib/qt6/bin -maxdepth 1 -name qml -type f | head -1)
+          if [ -z "$runner" ]; then
+            echo "QML-VISUAL-ENVIRONMENT-001: runtime QML ausente após a instalação" >&2
+            exit 1
+          fi
+          dir=$(dirname "$runner")
+          [ -x "$dir/qml6" ] || sudo ln -sf "$runner" "$dir/qml6"
+          echo "$dir" >> "$GITHUB_PATH"
+      - name: Ambiente registrado
+        # O registro do ambiente é parte do artefato: uma divergência de golden
+        # sem saber a versão do Qt que a produziu é impossível de investigar.
+        run: |
+          qml6 --version
+          fc-match "DejaVu Sans"
+      - name: Gate visual
+        run: |
+          pytest tests/integration/test_qml_visual_capture.py --tb=short -q
+      - name: Publicar artefatos visuais
+        # always(): em falha estes arquivos são a ÚNICA forma de descobrir o que
+        # aconteceu numa máquina que não é a sua. Publicar só no sucesso esconde
+        # o dado no único momento em que ele importa.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qml-visual-artifacts
+          path: |
+            /tmp/pytest-of-runner/**/*.png
+            /tmp/pytest-of-runner/**/*.json
+            /tmp/pytest-of-runner/**/*.txt
+          if-no-files-found: warn
+          retention-days: 14
