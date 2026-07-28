@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+import steamzero
 from steamzero.core.identity import (
     UNKNOWN_COMMIT,
     RuntimeIdentity,
@@ -251,7 +252,11 @@ class TestBuildInfoIsRead:
         assert identity.source_commit == _A37
         assert identity.source_dirty is False
         assert identity.known is True
-        assert identity.release_id == "0.1.0a37-2aaa01d9d8b6"
+        # A versão REAL do pacote, não um literal. A versão anterior fixava
+        # "0.1.0a37" e quebrava a cada bump — reprovando por manutenção, não por
+        # defeito. O que este teste verifica é a REGRA de composição do
+        # release_id, e ela não depende de qual versão está em vigor.
+        assert identity.release_id == f"{steamzero.__version__}-2aaa01d9d8b6"
 
     def test_dirty_flag_is_propagated(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._with_build_info(monkeypatch, _A37, True)
