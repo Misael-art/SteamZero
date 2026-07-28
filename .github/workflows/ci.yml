@@ -232,91 +232,70 @@ jobs:
   qml-visual-linux:
     # Gate visual. Nasce SEM `continue-on-error`, e a diferença não é estilo.
     #
-    # O passo de provisão do Qt no job `quality` é best-effort de propósito: lá
-    # os harnesses legados pulam por `skipif` quando o runtime falta, e um
-    # runtime opcional não deve derrubar a cobertura. Herdar essa tolerância
-    # aqui anularia o job — ele existe justamente para que ambiente ausente
-    # REPROVE, em vez de produzir verde num host onde nada visual rodou.
+    # Roda dentro da imagem CANÔNICA, fixada por digest. O ambiente é o
+    # contrato: as baselines não comparam "o texto renderizado", comparam pixels
+    # produzidos por uma combinação exata de Qt, FreeType, HarfBuzz e fontconfig.
     #
-    # Foi assim que a regressão de ícones da a37 atravessou os gates: caminho de
-    # asset correto, teste verde, imagem nunca renderizada.
+    # O runner do Ubuntu não serve, e foi verificado no CI: `/usr/lib/qt6/bin/`
+    # traz qmldom, qmllint, qmltestrunner e mais nove binários, e NENHUM `qml`.
+    # A provisão de Qt aqui nunca funcionou — o `skipif` dos harnesses legados
+    # escondeu isso desde sempre. E mesmo que servisse, o Ubuntu 24.04 traz Qt
+    # 6.4.2 enquanto as baselines vieram de 6.11.1.
     name: Gate visual QML (Linux)
     runs-on: ubuntu-latest
+    container:
+      # Digest, nunca tag. Tag é mutável, e a autoridade do gate é o digest.
+      # Publicado por `.github/workflows/qml-visual-image.yml`.
+      image: ghcr.io/misael-art/steamzero-qml-visual@sha256:8e87d2c009e3b640844faabbc027263898f588f0c4478c0e0dc871d55e1ee5ac
     steps:
       - name: Checkout limpo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Python 3.14
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.14"
+      - name: Conferir o ambiente contra o lock
+        # ANTES de renderizar. Descobrir a divergência depois faria diferença de
+        # AMBIENTE aparecer como diferença de pixel, e quem investiga procuraria
+        # defeito no código.
+        run: |
+          cat /opt/steamzero-visual/environment.txt
+          python - <<'CHECK'
+          import json, pathlib, sys
+          lock = json.loads(pathlib.Path("ci/qml-visual/environment.lock.json").read_text())
+          actual = pathlib.Path("/opt/steamzero-visual/environment.txt").read_text()
+          problems = [
+              f"{label}: esperado {expected!r}"
+              for label, expected in (
+                  ("qml", lock["qt"]["runtimeVersion"]),
+                  ("qmlSha256", lock["qt"]["qmlSha256"]),
+                  ("qt6-declarative", lock["qt"]["qt6Declarative"]),
+                  ("fontconfig", lock["textStack"]["fontconfig"]),
+                  ("freetype2", lock["textStack"]["freetype2"]),
+                  ("harfbuzz", lock["textStack"]["harfbuzz"]),
+              )
+              if expected not in actual
+          ]
+          if problems:
+              print("QML-VISUAL-ENVIRONMENT-001: ambiente diverge de environment.lock.json")
+              print("\n".join(problems))
+              sys.exit(1)
+          print("ambiente confere com o lock")
+          CHECK
       - name: Dependências verificadas por hash
-        run: python -m pip install --require-hashes -r requirements-dev.lock
-      - name: Runtime QML obrigatório
-        # Sem `continue-on-error` e sem `|| true`: falha na provisão é falha do
-        # gate. O ambiente canônico exige o plugin offscreen e o backend
-        # software, e a ausência de qualquer um invalida a comparação com as
-        # baselines — que foram geradas exatamente nessa combinação.
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            qt6-declarative-dev-tools qml6-module-qtquick \
-            qml6-module-qtquick-window qml6-module-qtqml-workerscript \
-            fontconfig libgl1 libegl1
-          # A detecção anterior procurava só `/usr/lib/qt6/bin/qml`. O runner do
-          # Ubuntu 24.04 tem qmldom, qmllint, qmltestrunner e mais nove ali — e
-          # NENHUM `qml`. A provisão nunca funcionou; o `skipif` dos harnesses
-          # legados escondeu isso desde sempre.
-          echo "--- binários qml* encontrados ---"
-          find /usr/lib/qt6/bin /usr/lib/*/qt6/bin /usr/bin -maxdepth 1 \
-               \( -name 'qml' -o -name 'qml6' \) 2>/dev/null || true
-          runner=$(command -v qml6 || command -v qml \
-                   || find /usr/lib/qt6/bin /usr/lib/*/qt6/bin /usr/bin -maxdepth 1 \
-                          \( -name qml -o -name qml6 \) 2>/dev/null | head -1)
-          if [ -z "$runner" ]; then
-            echo "QML-VISUAL-ENVIRONMENT-001: runtime QML ausente após a instalação" >&2
-            echo "Pacotes instalados não trazem o executável do runtime QML." >&2
-            exit 1
-          fi
-          dir=$(dirname "$runner")
-          [ -x "$dir/qml6" ] || sudo ln -sf "$runner" "$dir/qml6"
-          echo "$dir" >> "$GITHUB_PATH"
-      - name: Ambiente registrado
-        # O registro do ambiente é parte do artefato: uma divergência de golden
-        # sem saber a versão do Qt que a produziu é impossível de investigar.
-        #
-        # Nenhuma fonte do sistema é instalada de propósito. O harness isola o
-        # fontconfig na fonte EMPACOTADA — verificado que, sem isolar, a
-        # Liberation Sans do sistema sombreava a do repositório mesmo com o
-        # arquivo certo carregado, e o golden congelaria a métrica errada.
-        run: |
-          qml6 --version
-          fc-list --version
-          python - <<'PY'
-          import hashlib, json, pathlib
-          root = pathlib.Path("tests/fixtures/fonts/liberation-sans-2.1.5")
-          manifest = json.loads((root / "manifest.json").read_text())
-          print(f"fonte de teste: {manifest['family']} {manifest['version']} ({manifest['licenseSpdx']})")
-          for entry in manifest["files"]:
-              digest = hashlib.sha256((root / entry["name"]).read_bytes()).hexdigest()
-              status = "ok" if digest == entry["sha256"] else "DIVERGENTE"
-              print(f"  {entry['name']}: {status}")
-          PY
+        # Container efêmero: instalar no python do sistema é seguro aqui, e o
+        # Manjaro não traz `ensurepip` para criar venv.
+        run: pip install --break-system-packages --require-hashes -r requirements-dev.lock
       - name: Gate visual
-        run: |
-          pytest -m visual --tb=short -q
+        run: pytest -m visual --tb=short -q
       - name: Publicar artefatos visuais
         # always(): em falha estes arquivos são a ÚNICA forma de descobrir o que
-        # aconteceu numa máquina que não é a sua. Publicar só no sucesso esconde
-        # o dado no único momento em que ele importa.
+        # aconteceu numa máquina que não é a sua.
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qml-visual-artifacts
           path: |
-            /tmp/pytest-of-runner/**/*.png
-            /tmp/pytest-of-runner/**/*.json
-            /tmp/pytest-of-runner/**/*.txt
+            /tmp/pytest-of-*/**/*.png
+            /tmp/pytest-of-*/**/*.json
+            /tmp/pytest-of-*/**/*.txt
           if-no-files-found: warn
           retention-days: 14
