@@ -26,10 +26,11 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
+from steamzero.domain.scene_contract import DimensionUnit, DimensionValue
 from steamzero.domain.scene_registry import Registries, ResolutionPhase
 from steamzero.domain.scene_typing import (
     MAX_FALLBACK_DEPTH,
@@ -145,6 +146,12 @@ class Generations:
     accessibility: str = "default"
     display: str = "default"
     state_variant: str = "default"
+    #: Caixa de referência para percentuais. Entra como VALOR, não como
+    #: contador: 1920 → 1280 → 1920 precisa devolver o resultado original, e um
+    #: contador monotônico faria a terceira medida parecer diferente da
+    #: primeira.
+    reference_width: float = 1920.0
+    reference_height: float = 1080.0
 
     def key(self) -> tuple[Any, ...]:
         return (
@@ -169,6 +176,10 @@ class Generations:
         """
         names: set[str] = {"theme"}
         for dependency in dependencies:
+            specific = LAYOUT_DEPENDENCIES.get(dependency)
+            if specific is not None:
+                names.update(specific)
+                continue
             kind = dependency.split(":", 1)[0]
             names.update(GENERATION_BY_KIND.get(kind, ()))
         return tuple(sorted((name, getattr(self, name)) for name in names))
@@ -190,6 +201,17 @@ GENERATION_BY_KIND: dict[str, tuple[str, ...]] = {
     "capability": ("theme",),
     "display": ("display",),
     "a11y": ("accessibility",),
+}
+
+#: Dependências de layout, com geração POR EIXO.
+#:
+#: Separar os eixos não é refinamento: uma janela que muda de 1920x1080 para
+#: 1280x1080 mudou só a largura, e invalidar as alturas percentuais junto
+#: recomputaria metade da cena por nada. A chave é o caminho completo, não o
+#: prefixo, porque `layout:` sozinho não distinguiria os eixos.
+LAYOUT_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "layout:referenceWidth": ("reference_width",),
+    "layout:referenceHeight": ("reference_height",),
 }
 
 
@@ -601,6 +623,95 @@ class Resolver:
         self._fingerprints.clear()
         self._expressions.clear()
         self.diagnostics.clear_active()
+
+    def set_reference_box(self, width: float, height: float) -> frozenset[str]:
+        """Declara a caixa de referência. Devolve o que foi invalidado.
+
+        Mudar a largura invalida SÓ quem depende da largura. Uma janela que vai
+        de 1920x1080 para 1280x1080 mudou um eixo; recomputar as alturas
+        percentuais junto seria metade da cena por nada.
+        """
+        self._assert_owner_thread()
+        current = self._context.generations
+        if current.reference_width == width and current.reference_height == height:
+            return frozenset()
+        affected: set[str] = set()
+        if current.reference_width != width:
+            affected |= self.graph.dependents_of("layout:referenceWidth")
+        if current.reference_height != height:
+            affected |= self.graph.dependents_of("layout:referenceHeight")
+        self._context.generations = replace(current, reference_width=width, reference_height=height)
+        if affected and not self._batch_depth:
+            self._drop(frozenset(affected))
+        elif affected:
+            self._batched |= affected
+        return frozenset(affected)
+
+    def resolve_dimension(
+        self,
+        dimension: Any,
+        *,
+        axis: str,
+        target: str,
+        default: float = 0.0,
+    ) -> Any:
+        """Converte uma dimensão para pixel lógico, REGISTRANDO a dependência.
+
+        É a ponte que faltava. A conversão de percentual já consumia a caixa de
+        referência, mas fora do grafo — então trocar a resolução deixava o
+        layout stale sem que nada invalidasse. A dependência é real porque o
+        resultado muda; registrá-la é o que torna a invalidação possível.
+
+        Devolve ``None`` para ``auto``: dimensão implícita não é zero.
+        """
+        self._assert_owner_thread()
+        if axis not in {"width", "height"}:
+            raise ValueError(f"eixo desconhecido: {axis!r}")
+        marker = "layout:referenceWidth" if axis == "width" else "layout:referenceHeight"
+        extent = (
+            self._context.generations.reference_width
+            if axis == "width"
+            else self._context.generations.reference_height
+        )
+
+        cache_key = (self._context.theme_id, target)
+        cached = self._cache.get(cache_key)
+        if (
+            cached is not None
+            and self._expressions.get(cache_key) == dimension
+            and self._fingerprints.get(cache_key)
+            == self._context.generations.fingerprint(cached.dependencies)
+        ):
+            self.stats.hits += 1
+            return cached.value
+
+        self.stats.misses += 1
+        self.stats.resolved += 1
+        dependencies: set[str] = set()
+        if dimension is None:
+            pixels: Any = default
+        elif isinstance(dimension, DimensionValue):
+            if dimension.unit is DimensionUnit.AUTO:
+                pixels = None
+            elif dimension.unit is DimensionUnit.PERCENT:
+                # SÓ o percentual depende da caixa. Uma dimensão em pixel lógico
+                # não muda com a resolução, e registrar a dependência nela
+                # recomputaria a cena inteira a cada troca de display.
+                dependencies.add(marker)
+                pixels = round(extent * (dimension.value or 0.0) / 100.0, 4)
+            else:
+                pixels = float(dimension.value or 0.0)
+        elif isinstance(dimension, int | float) and not isinstance(dimension, bool):
+            pixels = float(dimension)
+        else:
+            pixels = default
+
+        result = Resolved(pixels, frozenset(dependencies), ResolutionPhase.LOAD_TIME)
+        self._cache[cache_key] = result
+        self._expressions[cache_key] = dimension
+        self._fingerprints[cache_key] = self._context.generations.fingerprint(result.dependencies)
+        self.stats.removed_dependencies += self.graph.record(target, result.dependencies)
+        return pixels
 
     @property
     def active_cache_entries(self) -> int:

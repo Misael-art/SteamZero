@@ -23,6 +23,7 @@ import pytest
 from steamzero.domain import scene_value as value
 from steamzero.domain.retrofe_declarations import collect_declarations
 from steamzero.domain.retrofe_text_slice import SliceResult, TextSliceCompiler
+from steamzero.domain.scene_contract import DimensionValue
 from steamzero.domain.scene_registry import default_registries
 from steamzero.domain.scene_resolver import (
     GENERATION_BY_KIND,
@@ -715,3 +716,155 @@ class TestChangingTheExpressionInvalidates:
         resolver = Resolver(_context())
         assert resolver.resolve("#111111", ValueType.COLOR, target="p").value == "#111111"
         assert resolver.resolve("#222222", ValueType.COLOR, target="p").value == "#222222"
+
+
+class TestDisplayDependentLayout:
+    """VS-06.1 — a caixa de referência entra no grafo.
+
+    A conversão de percentual já consumia a caixa, mas fora do grafo: o número
+    saía certo e o layout ficava stale, porque trocar a resolução não invalidava
+    nada — nada sabia que aquele valor dependia da largura da view.
+    """
+
+    def _scene(self, resolver: Resolver) -> None:
+        resolver.set_reference_box(1920, 1080)
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="height", target="t.height")
+        resolver.resolve_dimension(DimensionValue.logical_px(120), axis="width", target="t.fixedX")
+        resolver.resolve_dimension(DimensionValue.auto(), axis="width", target="t.auto")
+        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="t.color")
+        resolver.resolve(value.bind("game.title"), ValueType.STRING, target="t.text")
+        resolver.resolve(value.localized("action.play"), ValueType.STRING, target="t.label")
+
+    def test_a_percent_resolves_against_the_reference_box(self) -> None:
+        resolver = Resolver(_context())
+        resolver.set_reference_box(1920, 1080)
+        assert (
+            resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+            == 960.0
+        )
+        resolver.set_reference_box(1280, 1080)
+        assert (
+            resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+            == 640.0
+        )
+
+    def test_a_width_change_touches_only_horizontal_percentages(self) -> None:
+        resolver = Resolver(_context())
+        self._scene(resolver)
+        assert resolver.set_reference_box(1280, 1080) == {"t.x"}
+
+    def test_a_height_change_touches_only_vertical_percentages(self) -> None:
+        resolver = Resolver(_context())
+        self._scene(resolver)
+        assert resolver.set_reference_box(1920, 720) == {"t.height"}
+
+    def test_an_unchanged_display_recomputes_nothing(self) -> None:
+        resolver = Resolver(_context())
+        self._scene(resolver)
+        assert resolver.set_reference_box(1920, 1080) == frozenset()
+
+    @pytest.mark.parametrize("target", ["t.fixedX", "t.color", "t.text", "t.label", "t.auto"])
+    def test_a_display_change_never_touches_what_does_not_use_it(self, target: str) -> None:
+        """`logicalPx`, cor, binding e tradução não mudam com a resolução."""
+        resolver = Resolver(_context())
+        self._scene(resolver)
+        both = resolver.set_reference_box(1280, 720)
+        assert target not in both
+
+    def test_a_logical_pixel_records_no_layout_dependency(self) -> None:
+        resolver = Resolver(_context())
+        resolver.resolve_dimension(DimensionValue.logical_px(120), axis="width", target="t.fixedX")
+        assert resolver.graph.dependencies_of("t.fixedX") == frozenset()
+
+    def test_a_percent_records_only_its_own_axis(self) -> None:
+        resolver = Resolver(_context())
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        assert resolver.graph.dependencies_of("t.x") == {"layout:referenceWidth"}
+
+    def test_changing_the_percentage_invalidates_without_a_generation_change(self) -> None:
+        """`50%` → `25%` é outra expressão, mesmo com o display parado."""
+        resolver = Resolver(_context())
+        resolver.set_reference_box(1920, 1080)
+        assert (
+            resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+            == 960.0
+        )
+        assert (
+            resolver.resolve_dimension(DimensionValue.percent(25), axis="width", target="t.x")
+            == 480.0
+        )
+
+    def test_the_same_dimension_still_hits_the_cache(self) -> None:
+        resolver = Resolver(_context())
+        resolver.set_reference_box(1920, 1080)
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        assert resolver.stats.hits == 1
+
+    def test_returning_to_the_original_resolution_returns_the_original_value(self) -> None:
+        """1920 → 1280 → 1920. A caixa entra como VALOR, não como contador.
+
+        Um contador monotônico faria a terceira medida parecer diferente da
+        primeira, e o cache nunca reaproveitaria uma resolução já vista.
+        """
+        resolver = Resolver(_context())
+        resolver.set_reference_box(1920, 1080)
+        first = resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        resolver.set_reference_box(1280, 1080)
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        resolver.set_reference_box(1920, 1080)
+        final = resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="t.x")
+        assert final == first == 960.0
+
+    def test_an_auto_dimension_stays_implicit(self) -> None:
+        resolver = Resolver(_context())
+        assert (
+            resolver.resolve_dimension(DimensionValue.auto(), axis="width", target="t.auto") is None
+        )
+
+    def test_a_removed_element_is_not_recomputed_by_a_display_change(self) -> None:
+        resolver = Resolver(_context())
+        self._scene(resolver)
+        resolver.forget("t.x")
+        assert resolver.set_reference_box(1280, 1080) == frozenset()
+        assert "layout:referenceWidth" not in {
+            dependency
+            for target in resolver.graph.targets
+            for dependency in resolver.graph.dependencies_of(target)
+        }
+
+    def test_an_unloaded_view_is_not_recomputed_by_a_display_change(self) -> None:
+        resolver = Resolver(_context())
+        for index in range(3):
+            resolver.resolve_dimension(
+                DimensionValue.percent(50), axis="width", target=f"viewA.item{index}.x"
+            )
+        resolver.resolve_dimension(DimensionValue.percent(50), axis="width", target="viewB.item.x")
+        resolver.forget_prefix("viewA.")
+        assert resolver.set_reference_box(1280, 1080) == {"viewB.item.x"}
+
+    def test_the_axes_are_tracked_separately_in_the_fingerprint(self) -> None:
+        width_only = Generations().fingerprint(frozenset({"layout:referenceWidth"}))
+        height_only = Generations().fingerprint(frozenset({"layout:referenceHeight"}))
+        assert dict(width_only).keys() != dict(height_only).keys()
+
+    def test_the_builder_registers_the_dependency_end_to_end(self) -> None:
+        """Prova pelo caminho real, não pela API isolada."""
+        from steamzero.domain.scene_contract import ElementContract, LayoutSpec
+        from steamzero.domain.text_node_builder import FontProvider, LayoutBox, build_text_node
+
+        element = ElementContract(
+            id="gameTitle",
+            type="text",
+            text_content="Chrono Trigger",
+            layout=LayoutSpec(x=DimensionValue.percent(50), y=DimensionValue.logical_px(120)),
+        )
+        resolver = Resolver(_context())
+        node = build_text_node(
+            element, resolver=resolver, box=LayoutBox(1920, 1080), fonts=FontProvider()
+        )
+        assert node.geometry.x == 960.0
+        assert resolver.graph.dependencies_of("gameTitle.x") == {"layout:referenceWidth"}
+        assert resolver.graph.dependencies_of("gameTitle.y") == frozenset()
+        assert resolver.set_reference_box(1280, 1080) == {"gameTitle.x"}
