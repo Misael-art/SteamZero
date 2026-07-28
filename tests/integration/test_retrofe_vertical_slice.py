@@ -424,6 +424,7 @@ class TestPipelineReachesTheRenderer:
         assert payload["resolvedValue"] != "Gilroy Display"
 
 
+@pytest.mark.visual
 class TestGeometryIsProvenByRendering:
     """Alinhamento validado geometricamente, não pelo enum.
 
@@ -493,6 +494,7 @@ class TestGeometryIsProvenByRendering:
             assert fingerprint.get("sha256"), (element_id, fingerprint)
 
 
+@pytest.mark.visual
 class TestFailedResultsNeverReachTheHarness:
     def test_a_failed_adaptation_has_no_model_to_send(self) -> None:
         """`require_model()` é a única porta, e ela recusa `failed`."""
