@@ -73,6 +73,14 @@ FORBIDDEN_WARNINGS = (
     "File not found",
 )
 
+#: Mensagens que o Qt REALMENTE emite quando o plugin de plataforma falta.
+#: Copiadas de uma execução, não escritas de memória: a primeira versão desta
+#: checagem procurava um texto que o Qt nunca emite, e nunca disparava.
+PLUGIN_FAILURE_MARKERS = (
+    "Could not find the Qt platform plugin",
+    "no Qt platform plugin could be initialized",
+)
+
 _QT_VERSION = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
 _MESSAGE = re.compile(r"^(?P<type>debug|info|warning|critical|fatal)\|(?P<text>.*)$")
 
@@ -275,6 +283,9 @@ def font_fingerprint(family: str) -> dict[str, str]:
     if matcher is None:
         record["file"] = "fc-match indisponível"
         return record
+    version = shutil.which("fc-list")
+    if version is not None:
+        record["fontconfig"] = "presente"
     try:
         completed = subprocess.run(
             [matcher, "--format=%{file}", family],
@@ -287,9 +298,14 @@ def font_fingerprint(family: str) -> dict[str, str]:
         record["file"] = "fc-match falhou"
         return record
     path = Path(completed.stdout.strip())
+    # O caminho FÍSICO aparece aqui, e só aqui. `environment.json` é artefato
+    # interno de diagnóstico do harness; o IR e o modelo entregue ao tema
+    # continuam recebendo apenas o handle opaco.
     record["file"] = str(path)
+    record["logicalPath"] = f"asset://font/{path.stem}"
     if path.is_file():
         record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        record["bytes"] = str(path.stat().st_size)
     return record
 
 
@@ -298,6 +314,38 @@ def _extract(messages: Sequence[QmlMessage], prefix: str) -> str | None:
         if item.text.startswith(prefix):
             return item.text[len(prefix) :].strip()
     return None
+
+
+def _reject_pending_payload(model: Mapping[str, Any]) -> None:
+    """Defesa em profundidade na fronteira do harness.
+
+    O adapter já impede que um resultado `failed` vire payload, e
+    `require_model()` é a única porta. Mas nada impede alguém de montar o
+    dicionário à mão — e foi o que revelou o furo: um `{"text": {"bind": ...}}`
+    passado direto renderizou "[object Object]" sem erro nenhum, porque o QML
+    aceita objeto onde espera string.
+
+    A validação aqui não substitui o adapter. Ela garante que a ÚNICA forma de
+    chegar ao QML seja com valores já resolvidos, independentemente de quem
+    chamou.
+    """
+    from steamzero.domain.scene_value import is_pending_value
+
+    def walk(node: Any, where: str) -> None:
+        if isinstance(node, dict):
+            if is_pending_value(node):
+                raise CaptureError(
+                    DIAG_CAPTURE,
+                    f"valor não resolvido em {where}: {node!r}. O QML renderizaria "
+                    "'[object Object]' sem reclamar.",
+                )
+            for key, item in node.items():
+                walk(item, f"{where}.{key}")
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                walk(item, f"{where}[{index}]")
+
+    walk(dict(model), "model")
 
 
 def capture(
@@ -315,6 +363,7 @@ def capture(
     já traduzido. O harness não tem acesso a registry nenhum, e não teria como
     ter: o que atravessa é um dicionário de escalares.
     """
+    _reject_pending_payload(model)
     env_spec = environment or CanonicalEnvironment()
     # RHI sob `offscreen` não tem GPU para inicializar e simplesmente NÃO
     # retorna — verificado, consome o timeout inteiro e reporta "layout não
@@ -369,17 +418,7 @@ def capture(
 
     messages = parse_messages(completed.stderr)
 
-    # As mensagens REAIS do Qt, copiadas de uma execução com plataforma
-    # inválida. As que eu tinha escrito de memória ("Failed to create platform")
-    # nunca casavam, e o erro saía como falha genérica de captura — mandando
-    # quem investiga procurar defeito no componente em vez de no ambiente.
-    if any(
-        marker in completed.stderr
-        for marker in (
-            "Could not find the Qt platform plugin",
-            "no Qt platform plugin could be initialized",
-        )
-    ):
+    if any(marker in completed.stderr for marker in PLUGIN_FAILURE_MARKERS):
         raise CaptureError(
             DIAG_PLUGIN,
             f"plugin de plataforma {env_spec.platform!r} indisponível; stderr:\n{completed.stderr}",
@@ -411,6 +450,10 @@ def capture(
         "fontFamilyRequested": geometry.get("fontFamilyRequested", ""),
         "fontFamilyResolved": geometry.get("fontFamilyResolved", ""),
         "fontFile": font_fingerprint(str(geometry.get("fontFamilyRequested", ""))),
+        "requestedFontFamily": geometry.get("fontFamilyRequested", ""),
+        "availableFontFamilyCount": geometry.get("availableFontFamilyCount", 0),
+        "testFontAvailable": geometry.get("testFontAvailable", False),
+        "fallbackDetected": geometry.get("fallbackDetected", False),
         "canvas": {"width": canvas[0], "height": canvas[1]},
     }
 

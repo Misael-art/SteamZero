@@ -16,6 +16,8 @@ conhecimento o obrigaria a reimplementar layout.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -79,6 +81,23 @@ class LayoutBox:
     y: float = 0.0
 
 
+def _handle_id(family: str) -> str:
+    """Identificador OPACO para a gramática de asset.
+
+    Usar a família crua parecia natural e estava errado: "Liberation Sans" tem
+    espaço, e a gramática `asset://<namespace>/<id>` não aceita — o handle
+    passava na validação com "Gilroy" e explodia com qualquer nome real de duas
+    palavras. O defeito só apareceu quando uma fixture usou uma fonte de
+    verdade.
+
+    O handle é opaco por contrato, então nada se perde ao derivá-lo: o nome
+    legível continua em `requested_family` e `resolved_family`.
+    """
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", family).strip("-")
+    digest = hashlib.sha256(family.encode("utf-8")).hexdigest()[:8]
+    return f"{slug[:96] or 'font'}-{digest}"
+
+
 class FontProvider:
     """Emite ``FontAssetHandle`` a partir da chave lógica declarada pelo tema.
 
@@ -105,7 +124,7 @@ class FontProvider:
             family = self._packaged[key]
             return FontAssetHandle(
                 key=key,
-                handle=f"asset://font/{key}",
+                handle=f"asset://font/{_handle_id(key)}",
                 origin=FontOrigin.PACKAGED,
                 requested_family=family,
                 resolved_family=family,
@@ -116,7 +135,7 @@ class FontProvider:
             if candidate in self._packaged.values():
                 return FontAssetHandle(
                     key=key,
-                    handle=f"asset://font/{candidate}",
+                    handle=f"asset://font/{_handle_id(candidate)}",
                     origin=FontOrigin.FALLBACK_DECLARED,
                     requested_family=key,
                     resolved_family=candidate,
@@ -124,7 +143,7 @@ class FontProvider:
                 )
         return FontAssetHandle(
             key=key,
-            handle=f"asset://font/{self._system_family}",
+            handle=f"asset://font/{_handle_id(self._system_family)}",
             origin=FontOrigin.FALLBACK_SYSTEM,
             requested_family=key,
             resolved_family=self._system_family,

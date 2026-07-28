@@ -101,6 +101,15 @@ Window {
             "fontPixelSize": subject.font.pixelSize,
             "fontWeight": subject.font.weight,
             "fontItalic": subject.font.italic,
+            "availableFontFamilyCount": Qt.fontFamilies().length,
+            "testFontAvailable": stage.model.fontFamily === undefined
+                                 || stage.model.fontFamily === ""
+                                 || Qt.fontFamilies().indexOf(stage.model.fontFamily) >= 0,
+            // O Qt não expõe a família efetivamente adotada. O que dá para
+            // afirmar é se a solicitada EXISTE — e é por isso que o harness
+            // reprova quando não existe, em vez de registrar um fallback que
+            // não teria como comprovar.
+            "fallbackDetected": false,
             "canvasWidth": stage.width,
             "canvasHeight": stage.height,
             "devicePixelRatio": Screen.devicePixelRatio
