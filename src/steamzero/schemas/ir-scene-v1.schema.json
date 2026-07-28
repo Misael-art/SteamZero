@@ -146,7 +146,8 @@
             "boundImage",
             "video",
             "menu",
-            "container"
+            "container",
+            "sound"
           ],
           "description": "boundText/boundImage recebem dado do read model; image/text são estáticos do pacote."
         },
@@ -155,9 +156,9 @@
         },
         "asset": {
           "type": "string",
-          "pattern": "^assets/[a-zA-Z0-9_./-]+\\.(png|jpg|jpeg|webp|svg)$",
+          "pattern": "^assets/[a-zA-Z0-9_. /()'&-]+\\.(png|jpg|jpeg|webp|svg|wav|ogg|mp3)$",
           "maxLength": 256,
-          "description": "Recurso EMPACOTADO. Caminho fora de assets/ ou com esquema é recusado na compilação — dado de tema é entrada não confiável."
+          "description": "Recurso EMPACOTADO. Espaço e parênteses são legítimos em nome de arquivo; o que é recusado na compilação é travessia, caminho absoluto e esquema — dado de tema é entrada não confiável."
         },
         "text": {
           "type": "string",
@@ -393,7 +394,12 @@
                   "story",
                   "type",
                   "generation",
-                  "media"
+                  "media",
+                  "collectionSize",
+                  "collectionIndex",
+                  "collectionIndexSize",
+                  "collectionName",
+                  "cpu"
                 ]
               }
             }
@@ -424,7 +430,16 @@
                   "tile",
                   "cartridge",
                   "video",
-                  "manual"
+                  "manual",
+                  "firstLetter",
+                  "settingshot",
+                  "score",
+                  "playlist",
+                  "genre",
+                  "manufacturer",
+                  "device",
+                  "players",
+                  "isFavorite"
                 ]
               }
             }
@@ -551,7 +566,18 @@
             "maxWidth",
             "maxHeight",
             "angle",
-            "nop"
+            "nop",
+            "volume",
+            "backgroundAlpha",
+            "xOrigin",
+            "yOrigin",
+            "xOffset",
+            "yOffset",
+            "containerX",
+            "containerY",
+            "containerWidth",
+            "containerHeight",
+            "fontSize"
           ]
         },
         "from": {

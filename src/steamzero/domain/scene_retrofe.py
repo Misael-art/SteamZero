@@ -39,6 +39,10 @@ _ELEMENT_KINDS = {
     "video": "video",
     "menu": "menu",
     "container": "container",
+    # Som de navegação. Temas RetroFE reais usam bastante: 92 elementos <sound>
+    # nos 29 layouts locais. Ignorá-los descartaria a camada sonora inteira.
+    "sound": "sound",
+    "reloadableAudio": "sound",
 }
 
 #: Eventos do RetroFE que viram eventos do IR. Nome idêntico, sem tradução.
@@ -59,7 +63,30 @@ _EVENTS = {
 
 #: Propriedades animáveis. Fechado: no Aeon Nox, alpha responde por 615 das 648
 #: animações, seguida de y (23) e x (2). "nop" existe no RetroFE como espera.
-_ANIMATABLE = {"alpha", "x", "y", "width", "height", "maxWidth", "maxHeight", "angle", "nop"}
+_ANIMATABLE = {
+    "alpha",
+    "x",
+    "y",
+    "width",
+    "height",
+    "maxWidth",
+    "maxHeight",
+    "angle",
+    "nop",
+    # Observadas na varredura dos 29 layouts: volume domina (70), seguida de
+    # backgroundAlpha (11) e das propriedades de container.
+    "volume",
+    "backgroundAlpha",
+    "xOrigin",
+    "yOrigin",
+    "xOffset",
+    "yOffset",
+    "containerX",
+    "containerY",
+    "containerWidth",
+    "containerHeight",
+    "fontSize",
+}
 
 #: ``type`` de ``reloadableText`` → campo de metadado do IR. O prefixo ``lb_`` é
 #: do LaunchBox e mapeia para o mesmo campo semântico.
@@ -77,6 +104,11 @@ _METADATA_FIELDS = {
     "platform": "platform",
     "region": "region",
     "collection": "collection",
+    # Posição dentro da coleção: é o que permite "3 de 47" e navegação alfabética.
+    "collectionSize": "collectionSize",
+    "collectionIndex": "collectionIndex",
+    "collectionIndexSize": "collectionIndexSize",
+    "cpu": "cpu",
     # Campos que temas RetroFE reais usam e o vocabulário inicial não previa.
     "story": "story",
     "type": "type",
@@ -85,7 +117,12 @@ _METADATA_FIELDS = {
 }
 
 #: ``type`` que na verdade é valor de sistema, não metadado do jogo.
-_SYSTEM_FIELDS = {"time": "time", "date": "date", "gameCount": "gameCount"}
+_SYSTEM_FIELDS = {
+    "time": "time",
+    "date": "date",
+    "gameCount": "gameCount",
+    "collectionName": "collectionName",
+}
 
 #: ``type`` de ``reloadableImage`` → slot de mídia.
 _MEDIA_FIELDS = {
@@ -101,40 +138,71 @@ _MEDIA_FIELDS = {
     "poster": "poster",
     "cartridge": "cartridge",
     "video": "video",
-    "device": "cartridge",
+    "device": "device",
+    # Slots observados na varredura. firstLetter alimenta navegação alfabética.
+    "firstLetter": "firstLetter",
+    "settingshot": "settingshot",
+    "score": "score",
+    "playlist": "playlist",
+    "genre": "genre",
+    "manufacturer": "manufacturer",
+    "isfavorite": "isFavorite",
+    "numberplayers": "players",
 }
 
 _ORIGINS = {"left", "center", "right", "top", "bottom"}
 _KEYWORDS = {"center", "left", "right", "top", "bottom", "stretch"}
 _ID_SAFE = re.compile(r"[^a-zA-Z0-9_-]")
-_ASSET_SAFE = re.compile(r"^[a-zA-Z0-9_./-]+\.(png|jpg|jpeg|webp|svg)$", re.IGNORECASE)
+#: Espaço, parênteses e apóstrofo são caracteres legítimos em nome de arquivo —
+#: 36 assets dos layouts locais os usam. O que precisa ser recusado é travessia,
+#: caminho absoluto e esquema, verificados à parte.
+_ASSET_SAFE = re.compile(
+    r"^[a-zA-Z0-9_. /()'&-]+\.(png|jpg|jpeg|webp|svg|wav|ogg|mp3)$", re.IGNORECASE
+)
 
 
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _TAG = re.compile(r"<(/?)([a-zA-Z][a-zA-Z0-9_.-]*)([^>]*?)(/?)>", re.DOTALL)
+#: Fechamento anônimo ``</>``, encontrado no layout "Aura - Collection". Um
+#: parser tolerante fecha o elemento corrente; a stdlib recusa.
+_ANON_CLOSE = re.compile(r"</\s*>")
 _ATTR = re.compile(r'([a-zA-Z][a-zA-Z0-9_.:-]*)\s*=\s*"([^"]*)"')
 
 
-def _dedupe_attributes(attributes: str) -> tuple[str, int]:
-    """Mantém a PRIMEIRA ocorrência de cada atributo.
+def _normalize_attributes(attributes: str) -> tuple[str, int, bool]:
+    """Reescreve os atributos de uma tag em forma canônica.
 
-    Encontrado no Aeon Nox: ``alpha`` declarado duas vezes no mesmo elemento.
-    XML proíbe; parser tolerante aceita e usa uma delas. Ficamos com a primeira
-    porque é a que um parser sequencial teria registrado antes da sobrescrita.
+    Defeitos observados em layouts RetroFE reais, todos aceitos pelo parser
+    tolerante do RetroFE e recusados pelo da stdlib:
+
+    - ``type="x"to ="-5"`` — sem espaço entre atributos e com espaço antes do
+      ``=`` (14 dos 29 layouts locais falhavam só por isto);
+    - ``alpha="0.5" alpha="1"`` — atributo duplicado.
+
+    A reescrita só acontece quando é **comprovadamente sem perda**: se remover
+    tudo que casou deixar qualquer resto não-branco, devolvemos o original
+    intocado. Reescrever às cegas poderia descartar um atributo que a expressão
+    não reconheceu, trocando um erro de parse por dado perdido em silêncio.
     """
+    matches = list(_ATTR.finditer(attributes))
+    if not matches:
+        return attributes, 0, False
+    residue = _ATTR.sub("", attributes)
+    if residue.strip():
+        return attributes, 0, False
+
     seen: set[str] = set()
     kept: list[str] = []
     dropped = 0
-    for match in _ATTR.finditer(attributes):
+    for match in matches:
         name = match.group(1)
         if name in seen:
             dropped += 1
             continue
         seen.add(name)
         kept.append(f'{name}="{match.group(2)}"')
-    if not dropped:
-        return attributes, 0
-    return (" " + " ".join(kept) if kept else ""), dropped
+    rendered = (" " + " ".join(kept)) if kept else ""
+    return rendered, dropped, rendered != attributes
 
 
 def _sanitize(layout_xml: str) -> tuple[str, list[str]]:
@@ -158,25 +226,35 @@ def _sanitize(layout_xml: str) -> tuple[str, list[str]]:
     if cleaned != layout_xml:
         notes.append("comentários removidos antes do parse (XML não conforme)")
 
+    anonymous = len(_ANON_CLOSE.findall(cleaned))
+    if anonymous:
+        # Marcador que o tokenizador reconhece; o nome real é resolvido pela
+        # pilha logo abaixo, que é o que um parser tolerante faz.
+        cleaned = _ANON_CLOSE.sub("</anonclose>", cleaned)
+        notes.append(f"{anonymous} fechamento(s) anônimo(s) '</>' resolvidos pela pilha")
+
     stack: list[str] = []
     out: list[str] = []
     cursor = 0
     repairs = 0
     duplicates = 0
+    normalized = 0
     for match in _TAG.finditer(cleaned):
         out.append(cleaned[cursor : match.start()])
         cursor = match.end()
         closing, name, attributes, self_closing = match.groups()
         if self_closing:
-            fixed, dropped = _dedupe_attributes(attributes)
+            fixed, dropped, changed = _normalize_attributes(attributes)
             duplicates += dropped
-            out.append(f"<{name}{fixed}/>" if dropped else match.group(0))
+            normalized += 1 if changed and not dropped else 0
+            out.append(f"<{name}{fixed}/>" if changed else match.group(0))
             continue
         if not closing:
             stack.append(name)
-            fixed, dropped = _dedupe_attributes(attributes)
+            fixed, dropped, changed = _normalize_attributes(attributes)
             duplicates += dropped
-            out.append(f"<{name}{fixed}>" if dropped else match.group(0))
+            normalized += 1 if changed and not dropped else 0
+            out.append(f"<{name}{fixed}>" if changed else match.group(0))
             continue
         if stack and stack[-1] != name:
             # Fechamento não bate com a abertura corrente: confiar no
@@ -193,6 +271,8 @@ def _sanitize(layout_xml: str) -> tuple[str, list[str]]:
         notes.append(f"{repairs} tag(s) de fechamento reparadas por aninhamento")
     if duplicates:
         notes.append(f"{duplicates} atributo(s) duplicado(s) descartado(s)")
+    if normalized:
+        notes.append(f"{normalized} tag(s) com atributos normalizados (espaçamento não conforme)")
     return "".join(out), notes
 
 
@@ -211,8 +291,14 @@ def _coordinate(raw: str | None, degraded: _Degraded, where: str) -> Any:
     if raw is None:
         return None
     value = raw.strip()
-    if value in _KEYWORDS:
-        return value
+    if not value:
+        # Atributo vazio é ausência declarada, não erro: não vale registro.
+        return None
+    lowered = value.casefold()
+    if lowered == "stretched":
+        lowered = "stretch"
+    if lowered in _KEYWORDS:
+        return lowered
     if value.endswith("%"):
         try:
             float(value[:-1])
@@ -238,13 +324,15 @@ def _layout(node: ET.Element, degraded: _Degraded, where: str) -> dict[str, Any]
         if value is not None:
             out[attribute] = value
     for attribute in ("xOffset", "yOffset"):
-        raw = node.get(attribute)
-        if raw is None:
-            continue
-        try:
-            out[attribute] = float(raw)
-        except ValueError:
-            degraded.add(where, f"{attribute} não numérico: {raw!r}")
+        value = _coordinate(node.get(attribute), degraded, where)
+        if isinstance(value, int | float):
+            out[attribute] = float(value)
+        elif value is not None:
+            # Offset por palavra-chave existe no RetroFE; o IR guarda no eixo
+            # correspondente, que é onde o renderizador sabe interpretá-lo.
+            # Offset por palavra-chave vira posição no mesmo eixo: "yOffset=center"
+            # significa centralizado em y, e é assim que o renderizador o lê.
+            out[attribute.replace("Offset", "")] = value
     for attribute in ("xOrigin", "yOrigin"):
         raw = node.get(attribute)
         if raw is None:
@@ -260,7 +348,10 @@ def _layout(node: ET.Element, degraded: _Degraded, where: str) -> dict[str, Any]
             if 0.0 <= number <= 1.0:
                 out[attribute] = number
             else:
-                degraded.add(where, f"{attribute} fora de 0..1: {number}")
+                # RetroFE também aceita origem absoluta em pixels. Normalizar
+                # exigiria conhecer a caixa do pai, que só o renderizador tem;
+                # guardamos como offset para não descartar a intenção.
+                out[attribute.replace("Origin", "Offset")] = number
     for attribute, lo, hi in (
         ("alpha", 0.0, 1.0),
         ("angle", -360.0, 360.0),
@@ -300,8 +391,15 @@ def _binding(node: ET.Element, kind: str, degraded: _Degraded, where: str) -> di
     if kind == "boundImage":
         # RetroFE permite nomear arte específica do tema como "fanart - Nome do
         # Tema". O slot semântico é o prefixo; o sufixo é decoração do autor.
-        base = field_name.split(" - ", 1)[0].strip()
-        target = _MEDIA_FIELDS.get(field_name) or _MEDIA_FIELDS.get(base)
+        # Convenções de nome que temas usam sobre o mesmo slot semântico:
+        # "fanart - Nome do Tema", "firstLetter vertical", "playlist2".
+        base = field_name.split(" - ", 1)[0].split(" ", 1)[0].strip()
+        base = base.rstrip("0123456789") or base
+        target = (
+            _MEDIA_FIELDS.get(field_name)
+            or _MEDIA_FIELDS.get(base)
+            or _MEDIA_FIELDS.get(base.casefold())
+        )
         if target is None:
             degraded.add(where, f"slot de mídia não suportado: {declared!r}")
             return None
@@ -396,10 +494,10 @@ def _element(node: ET.Element, degraded: _Degraded, index: int) -> dict[str, Any
         if binding is None:
             return None
         element["binding"] = binding
-    elif kind == "image":
+    elif kind in {"image", "sound"}:
         source = (node.get("src") or "").strip()
         if not source:
-            degraded.add(where, "imagem sem 'src'")
+            degraded.add(where, f"{node.tag} sem 'src'")
             return None
         if not _ASSET_SAFE.match(source) or ".." in source:
             # Caminho vindo de tema é dado não confiável: recusar é a única

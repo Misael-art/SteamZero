@@ -218,8 +218,82 @@ class TestFidelityReport:
 
     def test_degraded_elements_lower_the_coverage(self) -> None:
         """Fidelidade é declarada a partir do que ficou de fora, não prometida."""
-        xml = '<layout><sound src="a.wav"/><image src="a.png"/></layout>'
+        xml = '<layout><widgetInventado/><image src="a.png"/></layout>'
         report = fidelity_report(_compile(xml))
         assert report["elements"] == 1
         assert report["degraded"] >= 1
         assert report["coverage"] < 1.0
+
+
+class TestRealWorldSweepCoverage:
+    """Casos vindos da varredura dos 29 layouts locais.
+
+    Cada um representa um defeito ou convenção que fazia layouts reais falharem
+    ou perderem elementos — 14 dos 29 não compilavam antes destes tratamentos.
+    """
+
+    def test_missing_space_between_attributes(self) -> None:
+        """`type="x"to ="-5"` — 14 layouts falhavam só por isto."""
+        xml = '<layout><image src="a.png" x="1"y ="2"/></layout>'
+        scene = _compile(xml)
+        assert _elements(scene)[0]["layout"]["y"] == 2.0  # type: ignore[index]
+
+    def test_anonymous_closing_tag(self) -> None:
+        """`</>` fecha o elemento corrente, como no parser tolerante."""
+        xml = "<layout><image src=\"a.png\"><onEnter><set duration='1'/></onEnter></></layout>"
+        scene = _compile(xml)
+        assert len(_elements(scene)) == 1
+        assert any("anônimo" in d["reason"] for d in scene["degraded"])  # type: ignore[index]
+
+    def test_filename_with_spaces_is_accepted(self) -> None:
+        """36 assets dos layouts locais têm espaço no nome; espaço não é ameaça."""
+        scene = _compile('<layout><image src="images/main vidover.png"/></layout>')
+        assert _elements(scene)[0]["asset"] == "assets/images/main vidover.png"
+
+    def test_traversal_is_still_refused_despite_spaces(self) -> None:
+        """Afrouxar o nome não pode afrouxar a fronteira."""
+        scene = _compile('<layout><image src="../secret file.png"/></layout>')
+        assert _elements(scene) == []
+
+    def test_capitalized_keyword_is_normalized(self) -> None:
+        scene = _compile('<layout><image src="a.png" x="Left"/></layout>')
+        assert _elements(scene)[0]["layout"]["x"] == "left"  # type: ignore[index]
+
+    def test_empty_attribute_is_absence_not_error(self) -> None:
+        scene = _compile('<layout><image src="a.png" x=""/></layout>')
+        assert "x" not in _elements(scene)[0].get("layout", {})
+        assert not any(
+            "coordenada" in d["reason"]
+            for d in scene.get("degraded", [])  # type: ignore[union-attr]
+        )
+
+    def test_sound_is_a_first_class_element(self) -> None:
+        """92 elementos <sound> nos layouts locais: a camada sonora é real."""
+        scene = _compile('<layout><sound src="click.wav"/></layout>')
+        element = _elements(scene)[0]
+        assert element["kind"] == "sound"
+        assert element["asset"] == "assets/click.wav"
+
+    def test_volume_is_animatable(self) -> None:
+        """70 animações de volume nos layouts locais."""
+        xml = """<layout><sound src="a.wav">
+          <onEnter><set duration="1"><animate type="volume" to="0.5"/></set></onEnter>
+        </sound></layout>"""
+        animation = _elements(_compile(xml))[0]["on"]["enter"][0]["animations"][0]  # type: ignore[index]
+        assert animation["property"] == "volume"
+
+    def test_collection_position_is_bindable(self) -> None:
+        """Permite "3 de 47" e navegação alfabética."""
+        scene = _compile('<layout><reloadableText type="collectionIndex"/></layout>')
+        assert _elements(scene)[0]["binding"]["field"] == "collectionIndex"  # type: ignore[index]
+
+    def test_numbered_slot_variants_map_to_the_base(self) -> None:
+        """Temas usam playlist2..playlist9 para o mesmo slot semântico."""
+        scene = _compile('<layout><reloadableImage type="playlist3"/></layout>')
+        assert _elements(scene)[0]["binding"]["field"] == "playlist"  # type: ignore[index]
+
+    def test_absolute_origin_is_kept_as_offset(self) -> None:
+        """RetroFE aceita origem em pixels; normalizar exigiria a caixa do pai."""
+        scene = _compile('<layout><image src="a.png" xOrigin="910"/></layout>')
+        layout = _elements(scene)[0]["layout"]
+        assert layout.get("xOffset") == 910.0  # type: ignore[union-attr]
