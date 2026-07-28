@@ -47,6 +47,7 @@ from steamzero.domain.resolved_node import (
     TextAlignment,
     TextVerticalAlignment,
 )
+from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.scene_value import is_pending_value
 
 #: Diagnósticos que o adapter pode emitir. Numeração própria: são defeitos de
@@ -90,6 +91,20 @@ _COLOR = re.compile(r"^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 _FONT_NAMESPACE = "font"
 
 
+class FallbackKind(StrEnum):
+    """Como o valor entregue difere do declarado.
+
+    Sem isto, "degradado" diria só que algo mudou. Saber que foi ``clamp`` e não
+    ``substitution`` é o que separa "o autor escreveu 1.5 e recebeu 1.0" de "a
+    fonte pedida não existe no pacote" — dois problemas com correções
+    diferentes.
+    """
+
+    CLAMP = "clamp"
+    SUBSTITUTION = "substitution"
+    APPROXIMATION = "approximation"
+
+
 class Severity(StrEnum):
     """Quanto o defeito custa.
 
@@ -118,14 +133,32 @@ class AdapterDiagnostic:
     target: str
     detail: str
     severity: Severity = Severity.FATAL
+    #: O que o autor DECLAROU. Registrar só que houve degradação não basta:
+    #: sem o valor original, quem lê o relatório não sabe o que corrigir no
+    #: tema, e sem o resolvido não sabe o que a tela mostrou.
+    original_value: Any = None
+    resolved_value: Any = None
+    fallback_kind: FallbackKind | None = None
+    source_reference: SourceReference | None = None
 
-    def to_dict(self) -> dict[str, str]:
-        return {
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "code": self.code,
             "target": self.target,
-            "detail": self.detail,
             "severity": self.severity.value,
+            # Serializa como `reason`: `detail` era o mesmo texto com outro
+            # nome, e dois nomes para um campo viram duas leituras divergentes.
+            "reason": self.detail,
         }
+        if self.fallback_kind is not None:
+            payload["fallbackKind"] = self.fallback_kind.value
+            # Só nos degradados os dois valores fazem sentido juntos: em falha
+            # não há valor resolvido, porque não há modelo.
+            payload["originalValue"] = self.original_value
+            payload["resolvedValue"] = self.resolved_value
+        if self.source_reference is not None:
+            payload["sourceReference"] = self.source_reference.to_dict()
+        return payload
 
 
 #: O projeto tem alvo 3.11; `class AdaptationResult[T]` só existe a partir do 3.12.
@@ -265,23 +298,50 @@ class _Collector:
     mas se algo foi FATAL, o modelo não chega a ser construído.
     """
 
-    def __init__(self, target: str) -> None:
+    def __init__(self, target: str, reference: SourceReference | None = None) -> None:
         self._target = target
+        self._reference = reference
         self.entries: list[AdapterDiagnostic] = []
 
-    def fatal(self, code: str, detail: str, *, field_name: str) -> None:
-        self._add(code, detail, field_name=field_name, severity=Severity.FATAL)
-
-    def degraded(self, code: str, detail: str, *, field_name: str) -> None:
-        self._add(code, detail, field_name=field_name, severity=Severity.DEGRADED)
-
-    def _add(self, code: str, detail: str, *, field_name: str, severity: Severity) -> None:
+    def fatal(self, code: str, detail: str, *, field_name: str, original: Any = None) -> None:
         self.entries.append(
             AdapterDiagnostic(
                 code=code,
                 target=f"{self._target}.{field_name}",
                 detail=detail,
-                severity=severity,
+                severity=Severity.FATAL,
+                original_value=original,
+                source_reference=self._reference,
+            )
+        )
+
+    def degraded(
+        self,
+        code: str,
+        detail: str,
+        *,
+        field_name: str,
+        kind: FallbackKind,
+        original: Any,
+        resolved: Any,
+    ) -> None:
+        """Degradação exige a história completa.
+
+        `kind`, `original` e `resolved` são obrigatórios de propósito: um
+        registro de degradação sem eles diz que algo mudou sem dizer o quê, e
+        quem lê o relatório não consegue nem corrigir o tema nem confirmar o que
+        a tela mostrou.
+        """
+        self.entries.append(
+            AdapterDiagnostic(
+                code=code,
+                target=f"{self._target}.{field_name}",
+                detail=detail,
+                severity=Severity.DEGRADED,
+                original_value=original,
+                resolved_value=resolved,
+                fallback_kind=kind,
+                source_reference=self._reference,
             )
         )
 
@@ -312,6 +372,7 @@ def _map_enum(
             f"valor {member!r} não tem correspondente no QML; "
             f"conhecidos: {sorted(str(key) for key in table)}",
             field_name=field_name,
+            original=member,
         )
         return _UNSET
 
@@ -347,6 +408,7 @@ def _font_source(handle: FontAssetHandle | None, diagnostics: _Collector) -> Any
             DIAG_INVALID_HANDLE,
             f"handle {handle.handle!r} fora da gramática asset://<namespace>/<id>",
             field_name="fontSource",
+            original=handle.handle,
         )
         return _UNSET
     namespace = handle.handle.removeprefix("asset://").split("/", 1)[0]
@@ -365,7 +427,10 @@ def _font_source(handle: FontAssetHandle | None, diagnostics: _Collector) -> Any
             handle.fallback_reason
             or f"fonte {handle.requested_family or handle.key!r} substituída por "
             f"{handle.resolved_family!r}",
-            field_name="fontSource",
+            field_name="fontFamily",
+            kind=FallbackKind.SUBSTITUTION,
+            original=handle.requested_family or handle.key,
+            resolved=handle.resolved_family,
         )
     return handle.handle
 
@@ -385,6 +450,7 @@ def _color(raw: Any, diagnostics: _Collector) -> Any:
         DIAG_INVALID_COLOR,
         f"cor {raw!r} não é #RRGGBB nem #AARRGGBB",
         field_name="color",
+        original=raw,
     )
     return _UNSET
 
@@ -402,8 +468,11 @@ def _opacity(raw: Any, diagnostics: _Collector) -> Any:
     clamped = min(1.0, max(0.0, float(raw)))
     diagnostics.degraded(
         DIAG_OUT_OF_RANGE,
-        f"opacidade {raw} fora de [0, 1], limitada a {clamped}",
+        f"opacidade fora da faixa permitida [0, 1], limitada a {clamped}",
         field_name="opacity",
+        kind=FallbackKind.CLAMP,
+        original=raw,
+        resolved=clamped,
     )
     return clamped
 
@@ -427,7 +496,9 @@ def _dimension(raw: Any, *, field_name: str, diagnostics: _Collector) -> Any:
     if number < 0.0:
         # Zerar produziria um elemento invisível que parece intencional. Largura
         # negativa é defeito de quem produziu o nó, e é lá que precisa aparecer.
-        diagnostics.fatal(DIAG_OUT_OF_RANGE, f"dimensão negativa: {raw}", field_name=field_name)
+        diagnostics.fatal(
+            DIAG_OUT_OF_RANGE, f"dimensão negativa: {raw}", field_name=field_name, original=raw
+        )
         return _UNSET
     return number
 
@@ -454,7 +525,7 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
     Função pura: mesma entrada, mesma saída, sem estado e sem efeito. O nó de
     entrada não é modificado.
     """
-    diagnostics = _Collector(node.id)
+    diagnostics = _Collector(node.id, node.source_reference)
 
     _reject_pending(node, diagnostics)
 
@@ -503,7 +574,10 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
         diagnostics.degraded(
             DIAG_APPROXIMATED,
             "oblique renderizado como itálico: font.italic é booleano no QML",
-            field_name="fontItalic",
+            field_name="fontStyle",
+            kind=FallbackKind.APPROXIMATION,
+            original=FontStyle.OBLIQUE.value,
+            resolved=FontStyle.ITALIC.value,
         )
 
     if diagnostics.has_fatal:

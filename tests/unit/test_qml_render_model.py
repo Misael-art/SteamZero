@@ -29,6 +29,7 @@ from steamzero.domain.qml_render_model import (
     AdaptationResult,
     AdaptationStatus,
     AdapterDiagnostic,
+    FallbackKind,
     QmlTextRenderModel,
     Severity,
     to_render_model,
@@ -43,6 +44,7 @@ from steamzero.domain.resolved_node import (
     TextAlignment,
     TextVerticalAlignment,
 )
+from steamzero.domain.scene_typing import SourceReference
 
 _ADAPTER = (
     Path(__file__).resolve().parents[2] / "src" / "steamzero" / "domain" / "qml_render_model.py"
@@ -67,6 +69,7 @@ def _node(**overrides: object) -> ResolvedTextNode:
             resolved_family="Gilroy",
         ),
         font_size=48.0,
+        source_reference=SourceReference(file="layouts/arcade.xml", line=183),
     )
     return replace(base, **overrides)  # type: ignore[arg-type]
 
@@ -310,6 +313,87 @@ class TestFailureCarriesNoModel:
         """
         result = to_render_model(_node(font_style=FontStyle.OBLIQUE))
         assert result.require_model().font_italic is True
+
+
+class TestDegradationTellsTheWholeStory:
+    """Registrar que houve degradação não basta.
+
+    Sem o valor declarado, quem lê o relatório não sabe o que corrigir no tema;
+    sem o resolvido, não sabe o que a tela mostrou.
+    """
+
+    def _only(self, result: AdaptationResult[QmlTextRenderModel]) -> dict[str, object]:
+        assert len(result.diagnostics) == 1
+        return result.diagnostics[0].to_dict()
+
+    def test_clamp_records_both_values_and_the_kind(self) -> None:
+        payload = self._only(to_render_model(_node(opacity=1.5)))
+        assert payload["fallbackKind"] == FallbackKind.CLAMP.value
+        assert payload["originalValue"] == 1.5
+        assert payload["resolvedValue"] == 1.0
+        assert payload["severity"] == "degraded"
+        assert payload["reason"]
+
+    def test_font_substitution_records_requested_and_resolved(self) -> None:
+        payload = self._only(
+            to_render_model(
+                _node(
+                    font_family="Inter",
+                    font_asset=FontAssetHandle(
+                        key="Gilroy",
+                        handle="asset://font/Inter",
+                        origin=FontOrigin.FALLBACK_SYSTEM,
+                        requested_family="Gilroy",
+                        resolved_family="Inter",
+                    ),
+                )
+            )
+        )
+        assert payload["fallbackKind"] == FallbackKind.SUBSTITUTION.value
+        assert payload["originalValue"] == "Gilroy"
+        assert payload["resolvedValue"] == "Inter"
+
+    def test_approximation_records_what_was_asked_and_what_rendered(self) -> None:
+        payload = self._only(to_render_model(_node(font_style=FontStyle.OBLIQUE)))
+        assert payload["fallbackKind"] == FallbackKind.APPROXIMATION.value
+        assert payload["originalValue"] == "oblique"
+        assert payload["resolvedValue"] == "italic"
+
+    def test_every_degraded_diagnostic_carries_the_full_record(self) -> None:
+        """Nenhuma degradação pode escapar sem a história completa."""
+        cases = [
+            _node(opacity=1.5),
+            _node(font_style=FontStyle.OBLIQUE),
+            _node(
+                font_family="Inter",
+                font_asset=FontAssetHandle(
+                    key="Gilroy",
+                    handle="asset://font/Inter",
+                    origin=FontOrigin.FALLBACK_DECLARED,
+                    requested_family="Gilroy",
+                    resolved_family="Inter",
+                ),
+            ),
+        ]
+        for node in cases:
+            result = to_render_model(node)
+            assert result.status is AdaptationStatus.DEGRADED
+            for item in result.diagnostics:
+                payload = item.to_dict()
+                for required in ("originalValue", "resolvedValue", "fallbackKind", "reason"):
+                    assert required in payload, f"{item.code} sem {required}"
+                assert item.original_value != item.resolved_value
+
+    def test_the_source_reference_survives_to_the_diagnostic(self) -> None:
+        """Sem a origem, o relatório diz o que quebrou mas não onde consertar."""
+        payload = self._only(to_render_model(_node(opacity=1.5)))
+        assert payload["sourceReference"] == {"file": "layouts/arcade.xml", "line": 183}
+
+    def test_a_fatal_diagnostic_has_no_resolved_value(self) -> None:
+        """Em falha não há valor resolvido, porque não há modelo."""
+        payload = to_render_model(_node(color="vermelho")).diagnostics[0].to_dict()
+        assert "resolvedValue" not in payload
+        assert "fallbackKind" not in payload
 
 
 class TestResultStatesAreUnmistakable:
