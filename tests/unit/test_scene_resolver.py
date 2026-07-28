@@ -279,3 +279,149 @@ class TestNamespaceIsEnforcedAtResolution:
             Resolver(context).resolve(
                 value.bind("theme.outroTema.cor"), ValueType.COLOR, target="a"
             )
+
+
+class TestTernaryConditionLogic:
+    """Correção obrigatória: incompatibilidade não pode virar `false`.
+
+    Tratar como falso selecionaria o ramo `otherwise` e produziria uma interface
+    de aparência válida e SEMANTICAMENTE ERRADA — pior que uma que falha
+    visivelmente.
+    """
+
+    def _incompatible(self) -> dict:
+        return value.when(
+            value.compare("greaterThan", value.bind("game.title"), 1990),
+            "#ff0000",
+            "#00ff00",
+        )
+
+    def test_incompatible_comparison_does_not_choose_otherwise(self) -> None:
+        resolver = Resolver(_context())
+        result = resolver.resolve(self._incompatible(), ValueType.COLOR, target="a")
+        assert result.value != "#00ff00", "não pode cair no ramo else sem base"
+        assert result.used_fallback is True
+
+    def test_indeterminate_uses_the_declared_fallback(self) -> None:
+        resolver = Resolver(_context())
+        candidate = dict(self._incompatible())
+        candidate["fallback"] = "#123456"
+        result = resolver.resolve(candidate, ValueType.COLOR, target="a")
+        assert result.value == "#123456"
+
+    def test_indeterminate_without_fallback_uses_the_safe_default(self) -> None:
+        """Transparente: não desenha nada visualmente errado."""
+        resolver = Resolver(_context())
+        result = resolver.resolve(self._incompatible(), ValueType.COLOR, target="a")
+        assert result.value == "#00000000"
+
+    def test_structured_diagnostic_is_emitted(self) -> None:
+        resolver = Resolver(_context())
+        reference = SourceReference("layouts/arcade.xml", line=183, element="gameTitle")
+        resolver.resolve(
+            self._incompatible(), ValueType.COLOR, target="title.fontSize", reference=reference
+        )
+        emitted = resolver.diagnostics.to_list()
+        assert emitted[0]["code"] == "THEME-CONDITION-TYPE-MISMATCH-001"
+        assert emitted[0]["property"] == "title.fontSize"
+        assert emitted[0]["resolution"] == "fallback"
+        assert emitted[0]["sourceReference"]["line"] == 183
+
+    def test_diagnostic_is_deduplicated(self) -> None:
+        """Uma lista de 500 itens emitiria 500 avisos idênticos por frame."""
+        resolver = Resolver(_context())
+        for _ in range(50):
+            resolver._cache.clear()
+            resolver.resolve(self._incompatible(), ValueType.COLOR, target="a")
+        assert len(resolver.diagnostics.entries) == 1
+
+    def test_indeterminate_propagates_through_and(self) -> None:
+        """`and` só é falso se um operando for comprovadamente falso."""
+        resolver = Resolver(_context(states=frozenset()))
+        candidate = value.when(
+            value.all_of(
+                value.compare("greaterThan", value.bind("game.title"), 1990),
+                value.in_state("focused"),
+            ),
+            "#ff0000",
+            "#00ff00",
+        )
+        result = resolver.resolve(candidate, ValueType.COLOR, target="a")
+        # state=focused é FALSO comprovado, então o `and` inteiro é falso.
+        assert result.value == "#00ff00"
+
+    def test_indeterminate_survives_when_nothing_is_conclusive(self) -> None:
+        resolver = Resolver(_context(states=frozenset({"focused"})))
+        candidate = value.when(
+            value.all_of(
+                value.compare("greaterThan", value.bind("game.title"), 1990),
+                value.in_state("focused"),
+            ),
+            "#ff0000",
+            "#00ff00",
+        )
+        result = resolver.resolve(candidate, ValueType.COLOR, target="a")
+        assert result.used_fallback is True
+
+    def test_missing_operand_is_indeterminate_not_false(self) -> None:
+        resolver = Resolver(_context())
+        candidate = value.when(
+            value.compare("greaterThan", value.bind("game.inexistente", fallback=None), 10),
+            "#ff0000",
+            "#00ff00",
+        )
+        result = resolver.resolve(candidate, ValueType.COLOR, target="a")
+        assert result.value != "#00ff00"
+
+
+class TestMissingTranslationIsAccounted:
+    """Correção obrigatória: precisa ser `fallback`, não `exact`."""
+
+    def test_reports_used_fallback(self) -> None:
+        resolver = Resolver(_context())
+        result = resolver.resolve(
+            value.localized("ui.inexistente", fallback="Play"), ValueType.STRING, target="a"
+        )
+        assert result.used_fallback is True
+
+    def test_diagnostic_once_per_key_and_locale(self) -> None:
+        resolver = Resolver(_context())
+        for _ in range(30):
+            resolver._cache.clear()
+            resolver.resolve(
+                value.localized("ui.inexistente", fallback="Play"),
+                ValueType.STRING,
+                target="a",
+            )
+        assert len(resolver.diagnostics.entries) == 1
+
+    def test_diagnostic_names_the_locale(self) -> None:
+        resolver = Resolver(_context())
+        resolver.resolve(
+            value.localized("ui.inexistente", fallback="Play"), ValueType.STRING, target="a"
+        )
+        assert "pt-BR" in resolver.diagnostics.to_list()[0]["message"]
+
+
+class TestSourceIdentityIsPreserved:
+    """Token e configuração compartilham o algoritmo sem perder identidade."""
+
+    def test_generations_distinguish_settings_from_theme(self) -> None:
+        """Uma configuração muda sem reinstalar o tema."""
+        context = _context()
+        resolver = Resolver(context)
+        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        context.generations = Generations(theme_settings=1)
+        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        assert resolver.stats.misses == 2
+
+    @pytest.mark.parametrize(
+        "changed", [{"translation_catalog": 1}, {"asset_registry": 1}, {"state_variant": "focused"}]
+    )
+    def test_new_generations_participate_in_the_cache_key(self, changed: dict) -> None:
+        context = _context()
+        resolver = Resolver(context)
+        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        context.generations = Generations(**changed)
+        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        assert resolver.stats.misses == 2

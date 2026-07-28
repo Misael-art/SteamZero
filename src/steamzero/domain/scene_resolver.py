@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 
 from steamzero.domain.scene_registry import Registries, ResolutionPhase
@@ -50,6 +51,20 @@ DIAG_NAMESPACE = "THEME-RESOLUTION-NAMESPACE-007"
 DIAG_CAPABILITY = "THEME-RESOLUTION-CAPABILITY-008"
 DIAG_MISSING_TRANSLATION = "THEME-RESOLUTION-I18N-009"
 DIAG_MISSING_ASSET = "THEME-RESOLUTION-ASSET-010"
+DIAG_CONDITION_TYPE = "THEME-CONDITION-TYPE-MISMATCH-001"
+
+
+class Truth(StrEnum):
+    """Resultado de uma condição.
+
+    ``INDETERMINATE`` existe porque tratar incompatibilidade como ``false``
+    selecionaria o ramo ``otherwise`` e produziria uma interface de aparência
+    válida e semanticamente ERRADA — pior que uma que falha visivelmente.
+    """
+
+    TRUE = "true"
+    FALSE = "false"
+    INDETERMINATE = "indeterminate"
 
 
 class ResolutionError(ValueError):
@@ -88,20 +103,32 @@ class Generations:
     """
 
     theme: int = 0
+    #: Separada de ``theme`` de propósito: uma configuração pode mudar sem que o
+    #: tema seja reinstalado ou recarregado.
+    theme_settings: int = 0
     tokens: int = 0
     read_model: int = 0
+    #: Catálogo de tradução e registro de assets mudam em desenvolvimento sem
+    #: que locale ou versão do tema mudem.
+    translation_catalog: int = 0
+    asset_registry: int = 0
     locale: str = "pt-BR"
     accessibility: str = "default"
     display: str = "default"
+    state_variant: str = "default"
 
     def key(self) -> tuple[Any, ...]:
         return (
             self.theme,
+            self.theme_settings,
             self.tokens,
             self.read_model,
+            self.translation_catalog,
+            self.asset_registry,
             self.locale,
             self.accessibility,
             self.display,
+            self.state_variant,
         )
 
 
@@ -129,14 +156,35 @@ class Resolved:
     dependencies: frozenset[str] = frozenset()
     phase: ResolutionPhase = ResolutionPhase.COMPILE_TIME
     used_fallback: bool = False
+    #: Identidade da origem preservada mesmo quando token e configuração
+    #: compartilham o algoritmo — importa para diagnóstico, permissão,
+    #: precedência e invalidação.
+    source_kind: str | None = None
+    source_namespace: str | None = None
+    source_path: str | None = None
+    source_reference: SourceReference | None = None
+    generation: tuple[Any, ...] = ()
+    diagnostics: tuple[Diagnostic, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "value": self.value,
             "dependencies": sorted(self.dependencies),
             "phase": self.phase.value,
             "usedFallback": self.used_fallback,
         }
+        for key, item in (
+            ("sourceKind", self.source_kind),
+            ("sourceNamespace", self.source_namespace),
+            ("sourcePath", self.source_path),
+        ):
+            if item is not None:
+                payload[key] = item
+        if self.source_reference is not None:
+            payload["sourceReference"] = self.source_reference.to_dict()
+        if self.diagnostics:
+            payload["diagnostics"] = [item.to_dict() for item in self.diagnostics]
+        return payload
 
 
 @dataclass
@@ -174,6 +222,52 @@ class DependencyGraph:
         return self._dependencies.get(target, frozenset())
 
 
+@dataclass(frozen=True)
+class Diagnostic:
+    """Aviso não fatal emitido durante a resolução."""
+
+    code: str
+    message: str
+    target: str
+    reference: SourceReference | None = None
+    resolution: str = "fallback"
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "code": self.code,
+            "message": self.message,
+            "property": self.target,
+            "resolution": self.resolution,
+        }
+        if self.reference is not None:
+            payload["sourceReference"] = self.reference.to_dict()
+        return payload
+
+
+@dataclass
+class DiagnosticSink:
+    """Coleta diagnósticos deduplicados por propriedade e geração.
+
+    Sem deduplicação, uma condição incompatível numa lista de 500 itens emitiria
+    500 avisos por frame — o log deixaria de ser legível justamente quando é mais
+    necessário.
+    """
+
+    entries: list[Diagnostic] = field(default_factory=list)
+    _seen: set[tuple[Any, ...]] = field(default_factory=set, repr=False)
+
+    def emit(self, diagnostic: Diagnostic, generation: tuple[Any, ...]) -> bool:
+        key = (diagnostic.code, diagnostic.target, generation)
+        if key in self._seen:
+            return False
+        self._seen.add(key)
+        self.entries.append(diagnostic)
+        return True
+
+    def to_list(self) -> list[dict[str, Any]]:
+        return [entry.to_dict() for entry in self.entries]
+
+
 @dataclass
 class ResolverStats:
     """Contadores para provar que o cache funciona."""
@@ -194,6 +288,7 @@ class Resolver:
         self._cache: dict[tuple[Any, ...], Resolved] = {}
         self.graph = DependencyGraph()
         self.stats = ResolverStats()
+        self.diagnostics = DiagnosticSink()
 
     @property
     def context(self) -> ResolutionContext:
@@ -416,8 +511,20 @@ class Resolver:
             return self._context.translations[key], False, ResolutionPhase.LOAD_TIME
         declared = value.get("fallback")
         if declared is not None:
-            # Tradução ausente com fallback é degradação prevista, não erro: o
-            # autor escreveu o texto de origem justamente para este caso.
+            # Degradação prevista, não erro — o autor escreveu o texto de origem
+            # justamente para este caso. Mas PRECISA ser contabilizada como
+            # fallback, e o aviso sai uma vez por chave e locale, nunca por
+            # frame: uma lista de 500 itens emitiria 500 avisos idênticos.
+            self.diagnostics.emit(
+                Diagnostic(
+                    DIAG_MISSING_TRANSLATION,
+                    f"tradução ausente para {key!r} em {self._context.generations.locale}",
+                    target=target,
+                    reference=reference,
+                    resolution="fallback",
+                ),
+                (self._context.generations.locale, self._context.generations.translation_catalog),
+            )
             return declared, True, ResolutionPhase.LOAD_TIME
         raise ResolutionError(
             DIAG_MISSING_TRANSLATION, f"tradução ausente: {key}", reference=reference
@@ -432,8 +539,21 @@ class Resolver:
         reference: SourceReference | None,
         target: str,
     ) -> tuple[Any, bool, ResolutionPhase]:
-        chosen = self._evaluate(value["when"], dependencies, reference)
-        branch = value["then"] if chosen else value.get("otherwise")
+        outcome = self._evaluate(value["when"], dependencies, reference, target)
+
+        if outcome is Truth.INDETERMINATE:
+            # Nem then nem otherwise: escolher um ramo sem base produziria uma
+            # tela plausível e errada. Vai para o fallback declarado, e se não
+            # houver, para o valor seguro do contrato.
+            declared = value.get("fallback")
+            if declared is not None:
+                resolved, _, _ = self._resolve(
+                    declared, expected, dependencies, trail, reference, target
+                )
+                return resolved, True, ResolutionPhase.RUNTIME
+            return SAFE_DEFAULTS.get(expected), True, ResolutionPhase.RUNTIME
+
+        branch = value["then"] if outcome is Truth.TRUE else value.get("otherwise")
         if branch is None:
             return None, False, ResolutionPhase.RUNTIME
         resolved, used_fallback, _ = self._resolve(
@@ -466,33 +586,57 @@ class Resolver:
         condition: Any,
         dependencies: set[str],
         reference: SourceReference | None,
-    ) -> bool:
+        target: str,
+    ) -> Truth:
+        """Avalia uma condição em lógica ternária.
+
+        ``INDETERMINATE`` propaga: uma conjunção com um operando indeterminado
+        só é falsa se outro operando for comprovadamente falso. Colapsar para
+        ``false`` cedo escolheria o ramo ``otherwise`` sem base.
+        """
         if not isinstance(condition, dict):
-            return bool(condition)
+            return Truth.TRUE if condition else Truth.FALSE
         op = condition.get("op")
 
         if op == "state":
-            return str(condition["state"]) in self._context.states
+            return _truth(str(condition["state"]) in self._context.states)
         if op == "capability":
             name = str(condition["name"])
             dependencies.add(f"capability:{name}")
-            return name in self._context.capabilities
-        if op == "and":
-            return all(
-                self._evaluate(item, dependencies, reference)
+            return _truth(name in self._context.capabilities)
+        if op in {"and", "or"}:
+            results = [
+                self._evaluate(item, dependencies, reference, target)
                 for item in condition.get("operands", [])
-            )
-        if op == "or":
-            return any(
-                self._evaluate(item, dependencies, reference)
-                for item in condition.get("operands", [])
-            )
+            ]
+            if op == "and":
+                if Truth.FALSE in results:
+                    return Truth.FALSE
+                return Truth.INDETERMINATE if Truth.INDETERMINATE in results else Truth.TRUE
+            if Truth.TRUE in results:
+                return Truth.TRUE
+            return Truth.INDETERMINATE if Truth.INDETERMINATE in results else Truth.FALSE
         if op == "not":
-            return not self._evaluate(condition.get("operand"), dependencies, reference)
+            inner = self._evaluate(condition.get("operand"), dependencies, reference, target)
+            if inner is Truth.INDETERMINATE:
+                return Truth.INDETERMINATE
+            return Truth.FALSE if inner is Truth.TRUE else Truth.TRUE
 
         left = self._operand(condition.get("left"), dependencies)
         right = self._operand(condition.get("right"), dependencies)
-        return _compare(op, left, right)
+        result = _compare(op, left, right)
+        if result is Truth.INDETERMINATE:
+            self.diagnostics.emit(
+                Diagnostic(
+                    DIAG_CONDITION_TYPE,
+                    (f"operador {op!r} recebeu {type(left).__name__} e {type(right).__name__}"),
+                    target=target,
+                    reference=reference,
+                    resolution="fallback",
+                ),
+                self._context.generations.key(),
+            )
+        return result
 
     def _operand(self, value: Any, dependencies: set[str]) -> Any:
         """Lê um operando sem exigir tipo — comparação não conhece o tipo alvo."""
@@ -522,27 +666,48 @@ class Resolver:
 _COMPARATORS: dict[str, Callable[[Any, Any], bool]] = {
     "equals": lambda a, b: bool(a == b),
     "notEquals": lambda a, b: bool(a != b),
-    "greaterThan": lambda a, b: bool(a is not None and b is not None and a > b),
-    "lessThan": lambda a, b: bool(a is not None and b is not None and a < b),
-    "greaterOrEqual": lambda a, b: bool(a is not None and b is not None and a >= b),
-    "lessOrEqual": lambda a, b: bool(a is not None and b is not None and a <= b),
-    "contains": lambda a, b: bool(a is not None and b in a),
-    "in": lambda a, b: bool(b is not None and a in b),
+    "greaterThan": lambda a, b: bool(a > b),
+    "lessThan": lambda a, b: bool(a < b),
+    "greaterOrEqual": lambda a, b: bool(a >= b),
+    "lessOrEqual": lambda a, b: bool(a <= b),
+    "contains": lambda a, b: bool(b in a),
+    "in": lambda a, b: bool(a in b),
+}
+
+#: Valor seguro por tipo, usado quando uma condição fica indeterminada e o autor
+#: não declarou fallback. Escolhidos para não desenhar nada visualmente errado:
+#: transparente, vazio, invisível.
+SAFE_DEFAULTS: dict[ValueType, Any] = {
+    ValueType.COLOR: "#00000000",
+    ValueType.STRING: "",
+    ValueType.NUMBER: 0,
+    ValueType.DURATION: 0,
+    ValueType.BOOLEAN: False,
+    ValueType.DIMENSION: 0,
 }
 
 
-def _compare(op: Any, left: Any, right: Any) -> bool:
+def _truth(condition: bool) -> Truth:
+    return Truth.TRUE if condition else Truth.FALSE
+
+
+def _compare(op: Any, left: Any, right: Any) -> Truth:
+    """Compara em lógica ternária.
+
+    Tipos incompatíveis devolvem ``INDETERMINATE``, nunca ``FALSE``: um
+    ``greaterThan`` entre texto e número não é "não maior", é uma pergunta sem
+    resposta, e responder ``false`` escolheria o ramo ``otherwise``.
+    """
     if op == "exists":
-        return left is not None
+        return _truth(left is not None)
     if op == "missing":
-        return left is None
+        return _truth(left is None)
     comparator = _COMPARATORS.get(str(op))
     if comparator is None:
         raise ResolutionError(DIAG_TYPE, f"operador desconhecido: {op!r}")
+    if left is None or right is None:
+        return Truth.INDETERMINATE
     try:
-        return comparator(left, right)
+        return _truth(comparator(left, right))
     except TypeError:
-        # Comparar tipos incompatíveis devolve falso em vez de explodir: a
-        # condição não é o lugar de descobrir erro de tipo, e derrubar a cena
-        # por causa de uma comparação seria degradação pior que a informação.
-        return False
+        return Truth.INDETERMINATE
