@@ -15,10 +15,11 @@ O que ele deliberadamente NÃO faz — e a razão de cada recusa:
   consultar estado, e portanto não tem como depender de ordem de execução.
 - **Não altera o nó.** O ``ResolvedTextNode`` que entra sai intacto — o adapter
   não é lugar de corrigir defeito produzido antes dele.
-- **Não escolhe default em silêncio para enum desconhecido.** Um enum que o
-  adapter não conhece significa que o DTO e o adapter estão em versões
-  diferentes; escolher ``start`` produziria uma tela plausível e errada, que é
-  pior que uma tela com defeito visível. Vira diagnóstico e valor recusado.
+- **Não escolhe default para o que não sabe traduzir.** Enum desconhecido não
+  vira ``AlignLeft``, cor inválida não vira transparente. Um default produziria
+  uma tela plausível e errada, e ninguém investiga o que parece certo. O
+  resultado é ``failed``, e ``failed`` não carrega modelo NENHUM — não há
+  payload parcial para um consumidor distraído entregar ao QML.
 
 Determinismo é requisito: a mesma entrada produz exatamente a mesma saída, sem
 consulta a relógio, ambiente ou estado global. É o que permite comparar goldens.
@@ -30,9 +31,11 @@ quem os entrega ao runtime é o shell, não este módulo.
 
 from __future__ import annotations
 
+import math
 import re
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any, Generic, TypeVar
 
 from steamzero.domain.resolved_node import (
     ASSET_HANDLE,
@@ -44,6 +47,7 @@ from steamzero.domain.resolved_node import (
     TextAlignment,
     TextVerticalAlignment,
 )
+from steamzero.domain.scene_value import is_pending_value
 
 #: Diagnósticos que o adapter pode emitir. Numeração própria: são defeitos de
 #: TRADUÇÃO, e confundi-los com defeitos de resolução mandaria quem investiga
@@ -53,6 +57,9 @@ DIAG_INVALID_HANDLE = "QML-ADAPTER-INVALID-ASSET-HANDLE-002"
 DIAG_INVALID_COLOR = "QML-ADAPTER-INVALID-COLOR-003"
 DIAG_OUT_OF_RANGE = "QML-ADAPTER-VALUE-OUT-OF-RANGE-004"
 DIAG_FONT_UNAVAILABLE = "QML-ADAPTER-FONT-UNAVAILABLE-005"
+DIAG_FONT_FALLBACK = "QML-ADAPTER-FONT-FALLBACK-006"
+DIAG_APPROXIMATED = "QML-ADAPTER-APPROXIMATED-007"
+DIAG_PENDING_VALUE = "QML-ADAPTER-PENDING-VALUE-008"
 
 #: Nomes do QML para alinhamento horizontal. `justify` sobrevive porque o Qt o
 #: implementa; se um backend futuro não implementar, é ele que degrada — não o
@@ -82,8 +89,25 @@ _COLOR = re.compile(r"^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 #: Namespace autorizado para fonte, dentro da gramática do handle.
 _FONT_NAMESPACE = "font"
 
-#: Peso usado quando o nome não tem correspondente. Sempre com diagnóstico junto.
-FONT_WEIGHT_SCALE_DEFAULT = 400
+
+class Severity(StrEnum):
+    """Quanto o defeito custa.
+
+    ``FATAL`` derruba o modelo inteiro. ``DEGRADED`` deixa passar um valor que
+    não é o pedido, mas é uma substituição explícita e registrada — como
+    ``oblique`` virando itálico sintético, que o QML não sabe distinguir.
+    """
+
+    FATAL = "fatal"
+    DEGRADED = "degraded"
+
+
+class AdaptationStatus(StrEnum):
+    """Resultado da tradução, do ponto de vista de quem vai renderizar."""
+
+    SUCCESS = "success"
+    DEGRADED = "degraded"
+    FAILED = "failed"
 
 
 @dataclass(frozen=True)
@@ -93,17 +117,94 @@ class AdapterDiagnostic:
     code: str
     target: str
     detail: str
+    severity: Severity = Severity.FATAL
 
     def to_dict(self) -> dict[str, str]:
-        return {"code": self.code, "target": self.target, "detail": self.detail}
+        return {
+            "code": self.code,
+            "target": self.target,
+            "detail": self.detail,
+            "severity": self.severity.value,
+        }
+
+
+#: O projeto tem alvo 3.11; `class AdaptationResult[T]` só existe a partir do 3.12.
+_ModelT = TypeVar("_ModelT")
+
+
+class AdaptationError(RuntimeError):
+    """Levantado por ``require_model()`` quando não há modelo válido."""
+
+
+@dataclass(frozen=True)
+class AdaptationResult(Generic[_ModelT]):
+    """Modelo mais o veredito sobre ele — e o veredito não é opcional.
+
+    O adapter devolve isto, e não o modelo, porque `ok` ao lado de um payload
+    pronto é fácil demais de não ler. Aqui o consumidor precisa desempacotar, e
+    em ``failed`` não há o que desempacotar: o modelo é ``None``.
+
+    ``degraded`` existe para separar "não é o que o tema pediu, mas é uma
+    substituição declarada" de "não sei traduzir isto". Colapsar os dois faria
+    ou fallback legítimo derrubar a tela, ou defeito real passar por fallback.
+    """
+
+    status: AdaptationStatus
+    model: _ModelT | None
+    diagnostics: tuple[AdapterDiagnostic, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Os estados são inconfundíveis por construção. Um `failed` com modelo,
+        # ou um `success` com diagnóstico, seria um convite a interpretar o
+        # status errado — e quem interpreta errado renderiza errado.
+        if self.status is AdaptationStatus.FAILED:
+            if self.model is not None:
+                raise ValueError("failed não carrega modelo")
+            if not self.diagnostics:
+                raise ValueError("failed exige diagnóstico")
+            return
+        if self.model is None:
+            raise ValueError(f"{self.status.value} exige modelo")
+        if self.status is AdaptationStatus.SUCCESS and self.diagnostics:
+            raise ValueError("success não carrega diagnóstico")
+        if self.status is AdaptationStatus.DEGRADED and not self.diagnostics:
+            raise ValueError("degraded exige diagnóstico")
+
+    @property
+    def failed(self) -> bool:
+        return self.status is AdaptationStatus.FAILED
+
+    def require_model(self) -> _ModelT:
+        """Devolve o modelo, ou recusa.
+
+        É o caminho curto para quem não tem política de apresentação própria. O
+        shell do VS-04 pode decidir outra coisa para ``failed`` — mostrar o
+        elemento anterior, esconder o nó, pintar um marcador de defeito —, mas
+        precisa decidir explicitamente. Ignorar não é uma opção disponível.
+        """
+        if self.model is None:
+            detail = "; ".join(
+                f"{item.code} em {item.target}: {item.detail}" for item in self.diagnostics
+            )
+            raise AdaptationError(f"tradução falhou — {detail}")
+        return self.model
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"status": self.status.value}
+        if self.model is not None:
+            payload["model"] = self.model.to_dict()  # type: ignore[attr-defined]
+        if self.diagnostics:
+            payload["diagnostics"] = [item.to_dict() for item in self.diagnostics]
+        return payload
 
 
 @dataclass(frozen=True)
 class QmlTextRenderModel:
     """Exatamente o que ``SceneText.qml`` atribui às suas propriedades.
 
-    Cada campo corresponde a uma propriedade do QML, e nada aqui exige
-    interpretação do outro lado: o QML atribui e pronto.
+    Só existe quando a tradução deu certo o bastante para existir. Diagnóstico
+    não mora aqui: mora no ``AdaptationResult``, porque um modelo carregando o
+    próprio defeito é um modelo que alguém vai renderizar mesmo assim.
 
     ``width``/``height`` em ``None`` significam "dimensione pelo conteúdo" — e é
     diferente de ``0.0``, que significa caixa explicitamente sem tamanho. O QML
@@ -126,14 +227,9 @@ class QmlTextRenderModel:
     font_italic: bool
     horizontal_alignment: str
     vertical_alignment: str
-    #: Referência interna autorizada. Vazia quando a fonte não pôde ser usada —
-    #: nesse caso `font_family` já carrega a família efetivamente aplicada.
+    #: Referência interna autorizada. Vazia quando o tema não declarou fonte —
+    #: nunca quando declarou e a tradução falhou, porque aí não há modelo.
     font_source: str = ""
-    diagnostics: tuple[AdapterDiagnostic, ...] = field(default_factory=tuple)
-
-    @property
-    def ok(self) -> bool:
-        return not self.diagnostics
 
     def to_dict(self) -> dict[str, Any]:
         """Forma determinística, para golden e para a ponte com o QML."""
@@ -158,8 +254,6 @@ class QmlTextRenderModel:
             payload["height"] = self.height
         if self.font_source:
             payload["fontSource"] = self.font_source
-        if self.diagnostics:
-            payload["diagnostics"] = [item.to_dict() for item in self.diagnostics]
         return payload
 
 
@@ -167,125 +261,194 @@ class _Collector:
     """Acumula diagnósticos sem interromper a tradução.
 
     Parar no primeiro defeito esconderia os demais, e quem investiga acabaria
-    corrigindo um por vez. Traduz-se tudo que dá, e reporta-se tudo que não deu.
+    corrigindo um por vez. Traduz-se tudo que dá, e reporta-se tudo que não deu —
+    mas se algo foi FATAL, o modelo não chega a ser construído.
     """
 
     def __init__(self, target: str) -> None:
         self._target = target
         self.entries: list[AdapterDiagnostic] = []
 
-    def add(self, code: str, detail: str, *, field_name: str) -> None:
+    def fatal(self, code: str, detail: str, *, field_name: str) -> None:
+        self._add(code, detail, field_name=field_name, severity=Severity.FATAL)
+
+    def degraded(self, code: str, detail: str, *, field_name: str) -> None:
+        self._add(code, detail, field_name=field_name, severity=Severity.DEGRADED)
+
+    def _add(self, code: str, detail: str, *, field_name: str, severity: Severity) -> None:
         self.entries.append(
-            AdapterDiagnostic(code=code, target=f"{self._target}.{field_name}", detail=detail)
+            AdapterDiagnostic(
+                code=code,
+                target=f"{self._target}.{field_name}",
+                detail=detail,
+                severity=severity,
+            )
         )
+
+    @property
+    def has_fatal(self) -> bool:
+        return any(item.severity is Severity.FATAL for item in self.entries)
+
+
+#: Sentinela para valor que não pôde ser traduzido. Nunca chega a um modelo:
+#: quando aparece, houve FATAL e o modelo não é construído.
+_UNSET = object()
 
 
 def _map_enum(
-    member: Any,
-    table: dict[Any, Any],
-    *,
-    field_name: str,
-    default: Any,
-    diagnostics: _Collector,
+    member: Any, table: dict[Any, Any], *, field_name: str, diagnostics: _Collector
 ) -> Any:
     """Traduz enum pela tabela, ou recusa.
 
-    Escolher `default` em silêncio produziria uma tela plausível e errada. O
-    default é usado só para manter a tradução seguindo — e vem acompanhado do
-    diagnóstico que impede a saída de ser considerada válida.
+    Não há parâmetro `default` de propósito. Escolher um produziria uma tela
+    plausível e errada, e o dia em que o DTO ganhasse um membro novo, a tela
+    apareceria alinhada à esquerda sem ninguém ligar o sintoma à causa.
     """
     try:
         return table[member]
-    except KeyError:
-        diagnostics.add(
+    except (KeyError, TypeError):
+        diagnostics.fatal(
             DIAG_UNKNOWN_ENUM,
             f"valor {member!r} não tem correspondente no QML; "
             f"conhecidos: {sorted(str(key) for key in table)}",
             field_name=field_name,
         )
-        return default
+        return _UNSET
 
 
-def _font_source(handle: FontAssetHandle | None, diagnostics: _Collector) -> str:
+def _font_source(handle: FontAssetHandle | None, diagnostics: _Collector) -> Any:
     """Handle seguro para referência interna autorizada.
 
     A gramática é revalidada aqui, e não assumida do DTO: o adapter pode receber
     um nó desserializado de disco, e um handle que não passe pela gramática não
-    vira referência — vira diagnóstico.
+    vira referência — vira defeito.
     """
-    if handle is None or handle.handle is None:
-        return ""
-    if not ASSET_HANDLE.match(handle.handle):
-        diagnostics.add(
-            DIAG_INVALID_HANDLE,
-            f"handle {handle.handle!r} fora da gramática asset://<namespace>/<id>",
-            field_name="fontSource",
-        )
-        return ""
-    namespace = handle.handle.removeprefix("asset://").split("/", 1)[0]
-    if namespace != _FONT_NAMESPACE:
-        diagnostics.add(
-            DIAG_INVALID_HANDLE,
-            f"handle de fonte no namespace {namespace!r}, esperado {_FONT_NAMESPACE!r}",
-            field_name="fontSource",
-        )
+    if handle is None:
+        # Tema sem fonte declarada usa a do sistema. Isso é legítimo.
         return ""
     if handle.origin is FontOrigin.UNAVAILABLE:
-        # Não é erro de tradução: o shell já registrou que a fonte não existe.
-        # O adapter apenas não inventa uma referência para ela.
-        diagnostics.add(
+        # O shell tentou e não conseguiu. Renderizar com a fonte errada em
+        # silêncio esconderia que o pacote do tema está incompleto.
+        diagnostics.fatal(
             DIAG_FONT_UNAVAILABLE,
             handle.fallback_reason or f"fonte {handle.key!r} indisponível",
             field_name="fontSource",
         )
-        return ""
+        return _UNSET
+    if handle.handle is None:
+        diagnostics.fatal(
+            DIAG_INVALID_HANDLE,
+            f"origem {handle.origin.value} sem handle",
+            field_name="fontSource",
+        )
+        return _UNSET
+    if not ASSET_HANDLE.match(handle.handle):
+        diagnostics.fatal(
+            DIAG_INVALID_HANDLE,
+            f"handle {handle.handle!r} fora da gramática asset://<namespace>/<id>",
+            field_name="fontSource",
+        )
+        return _UNSET
+    namespace = handle.handle.removeprefix("asset://").split("/", 1)[0]
+    if namespace != _FONT_NAMESPACE:
+        diagnostics.fatal(
+            DIAG_INVALID_HANDLE,
+            f"handle de fonte no namespace {namespace!r}, esperado {_FONT_NAMESPACE!r}",
+            field_name="fontSource",
+        )
+        return _UNSET
+    if handle.fallback_applied:
+        # Substituição explícita, decidida pelo shell e registrada por ele. O
+        # tema não recebeu o que pediu, e quem olhar o resultado precisa saber.
+        diagnostics.degraded(
+            DIAG_FONT_FALLBACK,
+            handle.fallback_reason
+            or f"fonte {handle.requested_family or handle.key!r} substituída por "
+            f"{handle.resolved_family!r}",
+            field_name="fontSource",
+        )
     return handle.handle
 
 
-def _color(raw: str, diagnostics: _Collector) -> str:
+def _color(raw: Any, diagnostics: _Collector) -> Any:
     """Cor normalizada para hexadecimal que o QML aceita.
 
-    Recusar é melhor que substituir por preto: preto é uma cor plausível, e a
-    tela pareceria correta enquanto estivesse errada. Preto TRANSPARENTE, não —
-    o elemento some, e quem olha percebe.
+    Cor inválida não vira transparente. Transparente é um valor legítimo que um
+    tema pode ter pedido de propósito, e usá-lo como marca de erro tornaria os
+    dois casos indistinguíveis no resultado.
     """
-    text = raw.strip()
-    if _COLOR.match(text):
-        return text.lower()
-    diagnostics.add(
+    if isinstance(raw, str):
+        text = raw.strip()
+        if _COLOR.match(text):
+            return text.lower()
+    diagnostics.fatal(
         DIAG_INVALID_COLOR,
         f"cor {raw!r} não é #RRGGBB nem #AARRGGBB",
         field_name="color",
     )
-    return "#00000000"
+    return _UNSET
 
 
-def _clamp_opacity(raw: float, diagnostics: _Collector) -> float:
+def _opacity(raw: Any, diagnostics: _Collector) -> Any:
+    if isinstance(raw, bool) or not isinstance(raw, int | float) or not math.isfinite(raw):
+        diagnostics.fatal(
+            DIAG_OUT_OF_RANGE, f"opacidade não é número finito: {raw!r}", field_name="opacity"
+        )
+        return _UNSET
     if 0.0 <= raw <= 1.0:
         return float(raw)
-    diagnostics.add(
+    # Fora da faixa a intenção é inequívoca — 1.5 é opaco, -0.5 é invisível —,
+    # então limitar é substituição declarada, não adivinhação.
+    clamped = min(1.0, max(0.0, float(raw)))
+    diagnostics.degraded(
         DIAG_OUT_OF_RANGE,
-        f"opacidade {raw} fora de [0, 1]",
+        f"opacidade {raw} fora de [0, 1], limitada a {clamped}",
         field_name="opacity",
     )
-    return min(1.0, max(0.0, float(raw)))
+    return clamped
 
 
-def _dimension(raw: float | None, *, field_name: str, diagnostics: _Collector) -> float | None:
-    """``None`` atravessa intacto: é dimensão implícita, não ausência de valor."""
-    if raw is None:
-        return None
-    if raw < 0.0:
-        diagnostics.add(
-            DIAG_OUT_OF_RANGE,
-            f"dimensão negativa: {raw}",
-            field_name=field_name,
+def _number(raw: Any, *, field_name: str, diagnostics: _Collector) -> Any:
+    if isinstance(raw, bool) or not isinstance(raw, int | float) or not math.isfinite(raw):
+        diagnostics.fatal(
+            DIAG_OUT_OF_RANGE, f"{field_name} não é número finito: {raw!r}", field_name=field_name
         )
-        return 0.0
+        return _UNSET
     return float(raw)
 
 
-def to_render_model(node: ResolvedTextNode) -> QmlTextRenderModel:
+def _dimension(raw: Any, *, field_name: str, diagnostics: _Collector) -> Any:
+    """``None`` atravessa intacto: é dimensão implícita, não ausência de valor."""
+    if raw is None:
+        return None
+    number = _number(raw, field_name=field_name, diagnostics=diagnostics)
+    if number is _UNSET:
+        return _UNSET
+    if number < 0.0:
+        # Zerar produziria um elemento invisível que parece intencional. Largura
+        # negativa é defeito de quem produziu o nó, e é lá que precisa aparecer.
+        diagnostics.fatal(DIAG_OUT_OF_RANGE, f"dimensão negativa: {raw}", field_name=field_name)
+        return _UNSET
+    return number
+
+
+def _reject_pending(node: ResolvedTextNode, diagnostics: _Collector) -> None:
+    """Última barreira: valor não resolvido não atravessa o adapter.
+
+    O DTO é tipado, então isto não acontece por engano — acontece quando um
+    construtor novo esquece de resolver um campo, e aí o QML receberia um
+    dicionário onde espera um escalar e renderizaria vazio sem reclamar.
+    """
+    for name, item in vars(node).items():
+        if is_pending_value(item):
+            diagnostics.fatal(
+                DIAG_PENDING_VALUE,
+                f"valor não resolvido chegou ao adapter: {item!r}",
+                field_name=name,
+            )
+
+
+def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderModel]:
     """Traduz um nó resolvido para o modelo que o QML consome.
 
     Função pura: mesma entrada, mesma saída, sem estado e sem efeito. O nó de
@@ -293,52 +456,66 @@ def to_render_model(node: ResolvedTextNode) -> QmlTextRenderModel:
     """
     diagnostics = _Collector(node.id)
 
-    font_source = _font_source(node.font_asset, diagnostics)
-    # A família RENDERIZADA é a que o shell resolveu, não a que o tema pediu.
-    # Usar a solicitada faria o QML tentar uma fonte que não está no pacote e
-    # cair no fallback do sistema — decisão que pertence ao shell, não ao Qt.
-    family = node.font_family or ""
+    _reject_pending(node, diagnostics)
 
-    return QmlTextRenderModel(
-        id=node.id,
-        text=node.text,
-        x=float(node.geometry.x),
-        y=float(node.geometry.y),
-        width=_dimension(node.geometry.width, field_name="width", diagnostics=diagnostics),
-        height=_dimension(node.geometry.height, field_name="height", diagnostics=diagnostics),
-        visible=bool(node.visible),
-        opacity=_clamp_opacity(node.opacity, diagnostics),
-        color=_color(node.color, diagnostics),
-        font_family=family,
-        font_pixel_size=float(node.font_size),
-        font_weight=_map_enum(
-            node.font_weight,
-            FONT_WEIGHT_SCALE,
-            field_name="fontWeight",
-            default=FONT_WEIGHT_SCALE_DEFAULT,
-            diagnostics=diagnostics,
+    fields: dict[str, Any] = {
+        "id": node.id,
+        "text": node.text,
+        "x": _number(node.geometry.x, field_name="x", diagnostics=diagnostics),
+        "y": _number(node.geometry.y, field_name="y", diagnostics=diagnostics),
+        "width": _dimension(node.geometry.width, field_name="width", diagnostics=diagnostics),
+        "height": _dimension(node.geometry.height, field_name="height", diagnostics=diagnostics),
+        "visible": bool(node.visible),
+        "opacity": _opacity(node.opacity, diagnostics),
+        "color": _color(node.color, diagnostics),
+        # A família RENDERIZADA é a que o shell resolveu, não a que o tema pediu.
+        # Usar a solicitada faria o QML tentar uma fonte que não está no pacote e
+        # cair no fallback do sistema — decisão que pertence ao shell, não ao Qt.
+        "font_family": node.font_family or "",
+        "font_pixel_size": _number(
+            node.font_size, field_name="fontPixelSize", diagnostics=diagnostics
         ),
-        font_italic=_map_enum(
-            node.font_style,
-            _ITALIC,
-            field_name="fontItalic",
-            default=False,
-            diagnostics=diagnostics,
+        "font_weight": _map_enum(
+            node.font_weight, FONT_WEIGHT_SCALE, field_name="fontWeight", diagnostics=diagnostics
         ),
-        horizontal_alignment=_map_enum(
+        "font_italic": _map_enum(
+            node.font_style, _ITALIC, field_name="fontItalic", diagnostics=diagnostics
+        ),
+        "horizontal_alignment": _map_enum(
             node.horizontal_alignment,
             _H_ALIGN,
             field_name="horizontalAlignment",
-            default="AlignLeft",
             diagnostics=diagnostics,
         ),
-        vertical_alignment=_map_enum(
+        "vertical_alignment": _map_enum(
             node.vertical_alignment,
             _V_ALIGN,
             field_name="verticalAlignment",
-            default="AlignTop",
             diagnostics=diagnostics,
         ),
-        font_source=font_source,
-        diagnostics=tuple(diagnostics.entries),
-    )
+        "font_source": _font_source(node.font_asset, diagnostics),
+    }
+
+    if node.font_style is FontStyle.OBLIQUE:
+        # `font.italic` é booleano no QML e não distingue itálico de oblíquo.
+        # Itálico sintético é mais próximo do pedido do que texto reto, mas não é
+        # o pedido.
+        diagnostics.degraded(
+            DIAG_APPROXIMATED,
+            "oblique renderizado como itálico: font.italic é booleano no QML",
+            field_name="fontItalic",
+        )
+
+    if diagnostics.has_fatal:
+        # Nenhum modelo parcial sai daqui. Não há payload para um consumidor
+        # distraído entregar ao QML.
+        return AdaptationResult(
+            status=AdaptationStatus.FAILED, model=None, diagnostics=tuple(diagnostics.entries)
+        )
+
+    model = QmlTextRenderModel(**fields)
+    if diagnostics.entries:
+        return AdaptationResult(
+            status=AdaptationStatus.DEGRADED, model=model, diagnostics=tuple(diagnostics.entries)
+        )
+    return AdaptationResult(status=AdaptationStatus.SUCCESS, model=model)

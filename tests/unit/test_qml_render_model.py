@@ -17,12 +17,20 @@ from pathlib import Path
 import pytest
 
 from steamzero.domain.qml_render_model import (
+    DIAG_APPROXIMATED,
+    DIAG_FONT_FALLBACK,
     DIAG_FONT_UNAVAILABLE,
     DIAG_INVALID_COLOR,
     DIAG_INVALID_HANDLE,
     DIAG_OUT_OF_RANGE,
+    DIAG_PENDING_VALUE,
     DIAG_UNKNOWN_ENUM,
+    AdaptationError,
+    AdaptationResult,
+    AdaptationStatus,
+    AdapterDiagnostic,
     QmlTextRenderModel,
+    Severity,
     to_render_model,
 )
 from steamzero.domain.resolved_node import (
@@ -63,8 +71,8 @@ def _node(**overrides: object) -> ResolvedTextNode:
     return replace(base, **overrides)  # type: ignore[arg-type]
 
 
-def _codes(model: QmlTextRenderModel) -> list[str]:
-    return [item.code for item in model.diagnostics]
+def _codes(result: AdaptationResult[QmlTextRenderModel]) -> list[str]:
+    return [item.code for item in result.diagnostics]
 
 
 class TestAlignmentMapping:
@@ -78,9 +86,9 @@ class TestAlignmentMapping:
         ],
     )
     def test_horizontal(self, canonical: TextAlignment, expected: str) -> None:
-        model = to_render_model(_node(horizontal_alignment=canonical))
-        assert model.horizontal_alignment == expected
-        assert model.ok
+        result = to_render_model(_node(horizontal_alignment=canonical))
+        assert result.require_model().horizontal_alignment == expected
+        assert result.status is AdaptationStatus.SUCCESS
 
     @pytest.mark.parametrize(
         ("canonical", "expected"),
@@ -91,9 +99,9 @@ class TestAlignmentMapping:
         ],
     )
     def test_vertical(self, canonical: TextVerticalAlignment, expected: str) -> None:
-        model = to_render_model(_node(vertical_alignment=canonical))
-        assert model.vertical_alignment == expected
-        assert model.ok
+        result = to_render_model(_node(vertical_alignment=canonical))
+        assert result.require_model().vertical_alignment == expected
+        assert result.status is AdaptationStatus.SUCCESS
 
 
 class TestFontMapping:
@@ -107,34 +115,38 @@ class TestFontMapping:
         ],
     )
     def test_weight(self, canonical: FontWeight, expected: int) -> None:
-        model = to_render_model(_node(font_weight=canonical))
-        assert model.font_weight == expected
-        assert model.ok
+        result = to_render_model(_node(font_weight=canonical))
+        assert result.require_model().font_weight == expected
+        assert result.status is AdaptationStatus.SUCCESS
 
     @pytest.mark.parametrize(
         ("canonical", "expected"),
         [(FontStyle.NORMAL, False), (FontStyle.ITALIC, True)],
     )
     def test_style(self, canonical: FontStyle, expected: bool) -> None:
-        model = to_render_model(_node(font_style=canonical))
-        assert model.font_italic is expected
-        assert model.ok
+        result = to_render_model(_node(font_style=canonical))
+        assert result.require_model().font_italic is expected
+        assert result.status is AdaptationStatus.SUCCESS
 
-    def test_oblique_is_approximated_to_italic(self) -> None:
+    def test_oblique_is_degraded_not_silently_italic(self) -> None:
         """`font.italic` é booleano no QML e não distingue os dois.
 
-        A aproximação é aceita porque itálico sintético é mais próximo do pedido
-        do que texto reto — mas está registrada no módulo, não escondida.
+        Itálico sintético é mais próximo do pedido do que texto reto, então o
+        modelo sai — mas como `degraded`, porque o tema não recebeu o que pediu.
         """
-        assert to_render_model(_node(font_style=FontStyle.OBLIQUE)).font_italic is True
+        result = to_render_model(_node(font_style=FontStyle.OBLIQUE))
+        assert result.status is AdaptationStatus.DEGRADED
+        assert result.require_model().font_italic is True
+        assert DIAG_APPROXIMATED in _codes(result)
 
 
 class TestFontOriginIsCarriedThrough:
     def test_packaged_produces_the_authorized_reference(self) -> None:
-        model = to_render_model(_node())
+        result = to_render_model(_node())
+        assert result.status is AdaptationStatus.SUCCESS
+        model = result.require_model()
         assert model.font_source == "asset://font/Gilroy"
         assert model.font_family == "Gilroy"
-        assert model.ok
 
     def test_fallback_declared_renders_the_family_that_was_resolved(self) -> None:
         """A família RENDERIZADA é a resolvida, não a solicitada.
@@ -142,7 +154,7 @@ class TestFontOriginIsCarriedThrough:
         Emitir "Gilroy" aqui faria o Qt procurar uma fonte que o pacote não tem e
         escolher sozinho um substituto — decisão que pertence ao shell.
         """
-        model = to_render_model(
+        result = to_render_model(
             _node(
                 font_family="Inter",
                 font_asset=FontAssetHandle(
@@ -155,12 +167,21 @@ class TestFontOriginIsCarriedThrough:
                 ),
             )
         )
+        assert result.status is AdaptationStatus.DEGRADED, (
+            "substituição de fonte é fallback explícito, não sucesso"
+        )
+        model = result.require_model()
         assert model.font_family == "Inter"
         assert model.font_source == "asset://font/Inter"
-        assert model.ok
+        assert DIAG_FONT_FALLBACK in _codes(result)
 
-    def test_fallback_system_is_not_an_adapter_defect(self) -> None:
-        model = to_render_model(
+    def test_fallback_system_is_degraded_not_failed(self) -> None:
+        """O shell resolveu — só não com o que o tema pediu.
+
+        Reprovar aqui derrubaria a tela por um fallback legítimo; aprovar como
+        sucesso esconderia que o pacote do tema está incompleto.
+        """
+        result = to_render_model(
             _node(
                 font_family="sans-serif",
                 font_asset=FontAssetHandle(
@@ -172,11 +193,17 @@ class TestFontOriginIsCarriedThrough:
                 ),
             )
         )
-        assert model.font_family == "sans-serif"
-        assert model.ok, "fallback do sistema é decisão do shell, já registrada lá"
+        assert result.status is AdaptationStatus.DEGRADED
+        assert result.require_model().font_family == "sans-serif"
+        assert DIAG_FONT_FALLBACK in _codes(result)
 
-    def test_unavailable_produces_no_reference_and_a_diagnostic(self) -> None:
-        model = to_render_model(
+    def test_unavailable_produces_no_model(self) -> None:
+        """Fonte indisponível não rende tela.
+
+        Renderizar com a fonte do sistema em silêncio esconderia que o pacote do
+        tema está quebrado, e o texto sairia com métrica errada sem explicação.
+        """
+        result = to_render_model(
             _node(
                 font_family=None,
                 font_asset=FontAssetHandle(
@@ -187,111 +214,198 @@ class TestFontOriginIsCarriedThrough:
                 ),
             )
         )
-        assert model.font_source == ""
-        assert DIAG_FONT_UNAVAILABLE in _codes(model)
+        assert result.status is AdaptationStatus.FAILED
+        assert result.model is None
+        assert DIAG_FONT_UNAVAILABLE in _codes(result)
 
     def test_absent_handle_is_not_a_defect(self) -> None:
         """Texto sem fonte declarada usa a do sistema. Isso é legítimo."""
-        model = to_render_model(_node(font_asset=None))
-        assert model.font_source == ""
-        assert model.ok
+        result = to_render_model(_node(font_asset=None))
+        assert result.status is AdaptationStatus.SUCCESS
+        assert result.require_model().font_source == ""
 
 
-class TestRefusalInsteadOfSilentDefault:
-    def test_unknown_enum_is_refused(self) -> None:
+class TestFailureCarriesNoModel:
+    """O ponto do VS-02 revisado: não há payload parcial para entregar ao QML."""
+
+    def test_unknown_enum_produces_no_model(self) -> None:
         """Simula o adapter mais velho que o DTO.
 
-        O construtor tipado não deixa isto acontecer por engano, mas um nó
-        desserializado por um caminho futuro deixaria — e é justamente aí que
-        escolher `AlignLeft` em silêncio produziria uma tela plausível e errada.
+        `AlignLeft` em silêncio produziria uma tela plausível e errada, e
+        ninguém investiga o que parece certo.
         """
         node = _node()
         object.__setattr__(node, "horizontal_alignment", "diagonal")
-        model = to_render_model(node)
-        assert DIAG_UNKNOWN_ENUM in _codes(model)
-        assert not model.ok
-        assert model.horizontal_alignment == "AlignLeft", (
-            "o default mantém a tradução seguindo, mas não vale sem o diagnóstico"
-        )
+        result = to_render_model(node)
+        assert result.status is AdaptationStatus.FAILED
+        assert result.model is None
+        assert DIAG_UNKNOWN_ENUM in _codes(result)
 
-    def test_unknown_font_style_is_refused(self) -> None:
+    def test_unknown_font_style_produces_no_model(self) -> None:
         node = _node()
         object.__setattr__(node, "font_style", "cursive")
-        assert DIAG_UNKNOWN_ENUM in _codes(to_render_model(node))
+        result = to_render_model(node)
+        assert result.model is None
+        assert DIAG_UNKNOWN_ENUM in _codes(result)
 
-    def test_invalid_asset_handle_is_refused(self) -> None:
+    def test_invalid_asset_handle_produces_no_model(self) -> None:
         """Um nó vindo de disco pode trazer handle que a gramática recusa.
 
         A validação é REFEITA aqui em vez de assumida do DTO — o adapter não
         sabe por qual caminho o nó chegou até ele.
         """
-        handle = FontAssetHandle(key="Gilroy", handle="asset://font/Gilroy")
+        handle = FontAssetHandle(
+            key="Gilroy", handle="asset://font/Gilroy", origin=FontOrigin.PACKAGED
+        )
         object.__setattr__(handle, "handle", "/home/misael/.fonts/Gilroy.ttf")
-        model = to_render_model(_node(font_asset=handle))
-        assert DIAG_INVALID_HANDLE in _codes(model)
-        assert model.font_source == "", "caminho do host nunca vira referência"
+        result = to_render_model(_node(font_asset=handle))
+        assert result.model is None, "caminho do host nunca chega perto do QML"
+        assert DIAG_INVALID_HANDLE in _codes(result)
 
-    def test_handle_in_the_wrong_namespace_is_refused(self) -> None:
+    def test_handle_in_the_wrong_namespace_produces_no_model(self) -> None:
         handle = FontAssetHandle(
             key="Gilroy", handle="asset://video/Gilroy", origin=FontOrigin.PACKAGED
         )
-        model = to_render_model(_node(font_asset=handle))
-        assert DIAG_INVALID_HANDLE in _codes(model)
-        assert model.font_source == ""
+        result = to_render_model(_node(font_asset=handle))
+        assert result.model is None
+        assert DIAG_INVALID_HANDLE in _codes(result)
 
     @pytest.mark.parametrize("bad", ["red", "rgba(212,84,84,0.08)", "#fff", "", "#12345"])
-    def test_invalid_color_becomes_transparent_not_black(self, bad: str) -> None:
-        """Preto é uma cor plausível; preto transparente some.
+    def test_invalid_color_produces_no_model(self, bad: str) -> None:
+        """Cor inválida não vira transparente.
 
-        Substituir por preto faria a tela parecer correta enquanto estivesse
-        errada. `rgba()` está na lista porque o QML já o recusou de verdade, com
+        Transparente é um valor que um tema pode ter pedido de propósito. Usá-lo
+        como marca de erro tornaria os dois casos indistinguíveis no resultado.
+        `rgba()` está na lista porque o QML já o recusou de verdade, com
         "Invalid property assignment".
         """
-        model = to_render_model(_node(color=bad))
-        assert model.color == "#00000000"
-        assert DIAG_INVALID_COLOR in _codes(model)
+        result = to_render_model(_node(color=bad))
+        assert result.status is AdaptationStatus.FAILED
+        assert result.model is None
+        assert DIAG_INVALID_COLOR in _codes(result)
 
-    @pytest.mark.parametrize("good", ["#F2F6FB", "#80112233"])
-    def test_valid_color_is_normalized(self, good: str) -> None:
-        model = to_render_model(_node(color=good))
-        assert model.color == good.lower()
-        assert model.ok
+    def test_pending_value_never_reaches_the_qml(self) -> None:
+        """Última barreira contra um construtor que esqueceu de resolver.
+
+        O QML receberia um dicionário onde espera um escalar e renderizaria
+        vazio sem reclamar.
+        """
+        node = _node()
+        object.__setattr__(node, "text", {"bind": "game.title"})
+        result = to_render_model(node)
+        assert result.status is AdaptationStatus.FAILED
+        assert DIAG_PENDING_VALUE in _codes(result)
+
+    def test_require_model_refuses_a_failed_result(self) -> None:
+        """Um consumidor não consegue mandar modelo inválido ao QML sem querer."""
+        result = to_render_model(_node(color="vermelho"))
+        with pytest.raises(AdaptationError, match=DIAG_INVALID_COLOR):
+            result.require_model()
+
+    def test_require_model_allows_a_degraded_result(self) -> None:
+        """Degradado passa — o consumidor já desempacotou explicitamente.
+
+        A política de apresentação é do shell (VS-04); o adapter só garante que
+        ninguém renderize sem ter olhado.
+        """
+        result = to_render_model(_node(font_style=FontStyle.OBLIQUE))
+        assert result.require_model().font_italic is True
+
+
+class TestResultStatesAreUnmistakable:
+    """Estado e conteúdo não podem discordar.
+
+    Um `failed` com modelo, ou um `success` com diagnóstico, seria um convite a
+    ler o status errado — e quem lê errado renderiza errado.
+    """
+
+    def _diagnostic(self) -> AdapterDiagnostic:
+        return AdapterDiagnostic(code="X-1", target="t.color", detail="teste")
+
+    def test_failed_cannot_carry_a_model(self) -> None:
+        with pytest.raises(ValueError, match="failed não carrega modelo"):
+            AdaptationResult(
+                status=AdaptationStatus.FAILED,
+                model=to_render_model(_node()).require_model(),
+                diagnostics=(self._diagnostic(),),
+            )
+
+    def test_failed_requires_a_diagnostic(self) -> None:
+        with pytest.raises(ValueError, match="failed exige diagnóstico"):
+            AdaptationResult(status=AdaptationStatus.FAILED, model=None)
+
+    def test_success_cannot_carry_a_diagnostic(self) -> None:
+        with pytest.raises(ValueError, match="success não carrega diagnóstico"):
+            AdaptationResult(
+                status=AdaptationStatus.SUCCESS,
+                model=to_render_model(_node()).require_model(),
+                diagnostics=(self._diagnostic(),),
+            )
+
+    def test_degraded_requires_a_diagnostic(self) -> None:
+        with pytest.raises(ValueError, match="degraded exige diagnóstico"):
+            AdaptationResult(
+                status=AdaptationStatus.DEGRADED,
+                model=to_render_model(_node()).require_model(),
+            )
+
+    def test_a_present_model_is_required_outside_failed(self) -> None:
+        with pytest.raises(ValueError, match="exige modelo"):
+            AdaptationResult(status=AdaptationStatus.SUCCESS, model=None)
+
+    def test_severity_separates_fatal_from_degraded(self) -> None:
+        degraded = to_render_model(_node(font_style=FontStyle.OBLIQUE))
+        assert all(item.severity is Severity.DEGRADED for item in degraded.diagnostics)
+        failed = to_render_model(_node(color="vermelho"))
+        assert any(item.severity is Severity.FATAL for item in failed.diagnostics)
 
 
 class TestNumericLimits:
     @pytest.mark.parametrize("limit", [0.0, 1.0])
     def test_opacity_at_the_limits_is_valid(self, limit: float) -> None:
-        model = to_render_model(_node(opacity=limit))
-        assert model.opacity == limit
-        assert model.ok
+        result = to_render_model(_node(opacity=limit))
+        assert result.require_model().opacity == limit
+        assert result.status is AdaptationStatus.SUCCESS
 
     @pytest.mark.parametrize(("raw", "expected"), [(-0.5, 0.0), (1.5, 1.0)])
-    def test_opacity_outside_the_range_is_clamped_with_a_diagnostic(
+    def test_opacity_outside_the_range_is_degraded_not_failed(
         self, raw: float, expected: float
     ) -> None:
-        model = to_render_model(_node(opacity=raw))
-        assert model.opacity == expected
-        assert DIAG_OUT_OF_RANGE in _codes(model)
+        """Fora da faixa a intenção é inequívoca: 1.5 é opaco, -0.5 é invisível.
+
+        Limitar é substituição declarada, não adivinhação — diferente de cor
+        inválida, onde não há como saber o que o autor queria.
+        """
+        result = to_render_model(_node(opacity=raw))
+        assert result.status is AdaptationStatus.DEGRADED
+        assert result.require_model().opacity == expected
+        assert DIAG_OUT_OF_RANGE in _codes(result)
 
     def test_automatic_dimension_stays_none(self) -> None:
         """`None` é dimensão implícita. Virar 0.0 apagaria o elemento."""
-        model = to_render_model(_node(geometry=ResolvedGeometry(x=10.0, y=20.0)))
-        assert model.width is None
-        assert model.height is None
-        assert model.ok
-        assert "width" not in model.to_dict(), "ausente no payload, não zero"
+        result = to_render_model(_node(geometry=ResolvedGeometry(x=10.0, y=20.0)))
+        assert result.require_model().width is None
+        assert result.require_model().height is None
+        assert result.status is AdaptationStatus.SUCCESS
+        assert "width" not in result.require_model().to_dict(), "ausente no payload, não zero"
 
     def test_explicit_zero_is_not_automatic(self) -> None:
-        model = to_render_model(
+        result = to_render_model(
             _node(geometry=ResolvedGeometry(x=0.0, y=0.0, width=0.0, height=0.0))
         )
-        assert model.width == 0.0
-        assert model.to_dict()["width"] == 0.0
+        assert result.require_model().width == 0.0
+        assert result.require_model().to_dict()["width"] == 0.0
 
-    def test_negative_dimension_is_refused(self) -> None:
-        model = to_render_model(_node(geometry=ResolvedGeometry(width=-10.0)))
-        assert model.width == 0.0
-        assert DIAG_OUT_OF_RANGE in _codes(model)
+    def test_negative_dimension_produces_no_model(self) -> None:
+        """Zerar produziria um elemento invisível que parece intencional.
+
+        Largura negativa é defeito de quem produziu o nó, e é lá que precisa
+        aparecer — não como uma caixa vazia na tela.
+        """
+        result = to_render_model(_node(geometry=ResolvedGeometry(width=-10.0)))
+        assert result.status is AdaptationStatus.FAILED
+        assert result.model is None
+        assert DIAG_OUT_OF_RANGE in _codes(result)
 
 
 class TestTablesStayComplete:
@@ -308,8 +422,8 @@ class TestTablesStayComplete:
     )
     def test_every_enum_member_has_a_mapping(self, enum_type: type, field_name: str) -> None:
         for member in enum_type:
-            model = to_render_model(_node(**{field_name: member}))
-            assert DIAG_UNKNOWN_ENUM not in _codes(model), (
+            result = to_render_model(_node(**{field_name: member}))
+            assert DIAG_UNKNOWN_ENUM not in _codes(result), (
                 f"{enum_type.__name__}.{member.name} não tem tradução no adapter"
             )
 
