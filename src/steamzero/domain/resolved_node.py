@@ -23,11 +23,17 @@ recebe o handle, não ``/home/user/fonts/x.ttf``.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
 from steamzero.domain.scene_typing import SourceReference
+
+#: Gramática FECHADA do handle de asset. Allowlist, não blacklist: procurar por
+#: "/home/" ou ".ttf" pega os casos que imaginamos, e deixa passar os que não.
+#: Só esta forma é aceita, e ela não tem como expressar um caminho do host.
+ASSET_HANDLE = re.compile(r"^asset://[a-z][a-z0-9]*/[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 class TextAlignment(StrEnum):
@@ -115,6 +121,12 @@ class FontAssetHandle:
     resolved_family: str | None = None
     fallback_reason: str | None = None
     file_hash: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.handle is not None and not ASSET_HANDLE.match(self.handle):
+            raise ValueError(
+                f"handle de asset fora da gramática asset://<namespace>/<id>: {self.handle!r}"
+            )
 
     @property
     def available(self) -> bool:

@@ -105,7 +105,7 @@ class FontProvider:
             family = self._packaged[key]
             return FontAssetHandle(
                 key=key,
-                handle=f"font:{key}",
+                handle=f"asset://font/{key}",
                 origin=FontOrigin.PACKAGED,
                 requested_family=family,
                 resolved_family=family,
@@ -116,7 +116,7 @@ class FontProvider:
             if candidate in self._packaged.values():
                 return FontAssetHandle(
                     key=key,
-                    handle=f"font:{candidate}",
+                    handle=f"asset://font/{candidate}",
                     origin=FontOrigin.FALLBACK_DECLARED,
                     requested_family=key,
                     resolved_family=candidate,
@@ -124,7 +124,7 @@ class FontProvider:
                 )
         return FontAssetHandle(
             key=key,
-            handle=f"font:{self._system_family}",
+            handle=f"asset://font/{self._system_family}",
             origin=FontOrigin.FALLBACK_SYSTEM,
             requested_family=key,
             resolved_family=self._system_family,

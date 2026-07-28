@@ -18,6 +18,7 @@ import pytest
 
 from steamzero.domain import scene_value as value
 from steamzero.domain.resolved_node import (
+    ASSET_HANDLE,
     FONT_WEIGHT_SCALE,
     FontAssetHandle,
     FontOrigin,
@@ -40,6 +41,23 @@ from steamzero.domain.scene_registry import default_registries
 from steamzero.domain.scene_resolver import ResolutionContext, Resolver
 from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.text_node_builder import FontProvider, LayoutBox, build_text_node
+
+
+def _assert_no_pending(payload: object, where: str = "$") -> None:
+    """Percorre a ESTRUTURA procurando forma de valor não resolvido.
+
+    O critério é a gramática fechada de `is_pending_value`, não a substring:
+    procurar `"token"` no JSON reprovaria um jogo chamado "Token Ring", e
+    procurar só a CHAVE `text` reprovaria o próprio campo de texto do DTO.
+    """
+    if isinstance(payload, dict):
+        assert not value.is_pending_value(payload), f"valor não resolvido em {where}: {payload!r}"
+        for key, item in payload.items():
+            _assert_no_pending(item, f"{where}.{key}")
+    elif isinstance(payload, list):
+        for index, item in enumerate(payload):
+            _assert_no_pending(item, f"{where}[{index}]")
+
 
 _MODULE = Path(__file__).resolve().parents[2] / "src" / "steamzero" / "domain" / "resolved_node.py"
 
@@ -132,10 +150,24 @@ class TestOnlyFinalValues:
         assert node.color == "#ffd700"
 
     def test_no_pending_value_survives_serialization(self) -> None:
-        """Um dicionário com 'bind' no payload significaria valor não resolvido."""
-        payload = json.dumps(_build().to_dict())
-        for marker in ('"bind"', '"token"', '"setting"', '"when"'):
-            assert marker not in payload
+        """Validação ESTRUTURAL, não por substring.
+
+        Procurar '"bind"' no JSON falharia com um texto legítimo contendo a
+        palavra — é a mesma fragilidade da checagem de substring que o contrato
+        de launch rejeita.
+        """
+        _assert_no_pending(_build().to_dict())
+
+    def test_text_containing_pending_keywords_is_not_a_false_positive(self) -> None:
+        """Um jogo chamado "when bind token" precisa passar."""
+        node = build_text_node(
+            _element(text_content="when bind token setting"),
+            resolver=_resolver(),
+            box=LayoutBox(1920, 1080),
+            fonts=FontProvider({"Gilroy": "Gilroy"}),
+        )
+        _assert_no_pending(node.to_dict())
+        assert node.text == "when bind token setting"
 
     def test_percentage_is_resolved_against_the_box(self) -> None:
         """O renderizador não conhece a caixa do pai, e não deveria."""
@@ -181,10 +213,34 @@ class TestFontHandleIsSafe:
         assert handle.origin is FontOrigin.FALLBACK_DECLARED
         assert handle.resolved_family == "Gilroy"
 
-    def test_handle_never_contains_a_host_path(self) -> None:
-        payload = json.dumps(_build().to_dict())
-        for marker in ("/home/", "C:\\", "..", ".ttf", ".otf"):
-            assert marker not in payload
+    def test_handle_follows_the_closed_grammar(self) -> None:
+        """Allowlist, não blacklist.
+
+        Procurar por "/home/" ou ".ttf" pega os casos que imaginamos e deixa
+        passar os que não. A gramática asset://<namespace>/<id> simplesmente não
+        tem como expressar um caminho do host.
+        """
+        handle = _build().font_asset
+        assert handle is not None
+        assert handle.handle is not None
+        assert ASSET_HANDLE.match(handle.handle)
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "/home/user/font.ttf",
+            "C:\\Windows\\font.ttf",
+            "../../etc/passwd",
+            "font.ttf",
+            "asset://font/../escape",
+            "http://x.test/font.ttf",
+            "asset:/font/x",
+            "asset://FONT/x",
+        ],
+    )
+    def test_handle_outside_the_grammar_is_refused(self, bad: str) -> None:
+        with pytest.raises(ValueError, match="gramática"):
+            FontAssetHandle(key="x", handle=bad)
 
     def test_resolved_family_is_assertable(self) -> None:
         """O teste precisa afirmar a família RENDERIZADA, não aceitar a do sistema."""
