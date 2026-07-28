@@ -14,10 +14,14 @@ linguagem de expressão entrando pela porta dos fundos.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from steamzero.domain import scene_value as value
 from steamzero.domain.scene_contract import (
+    RESERVED_MASK_CAPABILITIES,
+    RESERVED_MASK_TYPES,
     RESERVED_NAMESPACES,
     Alignment,
     AppearanceSpec,
@@ -321,3 +325,80 @@ class TestElementContract:
 
     def test_dimensions_serialize_as_typed_objects(self) -> None:
         assert self._element().to_dict()["layout"]["x"] == {"kind": "percent", "value": 50}
+
+
+class TestMaskReservationSurvivesTheFreeze:
+    """A reserva só serve se ninguém puder congelar o contrato sem ela.
+
+    `AppearanceSpec.clip` é booleano, herdado do QML: recorta ou não, sempre
+    retangular. Canto arredondado, avatar circular e cover em degradê não cabem
+    nele — e descobrir isso depois de congelar o schema obrigaria a migrar todo
+    tema já importado.
+    """
+
+    @pytest.mark.parametrize("name", ["clip_spec", "mask_stack", "hit_test_shape"])
+    def test_the_reserved_field_exists(self, name: str) -> None:
+        assert hasattr(AppearanceSpec(), name)
+
+    def test_the_reserved_fields_default_to_absent(self) -> None:
+        """Reservado significa vazio, não implementado pela metade.
+
+        Uma implementação parcial seria pior que a ausência: temas passariam a
+        depender dela, e a forma final teria de acomodar o improviso.
+        """
+        appearance = AppearanceSpec()
+        assert appearance.clip_spec is None
+        assert appearance.mask_stack is None
+        assert appearance.hit_test_shape is None
+        assert "clipSpec" not in appearance.to_dict()
+        assert "maskStack" not in appearance.to_dict()
+
+    def test_a_declared_reservation_survives_serialization(self) -> None:
+        """Quando o P0-08 preencher, o payload já tem onde colocar."""
+        payload = AppearanceSpec(clip_spec={"shape": "roundedRect"}).to_dict()
+        assert payload["clipSpec"] == {"shape": "roundedRect"}
+
+    def test_hit_test_is_separate_from_the_visual_mask(self) -> None:
+        """Uma cover circular não pode encolher o alvo de toque.
+
+        A máscara é aparência; o hit test é acessibilidade. Confundir os dois
+        produz uma interface bonita e inoperável, e o defeito só aparece para
+        quem usa controle ou toque — não para quem revisa a captura.
+        """
+        appearance = AppearanceSpec(
+            mask_stack=[{"shape": "circle"}], hit_test_shape={"shape": "rect"}
+        )
+        payload = appearance.to_dict()
+        assert payload["maskStack"] != payload["hitTestShape"]
+
+    def test_the_p0_08_types_are_registered(self) -> None:
+        assert set(RESERVED_MASK_TYPES) == {
+            "ClipSpec",
+            "MaskSpec",
+            "MaskStack",
+            "HitTestShape",
+            "ViewTransitionMaskSpec",
+        }
+
+    def test_the_capability_vocabulary_is_registered(self) -> None:
+        """Sem o vocabulário, um tema que peça o indisponível falha sem nome.
+
+        Com ele, a negociação devolve `fallback`/`approximated` — que é a regra
+        do projeto para tudo que não é exato.
+        """
+        assert "graphics.clip.roundedRect" in RESERVED_MASK_CAPABILITIES
+        assert "transition.masked.circle" in RESERVED_MASK_CAPABILITIES
+        assert "renderer.rhi" in RESERVED_MASK_CAPABILITIES
+
+    def test_the_contract_document_exists(self) -> None:
+        """Campo reservado sem contrato escrito é campo que alguém preenche errado."""
+        document = (
+            Path(__file__).resolve().parents[2]
+            / "docs"
+            / "03-architecture"
+            / "clip-and-mask-contract.md"
+        )
+        assert document.exists()
+        text = document.read_text(encoding="utf-8")
+        for required in ("ClipSpec", "MaskSpec", "MaskStack", "HitTestShape", "visual-rhi"):
+            assert required in text, required

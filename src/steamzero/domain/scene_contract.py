@@ -431,11 +431,34 @@ class TransformSpec:
 
 @dataclass
 class AppearanceSpec:
+    """Aparência do nó.
+
+    ``clip`` aqui é booleano, herdado do QML: recorta ou não recorta, sempre
+    retangular. Isso NÃO cobre canto arredondado, avatar circular nem cover que
+    desaparece em degradê — e descobrir isso depois de congelar o contrato
+    obrigaria a migrar todo tema já importado.
+
+    Por isso ``clip_spec`` e ``mask_stack`` existem desde já, reservados e não
+    implementados. A implementação é do P0-08; o espaço no contrato é agora,
+    porque acrescentar campo é barato e mudar a forma de um campo existente não.
+    """
+
     background: Any = None
     border: Any = None
     border_radius: Any = None
     shadow: Any = None
     blend_mode: str | None = None
+
+    #: RESERVADO — P0-08. Recorte geométrico, além do booleano `clip`.
+    #: Ver `docs/03-architecture/clip-and-mask-contract.md`.
+    clip_spec: Any = None
+    #: RESERVADO — P0-08. Pilha ordenada de máscaras (alpha/luminância).
+    mask_stack: Any = None
+    #: RESERVADO — P0-08. Região de INTERAÇÃO, separada da máscara visual.
+    #: Uma cover circular não deve encolher o alvo de toque: a máscara é
+    #: aparência, o hit test é acessibilidade, e confundir os dois torna a
+    #: interface bonita e inoperável.
+    hit_test_shape: Any = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -445,6 +468,9 @@ class AppearanceSpec:
                 "borderRadius": _dim(self.border_radius),
                 "shadow": self.shadow,
                 "blendMode": self.blend_mode,
+                "clipSpec": self.clip_spec,
+                "maskStack": self.mask_stack,
+                "hitTestShape": self.hit_test_shape,
             }
         )
 
@@ -452,6 +478,41 @@ class AppearanceSpec:
 #: Namespaces previstos e NÃO implementados nesta entrega. Existem no contrato
 #: para que acrescentá-los depois não exija redesenhar o elemento.
 RESERVED_NAMESPACES = ("effects", "stateVariants", "interaction", "accessibility", "performance")
+
+#: Tipos reservados para o P0-08 — "View Transitions and Basic Effect Stack".
+#:
+#: Declarados aqui como nomes, não como estruturas: uma implementação parcial
+#: seria pior que a ausência, porque temas começariam a depender dela e a forma
+#: final teria de acomodar o que foi improvisado. Ver
+#: `docs/03-architecture/clip-and-mask-contract.md` para o contrato completo.
+RESERVED_MASK_TYPES = (
+    "ClipSpec",
+    "MaskSpec",
+    "MaskStack",
+    "HitTestShape",
+    "ViewTransitionMaskSpec",
+)
+
+#: Capabilities que o P0-08 vai negociar. Registradas agora para que a
+#: negociação de capability já tenha o vocabulário, e um tema que peça algo
+#: indisponível receba `fallback`/`approximated` em vez de falhar sem nome.
+RESERVED_MASK_CAPABILITIES = (
+    "graphics.clip.rect",
+    "graphics.clip.roundedRect",
+    "graphics.clip.circle",
+    "graphics.clip.path",
+    "graphics.mask.alpha",
+    "graphics.mask.luminance",
+    "graphics.mask.gradient",
+    "graphics.mask.vector",
+    "graphics.mask.element",
+    "graphics.mask.composite",
+    "graphics.mask.animated",
+    "transition.masked",
+    "transition.masked.circle",
+    "renderer.offscreenLayer",
+    "renderer.rhi",
+)
 
 
 @dataclass
