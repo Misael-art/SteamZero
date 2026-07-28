@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/ir-value-v1.schema.json",
+  "title": "Modelo de valor do IR",
+  "description": "Qualquer propriedade de qualquer elemento pode receber literal, token de design, asset, binding do read model, chave de tradução, configuração do tema, condicional ou fallback. Substitui a distinção entre `boundText` e `boundImage`, que forçava o autor a escolher o TIPO DE ELEMENTO por causa da origem do dado — de modo que cor não podia vir de configuração e visibilidade não podia vir de estado. O vocabulário é fechado e não há expressão executável: condição é comparação declarativa, validável por schema.",
+  "$defs": {
+    "value": {
+      "description": "Um valor de propriedade. Escalar puro é literal; objeto declara a origem.",
+      "oneOf": [
+        { "type": ["string", "number", "boolean", "null"] },
+        { "$ref": "#/$defs/token" },
+        { "$ref": "#/$defs/binding" },
+        { "$ref": "#/$defs/asset" },
+        { "$ref": "#/$defs/localized" },
+        { "$ref": "#/$defs/setting" },
+        { "$ref": "#/$defs/conditional" }
+      ]
+    },
+    "token": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token"],
+      "description": "Token de design resolvido pelo shell. É o que garante que um tema importado herde alto contraste e escala de texto do usuário.",
+      "properties": {
+        "token": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$", "maxLength": 96 },
+        "fallback": { "$ref": "#/$defs/value" }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bind"],
+      "description": "Dado do read model, por caminho namespaced: game.title, media.image.packaging.box.front, system.time, controller.type.",
+      "properties": {
+        "bind": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$", "maxLength": 128 },
+        "format": { "enum": ["raw", "number", "percent", "duration", "date", "time", "dateTime", "relative", "list", "upper", "lower", "capitalize"] },
+        "fallback": { "$ref": "#/$defs/value" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset"],
+      "description": "Recurso empacotado. Caminho confinado a assets/, verificado na compilação — dado de tema é entrada não confiável.",
+      "properties": {
+        "asset": { "type": "string", "pattern": "^assets/[a-zA-Z0-9_. /()'&-]+\\.[a-zA-Z0-9]+$", "maxLength": 256 },
+        "variant": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Seleção por contexto. Ausência de variante cai no asset base, nunca em erro.",
+          "properties": {
+            "language": { "type": "string", "maxLength": 16 },
+            "aspectRatio": { "type": "string", "maxLength": 16 },
+            "colorScheme": { "enum": ["light", "dark", "highContrast"] },
+            "resolution": { "enum": ["sd", "hd", "fhd", "qhd", "uhd"] }
+          }
+        },
+        "fallback": { "$ref": "#/$defs/value" }
+      }
+    },
+    "localized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "description": "Chave de tradução. Texto literal no tema não é traduzível; esta é a forma de o autor escrever conteúdo que o shell localiza.",
+      "properties": {
+        "text": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-zA-Z0-9]+)+$", "maxLength": 128 },
+        "count": { "$ref": "#/$defs/value" },
+        "fallback": { "type": "string", "maxLength": 512 }
+      }
+    },
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setting"],
+      "description": "Configuração que o próprio tema declara e o usuário ajusta. Permite cor vinculada a preferência sem o tema ler nada do sistema.",
+      "properties": {
+        "setting": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$", "maxLength": 64 },
+        "fallback": { "$ref": "#/$defs/value" }
+      }
+    },
+    "conditional": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when", "then"],
+      "description": "Valor que muda com o estado. É o que permite opacidade por foco e visibilidade por existência de mídia, sem código.",
+      "properties": {
+        "when": { "$ref": "#/$defs/condition" },
+        "then": { "$ref": "#/$defs/value" },
+        "otherwise": { "$ref": "#/$defs/value" }
+      }
+    },
+    "condition": {
+      "description": "DSL declarativa e fechada. Não há expressão arbitrária: cada nó é um operador nomeado com operandos tipados, então a validação é estática.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "left"],
+          "properties": {
+            "op": { "enum": ["exists", "missing", "equals", "notEquals", "greaterThan", "lessThan", "greaterOrEqual", "lessOrEqual", "contains", "in"] },
+            "left": { "$ref": "#/$defs/value" },
+            "right": { "$ref": "#/$defs/value" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "operands"],
+          "properties": {
+            "op": { "enum": ["and", "or"] },
+            "operands": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "operand"],
+          "properties": {
+            "op": { "const": "not" },
+            "operand": { "$ref": "#/$defs/condition" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "name"],
+          "description": "Capacidade do host. Deixa o tema degradar sozinho onde o recurso não existe, em vez de o shell adivinhar.",
+          "properties": {
+            "op": { "const": "capability" },
+            "name": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9.]*$", "maxLength": 64 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "state"],
+          "properties": {
+            "op": { "const": "state" },
+            "state": { "$ref": "#/$defs/elementState" }
+          }
+        }
+      ]
+    },
+    "elementState": {
+      "enum": [
+        "default", "focused", "selected", "pressed", "hovered", "disabled",
+        "loading", "empty", "error", "success", "playing", "paused",
+        "unavailable", "locked", "offline"
+      ]
+    }
+  }
+}
