@@ -1,0 +1,591 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/ir-scene-v1.schema.json",
+  "title": "IR de cena v1",
+  "description": "Representação neutra de um tema de frontend, renderizada por um único motor QML. Famílias declarativas (RetroFE, ES-DE) compilam para cá; não se escreve um renderizador por frontend. O vocabulário é FECHADO e foi derivado de temas reais — layout Aeon Nox do RetroFE e 22 temas Pegasus — e não de suposição: animação, por exemplo, só toca alpha/x/y/width/height/maxHeight porque é só isso que os temas medidos animam.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "views"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "De onde este IR foi compilado. Existe para que a UI credite o autor e declare fidelidade em vez de prometê-la.",
+      "required": [
+        "family"
+      ],
+      "properties": {
+        "family": {
+          "enum": [
+            "retrofe",
+            "es-de",
+            "steamzero"
+          ]
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "license": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "sourceRef": {
+          "type": "string",
+          "maxLength": 256
+        }
+      }
+    },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "description": "Vistas nomeadas que o shell pode alternar. É o que permite atalho de troca de layout sem o tema capturar navegação.",
+      "items": {
+        "$ref": "#/$defs/view"
+      }
+    },
+    "shortcuts": {
+      "type": "array",
+      "maxItems": 16,
+      "description": "Intenções que este tema sabe atender. O shell decide QUAL tecla dispara — o tema nunca lê tecla crua, para não capturar navegação global.",
+      "items": {
+        "$ref": "#/$defs/intent"
+      }
+    },
+    "degraded": {
+      "type": "array",
+      "maxItems": 256,
+      "description": "O que o compilador NÃO conseguiu traduzir. Elemento não suportado degrada com registro e nunca quebra a renderização; publicar a lista é o que impede fidelidade prometida e não entregue.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "element": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "elements"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 64
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "aspectRatio": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?:[0-9]+(\\.[0-9]+)?$",
+          "description": "Proporção para a qual esta vista foi desenhada, quando o tema declara variantes."
+        },
+        "elements": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 64
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "text",
+            "boundText",
+            "boundImage",
+            "video",
+            "menu",
+            "container"
+          ],
+          "description": "boundText/boundImage recebem dado do read model; image/text são estáticos do pacote."
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "asset": {
+          "type": "string",
+          "pattern": "^assets/[a-zA-Z0-9_./-]+\\.(png|jpg|jpeg|webp|svg)$",
+          "maxLength": 256,
+          "description": "Recurso EMPACOTADO. Caminho fora de assets/ ou com esquema é recusado na compilação — dado de tema é entrada não confiável."
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "menu": {
+          "$ref": "#/$defs/menu"
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        },
+        "on": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Animações por evento de navegação. É o modelo do RetroFE: o tema é uma máquina de estados disparada por navegação, sem código.",
+          "propertyNames": {
+            "$ref": "#/$defs/eventName"
+          },
+          "properties": {
+            "enter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "exit": {
+              "$ref": "#/$defs/timeline"
+            },
+            "menuEnter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "menuExit": {
+              "$ref": "#/$defs/timeline"
+            },
+            "gameEnter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "gameExit": {
+              "$ref": "#/$defs/timeline"
+            },
+            "highlightEnter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "highlightExit": {
+              "$ref": "#/$defs/timeline"
+            },
+            "playlistEnter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "playlistExit": {
+              "$ref": "#/$defs/timeline"
+            },
+            "menuJumpEnter": {
+              "$ref": "#/$defs/timeline"
+            },
+            "menuJumpExit": {
+              "$ref": "#/$defs/timeline"
+            }
+          }
+        }
+      }
+    },
+    "eventName": {
+      "enum": [
+        "enter",
+        "exit",
+        "menuEnter",
+        "menuExit",
+        "gameEnter",
+        "gameExit",
+        "highlightEnter",
+        "highlightExit",
+        "playlistEnter",
+        "playlistExit",
+        "menuJumpEnter",
+        "menuJumpExit"
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Geometria relativa. Origem e offset separados porque o RetroFE posiciona itens de carrossel por deslocamento a partir de uma origem.",
+      "properties": {
+        "x": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "y": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "width": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "height": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "maxWidth": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "maxHeight": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "xOffset": {
+          "type": "number",
+          "minimum": -8192,
+          "maximum": 8192
+        },
+        "yOffset": {
+          "type": "number",
+          "minimum": -8192,
+          "maximum": 8192
+        },
+        "xOrigin": {
+          "$ref": "#/$defs/origin"
+        },
+        "yOrigin": {
+          "$ref": "#/$defs/origin"
+        },
+        "alpha": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "angle": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "fontSize": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 512
+        }
+      }
+    },
+    "coordinate": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": -8192,
+          "maximum": 8192
+        },
+        {
+          "type": "string",
+          "pattern": "^(center|left|right|top|bottom|stretch|[0-9]+(\\.[0-9]+)?%)$"
+        }
+      ],
+      "description": "Número absoluto ou palavra-chave relativa. Percentual é da caixa do pai."
+    },
+    "origin": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "enum": [
+            "left",
+            "center",
+            "right",
+            "top",
+            "bottom"
+          ]
+        }
+      ]
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "field"
+      ],
+      "description": "Vocabulário FECHADO. Campo desconhecido é recusado na compilação em vez de virar texto vazio silencioso.",
+      "properties": {
+        "source": {
+          "enum": [
+            "metadata",
+            "media",
+            "system"
+          ]
+        },
+        "field": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "fallback": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "metadata"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "title",
+                  "shortName",
+                  "sortTitle",
+                  "description",
+                  "year",
+                  "genre",
+                  "developer",
+                  "publisher",
+                  "manufacturer",
+                  "players",
+                  "rating",
+                  "playTime",
+                  "lastPlayed",
+                  "favorite",
+                  "collection",
+                  "platform",
+                  "region",
+                  "language",
+                  "discCount",
+                  "story",
+                  "type",
+                  "generation",
+                  "media"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "media"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "boxFront",
+                  "boxBack",
+                  "logo",
+                  "marquee",
+                  "screenshot",
+                  "titlescreen",
+                  "background",
+                  "fanart",
+                  "banner",
+                  "poster",
+                  "tile",
+                  "cartridge",
+                  "video",
+                  "manual"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "system"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "time",
+                  "date",
+                  "battery",
+                  "batteryCharging",
+                  "gameCount",
+                  "collectionName"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "menu": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Navegação hierárquica. `depth` distingue menu raiz de submenu, que é o que permite coleção dentro de coleção.",
+      "required": [
+        "orientation"
+      ],
+      "properties": {
+        "orientation": {
+          "enum": [
+            "horizontal",
+            "vertical",
+            "wheel",
+            "grid"
+          ]
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "scrollTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "scrollAcceleration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "visibleItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "itemDefaults": {
+          "$ref": "#/$defs/layout"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "Posição por índice relativo ao selecionado. É como RetroFE desenha carrossel: cada slot tem seu deslocamento.",
+          "items": {
+            "$ref": "#/$defs/layout"
+          }
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "maxItems": 32,
+      "description": "Sequência de blocos animados. Cada bloco tem duração e um conjunto de propriedades.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "duration",
+          "animations"
+        ],
+        "properties": {
+          "duration": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60
+          },
+          "animations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "$ref": "#/$defs/animation"
+            }
+          }
+        }
+      }
+    },
+    "animation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "property",
+        "to"
+      ],
+      "description": "Propriedades animáveis são um conjunto fechado, medido em tema real: alpha domina (615 de 648 animações do Aeon Nox), seguida de y e x. O destino pode ser número OU palavra-chave (center, left, ...) — o RetroFE anima para posição relativa, e recusar isso descartaria animações válidas.",
+      "properties": {
+        "property": {
+          "enum": [
+            "alpha",
+            "x",
+            "y",
+            "width",
+            "height",
+            "maxWidth",
+            "maxHeight",
+            "angle",
+            "nop"
+          ]
+        },
+        "from": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "to": {
+          "$ref": "#/$defs/coordinate"
+        },
+        "easing": {
+          "enum": [
+            "linear",
+            "easeIn",
+            "easeOut",
+            "easeInOut"
+          ]
+        }
+      }
+    },
+    "intent": {
+      "enum": [
+        "accept",
+        "cancel",
+        "details",
+        "filters",
+        "nextPage",
+        "prevPage",
+        "nextCollection",
+        "prevCollection",
+        "toggleFavorite",
+        "swapDisc",
+        "switchView",
+        "settings"
+      ],
+      "description": "swapDisc atende PSX, Sharp X68000 e outros multi-disco, que expõem discCount > 1."
+    }
+  }
+}
