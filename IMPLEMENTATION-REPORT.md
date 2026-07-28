@@ -481,3 +481,72 @@ composições já cobertas para Deck, ultrawide e 4K.
   não contém seus estados. A dívida deve ser ligada ao contrato real antes da QML.
 - Wayland/X11, controle, touch, mudança de resolução, dock/undock e hardware físico
   permanecem **não verificados** nesta sessão.
+
+## 10. Motor de temas — fatia vertical de texto (VS-01 a VS-07, sessão 36)
+
+Estado: **fatia vertical fechada; P0-03 não está completo.** Handoff detalhado em
+`docs/12-roadmap/P0-03-HANDOFF.md`.
+
+### O que está provado ponta a ponta
+
+Uma declaração real de um `layout.xml` do RetroFE atravessa: declarações com
+identidade → `TranslationLog` → `Value<T>` → `ElementContract` → serialização →
+desserialização → resolver → `ResolvedTextNode` → adapter → `AdaptationResult` →
+`require_model()` → `QmlTextRenderModel` → harness → `SceneText.qml` → captura.
+
+Duas fixtures RetroFE reais (uma positiva, uma com treze defeitos isolados):
+
+| métrica | positiva | negativa |
+|---|---|---|
+| propriedades declaradas | 65 | 73 |
+| vereditos | 65 | 73 |
+| cobertura | 100% | 100% |
+| sem julgamento | 0 | 0 |
+| vereditos duplicados | 0 | 0 |
+| diferença semântica no round-trip | 0 | 0 |
+| valores dinâmicos congelados | 0 | 0 |
+
+Dez baselines visuais versionadas, geradas na mesma execução com fontconfig
+isolado na Liberation Sans 2.1.5 empacotada, backend software, offscreen, DPI 96,
+DPR 1.0, locale `C.UTF-8`.
+
+### O que NÃO está pronto
+
+- **Corpus de 388 propriedades não migrado.** A fatia cobre texto; imagem, som,
+  menu, timeline e eventos continuam só no compilador legado.
+- **Sem árvore de cena.** A fatia é plana, e um teste reprova se alguém
+  introduzir `children` sem projeto.
+- **Sem rich text, wrapping, elide ou auto-fit.**
+- **Acessibilidade sem consumidor real** (G15). A geração existe e está mapeada;
+  nenhuma propriedade a consome. Não foi criado consumidor artificial para o
+  teste passar — isso provaria apenas que o teste passa.
+- **Display parcial.** Largura e altura de referência entram no grafo;
+  `safeArea`, `orientation`, `devicePixelRatio` e `aspectRatio` estão previstos
+  e não implementados.
+- **Máscaras não implementadas.** `clip_spec`, `mask_stack` e `hit_test_shape`
+  existem como reserva de contrato para o P0-08, e um teste reprova se forem
+  serializados como recurso funcional.
+- **Dez harnesses QML legados** seguem com `skipif` e não contam como gate
+  (G13). Nenhum teste novo da fatia usa `skip`.
+
+### Autoavaliação — o que a fatia mede e o que ela não mede
+
+O harness prova que o Qt **aceita** o modelo e que a geometria bate. Ele não
+prova legibilidade, contraste percebido nem adequação tipográfica. As dez
+baselines cobrem alinhamento, peso, estilo, opacidade, dimensão implícita e
+acentuação portuguesa — não cobrem CJK, RTL, nem texto que exceda a caixa.
+
+`visual-08` (`text-implicit-width`) produz imagem **idêntica** a `visual-01`: o
+texto é menor que a caixa e alinhado à esquerda, então remover a largura
+explícita não muda o pixel. A baseline dele não acrescenta cobertura visual; o
+valor está nos gates geométricos (`width == implicitWidth`). Registrado em vez de
+corrigido porque alterar uma fixture histórica é decisão do operador.
+
+### Dívidas criadas nesta sessão
+
+- **G13** — migração dos dez harnesses QML legados para o harness próprio.
+- **G15** — acessibilidade: infraestrutura pronta, consumidor ausente.
+- Primeiro asset binário de terceiro no repositório (Liberation Sans 2.1.5).
+  Inventariado em `docs/11-legal/THIRD-PARTY-NOTICES.md`. Dois testes garantem
+  que não entre no wheel nem seja referenciada pela UI — a OFL permitiria
+  redistribuir no produto, mas essa decisão não foi tomada.
