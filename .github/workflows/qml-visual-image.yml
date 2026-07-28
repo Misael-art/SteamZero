@@ -1,10 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 name: qml-visual-image
 
-# Manual de propósito. A imagem é a autoridade do gate visual, e reconstruí-la
-# por push tornaria o ambiente móvel — exatamente o que ela existe para impedir.
+# Reconstrói quando a DEFINIÇÃO da imagem muda, e só então. Isso não torna o
+# ambiente móvel: o gate continua fixando um digest, e um digest novo só passa a
+# valer quando alguém o escreve em ci.yml deliberadamente.
+#
+# `workflow_dispatch` sozinho não bastaria: o GitHub só despacha workflow que
+# exista na branch PADRÃO, e a padrão deste repositório ainda é a antiga
+# `codex/steam-gameplay-readiness-ui`.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "ci/qml-visual/**"
+      - ".github/workflows/qml-visual-image.yml"
 
 permissions:
   contents: read
