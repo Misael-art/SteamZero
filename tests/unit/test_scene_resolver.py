@@ -17,7 +17,7 @@ cache que devolve a resposta certa para a pergunta errada — pior que não ter.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import pytest
 
@@ -153,27 +153,107 @@ class TestDependencyInvalidation:
         assert "token:color.accent" in resolver.graph.dependencies_of("badge.color")
 
 
-class TestCacheKeyIsComposite:
-    """Cache que ignora contexto devolve a resposta certa para a pergunta errada."""
+class TestCacheKeyFollowsTheDependencies:
+    """CONTRATO ALTERADO no VS-06, e a mudança é o ponto da etapa.
+
+    Antes: qualquer geração diferente invalidava tudo, porque a chave continha
+    todas elas. Era correto e caríssimo — trocar de idioma recompunha as 65
+    propriedades da fixture, incluindo as que só têm literais.
+
+    Agora a chave olha só as gerações que a propriedade REALMENTE usa. O teste
+    ficou mais forte, não mais fraco: antes ele só afirmava que a geração
+    invalida; agora afirma também que uma geração não relacionada NÃO invalida,
+    que é a metade onde mora o desperdício.
+    """
+
+    def _resolve_twice(self, dependency: Any, changed: dict, **context_args: Any) -> int:
+        context = _context(**context_args)
+        resolver = Resolver(context)
+        resolver.resolve(dependency, ValueType.COLOR, target="a")
+        context.generations = Generations(**changed)
+        resolver.resolve(dependency, ValueType.COLOR, target="a")
+        return resolver.stats.misses
+
+    @pytest.mark.parametrize("changed", [{"tokens": 1}, {"theme": 1}])
+    def test_a_generation_the_value_uses_invalidates_it(self, changed: dict) -> None:
+        assert self._resolve_twice(value.token("color.accent"), changed) == 2
 
     @pytest.mark.parametrize(
         "changed",
         [
             {"locale": "en-US"},
             {"accessibility": "highContrast"},
-            {"tokens": 1},
-            {"read_model": 1},
-            {"theme": 1},
             {"display": "tv"},
+            {"read_model": 1},
+            {"translation_catalog": 1},
+            {"asset_registry": 1},
+            {"state_variant": "focused"},
         ],
     )
-    def test_generation_change_bypasses_the_cache(self, changed: dict) -> None:
+    def test_an_unrelated_generation_does_not_invalidate(self, changed: dict) -> None:
+        """Uma cor de token não muda porque o idioma mudou."""
+        assert self._resolve_twice(value.token("color.accent"), changed) == 1
+
+    def test_a_literal_survives_every_generation_change(self) -> None:
+        """Literal não depende de nada. Nada que mude o alcança."""
         context = _context()
         resolver = Resolver(context)
-        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
-        context.generations = Generations(**changed)
-        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
-        assert resolver.stats.misses == 2, "geração diferente não pode reusar cache"
+        resolver.resolve("#ffffff", ValueType.COLOR, target="a")
+        context.generations = Generations(
+            theme_settings=9,
+            tokens=9,
+            read_model=9,
+            translation_catalog=9,
+            asset_registry=9,
+            locale="en-US",
+            accessibility="highContrast",
+            display="tv",
+            state_variant="focused",
+        )
+        resolver.resolve("#ffffff", ValueType.COLOR, target="a")
+        assert resolver.stats.misses == 1
+        assert resolver.stats.hits == 1
+
+    def test_reloading_the_theme_invalidates_even_a_literal(self) -> None:
+        """`theme` entra em toda impressão: recarregar troca o documento inteiro."""
+        context = _context()
+        resolver = Resolver(context)
+        resolver.resolve("#ffffff", ValueType.COLOR, target="a")
+        context.generations = Generations(theme=1)
+        resolver.resolve("#ffffff", ValueType.COLOR, target="a")
+        assert resolver.stats.misses == 2
+
+    def test_a_binding_follows_the_read_model_generation(self) -> None:
+        context = _context(read_model={"game.title": "Chrono"})
+        resolver = Resolver(context)
+        resolver.resolve(value.bind("game.title"), ValueType.STRING, target="a")
+        context.generations = Generations(read_model=1)
+        resolver.resolve(value.bind("game.title"), ValueType.STRING, target="a")
+        assert resolver.stats.misses == 2
+
+    def test_a_translation_follows_locale_and_catalog(self) -> None:
+        for changed in ({"locale": "en-US"}, {"translation_catalog": 1}):
+            context = _context(translations={"menu.play": "Jogar"})
+            resolver = Resolver(context)
+            resolver.resolve(value.localized("menu.play"), ValueType.STRING, target="a")
+            context.generations = Generations(**changed)
+            resolver.resolve(value.localized("menu.play"), ValueType.STRING, target="a")
+            assert resolver.stats.misses == 2, changed
+
+    def test_the_theme_identity_is_part_of_the_key(self) -> None:
+        """Dois temas podem declarar o mesmo `gameTitle.color`.
+
+        Sem a identidade na chave, o segundo tema serviria o valor do primeiro —
+        e o sintoma seria uma cor teimosa que não muda ao trocar de tema.
+        """
+        context = _context(tokens={"color.accent": "#111111"})
+        context.theme_id = "temaA"
+        resolver = Resolver(context)
+        first = resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        context.theme_id = "temaB"
+        context.tokens = {"color.accent": "#222222"}
+        second = resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        assert first.value != second.value
 
 
 class TestCycleDetection:
@@ -409,24 +489,52 @@ class TestSourceIdentityIsPreserved:
     """Token e configuração compartilham o algoritmo sem perder identidade."""
 
     def test_generations_distinguish_settings_from_theme(self) -> None:
-        """Uma configuração muda sem reinstalar o tema."""
-        context = _context()
+        """Uma configuração muda sem reinstalar o tema.
+
+        A versão anterior provava isto com um TOKEN, que não depende de
+        configuração nenhuma — passava porque a chave antiga continha todas as
+        gerações, e teria passado igual se as duas fossem a mesma variável. O
+        veículo precisa ser um valor que realmente use a configuração.
+        """
+        context = _context(settings={"accent": "#ffd166"})
+        resolver = Resolver(context)
+        resolver.resolve(value.setting("accent"), ValueType.COLOR, target="a")
+        context.generations = Generations(theme_settings=1)
+        resolver.resolve(value.setting("accent"), ValueType.COLOR, target="a")
+        assert resolver.stats.misses == 2, "configuração precisa invalidar quem a usa"
+
+    def test_a_settings_change_does_not_touch_a_token(self) -> None:
+        """A outra metade: independente quer dizer independente nos dois sentidos."""
+        context = _context(tokens={"color.accent": "#ffd166"})
         resolver = Resolver(context)
         resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
         context.generations = Generations(theme_settings=1)
         resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
-        assert resolver.stats.misses == 2
+        assert resolver.stats.hits == 1
 
     @pytest.mark.parametrize(
-        "changed", [{"translation_catalog": 1}, {"asset_registry": 1}, {"state_variant": "focused"}]
+        ("changed", "dependency", "expected_type"),
+        [
+            ({"translation_catalog": 1}, value.localized("menu.play"), ValueType.STRING),
+            ({"asset_registry": 1}, value.asset("assets/logo.png"), ValueType.MEDIA),
+            ({"state_variant": "focused"}, None, ValueType.COLOR),
+        ],
     )
-    def test_new_generations_participate_in_the_cache_key(self, changed: dict) -> None:
-        context = _context()
+    def test_each_generation_invalidates_what_depends_on_it(
+        self, changed: dict, dependency: Any, expected_type: ValueType
+    ) -> None:
+        state_value = value.when(value.in_state("focused"), "#ffffff", "#000000")
+        target_value = dependency if dependency is not None else state_value
+        context = _context(
+            translations={"menu.play": "Jogar"},
+            assets=frozenset({"assets/logo.png"}),
+            states=frozenset(),
+        )
         resolver = Resolver(context)
-        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
+        resolver.resolve(target_value, expected_type, target="a")
         context.generations = Generations(**changed)
-        resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
-        assert resolver.stats.misses == 2
+        resolver.resolve(target_value, expected_type, target="a")
+        assert resolver.stats.misses == 2, changed
 
 
 class TestTernaryTruthTables:
