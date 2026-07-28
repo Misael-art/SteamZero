@@ -71,6 +71,39 @@ Window {
         model: stage.model
     }
 
+    // Caractere garantidamente ausente da Liberation Sans. Serve de referência
+    // para descobrir a largura da caixa `.notdef` deste ambiente.
+    Text {
+        id: probe
+        visible: false
+        font.family: subject.font.family
+        font.pixelSize: subject.font.pixelSize
+        text: "漢"
+    }
+
+    Text {
+        id: measure
+        visible: false
+        font.family: subject.font.family
+        font.pixelSize: subject.font.pixelSize
+    }
+
+    function glyphWidths() {
+        // Mede cada caractere distinto do texto renderizado. O runner cruza
+        // com `notdefWidth` para provar que nenhum glifo foi substituído por
+        // caixa — algo que a imagem sozinha não denuncia.
+        var seen = {}
+        var text = subject.text
+        for (var i = 0; i < text.length; i++) {
+            var glyph = text.charAt(i)
+            if (glyph === "\n" || seen[glyph] !== undefined)
+                continue
+            measure.text = glyph
+            seen[glyph] = measure.contentWidth
+        }
+        return seen
+    }
+
     // Relatório geométrico. Existe para que os gates de layout não dependam de
     // comparação visual: `width` errado é um número errado, e um número errado
     // deve reprovar sem ninguém precisar olhar duas imagens lado a lado.
@@ -110,6 +143,18 @@ Window {
             // reprova quando não existe, em vez de registrar um fallback que
             // não teria como comprovar.
             "fallbackDetected": false,
+            // Face efetivamente pedida ao Qt. Derivada de peso e itálico porque
+            // o Qt não expõe o arquivo escolhido — mas com o fontconfig isolado
+            // só existem as quatro empacotadas, então a derivação é exata.
+            "resolvedFace": (subject.font.weight >= 700
+                             ? (subject.font.italic ? "BoldItalic" : "Bold")
+                             : (subject.font.italic ? "Italic" : "Regular")),
+            // Detector de glifo ausente. `notdefWidth` é a largura da caixa que
+            // o Qt desenha para um caractere que a fonte não tem — medida aqui,
+            // não suposta. Um acentuado com essa largura exata é um glifo que
+            // sumiu, e a imagem sairia com caixinhas parecendo texto.
+            "notdefWidth": probe.contentWidth,
+            "glyphWidths": stage.glyphWidths(),
             "canvasWidth": stage.width,
             "canvasHeight": stage.height,
             "devicePixelRatio": Screen.devicePixelRatio

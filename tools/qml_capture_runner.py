@@ -550,6 +550,8 @@ def capture(
         "availableFontFamilyCount": geometry.get("availableFontFamilyCount", 0),
         "testFontAvailable": geometry.get("testFontAvailable", False),
         "fallbackDetected": geometry.get("fallbackDetected", False),
+        "resolvedFace": geometry.get("resolvedFace", ""),
+        "notdefWidth": geometry.get("notdefWidth", 0),
         "canvas": {"width": canvas[0], "height": canvas[1]},
     }
 
