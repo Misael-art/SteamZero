@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VS-04 — fixture negativa. Um defeito por elemento, isolado.
+
+  O resultado esperado NÃO é "a cena cai". É: cada defeito recebe veredito com
+  origem, nenhum payload parcial chega ao QML, e os elementos sãos continuam
+  renderizando. Uma cena que morre inteira por causa de uma cor errada é tão
+  ruim quanto uma que renderiza a cor errada em silêncio.
+-->
+<layout width="1920" height="1080">
+
+  <!-- Cor que não é hexadecimal. -->
+  <text value="cor inválida" fontColor="vermelho" fontSize="24" x="0" y="0"/>
+
+  <!-- Alinhamento fora do vocabulário. -->
+  <text value="alinhamento" fontColor="F2F6FB" fontSize="24" alignment="diagonal" x="0" y="40"/>
+
+  <!-- Binding para um type que o registro não publica. -->
+  <reloadableText type="creditosDoJogador" fontColor="F2F6FB" fontSize="24" x="0" y="80"/>
+
+  <!-- Namespace proibido: recusa de política, não limitação nossa. -->
+  <reloadableText type="hostSerial" fontColor="F2F6FB" fontSize="24" x="0" y="120"/>
+
+  <!-- Unidade que o contrato de dimensão não conhece. -->
+  <text value="unidade" fontColor="F2F6FB" fontSize="24" x="12em" y="160"/>
+
+  <!-- NaN como dimensão. -->
+  <text value="nan" fontColor="F2F6FB" fontSize="24" x="nan" y="200"/>
+
+  <!-- Infinito como dimensão. -->
+  <text value="inf" fontColor="F2F6FB" fontSize="24" x="inf" y="240"/>
+
+  <!-- Booleano como dimensão. -->
+  <text value="booleano" fontColor="F2F6FB" fontSize="24" x="true" y="280"/>
+
+  <!-- Tamanho de fonte que não é número positivo. -->
+  <text value="tamanho" fontColor="F2F6FB" fontSize="-12" x="0" y="320"/>
+
+  <!-- Chave de tradução ausente do catálogo: degrada para o literal. -->
+  <text value="@menu.inexistente" fontColor="F2F6FB" fontSize="24" x="0" y="360"/>
+
+  <!-- Atributo que a fatia não traduz: vira unsupported, não some. -->
+  <text value="camada" fontColor="F2F6FB" fontSize="24" layer="3" x="0" y="400"/>
+
+  <!-- Elemento inteiro fora da fatia de texto do VS-04. -->
+  <image src="logo.png" x="0" y="440" width="120" height="120"/>
+
+  <!-- Este é são: precisa sobreviver a todos os defeitos acima. -->
+  <text value="sobrevivente"
+        fontColor="F2F6FB"
+        font="Liberation Sans"
+        fontSize="24"
+        x="0" y="480" width="400" height="30"
+        alignment="left"/>
+
+</layout>
