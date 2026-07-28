@@ -17,6 +17,8 @@ cache que devolve a resposta certa para a pergunta errada — pior que não ter.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pytest
 
 from steamzero.domain import scene_value as value
@@ -425,3 +427,96 @@ class TestSourceIdentityIsPreserved:
         context.generations = Generations(**changed)
         resolver.resolve(value.token("color.accent"), ValueType.COLOR, target="a")
         assert resolver.stats.misses == 2
+
+
+class TestTernaryTruthTables:
+    """Tabela completa. Formalizada porque semântica de condição não pode ser
+    inferida do código — precisa ser afirmação executável."""
+
+    _AND: ClassVar[dict[tuple[str, str], str]] = {
+        ("true", "true"): "true",
+        ("true", "false"): "false",
+        ("true", "indeterminate"): "indeterminate",
+        ("false", "true"): "false",
+        ("false", "false"): "false",
+        ("false", "indeterminate"): "false",
+        ("indeterminate", "true"): "indeterminate",
+        ("indeterminate", "false"): "false",
+        ("indeterminate", "indeterminate"): "indeterminate",
+    }
+    _OR: ClassVar[dict[tuple[str, str], str]] = {
+        ("true", "true"): "true",
+        ("true", "false"): "true",
+        ("true", "indeterminate"): "true",
+        ("false", "true"): "true",
+        ("false", "false"): "false",
+        ("false", "indeterminate"): "indeterminate",
+        ("indeterminate", "true"): "true",
+        ("indeterminate", "false"): "indeterminate",
+        ("indeterminate", "indeterminate"): "indeterminate",
+    }
+
+    @pytest.mark.parametrize(("pair", "expected"), sorted(_AND.items()))
+    def test_conjunction(self, pair: tuple[str, str], expected: str) -> None:
+        from steamzero.domain.scene_resolver import Truth, _conjunction
+
+        operands = [Truth(pair[0]), Truth(pair[1])]
+        assert _conjunction(operands) == Truth(expected)
+
+    @pytest.mark.parametrize(("pair", "expected"), sorted(_OR.items()))
+    def test_disjunction(self, pair: tuple[str, str], expected: str) -> None:
+        from steamzero.domain.scene_resolver import Truth, _disjunction
+
+        operands = [Truth(pair[0]), Truth(pair[1])]
+        assert _disjunction(operands) == Truth(expected)
+
+    @pytest.mark.parametrize(
+        ("operand", "expected"),
+        [("true", "false"), ("false", "true"), ("indeterminate", "indeterminate")],
+    )
+    def test_negation(self, operand: str, expected: str) -> None:
+        from steamzero.domain.scene_resolver import Truth, _negate
+
+        assert _negate(Truth(operand)) == Truth(expected)
+
+    def test_short_circuit_only_when_determined(self) -> None:
+        """`true AND indeterminate` NÃO pode colapsar para verdadeiro.
+
+        Colapsar escolheria o ramo `then` sem base — o espelho do defeito que a
+        lógica ternária existe para corrigir.
+        """
+        from steamzero.domain.scene_resolver import Truth, _conjunction, _disjunction
+
+        assert _conjunction([Truth.TRUE, Truth.INDETERMINATE]) is Truth.INDETERMINATE
+        assert _disjunction([Truth.FALSE, Truth.INDETERMINATE]) is Truth.INDETERMINATE
+
+
+class TestAbsenceIsNotOneThing:
+    """`None` para tudo confundia quatro situações distintas."""
+
+    def test_absence_states_are_distinct(self) -> None:
+        from steamzero.domain.scene_resolver import EXPLICIT_NULL, MISSING, UNRESOLVED
+
+        assert len({MISSING, UNRESOLVED, EXPLICIT_NULL}) == 3
+
+    def test_exists_is_deterministic_over_absence(self) -> None:
+        """exists e missing EXISTEM para testar presença: precisam decidir."""
+        from steamzero.domain.scene_resolver import MISSING, Truth, _compare
+
+        assert _compare("exists", MISSING, None) is Truth.FALSE
+        assert _compare("missing", MISSING, None) is Truth.TRUE
+        assert _compare("exists", "Chrono Trigger", None) is Truth.TRUE
+        assert _compare("missing", "Chrono Trigger", None) is Truth.FALSE
+
+    def test_unresolved_is_also_absent_for_presence_tests(self) -> None:
+        from steamzero.domain.scene_resolver import UNRESOLVED, Truth, _compare
+
+        assert _compare("exists", UNRESOLVED, None) is Truth.FALSE
+
+    def test_ordinary_comparison_over_absence_is_indeterminate(self) -> None:
+        """Só exists/missing têm licença para decidir diante de ausência."""
+        from steamzero.domain.scene_resolver import MISSING, UNRESOLVED, Truth, _compare
+
+        for absent in (MISSING, UNRESOLVED):
+            assert _compare("greaterThan", absent, 10) is Truth.INDETERMINATE
+            assert _compare("equals", absent, "x") is Truth.INDETERMINATE

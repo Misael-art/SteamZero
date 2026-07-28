@@ -54,6 +54,33 @@ DIAG_MISSING_ASSET = "THEME-RESOLUTION-ASSET-010"
 DIAG_CONDITION_TYPE = "THEME-CONDITION-TYPE-MISMATCH-001"
 
 
+class Absence(StrEnum):
+    """Por que um valor não está aqui.
+
+    Usar ``None`` para tudo confunde quatro situações distintas: propriedade que
+    a origem nunca declarou, binding que ainda não resolveu, provider que
+    falhou, e valor que é legitimamente nulo. Elas exigem respostas diferentes —
+    ``exists`` precisa distinguir ausência de nulo explícito, e um provider que
+    falhou pode voltar, enquanto uma propriedade ausente não.
+    """
+
+    MISSING = "missing"
+    UNRESOLVED = "unresolved"
+    EXPLICIT_NULL = "explicitNull"
+
+
+#: Sentinelas. Comparação por identidade, nunca por igualdade — ``==`` com um
+#: valor de tema poderia ser sobrecarregado.
+MISSING = Absence.MISSING
+UNRESOLVED = Absence.UNRESOLVED
+EXPLICIT_NULL = Absence.EXPLICIT_NULL
+
+
+def is_absent(value: Any) -> bool:
+    """Se o valor representa alguma forma de ausência."""
+    return isinstance(value, Absence)
+
+
 class Truth(StrEnum):
     """Resultado de uma condição.
 
@@ -609,18 +636,11 @@ class Resolver:
                 self._evaluate(item, dependencies, reference, target)
                 for item in condition.get("operands", [])
             ]
-            if op == "and":
-                if Truth.FALSE in results:
-                    return Truth.FALSE
-                return Truth.INDETERMINATE if Truth.INDETERMINATE in results else Truth.TRUE
-            if Truth.TRUE in results:
-                return Truth.TRUE
-            return Truth.INDETERMINATE if Truth.INDETERMINATE in results else Truth.FALSE
+            return _conjunction(results) if op == "and" else _disjunction(results)
         if op == "not":
-            inner = self._evaluate(condition.get("operand"), dependencies, reference, target)
-            if inner is Truth.INDETERMINATE:
-                return Truth.INDETERMINATE
-            return Truth.FALSE if inner is Truth.TRUE else Truth.TRUE
+            return _negate(
+                self._evaluate(condition.get("operand"), dependencies, reference, target)
+            )
 
         left = self._operand(condition.get("left"), dependencies)
         right = self._operand(condition.get("right"), dependencies)
@@ -691,6 +711,35 @@ def _truth(condition: bool) -> Truth:
     return Truth.TRUE if condition else Truth.FALSE
 
 
+def _conjunction(results: list[Truth]) -> Truth:
+    """``and`` ternário.
+
+    Curto-circuita SOMENTE quando o resultado já está logicamente determinado:
+    um ``false`` decide sozinho. Mas ``true AND indeterminate`` continua
+    indeterminado — colapsar para verdadeiro escolheria o ramo ``then`` sem base.
+    """
+    if Truth.FALSE in results:
+        return Truth.FALSE
+    if Truth.INDETERMINATE in results:
+        return Truth.INDETERMINATE
+    return Truth.TRUE
+
+
+def _disjunction(results: list[Truth]) -> Truth:
+    """``or`` ternário. Um ``true`` decide sozinho; o resto propaga."""
+    if Truth.TRUE in results:
+        return Truth.TRUE
+    if Truth.INDETERMINATE in results:
+        return Truth.INDETERMINATE
+    return Truth.FALSE
+
+
+def _negate(inner: Truth) -> Truth:
+    if inner is Truth.INDETERMINATE:
+        return Truth.INDETERMINATE
+    return Truth.FALSE if inner is Truth.TRUE else Truth.TRUE
+
+
 def _compare(op: Any, left: Any, right: Any) -> Truth:
     """Compara em lógica ternária.
 
@@ -698,14 +747,19 @@ def _compare(op: Any, left: Any, right: Any) -> Truth:
     ``greaterThan`` entre texto e número não é "não maior", é uma pergunta sem
     resposta, e responder ``false`` escolheria o ramo ``otherwise``.
     """
+    # exists e missing EXISTEM para testar presença: precisam devolver booleano
+    # determinístico mesmo diante de ausência, senão não serviriam ao seu
+    # propósito. Nulo explícito conta como presente — o autor o declarou.
     if op == "exists":
-        return _truth(left is not None)
+        return _truth(left is not EXPLICIT_NULL and not is_absent(left) and left is not None)
     if op == "missing":
-        return _truth(left is None)
+        return _truth((is_absent(left) and left is not EXPLICIT_NULL) or left is None)
+
     comparator = _COMPARATORS.get(str(op))
     if comparator is None:
         raise ResolutionError(DIAG_TYPE, f"operador desconhecido: {op!r}")
-    if left is None or right is None:
+    # Comparação comum diante de ausência não inventa resultado.
+    if is_absent(left) or is_absent(right) or left is None or right is None:
         return Truth.INDETERMINATE
     try:
         return _truth(comparator(left, right))
