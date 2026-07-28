@@ -519,4 +519,9 @@ class TestDeclaredFailureModesActuallyFire:
         """
         fingerprint = rendered.environment["fontFile"]
         assert fingerprint["family"] == TEST_FONT
-        assert fingerprint.get("sha256"), fingerprint
+        # O hash do arquivo EMPACOTADO, não o que o `fc-match` do sistema
+        # resolve. Na imagem canônica não existe fonte de sistema nenhuma — o
+        # que é melhor, não pior —, e `fc-match` legitimamente não devolve
+        # arquivo. Verificar aquele campo tornava o teste dependente de haver
+        # fontes instaladas, que é exatamente o que o isolamento remove.
+        assert fingerprint["packagedSha256"], fingerprint

@@ -491,7 +491,10 @@ class TestGeometryIsProvenByRendering:
         """Sem o hash, divergência por atualização de pacote pareceria regressão."""
         for element_id, result in rendered.items():
             fingerprint = result.environment["fontFile"]
-            assert fingerprint.get("sha256"), (element_id, fingerprint)
+            # O hash do arquivo empacotado. O derivado do `fc-match` depende de
+            # haver fonte instalada no sistema, e na imagem canônica não há —
+            # por projeto.
+            assert fingerprint["packagedSha256"], (element_id, fingerprint)
 
 
 @pytest.mark.visual

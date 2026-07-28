@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+#
+# Imagem canônica do gate visual QML.
+#
+# Ela existe porque o ambiente É o contrato. As baselines não comparam "o texto
+# renderizado"; comparam pixels produzidos por uma combinação exata de Qt,
+# FreeType, HarfBuzz e fontconfig. Trocar qualquer um deles muda a imagem sem
+# mudar uma linha de código, e a divergência apareceria como regressão.
+#
+# Duas coisas que esta imagem NÃO faz, de propósito:
+#
+# 1. Não instala Qt durante o teste. `pacman -Syu` a cada execução deixaria o
+#    gate refém de repositório móvel — o mesmo defeito que a fonte do sistema
+#    tinha antes do VIS-01, um nível acima.
+# 2. Não é referenciada por tag. Tag é mutável; a autoridade é o digest.
+#
+# O runner do Ubuntu 24.04 não serve: `/usr/lib/qt6/bin/` traz qmldom, qmllint,
+# qmltestrunner e mais nove binários, e NENHUM `qml`. Verificado no CI, não
+# suposto — o `skipif` dos harnesses legados escondeu isso desde sempre.
+FROM manjarolinux/base@sha256:bbf1f1d746f28e138eea610e140d2f28cbb5b7c5da2fbff034b883527aa604e9
+
+# `-Syu`, não `-Sy`. Upgrade PARCIAL no Arch quebra por design, e quebrou aqui:
+# a primeira versão usava `-Sy` para "preservar" a base fixada e produziu um
+# `pyexpat` com símbolo indefinido — o parser que lê os layouts do RetroFE.
+#
+# O digest da base semeia o build de um ponto conhecido; quem congela o
+# RESULTADO é o digest da imagem construída, que o workflow referencia. Atualizar
+# aqui não afrouxa nada: afrouxaria se acontecesse a cada execução do teste, e é
+# exatamente isso que esta imagem existe para evitar.
+RUN pacman -Syu --noconfirm --needed \
+        qt6-declarative \
+        qt6-base \
+        fontconfig \
+        freetype2 \
+        harfbuzz \
+        python \
+        python-pip \
+        git \
+    && pacman -Scc --noconfirm
+
+# O Manjaro já fornece `qml6` em /usr/sbin, resolvendo para
+# /usr/lib/qt6/bin/qml. Nenhum symlink é criado: a primeira versão deste arquivo
+# criava um link para /usr/bin/qml, que NÃO existe — link pendurado que passou
+# despercebido porque o `qml6` real já estava no PATH.
+
+# Sem GPU e sem servidor gráfico. Fixados aqui para que o teste não dependa de
+# quem invoca lembrar de exportá-los.
+ENV QT_QPA_PLATFORM=offscreen \
+    QT_QUICK_BACKEND=software \
+    QT_FORCE_STDERR_LOGGING=1 \
+    QT_LOGGING_RULES="" \
+    QT_MESSAGE_PATTERN="%{type}|%{message}" \
+    QT_SCALE_FACTOR=1 \
+    QT_FONT_DPI=96 \
+    QT_ENABLE_HIGHDPI_SCALING=0 \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
+# Registra o que a imagem realmente contém. É o que `environment.lock.json`
+# compara na entrada do gate — divergência reprova antes de renderizar, em vez
+# de virar diferença de pixel sem causa aparente.
+RUN mkdir -p /opt/steamzero-visual \
+    && { \
+        echo "qml=$(qml6 --version 2>&1)"; \
+        pacman -Q qt6-declarative qt6-base fontconfig freetype2 harfbuzz python; \
+        echo "qmlPath=$(readlink -f "$(command -v qml6)")"; \
+        echo "qmlSha256=$(sha256sum "$(readlink -f "$(command -v qml6)")" | cut -d' ' -f1)"; \
+       } > /opt/steamzero-visual/environment.txt \
+    && cat /opt/steamzero-visual/environment.txt
+
+LABEL org.opencontainers.image.source="https://github.com/Misael-art/SteamZero" \
+      org.opencontainers.image.description="Ambiente canônico do gate visual QML do SteamZero" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later"
