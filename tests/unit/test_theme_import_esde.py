@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import jsonschema
 import pytest
@@ -22,11 +23,14 @@ import pytest
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.theme_import_esde import (
     INHERITED_TOKENS,
+    MAX_ASSET_BYTES,
     build_manifest,
     import_report,
     import_scheme,
     map_to_tokens,
     parse_color_schemes,
+    resolve_assets,
+    unsupported_slots,
 )
 
 _SCHEMA = json.loads(
@@ -136,11 +140,11 @@ class TestMapping:
 
 class TestImportScheme:
     def test_import_produces_tokens_and_report(self) -> None:
-        imported = import_scheme("neon", _COLORS, wallpaper="assets/neon.webp")
+        imported = import_scheme("neon", _COLORS, available_assets={"wallpapers/neon.webp": 18748})
         assert imported.name == "neon"
-        assert imported.wallpaper == "assets/neon.webp"
+        assert imported.wallpaper == "assets/background.webp"
         report = import_report(imported)
-        assert report["fidelity"] == "palette-only"
+        assert report["fidelity"] == "palette+background", "com asset a fidelidade sobe"
         assert report["inherited"] == list(INHERITED_TOKENS)
 
     def test_monochrome_scheme_is_flagged(self) -> None:
@@ -177,7 +181,7 @@ class TestManifest:
         }
         base.update(kw)
         return build_manifest(
-            import_scheme(scheme, _COLORS, wallpaper="assets/neon.webp"),
+            import_scheme(scheme, _COLORS, available_assets={"wallpapers/neon.webp": 18748}),
             **base,  # type: ignore[arg-type]
         )
 
@@ -192,7 +196,7 @@ class TestManifest:
     def test_wallpaper_becomes_the_background_asset(self) -> None:
         assets = self._manifest()["assets"]
         assert isinstance(assets, dict)
-        assert assets["background"] == "assets/neon.webp"
+        assert assets["background"] == "assets/background.webp"
 
     def test_import_without_wallpaper_declares_no_asset(self) -> None:
         manifest = build_manifest(
@@ -222,3 +226,84 @@ class TestManifest:
     def test_every_scheme_of_the_fixture_converts(self) -> None:
         for scheme in ("dark", "neon"):
             jsonschema.validate(self._manifest(scheme), _SCHEMA)
+
+
+class TestAssetResolution:
+    """O domínio decide QUAL arquivo preenche cada slot; quem baixa é o adapter."""
+
+    _INV: ClassVar[dict[str, int]] = {
+        "wallpapers/dark.webp": 59430,
+        "wallpapers/neon.webp": 18748,
+        "wallpapers/Alternate/pastel.webp": 18494,
+        "wallpapers/animated/.PLACE GIF WALLPAPERS HERE.txt": 0,
+        "_inc/system-logo/snes.svg": 4096,
+        "templates/Canvas-Logo-Template.psd": 5674473,
+    }
+
+    def test_scheme_wallpaper_becomes_the_background(self) -> None:
+        plans = resolve_assets("neon", self._INV)
+        assert len(plans) == 1
+        assert plans[0].slot == "background"
+        assert plans[0].source_path == "wallpapers/neon.webp"
+        assert plans[0].target_path == "assets/background.webp"
+
+    def test_alternate_directory_is_used_as_fallback(self) -> None:
+        """Vários temas publicam parte dos esquemas só em wallpapers/Alternate."""
+        plans = resolve_assets("pastel", self._INV)
+        assert plans[0].source_path == "wallpapers/Alternate/pastel.webp"
+
+    def test_scheme_without_wallpaper_yields_no_asset(self) -> None:
+        """Ausência é estado legítimo: importa-se só a paleta."""
+        assert resolve_assets("inexistente", self._INV) == []
+
+    def test_empty_file_is_not_an_asset(self) -> None:
+        """O diretório animated/ tem um placeholder de zero byte."""
+        assert resolve_assets("animated", {"wallpapers/animated.webp": 0}) == []
+
+    def test_oversized_asset_is_skipped_not_fatal(self) -> None:
+        """Passar do limite geraria pacote que a validação recusaria depois.
+
+        Seguir sem papel de parede é melhor que produzir algo inválido.
+        """
+        big = {"wallpapers/x.webp": MAX_ASSET_BYTES + 1}
+        assert resolve_assets("x", big) == []
+
+    def test_system_art_never_fills_the_logo_slot(self) -> None:
+        """O que o ES-DE chama de logo é arte por SISTEMA.
+
+        Usar o logo do SNES como marca da central inteira seria plausível de
+        implementar e errado de exibir.
+        """
+        for plan in resolve_assets("neon", self._INV):
+            assert plan.slot != "logo"
+            assert "system-logo" not in plan.source_path
+            assert not plan.source_path.endswith(".psd")
+
+    def test_unsupported_slots_carry_their_reason(self) -> None:
+        reasons = unsupported_slots()
+        assert set(reasons) == {"logo", "sidebar"}
+        for slot, reason in reasons.items():
+            assert reason, f"{slot} sem explicação"
+
+    @pytest.mark.parametrize("bad", ["../escape", "COM.MAIUSCULA", ""])
+    def test_invalid_scheme_name_is_refused(self, bad: str) -> None:
+        with pytest.raises(SteamZeroError, match="esquema inválido"):
+            resolve_assets(bad, self._INV)
+
+
+class TestFidelityIsReported:
+    def test_palette_only_when_no_asset(self) -> None:
+        report = import_report(import_scheme("neon", _COLORS))
+        assert report["fidelity"] == "palette-only"
+        assert report["assets"] == []
+
+    def test_palette_plus_background_when_asset_found(self) -> None:
+        imported = import_scheme("neon", _COLORS, available_assets={"wallpapers/neon.webp": 18748})
+        report = import_report(imported)
+        assert report["fidelity"] == "palette+background"
+        assert report["assetBytes"] == 18748
+
+    def test_report_names_what_has_no_source(self) -> None:
+        """A UI precisa distinguir "não veio" de "faltou implementar"."""
+        report = import_report(import_scheme("neon", _COLORS))
+        assert set(report["unsupportedSlots"]) == {"logo", "sidebar"}

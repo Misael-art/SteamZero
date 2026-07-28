@@ -29,6 +29,7 @@ from __future__ import annotations
 import colorsys
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -66,6 +67,86 @@ INHERITED_TOKENS = (
 )
 
 
+#: Limites herdados de ``adapters.theme_catalog``: um pacote importado precisa
+#: passar na mesma validação de um tema escrito à mão.
+MAX_ASSET_BYTES = 16 * 1024 * 1024
+ALLOWED_ASSET_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".webp", ".svg"})
+
+#: Onde temas ES-DE publicam papel de parede por esquema. A variante "Alternate"
+#: existe em vários temas e é preferida quando o principal não cobre o esquema.
+_WALLPAPER_DIRS = ("wallpapers", "wallpapers/Alternate")
+
+
+@dataclass(frozen=True)
+class AssetPlan:
+    """O que buscar da origem e onde gravar dentro do pacote.
+
+    O domínio decide; quem baixa é a camada de adapters. Separar as duas coisas
+    é o que permite testar a decisão sem rede.
+    """
+
+    slot: str
+    source_path: str
+    target_path: str
+    size: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "slot": self.slot,
+            "sourcePath": self.source_path,
+            "targetPath": self.target_path,
+            "size": self.size,
+        }
+
+
+def resolve_assets(scheme: str, available: Mapping[str, int]) -> list[AssetPlan]:
+    """Decide quais arquivos do tema de origem preenchem os slots do SteamZero.
+
+    ``available`` é o inventário do repositório de origem (caminho -> bytes),
+    obtido da árvore do git sem baixar nada.
+
+    Dos três slots do contrato, só ``background`` tem equivalente em temas ES-DE.
+    ``logo`` e ``sidebar`` NÃO têm: o que um tema ES-DE chama de logo é arte por
+    SISTEMA (um logo do SNES, um do Mega Drive), não a marca do tema. Preencher
+    esses slots com arte de sistema colocaria o logo do SNES como marca da
+    central inteira — plausível de implementar, errado de exibir.
+    """
+    if not _SCHEME_NAME.match(scheme):
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"esquema inválido: {scheme!r}")
+
+    for directory in _WALLPAPER_DIRS:
+        for suffix in (".webp", ".png", ".jpg", ".jpeg"):
+            candidate = f"{directory}/{scheme}{suffix}"
+            size = available.get(candidate)
+            if size is None:
+                continue
+            if size <= 0:
+                continue
+            if size > MAX_ASSET_BYTES:
+                # Grande demais para o contrato: seguir sem papel de parede é
+                # melhor que produzir um pacote que a validação vai recusar.
+                continue
+            return [
+                AssetPlan(
+                    slot="background",
+                    source_path=candidate,
+                    target_path=f"assets/background{suffix}",
+                    size=size,
+                )
+            ]
+    return []
+
+
+def unsupported_slots() -> dict[str, str]:
+    """Slots que ficam vazios, com a razão — para a UI não sugerir que faltou algo."""
+    return {
+        "logo": (
+            "temas ES-DE não declaram marca própria; o que eles chamam de logo é arte por sistema"
+        ),
+        "sidebar": "temas ES-DE não têm equivalente de barra lateral",
+    }
+
+
 @dataclass(frozen=True)
 class ImportedScheme:
     """Um esquema de cor do tema de origem, já convertido."""
@@ -73,6 +154,7 @@ class ImportedScheme:
     name: str
     color: dict[str, str]
     wallpaper: str | None = None
+    assets: tuple[AssetPlan, ...] = field(default_factory=tuple)
     source_tags: int = 0
     derived: tuple[str, ...] = field(default_factory=tuple)
 
@@ -171,9 +253,14 @@ def import_scheme(
     scheme: str,
     colors_xml: str,
     *,
-    wallpaper: str | None = None,
+    available_assets: Mapping[str, int] | None = None,
 ) -> ImportedScheme:
-    """Converte um esquema nomeado. ``wallpaper`` é o caminho já dentro do pacote."""
+    """Converte um esquema nomeado, resolvendo também os assets.
+
+    ``available_assets`` é o inventário do repositório de origem (caminho ->
+    bytes). Quando fornecido, o papel de parede do esquema é localizado e entra
+    no plano; sem ele, a importação é só de paleta.
+    """
     if not _SCHEME_NAME.match(scheme):
         raise SteamZeroError("E-THEME-MANIFEST", detail=f"esquema inválido: {scheme!r}")
     schemes = parse_color_schemes(colors_xml)
@@ -188,10 +275,13 @@ def import_scheme(
             "E-THEME-MANIFEST",
             detail=f"esquema '{scheme}' não declara cor de fundo; nada a importar",
         )
+    assets = resolve_assets(scheme, available_assets) if available_assets else []
+    background = next((a for a in assets if a.slot == "background"), None)
     return ImportedScheme(
         name=scheme,
         color=tokens,
-        wallpaper=wallpaper,
+        wallpaper=background.target_path if background else None,
+        assets=tuple(assets),
         source_tags=len(source),
         derived=derived,
     )
@@ -253,7 +343,9 @@ def import_report(imported: ImportedScheme) -> dict[str, Any]:
         "tokens": len(imported.color),
         "derived": list(imported.derived),
         "inherited": list(INHERITED_TOKENS),
-        "hasWallpaper": imported.wallpaper is not None,
         "monochrome": imported.is_monochrome,
-        "fidelity": "palette-only",
+        "assets": [a.to_dict() for a in imported.assets],
+        "assetBytes": sum(a.size for a in imported.assets),
+        "unsupportedSlots": unsupported_slots(),
+        "fidelity": "palette+background" if imported.assets else "palette-only",
     }
