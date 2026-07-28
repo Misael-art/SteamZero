@@ -44,6 +44,7 @@ from steamzero.domain.scene_contract import (
     TextLayoutSpec,
     TypographySpec,
 )
+from steamzero.domain.scene_registry import forbidden_namespace
 from steamzero.domain.scene_value import TranslationLog, Verdict
 
 #: Cor do RetroFE: seis dígitos hexadecimais, sem `#`. Oito com alfa aparece em
@@ -76,14 +77,6 @@ _BINDING_TYPE = {
     # ela se LÊ como proteção.
     "hostSerial": "host.serialNumber",
 }
-
-#: Namespaces que um tema NUNCA pode alcançar. Não é lista de "ainda não
-#: suportado": é recusa de política, e por isso o veredito é `ignoredByPolicy`.
-#:
-#: `system.` NÃO entra: `default_registries()` publica `system.time`,
-#: `system.date` e `system.battery` como caminhos legítimos, e proibi-los aqui
-#: criaria duas regras contraditórias sobre o mesmo namespace.
-_FORBIDDEN_NAMESPACES = ("host.", "process.", "credential.", "network.", "secret.")
 
 
 @dataclass
@@ -165,13 +158,6 @@ def _dimension(raw: str) -> DimensionValue:
     if not math.isfinite(number):
         raise ValueError(f"dimensão {raw!r} não é finita; use um número, percentual ou auto")
     return DimensionValue.logical_px(number)
-
-
-def _reject_forbidden(path: str) -> str | None:
-    for namespace in _FORBIDDEN_NAMESPACES:
-        if path.startswith(namespace):
-            return namespace
-    return None
 
 
 class TextSliceCompiler:
@@ -300,7 +286,10 @@ class TextSliceCompiler:
                 detail=f"reloadableText type={item.raw_value!r} sem caminho publicado",
             )
             return None
-        namespace = _reject_forbidden(path)
+        # Política antes de qualquer outra coisa sobre o caminho: um namespace
+        # recusado não pode sair como `unsupported`, porque `unsupported` vira
+        # fila de trabalho e alguém acabaria implementando o que foi negado.
+        namespace = forbidden_namespace(path)
         if namespace is not None:
             result.record(
                 item,

@@ -52,12 +52,36 @@ class ResolutionPhase(StrEnum):
     RUNTIME = "runtime"
 
 
+#: Namespaces que NENHUM tema alcança, em nenhuma circunstância.
+#:
+#: Não é lista de "ainda não suportado": é recusa deliberada, e por isso o
+#: veredito é ``ignoredByPolicy`` — que não entra na fila de trabalho futuro.
+#: Confundir os dois faria alguém tentar implementar acesso ao número de série
+#: do host porque o relatório disse "unsupported".
+FORBIDDEN_NAMESPACES = ("host.", "process.", "credential.", "network.", "secret.", "internal.")
+
+
+def forbidden_namespace(path: str) -> str | None:
+    """O namespace proibido que este caminho alcança, se algum.
+
+    Mora aqui, e não em cada importador, porque uma segunda lista divergiria da
+    primeira — e foi assim que `system.` chegou a estar proibido num módulo
+    enquanto `default_registries()` publicava `system.time` como legítimo.
+    """
+    for namespace in FORBIDDEN_NAMESPACES:
+        if path.startswith(namespace):
+            return namespace
+    return None
+
+
 class UnknownPathPolicy(StrEnum):
     """O que fazer com um caminho que nenhum registro publica."""
 
     INVALID = "invalid"
     USE_FALLBACK = "fallback"
     NEGOTIATE_CAPABILITY = "capabilityNegotiation"
+    #: Recusa deliberada. Distinta das demais: não vira trabalho futuro.
+    FORBIDDEN = "forbidden"
 
 
 @dataclass(frozen=True)
@@ -183,6 +207,19 @@ class Registries:
             validate_path(deferred.source_path, theme_id=theme_id)
         except ValueError as exc:
             return TypeCheck(False, reason=str(exc))
+
+        # POLÍTICA ANTES DO REGISTRO. A ordem não é estética: quando a busca no
+        # registro vinha primeiro, um caminho proibido que também fosse
+        # desconhecido saía como `unsupported` — e `unsupported` vira trabalho
+        # futuro. A recusa de política precisa vencer, ou alguém acaba
+        # implementando o que foi deliberadamente negado.
+        namespace = forbidden_namespace(deferred.source_path)
+        if namespace is not None:
+            return TypeCheck(
+                False,
+                reason=f"namespace {namespace!r} é recusa de política, não limitação",
+                policy=UnknownPathPolicy.FORBIDDEN,
+            )
 
         registry = self.registry_for(deferred.source_kind)
         if registry is None:
