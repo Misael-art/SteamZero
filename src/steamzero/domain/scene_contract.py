@@ -433,6 +433,9 @@ class ElementContract:
     appearance: AppearanceSpec = field(default_factory=AppearanceSpec)
     typography: TypographySpec | None = None
     text_layout: TextLayoutSpec | None = None
+    #: Conteúdo de um elemento de texto. Aceita ``Value<T>`` como qualquer outra
+    #: propriedade — literal, binding, tradução ou condicional.
+    text_content: Any = None
 
     def validate(self) -> None:
         self.layout.validate()
@@ -455,6 +458,7 @@ class ElementContract:
                 "opacity": self.opacity,
                 "clip": self.clip,
                 "overflow": self.overflow,
+                "textContent": self.text_content,
             }
         )
         for name, spec in (
@@ -499,6 +503,7 @@ CONTRACT_PROPERTY_TYPES: dict[str, ValueType] = {
     "maxLines": ValueType.NUMBER,
     "minimumFontSize": ValueType.NUMBER,
     "maximumFontSize": ValueType.NUMBER,
+    "textContent": ValueType.STRING,
 }
 
 
