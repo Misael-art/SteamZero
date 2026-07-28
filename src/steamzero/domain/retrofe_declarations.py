@@ -33,6 +33,7 @@ arquivo inteiro.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -122,6 +123,45 @@ class DeclarationSet:
             "declarations": [item.to_dict() for item in self.declarations],
             "truncated": self.truncated,
         }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> DeclarationSet:
+        """Relê o conjunto, recusando identidade duplicada.
+
+        Id repetido não é detalhe de formato: dois vereditos passariam a
+        disputar a mesma declaração, e o accounting acusaria duplicata sem
+        conseguir dizer qual das duas propriedades ficou sem julgamento.
+        Aceitar na leitura criaria esse estado a partir de um arquivo.
+        """
+        declarations: list[SourceDeclaration] = []
+        seen: set[str] = set()
+        for item in payload.get("declarations", []):
+            identifier = str(item["sourceDeclarationId"])
+            if identifier in seen:
+                raise ValueError(f"sourceDeclarationId duplicado: {identifier}")
+            seen.add(identifier)
+            reference = item["sourceReference"]
+            declarations.append(
+                SourceDeclaration(
+                    declaration_id=identifier,
+                    element=str(item["element"]),
+                    element_index=int(item["elementIndex"]),
+                    property_name=str(item["property"]),
+                    raw_value=str(item["rawValue"]),
+                    source_reference=SourceReference(
+                        file=str(reference["file"]),
+                        line=reference.get("line"),
+                        column=reference.get("column"),
+                        element=reference.get("element"),
+                    ),
+                    origin_kind=OriginKind(item.get("originKind", "declared")),
+                )
+            )
+        return cls(
+            file=str(payload["file"]),
+            declarations=declarations,
+            truncated=bool(payload.get("truncated", False)),
+        )
 
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9_.:-]+")
