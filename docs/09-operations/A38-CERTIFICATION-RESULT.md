@@ -116,10 +116,18 @@ workspace = build_switch_workspace(
 )
 ```
 
-`build_switch_workspace` aceita `keys`, `firmware`, `games`,
-`emulator_capabilities` e `emulator_facts` — e **nenhum é passado**. O read model
-é construído sem o estado do host, então chaves e biblioteca válidas aparecem
-como ausentes. É a assinatura descrita no diagnóstico da a37.
+`build_switch_workspace` aceita `catalog`, `keys`, `firmware`, `games`,
+`emulator_capabilities`, `platform_registry`, `emulator_facts` e `core_present`
+— e **nenhum é passado**. O read model é construído sem o estado do host, então
+chaves e biblioteca válidas aparecem como ausentes.
+
+O problema real é mais fundo que argumentos faltando: **existem duas
+implementações do mesmo read model.** `EmulationController` já compõe a versão
+completa — `keys`, `firmware`, `games`, `emulator_facts`, `core_present`, mais
+merge de plataformas de nuvem, linhas de emulador e resolução do emulador
+padrão. A CLI mantém uma segunda, parcial. Passar mais argumentos na segunda
+apenas adia a próxima divergência; a correção é a CLI reusar a composição do
+controller.
 
 ## Warnings não bloqueantes
 
@@ -147,6 +155,8 @@ declararia certificado um ciclo que não fechou.
 
 ## Reproduzir a evidência
 
+Verificar os artefatos e o estado final:
+
 ```bash
 cd /mnt/sdcard/Projects/Port_Steam/release-artifacts/a38-48f4034dfe36
 test "$(basename "$PWD")" = "a38-48f4034dfe36" && sha256sum -c VERIFIED-SHA256SUMS
@@ -154,6 +164,39 @@ test "$(basename "$PWD")" = "a38-48f4034dfe36" && sha256sum -c VERIFIED-SHA256SU
 steamzero service refresh --expect-release 0.1.0a38-48f4034dfe36 --json
 pgrep -af 'steamzero-core --systemd'
 readlink -f /opt/steamzero/current
+```
+
+Reproduzir o **bloqueador P0** — os comandos acima mostram o estado final
+saudável e não exibem o defeito. Ele só aparece durante a transição:
+
+```bash
+# 1. partir da a38 convergida
+readlink -f /opt/steamzero/current    # .../0.1.0a38-48f4034dfe36
+pgrep -af 'steamzero-core --systemd'  # interpretador da a38
+
+# 2. voltar para a a37
+bigsudo /usr/local/sbin/steamzero-host rollback --release 0.1.0a37-2aaa01d9d8b6
+
+# 3. o defeito: current mudou, o processo não
+readlink -f /opt/steamzero/current    # .../0.1.0a37-2aaa01d9d8b6
+pgrep -af 'steamzero-core --systemd'  # AINDA o interpretador da a38
+
+# 4. e a a37 não tem como corrigir
+steamzero service refresh --expect-release 0.1.0a37-2aaa01d9d8b6 --json
+# -> E-CLI-USAGE: a a37 não possui o comando `service refresh`
+
+# 5. recuperar: voltar para a a38, onde o gate existe
+bigsudo /usr/local/sbin/steamzero-host rollback --release 0.1.0a38-48f4034dfe36
+steamzero service refresh --expect-release 0.1.0a38-48f4034dfe36 --json  # converged
+```
+
+**Deixe o host na a38 ao terminar.** O passo 5 não é opcional: parar no passo 4
+deixa a máquina com `current` e daemon divergentes e sem ferramenta para
+reconciliar.
+
+Comparar o read model da emulação nas duas releases:
+
+```bash
 
 # bloqueador 3, idêntico nas duas releases:
 steamzero emulation workspace --json | python3 -c \
