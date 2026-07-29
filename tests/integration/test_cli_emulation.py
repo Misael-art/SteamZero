@@ -78,6 +78,10 @@ def test_controls_cli_plan_apply_status_and_rollback(
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setattr(
+        "steamzero.core.transaction.secrets.token_urlsafe",
+        lambda _size: "-zfAF68ralrhqGIdv1zKbFSCRDyofMsy",
+    )
 
     assert (
         main(
@@ -97,6 +101,7 @@ def test_controls_cli_plan_apply_status_and_rollback(
     )
     planned = json.loads(capsys.readouterr().out)["data"]
     assert planned["rollbackGuarantee"] == "G-FULL"
+    assert planned["confirmToken"] == "-zfAF68ralrhqGIdv1zKbFSCRDyofMsy"
 
     assert (
         main(
@@ -141,6 +146,7 @@ def test_controls_cli_plan_apply_status_and_rollback(
     "args",
     [
         ["controls", "profiles", "--platform"],
+        ["controls", "profiles", "--platform", "-switch"],
         ["controls", "profiles", "--platform", "switch", "--shell", "x"],
         ["controls", "profiles", "--platform", "switch", "--platform", "arcade"],
     ],

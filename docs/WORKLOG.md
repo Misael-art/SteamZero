@@ -3383,5 +3383,22 @@ imediata após `apply` retornou `active=None`. O mesmo SHA passou localmente, no
 PR, em Python 3.11/3.14 e no rerun do job 3.12. A causa não foi inventada; a
 intermitência foi registrada como GAP-G23.
 
-Próxima correção funcional: GAP-G20, fazendo `emulation workspace` reutilizar a
-composição autoritativa do `EmulationController`.
+### 2026-07-29 — GAP-G20 integrado e GAP-G16 diagnosticado
+
+O PR #11 fechou GAP-G20: `emulation workspace` passou a reutilizar a composição
+autoritativa do `EmulationController`. No host de certificação, a leitura pelo
+checkout corrigido recuperou 15 jogos, keys `ok` rev21 e firmware 22.5.0.
+O `truthState` permaneceu honestamente `unverified` porque nenhum emulador está
+instalado. A a39 instalada não contém essa alteração; a evidência histórica de
+certificação não foi reescrita.
+
+O push pós-merge do `main` reproduziu GAP-G16 no Python 3.11. O backend gerou
+legitimamente `confirmToken=-zfAF68ralrhqGIdv1zKbFSCRDyofMsy`, mas o validador
+de `controls apply` rejeitou o hífen inicial permitido por `token_urlsafe`.
+Assim, foram descartadas por evidência as hipóteses anteriores de expiração e
+colisão XDG. A correção aceita o valor opaco somente em `--confirm`, mantém os
+demais valores estritos e força o token observado no CI no teste integral de
+plan → apply → status → rollback.
+
+Próxima onda funcional: GAP-G17/GAP-G23, M10/M11 e adapters, conforme
+`docs/12-roadmap/EXECUTION-TO-1.0.md`.

@@ -1088,7 +1088,8 @@ def _validate_controls_args(args: list[str], allowed: frozenset[str]) -> None:
             raise SteamZeroError("E-API-SCHEMA", detail=f"flag de controls não permitida: {flag}")
         if flag in seen:
             raise SteamZeroError("E-API-SCHEMA", detail=f"flag duplicada: {flag}")
-        if not value or value.startswith("-") or "\x00" in value or len(value) > 4096:
+        starts_like_flag = value.startswith("-") and flag != "--confirm"
+        if not value or starts_like_flag or "\x00" in value or len(value) > 4096:
             raise SteamZeroError("E-API-SCHEMA", detail=f"valor inválido para {flag}")
         seen.add(flag)
 
