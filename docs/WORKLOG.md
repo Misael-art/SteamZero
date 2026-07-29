@@ -3333,3 +3333,21 @@ entrega porque não houve alteração em `src/` nem remoção de testes.
 
 **Host:** nenhuma instalação, reversão, mutação ou verificação física foi
 executada. GAP-G18 permanece aberto até recertificar a38→a37→a38 no host.
+
+## 2026-07-29 — Sessão 40: preparação reproduzível da a39
+
+O preflight físico da a38 recusou iniciar o rollback: o gerenciador instalado
+era o artefato original da a38 e ainda não possuía `converge`. Publicar apenas o
+gerenciador corrigido sobre aquela release produziria um estado que a tag
+`v0.1.0a38` não conseguiria reproduzir. A a38 permanece sem tag.
+
+Com autorização explícita do operador, a versão foi avançada para `0.1.0a39`
+em uma branch limpa baseada no merge que contém GAP-G18. Nenhuma outra mudança
+funcional entrou nesta preparação; os artefatos serão gerados somente depois do
+commit final e deverão declarar esse SHA exato.
+
+**Gates antes do commit:** 3.219 testes; Ruff check e format; mypy em 188
+arquivos; independência e fronteiras verdes.
+
+**Host:** nenhuma mutação executada nesta etapa; a38 continua ativa e é o
+caminho de recuperação até a instalação validada da a39.
