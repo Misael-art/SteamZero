@@ -53,3 +53,16 @@ coverage.xml
 
 # Gerado pelo hook de build (hatch_build.py); a origem vem do git, não do disco.
 src/steamzero/_build_info.py
+
+# Artefatos de release baixados do CI para instalação no host.
+#
+# Não são versionados: são reproduzíveis a partir do commit mais o run do
+# Actions, e os wheels de terceiros nunca entram no git (ver
+# tools/build_wheelhouse.py). A cópia durável existe só para sobreviver ao
+# scratchpad efêmero entre sessões, e o VERIFIED-SHA256SUMS ao lado dela é a
+# prova de integridade.
+#
+# Sem esta regra o estado ficava pela metade: `dist/` e `build/` já casavam com
+# os padrões globais acima, mas `requirements-runtime.lock` e o próprio
+# VERIFIED-SHA256SUMS ficavam rastreáveis.
+/release-artifacts/
