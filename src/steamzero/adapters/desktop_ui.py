@@ -87,6 +87,10 @@ class DesktopControlServer(ThreadingHTTPServer):
         if coordinator is not None:
             coordinator.close()
             del self._request_context.coordinator
+        if self.dashboard is not None:
+            close = getattr(self.dashboard, "close_request_context", None)
+            if callable(close):
+                close()
 
 
 class DesktopControlHandler(BaseHTTPRequestHandler):

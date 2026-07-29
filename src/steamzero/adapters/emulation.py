@@ -341,24 +341,16 @@ class EmulationController:
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
         self._background_threads: dict[str, threading.Thread] = {}
-        self._owned_job_store: StateStore | None = None
-        self._jobs: JobManager
+        # DesktopControlServer atende cada pedido numa thread diferente. Uma
+        # conexão SQLite criada aqui, na thread que sobe a UI, não pode ser
+        # reutilizada pelo handler HTTP (sqlite3.ProgrammingError). O manager
+        # próprio é portanto criado sob demanda por thread e liberado no fim da
+        # requisição. Managers injetados continuam sob responsabilidade do
+        # chamador, preservando o contrato de testes e integrações.
+        self._provided_job_manager = job_manager
+        self._job_context = threading.local()
         if job_manager is not None:
-            self._jobs = job_manager
-        else:
-            job_store = store_factory()
-            job_store.migrate()
-            self._owned_job_store = job_store
-            self._jobs = JobManager(job_store)
-        self._jobs.register("media.search", self._media_search_job_handler)
-        self._jobs.register("media.global", self._media_global_job_handler)
-        self._jobs.register("extras.catalog.search", self._extra_catalog_search_job_handler)
-        self._jobs.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
-        self._jobs.register("rom.scan", self._rom_scan_job_handler)
-        self._jobs.register("library.scan", self._library_scan_job_handler)
-        self._jobs.register("library.bitrot", self._bitrot_job_handler)
-        for job_type in ("content.import", "nsz.convert", "steam.publish"):
-            self._jobs.register(job_type, self._completed_operation_job_handler)
+            self._register_job_handlers(job_manager)
         self._content = SwitchContentManager(paths.data_home() / "switch-content")
         self._preservation = PreservationService(
             self._content,
@@ -368,10 +360,50 @@ class EmulationController:
             ),
         )
 
+    @property
+    def _jobs(self) -> JobManager:
+        if self._provided_job_manager is not None:
+            return self._provided_job_manager
+        manager: JobManager | None = getattr(self._job_context, "manager", None)
+        if manager is None:
+            store = self._store_factory()
+            store.migrate()
+            manager = JobManager(store)
+            self._register_job_handlers(manager)
+            self._job_context.store = store
+            self._job_context.manager = manager
+        return manager
+
+    @_jobs.setter
+    def _jobs(self, manager: JobManager) -> None:
+        """Mantém a injeção histórica usada por integrações e testes."""
+        self.close_request_context()
+        self._provided_job_manager = manager
+
+    def _register_job_handlers(self, manager: JobManager) -> None:
+        manager.register("media.search", self._media_search_job_handler)
+        manager.register("media.global", self._media_global_job_handler)
+        manager.register("extras.catalog.search", self._extra_catalog_search_job_handler)
+        manager.register("mod.catalog.prepare", self._mod_catalog_prepare_job_handler)
+        manager.register("rom.scan", self._rom_scan_job_handler)
+        manager.register("library.scan", self._library_scan_job_handler)
+        manager.register("library.bitrot", self._bitrot_job_handler)
+        for job_type in ("content.import", "nsz.convert", "steam.publish"):
+            manager.register(job_type, self._completed_operation_job_handler)
+
+    def close_request_context(self) -> None:
+        """Fecha o State Store pertencente à thread HTTP atual."""
+        if self._provided_job_manager is not None:
+            return
+        store: StateStore | None = getattr(self._job_context, "store", None)
+        if store is not None:
+            store.close()
+            del self._job_context.store
+        if hasattr(self._job_context, "manager"):
+            del self._job_context.manager
+
     def close(self) -> None:
-        if self._owned_job_store is not None:
-            self._owned_job_store.close()
-            self._owned_job_store = None
+        self.close_request_context()
 
     @property
     def _roots_path(self) -> Path:

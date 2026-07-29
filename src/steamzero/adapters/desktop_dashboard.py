@@ -337,6 +337,12 @@ class DesktopDashboard:
         self._theme_prefs = ThemePreferenceManager()
         self._theme_editor = theme_editor or ThemeEditorManager()
 
+    def close_request_context(self) -> None:
+        """Libera recursos locais à thread usados pelo read model."""
+        close = getattr(self._emulation, "close_request_context", None)
+        if callable(close):
+            close()
+
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
         conflicts = self._conflicts(desktop_status)
         registry = self._registry_factory()
