@@ -170,6 +170,48 @@ class TranslationLog:
         }
 
 
+#: Chave discriminante de cada forma de valor NÃO resolvido.
+#:
+#: Vive aqui, junto dos construtores, e não no teste: um construtor novo cuja
+#: chave não entrasse neste conjunto passaria despercebido por qualquer
+#: verificação escrita longe daqui. ``test_every_constructor_is_discriminated``
+#: prova que o conjunto continua completo.
+PENDING_DISCRIMINATORS = frozenset({"token", "bind", "asset", "text", "setting", "when", "op"})
+
+#: Chaves acompanhantes que uma forma pendente pode carregar além do
+#: discriminante. Juntas com o discriminante, fecham a gramática.
+_COMPANION_KEYS = frozenset(
+    {
+        "fallback",
+        "format",
+        "then",
+        "otherwise",
+        "left",
+        "right",
+        "operands",
+        "operand",
+        "state",
+        "name",
+    }
+)
+
+
+def is_pending_value(value: Any) -> bool:
+    """Se o dicionário é uma forma de valor NÃO resolvido.
+
+    Presença de chave sozinha não basta: ``text`` é o discriminante de
+    ``localized()`` E o nome do campo de texto já resolvido no DTO do
+    renderizador. O que separa os dois é a gramática FECHADA — uma forma pendente
+    tem um discriminante e SÓ acompanhantes conhecidos, enquanto o DTO traz
+    ``id``, ``geometry`` e outras chaves que a gramática não admite.
+    """
+    if not isinstance(value, dict):
+        return False
+    if not PENDING_DISCRIMINATORS & set(value):
+        return False
+    return set(value) <= (PENDING_DISCRIMINATORS | _COMPANION_KEYS)
+
+
 def literal(value: Any) -> Any:
     """Valor escalar puro. Existe para o chamador declarar intenção."""
     return value
@@ -272,7 +314,10 @@ def is_dynamic(value: Any) -> bool:
     """
     if not isinstance(value, dict):
         return False
-    return bool({"bind", "token", "setting", "when"} & set(value))
+    # `asset` e `text` entram aqui porque também mudam sem o valor mudar: o
+    # registro de assets e o locale têm geração própria em `Generations`, e
+    # omiti-los faria um título traduzido não ser reavaliado ao trocar de idioma.
+    return bool(PENDING_DISCRIMINATORS & set(value))
 
 
 def referenced_paths(value: Any) -> set[str]:

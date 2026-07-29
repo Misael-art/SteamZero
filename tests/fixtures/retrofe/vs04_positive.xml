@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VS-04 — fixture positiva. Layout RetroFE plausível, não um arquivo sintético.
+
+  Cada texto isola um caso, e os nomes de atributo são os que o RetroFE usa de
+  verdade: fontColor sem '#', alignment em minúsculas, reloadableText com type.
+  Um arquivo inventado provaria que o compilador lê o que nós escrevemos, não o
+  que o corpus real contém.
+-->
+<layout width="1920" height="1080">
+
+  <!-- Cor literal, dimensão em pixel lógico, alinhamento à esquerda. -->
+  <text value="Chrono Trigger"
+        fontColor="F2F6FB"
+        font="Liberation Sans"
+        fontSize="48"
+        x="40" y="60" width="700" height="70"
+        alignment="left"/>
+
+  <!-- Cor com alfa: oito dígitos em RRGGBBAA, a convenção do ColorValue. -->
+  <text value="Square, 1995"
+        fontColor="F2F6FB80"
+        font="Liberation Sans"
+        fontSize="24"
+        x="0" y="140" width="100%" height="40"
+        alignment="center"/>
+
+  <!-- Alinhamento à direita, dimensão automática. -->
+  <text value="1 jogador"
+        fontColor="C8CDD6"
+        font="Liberation Sans"
+        fontSize="20"
+        x="40" y="190" width="auto" height="auto"
+        alignment="right"/>
+
+  <!-- Token de paleta: o valor referencia uma entrada declarada pelo tema,
+       e por isso vira token no IR em vez de literal. -->
+  <text value="Favoritos"
+        fontColor="accent"
+        font="Liberation Sans"
+        fontSize="28"
+        x="800" y="60"
+        alignment="left"/>
+
+  <!-- Condição: RetroFE expressa item selecionado com um segundo atributo.
+       Vira when(in_state("focused"), selecionada, normal). -->
+  <text value="Super Metroid"
+        fontColor="808080"
+        selectedFontColor="FFD166"
+        font="Liberation Sans"
+        fontSize="32"
+        x="800" y="120"
+        alignment="left"/>
+
+  <!-- Binding: o texto vem do read model, não do arquivo. -->
+  <reloadableText type="title"
+                  fontColor="F2F6FB"
+                  font="Liberation Sans"
+                  fontSize="36"
+                  x="800" y="180"
+                  alignment="left"/>
+
+  <!-- Texto localizado com fallback: a chave existe no catálogo. -->
+  <text value="@menu.play"
+        fontColor="F2F6FB"
+        font="Liberation Sans"
+        fontSize="26"
+        x="800" y="240"
+        alignment="center"/>
+
+  <!-- Fonte AUSENTE do pacote, com fallback declarado pelo tema.
+       O tema não recebe o que pediu, e isso precisa aparecer no veredito. -->
+  <text value="Modo Arcade"
+        fontColor="F2F6FB"
+        font="Gilroy Display"
+        fontSize="22"
+        x="800" y="300"
+        alignment="left"/>
+
+</layout>

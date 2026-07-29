@@ -11,6 +11,7 @@ COVERAGE := $(VENV)/bin/coverage
 
 help:
 	@echo "Alvos: venv lint format-check typecheck boundaries test cov check"
+	@echo "Visual: qml-visual check-qml-goldens update-qml-goldens"
 
 venv:
 	python3 -m venv $(VENV)
@@ -48,3 +49,12 @@ check: format-check lint boundaries independence typecheck cov
 
 clean:
 	rm -rf .mypy_cache .ruff_cache .pytest_cache .hypothesis htmlcov .coverage
+
+qml-visual: ## Gate visual: renderiza os cenários e compara com as baselines
+	$(VENV)/bin/pytest tests/integration/test_qml_visual_capture.py -q
+
+update-qml-goldens: ## Regrava as baselines visuais (exige revisão do diff no commit)
+	$(PY) tools/update_qml_goldens.py --write
+
+check-qml-goldens: ## Relata divergências visuais sem regravar nada
+	$(PY) tools/update_qml_goldens.py --check

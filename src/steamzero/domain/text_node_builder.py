@@ -16,6 +16,8 @@ conhecimento o obrigaria a reimplementar layout.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -79,6 +81,23 @@ class LayoutBox:
     y: float = 0.0
 
 
+def _handle_id(family: str) -> str:
+    """Identificador OPACO para a gramática de asset.
+
+    Usar a família crua parecia natural e estava errado: "Liberation Sans" tem
+    espaço, e a gramática `asset://<namespace>/<id>` não aceita — o handle
+    passava na validação com "Gilroy" e explodia com qualquer nome real de duas
+    palavras. O defeito só apareceu quando uma fixture usou uma fonte de
+    verdade.
+
+    O handle é opaco por contrato, então nada se perde ao derivá-lo: o nome
+    legível continua em `requested_family` e `resolved_family`.
+    """
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", family).strip("-")
+    digest = hashlib.sha256(family.encode("utf-8")).hexdigest()[:8]
+    return f"{slug[:96] or 'font'}-{digest}"
+
+
 class FontProvider:
     """Emite ``FontAssetHandle`` a partir da chave lógica declarada pelo tema.
 
@@ -105,7 +124,7 @@ class FontProvider:
             family = self._packaged[key]
             return FontAssetHandle(
                 key=key,
-                handle=f"font:{key}",
+                handle=f"asset://font/{_handle_id(key)}",
                 origin=FontOrigin.PACKAGED,
                 requested_family=family,
                 resolved_family=family,
@@ -116,7 +135,7 @@ class FontProvider:
             if candidate in self._packaged.values():
                 return FontAssetHandle(
                     key=key,
-                    handle=f"font:{candidate}",
+                    handle=f"asset://font/{_handle_id(candidate)}",
                     origin=FontOrigin.FALLBACK_DECLARED,
                     requested_family=key,
                     resolved_family=candidate,
@@ -124,7 +143,7 @@ class FontProvider:
                 )
         return FontAssetHandle(
             key=key,
-            handle=f"font:{self._system_family}",
+            handle=f"asset://font/{_handle_id(self._system_family)}",
             origin=FontOrigin.FALLBACK_SYSTEM,
             requested_family=key,
             resolved_family=self._system_family,
@@ -155,10 +174,18 @@ def build_text_node(
     element: ElementContract,
     *,
     resolver: Resolver,
-    box: LayoutBox,
+    box: LayoutBox | None = None,
     fonts: FontProvider | None = None,
 ) -> ResolvedTextNode:
-    """Resolve um contrato de texto até valores finais."""
+    """Resolve um contrato de texto até valores finais.
+
+    ``box`` é aceito por compatibilidade e, quando informado, define a caixa de
+    referência do resolver. A fonte da verdade é
+    ``ResolutionContext.generations.reference_width/height``: mantê-la num só
+    lugar é o que permite invalidar por eixo quando a resolução muda.
+    """
+    if box is not None:
+        resolver.set_reference_box(box.width, box.height)
     provider = fonts or FontProvider()
     diagnostics_before = len(resolver.diagnostics.entries)
 
@@ -195,15 +222,23 @@ def build_text_node(
     )
 
     layout = element.layout
+    # Passa pelo resolver, e não pelo conversor local, para que a dependência da
+    # caixa de referência entre no GRAFO. Converter aqui produzia o número certo
+    # e deixava o layout stale: trocar a resolução não invalidava nada, porque
+    # nada sabia que aquele valor dependia da largura da view.
     geometry = ResolvedGeometry(
-        x=_dimension(layout.x, box.width) or 0.0,
-        y=_dimension(layout.y, box.height) or 0.0,
-        width=_dimension(layout.width, box.width, default=0.0)
-        if layout.width is not None
-        else None,
-        height=_dimension(layout.height, box.height, default=0.0)
-        if layout.height is not None
-        else None,
+        x=resolver.resolve_dimension(layout.x, axis="width", target=f"{element.id}.x") or 0.0,
+        y=resolver.resolve_dimension(layout.y, axis="height", target=f"{element.id}.y") or 0.0,
+        width=(
+            resolver.resolve_dimension(layout.width, axis="width", target=f"{element.id}.width")
+            if layout.width is not None
+            else None
+        ),
+        height=(
+            resolver.resolve_dimension(layout.height, axis="height", target=f"{element.id}.height")
+            if layout.height is not None
+            else None
+        ),
     )
 
     horizontal = TextAlignment.START

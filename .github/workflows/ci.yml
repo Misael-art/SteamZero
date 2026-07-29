@@ -83,6 +83,7 @@ jobs:
         run: |
           mkdir -p build
           pytest \
+            -m "not visual" \
             --cov=steamzero \
             --cov-report=term-missing \
             --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
@@ -227,3 +228,74 @@ jobs:
           /tmp/steamzero-distro/bin/python -m pip check
           /tmp/steamzero-distro/bin/steamzero --version
           /tmp/steamzero-distro/bin/steamzero doctor --json
+
+  qml-visual-linux:
+    # Gate visual. Nasce SEM `continue-on-error`, e a diferença não é estilo.
+    #
+    # Roda dentro da imagem CANÔNICA, fixada por digest. O ambiente é o
+    # contrato: as baselines não comparam "o texto renderizado", comparam pixels
+    # produzidos por uma combinação exata de Qt, FreeType, HarfBuzz e fontconfig.
+    #
+    # O runner do Ubuntu não serve, e foi verificado no CI: `/usr/lib/qt6/bin/`
+    # traz qmldom, qmllint, qmltestrunner e mais nove binários, e NENHUM `qml`.
+    # A provisão de Qt aqui nunca funcionou — o `skipif` dos harnesses legados
+    # escondeu isso desde sempre. E mesmo que servisse, o Ubuntu 24.04 traz Qt
+    # 6.4.2 enquanto as baselines vieram de 6.11.1.
+    name: Gate visual QML (Linux)
+    runs-on: ubuntu-latest
+    container:
+      # Digest, nunca tag. Tag é mutável, e a autoridade do gate é o digest.
+      # Publicado por `.github/workflows/qml-visual-image.yml`.
+      image: ghcr.io/misael-art/steamzero-qml-visual@sha256:8e87d2c009e3b640844faabbc027263898f588f0c4478c0e0dc871d55e1ee5ac
+    steps:
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Conferir o ambiente contra o lock
+        # ANTES de renderizar. Descobrir a divergência depois faria diferença de
+        # AMBIENTE aparecer como diferença de pixel, e quem investiga procuraria
+        # defeito no código.
+        run: |
+          cat /opt/steamzero-visual/environment.txt
+          python - <<'CHECK'
+          import json, pathlib, sys
+          lock = json.loads(pathlib.Path("ci/qml-visual/environment.lock.json").read_text())
+          actual = pathlib.Path("/opt/steamzero-visual/environment.txt").read_text()
+          problems = [
+              f"{label}: esperado {expected!r}"
+              for label, expected in (
+                  ("qml", lock["qt"]["runtimeVersion"]),
+                  ("qmlSha256", lock["qt"]["qmlSha256"]),
+                  ("qt6-declarative", lock["qt"]["qt6Declarative"]),
+                  ("fontconfig", lock["textStack"]["fontconfig"]),
+                  ("freetype2", lock["textStack"]["freetype2"]),
+                  ("harfbuzz", lock["textStack"]["harfbuzz"]),
+              )
+              if expected not in actual
+          ]
+          if problems:
+              print("QML-VISUAL-ENVIRONMENT-001: ambiente diverge de environment.lock.json")
+              print("\n".join(problems))
+              sys.exit(1)
+          print("ambiente confere com o lock")
+          CHECK
+      - name: Dependências verificadas por hash
+        # Container efêmero: instalar no python do sistema é seguro aqui, e o
+        # Manjaro não traz `ensurepip` para criar venv.
+        run: pip install --break-system-packages --require-hashes -r requirements-dev.lock
+      - name: Gate visual
+        run: pytest -m visual --tb=short -q
+      - name: Publicar artefatos visuais
+        # always(): em falha estes arquivos são a ÚNICA forma de descobrir o que
+        # aconteceu numa máquina que não é a sua.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qml-visual-artifacts
+          path: |
+            /tmp/pytest-of-*/**/*.png
+            /tmp/pytest-of-*/**/*.json
+            /tmp/pytest-of-*/**/*.txt
+          if-no-files-found: warn
+          retention-days: 14

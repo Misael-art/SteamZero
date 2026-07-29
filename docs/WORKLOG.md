@@ -3168,3 +3168,64 @@ InputPlumber (decisão adiada) e o estado será `degraded` com causa registrada.
 
 **Gates:** 580 passed, Ruff, mypy estrito, fronteiras, independência e
 `qmllint` verdes.
+
+## 2026-07-28 — Sessão 36: fatia vertical do motor de temas (VS-01 a VS-07)
+
+Fechada a fatia vertical de texto do P0-03: uma declaração real do RetroFE
+atravessa o pipeline inteiro até a captura, sem atalho em nenhum ponto.
+Handoff completo em `docs/12-roadmap/P0-03-HANDOFF.md`.
+
+| etapa | commit | entrega |
+|---|---|---|
+| VS-01 correções | `5e4b516` | gramática fechada de valor pendente e handle de asset |
+| VS-02 | `f6e0182` | `ResolvedTextNode` → `QmlTextRenderModel` → `SceneText.qml` |
+| — | `354b6d6` | `DimensionValue` fechado na construção e no parsing |
+| — | `08bb787` | `AdaptationResult`: falha do adapter deixa de ser ignorável |
+| — | `f544ca1` | degradação registra valor declarado e resolvido |
+| VS-03 | `7850461` | harness de captura QML próprio + job `qml-visual-linux` |
+| — | `16efa46` | reserva de máscaras para o P0-08 |
+| — | `639370c` | handles opacos + regressões dos achados do VS-03 |
+| VS-04 | `4faa843` | fatia vertical RetroFE ponta a ponta |
+| — | `90dba92` | política de namespace antes do registro |
+| VS-05 | `37e9983` | round-trip semântico, contabilidade, diagnósticos |
+| VS-06 | `b8ba02c` | cache por dependência, invalidação seletiva, lifecycle |
+| VS-06.1 | `76e0ec2` | invalidação de layout dependente de display |
+| VIS-01 | `1d9a52e` | Liberation Sans 2.1.5 empacotada |
+| VS-07 | `6fb2a75` | dez baselines visuais versionadas |
+
+Resultado nas duas fixtures RetroFE: 65 e 73 propriedades, cobertura 100%, zero
+sem julgamento, zero duplicata, zero diferença semântica no round-trip, zero
+valor dinâmico congelado.
+
+Orçamentos de recomputação medidos em conjuntos exatos — `token:color.accent`
+toca `{text-4.color}` e nada mais; largura de display toca só percentuais
+horizontais.
+
+**Defeitos encontrados por medição, não por revisão.** Cada um tem regressão:
+
+- `font.family` ecoa o valor atribuído — a checagem de fonte era vazia, e uma
+  família inexistente produzia o mesmo `contentWidth` que a real;
+- a Liberation Sans do SISTEMA sombreava a empacotada mesmo com o arquivo certo
+  carregado (320.08 → 323 ao isolar o fontconfig);
+- `ignoredByPolicy` era inalcançável: a checagem de namespace proibido vinha
+  depois da busca no registro e nunca rodava;
+- `op == "state"` não registrava dependência, mascarado pela chave de cache
+  antiga que invalidava tudo;
+- a chave de cache não continha a expressão: trocar `title.color` de um token
+  para outro servia o valor antigo;
+- `asset://font/{família}` quebrava com qualquer nome de duas palavras;
+- o harness aceitava valor pendente e o QML renderizava `[object Object]`;
+- `getbbox()` do Pillow devolvia `None` com 512 pixels alterados;
+- RHI sob `offscreen` consumia o timeout inteiro reportando a causa errada;
+- Regular e Italic da Liberation têm largura idêntica — largura não prova que a
+  face itálica carregou.
+
+Primeiro asset binário de terceiro redistribuído no repositório: Liberation Sans
+2.1.5, `OFL-1.1-RFN`, quatro faces, do artefato oficial. Inventariado em
+`docs/11-legal/THIRD-PARTY-NOTICES.md` conforme a pendência G7 exigia.
+
+Lacunas registradas nesta sessão: G13 (migração dos dez harnesses legados),
+G14 (fechada pelo VIS-01), G15 (acessibilidade sem consumidor real).
+
+Gates ao final: pytest 3145, ruff, ruff format, mypy 187, independence,
+boundaries, qml-visual (10 baselines).

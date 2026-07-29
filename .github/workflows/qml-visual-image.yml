@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: qml-visual-image
+
+# Reconstrói quando a DEFINIÇÃO da imagem muda, e só então. Isso não torna o
+# ambiente móvel: o gate continua fixando um digest, e um digest novo só passa a
+# valer quando alguém o escreve em ci.yml deliberadamente.
+#
+# `workflow_dispatch` sozinho não bastaria: o GitHub só despacha workflow que
+# exista na branch PADRÃO, e a padrão deste repositório ainda é a antiga
+# `codex/steam-gameplay-readiness-ui`.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "ci/qml-visual/**"
+      - ".github/workflows/qml-visual-image.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Publicar imagem canônica do gate visual
+    runs-on: ubuntu-latest
+    env:
+      # GHCR exige nome de repositório em minúsculas, e o dono deste é
+      # `Misael-art`. Sem isto o build falha em "repository name must be
+      # lowercase" antes de qualquer coisa útil acontecer.
+      IMAGE: ghcr.io/misael-art/steamzero-qml-visual
+    steps:
+      - name: Checkout limpo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Autenticar na GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Construir
+        run: |
+          docker build -f ci/qml-visual/Containerfile \
+            -t "$IMAGE:build" .
+      - name: Conferir o ambiente contra o lock
+        # A imagem que sai daqui precisa corresponder ao que o repositório diz
+        # que ela é. Publicar uma imagem divergente do lock faria o gate comparar
+        # baselines contra um ambiente que ninguém declarou.
+        run: |
+          docker run --rm "$IMAGE:build" \
+            cat /opt/steamzero-visual/environment.txt | tee /tmp/actual.txt
+          python - <<'PY'
+          import json, pathlib, sys
+          lock = json.loads(pathlib.Path("ci/qml-visual/environment.lock.json").read_text())
+          actual = pathlib.Path("/tmp/actual.txt").read_text()
+          problems = []
+          for label, expected in (
+              ("qml", lock["qt"]["runtimeVersion"]),
+              ("qt6-declarative", lock["qt"]["qt6Declarative"]),
+              ("fontconfig", lock["textStack"]["fontconfig"]),
+              ("freetype2", lock["textStack"]["freetype2"]),
+              ("harfbuzz", lock["textStack"]["harfbuzz"]),
+          ):
+              if expected not in actual:
+                  problems.append(f"{label}: esperado {expected!r}")
+          if problems:
+              print("QML-VISUAL-ENVIRONMENT-001: imagem diverge de environment.lock.json")
+              print("\n".join(problems))
+              print("--- ambiente real ---")
+              print(actual)
+              sys.exit(1)
+          print("imagem confere com o lock")
+          PY
+      - name: Publicar e imprimir o digest
+        run: |
+          docker push "$IMAGE:build"
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE:build")
+          echo "## Imagem publicada" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$digest" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "Fixe este digest em .github/workflows/ci.yml, job qml-visual-linux." \
+            >> "$GITHUB_STEP_SUMMARY"

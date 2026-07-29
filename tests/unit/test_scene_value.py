@@ -14,6 +14,7 @@ descartado em silêncio.
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -222,3 +223,74 @@ class TestTranslationLog:
         report = log.to_dict()
         assert set(report) == {"fidelity", "counts", "translations"}
         assert report["translations"][0]["target"] == "color"
+
+
+_STATE = sorted(value.ELEMENT_STATES)[0]
+
+#: Uma amostra por construtor público. O nome é o do construtor, para que o
+#: teste de cobertura possa cruzar com o que o módulo realmente exporta.
+_EVERY_SHAPE: tuple[tuple[str, dict[str, object]], ...] = (
+    ("token", value.token("a.b")),
+    ("bind", value.bind("game.title", fmt="upper", fallback="x")),
+    ("asset", value.asset("assets/logo.png")),
+    ("localized", value.localized("menu.play", fallback="Play")),
+    ("setting", value.setting("showClock")),
+    ("when", value.when(value.compare("equals", 1, 1), 2, 3)),
+    ("compare", value.compare("greaterThan", value.bind("game.year"), 1990)),
+    ("all_of", value.all_of(value.in_state(_STATE))),
+    ("any_of", value.any_of(value.in_state(_STATE))),
+    ("negate", value.negate(value.has_capability("video"))),
+    ("in_state", value.in_state(_STATE)),
+    ("has_capability", value.has_capability("video")),
+)
+
+#: Funções públicas do módulo que NÃO constroem forma pendente.
+_NOT_CONSTRUCTORS = frozenset({"literal", "is_dynamic", "is_pending_value", "referenced_paths"})
+
+
+class TestPendingGrammarIsClosed:
+    """A gramática precisa continuar completa quando alguém somar um construtor.
+
+    Sem isto, um construtor novo emitiria uma forma que `is_pending_value` não
+    reconhece — e ela atravessaria a fronteira do renderizador sem ninguém notar,
+    que é exatamente o defeito que o DTO resolvido existe para impedir.
+    """
+
+    @pytest.mark.parametrize(("name", "shape"), _EVERY_SHAPE, ids=[n for n, _ in _EVERY_SHAPE])
+    def test_every_constructor_is_discriminated(self, name: str, shape: dict[str, object]) -> None:
+        assert value.PENDING_DISCRIMINATORS & set(shape), (
+            f"{name} emite forma sem discriminante conhecido: {shape!r}"
+        )
+        assert value.is_pending_value(shape)
+
+    def test_every_public_constructor_is_covered(self) -> None:
+        """O parametrize acima não pode esquecer um construtor novo."""
+        source = ast.parse(Path(value.__file__).read_text(encoding="utf-8"))
+        constructors = {
+            node.name
+            for node in source.body
+            if isinstance(node, ast.FunctionDef)
+            and not node.name.startswith("_")
+            and node.name not in _NOT_CONSTRUCTORS
+        }
+        covered = {name for name, _ in _EVERY_SHAPE}
+        assert constructors <= covered, (
+            f"construtor sem cobertura: {sorted(constructors - covered)}"
+        )
+
+    @pytest.mark.parametrize(
+        "resolved",
+        [
+            "#ff0000",
+            42,
+            True,
+            None,
+            {"x": 0.0, "y": 0.0},
+            # O campo de texto já resolvido do DTO. A checagem por CHAVE `text`
+            # reprovaria isto; a gramática fechada não.
+            {"id": "t", "text": "Token Ring", "visible": True},
+            {"key": "Gilroy", "origin": "packaged"},
+        ],
+    )
+    def test_resolved_shapes_are_not_pending(self, resolved: object) -> None:
+        assert value.is_pending_value(resolved) is False

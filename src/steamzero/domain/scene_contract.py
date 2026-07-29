@@ -24,6 +24,8 @@ veredito, e o veredito carrega a origem no arquivo.
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -39,20 +41,46 @@ class DimensionUnit(StrEnum):
     AUTO = "auto"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class DimensionValue:
-    """Uma medida. ``auto`` não carrega número; as demais carregam."""
+    """Uma medida. ``auto`` não carrega número; as demais carregam.
+
+    Construção por palavra-chave, e na prática pelas fábricas. Posicional era um
+    convite ao erro: os campos são ``unit, value``, mas a leitura natural de
+    ``DimensionValue(50, PERCENT)`` é a ordem inversa — e o resultado passava
+    pela validação para só explodir na conversão para float, longe da causa.
+
+    O que NÃO mora aqui: regra contextual. "Largura não pode ser negativa"
+    depende da propriedade que recebe a medida, não da medida — um deslocamento
+    negativo é legítimo. Essa regra pertence ao ``PropertyTypeRegistry``. Os
+    limites abaixo são sanidade absoluta, não contexto.
+    """
 
     unit: DimensionUnit
     value: float | None = None
 
     def __post_init__(self) -> None:
+        # O conjunto só é fechado se alguém fechar. Sem esta checagem, um
+        # `unit="em"` vindo de um tema importado passa por todas as comparações
+        # `is` abaixo sem casar com nenhuma, sobrevive à construção, e só falha
+        # na conversão para float — longe da causa e sem dizer qual tema errou.
+        if not isinstance(self.unit, DimensionUnit):
+            raise ValueError(
+                f"unidade fora do contrato: {self.unit!r}; "
+                f"conhecidas: {[member.value for member in DimensionUnit]}"
+            )
         if self.unit is DimensionUnit.AUTO:
             if self.value is not None:
                 raise ValueError("auto não aceita valor numérico")
             return
         if self.value is None:
             raise ValueError(f"{self.unit.value} exige valor")
+        # `bool` é subclasse de `int`, então `percent(True)` chegaria aqui como
+        # 1.0 e ninguém saberia que o tema declarou um booleano.
+        if isinstance(self.value, bool) or not isinstance(self.value, int | float):
+            raise ValueError(f"{self.unit.value} exige número, recebeu {self.value!r}")
+        if not math.isfinite(self.value):
+            raise ValueError(f"{self.unit.value} exige número finito, recebeu {self.value!r}")
         if self.unit is DimensionUnit.PERCENT and not -1000.0 <= self.value <= 1000.0:
             raise ValueError(f"percentual fora da faixa: {self.value}")
         if self.unit is DimensionUnit.LOGICAL_PX and not -16384.0 <= self.value <= 16384.0:
@@ -65,16 +93,33 @@ class DimensionValue:
         return payload
 
     @classmethod
-    def px(cls, value: float) -> DimensionValue:
-        return cls(DimensionUnit.LOGICAL_PX, value)
+    def from_dict(cls, payload: Mapping[str, Any]) -> DimensionValue:
+        """Entrada de parsing. Fecha o mesmo conjunto na desserialização.
+
+        Sem isto, um payload com ``"kind": "em"`` entraria pelo round-trip sem
+        passar pela validação da construção.
+        """
+        raw = payload.get("kind")
+        try:
+            unit = DimensionUnit(str(raw))
+        except ValueError:
+            raise ValueError(
+                f"unidade fora do contrato: {raw!r}; "
+                f"conhecidas: {[member.value for member in DimensionUnit]}"
+            ) from None
+        return cls(unit=unit, value=payload.get("value"))
+
+    @classmethod
+    def logical_px(cls, value: float) -> DimensionValue:
+        return cls(unit=DimensionUnit.LOGICAL_PX, value=value)
 
     @classmethod
     def percent(cls, value: float) -> DimensionValue:
-        return cls(DimensionUnit.PERCENT, value)
+        return cls(unit=DimensionUnit.PERCENT, value=value)
 
     @classmethod
     def auto(cls) -> DimensionValue:
-        return cls(DimensionUnit.AUTO)
+        return cls(unit=DimensionUnit.AUTO)
 
 
 @dataclass(frozen=True)
@@ -386,11 +431,34 @@ class TransformSpec:
 
 @dataclass
 class AppearanceSpec:
+    """Aparência do nó.
+
+    ``clip`` aqui é booleano, herdado do QML: recorta ou não recorta, sempre
+    retangular. Isso NÃO cobre canto arredondado, avatar circular nem cover que
+    desaparece em degradê — e descobrir isso depois de congelar o contrato
+    obrigaria a migrar todo tema já importado.
+
+    Por isso ``clip_spec`` e ``mask_stack`` existem desde já, reservados e não
+    implementados. A implementação é do P0-08; o espaço no contrato é agora,
+    porque acrescentar campo é barato e mudar a forma de um campo existente não.
+    """
+
     background: Any = None
     border: Any = None
     border_radius: Any = None
     shadow: Any = None
     blend_mode: str | None = None
+
+    #: RESERVADO — P0-08. Recorte geométrico, além do booleano `clip`.
+    #: Ver `docs/03-architecture/clip-and-mask-contract.md`.
+    clip_spec: Any = None
+    #: RESERVADO — P0-08. Pilha ordenada de máscaras (alpha/luminância).
+    mask_stack: Any = None
+    #: RESERVADO — P0-08. Região de INTERAÇÃO, separada da máscara visual.
+    #: Uma cover circular não deve encolher o alvo de toque: a máscara é
+    #: aparência, o hit test é acessibilidade, e confundir os dois torna a
+    #: interface bonita e inoperável.
+    hit_test_shape: Any = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -400,6 +468,9 @@ class AppearanceSpec:
                 "borderRadius": _dim(self.border_radius),
                 "shadow": self.shadow,
                 "blendMode": self.blend_mode,
+                "clipSpec": self.clip_spec,
+                "maskStack": self.mask_stack,
+                "hitTestShape": self.hit_test_shape,
             }
         )
 
@@ -407,6 +478,41 @@ class AppearanceSpec:
 #: Namespaces previstos e NÃO implementados nesta entrega. Existem no contrato
 #: para que acrescentá-los depois não exija redesenhar o elemento.
 RESERVED_NAMESPACES = ("effects", "stateVariants", "interaction", "accessibility", "performance")
+
+#: Tipos reservados para o P0-08 — "View Transitions and Basic Effect Stack".
+#:
+#: Declarados aqui como nomes, não como estruturas: uma implementação parcial
+#: seria pior que a ausência, porque temas começariam a depender dela e a forma
+#: final teria de acomodar o que foi improvisado. Ver
+#: `docs/03-architecture/clip-and-mask-contract.md` para o contrato completo.
+RESERVED_MASK_TYPES = (
+    "ClipSpec",
+    "MaskSpec",
+    "MaskStack",
+    "HitTestShape",
+    "ViewTransitionMaskSpec",
+)
+
+#: Capabilities que o P0-08 vai negociar. Registradas agora para que a
+#: negociação de capability já tenha o vocabulário, e um tema que peça algo
+#: indisponível receba `fallback`/`approximated` em vez de falhar sem nome.
+RESERVED_MASK_CAPABILITIES = (
+    "graphics.clip.rect",
+    "graphics.clip.roundedRect",
+    "graphics.clip.circle",
+    "graphics.clip.path",
+    "graphics.mask.alpha",
+    "graphics.mask.luminance",
+    "graphics.mask.gradient",
+    "graphics.mask.vector",
+    "graphics.mask.element",
+    "graphics.mask.composite",
+    "graphics.mask.animated",
+    "transition.masked",
+    "transition.masked.circle",
+    "renderer.offscreenLayer",
+    "renderer.rhi",
+)
 
 
 @dataclass

@@ -16,6 +16,13 @@ import pytest
 QML = shutil.which("qml6")
 ROOT = Path(__file__).resolve().parents[2]
 
+#: Ambiente visual ausente. Não é motivo para verde.
+#:
+#: Um `skip` aqui produz suíte verde num host onde NADA visual foi verificado —
+#: e foi exatamente assim que a regressão de ícones da a37 atravessou os gates.
+#: Os harnesses acima ainda usam `skipif`; o VS-03 converte todos.
+DIAG_VISUAL_ENVIRONMENT = "QML-VISUAL-ENVIRONMENT-001"
+
 
 def _qml_environment() -> dict[str, str]:
     """Keep Qt diagnostics observable even when the host routes them to journald."""
@@ -171,3 +178,33 @@ def test_qml_emulation_error_card_via_transactional_failure(
         check=False,
     )
     _assert_qml_clean(completed, "Harness ErrorCard transacional")
+
+
+@pytest.mark.visual
+def test_scene_text_renders_what_the_adapter_emits() -> None:
+    """VS-02 — o Qt precisa ACEITAR o payload do adapter, não só recebê-lo.
+
+    Os testes em Python provam o mapeamento. Nenhum deles prova que
+    `Text["AlignHCenter"]` resolve para o enum do Qt, que `font.weight: 600` é
+    aceito, ou que `#80112233` não vira "Invalid property assignment" — o mesmo
+    erro que já derrubou `rgba(212,84,84,0.08)` neste repositório.
+
+    Ambiente sem Qt reprova explicitamente. Verde só existe quando alguém de fato
+    renderizou.
+    """
+    if QML is None:
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente. O contrato entre o adapter "
+            "e SceneText.qml não pode ser verificado sem runtime QML, e declarar "
+            "verde sem verificar é o que deixou a regressão de ícones passar."
+        )
+    completed = subprocess.run(
+        [str(QML), "tests/qml/check_scene_text.qml"],
+        cwd=ROOT,
+        env=_qml_environment(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    _assert_qml_clean(completed, "check_scene_text.qml")

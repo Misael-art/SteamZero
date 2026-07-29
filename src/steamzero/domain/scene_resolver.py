@@ -23,11 +23,14 @@ a pergunta errada — pior que não ter cache.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+import threading
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
+from steamzero.domain.scene_contract import DimensionUnit, DimensionValue
 from steamzero.domain.scene_registry import Registries, ResolutionPhase
 from steamzero.domain.scene_typing import (
     MAX_FALLBACK_DEPTH,
@@ -143,6 +146,12 @@ class Generations:
     accessibility: str = "default"
     display: str = "default"
     state_variant: str = "default"
+    #: Caixa de referência para percentuais. Entra como VALOR, não como
+    #: contador: 1920 → 1280 → 1920 precisa devolver o resultado original, e um
+    #: contador monotônico faria a terceira medida parecer diferente da
+    #: primeira.
+    reference_width: float = 1920.0
+    reference_height: float = 1080.0
 
     def key(self) -> tuple[Any, ...]:
         return (
@@ -157,6 +166,53 @@ class Generations:
             self.display,
             self.state_variant,
         )
+
+    def fingerprint(self, dependencies: frozenset[str]) -> tuple[Any, ...]:
+        """Só as gerações que ESTAS dependências usam.
+
+        Uma propriedade sem dependência nenhuma tem impressão vazia: continua
+        válida por qualquer mudança de geração, porque nada que mudou a alcança.
+        O tema entra sempre — recarregar o tema troca o documento inteiro.
+        """
+        names: set[str] = {"theme"}
+        for dependency in dependencies:
+            specific = LAYOUT_DEPENDENCIES.get(dependency)
+            if specific is not None:
+                names.update(specific)
+                continue
+            kind = dependency.split(":", 1)[0]
+            names.update(GENERATION_BY_KIND.get(kind, ()))
+        return tuple(sorted((name, getattr(self, name)) for name in names))
+
+
+#: Qual geração governa cada tipo de dependência.
+#:
+#: É o que permite a chave de cache olhar SÓ o que a propriedade usa. Sem isto,
+#: a chave inclui todas as gerações e um bump em `tokens` torna inalcançável o
+#: cache de toda propriedade da cena — inclusive as que só têm literais. Uma
+#: mudança de cor recompunha as 65 propriedades da fixture.
+GENERATION_BY_KIND: dict[str, tuple[str, ...]] = {
+    "token": ("tokens",),
+    "bind": ("read_model",),
+    "setting": ("theme_settings",),
+    "i18n": ("translation_catalog", "locale"),
+    "asset": ("asset_registry",),
+    "state": ("state_variant",),
+    "capability": ("theme",),
+    "display": ("display",),
+    "a11y": ("accessibility",),
+}
+
+#: Dependências de layout, com geração POR EIXO.
+#:
+#: Separar os eixos não é refinamento: uma janela que muda de 1920x1080 para
+#: 1280x1080 mudou só a largura, e invalidar as alturas percentuais junto
+#: recomputaria metade da cena por nada. A chave é o caminho completo, não o
+#: prefixo, porque `layout:` sozinho não distinguiria os eixos.
+LAYOUT_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "layout:referenceWidth": ("reference_width",),
+    "layout:referenceHeight": ("reference_height",),
+}
 
 
 @dataclass
@@ -221,13 +277,48 @@ class DependencyGraph:
     _dependents: dict[str, set[str]] = field(default_factory=dict)
     _dependencies: dict[str, frozenset[str]] = field(default_factory=dict)
 
-    def record(self, target: str, dependencies: frozenset[str]) -> None:
+    def record(self, target: str, dependencies: frozenset[str]) -> int:
+        """Atualiza as arestas do alvo. Devolve quantas foram REMOVIDAS.
+
+        Remover as antigas é o que impede aresta órfã. Sem isso, uma propriedade
+        que trocou de `token A` para `token B` continuaria sendo invalidada por
+        A para sempre — recomputação inútil que cresce a cada mudança de tema.
+        """
         previous = self._dependencies.get(target, frozenset())
-        for gone in previous - dependencies:
-            self._dependents.get(gone, set()).discard(target)
+        removed = previous - dependencies
+        for gone in removed:
+            dependents = self._dependents.get(gone)
+            if dependents is None:
+                continue
+            dependents.discard(target)
+            if not dependents:
+                # Chave vazia mantida faria o grafo crescer monotonicamente ao
+                # longo de ciclos de carga e descarga.
+                del self._dependents[gone]
         for added in dependencies - previous:
             self._dependents.setdefault(added, set()).add(target)
         self._dependencies[target] = dependencies
+        return len(removed)
+
+    def forget(self, target: str) -> int:
+        """Remove o alvo e todas as arestas que apontam para ele."""
+        previous = self._dependencies.pop(target, frozenset())
+        for gone in previous:
+            dependents = self._dependents.get(gone)
+            if dependents is None:
+                continue
+            dependents.discard(target)
+            if not dependents:
+                del self._dependents[gone]
+        return len(previous)
+
+    @property
+    def edge_count(self) -> int:
+        return sum(len(targets) for targets in self._dependents.values())
+
+    @property
+    def targets(self) -> frozenset[str]:
+        return frozenset(self._dependencies)
 
     def dependents_of(self, dependency: str) -> frozenset[str]:
         """Alvos afetados, transitivamente.
@@ -278,12 +369,24 @@ class DiagnosticSink:
     Sem deduplicação, uma condição incompatível numa lista de 500 itens emitiria
     500 avisos por frame — o log deixaria de ser legível justamente quando é mais
     necessário.
+
+    Há DUAS coleções, e a distinção é o ponto:
+
+    ``entries`` é histórico. Serve ao relatório de importação, e apagar dali
+    perderia a informação de que uma fonte esteve ausente durante a conversão.
+
+    ``active`` é o estado AGORA. Quando a fonte é instalada e a propriedade é
+    reavaliada com sucesso, o aviso sai daqui. Sem essa separação, ou o painel
+    mostra para sempre um problema já corrigido, ou o relatório perde o que
+    aconteceu na importação. Os dois são ruins e são o mesmo bug.
     """
 
     entries: list[Diagnostic] = field(default_factory=list)
     _seen: set[tuple[Any, ...]] = field(default_factory=set, repr=False)
+    _active: dict[tuple[str, str], Diagnostic] = field(default_factory=dict, repr=False)
 
     def emit(self, diagnostic: Diagnostic, generation: tuple[Any, ...]) -> bool:
+        self._active[(diagnostic.code, diagnostic.target)] = diagnostic
         key = (diagnostic.code, diagnostic.target, generation)
         if key in self._seen:
             return False
@@ -291,31 +394,101 @@ class DiagnosticSink:
         self.entries.append(diagnostic)
         return True
 
+    def resolve_target(self, target: str) -> tuple[Diagnostic, ...]:
+        """A propriedade foi reavaliada com sucesso: seus avisos saem do ativo.
+
+        O histórico não é tocado. Um aviso que sobrevive à correção treina quem
+        olha o painel a ignorar avisos.
+        """
+        gone = tuple(item for (_code, key), item in self._active.items() if key == target)
+        for code, key in [pair for pair in self._active if pair[1] == target]:
+            del self._active[(code, key)]
+        return gone
+
+    def clear_active(self) -> None:
+        """Descarrega o estado atual, preservando o histórico."""
+        self._active.clear()
+
+    @property
+    def active(self) -> tuple[Diagnostic, ...]:
+        return tuple(self._active.values())
+
     def to_list(self) -> list[dict[str, Any]]:
         return [entry.to_dict() for entry in self.entries]
 
 
 @dataclass
 class ResolverStats:
-    """Contadores para provar que o cache funciona."""
+    """Contadores para provar que o cache funciona.
+
+    Existem para que o teste possa afirmar o CONJUNTO exato de propriedades
+    recomputadas, e não apenas `recomputed > 0`. Um orçamento frouxo passaria
+    mesmo se a implementação recomputasse a cena inteira.
+    """
 
     hits: int = 0
     misses: int = 0
     invalidations: int = 0
+    resolved: int = 0
+    recomputed: int = 0
+    removed_dependencies: int = 0
+    forgotten_targets: int = 0
 
     def to_dict(self) -> dict[str, int]:
-        return {"hits": self.hits, "misses": self.misses, "invalidations": self.invalidations}
+        return {
+            "cacheHits": self.hits,
+            "cacheMisses": self.misses,
+            "invalidatedProperties": self.invalidations,
+            "resolvedProperties": self.resolved,
+            "recomputedProperties": self.recomputed,
+            "removedDependencies": self.removed_dependencies,
+            "forgottenTargets": self.forgotten_targets,
+        }
 
 
 class Resolver:
     """Resolve valores com cache e invalidação por dependência."""
 
+    #: Política de concorrência, declarada em vez de deixada ambígua.
+    #:
+    #: O resolver é CONFINADO A UMA THREAD. Não há trava, e o cache, o grafo e
+    #: os diagnósticos são mutados sem sincronização. Uma resolução em outra
+    #: thread poderia observar metade de uma atualização de gerações — meia cena
+    #: nova, meia velha, sem erro nenhum. O shell serializa as chamadas.
+    THREAD_POLICY = "single-thread confined"
+
     def __init__(self, context: ResolutionContext) -> None:
         self._context = context
         self._cache: dict[tuple[Any, ...], Resolved] = {}
+        #: Impressão de geração de cada entrada. Guardada ao lado, e não na
+        #: chave, porque a chave precisa ser encontrável ANTES de sabermos quais
+        #: dependências a entrada tem.
+        self._fingerprints: dict[tuple[Any, ...], tuple[Any, ...]] = {}
+        #: A EXPRESSÃO que produziu cada entrada. Sem isto, trocar
+        #: `title.color` de um token para outro servia o valor antigo: a chave é
+        #: (tema, alvo), e o alvo não mudou. Depender de quem chama lembrar de
+        #: bumpar a geração é contrato implícito, e contrato implícito é o que
+        #: produz tela desatualizada sem ninguém saber por quê.
+        self._expressions: dict[tuple[Any, ...], Any] = {}
         self.graph = DependencyGraph()
         self.stats = ResolverStats()
         self.diagnostics = DiagnosticSink()
+        self._owner_thread = threading.get_ident()
+        self._batch_depth = 0
+        self._batched: set[str] = set()
+
+    def _assert_owner_thread(self) -> None:
+        """Impede uso acidental em outra thread.
+
+        Documentar a política não basta: o defeito que ela evita — meia
+        atualização observada — não levanta exceção, produz uma cena
+        parcialmente atualizada que parece certa.
+        """
+        if threading.get_ident() != self._owner_thread:
+            raise RuntimeError(
+                f"Resolver é {self.THREAD_POLICY}: criado na thread "
+                f"{self._owner_thread}, usado na {threading.get_ident()}"
+            )
 
     @property
     def context(self) -> ResolutionContext:
@@ -335,21 +508,38 @@ class Resolver:
         ``gameTitle.typography.color``. É a chave pela qual a invalidação
         encontra o que recomputar.
         """
-        cache_key = (target, *self._context.generations.key())
+        self._assert_owner_thread()
+        # A identidade do tema entra na CHAVE, não só na impressão: dois temas
+        # podem declarar o mesmo `gameTitle.color`, e sem isto o segundo serviria
+        # o valor do primeiro.
+        cache_key = (self._context.theme_id, target)
         cached = self._cache.get(cache_key)
-        if cached is not None:
-            self.stats.hits += 1
-            return cached
+        if cached is not None and self._expressions.get(cache_key) == value:
+            expected_fingerprint = self._context.generations.fingerprint(cached.dependencies)
+            if self._fingerprints.get(cache_key) == expected_fingerprint:
+                self.stats.hits += 1
+                return cached
+            # A entrada existe mas envelheceu numa geração que ela realmente
+            # usa. Recomputar; a que não usa aquela geração continua servindo.
+            self.stats.recomputed += 1
 
         self.stats.misses += 1
+        self.stats.resolved += 1
         dependencies: set[str] = set()
         phase = ResolutionPhase.COMPILE_TIME
         resolved_value, used_fallback, phase = self._resolve(
             value, expected, dependencies, (), reference, target
         )
         result = Resolved(resolved_value, frozenset(dependencies), phase, used_fallback)
+        if not used_fallback:
+            # Resolveu de verdade: o que estava avisado sobre esta propriedade
+            # deixa de valer. Sem isto, instalar a fonte faltante corrigiria a
+            # tela e o painel continuaria acusando o problema.
+            self.diagnostics.resolve_target(target)
         self._cache[cache_key] = result
-        self.graph.record(target, result.dependencies)
+        self._expressions[cache_key] = value
+        self._fingerprints[cache_key] = self._context.generations.fingerprint(result.dependencies)
+        self.stats.removed_dependencies += self.graph.record(target, result.dependencies)
         return result
 
     def invalidate(self, dependency: str) -> frozenset[str]:
@@ -358,13 +548,174 @@ class Resolver:
         Devolve o conjunto invalidado, para que o chamador possa provar que uma
         mudança localizada não derrubou a cena inteira.
         """
+        self._assert_owner_thread()
         affected = self.graph.dependents_of(dependency)
         if not affected:
             return frozenset()
-        for key in [key for key in self._cache if key[0] in affected]:
-            del self._cache[key]
-        self.stats.invalidations += len(affected)
+        if self._batch_depth:
+            # Em lote, a invalidação é acumulada e aplicada uma vez no commit.
+            # Sem isto, mudar token, locale e read model na mesma operação
+            # recomputaria a mesma propriedade três vezes, e o usuário veria
+            # estados intermediários.
+            self._batched |= affected
+            return affected
+        self._drop(affected)
         return affected
+
+    def _drop(self, targets: frozenset[str]) -> None:
+        for key in [key for key in self._cache if key[1] in targets]:
+            del self._cache[key]
+            self._fingerprints.pop(key, None)
+            self._expressions.pop(key, None)
+        self.stats.invalidations += len(targets)
+
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """Agrupa invalidações. Cada alvo é descartado no máximo uma vez.
+
+        O ganho não é só desempenho: sem agrupar, uma troca de tema que mexe em
+        quatro origens faria a cena passar por estados parcialmente atualizados,
+        e alguém veria o texto novo com a cor velha.
+        """
+        self._assert_owner_thread()
+        self._batch_depth += 1
+        try:
+            yield
+        finally:
+            self._batch_depth -= 1
+            if self._batch_depth == 0 and self._batched:
+                self._drop(frozenset(self._batched))
+                self._batched.clear()
+
+    def forget(self, target: str) -> None:
+        """Esquece uma propriedade: cache, impressão e arestas.
+
+        Elemento removido que continua no grafo é recomputação de algo que não
+        existe mais, e o grafo cresce a cada ciclo de carga e descarga.
+        """
+        self._assert_owner_thread()
+        key = (self._context.theme_id, target)
+        self._cache.pop(key, None)
+        self._fingerprints.pop(key, None)
+        self._expressions.pop(key, None)
+        self.stats.removed_dependencies += self.graph.forget(target)
+        self.stats.forgotten_targets += 1
+
+    def forget_prefix(self, prefix: str) -> frozenset[str]:
+        """Esquece um agrupamento inteiro — uma view, por exemplo."""
+        self._assert_owner_thread()
+        targets = frozenset(item for item in self.graph.targets if item.startswith(prefix))
+        for target in targets:
+            self.forget(target)
+        return targets
+
+    def forget_theme(self) -> None:
+        """Descarrega tudo do tema atual.
+
+        Recarregar o mesmo `themeId` com conteúdo diferente NÃO pode reutilizar
+        nada por coincidência de chave: a geração `theme` muda, mas a certeza
+        vem de esquecer, não de inferir.
+        """
+        self._assert_owner_thread()
+        for target in list(self.graph.targets):
+            self.forget(target)
+        self._cache.clear()
+        self._fingerprints.clear()
+        self._expressions.clear()
+        self.diagnostics.clear_active()
+
+    def set_reference_box(self, width: float, height: float) -> frozenset[str]:
+        """Declara a caixa de referência. Devolve o que foi invalidado.
+
+        Mudar a largura invalida SÓ quem depende da largura. Uma janela que vai
+        de 1920x1080 para 1280x1080 mudou um eixo; recomputar as alturas
+        percentuais junto seria metade da cena por nada.
+        """
+        self._assert_owner_thread()
+        current = self._context.generations
+        if current.reference_width == width and current.reference_height == height:
+            return frozenset()
+        affected: set[str] = set()
+        if current.reference_width != width:
+            affected |= self.graph.dependents_of("layout:referenceWidth")
+        if current.reference_height != height:
+            affected |= self.graph.dependents_of("layout:referenceHeight")
+        self._context.generations = replace(current, reference_width=width, reference_height=height)
+        if affected and not self._batch_depth:
+            self._drop(frozenset(affected))
+        elif affected:
+            self._batched |= affected
+        return frozenset(affected)
+
+    def resolve_dimension(
+        self,
+        dimension: Any,
+        *,
+        axis: str,
+        target: str,
+        default: float = 0.0,
+    ) -> Any:
+        """Converte uma dimensão para pixel lógico, REGISTRANDO a dependência.
+
+        É a ponte que faltava. A conversão de percentual já consumia a caixa de
+        referência, mas fora do grafo — então trocar a resolução deixava o
+        layout stale sem que nada invalidasse. A dependência é real porque o
+        resultado muda; registrá-la é o que torna a invalidação possível.
+
+        Devolve ``None`` para ``auto``: dimensão implícita não é zero.
+        """
+        self._assert_owner_thread()
+        if axis not in {"width", "height"}:
+            raise ValueError(f"eixo desconhecido: {axis!r}")
+        marker = "layout:referenceWidth" if axis == "width" else "layout:referenceHeight"
+        extent = (
+            self._context.generations.reference_width
+            if axis == "width"
+            else self._context.generations.reference_height
+        )
+
+        cache_key = (self._context.theme_id, target)
+        cached = self._cache.get(cache_key)
+        if (
+            cached is not None
+            and self._expressions.get(cache_key) == dimension
+            and self._fingerprints.get(cache_key)
+            == self._context.generations.fingerprint(cached.dependencies)
+        ):
+            self.stats.hits += 1
+            return cached.value
+
+        self.stats.misses += 1
+        self.stats.resolved += 1
+        dependencies: set[str] = set()
+        if dimension is None:
+            pixels: Any = default
+        elif isinstance(dimension, DimensionValue):
+            if dimension.unit is DimensionUnit.AUTO:
+                pixels = None
+            elif dimension.unit is DimensionUnit.PERCENT:
+                # SÓ o percentual depende da caixa. Uma dimensão em pixel lógico
+                # não muda com a resolução, e registrar a dependência nela
+                # recomputaria a cena inteira a cada troca de display.
+                dependencies.add(marker)
+                pixels = round(extent * (dimension.value or 0.0) / 100.0, 4)
+            else:
+                pixels = float(dimension.value or 0.0)
+        elif isinstance(dimension, int | float) and not isinstance(dimension, bool):
+            pixels = float(dimension)
+        else:
+            pixels = default
+
+        result = Resolved(pixels, frozenset(dependencies), ResolutionPhase.LOAD_TIME)
+        self._cache[cache_key] = result
+        self._expressions[cache_key] = dimension
+        self._fingerprints[cache_key] = self._context.generations.fingerprint(result.dependencies)
+        self.stats.removed_dependencies += self.graph.record(target, result.dependencies)
+        return pixels
+
+    @property
+    def active_cache_entries(self) -> int:
+        return len(self._cache)
 
     def _resolve(
         self,
@@ -626,7 +977,15 @@ class Resolver:
         op = condition.get("op")
 
         if op == "state":
-            return _truth(str(condition["state"]) in self._context.states)
+            # Registrar a dependência é obrigatório. Enquanto a chave de cache
+            # continha TODAS as gerações, a ausência daqui era mascarada: trocar
+            # de estado invalidava tudo, inclusive isto. Com invalidação
+            # seletiva, uma condição de estado sem dependência serviria valor
+            # stale — o item continuaria pintado como focado depois de perder o
+            # foco.
+            name = str(condition["state"])
+            dependencies.add(f"state:{name}")
+            return _truth(name in self._context.states)
         if op == "capability":
             name = str(condition["name"])
             dependencies.add(f"capability:{name}")
