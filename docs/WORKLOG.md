@@ -3447,6 +3447,14 @@ symlink exatamente depois da primeira observação e comprova que o destino não
 seguido. O round-trip RPC também prova a remoção física do arquivo e o retorno
 a `unverified`/`active=None` após rollback.
 
+O CI pós-revisão revelou outro falso vermelho de relógio de parede:
+`test_global_media_apply_returns_before_background_provider_finishes` exigia
+retorno em menos de 0,5 s e observou 0,863 s no runner Python 3.11, embora o
+provider ainda estivesse bloqueado. A asserção temporal foi substituída pela
+prova causal: depois do retorno, o evento do provider começou e o job continua
+`running`; só termina após o desbloqueio explícito. O contrato assíncrono fica
+mais forte sem transformar carga do runner em falha funcional.
+
 **Gates locais finais:** 3.252 testes aprovados, incluindo os cenários visuais,
 cobertura 86,04%; Ruff check/format, mypy em 188 arquivos, independência e
 fronteiras verdes. O CI do PR executou as cinco instâncias em Python 3.11,

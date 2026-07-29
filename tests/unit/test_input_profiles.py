@@ -227,6 +227,9 @@ def test_status_does_not_follow_activation_swapped_to_symlink(
 
     assert swapped is True
     assert observed["state"] == "degraded"
+    assert observed["statusLabel"] == "Perfil inválido"
+    assert "E-CONTENT-UNSAFE-PATH" in observed["detail"]
+    assert "ativação de input ilegível" in observed["detail"]
     assert observed["active"] is None
 
 

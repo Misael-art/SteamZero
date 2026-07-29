@@ -1541,15 +1541,14 @@ def test_global_media_apply_returns_before_background_provider_finishes(
     controller.scan_library()
     controller._media_providers = (SlowProvider(),)  # type: ignore[attr-defined]
 
-    before = time.monotonic()
     response = _apply(
         controller,
         controller.plan_action({"actionId": "media.global.refresh"}),
     )
-    elapsed = time.monotonic() - before
 
-    assert elapsed < 0.5
     assert started.wait(timeout=1)
+    # O estado prova o retorno antecipado sem medir a carga do runner:
+    # o provider continua bloqueado e o job ainda não pôde terminar.
     assert controller._jobs.get(str(response["jobId"])).state == "running"  # type: ignore[attr-defined,union-attr]
     cancellation = controller.cancel_job(str(response["jobId"]))
     assert cancellation["rawState"] == "running"
