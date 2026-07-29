@@ -27,6 +27,21 @@ nova instalada para que um rollback da aplicação não restaure bugs antigos do
 instalador. Um marcador de ownership impede que um arquivo administrativo alheio seja
 sobrescrito.
 
+## Origem dos artefatos
+
+Baixe do workflow da tag. **Não** reutilize wheel ou wheelhouse local antigo.
+
+O wheelhouse precisa trazer `WHEELHOUSE-MANIFEST.json`; o instalador recusa um
+conjunto sem manifesto, com hash divergente, gerado de árvore suja, ou que
+contenha wheel presente e não declarado. Essa última é a forma de um artefato de
+origem desconhecida viajar junto: os declarados conferem, e o intruso passa.
+
+```bash
+gh run download RUN_ID --name "steamzero-wheel-COMMIT"
+tar --zstd -xf runtime-wheelhouse.tar.zst
+python tools/build_wheelhouse.py --out runtime-wheelhouse --validate-only
+```
+
 ## Preparar artefatos sem root
 
 Partindo de um checkout limpo, em um commit identificável, e de um ambiente de
@@ -116,6 +131,41 @@ libvirt, converge a rede `default` e adiciona o usuário ao grupo `libvirt` quan
 No BigLinux/Manjaro o conjunto inclui QEMU desktop, libvirt, virt-install, OVMF, swtpm,
 dnsmasq e iptables-nft. É necessário relogin quando a associação ao grupo mudar.
 
+## Convergir o daemon (obrigatório)
+
+**A instalação não está concluída quando o `current` muda.** O instalador roda
+como root e as units são de escopo de usuário, válidas para todos os usuários da
+máquina: ele não sabe qual sessão reiniciar, e declara `daemonRefresh.state =
+pending`.
+
+Foi aceitar esse `pending` como conclusão que produziu a regressão da a37 — o
+`current` apontava para a release nova e o daemon a35 seguiu respondendo por dois
+dias.
+
+Como o **usuário da sessão**, nunca como root:
+
+```bash
+steamzero service refresh --expect-release "$(basename "$(readlink -f /opt/steamzero/current)")" --json
+```
+
+O comando compara três leituras: a release esperada, a ativada em
+`/opt/steamzero/current` e a que o daemon em execução reporta. Só devolve sucesso
+em `converged`.
+
+| estado | significado | ação |
+|---|---|---|
+| `converged` | o daemon responde na release ativada | concluído |
+| `mismatch` | `--expect-release` diverge do `current` | **nada foi reiniciado**; conferir o que foi instalado |
+| `pending` | o daemon respondeu com a release ANTIGA depois do restart | investigar a unit; é o estado da a37 |
+| `timeout` | o daemon não respondeu | conferir socket e journal |
+| `restartFailed` | `systemctl --user restart` falhou | ver `systemctl --user status` |
+
+`mismatch` falha **fechada**: nenhum serviço é reiniciado. Agir sobre premissa
+errada apagaria a evidência de o que falhou na instalação.
+
+O comando é idempotente: com o daemon já na release esperada, ele não reinicia
+nada.
+
 ## Verificar
 
 ```bash
@@ -127,6 +177,7 @@ steamzero-gamemode-session --check
 /usr/local/libexec/steamzero-gamemode-boot status
 /usr/local/libexec/steamzero-host-prepare status
 bigsudo /usr/local/sbin/steamzero-host status
+steamzero service refresh --expect-release RELEASE_ATIVA --json
 ```
 
 O `status` recalcula os hashes do wheel, lock e gerenciador da release, confere
@@ -140,9 +191,13 @@ As releases anteriores são retidas. Liste-as e ative uma versão verificada:
 ```bash
 ls -1 /opt/steamzero/releases
 bigsudo /usr/local/sbin/steamzero-host rollback --release RELEASE_ANTERIOR
+steamzero service refresh --expect-release RELEASE_ANTERIOR --json
 steamzero doctor --json
-systemctl --user daemon-reload
 ```
+
+O `service refresh` é obrigatório **também no rollback**. Um rollback que
+deixasse o daemon na release nova é o incidente da a37 ao contrário — e
+igualmente invisível.
 
 O rollback altera o ponteiro `current`; não reinstala pacotes e não reverte dados
 XDG do usuário. Migrações incompatíveis de dados exigirão a política específica

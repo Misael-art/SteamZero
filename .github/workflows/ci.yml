@@ -168,11 +168,26 @@ jobs:
         with:
           subject-path: dist/*.whl
           sbom-path: build/sbom.cdx.json
+      - name: Wheelhouse de runtime com manifesto
+        # Produzido pelo CI, de checkout limpo, com hash verificado. O
+        # instalador do host consome EXATAMENTE este conjunto — nunca um
+        # diretório local de origem desconhecida.
+        run: |
+          python tools/build_wheelhouse.py \
+            --out dist/runtime-wheelhouse \
+            --wheel "$(ls dist/steamzero-*.whl | head -1)"
+          python tools/build_wheelhouse.py --out dist/runtime-wheelhouse --validate-only
+          tar --zstd -cf dist/runtime-wheelhouse.tar.zst -C dist runtime-wheelhouse
+          sha256sum dist/runtime-wheelhouse.tar.zst \
+            dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json | tee -a build/SHA256SUMS
       - name: Publicar wheel, auditoria, SBOM e proveniência
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: steamzero-wheel-${{ github.sha }}
           path: |
+            dist/runtime-wheelhouse.tar.zst
+            dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json
+            requirements-runtime.lock
             dist/*.whl
             build/pip-audit.json
             build/sbom.cdx.json
