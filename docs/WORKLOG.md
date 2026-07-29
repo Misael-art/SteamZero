@@ -3442,8 +3442,15 @@ no conteúdo ou na leitura, em vez de falhar apenas ao indexar `None`.
 
 **Gates locais:** 3.080 testes aprovados, 171 excluídos pela marca `visual`,
 cobertura 86,04%; Ruff check/format, mypy em 188 arquivos, independência e
-fronteiras verdes. GAP-G23 permanece aberto até a matriz remota confirmar as
-cinco instâncias em Python 3.11, 3.12 e 3.14.
+fronteiras verdes. O CI do PR executou as cinco instâncias em Python 3.11,
+3.12 e 3.14; os oito jobs passaram, incluindo QML, supply chain e os três
+smokes de distribuição.
+
+GAP-G23 foi fechado pelo critério de saída publicado: 50 servidores locais,
+mais cinco por versão de Python no CI, sem `unverified` ou `degraded`. O gatilho
+isolado original continua sem atribuição e não foi rebatizado como causa de
+produto; uma recorrência agora preservará estado, detalhe, arquivo e conteúdo
+para diagnóstico em vez de produzir apenas `None`.
 
 **Host:** nenhuma mutação, instalação ou rollback. A release a39 certificada
 permanece ativa e intacta.
