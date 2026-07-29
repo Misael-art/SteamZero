@@ -126,7 +126,65 @@ def _regular_file(path: Path, *, suffix: str | None = None) -> Path:
     return resolved
 
 
-def _wheelhouse(path: Path) -> tuple[Path, list[Path]]:
+def _wheelhouse_manifest(root: Path, wheels: list[Path]) -> dict[str, Any]:
+    """Valida a procedência do wheelhouse. Sem manifesto, não instala.
+
+    Um diretório de wheels sem manifesto instala sem reclamar e ninguém consegue
+    dizer de onde veio — foi o estado do `wheelhouse/` não rastreado que existia
+    no repositório. Exigir o manifesto é o que impede esse conjunto de entrar,
+    inclusive por engano.
+
+    O manifesto é gerado pelo CI (`tools/build_wheelhouse.py`) a partir de
+    checkout limpo, com `--require-hashes`. A validação aqui é a segunda
+    metade: sem ela, o manifesto seria papel.
+    """
+    path = root / "WHEELHOUSE-MANIFEST.json"
+    if not path.is_file():
+        raise ValueError(
+            f"wheelhouse sem WHEELHOUSE-MANIFEST.json em {root}; "
+            "conjunto de origem desconhecida não é instalável"
+        )
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"manifesto do wheelhouse ilegível: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("manifesto do wheelhouse não é um objeto")
+
+    declared: dict[str, dict[str, Any]] = {
+        str(entry["filename"]): entry
+        for entry in manifest.get("dependencies", [])
+        if isinstance(entry, dict) and entry.get("filename")
+    }
+    if not declared:
+        raise ValueError("manifesto do wheelhouse não declara dependência nenhuma")
+
+    problems: list[str] = []
+    if manifest.get("sourceCommit") in (None, "", "unknown"):
+        problems.append("sem commit de origem")
+    if manifest.get("sourceTreeState") == "dirty":
+        problems.append("gerado de árvore suja")
+
+    present = {wheel.name: wheel for wheel in wheels}
+    for name, entry in declared.items():
+        wheel = present.get(name)
+        if wheel is None:
+            problems.append(f"declarado e ausente: {name}")
+            continue
+        digest = _sha256(wheel)
+        if digest != entry.get("sha256"):
+            problems.append(f"{name}: sha256 diverge do manifesto")
+    # Presente e não declarado é a forma de um wheel desconhecido viajar junto:
+    # os declarados conferem, e o intruso passa.
+    for name in sorted(set(present) - set(declared)):
+        problems.append(f"presente e não declarado: {name}")
+
+    if problems:
+        raise ValueError("wheelhouse recusado: " + "; ".join(problems))
+    return manifest
+
+
+def _wheelhouse(path: Path) -> tuple[Path, list[Path], dict[str, Any]]:
     resolved = path.resolve(strict=True)
     if path.is_symlink() or not resolved.is_dir():
         raise ValueError(f"wheelhouse inválido: {path}")
@@ -143,7 +201,7 @@ def _wheelhouse(path: Path) -> tuple[Path, list[Path]]:
         total += size
     if total > _MAX_WHEELHOUSE_SIZE:
         raise ValueError("wheelhouse excede o limite total")
-    return resolved, wheels
+    return resolved, wheels, _wheelhouse_manifest(resolved, wheels)
 
 
 def _run(argv: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -857,7 +915,7 @@ def install(
     if release != canonical_release:
         raise ValueError(f"release deve ser canônica para versão+commit: {canonical_release}")
     requirements = _regular_file(requirements, suffix=".lock")
-    _wheelhouse_root, dependency_wheels = _wheelhouse(wheelhouse)
+    _wheelhouse_root, dependency_wheels, wheelhouse_manifest = _wheelhouse(wheelhouse)
     if _sha256(wheel) != wheel_sha256:
         raise ValueError("sha256 do wheel não confere")
 
@@ -949,6 +1007,21 @@ def install(
             "installedAt": datetime.now(UTC).isoformat(),
             "python": sys.version.split()[0],
             "previousRelease": (_readlink(layout.current) or "").removeprefix("releases/") or None,
+            # Os wheels de dependência somem com o diretório temporário logo
+            # abaixo. Sem registrá-los aqui, a release instalada não saberia
+            # dizer com o que foi construída — e reproduzir um problema exigiria
+            # adivinhar.
+            "dependencies": [
+                {
+                    "filename": entry.get("filename"),
+                    "sha256": entry.get("sha256"),
+                    "package": entry.get("package"),
+                    "version": entry.get("version"),
+                }
+                for entry in wheelhouse_manifest.get("dependencies", [])
+            ],
+            "wheelhouseSourceCommit": wheelhouse_manifest.get("sourceCommit"),
+            "wheelhouseRunId": wheelhouse_manifest.get("githubRunId"),
         }
         _atomic_text(final / "manifest.json", json.dumps(manifest, indent=2, sort_keys=True))
         _verify_release(final)

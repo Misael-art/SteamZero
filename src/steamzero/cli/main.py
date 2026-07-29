@@ -44,6 +44,7 @@ _USAGE = f"""steamzero <domínio> <ação> [flags]
 Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
   service refresh        reinicia o serviço local na versão instalada
+                         --expect-release <id>  exige convergência com a release ativada
   jobs list              lista jobs paginados (--limit N --cursor ID --state STATE)
   jobs list --follow     segue eventos em NDJSON (--job-id ID --cursor SEQ)
   operations list        lista operações paginadas (--limit N --cursor ID)
@@ -106,13 +107,51 @@ Flags globais:
 """
 
 
-def _cmd_service_refresh(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+def _cmd_service_refresh(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     """Reinicia as units gerenciadas e confirma que a geração confere.
 
     Roda em escopo de usuário: as units valem para todos os usuários da máquina e
     o instalador, que roda como root, não sabe qual sessão reiniciar. Quem age é
     o manager do próprio usuário.
+
+    Com ``--expect-release`` o comando vira um GATE de convergência: só devolve
+    sucesso quando o daemon em execução responde na release ativada. Sem ele,
+    mantém o comportamento anterior de reinício mais handshake de geração.
     """
+    expect = _gate_flag(args, "--expect-release")
+    if expect is not None:
+        from steamzero.adapters.release_convergence import converge
+
+        if not expect:
+            return (
+                build_envelope(
+                    "service",
+                    "refresh",
+                    status="failed",
+                    ok=False,
+                    error=build_error(
+                        "E-API-SCHEMA", detail="--expect-release exige o id da release"
+                    ),
+                    correlation_id=correlation_id,
+                ),
+                EXIT_FAILURE,
+            )
+        report = converge(expect_release=expect)
+        return (
+            build_envelope(
+                "service",
+                "refresh",
+                status="ok" if report.ok else "failed",
+                ok=report.ok,
+                data=report.to_dict(),
+                error=None
+                if report.ok
+                else build_error(report.code or "E-HOST-DAEMON-PENDING", detail=report.detail),
+                correlation_id=correlation_id,
+            ),
+            EXIT_OK if report.ok else EXIT_FAILURE,
+        )
+
     from steamzero.adapters.service_activation import refresh
 
     result = refresh()
@@ -129,6 +168,28 @@ def _cmd_service_refresh(_args: list[str], correlation_id: str) -> tuple[dict[st
         ),
         EXIT_OK if ok else EXIT_FAILURE,
     )
+
+
+def _gate_flag(args: list[str], flag: str) -> str | None:
+    """Lê ``--flag valor`` ou ``--flag=valor``, distinguindo ausente de vazio.
+
+    Parser PRÓPRIO, e não o `_flag_value` compartilhado, por dois motivos.
+
+    O compartilhado devolve ``None`` tanto para "não pediu" quanto para "pediu
+    sem valor". Num gate isso é perigoso: `--expect-release` sem argumento
+    viraria silenciosamente o refresh antigo, sem gate nenhum. Aqui a flag vazia
+    devolve ``""`` e o chamador recusa.
+
+    E mudar o compartilhado alteraria `--limit` e os demais comandos, que hoje
+    caem no default quando a flag vem sem valor. Essa mudança pode ser desejável,
+    mas é outra decisão e não pertence a esta entrega.
+    """
+    for index, item in enumerate(args):
+        if item == flag:
+            return args[index + 1] if index + 1 < len(args) else ""
+        if item.startswith(f"{flag}="):
+            return item.split("=", 1)[1]
+    return None
 
 
 def _cmd_doctor(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
