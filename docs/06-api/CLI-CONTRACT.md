@@ -102,6 +102,7 @@ steamzero support bundle --preview
     ambiente. O cursor é opaco, o limite máximo é 100 e sessões legadas sem
     origem não recebem ação executável.
 13. `service status` é estritamente read-only e não atravessa o próprio daemon:
-    lê o alvo de `/opt/steamzero/current`, consulta `system.hello` uma vez e
-    publica `converged`, `pending`, `timeout` ou `unreadable`. Nunca reinicia
-    units; quarentena existente aparece em `data.quarantine`.
+    lê o alvo de `/opt/steamzero/current` e, somente quando `current` é legível,
+    consulta `system.hello` exatamente uma vez. Publica `converged`, `pending`,
+    `timeout` ou `unreadable`; nunca reinicia units. Quarentena existente
+    aparece em `data.quarantine`.

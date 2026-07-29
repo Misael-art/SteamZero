@@ -119,9 +119,9 @@ def read_activated_release(link: Path = CURRENT_LINK) -> str | None:
     afirmando ser ela, que é a mesma armadilha descrita em ``core.identity``.
     """
     try:
-        if not link.is_symlink() and not link.exists():
+        if not link.is_symlink():
             return None
-        target = link.resolve()
+        target = link.resolve(strict=True)
     except OSError:
         return None
     name = target.name
@@ -158,7 +158,8 @@ def observe(
 
     ``service status`` não pode reutilizar :func:`converge`: até uma chamada
     aparentemente idempotente pode reiniciar as units quando encontra drift.
-    Este caminho executa exatamente duas leituras e publica a divergência.
+    Este caminho lê ``current`` primeiro e, somente quando ele é legível,
+    consulta o daemon exatamente uma vez para publicar a divergência.
     """
     steps: list[str] = []
     activated = read_activated_release(link)

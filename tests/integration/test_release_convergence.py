@@ -207,13 +207,20 @@ class TestIdempotence:
 class TestReadOnlyStatus:
     def test_converged_status_does_not_restart(self, host: Callable[..., FakeHost]) -> None:
         fake = host(activated=A38, daemon=A38)
+        probes = 0
 
-        report = observe(link=fake.link, probe=fake.probe)
+        def probe() -> dict[str, Any]:
+            nonlocal probes
+            probes += 1
+            return fake.probe()
+
+        report = observe(link=fake.link, probe=probe)
 
         assert report.state is ConvergenceState.CONVERGED
         assert report.activated_release == A38
         assert report.daemon_release == A38
         assert report.restarted is False
+        assert probes == 1
         assert fake.restart_calls == 0
 
     def test_stale_status_names_both_releases_without_restart(
@@ -253,6 +260,28 @@ class TestReadOnlyStatus:
             return {}
 
         report = observe(link=tmp_path / "missing", probe=probe)
+
+        assert report.state is ConvergenceState.UNREADABLE
+        assert report.code == DIAG_UNREADABLE
+        assert probed is False
+
+    @pytest.mark.parametrize("malformed", ["regular", "dangling"])
+    def test_malformed_current_is_reported_without_probing(
+        self, tmp_path: Path, malformed: str
+    ) -> None:
+        current = tmp_path / "current"
+        if malformed == "regular":
+            current.write_text(A38, encoding="utf-8")
+        else:
+            current.symlink_to(tmp_path / "missing-release")
+        probed = False
+
+        def probe() -> dict[str, Any]:
+            nonlocal probed
+            probed = True
+            return {}
+
+        report = observe(link=current, probe=probe)
 
         assert report.state is ConvergenceState.UNREADABLE
         assert report.code == DIAG_UNREADABLE
