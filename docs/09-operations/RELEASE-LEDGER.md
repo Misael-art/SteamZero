@@ -52,3 +52,9 @@ A partir de `0.1.0a1`, uma release nova deve cumprir simultaneamente:
 
 Nenhum desses wheels foi republicado sob a mesma versão. Os desvios encontrados no host
 geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutáveis.
+
+## Release fisicamente certificada — 2026-07-29
+
+| Release | Commit exato | SHA-256 do wheel | Resultado |
+|---|---|---|---|
+| `0.1.0a39-8e17159d5122` | `8e17159d51222adf2efaa445c19de40999954d8b` | `591ae8a07205192d67cbcd78a072ff07e98d41d6ec11561e27d41e939cc4c161` | ciclo físico `a39→a37→a39` aprovado; convergência e idempotência provadas nas duas direções; tag `v0.1.0a39` aponta para este commit |
