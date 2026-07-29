@@ -44,7 +44,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
 | 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **parcial** — GAP-G16–G20 fechados; GAP-G23 intermitente | CI/host | causa restante diagnosticada | P1 | investigar GAP-G23 sem hipótese |
+| 5 | Estabilidade operacional | **parcial** — GAP-G16–G20 fechados; GAP-G23 não reproduzido em 50 ciclos e agora observável | CI/host | causa restante diagnosticada | P1 | validar o GAP-G23 na matriz remota |
 | 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
 | 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
 | 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
@@ -72,7 +72,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | ~~GAP-G17~~ | ~~sem `service status --json`~~ | — | **FECHADA**: observer público compara `current` e daemon sem reiniciar | — | — | contrato, drift e ausência cobertos |
 | GAP-G21 | 46 warnings QML do Breeze | **P3** | polui coleta de warnings próprios | — | filtrar por origem | coleta só de QML nosso |
 | GAP-G22 | benchmark de 10 mil arquivos usa teto de tempo de parede em runner compartilhado | **P2** | CI pode reprovar por carga do runner, não por regressão | asserções funcionais continuam fortes | entrega própria com medição comparável ou runner dedicado | repetição controlada sem falso vermelho |
-| GAP-G23 | round-trip de perfil do daemon falhou uma vez no Python 3.12 | **P2** | CI não determinístico; leitura imediata retornou `active=None` | rerun passou no mesmo SHA | diagnosticar isolamento/visibilidade de estado | repetição controlada sem falha |
+| GAP-G23 | round-trip de perfil do daemon falhou uma vez no Python 3.12 | **P2** | CI não determinístico; a asserção descartava `state` e `detail` antes de retornar `active=None` | rerun no mesmo SHA + 50 servidores isolados passaram; `status()` agora distingue ausência de erro de leitura | validar cinco servidores independentes em cada Python do CI | matriz remota verde sem `unverified`/`degraded` |
 | GAP-G8 | matriz SteamOS/Steam Client | **P2** | compatibilidade desconhecida | estado observado | serviço de reconciliação | FM-10 verde |
 | DEBT-A1 | ENOSPC mid-apply não testado | **P1** | rollback sob disco cheio incerto | preflight | loopback/quota | FI real verde |
 | DEBT-A2 | dry-run sem `strace` | **P2** | ausência de writes não provada por syscall | asserção de estado | harness strace | zero writes observado |

@@ -272,9 +272,13 @@ def test_inprocess_server_covers_rpc_errors_and_domain_dispatch(inprocess_core: 
     assert status.envelope["module"] == "session"
 
 
+@pytest.mark.parametrize("_repetition", range(5))
 def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
     inprocess_core: Path,
+    tmp_path: Path,
+    _repetition: int,
 ) -> None:
+    del _repetition
     planned = invoke(
         "controls.plan",
         {
@@ -292,13 +296,31 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
             "correlationId": "01J000000000000000000000AD",
         },
     ).envelope["data"]
-    active = invoke(
+    assert len(applied["actions"]) == 1
+    target = (
+        tmp_path
+        / "config"
+        / "steamzero"
+        / "input-profiles"
+        / "active"
+        / "switch"
+        / "platform-default.json"
+    )
+    assert target.is_file(), {"applied": applied, "target": str(target)}
+    activation = json.loads(target.read_text(encoding="utf-8"))
+    assert activation["profile"]["id"] == "standard-gamepad"
+    assert activation["orientation"] == "portrait-right"
+
+    observed = invoke(
         "controls.profiles",
         {
             "platformId": "switch",
             "correlationId": "01J000000000000000000000AE",
         },
-    ).envelope["data"]["active"]
+    ).envelope["data"]
+    assert observed["state"] == "ready", observed
+    active = observed["active"]
+    assert isinstance(active, dict), observed
     assert active["id"] == "standard-gamepad"
     assert active["orientation"] == "portrait-right"
 

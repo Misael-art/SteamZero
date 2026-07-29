@@ -3420,3 +3420,30 @@ zero reinícios e nenhuma consulta ao daemon quando o symlink não é confiável
 Próxima investigação operacional: GAP-G23. Próxima entrega funcional de
 adapters: M10/M11, sem declarar nenhum deles concluído antes da VM e da matriz
 real exigidas pelo roadmap.
+
+## 2026-07-29 — Sessão 43: GAP-G23 observável e repetível
+
+A falha isolada do round-trip de perfil no Python 3.12 não foi reproduzida em
+50 ciclos locais independentes, cada um criando e encerrando o próprio servidor
+RPC e a própria árvore XDG. A execução integral também atravessou o módulo sem
+falha. Não foi atribuída uma causa sem evidência.
+
+Foi corrigido um defeito comprovável de altitude: `InputProfileManager.status()`
+usava `Path.is_file()`, que colapsava arquivo ausente e falha de `stat` no mesmo
+`active=None`. Ausência legítima continua `unverified`; erro de leitura,
+symlink ou tipo não regular agora resulta em `degraded` com causa. A leitura da
+ativação usa o mesmo `lstat` estrito.
+
+O teste RPC agora executa cinco servidores independentes e prova, antes da
+consulta, que `apply` publicou uma ação, que o arquivo existe e contém perfil e
+orientação esperados. Depois exige `state=ready`, `active` tipado e rollback.
+Assim, uma recorrência futura identifica se a perda aconteceu na publicação,
+no conteúdo ou na leitura, em vez de falhar apenas ao indexar `None`.
+
+**Gates locais:** 3.080 testes aprovados, 171 excluídos pela marca `visual`,
+cobertura 86,04%; Ruff check/format, mypy em 188 arquivos, independência e
+fronteiras verdes. GAP-G23 permanece aberto até a matriz remota confirmar as
+cinco instâncias em Python 3.11, 3.12 e 3.14.
+
+**Host:** nenhuma mutação, instalação ou rollback. A release a39 certificada
+permanece ativa e intacta.

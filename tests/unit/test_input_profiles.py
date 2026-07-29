@@ -174,6 +174,31 @@ def test_stale_plan_and_corrupt_activation_degrade_honestly(
     assert manager.status("switch")["state"] == "degraded"
 
 
+def test_status_distinguishes_missing_from_unreadable_activation(
+    manager: InputProfileManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = manager._root / "active/switch/platform-default.json"  # type: ignore[attr-defined]
+    missing = manager.status("switch")
+    assert missing["state"] == "unverified"
+    assert missing["statusLabel"] == "Perfil não selecionado"
+
+    real_lstat = Path.lstat
+
+    def unreadable(path: Path) -> Any:
+        if path == target:
+            raise PermissionError("acesso negado pelo teste")
+        return real_lstat(path)
+
+    monkeypatch.setattr(Path, "lstat", unreadable)
+    observed = manager.status("switch")
+
+    assert observed["state"] == "degraded"
+    assert observed["statusLabel"] == "Perfil ilegível"
+    assert "acesso negado pelo teste" in observed["detail"]
+    assert observed["active"] is None
+
+
 def test_activation_rejects_symlink_and_oversized_existing_file(
     manager: InputProfileManager, tmp_path: Path
 ) -> None:
