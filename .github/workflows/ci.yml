@@ -176,7 +176,8 @@ jobs:
           python tools/build_wheelhouse.py \
             --out dist/runtime-wheelhouse \
             --wheel "$(ls dist/steamzero-*.whl | head -1)"
-          python tools/build_wheelhouse.py --out dist/runtime-wheelhouse --validate-only
+          python tools/build_wheelhouse.py --out dist/runtime-wheelhouse --validate-only \
+            --wheel "$(ls dist/steamzero-*.whl | head -1)"
           tar --zstd -cf dist/runtime-wheelhouse.tar.zst -C dist runtime-wheelhouse
           sha256sum dist/runtime-wheelhouse.tar.zst \
             dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json | tee -a build/SHA256SUMS

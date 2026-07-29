@@ -227,3 +227,63 @@ class TestTheManifestSerializes:
     def test_it_survives_json_round_trip(self, manifest: dict[str, Any]) -> None:
         restored = json.loads(json.dumps(manifest, ensure_ascii=False))
         assert restored == manifest
+
+
+class TestTheProductWheelIsNotADependency:
+    """O wheel do SteamZero vive fora do wheelhouse.
+
+    A primeira versão o procurava DENTRO e reprovava um conjunto correto — o CI
+    pegou isso: "declarado no manifesto e ausente: steamzero-0.1.0a38...". Ele é
+    o produto, não dependência; o manifesto o registra por procedência.
+    """
+
+    def test_a_wheel_outside_the_wheelhouse_is_checked_where_it_is(
+        self, wheelhouse: Path, lock: Path, tmp_path: Path
+    ) -> None:
+        wheel = tmp_path / "steamzero-0.1.0a38-py3-none-any.whl"
+        wheel.write_bytes(b"o produto")
+        manifest = build_manifest(
+            wheelhouse=wheelhouse, lock=lock, package_version="0.1.0a38", steamzero_wheel=wheel
+        )
+        manifest["sourceCommit"] = "51e9e1e3"
+        manifest["sourceTreeState"] = "clean"
+        assert validate(manifest, wheelhouse, lock, wheel) == []
+
+    def test_a_tampered_product_wheel_is_refused(
+        self, wheelhouse: Path, lock: Path, tmp_path: Path
+    ) -> None:
+        wheel = tmp_path / "steamzero-0.1.0a38-py3-none-any.whl"
+        wheel.write_bytes(b"o produto")
+        manifest = build_manifest(
+            wheelhouse=wheelhouse, lock=lock, package_version="0.1.0a38", steamzero_wheel=wheel
+        )
+        manifest["sourceCommit"] = "51e9e1e3"
+        manifest["sourceTreeState"] = "clean"
+        wheel.write_bytes(b"o produto TROCADO")
+        assert any("sha256" in problem for problem in validate(manifest, wheelhouse, lock, wheel))
+
+    def test_a_missing_product_wheel_is_refused(
+        self, wheelhouse: Path, lock: Path, tmp_path: Path
+    ) -> None:
+        wheel = tmp_path / "steamzero-0.1.0a38-py3-none-any.whl"
+        wheel.write_bytes(b"o produto")
+        manifest = build_manifest(
+            wheelhouse=wheelhouse, lock=lock, package_version="0.1.0a38", steamzero_wheel=wheel
+        )
+        manifest["sourceCommit"] = "51e9e1e3"
+        manifest["sourceTreeState"] = "clean"
+        wheel.unlink()
+        assert any("ausente" in problem for problem in validate(manifest, wheelhouse, lock, wheel))
+
+    def test_the_product_wheel_inside_the_house_is_not_an_intruder(
+        self, wheelhouse: Path, lock: Path
+    ) -> None:
+        """Se ele estiver dentro, é declarado — não pode virar 'não declarado'."""
+        wheel = wheelhouse / "steamzero-0.1.0a38-py3-none-any.whl"
+        wheel.write_bytes(b"o produto")
+        manifest = build_manifest(
+            wheelhouse=wheelhouse, lock=lock, package_version="0.1.0a38", steamzero_wheel=wheel
+        )
+        manifest["sourceCommit"] = "51e9e1e3"
+        manifest["sourceTreeState"] = "clean"
+        assert validate(manifest, wheelhouse, lock, wheel) == []

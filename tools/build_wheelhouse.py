@@ -179,7 +179,12 @@ def build_manifest(
     return manifest
 
 
-def validate(manifest: dict[str, Any], wheelhouse: Path, lock: Path | None = None) -> list[str]:
+def validate(
+    manifest: dict[str, Any],
+    wheelhouse: Path,
+    lock: Path | None = None,
+    wheel: Path | None = None,
+) -> list[str]:
     """Confere o conjunto contra o manifesto. Devolve os problemas encontrados.
 
     Devolve lista em vez de levantar na primeira falha: quem instala precisa ver
@@ -211,8 +216,20 @@ def validate(manifest: dict[str, Any], wheelhouse: Path, lock: Path | None = Non
             problems.append(f"lock não confere: {actual} != {manifest['requirementsLockSha256']}")
 
     declared = {entry["filename"]: entry for entry in manifest["dependencies"]}
-    if "wheel" in manifest:
-        declared[manifest["wheel"]["filename"]] = manifest["wheel"]
+
+    # O wheel do SteamZero NÃO é dependência: é o produto, e vive fora do
+    # wheelhouse. O manifesto o registra por procedência, e a conferência
+    # acontece no caminho onde ele realmente está — procurá-lo dentro do
+    # wheelhouse reprovava um conjunto correto.
+    main = manifest.get("wheel")
+    if main is not None:
+        if wheel is not None:
+            if not wheel.is_file():
+                problems.append(f"wheel principal ausente: {wheel}")
+            elif _sha256(wheel) != main.get("sha256"):
+                problems.append(f"{wheel.name}: sha256 diverge do manifesto")
+        # Se ele estiver DENTRO do wheelhouse, é declarado e não intruso.
+        declared.setdefault(main["filename"], main)
 
     present = {path.name: path for path in wheelhouse.glob("*.whl")}
     for name, entry in declared.items():
@@ -257,7 +274,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"manifesto ausente: {manifest_path}", file=sys.stderr)
             return 2
         problems = validate(
-            json.loads(manifest_path.read_text(encoding="utf-8")), args.out, args.lock
+            json.loads(manifest_path.read_text(encoding="utf-8")),
+            args.out,
+            args.lock,
+            args.wheel,
         )
         if problems:
             print("wheelhouse REPROVADO:", file=sys.stderr)
@@ -284,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    problems = validate(manifest, args.out, args.lock)
+    problems = validate(manifest, args.out, args.lock, args.wheel)
     if problems:
         print("conjunto recém-gerado já não confere:", file=sys.stderr)
         for problem in problems:
