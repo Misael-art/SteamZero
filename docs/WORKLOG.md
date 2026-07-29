@@ -3469,3 +3469,24 @@ para diagnóstico em vez de produzir apenas `None`.
 
 **Host:** nenhuma mutação, instalação ou rollback. A release a39 certificada
 permanece ativa e intacta.
+
+## 2026-07-29 — Sessão 44: preparação reproduzível da a40
+
+O PR #14 fechou GAP-G23 com observabilidade de estado, leitura segura da
+ativação e repetição controlada nas três versões de Python. O GitHub mesclou o
+SHA aprovado em `main` somente depois de todos os gates obrigatórios passarem;
+o review automatizado adicional foi pulado por cota, sem substituir nenhum
+gate de CI.
+
+Com autorização explícita do operador para atualizar o host, a versão foi
+avançada para `0.1.0a40` em uma branch cujo ancestral é o conteúdo exato
+mesclado. Nenhuma outra mudança funcional entrou nesta preparação. Os artefatos
+deverão ser produzidos pelo CI a partir do commit final limpo, e a tag continuará
+proibida até a prova física `a40→a39→a40`.
+
+**Gates locais:** 3.252 testes aprovados em Python 3.14, incluindo os cenários
+visuais, com cobertura de 85,97%; Ruff check e format, mypy em 188 arquivos,
+independência e fronteiras verdes.
+
+**Host:** nenhuma mutação nesta etapa; a39 permanece ativa e é o rollback
+certificado da a40.
