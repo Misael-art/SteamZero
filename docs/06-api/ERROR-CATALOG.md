@@ -57,6 +57,13 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-DESKTOP-VERIFY` efeito não confirmou o perfil; snapshots aplicados são revertidos.
 - `E-DESKTOP-RECOVERY` rollback de um ou mais efeitos falhou; novas mudanças são congeladas.
 
+### HOST — ativação e convergência
+- `E-HOST-RELEASE-MISMATCH` a release ativa difere da esperada; nenhum serviço é reiniciado.
+- `E-HOST-DAEMON-PENDING` o daemon reiniciou, mas continua respondendo pela release anterior.
+- `E-HOST-CONVERGENCE-TIMEOUT` o daemon não confirmou sua identidade no prazo de convergência.
+- `E-HOST-RESTART-FAILED` as units gerenciadas não puderam ser reiniciadas.
+- `E-HOST-CURRENT-UNREADABLE` o apontador da release ativa está ausente, quebrado ou inacessível.
+
 ### PRIV
 - `E-PRIV-DENIED` ação fora da allowlist / polkit negado.
 - `E-PRIV-HELPER-MISSING` helper não instalado (com instrução).

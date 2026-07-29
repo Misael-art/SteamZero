@@ -30,6 +30,7 @@ from steamzero.adapters.release_convergence import (
     DIAG_RESTART,
     DIAG_TIMEOUT,
     DIAG_UNREADABLE,
+    ConvergenceReport,
     ConvergenceState,
     converge,
     read_activated_manifest,
@@ -332,6 +333,39 @@ class TestTheCliContract:
         from steamzero.cli.main import _USAGE
 
         assert "--expect-release" in _USAGE
+
+    @pytest.mark.parametrize(
+        ("state", "diagnostic"),
+        [
+            (ConvergenceState.MISMATCH, DIAG_MISMATCH),
+            (ConvergenceState.PENDING, DIAG_PENDING),
+            (ConvergenceState.TIMEOUT, DIAG_TIMEOUT),
+            (ConvergenceState.RESTART_FAILED, DIAG_RESTART),
+            (ConvergenceState.UNREADABLE, DIAG_UNREADABLE),
+        ],
+    )
+    def test_every_host_diagnostic_reaches_the_cli_error_envelope(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        state: ConvergenceState,
+        diagnostic: str,
+    ) -> None:
+        from steamzero.adapters import release_convergence
+        from steamzero.cli.main import _cmd_service_refresh
+
+        report = ConvergenceReport(
+            state=state,
+            detail="diagnóstico observado no host",
+            code=diagnostic,
+        )
+        monkeypatch.setattr(release_convergence, "converge", lambda **_kwargs: report)
+
+        envelope, exit_code = _cmd_service_refresh(["--expect-release", A38], "cid")
+
+        assert exit_code != 0
+        assert envelope["status"] == "failed"
+        assert envelope["error"]["code"] == diagnostic
+        assert envelope["error"]["detail"] == report.detail
 
     @pytest.mark.parametrize(
         ("argv", "expected"),
