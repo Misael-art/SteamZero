@@ -44,7 +44,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
 | 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **parcial** — GAP-G16/G23 intermitentes, GAP-G17 ausente; GAP-G18/G19 fechados | CI/host | causas dos flakes diagnosticadas, `service status` público | P1 | PRs isoladas |
+| 5 | Estabilidade operacional | **parcial** — GAP-G16/G18/G19/G20 fechados; GAP-G23 intermitente e GAP-G17 ausente | CI/host | causas dos flakes diagnosticadas, `service status` público | P1 | PRs isoladas |
 | 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
 | 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
 | 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
@@ -60,7 +60,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 |---|---|---|---|---|---|---|
 | ~~GAP-G18~~ | ~~rollback deixa daemon stale, sem gate na release anterior~~ | — | **FECHADA pela certificação física a39→a37→a39** | — | — | convergência e idempotência provadas nas duas direções |
 | ~~GAP-G19~~ | ~~códigos `E-HOST-*` fora do catálogo~~ | — | **FECHADA**: cinco códigos registrados e serializados pela CLI | — | — | testes atravessam `build_error` e `service refresh` |
-| **GAP-G20** | `emulation workspace` não lê estado real | **P1** | chaves e 15 jogos válidos aparecem como ausentes | nenhuma | fazer a CLI reutilizar a composição do `EmulationController` | teste que impede uma segunda composição parcial |
+| ~~GAP-G20~~ | ~~`emulation workspace` não lê estado real~~ | — | **FECHADA**: CLI reutiliza `EmulationController.snapshot()`; 15 jogos e keys rev21 foram recuperados no host | — | — | teste AST impede uma segunda composição parcial |
 | DEBT-A0 | matriz física incompleta | **P0** | impede rótulo `verified-hw` | operações read-only | validar Deck LCD/OLED/dock | matriz física verde |
 | GAP-G7 | inventário fino de assets | **P1** | risco legal na redistribuição | não redistribuir | inventário item a item | notices completos |
 | GAP-G11 | boot direto não certificado | **P0** | risco de boot no greeter | sessão manual + fallback Plasma | protocolo físico com recovery | ciclos de falha/recovery |
@@ -68,7 +68,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | GAP-G13 | 3 `skipif` no arquivo legado | **P2** | falso verde possível | não contam como gate | migrar para o harness canônico | zero skip visual |
 | GAP-G14 | ~~baselines não versionadas~~ | — | **FECHADA** em `6fb2a75` | — | — | — |
 | GAP-G15 | geração de acessibilidade sem consumidor | **P2** | invalidação seletiva não provada | infraestrutura pronta | consumidor real | recomputação seletiva medida |
-| GAP-G16 | `test_controls_*` intermitente | **P2** | CI não determinístico | rerun (3× local passou) | diagnosticar a causa | 100 execuções sem falha |
+| ~~GAP-G16~~ | ~~`test_controls_*` intermitente~~ | — | **FECHADA**: token `token_urlsafe` iniciado por `-` era rejeitado pelo validador de controls | — | — | regressão determinística usa o token exato observado no CI |
 | GAP-G17 | sem `service status --json` | **P2** | observabilidade incompleta | refresh + doctor + host status | comando público | contrato e testes |
 | GAP-G21 | 46 warnings QML do Breeze | **P3** | polui coleta de warnings próprios | — | filtrar por origem | coleta só de QML nosso |
 | GAP-G22 | benchmark de 10 mil arquivos usa teto de tempo de parede em runner compartilhado | **P2** | CI pode reprovar por carga do runner, não por regressão | asserções funcionais continuam fortes | entrega própria com medição comparável ou runner dedicado | repetição controlada sem falso vermelho |
@@ -88,7 +88,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | 0 | Certificação física da a39 | GAP-G18 | **CONCLUÍDA** — rollback convergido e tag criada |
 | 1 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
 | 2 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
-| 3 | Operação e adapters | GAP-G16, GAP-G17, GAP-G20, M10, M11 | três emuladores e frontends certificados |
+| 3 | Operação e adapters | GAP-G17, GAP-G23, M10, M11 | três emuladores e frontends certificados |
 | 4 | Hardware | Deck/dock/input/suspend/storage/TDP | rótulo `verified-hw` real |
 | 5 | Game Mode | M12 + P0-08 necessário | navegação 100% por controle |
 | 6 | Adoção e distribuição | M13, M14 | import sem perda, downgrade demonstrado |
@@ -200,12 +200,12 @@ não apaga código parcial já existente, mas impede declarar o WI concluído.
 
 ### Ordem de retomada funcional
 
-Com `GAP-G18` e `GAP-G19` fechados e a a39 certificada, a próxima correção
-funcional é `GAP-G20`. Depois dela:
+Com `GAP-G16`, `GAP-G18`, `GAP-G19` e `GAP-G20` fechados e a a39 certificada,
+a retomada funcional segue:
 
 | onda | WIs |
 |---|---|
-| verdade operacional e adapters | `GAP-G16`, `GAP-G17`, M10, M11, `DEBT-A5`, `DEBT-A7` |
+| verdade operacional e adapters | `GAP-G17`, `GAP-G23`, M10, M11, `DEBT-A5`, `DEBT-A7` |
 | mídia, scraping, patches, achievements | `LEDGER-A7`, `LEDGER-A12`, `LEDGER-A8`, `LEDGER-A9` |
 | retro, performance, captura, controles | `LEDGER-R2`–`LEDGER-R8`, `LEDGER-G4`–`LEDGER-G6`, `LEDGER-A11` |
 | P0-03, scene tree, acessibilidade, M12 | corpus 388, `GAP-G12`, `GAP-G13`, `GAP-G15`, `LEDGER-S2`–`LEDGER-S7` |
@@ -264,7 +264,7 @@ idempotentes.
 - **Testes de falha:** código novo sem registro deve reprovar o build.
 - **Risco de regressão:** baixo.
 
-### PR 3 — `fix/emulation-workspace-reads-host` (P1, fecha GAP-G20)
+### PR 3 — `fix/emulation-workspace-reads-host` (P1, fecha GAP-G20) — **implementado no PR #11**
 
 O diagnóstico ficou mais preciso: **não é argumento faltando, são duas
 implementações do mesmo read model.** `EmulationController` já compõe a versão
@@ -288,7 +288,6 @@ padrão. A CLI mantém uma segunda, parcial, com só `probe`.
 
 | # | Bloqueador | Prio | Impede |
 |---|---|---|---|
-| GAP-G20 | workspace não lê o host | P1 | página de emulação utilizável |
 | DEBT-A0, GAP-G11 | matriz física e boot direto | P0 | `verified-hw` e M15 |
 
 ## O que NÃO pode ser declarado
