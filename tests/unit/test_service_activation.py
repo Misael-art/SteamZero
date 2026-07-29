@@ -206,22 +206,33 @@ class TestInstallerDeclaresPendingRefresh:
 
     def test_notice_marks_refresh_as_pending(self) -> None:
         installer = self._installer()
-        result = installer._activation_notice({"packageVersion": "0.1.0a37"})
+        result = installer._activation_notice(
+            {"release": "release-a", "packageVersion": "0.1.0a37"},
+            installer.Layout(),
+        )
         assert result["daemonRefresh"]["state"] == "pending"
 
     def test_notice_names_the_command_to_run(self) -> None:
         installer = self._installer()
-        result = installer._activation_notice({})
-        assert result["daemonRefresh"]["command"] == "steamzero service refresh"
+        result = installer._activation_notice({"release": "release-a"}, installer.Layout())
+        assert result["daemonRefresh"]["command"] == (
+            "/usr/local/sbin/steamzero-host converge --expect-release release-a"
+        )
 
     def test_notice_preserves_the_manifest(self) -> None:
         installer = self._installer()
-        manifest = {"packageVersion": "0.1.0a37", "sourceCommit": "a" * 40}
-        result = installer._activation_notice(manifest)
+        manifest = {
+            "release": "release-a",
+            "packageVersion": "0.1.0a37",
+            "sourceCommit": "a" * 40,
+        }
+        result = installer._activation_notice(manifest, installer.Layout())
         for key, value in manifest.items():
             assert result[key] == value
 
     def test_detail_explains_the_consequence(self) -> None:
         installer = self._installer()
-        detail = installer._activation_notice({})["daemonRefresh"]["detail"]
+        detail = installer._activation_notice({"release": "release-a"}, installer.Layout())[
+            "daemonRefresh"
+        ]["detail"]
         assert "geração anterior" in detail

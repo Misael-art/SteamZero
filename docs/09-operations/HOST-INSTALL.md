@@ -145,12 +145,16 @@ dias.
 Como o **usuário da sessão**, nunca como root:
 
 ```bash
-steamzero service refresh --expect-release "$(basename "$(readlink -f /opt/steamzero/current)")" --json
+/usr/local/sbin/steamzero-host converge \
+  --expect-release "$(basename "$(readlink -f /opt/steamzero/current)")"
 ```
 
-O comando compara três leituras: a release esperada, a ativada em
-`/opt/steamzero/current` e a que o daemon em execução reporta. Só devolve sucesso
-em `converged`.
+Esse gate vive no gerenciador estável, fora de `current`, e continua disponível
+mesmo quando a release alvo é antiga e não possui `steamzero service refresh`.
+Ele compara a release esperada, a ativada e a identidade do daemon. Para releases
+anteriores à identidade completa, confirma `daemonVersion`, PID e que
+`/proc/<pid>/exe` pertence ao `venv/bin` da release ativa. Só devolve sucesso em
+`converged`.
 
 | estado | significado | ação |
 |---|---|---|
@@ -159,12 +163,14 @@ em `converged`.
 | `pending` | o daemon respondeu com a release ANTIGA depois do restart | investigar a unit; é o estado da a37 |
 | `timeout` | o daemon não respondeu | conferir socket e journal |
 | `restartFailed` | `systemctl --user restart` falhou | ver `systemctl --user status` |
+| `unreadable` | `current` ou a release ativa não pôde ser verificada | reparar a instalação antes de reiniciar |
 
 `mismatch` falha **fechada**: nenhum serviço é reiniciado. Agir sobre premissa
 errada apagaria a evidência de o que falhou na instalação.
 
-O comando é idempotente: com o daemon já na release esperada, ele não reinicia
-nada.
+O comando é idempotente: com o daemon já na release esperada e executando pelo
+venv correto, ele não reinicia nada. Se o processo errado sobreviver ao restart,
+as units gerenciadas são paradas para não servir dados de outra release.
 
 ## Verificar
 
@@ -177,7 +183,7 @@ steamzero-gamemode-session --check
 /usr/local/libexec/steamzero-gamemode-boot status
 /usr/local/libexec/steamzero-host-prepare status
 bigsudo /usr/local/sbin/steamzero-host status
-steamzero service refresh --expect-release RELEASE_ATIVA --json
+/usr/local/sbin/steamzero-host converge --expect-release RELEASE_ATIVA
 ```
 
 O `status` recalcula os hashes do wheel, lock e gerenciador da release, confere
@@ -191,11 +197,11 @@ As releases anteriores são retidas. Liste-as e ative uma versão verificada:
 ```bash
 ls -1 /opt/steamzero/releases
 bigsudo /usr/local/sbin/steamzero-host rollback --release RELEASE_ANTERIOR
-steamzero service refresh --expect-release RELEASE_ANTERIOR --json
+/usr/local/sbin/steamzero-host converge --expect-release RELEASE_ANTERIOR
 steamzero doctor --json
 ```
 
-O `service refresh` é obrigatório **também no rollback**. Um rollback que
+O gate estável é obrigatório **também no rollback**. Um rollback que
 deixasse o daemon na release nova é o incidente da a37 ao contrário — e
 igualmente invisível.
 

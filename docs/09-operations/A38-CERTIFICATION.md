@@ -147,7 +147,8 @@ estado como conclusão que produziu a regressão da a37.
 readlink -f /opt/steamzero/current
 ls -ld /opt/steamzero/releases/0.1.0a38-48f4034dfe36
 
-steamzero service refresh --expect-release 0.1.0a38-48f4034dfe36 --json
+/usr/local/sbin/steamzero-host converge \
+  --expect-release 0.1.0a38-48f4034dfe36
 ```
 
 Único resultado aceitável: `converged`. Qualquer outro estado — `pending`,
@@ -169,11 +170,11 @@ bigsudo /usr/local/sbin/steamzero-host status
 
 ```bash
 bigsudo /usr/local/sbin/steamzero-host rollback --release 0.1.0a37-2aaa01d9d8b6
-steamzero service refresh --expect-release 0.1.0a37-2aaa01d9d8b6 --json
+/usr/local/sbin/steamzero-host converge --expect-release 0.1.0a37-2aaa01d9d8b6
 # repetir os smokes
 
 bigsudo /usr/local/sbin/steamzero-host rollback --release 0.1.0a38-48f4034dfe36
-steamzero service refresh --expect-release 0.1.0a38-48f4034dfe36 --json
+/usr/local/sbin/steamzero-host converge --expect-release 0.1.0a38-48f4034dfe36
 # repetir os smokes
 ```
 
