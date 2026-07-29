@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+import os
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -289,10 +291,28 @@ class InputProfileManager:
             }
             for profile in self.list_for_platform(platform_id)
         ]
-        if not target.is_file():
+        try:
+            metadata = target.lstat()
+        except FileNotFoundError:
             return {
                 "state": "unverified",
                 "statusLabel": "Perfil não selecionado",
+                "active": None,
+                "available": available,
+            }
+        except OSError as exc:
+            return {
+                "state": "degraded",
+                "statusLabel": "Perfil ilegível",
+                "detail": str(exc),
+                "active": None,
+                "available": available,
+            }
+        if not stat.S_ISREG(metadata.st_mode):
+            return {
+                "state": "degraded",
+                "statusLabel": "Perfil inválido",
+                "detail": "ativação de input não é arquivo regular",
                 "active": None,
                 "available": available,
             }
@@ -320,13 +340,43 @@ class InputProfileManager:
         }
 
     def _load_activation(self, target: Path) -> dict[str, Any]:
-        if target.is_symlink() or not target.is_file():
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(target, flags)
+        except OSError as exc:
             raise SteamZeroError(
-                "E-CONTENT-UNSAFE-PATH", detail="ativação de input não é arquivo regular"
-            )
-        if target.stat().st_size > _MAX_ACTIVATION_BYTES:
+                "E-CONTENT-UNSAFE-PATH", detail=f"ativação de input ilegível: {exc}"
+            ) from exc
+
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise SteamZeroError(
+                    "E-CONTENT-UNSAFE-PATH",
+                    detail="ativação de input não é arquivo regular",
+                )
+            if metadata.st_size > _MAX_ACTIVATION_BYTES:
+                raise SteamZeroError("E-API-SCHEMA", detail="ativação de input excede 256 KiB")
+            chunks: list[bytes] = []
+            remaining = _MAX_ACTIVATION_BYTES + 1
+            while remaining:
+                chunk = os.read(descriptor, min(64 * 1024, remaining))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            raw = b"".join(chunks)
+        finally:
+            os.close(descriptor)
+
+        if len(raw) > _MAX_ACTIVATION_BYTES:
             raise SteamZeroError("E-API-SCHEMA", detail="ativação de input excede 256 KiB")
-        value = json.loads(target.read_text(encoding="utf-8"))
+        try:
+            value = json.loads(raw.decode("utf-8"))
+        except UnicodeDecodeError as exc:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="ativação de input não contém UTF-8 válido"
+            ) from exc
         if not isinstance(value, dict):
             raise SteamZeroError("E-API-SCHEMA", detail="ativação de input precisa ser objeto")
         required = {

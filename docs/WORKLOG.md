@@ -3420,3 +3420,52 @@ zero reinícios e nenhuma consulta ao daemon quando o symlink não é confiável
 Próxima investigação operacional: GAP-G23. Próxima entrega funcional de
 adapters: M10/M11, sem declarar nenhum deles concluído antes da VM e da matriz
 real exigidas pelo roadmap.
+
+## 2026-07-29 — Sessão 43: GAP-G23 observável e repetível
+
+A falha isolada do round-trip de perfil no Python 3.12 não foi reproduzida em
+50 ciclos locais independentes, cada um criando e encerrando o próprio servidor
+RPC e a própria árvore XDG. A execução integral também atravessou o módulo sem
+falha. Não foi atribuída uma causa sem evidência.
+
+Foi corrigido um defeito comprovável de altitude: `InputProfileManager.status()`
+usava `Path.is_file()`, que colapsava arquivo ausente e falha de `stat` no mesmo
+`active=None`. Ausência legítima continua `unverified`; erro de leitura,
+symlink ou tipo não regular agora resulta em `degraded` com causa. A leitura da
+ativação usa o mesmo `lstat` estrito.
+
+O teste RPC agora executa cinco servidores independentes e prova, antes da
+consulta, que `apply` publicou uma ação, que o arquivo existe e contém perfil e
+orientação esperados. Depois exige `state=ready`, `active` tipado e rollback.
+Assim, uma recorrência futura identifica se a perda aconteceu na publicação,
+no conteúdo ou na leitura, em vez de falhar apenas ao indexar `None`.
+
+Uma revisão posterior fechou a janela entre `lstat()` e `read_text()`: a
+ativação agora é aberta uma única vez com `O_NOFOLLOW`, validada por `fstat()`
+e lida pelo mesmo descritor com limite de tamanho. Um teste troca o arquivo por
+symlink exatamente depois da primeira observação e comprova que o destino não é
+seguido. O round-trip RPC também prova a remoção física do arquivo e o retorno
+a `unverified`/`active=None` após rollback.
+
+O CI pós-revisão revelou outro falso vermelho de relógio de parede:
+`test_global_media_apply_returns_before_background_provider_finishes` exigia
+retorno em menos de 0,5 s e observou 0,863 s no runner Python 3.11, embora o
+provider ainda estivesse bloqueado. A asserção temporal foi substituída pela
+prova causal: depois do retorno, o evento do provider começou e o job continua
+`running`; só termina após o desbloqueio explícito. O contrato assíncrono fica
+mais forte sem transformar carga do runner em falha funcional.
+
+**Gates locais finais:** 3.252 testes aprovados, incluindo os cenários visuais,
+cobertura 86,04%; Ruff check/format, mypy em 188 arquivos, independência e
+fronteiras verdes. O CI do PR executou as cinco instâncias em Python 3.11,
+3.12 e 3.14; os oito jobs passaram, incluindo QML, supply chain e os três
+smokes de distribuição.
+
+GAP-G23 foi fechado pelo critério de saída publicado: 50 servidores locais,
+mais cinco por versão de Python no CI, sem `unverified` ou `degraded`. O gatilho
+isolado original continua sem atribuição e não foi rebatizado como causa de
+produto; uma recorrência agora preservará estado, detalhe, arquivo e conteúdo
+para diagnóstico em vez de produzir apenas `None`.
+
+**Host:** nenhuma mutação, instalação ou rollback. A release a39 certificada
+permanece ativa e intacta.

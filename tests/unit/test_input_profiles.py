@@ -174,6 +174,65 @@ def test_stale_plan_and_corrupt_activation_degrade_honestly(
     assert manager.status("switch")["state"] == "degraded"
 
 
+def test_status_distinguishes_missing_from_unreadable_activation(
+    manager: InputProfileManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = manager._root / "active/switch/platform-default.json"  # type: ignore[attr-defined]
+    missing = manager.status("switch")
+    assert missing["state"] == "unverified"
+    assert missing["statusLabel"] == "Perfil não selecionado"
+    assert missing["active"] is None
+
+    real_lstat = Path.lstat
+
+    def unreadable(path: Path) -> Any:
+        if path == target:
+            raise PermissionError("acesso negado pelo teste")
+        return real_lstat(path)
+
+    monkeypatch.setattr(Path, "lstat", unreadable)
+    observed = manager.status("switch")
+
+    assert observed["state"] == "degraded"
+    assert observed["statusLabel"] == "Perfil ilegível"
+    assert "acesso negado pelo teste" in observed["detail"]
+    assert observed["active"] is None
+
+
+def test_status_does_not_follow_activation_swapped_to_symlink(
+    manager: InputProfileManager,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    plan = manager.plan_activate(platform_id="switch", profile_id="standard-gamepad")
+    manager.apply(plan.plan_id, plan.confirm_token)
+    target = manager._root / "active/switch/platform-default.json"  # type: ignore[attr-defined]
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(target.read_bytes())
+    real_lstat = Path.lstat
+    swapped = False
+
+    def swap_after_metadata(path: Path) -> Any:
+        nonlocal swapped
+        metadata = real_lstat(path)
+        if path == target and not swapped:
+            swapped = True
+            target.unlink()
+            target.symlink_to(outside)
+        return metadata
+
+    monkeypatch.setattr(Path, "lstat", swap_after_metadata)
+    observed = manager.status("switch")
+
+    assert swapped is True
+    assert observed["state"] == "degraded"
+    assert observed["statusLabel"] == "Perfil inválido"
+    assert "E-CONTENT-UNSAFE-PATH" in observed["detail"]
+    assert "ativação de input ilegível" in observed["detail"]
+    assert observed["active"] is None
+
+
 def test_activation_rejects_symlink_and_oversized_existing_file(
     manager: InputProfileManager, tmp_path: Path
 ) -> None:
