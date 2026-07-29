@@ -22,7 +22,6 @@ from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.desktop import ExperienceCoordinator
-from steamzero.domain.emulation_workspace import build_switch_workspace
 
 if TYPE_CHECKING:
     from steamzero.adapters.flatpak import FlatpakExecutor
@@ -927,11 +926,37 @@ def _cmd_desktop_ui(_args: list[str], correlation_id: str) -> tuple[dict[str, An
 
 
 def _cmd_emulation_workspace(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    import shutil
+    """Read model da central de emulação, composto pelo controller.
 
-    workspace = build_switch_workspace(
-        probe=lambda emulator_id: shutil.which(emulator_id) is not None,
-    )
+    A versão anterior chamava ``build_switch_workspace(probe=...)`` e mais nada.
+    O resultado: com `prod-*.keys` e 15 jogos no disco deste host, o comando
+    devolvia `unverified` e 36 plataformas zeradas — chaves e biblioteca válidas
+    aparecendo como apagadas, que é exatamente o sintoma relatado na a37.
+
+    O defeito não era argumento faltando. Eram DUAS implementações do mesmo read
+    model: o `EmulationController` já compunha a completa — chaves, firmware,
+    biblioteca, capabilities, `emulator_facts`, `core_present`, mais plataformas
+    de nuvem e resolução do emulador padrão — e a CLI mantinha uma segunda,
+    parcial. Acrescentar argumentos à segunda só adiaria a próxima divergência.
+    """
+    from steamzero.adapters.emulation import EmulationController
+
+    # `desktop_status` alimenta só a detecção de dock físico. Quando o
+    # coordinator não está disponível, seguir com status vazio é melhor que
+    # falhar: perde-se a informação de dock, não a biblioteca.
+    try:
+        with _desktop_coordinator() as coordinator:
+            desktop_status = coordinator.status()
+    except Exception:
+        desktop_status = {}
+
+    controller = EmulationController()
+    try:
+        workspace = controller.snapshot(desktop_status)
+    finally:
+        close = getattr(controller, "close", None)
+        if callable(close):
+            close()
     return (
         build_envelope(
             "emulation",
