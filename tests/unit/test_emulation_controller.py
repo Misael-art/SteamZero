@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import queue
 import threading
 import time
 import zipfile
@@ -75,6 +76,33 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     }
     assert by_id["ryubing"]["running"] is False
     assert by_id["ryubing"]["libraryRootCount"] == 0
+
+
+def test_snapshot_owns_job_store_in_the_calling_thread(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """O dashboard constrói o controller antes de o handler HTTP existir."""
+    controller = _controller(monkeypatch, tmp_path)
+    result: queue.Queue[dict[str, object] | BaseException] = queue.Queue()
+
+    def read_from_request_thread() -> None:
+        try:
+            result.put(controller.snapshot({"context": {}}))
+        except BaseException as exc:  # pragma: no cover - torna a falha legível
+            result.put(exc)
+        finally:
+            controller.close_request_context()
+
+    thread = threading.Thread(target=read_from_request_thread)
+    thread.start()
+    thread.join(timeout=5)
+
+    assert not thread.is_alive()
+    payload = result.get_nowait()
+    if isinstance(payload, BaseException):
+        raise payload
+    platform = payload["platforms"][0]  # type: ignore[index]
+    eden = next(row for row in platform["emulators"] if row["id"] == "eden")
+    assert eden["actions"][0]["id"] == "emulator.install:eden"
+    assert eden["health"]["state"] == "unavailable"
 
 
 def test_library_health_plan_runs_bounded_job_and_marks_suspect(

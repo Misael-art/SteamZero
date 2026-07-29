@@ -607,6 +607,26 @@ def test_bridge_plan_and_confirmed_safe_apply(bridge: tuple[str, str]) -> None:
     assert profile["id"] == "safe"
 
 
+def test_status_keeps_full_emulation_model_across_http_thread(
+    credential_bridge: tuple[str, str, FakeSecretStore],
+) -> None:
+    """A bridge não pode degradar o workspace por afinidade SQLite de thread."""
+    base, token, _ = credential_bridge
+
+    status = request_json(base, token, "/status")
+    dashboard = cast(dict[str, object], status["dashboard"])
+    workspace = cast(dict[str, object], dashboard["emulation"])
+    platforms = cast(list[dict[str, object]], workspace["platforms"])
+    switch = next(row for row in platforms if row["id"] == "switch")
+    emulators = cast(list[dict[str, object]], switch["emulators"])
+    eden = next(row for row in emulators if row["id"] == "eden")
+
+    actions = cast(list[dict[str, object]], eden["actions"])
+    health = cast(dict[str, object], eden["health"])
+    assert actions[0]["id"] == "emulator.install:eden"
+    assert health["state"] == "unavailable"
+
+
 def test_bridge_conflict_resolution_requires_confirmation_and_refreshes_status(
     conflict_bridge: tuple[str, str, ConflictResolver],
 ) -> None:
