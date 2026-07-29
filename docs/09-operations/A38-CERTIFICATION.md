@@ -67,11 +67,46 @@ Verificado: `sourceCommit` bate, `packageVersion` é `0.1.0a38`, árvore `clean`
 hash do lock confere, wheel confere, as 6 dependências conferem, **nenhum wheel
 não declarado**.
 
-Reconferir antes de instalar:
+Reconferir antes de instalar. Copie o bloco inteiro — as quatro linhas de `test`
+não são zelo, são o que faz o comando falhar **antes** de conferir qualquer
+arquivo quando o diretório está errado:
 
 ```bash
-cd release-artifacts/a38-48f4034dfe36 && sha256sum -c VERIFIED-SHA256SUMS
+cd /mnt/sdcard/Projects/Port_Steam/release-artifacts/a38-48f4034dfe36
+
+test "$(basename "$PWD")" = "a38-48f4034dfe36"
+test -f VERIFIED-SHA256SUMS
+test -f dist/steamzero-0.1.0a38-py3-none-any.whl
+test -f dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json
+sha256sum -c VERIFIED-SHA256SUMS
 ```
+
+Esperado: **10 de 10 `SUCESSO`**. Qualquer `FALHOU` ou "inexistente" interrompe.
+
+### Por que o `cd` é obrigatório
+
+O defeito não é do SHA-256 — é do **contexto de resolução**. Os caminhos dentro
+do arquivo são relativos, então a partir da raiz do repositório eles apontam
+para `Port_Steam/dist/`, não para os artefatos.
+
+Isso já aconteceu, e o resultado foi pior que uma falha: **7 dos 10 passaram**.
+Um `dist/runtime-wheelhouse` de teste local tinha os mesmos wheels — mesmo lock,
+mesmo `pip download`, logo os mesmos bytes. Só o manifesto (commit diferente) e o
+`.tar.zst` (ausente) denunciaram.
+
+Falso positivo operacional clássico: arquivos **diferentes** com bytes
+**iguais**. A verificação parecia ter acontecido e não tinha verificado o
+conjunto que será instalado.
+
+Esta é a forma NÃO confiável:
+
+```bash
+sha256sum -c release-artifacts/a38-48f4034dfe36/VERIFIED-SHA256SUMS   # ERRADO
+```
+
+O `dist/runtime-wheelhouse` local foi removido para não repetir a armadilha,
+mas removê-lo é mitigação, não garantia — outro diretório com os mesmos wheels
+reproduziria o efeito. A garantia são as linhas de `test`.
 
 ## Estado do host antes da operação
 
