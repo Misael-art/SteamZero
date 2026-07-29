@@ -3490,3 +3490,26 @@ independência e fronteiras verdes.
 
 **Host:** nenhuma mutação nesta etapa; a39 permanece ativa e é o rollback
 certificado da a40.
+
+## 2026-07-29 — Sessão 45: verdade da emulação na bridge HTTP
+
+A captura física da central mostrou o workspace mínimo de fallback — ações
+vazias, keys aparentemente pendentes e biblioteca zerada — embora a CLI da a40
+lesse keys rev21, firmware 22.5.0 e 15 jogos. O log estruturado registrava
+`dashboard.emulation-snapshot-failed` com `ProgrammingError`. A reprodução em
+thread separada confirmou a causa: o `EmulationController` abria o State Store
+de jobs na thread que criava o dashboard e o reutilizava nas threads do
+`ThreadingHTTPServer`, operação recusada pelo SQLite.
+
+O manager próprio de jobs passou a ser criado sob demanda na thread da
+requisição e fechado por `DesktopControlHandler.finish()`. Managers injetados
+preservam o contrato anterior. A regressão é coberta tanto no controller
+multithread quanto por uma chamada HTTP real a `/status`, que exige ações e
+`health` completos no cartão do emulador.
+
+**Gates locais:** 3.254 testes aprovados, cobertura 86,01%; Ruff check/format,
+mypy em 189 arquivos, independência e fronteiras verdes.
+
+**Host:** nenhuma mutação nesta etapa; a40 continua ativa e convergida. Uma nova
+release exige autorização explícita do operador antes de preparar artefatos e
+instalar.
