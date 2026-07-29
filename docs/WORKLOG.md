@@ -3440,7 +3440,14 @@ orientação esperados. Depois exige `state=ready`, `active` tipado e rollback.
 Assim, uma recorrência futura identifica se a perda aconteceu na publicação,
 no conteúdo ou na leitura, em vez de falhar apenas ao indexar `None`.
 
-**Gates locais:** 3.080 testes aprovados, 171 excluídos pela marca `visual`,
+Uma revisão posterior fechou a janela entre `lstat()` e `read_text()`: a
+ativação agora é aberta uma única vez com `O_NOFOLLOW`, validada por `fstat()`
+e lida pelo mesmo descritor com limite de tamanho. Um teste troca o arquivo por
+symlink exatamente depois da primeira observação e comprova que o destino não é
+seguido. O round-trip RPC também prova a remoção física do arquivo e o retorno
+a `unverified`/`active=None` após rollback.
+
+**Gates locais finais:** 3.252 testes aprovados, incluindo os cenários visuais,
 cobertura 86,04%; Ruff check/format, mypy em 188 arquivos, independência e
 fronteiras verdes. O CI do PR executou as cinco instâncias em Python 3.11,
 3.12 e 3.14; os oito jobs passaram, incluindo QML, supply chain e os três

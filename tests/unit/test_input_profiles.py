@@ -182,6 +182,7 @@ def test_status_distinguishes_missing_from_unreadable_activation(
     missing = manager.status("switch")
     assert missing["state"] == "unverified"
     assert missing["statusLabel"] == "Perfil não selecionado"
+    assert missing["active"] is None
 
     real_lstat = Path.lstat
 
@@ -196,6 +197,36 @@ def test_status_distinguishes_missing_from_unreadable_activation(
     assert observed["state"] == "degraded"
     assert observed["statusLabel"] == "Perfil ilegível"
     assert "acesso negado pelo teste" in observed["detail"]
+    assert observed["active"] is None
+
+
+def test_status_does_not_follow_activation_swapped_to_symlink(
+    manager: InputProfileManager,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    plan = manager.plan_activate(platform_id="switch", profile_id="standard-gamepad")
+    manager.apply(plan.plan_id, plan.confirm_token)
+    target = manager._root / "active/switch/platform-default.json"  # type: ignore[attr-defined]
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(target.read_bytes())
+    real_lstat = Path.lstat
+    swapped = False
+
+    def swap_after_metadata(path: Path) -> Any:
+        nonlocal swapped
+        metadata = real_lstat(path)
+        if path == target and not swapped:
+            swapped = True
+            target.unlink()
+            target.symlink_to(outside)
+        return metadata
+
+    monkeypatch.setattr(Path, "lstat", swap_after_metadata)
+    observed = manager.status("switch")
+
+    assert swapped is True
+    assert observed["state"] == "degraded"
     assert observed["active"] is None
 
 

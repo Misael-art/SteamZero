@@ -332,6 +332,17 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
         },
     ).envelope["data"]
     assert rolled_back["status"] == "rolled-back"
+    with pytest.raises(FileNotFoundError):
+        target.lstat()
+    after_rollback = invoke(
+        "controls.profiles",
+        {
+            "platformId": "switch",
+            "correlationId": "01J000000000000000000000AZ",
+        },
+    ).envelope["data"]
+    assert after_rollback["state"] == "unverified", after_rollback
+    assert after_rollback["active"] is None
 
 
 def test_daemon_operation_history_previews_and_confirms_rollback(
