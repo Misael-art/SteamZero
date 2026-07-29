@@ -228,9 +228,6 @@ def validate(
                 problems.append(f"wheel principal ausente: {wheel}")
             elif _sha256(wheel) != main.get("sha256"):
                 problems.append(f"{wheel.name}: sha256 diverge do manifesto")
-        # Se ele estiver DENTRO do wheelhouse, é declarado e não intruso.
-        declared.setdefault(main["filename"], main)
-
     present = {path.name: path for path in wheelhouse.glob("*.whl")}
     for name, entry in declared.items():
         path = present.get(name)
@@ -247,7 +244,13 @@ def validate(
 
     # Arquivo presente e não declarado é tão grave quanto o contrário: é
     # exatamente a forma de um wheel de origem desconhecida entrar no conjunto.
-    for name in sorted(set(present) - set(declared)):
+    #
+    # O wheel do produto não conta como intruso se estiver aqui dentro, mas
+    # também não pode ser EXIGIDO aqui — ele normalmente vive em `dist/`.
+    # Somá-lo a `declared` antes desta linha fazia a checagem de presença
+    # reprovar um conjunto correto.
+    known = set(declared) | ({main["filename"]} if main else set())
+    for name in sorted(set(present) - known):
         problems.append(f"presente e não declarado no manifesto: {name}")
 
     return problems
