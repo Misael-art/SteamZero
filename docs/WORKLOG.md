@@ -3351,3 +3351,37 @@ arquivos; independência e fronteiras verdes.
 
 **Host:** nenhuma mutação executada nesta etapa; a38 continua ativa e é o
 caminho de recuperação até a instalação validada da a39.
+
+## 2026-07-29 — Sessão 41: certificação física da a39
+
+Release certificada: `0.1.0a39-8e17159d5122`, commit
+`8e17159d51222adf2efaa445c19de40999954d8b`, wheel SHA-256
+`591ae8a07205192d67cbcd78a072ff07e98d41d6ec11561e27d41e939cc4c161`.
+
+Os artefatos passaram checksums, procedência, wheelhouse, entry points e
+auditoria. A instalação inicial declarou o estado intermediário `pending`; o
+gate estável convergiu para a39 em uma tentativa e foi idempotente na repetição.
+
+O ciclo autorizado `a39→a37→a39` foi executado fisicamente. Em ambas as trocas,
+o `current` mudou antes do daemon, comprovando o estado stale que o gate precisa
+resolver. A a37 convergiu em uma tentativa por versão, PID e executável; a
+repetição fez zero tentativas e preservou o PID. O roll-forward repetiu o mesmo
+resultado com a identidade completa da a39. CLI, doctor, socket, serviço, Game
+Mode check e host status ficaram verdes. O host terminou na a39; a a37 segue
+preservada para rollback.
+
+GAP-G18 está fechado por prova física. A tag `v0.1.0a39` foi publicada no SHA
+certificado. Os workflows CI e QML visual da tag passaram. O rebuild manteve
+byte-idênticos o wheel, o lock, o relatório de auditoria e as seis dependências;
+as diferenças restantes são metadados próprios do novo run (ID/data/ref e UUIDs
+do SBOM), não conteúdo executável. Nenhum reboot ou navegação interativa da UI
+foi executado, portanto essas jornadas não são declaradas como aprovadas.
+
+O CI do commit teve uma falha isolada no Python 3.12 em
+`test_daemon_controls_profile_roundtrip_is_closed_and_reversible`: a leitura
+imediata após `apply` retornou `active=None`. O mesmo SHA passou localmente, no
+PR, em Python 3.11/3.14 e no rerun do job 3.12. A causa não foi inventada; a
+intermitência foi registrada como GAP-G23.
+
+Próxima correção funcional: GAP-G20, fazendo `emulation workspace` reutilizar a
+composição autoritativa do `EmulationController`.

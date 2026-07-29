@@ -1,7 +1,8 @@
 # Plano de execução até a 1.0
 
-**Base:** commit `3c43f25a`, host em `0.1.0a38-48f4034dfe36` (certificação
-**parcial** — ver `docs/09-operations/A38-CERTIFICATION-RESULT.md`).
+**Base:** commit `8e17159d`, host em `0.1.0a39-8e17159d5122`
+(**certificação aprovada** — ver
+`docs/09-operations/A39-CERTIFICATION-RESULT.md`).
 
 Este documento não copia estado antigo. Cada linha foi conferida contra o
 código, os testes ou o host nesta sessão; onde não foi possível verificar, está
@@ -38,12 +39,12 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | # | Entrega | Estado real (verificado) | Dependências | Definition of Done | Prio | Próxima ação |
 |--:|---|---|---|---|---|---|
-| 0 | Certificação física a38 | **parcial** — correção sintética do rollback pronta; prova física ainda ausente | GAP-G18 | ciclo completo com rollback convergido | P0 | recertificar a38→a37→a38 |
-| 1 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a38 certificada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
+| 0 | Certificação física a39 | **concluída** — ciclo a39→a37→a39 convergido e idempotente; tag exata criada | — | ciclo completo com rollback convergido | — | preservar evidência |
+| 1 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a39 certificada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
 | 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **parcial** — GAP-G16 intermitente, GAP-G17 ausente; GAP-G19 fechado | CI/host | causa do flake diagnosticada, `service status` público | P1 | PRs isoladas |
+| 5 | Estabilidade operacional | **parcial** — GAP-G16/G23 intermitentes, GAP-G17 ausente; GAP-G18/G19 fechados | CI/host | causas dos flakes diagnosticadas, `service status` público | P1 | PRs isoladas |
 | 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
 | 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
 | 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
@@ -57,7 +58,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | ID | Dívida | Prio | Impacto real | Mitigação atual | Solução definitiva | Gate de encerramento |
 |---|---|---|---|---|---|---|
-| **GAP-G18** | rollback deixa daemon stale, sem gate na release anterior | **P0** | reproduz a regressão da a37; release "revertida" continua servindo código novo | `steamzero-host converge` implementado e coberto sem systemd real | certificar o gate estável no host | rollback e roll-forward físicos com daemon convergido |
+| ~~GAP-G18~~ | ~~rollback deixa daemon stale, sem gate na release anterior~~ | — | **FECHADA pela certificação física a39→a37→a39** | — | — | convergência e idempotência provadas nas duas direções |
 | ~~GAP-G19~~ | ~~códigos `E-HOST-*` fora do catálogo~~ | — | **FECHADA**: cinco códigos registrados e serializados pela CLI | — | — | testes atravessam `build_error` e `service refresh` |
 | **GAP-G20** | `emulation workspace` não lê estado real | **P1** | chaves e 15 jogos válidos aparecem como ausentes | nenhuma | fazer a CLI reutilizar a composição do `EmulationController` | teste que impede uma segunda composição parcial |
 | DEBT-A0 | matriz física incompleta | **P0** | impede rótulo `verified-hw` | operações read-only | validar Deck LCD/OLED/dock | matriz física verde |
@@ -71,6 +72,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | GAP-G17 | sem `service status --json` | **P2** | observabilidade incompleta | refresh + doctor + host status | comando público | contrato e testes |
 | GAP-G21 | 46 warnings QML do Breeze | **P3** | polui coleta de warnings próprios | — | filtrar por origem | coleta só de QML nosso |
 | GAP-G22 | benchmark de 10 mil arquivos usa teto de tempo de parede em runner compartilhado | **P2** | CI pode reprovar por carga do runner, não por regressão | asserções funcionais continuam fortes | entrega própria com medição comparável ou runner dedicado | repetição controlada sem falso vermelho |
+| GAP-G23 | round-trip de perfil do daemon falhou uma vez no Python 3.12 | **P2** | CI não determinístico; leitura imediata retornou `active=None` | rerun passou no mesmo SHA | diagnosticar isolamento/visibilidade de estado | repetição controlada sem falha |
 | GAP-G8 | matriz SteamOS/Steam Client | **P2** | compatibilidade desconhecida | estado observado | serviço de reconciliação | FM-10 verde |
 | DEBT-A1 | ENOSPC mid-apply não testado | **P1** | rollback sob disco cheio incerto | preflight | loopback/quota | FI real verde |
 | DEBT-A2 | dry-run sem `strace` | **P2** | ausência de writes não provada por syscall | asserção de estado | harness strace | zero writes observado |
@@ -83,7 +85,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | Onda | Objetivo | Entregas | Critério de saída |
 |--:|---|---|---|
-| 0 | Fechar a certificação da a38 | GAP-G18 | rollback com daemon convergido; tag criada |
+| 0 | Certificação física da a39 | GAP-G18 | **CONCLUÍDA** — rollback convergido e tag criada |
 | 1 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
 | 2 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
 | 3 | Operação e adapters | GAP-G16, GAP-G17, GAP-G20, M10, M11 | três emuladores e frontends certificados |
@@ -198,8 +200,8 @@ não apaga código parcial já existente, mas impede declarar o WI concluído.
 
 ### Ordem de retomada funcional
 
-Com `GAP-G19` fechado, a sequência é `GAP-G18 → certificação → GAP-G20`.
-Depois dela:
+Com `GAP-G18` e `GAP-G19` fechados e a a39 certificada, a próxima correção
+funcional é `GAP-G20`. Depois dela:
 
 | onda | WIs |
 |---|---|
@@ -213,7 +215,7 @@ Depois dela:
 
 ## Detalhamento das próximas três entregas
 
-### PR 2 — `fix/host-rollback-convergence` (P0, fecha GAP-G18)
+### PR 2 — `fix/host-rollback-convergence` (P0, fecha GAP-G18) — **implementado e certificado**
 
 **Correção de rota.** A primeira versão deste plano propunha "convergir antes de
 trocar `current`". Está errado, e a revisão pegou: o `ExecStart` da unit é
@@ -234,8 +236,9 @@ justamente o que falta na a37.
 
 Releases modernas comprovam `releaseId` e `sourceCommit`; a a37, anterior à
 identidade completa, comprova `daemonVersion`, PID e o executável real em
-`/proc/<pid>/exe`. A implementação sintética está pronta; o G18 permanece aberto
-até a repetição física a38→a37→a38.
+`/proc/<pid>/exe`. A implementação passou na repetição física
+`a39→a37→a39`: uma tentativa em cada direção e zero tentativas nas repetições
+idempotentes.
 
 - **Exclui:** motor de temas, UI, wheelhouse.
 - **Testes:** encenar rollback a38→a37 com daemon a38 vivo e exigir detecção
@@ -285,7 +288,6 @@ padrão. A CLI mantém uma segunda, parcial, com só `probe`.
 
 | # | Bloqueador | Prio | Impede |
 |---|---|---|---|
-| GAP-G18 | rollback deixa daemon stale | P0 | tag `v0.1.0a38` |
 | GAP-G20 | workspace não lê o host | P1 | página de emulação utilizável |
 | DEBT-A0, GAP-G11 | matriz física e boot direto | P0 | `verified-hw` e M15 |
 
@@ -293,5 +295,5 @@ padrão. A CLI mantém uma segunda, parcial, com só `probe`.
 
 Com M10–M15 pendentes e a matriz física incompleta, o projeto **não** é
 "completo", **não** está em "produção" e **não** tem rótulo `verified-hw`. A
-a38 tem mecânica de release certificada pela metade: instalação e roll-forward
-provados, rollback não.
+a39 tem a mecânica de release certificada nas duas direções. Isso fecha o risco
+operacional G18, mas não substitui os marcos funcionais e físicos ainda abertos.
