@@ -38,12 +38,12 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | # | Entrega | Estado real (verificado) | Dependências | Definition of Done | Prio | Próxima ação |
 |--:|---|---|---|---|---|---|
-| 0 | Certificação física a38 | **parcial** — instala, converge, roll-forward ok; rollback deixa daemon stale | GAP-G18, GAP-G19 | ciclo completo com rollback convergido | P0 | fechar GAP-G19, depois GAP-G18 |
+| 0 | Certificação física a38 | **parcial** — instala, converge, roll-forward ok; rollback deixa daemon stale | GAP-G18 | ciclo completo com rollback convergido | P0 | fechar GAP-G18 |
 | 1 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a38 certificada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
 | 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **parcial** — GAP-G16 intermitente, GAP-G17 ausente, GAP-G19 novo | CI/host | causa do flake diagnosticada, `service status` público | P1 | PRs isoladas |
+| 5 | Estabilidade operacional | **parcial** — GAP-G16 intermitente, GAP-G17 ausente; GAP-G19 fechado | CI/host | causa do flake diagnosticada, `service status` público | P1 | PRs isoladas |
 | 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
 | 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
 | 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
@@ -58,7 +58,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | ID | Dívida | Prio | Impacto real | Mitigação atual | Solução definitiva | Gate de encerramento |
 |---|---|---|---|---|---|---|
 | **GAP-G18** | rollback deixa daemon stale, sem gate na release anterior | **P0** | reproduz a regressão da a37; release "revertida" continua servindo código novo | nenhuma | verificador independente da release ativa, ou staging com verificação explícita do binário-alvo | rollback com daemon convergido |
-| **GAP-G19** | códigos `E-HOST-*` fora do catálogo | **P1** | falha do gate vira erro interno genérico | nenhuma | registrar os cinco códigos | teste que atravessa `build_error` |
+| ~~GAP-G19~~ | ~~códigos `E-HOST-*` fora do catálogo~~ | — | **FECHADA**: cinco códigos registrados e serializados pela CLI | — | — | testes atravessam `build_error` e `service refresh` |
 | **GAP-G20** | `emulation workspace` não lê estado real | **P1** | chaves e 15 jogos válidos aparecem como ausentes | nenhuma | fazer a CLI reutilizar a composição do `EmulationController` | teste que impede uma segunda composição parcial |
 | DEBT-A0 | matriz física incompleta | **P0** | impede rótulo `verified-hw` | operações read-only | validar Deck LCD/OLED/dock | matriz física verde |
 | GAP-G7 | inventário fino de assets | **P1** | risco legal na redistribuição | não redistribuir | inventário item a item | notices completos |
@@ -83,7 +83,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | Onda | Objetivo | Entregas | Critério de saída |
 |--:|---|---|---|
-| 0 | Fechar a certificação da a38 | GAP-G19, GAP-G18 | rollback com daemon convergido; tag criada |
+| 0 | Fechar a certificação da a38 | GAP-G18 | rollback com daemon convergido; tag criada |
 | 1 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
 | 2 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
 | 3 | Operação e adapters | GAP-G16, GAP-G17, GAP-G20, M10, M11 | três emuladores e frontends certificados |
@@ -198,7 +198,8 @@ não apaga código parcial já existente, mas impede declarar o WI concluído.
 
 ### Ordem de retomada funcional
 
-Depois de fechar `GAP-G19 → GAP-G18 → certificação → GAP-G20`:
+Com `GAP-G19` fechado, a sequência é `GAP-G18 → certificação → GAP-G20`.
+Depois dela:
 
 | onda | WIs |
 |---|---|
@@ -244,10 +245,10 @@ confirmar a identidade, e só então trocar o symlink.
 - **Risco de regressão:** alto — mexe na ordem de ativação. Mitigar com
   encenação sem systemd, como o HOST-ACTIVATION-01 já faz.
 - **Rollback:** a a37 permanece instalada e ativável.
-- **Depende de:** PR 1 (GAP-G19). Sem os códigos no catálogo, os caminhos de
-  falha desta correção não são observáveis nem testáveis.
+- **Dependência satisfeita:** PR 1 (GAP-G19). Os caminhos de falha agora são
+  observáveis e testáveis pelos códigos públicos do catálogo.
 
-### PR 1 — `fix/host-error-catalog` (P1, fecha GAP-G19) — **primeiro**
+### PR 1 — `fix/host-error-catalog` (P1, fecha GAP-G19) — **implementado**
 
 - **Inclui:** registrar `E-HOST-RELEASE-MISMATCH`, `E-HOST-DAEMON-PENDING`,
   `E-HOST-CONVERGENCE-TIMEOUT`, `E-HOST-RESTART-FAILED`,
@@ -283,7 +284,6 @@ padrão. A CLI mantém uma segunda, parcial, com só `probe`.
 | # | Bloqueador | Prio | Impede |
 |---|---|---|---|
 | GAP-G18 | rollback deixa daemon stale | P0 | tag `v0.1.0a38` |
-| GAP-G19 | códigos fora do catálogo | P1 | diagnóstico confiável do gate |
 | GAP-G20 | workspace não lê o host | P1 | página de emulação utilizável |
 | DEBT-A0, GAP-G11 | matriz física e boot direto | P0 | `verified-hw` e M15 |
 

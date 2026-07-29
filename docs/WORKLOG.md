@@ -3273,3 +3273,30 @@ Limitação registrada: a UI subiu e sobreviveu 25 s sem crash, mas **não houve
 navegação interativa verificada**. Marcada ⚠️, não ✅.
 
 Plano consolidado até a 1.0 em `docs/12-roadmap/EXECUTION-TO-1.0.md`.
+
+## 2026-07-29 — Sessão 38: fechamento do GAP-G19
+
+Os cinco diagnósticos públicos do HOST-ACTIVATION-01 foram registrados no
+catálogo autoritativo e no i18n pt-BR:
+
+- `E-HOST-RELEASE-MISMATCH`;
+- `E-HOST-DAEMON-PENDING`;
+- `E-HOST-CONVERGENCE-TIMEOUT`;
+- `E-HOST-RESTART-FAILED`;
+- `E-HOST-CURRENT-UNREADABLE`.
+
+A prova não termina em `converge()`: testes parametrizados constroem cada erro
+por `build_error` e percorrem `service refresh --expect-release` até o envelope
+da CLI. Assim, um diagnóstico do host não volta a ser mascarado por
+`E-INTERNAL-UNEXPECTED` quando o gate falha. A lógica de convergência não foi
+alterada.
+
+Rastreabilidade atualizada em `ERROR-CATALOG.md`, `KNOWN-GAPS.md` e
+`EXECUTION-TO-1.0.md`. GAP-G19 está fechado; GAP-G18 continua sendo o próximo
+bloqueador da certificação física da a38.
+
+**Gates:** 3.206 testes; Ruff check e format; mypy em 188 arquivos;
+independência; fronteiras; cobertura 85,97% (piso 85%).
+
+**Host:** nenhuma instalação, reversão, mutação ou verificação física foi
+executada nesta sessão.

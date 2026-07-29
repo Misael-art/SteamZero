@@ -9,6 +9,14 @@ import pytest
 from steamzero import i18n
 from steamzero.core import errors
 
+HOST_ERROR_CODES = (
+    "E-HOST-RELEASE-MISMATCH",
+    "E-HOST-DAEMON-PENDING",
+    "E-HOST-CONVERGENCE-TIMEOUT",
+    "E-HOST-RESTART-FAILED",
+    "E-HOST-CURRENT-UNREADABLE",
+)
+
 
 def test_every_code_has_all_i18n_fields() -> None:
     keys = i18n.all_keys()
@@ -53,6 +61,16 @@ def test_build_error_shape() -> None:
 def test_build_error_rejects_unregistered() -> None:
     with pytest.raises(ValueError):
         errors.build_error("E-NOPE-NOPE")
+
+
+@pytest.mark.parametrize("code", HOST_ERROR_CODES)
+def test_host_diagnostics_build_error_objects(code: str) -> None:
+    obj = errors.build_error(code, detail="detalhe observado no host")
+
+    assert obj["code"] == code
+    assert obj["detail"] == "detalhe observado no host"
+    for field in ("title", "what", "impact", "probableCause", "manualAction"):
+        assert isinstance(obj[field], str) and obj[field]
 
 
 def test_steamzero_error_roundtrip() -> None:
