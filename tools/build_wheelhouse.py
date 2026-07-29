@@ -222,12 +222,11 @@ def validate(
     # acontece no caminho onde ele realmente está — procurá-lo dentro do
     # wheelhouse reprovava um conjunto correto.
     main = manifest.get("wheel")
-    if main is not None:
-        if wheel is not None:
-            if not wheel.is_file():
-                problems.append(f"wheel principal ausente: {wheel}")
-            elif _sha256(wheel) != main.get("sha256"):
-                problems.append(f"{wheel.name}: sha256 diverge do manifesto")
+    if main is not None and wheel is not None:
+        if not wheel.is_file():
+            problems.append(f"wheel principal ausente: {wheel}")
+        elif _sha256(wheel) != main.get("sha256"):
+            problems.append(f"{wheel.name}: sha256 diverge do manifesto")
     present = {path.name: path for path in wheelhouse.glob("*.whl")}
     for name, entry in declared.items():
         path = present.get(name)
