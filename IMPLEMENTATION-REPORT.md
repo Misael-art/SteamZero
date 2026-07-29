@@ -550,3 +550,32 @@ corrigido porque alterar uma fixture histórica é decisão do operador.
   Inventariado em `docs/11-legal/THIRD-PARTY-NOTICES.md`. Dois testes garantem
   que não entre no wheel nem seja referenciada pela UI — a OFL permitiria
   redistribuir no produto, mas essa decisão não foi tomada.
+
+## 11. Certificação física da a38 — sessão 37
+
+**Parcial.** Mecânica de release certificada pela metade: instalação e
+roll-forward provados no host real; rollback não.
+
+O ciclo `instalar → convergir → smokes → rollback → smokes → roll-forward →
+smokes` parou na quarta etapa. O `current` voltou para a a37 e o daemon
+continuou executando o interpretador da a38; a a37 não possui o comando
+`service refresh`, então o gate de convergência volta junto com a release.
+
+Isso é a regressão da a37 reproduzida ao vivo, agora com evidência direta
+(`pgrep` mostrando o binário a38 sob `current` a37). O HOST-ACTIVATION-01
+resolve a ida; a volta continua descoberta.
+
+Também ficou provado, por comparação direta nas duas releases, que
+`emulation workspace` nunca leu o estado real do host — o handler chama
+`build_switch_workspace` sem `keys`, `firmware` nem `games`. Não é regressão da
+a38: a a37 devolve exatamente os mesmos `unverified` e 36 plataformas zeradas,
+com 15 jogos e chaves de produção presentes no disco.
+
+E um defeito meu: os códigos `E-HOST-*` do HOST-ACTIVATION-01 não foram
+registrados no catálogo de erros, então o caminho de falha do gate vira erro
+interno genérico. Os testes não pegaram porque exercitam a função de
+convergência sem atravessar a construção do envelope — uma lacuna de altitude,
+não de cobertura.
+
+Resultado completo em `docs/09-operations/A38-CERTIFICATION-RESULT.md`; plano
+até a 1.0 em `docs/12-roadmap/EXECUTION-TO-1.0.md`.

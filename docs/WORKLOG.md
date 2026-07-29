@@ -3229,3 +3229,47 @@ G14 (fechada pelo VIS-01), G15 (acessibilidade sem consumidor real).
 
 Gates ao final: pytest 3145, ruff, ruff format, mypy 187, independence,
 boundaries, qml-visual (10 baselines).
+
+## 2026-07-29 — Sessão 37: certificação física da a38 (parcial)
+
+Host: misael-jupiter, BigLinux/Manjaro, kernel 6.18.38-1, Wayland/KDE.
+
+**Veredito: certificação PARCIAL. Tag `v0.1.0a38` NÃO criada.**
+
+A a38 instala, converge e faz roll-forward corretamente. O que reprovou foi a
+perna do rollback. Detalhes em `docs/09-operations/A38-CERTIFICATION-RESULT.md`.
+
+Passou: 10/10 hashes, procedência do manifesto em 6 dimensões, instalação,
+`daemonRefresh.state = pending` declarado, convergência (`converged`, restart
+real), CLI 0.1.0a38, doctor ok, socket active, Game Mode ready, host status ok,
+idempotência do refresh, roll-forward convergido.
+
+Reprovou: rollback a38→a37. O `current` voltou para a a37 e o daemon continuou
+executando o interpretador da a38 — a regressão da a37 reproduzida ao vivo. E a
+a37 **não tem o comando `service refresh`**, então o gate volta junto com a
+release e não há como detectar nem corrigir pela CLI ativa (G18, P0).
+
+Dois outros defeitos encontrados:
+
+**G19 (P1, meu, do `6c600f5`)** — os cinco códigos `E-HOST-*` nunca foram
+registrados no catálogo de erros. O caminho de falha do gate devolve
+`E-INTERNAL-UNEXPECTED: código de erro não registrado no catálogo` em vez do
+diagnóstico específico, justamente quando ele mais importa. Os testes não
+pegaram porque exercitam `converge()` sem atravessar `build_error`.
+
+**G20 (P1, pré-existente)** — `emulation workspace` chama
+`build_switch_workspace(probe=...)` sem `keys`, `firmware` nem `games`. Com
+`prod-4b5808630667.keys` (14.612 bytes) e 15 jogos em cache no host, o read
+model devolve `unverified` e 36 plataformas zeradas. Confirmado **idêntico na
+a37 e na a38** por comparação direta — não é regressão da a38.
+
+**G21 (P3)** — 46 warnings QML por sessão, todos de
+`qrc:/qt/qml/org/kde/breeze/*`. Nenhum de QML do SteamZero.
+
+Estado final do host: a38 ativa, daemon a38, doctor ok, socket active. O host
+não ficou na a37.
+
+Limitação registrada: a UI subiu e sobreviveu 25 s sem crash, mas **não houve
+navegação interativa verificada**. Marcada ⚠️, não ✅.
+
+Plano consolidado até a 1.0 em `docs/12-roadmap/EXECUTION-TO-1.0.md`.
