@@ -19,10 +19,14 @@ import os
 import re
 import secrets
 import shutil
+import socket
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.parser import Parser
@@ -38,6 +42,11 @@ _MAX_WHEELHOUSE_SIZE = 500 * 1024 * 1024
 _MANAGED_MARKER = "X-SteamZero-Managed=true"
 _MANAGER_MARKER = "# SteamZero-Host-Managed: true"
 _INSTALLER_NAME = "install_host.py"
+_HOST_UNITS = ("steamzero-core.socket", "steamzero-core.service")
+_HOST_CONVERGENCE_ATTEMPTS = 10
+_HOST_CONVERGENCE_INTERVAL = 0.3
+_MAX_HOST_RESPONSE = 1 << 20
+_SYSTEMCTL = "/usr/bin/systemctl"
 
 
 @dataclass(frozen=True)
@@ -220,6 +229,275 @@ def _run(argv: list[str], *, env: dict[str, str] | None = None) -> subprocess.Co
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or f"exit {exc.returncode}").strip()[-2000:]
         raise RuntimeError(f"comando {Path(argv[0]).name} falhou: {detail}") from exc
+
+
+HostRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
+HostProbe = Callable[[], dict[str, Any]]
+ProcessExecutable = Callable[[int], Path | None]
+
+
+def _host_runner(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            list(argv),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return subprocess.CompletedProcess(list(argv), 126, "", str(exc))
+
+
+def _host_socket_path() -> Path:
+    raw = os.environ.get("XDG_RUNTIME_DIR", "")
+    if not raw:
+        raise RuntimeError("XDG_RUNTIME_DIR ausente; execute na sessão do usuário")
+    runtime = Path(raw)
+    if not runtime.is_absolute():
+        raise RuntimeError("XDG_RUNTIME_DIR precisa ser absoluto")
+    metadata = runtime.lstat()
+    if (
+        runtime.is_symlink()
+        or not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != os.getuid()
+        or stat.S_IMODE(metadata.st_mode) != 0o700
+    ):
+        raise RuntimeError("XDG_RUNTIME_DIR inseguro")
+    path = runtime / "steamzero" / "core.sock"
+    try:
+        socket_metadata = path.lstat()
+    except FileNotFoundError:
+        return path
+    if (
+        path.is_symlink()
+        or not stat.S_ISSOCK(socket_metadata.st_mode)
+        or socket_metadata.st_uid != os.getuid()
+        or stat.S_IMODE(socket_metadata.st_mode) & 0o077
+    ):
+        raise RuntimeError("socket do daemon inseguro")
+    return path
+
+
+def _probe_host_daemon(*, timeout: float = 2.0) -> dict[str, Any]:
+    request = b'{"jsonrpc":"2.0","id":1,"method":"system.hello","params":{}}\n'
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.settimeout(timeout)
+    try:
+        client.connect(str(_host_socket_path()))
+        client.sendall(request)
+        payload = bytearray()
+        while not payload.endswith(b"\n"):
+            chunk = client.recv(min(65536, _MAX_HOST_RESPONSE + 1 - len(payload)))
+            if not chunk:
+                raise RuntimeError("daemon encerrou a resposta")
+            payload.extend(chunk)
+            if len(payload) > _MAX_HOST_RESPONSE:
+                raise RuntimeError("resposta do daemon excedeu o limite")
+    except OSError as exc:
+        raise RuntimeError(f"daemon indisponível: {exc}") from exc
+    finally:
+        client.close()
+    try:
+        response = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("resposta JSON inválida do daemon") from exc
+    if (
+        not isinstance(response, dict)
+        or response.get("jsonrpc") != "2.0"
+        or response.get("id") != 1
+        or not isinstance(response.get("result"), dict)
+    ):
+        raise RuntimeError("resposta do daemon fora do contrato")
+    return response["result"]
+
+
+def _process_executable(pid: int) -> Path | None:
+    try:
+        return Path(f"/proc/{pid}/exe").resolve(strict=True)
+    except OSError:
+        return None
+
+
+def _host_identity_matches(
+    response: dict[str, Any],
+    *,
+    release: str,
+    target: Path,
+    manifest: dict[str, Any],
+    process_executable: ProcessExecutable,
+) -> tuple[bool, str]:
+    pid = response.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False, "daemon não declarou pid válido"
+    executable = process_executable(pid)
+    expected_bin = (target / "venv" / "bin").resolve()
+    if executable is None or not executable.is_relative_to(expected_bin):
+        return False, (
+            f"processo {pid} executa {str(executable) if executable else 'caminho ilegível'}, "
+            f"fora de {expected_bin}"
+        )
+
+    identity = response.get("identity")
+    if isinstance(identity, dict) and identity.get("releaseId"):
+        if identity.get("releaseId") != release:
+            return False, f"daemon declarou release {identity.get('releaseId')!r}"
+        source_commit = manifest.get("sourceCommit")
+        if source_commit and identity.get("sourceCommit") != source_commit:
+            return False, "commit declarado pelo daemon diverge do manifesto"
+        return True, f"daemon {pid} confirmou release e executável {release!r}"
+
+    package_version = manifest.get("packageVersion")
+    if not isinstance(package_version, str) or not package_version:
+        return False, "release legada não possui packageVersion verificável"
+    if response.get("daemonVersion") != package_version:
+        return False, f"daemon declarou versão {response.get('daemonVersion')!r}"
+    return True, f"daemon legado {pid} confirmou versão e executável da release {release!r}"
+
+
+def _stop_host_units(runner: HostRunner) -> None:
+    for unit in reversed(_HOST_UNITS):
+        runner((_SYSTEMCTL, "--user", "stop", unit))
+
+
+def converge_host(
+    layout: Layout,
+    expected_release: str,
+    *,
+    runner: HostRunner | None = None,
+    probe: HostProbe | None = None,
+    process_executable: ProcessExecutable | None = None,
+    attempts: int = _HOST_CONVERGENCE_ATTEMPTS,
+    interval: float = _HOST_CONVERGENCE_INTERVAL,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    """Converge o daemon sem importar código da release apontada por ``current``."""
+    expected_release = _release_id(expected_release)
+    current_target = _readlink(layout.current)
+    if current_target is None:
+        return {
+            "state": "unreadable",
+            "code": "E-HOST-CURRENT-UNREADABLE",
+            "expectedRelease": expected_release,
+            "activatedRelease": None,
+            "restarted": False,
+            "attempts": 0,
+            "detail": "o apontador current está ausente ou ilegível",
+        }
+    active = current_target.removeprefix("releases/")
+    if active != expected_release:
+        return {
+            "state": "mismatch",
+            "code": "E-HOST-RELEASE-MISMATCH",
+            "expectedRelease": expected_release,
+            "activatedRelease": active or None,
+            "restarted": False,
+            "attempts": 0,
+            "detail": "a release ativa difere da esperada; nenhum serviço foi reiniciado",
+        }
+
+    target = layout.releases / active
+    try:
+        manifest = _verify_release(target, expected_release=active)
+    except Exception as exc:
+        return {
+            "state": "unreadable",
+            "code": "E-HOST-CURRENT-UNREADABLE",
+            "expectedRelease": expected_release,
+            "activatedRelease": active,
+            "restarted": False,
+            "attempts": 0,
+            "detail": f"a release ativa não pôde ser verificada: {exc}",
+        }
+    run = runner or _host_runner
+    inspect_process = process_executable or _process_executable
+    read_daemon = probe or _probe_host_daemon
+
+    def verify() -> tuple[bool, str, dict[str, Any] | None]:
+        try:
+            response = read_daemon()
+        except Exception as exc:
+            return False, str(exc), None
+        matches, detail = _host_identity_matches(
+            response,
+            release=active,
+            target=target,
+            manifest=manifest,
+            process_executable=inspect_process,
+        )
+        return matches, detail, response
+
+    matches, detail, response = verify()
+    if matches:
+        return {
+            "state": "converged",
+            "expectedRelease": expected_release,
+            "activatedRelease": active,
+            "daemon": response,
+            "restarted": False,
+            "attempts": 0,
+            "detail": detail,
+        }
+
+    reload_result = run((_SYSTEMCTL, "--user", "daemon-reload"))
+    if reload_result.returncode != 0:
+        _stop_host_units(run)
+        failure = (reload_result.stderr or reload_result.stdout).strip()[:400]
+        return {
+            "state": "restartFailed",
+            "code": "E-HOST-RESTART-FAILED",
+            "expectedRelease": expected_release,
+            "activatedRelease": active,
+            "restarted": False,
+            "attempts": 0,
+            "detail": f"daemon-reload falhou: {failure}",
+        }
+    for unit in _HOST_UNITS:
+        outcome = run((_SYSTEMCTL, "--user", "restart", unit))
+        if outcome.returncode != 0:
+            _stop_host_units(run)
+            failure = (outcome.stderr or outcome.stdout).strip()[:400]
+            return {
+                "state": "restartFailed",
+                "code": "E-HOST-RESTART-FAILED",
+                "expectedRelease": expected_release,
+                "activatedRelease": active,
+                "restarted": False,
+                "attempts": 0,
+                "detail": f"restart de {unit} falhou: {failure}",
+            }
+
+    last_detail = detail
+    last_response = response
+    for attempt in range(1, attempts + 1):
+        matches, last_detail, last_response = verify()
+        if matches:
+            return {
+                "state": "converged",
+                "expectedRelease": expected_release,
+                "activatedRelease": active,
+                "daemon": last_response,
+                "restarted": True,
+                "attempts": attempt,
+                "detail": last_detail,
+            }
+        if attempt < attempts:
+            sleep(interval)
+
+    _stop_host_units(run)
+    return {
+        "state": "pending" if last_response is not None else "timeout",
+        "code": (
+            "E-HOST-DAEMON-PENDING" if last_response is not None else "E-HOST-CONVERGENCE-TIMEOUT"
+        ),
+        "expectedRelease": expected_release,
+        "activatedRelease": active,
+        "daemon": last_response,
+        "restarted": True,
+        "attempts": attempts,
+        "detail": f"{last_detail}; units paradas para evitar servir a release errada",
+    }
 
 
 def _atomic_text(path: Path, text: str, *, mode: int = 0o644) -> None:
@@ -1059,6 +1337,11 @@ def _require_root() -> None:
         raise PermissionError("execute este instalador com bigsudo")
 
 
+def _require_session_user() -> None:
+    if os.geteuid() == 0:
+        raise PermissionError("execute o converge sem bigsudo, na sessão do usuário")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Instalador host transacional do SteamZero")
     subparsers = parser.add_subparsers(dest="action", required=True)
@@ -1072,17 +1355,19 @@ def _parser() -> argparse.ArgumentParser:
     rollback_parser = subparsers.add_parser("rollback")
     rollback_parser.add_argument("--release", required=True)
     subparsers.add_parser("status")
+    converge_parser = subparsers.add_parser("converge")
+    converge_parser.add_argument("--expect-release", required=True)
     return parser
 
 
 PENDING_REFRESH_NOTICE = (
     "release publicada, mas o serviço em segundo plano ainda executa a geração "
-    "anterior; execute 'steamzero service refresh' na sessão do usuário para que "
-    "ele passe a usar esta versão"
+    "anterior; execute o comando daemonRefresh.command na sessão do usuário para "
+    "confirmar a release ativa"
 )
 
 
-def _activation_notice(manifest: dict[str, Any]) -> dict[str, Any]:
+def _activation_notice(manifest: dict[str, Any], layout: Layout) -> dict[str, Any]:
     """Declara explicitamente que a publicação NÃO reiniciou o daemon.
 
     O instalador roda como root e as units são de escopo de usuário, válidas para
@@ -1090,11 +1375,12 @@ def _activation_notice(manifest: dict[str, Any]) -> dict[str, Any]:
     estado é o que impede o silêncio que produziu a a37, em que ``current``
     apontava para a release nova e o daemon seguia na anterior sem nada avisar.
     """
+    release = _release_id(str(manifest.get("release") or ""))
     return {
         **manifest,
         "daemonRefresh": {
             "state": "pending",
-            "command": "steamzero service refresh",
+            "command": f"{layout.manager} converge --expect-release {release}",
             "detail": PENDING_REFRESH_NOTICE,
         },
     }
@@ -1103,8 +1389,14 @@ def _activation_notice(manifest: dict[str, Any]) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        _require_root()
         layout = Layout()
+        if args.action == "converge":
+            _require_session_user()
+            result = converge_host(layout, args.expect_release)
+            ok = result["state"] == "converged"
+            print(json.dumps({"ok": ok, "data": result}, ensure_ascii=False, sort_keys=True))
+            return 0 if ok else 1
+        _require_root()
         if args.action == "install":
             result = _activation_notice(
                 install(
@@ -1115,10 +1407,11 @@ def main(argv: list[str] | None = None) -> int:
                     requirements=args.requirements,
                     wheelhouse=args.wheelhouse,
                     source_commit=args.source_commit,
-                )
+                ),
+                layout,
             )
         elif args.action == "rollback":
-            result = _activation_notice(rollback(layout, args.release))
+            result = _activation_notice(rollback(layout, args.release), layout)
         else:
             result = status(layout)
     except Exception as exc:

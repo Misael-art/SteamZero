@@ -5,6 +5,12 @@
 from __future__ import annotations
 
 import json
+import os
+import socket
+import subprocess
+import tempfile
+import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -106,6 +112,54 @@ def _release(layout: install_host.Layout, name: str) -> Path:
     return release
 
 
+def _identified_release(
+    layout: install_host.Layout,
+    version: str,
+    commit: str,
+) -> tuple[str, Path]:
+    release_id = install_host._canonical_release(version, commit)
+    release = _release(layout, release_id)
+    executable = release / "venv" / "bin" / "steamzero"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        f"print({version!r}) if '--version' in sys.argv else "
+        "print(json.dumps({'status': 'ok'}))\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+    manifest_path = release / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.update(
+        {
+            "schemaVersion": 2,
+            "packageVersion": version,
+            "sourceCommit": commit,
+            "sourceTreeState": "clean",
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return release_id, release
+
+
+class _HostRunner:
+    def __init__(self, on_restart=None, failures: dict[str, int] | None = None) -> None:  # type: ignore[no-untyped-def]
+        self.calls: list[tuple[str, ...]] = []
+        self.on_restart = on_restart
+        self.failures = failures or {}
+
+    def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        call = tuple(argv)
+        self.calls.append(call)
+        joined = " ".join(call)
+        for fragment, returncode in self.failures.items():
+            if fragment in joined:
+                return subprocess.CompletedProcess(call, returncode, "", f"falha em {fragment}")
+        if self.on_restart is not None and call[-2:] == ("restart", "steamzero-core.service"):
+            self.on_restart()
+        return subprocess.CompletedProcess(call, 0, "", "")
+
+
 def test_release_id_rejects_traversal() -> None:
     for invalid in ("../escape", "/absolute", "", "release with spaces"):
         with pytest.raises(ValueError):
@@ -152,6 +206,355 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
     assert result["release"] == "release-b"
     assert layout.current.readlink() == Path("releases/release-b")
     assert install_host.status(layout)["release"] == "release-b"
+
+
+def test_stable_host_gate_accepts_legacy_daemon_by_version_and_process_path(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    release_id, release = _identified_release(layout, "0.1.0a37", "a" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / release_id)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(
+        layout,
+        release_id,
+        runner=runner,
+        probe=lambda: {"daemonVersion": "0.1.0a37", "pid": 37},
+        process_executable=lambda _pid: release / "venv" / "bin" / "python3",
+    )
+
+    assert report["state"] == "converged"
+    assert report["restarted"] is False
+    assert runner.calls == []
+
+
+def test_stable_host_gate_accepts_modern_daemon_by_release_commit_and_process_path(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    commit = "b" * 40
+    release_id, release = _identified_release(layout, "0.1.0a38", commit)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / release_id)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(
+        layout,
+        release_id,
+        runner=runner,
+        probe=lambda: {
+            "daemonVersion": "0.1.0a38",
+            "pid": 38,
+            "identity": {"releaseId": release_id, "sourceCommit": commit},
+        },
+        process_executable=lambda _pid: release / "venv" / "bin" / "python3",
+    )
+
+    assert report["state"] == "converged"
+    assert report["restarted"] is False
+    assert runner.calls == []
+
+
+def test_stable_host_gate_converges_a38_to_legacy_a37_without_a37_cli(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    a37, release_a37 = _identified_release(layout, "0.1.0a37", "a" * 40)
+    a38, release_a38 = _identified_release(layout, "0.1.0a38", "b" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / a37)
+    daemon = {"release": a38, "version": "0.1.0a38", "pid": 38}
+
+    def complete_restart() -> None:
+        daemon.update(release=a37, version="0.1.0a37", pid=37)
+
+    runner = _HostRunner(on_restart=complete_restart)
+
+    def probe() -> dict[str, object]:
+        if daemon["release"] == a37:
+            return {"daemonVersion": daemon["version"], "pid": daemon["pid"]}
+        return {
+            "daemonVersion": daemon["version"],
+            "pid": daemon["pid"],
+            "identity": {"releaseId": a38, "sourceCommit": "b" * 40},
+        }
+
+    def process_executable(pid: int) -> Path:
+        release = release_a37 if pid == 37 else release_a38
+        return release / "venv" / "bin" / "python3"
+
+    report = install_host.converge_host(
+        layout,
+        a37,
+        runner=runner,
+        probe=probe,
+        process_executable=process_executable,
+        sleep=lambda _seconds: None,
+    )
+
+    assert report["state"] == "converged"
+    assert report["restarted"] is True
+    assert ("/usr/bin/systemctl", "--user", "daemon-reload") in runner.calls
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "restart",
+        "steamzero-core.service",
+    ) in runner.calls
+
+
+def test_stable_host_gate_fails_closed_before_restart_on_release_mismatch(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    a37, _release_a37 = _identified_release(layout, "0.1.0a37", "a" * 40)
+    a38, _release_a38 = _identified_release(layout, "0.1.0a38", "b" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / a37)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(layout, a38, runner=runner)
+
+    assert report["state"] == "mismatch"
+    assert report["code"] == "E-HOST-RELEASE-MISMATCH"
+    assert runner.calls == []
+
+
+def test_stable_host_gate_stops_units_when_wrong_daemon_survives_restart(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    a37, release_a37 = _identified_release(layout, "0.1.0a37", "a" * 40)
+    _a38, release_a38 = _identified_release(layout, "0.1.0a38", "b" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / a37)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(
+        layout,
+        a37,
+        runner=runner,
+        probe=lambda: {
+            "daemonVersion": "0.1.0a38",
+            "pid": 38,
+            "identity": {
+                "releaseId": "0.1.0a38-" + "b" * 12,
+                "sourceCommit": "b" * 40,
+            },
+        },
+        process_executable=lambda _pid: release_a38 / "venv" / "bin" / "python3",
+        attempts=2,
+        sleep=lambda _seconds: None,
+    )
+
+    assert release_a37 != release_a38
+    assert report["state"] == "pending"
+    assert report["code"] == "E-HOST-DAEMON-PENDING"
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "stop",
+        "steamzero-core.service",
+    ) in runner.calls
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "stop",
+        "steamzero-core.socket",
+    ) in runner.calls
+
+
+def test_stable_host_gate_reports_timeout_and_stops_units_when_probe_never_answers(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    a37, _release_a37 = _identified_release(layout, "0.1.0a37", "a" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / a37)
+    runner = _HostRunner()
+
+    def unavailable() -> dict[str, object]:
+        raise ConnectionError("daemon fora do ar")
+
+    report = install_host.converge_host(
+        layout,
+        a37,
+        runner=runner,
+        probe=unavailable,
+        attempts=2,
+        sleep=lambda _seconds: None,
+    )
+
+    assert report["state"] == "timeout"
+    assert report["code"] == "E-HOST-CONVERGENCE-TIMEOUT"
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "stop",
+        "steamzero-core.service",
+    ) in runner.calls
+
+
+def test_stable_host_gate_reports_restart_failure_and_stops_units(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    a37, _release_a37 = _identified_release(layout, "0.1.0a37", "a" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / a37)
+    runner = _HostRunner(failures={"daemon-reload": 1})
+
+    report = install_host.converge_host(
+        layout,
+        a37,
+        runner=runner,
+        probe=lambda: (_ for _ in ()).throw(ConnectionError("stale")),
+    )
+
+    assert report["state"] == "restartFailed"
+    assert report["code"] == "E-HOST-RESTART-FAILED"
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "stop",
+        "steamzero-core.service",
+    ) in runner.calls
+
+
+def test_stable_host_gate_reports_unreadable_current_without_systemd(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(layout, "release-a", runner=runner)
+
+    assert report["state"] == "unreadable"
+    assert report["code"] == "E-HOST-CURRENT-UNREADABLE"
+    assert runner.calls == []
+
+
+def test_stable_host_gate_reports_unverifiable_release_without_systemd(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release_id, release = _identified_release(layout, "0.1.0a38", "b" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / release_id)
+    (release / "manifest.json").write_text("{invalid", encoding="utf-8")
+    runner = _HostRunner()
+
+    report = install_host.converge_host(layout, release_id, runner=runner)
+
+    assert report["state"] == "unreadable"
+    assert report["code"] == "E-HOST-CURRENT-UNREADABLE"
+    assert "não pôde ser verificada" in report["detail"]
+    assert runner.calls == []
+
+
+def test_stable_host_gate_rejects_modern_daemon_with_wrong_source_commit(
+    tmp_path: Path,
+) -> None:
+    layout = _layout(tmp_path)
+    release_id, release = _identified_release(layout, "0.1.0a38", "b" * 40)
+    layout.current.parent.mkdir(parents=True, exist_ok=True)
+    layout.current.symlink_to(Path("releases") / release_id)
+    runner = _HostRunner()
+
+    report = install_host.converge_host(
+        layout,
+        release_id,
+        runner=runner,
+        probe=lambda: {
+            "daemonVersion": "0.1.0a38",
+            "pid": 38,
+            "identity": {"releaseId": release_id, "sourceCommit": "c" * 40},
+        },
+        process_executable=lambda _pid: release / "venv" / "bin" / "python3",
+        attempts=1,
+        sleep=lambda _seconds: None,
+    )
+
+    assert report["state"] == "pending"
+    assert report["code"] == "E-HOST-DAEMON-PENDING"
+    assert "commit declarado" in report["detail"]
+    assert (
+        "/usr/bin/systemctl",
+        "--user",
+        "stop",
+        "steamzero-core.service",
+    ) in runner.calls
+
+
+def test_stable_host_probe_reads_legacy_system_hello_without_importing_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    short_runtime = tempfile.TemporaryDirectory(prefix="sz-g18-", dir="/tmp")
+    runtime = Path(short_runtime.name)
+    socket_dir = runtime / "steamzero"
+    socket_dir.mkdir(parents=True, mode=0o700)
+    runtime.chmod(0o700)
+    socket_path = socket_dir / "core.sock"
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(socket_path))
+    os.chmod(socket_path, 0o600)
+    server.listen(1)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+
+    def serve_once() -> None:
+        connection, _address = server.accept()
+        try:
+            request = connection.recv(4096)
+            assert b'"method":"system.hello"' in request
+            connection.sendall(
+                b'{"jsonrpc":"2.0","id":1,"result":{"daemonVersion":"0.1.0a37","pid":37}}\n'
+            )
+        finally:
+            connection.close()
+            server.close()
+
+    thread = threading.Thread(target=serve_once)
+    thread.start()
+    try:
+        response = install_host._probe_host_daemon()
+    finally:
+        thread.join(timeout=2)
+        short_runtime.cleanup()
+
+    assert response == {"daemonVersion": "0.1.0a37", "pid": 37}
+
+
+def test_converge_command_runs_as_session_user_without_root(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(install_host.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(
+        install_host,
+        "converge_host",
+        lambda _layout, expected: {
+            "state": "converged",
+            "expectedRelease": expected,
+            "restarted": False,
+        },
+    )
+
+    exit_code = install_host.main(["converge", "--expect-release", "release-a"])
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["data"]["expectedRelease"] == "release-a"
+
+
+def test_converge_command_refuses_bigsudo_root(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(install_host.os, "geteuid", lambda: 0)
+
+    exit_code = install_host.main(["converge", "--expect-release", "release-a"])
+
+    assert exit_code == 1
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["ok"] is False
+    assert "sem bigsudo" in payload["error"]
 
 
 def test_activation_refuses_unmanaged_command_without_switching(tmp_path: Path) -> None:

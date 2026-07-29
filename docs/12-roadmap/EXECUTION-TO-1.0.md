@@ -38,7 +38,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | # | Entrega | Estado real (verificado) | Dependências | Definition of Done | Prio | Próxima ação |
 |--:|---|---|---|---|---|---|
-| 0 | Certificação física a38 | **parcial** — instala, converge, roll-forward ok; rollback deixa daemon stale | GAP-G18 | ciclo completo com rollback convergido | P0 | fechar GAP-G18 |
+| 0 | Certificação física a38 | **parcial** — correção sintética do rollback pronta; prova física ainda ausente | GAP-G18 | ciclo completo com rollback convergido | P0 | recertificar a38→a37→a38 |
 | 1 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a38 certificada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
@@ -57,7 +57,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | ID | Dívida | Prio | Impacto real | Mitigação atual | Solução definitiva | Gate de encerramento |
 |---|---|---|---|---|---|---|
-| **GAP-G18** | rollback deixa daemon stale, sem gate na release anterior | **P0** | reproduz a regressão da a37; release "revertida" continua servindo código novo | nenhuma | verificador independente da release ativa, ou staging com verificação explícita do binário-alvo | rollback com daemon convergido |
+| **GAP-G18** | rollback deixa daemon stale, sem gate na release anterior | **P0** | reproduz a regressão da a37; release "revertida" continua servindo código novo | `steamzero-host converge` implementado e coberto sem systemd real | certificar o gate estável no host | rollback e roll-forward físicos com daemon convergido |
 | ~~GAP-G19~~ | ~~códigos `E-HOST-*` fora do catálogo~~ | — | **FECHADA**: cinco códigos registrados e serializados pela CLI | — | — | testes atravessam `build_error` e `service refresh` |
 | **GAP-G20** | `emulation workspace` não lê estado real | **P1** | chaves e 15 jogos válidos aparecem como ausentes | nenhuma | fazer a CLI reutilizar a composição do `EmulationController` | teste que impede uma segunda composição parcial |
 | DEBT-A0 | matriz física incompleta | **P0** | impede rótulo `verified-hw` | operações read-only | validar Deck LCD/OLED/dock | matriz física verde |
@@ -224,16 +224,18 @@ sobe **de novo a release antiga**. Verificado no host:
 ExecStart = /opt/steamzero/current/venv/bin/steamzero-core --systemd
 ```
 
-Duas estratégias compatíveis com esse contrato:
+Foi selecionada a estratégia compatível com esse contrato:
 
-**(a) Verificador independente da release ativa.** Um binário pequeno publicado
-pelo instalador, fora de `current`, capaz de perguntar ao daemon quem ele é e
-comparar com o alvo. Não depende da CLI da release ativa — que é justamente o
-que falta na a37.
+**Verificador independente da release ativa.** O gerenciador
+`/usr/local/sbin/steamzero-host`, já publicado pelo instalador fora de `current`,
+ganha o comando user-scoped `converge`. Ele pergunta ao daemon quem está
+executando e compara com o alvo. Não depende da CLI da release ativa — que é
+justamente o que falta na a37.
 
-**(b) Staging com verificação explícita do binário-alvo.** Reiniciar a unit
-apontando explicitamente para o caminho da release alvo (não para `current`),
-confirmar a identidade, e só então trocar o symlink.
+Releases modernas comprovam `releaseId` e `sourceCommit`; a a37, anterior à
+identidade completa, comprova `daemonVersion`, PID e o executável real em
+`/proc/<pid>/exe`. A implementação sintética está pronta; o G18 permanece aberto
+até a repetição física a38→a37→a38.
 
 - **Exclui:** motor de temas, UI, wheelhouse.
 - **Testes:** encenar rollback a38→a37 com daemon a38 vivo e exigir detecção

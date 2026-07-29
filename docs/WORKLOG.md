@@ -3300,3 +3300,36 @@ independência; fronteiras; cobertura 85,97% (piso 85%).
 
 **Host:** nenhuma instalação, reversão, mutação ou verificação física foi
 executada nesta sessão.
+
+## 2026-07-29 — Sessão 39: correção sintética do GAP-G18
+
+O plano de gerenciamento estável `/usr/local/sbin/steamzero-host`, preservado
+fora de `current`, ganhou `converge --expect-release`. O comando roda como o
+usuário da sessão, sem `bigsudo`, recarrega e reinicia somente
+`steamzero-core.socket`/`steamzero-core.service` e não importa código da release
+ativada.
+
+Releases modernas são verificadas por `releaseId`, `sourceCommit`, PID e
+executável. A a37 não possui identidade completa; para ela o gate compara
+`daemonVersion` com o manifesto e exige que `/proc/<pid>/exe` pertença ao
+`venv/bin` da release ativa. Isso fecha a dependência circular em que o gate
+sumia ao voltar para a release antiga.
+
+Falhas são fechadas:
+
+- expectativa divergente de `current` não reinicia nada;
+- `current`/manifesto ilegível retorna `E-HOST-CURRENT-UNREADABLE`;
+- falha de systemd retorna `E-HOST-RESTART-FAILED`;
+- daemon ausente retorna `E-HOST-CONVERGENCE-TIMEOUT`;
+- daemon errado após o restart retorna `E-HOST-DAEMON-PENDING` e deixa as duas
+  units paradas.
+
+A encenação a38→a37 passa sem usar a CLI da a37. O protocolo operacional e a
+certificação foram atualizados para usar o gate estável.
+
+**Gates:** 3.219 testes; Ruff check e format; mypy em 188 arquivos;
+independência e fronteiras verdes. A cobertura de `src/` não pode regredir nesta
+entrega porque não houve alteração em `src/` nem remoção de testes.
+
+**Host:** nenhuma instalação, reversão, mutação ou verificação física foi
+executada. GAP-G18 permanece aberto até recertificar a38→a37→a38 no host.
