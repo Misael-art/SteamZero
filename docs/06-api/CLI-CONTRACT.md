@@ -28,6 +28,7 @@
 
 ```
 steamzero doctor --json
+steamzero service status --json
 steamzero component list --json
 steamzero component status --id retroarch --json
 steamzero component plan --id retroarch                # → planId + confirmToken + preview
@@ -100,3 +101,7 @@ steamzero support bundle --preview
 12. `playtime list|show` publica `feat-playtime-v1`, sem PID, comando ou
     ambiente. O cursor é opaco, o limite máximo é 100 e sessões legadas sem
     origem não recebem ação executável.
+13. `service status` é estritamente read-only e não atravessa o próprio daemon:
+    lê o alvo de `/opt/steamzero/current`, consulta `system.hello` uma vez e
+    publica `converged`, `pending`, `timeout` ou `unreadable`. Nunca reinicia
+    units; quarentena existente aparece em `data.quarantine`.

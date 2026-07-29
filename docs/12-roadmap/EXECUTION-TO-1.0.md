@@ -44,7 +44,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
 | 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
 | 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **parcial** — GAP-G16/G18/G19/G20 fechados; GAP-G23 intermitente e GAP-G17 ausente | CI/host | causas dos flakes diagnosticadas, `service status` público | P1 | PRs isoladas |
+| 5 | Estabilidade operacional | **parcial** — GAP-G16–G20 fechados; GAP-G23 intermitente | CI/host | causa restante diagnosticada | P1 | investigar GAP-G23 sem hipótese |
 | 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
 | 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
 | 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
@@ -69,7 +69,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | GAP-G14 | ~~baselines não versionadas~~ | — | **FECHADA** em `6fb2a75` | — | — | — |
 | GAP-G15 | geração de acessibilidade sem consumidor | **P2** | invalidação seletiva não provada | infraestrutura pronta | consumidor real | recomputação seletiva medida |
 | ~~GAP-G16~~ | ~~`test_controls_*` intermitente~~ | — | **FECHADA**: token `token_urlsafe` iniciado por `-` era rejeitado pelo validador de controls | — | — | regressão determinística usa o token exato observado no CI |
-| GAP-G17 | sem `service status --json` | **P2** | observabilidade incompleta | refresh + doctor + host status | comando público | contrato e testes |
+| ~~GAP-G17~~ | ~~sem `service status --json`~~ | — | **FECHADA**: observer público compara `current` e daemon sem reiniciar | — | — | contrato, drift e ausência cobertos |
 | GAP-G21 | 46 warnings QML do Breeze | **P3** | polui coleta de warnings próprios | — | filtrar por origem | coleta só de QML nosso |
 | GAP-G22 | benchmark de 10 mil arquivos usa teto de tempo de parede em runner compartilhado | **P2** | CI pode reprovar por carga do runner, não por regressão | asserções funcionais continuam fortes | entrega própria com medição comparável ou runner dedicado | repetição controlada sem falso vermelho |
 | GAP-G23 | round-trip de perfil do daemon falhou uma vez no Python 3.12 | **P2** | CI não determinístico; leitura imediata retornou `active=None` | rerun passou no mesmo SHA | diagnosticar isolamento/visibilidade de estado | repetição controlada sem falha |
@@ -88,7 +88,7 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | 0 | Certificação física da a39 | GAP-G18 | **CONCLUÍDA** — rollback convergido e tag criada |
 | 1 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
 | 2 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
-| 3 | Operação e adapters | GAP-G17, GAP-G23, M10, M11 | três emuladores e frontends certificados |
+| 3 | Operação e adapters | GAP-G23, M10, M11 | três emuladores e frontends certificados |
 | 4 | Hardware | Deck/dock/input/suspend/storage/TDP | rótulo `verified-hw` real |
 | 5 | Game Mode | M12 + P0-08 necessário | navegação 100% por controle |
 | 6 | Adoção e distribuição | M13, M14 | import sem perda, downgrade demonstrado |
@@ -205,7 +205,7 @@ a retomada funcional segue:
 
 | onda | WIs |
 |---|---|
-| verdade operacional e adapters | `GAP-G17`, `GAP-G23`, M10, M11, `DEBT-A5`, `DEBT-A7` |
+| verdade operacional e adapters | `GAP-G23`, M10, M11, `DEBT-A5`, `DEBT-A7` |
 | mídia, scraping, patches, achievements | `LEDGER-A7`, `LEDGER-A12`, `LEDGER-A8`, `LEDGER-A9` |
 | retro, performance, captura, controles | `LEDGER-R2`–`LEDGER-R8`, `LEDGER-G4`–`LEDGER-G6`, `LEDGER-A11` |
 | P0-03, scene tree, acessibilidade, M12 | corpus 388, `GAP-G12`, `GAP-G13`, `GAP-G15`, `LEDGER-S2`–`LEDGER-S7` |

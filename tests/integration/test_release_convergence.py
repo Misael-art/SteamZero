@@ -33,6 +33,7 @@ from steamzero.adapters.release_convergence import (
     ConvergenceReport,
     ConvergenceState,
     converge,
+    observe,
     read_activated_manifest,
     read_activated_release,
 )
@@ -203,6 +204,61 @@ class TestIdempotence:
         assert fake.restart_calls == 0
 
 
+class TestReadOnlyStatus:
+    def test_converged_status_does_not_restart(self, host: Callable[..., FakeHost]) -> None:
+        fake = host(activated=A38, daemon=A38)
+
+        report = observe(link=fake.link, probe=fake.probe)
+
+        assert report.state is ConvergenceState.CONVERGED
+        assert report.activated_release == A38
+        assert report.daemon_release == A38
+        assert report.restarted is False
+        assert fake.restart_calls == 0
+
+    def test_stale_status_names_both_releases_without_restart(
+        self, host: Callable[..., FakeHost]
+    ) -> None:
+        fake = host(activated=A38, daemon=A37)
+
+        report = observe(link=fake.link, probe=fake.probe)
+
+        assert report.state is ConvergenceState.PENDING
+        assert report.code == DIAG_PENDING
+        assert report.activated_release == A38
+        assert report.daemon_release == A37
+        assert A38 in report.detail
+        assert A37 in report.detail
+        assert fake.restart_calls == 0
+
+    def test_unavailable_daemon_is_observed_without_restart(
+        self, host: Callable[..., FakeHost]
+    ) -> None:
+        fake = host(activated=A38, daemon=None)
+
+        report = observe(link=fake.link, probe=fake.probe)
+
+        assert report.state is ConvergenceState.TIMEOUT
+        assert report.code == DIAG_TIMEOUT
+        assert report.activated_release == A38
+        assert report.restarted is False
+        assert fake.restart_calls == 0
+
+    def test_missing_current_is_reported_without_probing(self, tmp_path: Path) -> None:
+        probed = False
+
+        def probe() -> dict[str, Any]:
+            nonlocal probed
+            probed = True
+            return {}
+
+        report = observe(link=tmp_path / "missing", probe=probe)
+
+        assert report.state is ConvergenceState.UNREADABLE
+        assert report.code == DIAG_UNREADABLE
+        assert probed is False
+
+
 class TestRollback:
     def test_rolling_back_converges_to_the_previous_release(
         self, host: Callable[..., FakeHost]
@@ -311,6 +367,111 @@ class TestActivatedReleaseComesFromTheSymlink:
 
 
 class TestTheCliContract:
+    def test_service_status_is_a_local_observer_not_a_daemon_method(self) -> None:
+        """Consultar o daemon por dentro dele esconderia a fronteira observada."""
+        from steamzero.service.methods import CLI_METHODS
+
+        assert ("service", "status") not in CLI_METHODS
+
+    def test_service_status_is_reachable_from_the_public_cli(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from steamzero.adapters import release_convergence, service_activation
+        from steamzero.cli.main import main
+
+        report = ConvergenceReport(
+            state=ConvergenceState.CONVERGED,
+            detail="daemon convergido",
+            activated_release=A38,
+            daemon_release=A38,
+        )
+        monkeypatch.setattr(release_convergence, "observe", lambda: report)
+        monkeypatch.setattr(service_activation, "read_quarantine", lambda: None)
+
+        assert main(["service", "status", "--json"]) == 0
+        envelope = json.loads(capsys.readouterr().out)
+        assert envelope["module"] == "service"
+        assert envelope["action"] == "status"
+        assert envelope["data"]["state"] == "converged"
+
+    @pytest.mark.parametrize(
+        ("state", "expected_status", "expected_exit"),
+        [
+            (ConvergenceState.CONVERGED, "ok", 0),
+            (ConvergenceState.PENDING, "degraded", 0),
+            (ConvergenceState.TIMEOUT, "degraded", 0),
+            (ConvergenceState.UNREADABLE, "failed", 1),
+        ],
+    )
+    def test_service_status_publishes_the_read_only_report(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        state: ConvergenceState,
+        expected_status: str,
+        expected_exit: int,
+    ) -> None:
+        from steamzero.adapters import release_convergence, service_activation
+        from steamzero.cli.main import _cmd_service_status
+
+        codes = {
+            ConvergenceState.PENDING: DIAG_PENDING,
+            ConvergenceState.TIMEOUT: DIAG_TIMEOUT,
+            ConvergenceState.UNREADABLE: DIAG_UNREADABLE,
+        }
+        report = ConvergenceReport(
+            state=state,
+            detail="estado observado",
+            activated_release=A38,
+            daemon_release=A38 if state is ConvergenceState.CONVERGED else A37,
+            code=codes.get(state),
+            steps=("leu current", "consultou o daemon"),
+        )
+        monkeypatch.setattr(release_convergence, "observe", lambda: report)
+        monkeypatch.setattr(service_activation, "read_quarantine", lambda: None)
+
+        envelope, exit_code = _cmd_service_status([], "cid")
+
+        assert exit_code == expected_exit
+        assert envelope["status"] == expected_status
+        assert envelope["data"]["state"] == state.value
+        assert envelope["data"]["activatedRelease"] == A38
+        assert envelope["data"]["quarantine"] is None
+        if state is ConvergenceState.UNREADABLE:
+            assert envelope["error"]["code"] == DIAG_UNREADABLE
+        else:
+            assert envelope["error"] is None
+
+    def test_service_status_surfaces_quarantine_without_mutating(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.adapters import release_convergence, service_activation
+        from steamzero.cli.main import _cmd_service_status
+
+        report = ConvergenceReport(
+            state=ConvergenceState.CONVERGED,
+            detail="daemon convergido",
+            activated_release=A38,
+            daemon_release=A38,
+        )
+        quarantine = {"schemaVersion": 1, "reason": "handshake anterior falhou"}
+        monkeypatch.setattr(release_convergence, "observe", lambda: report)
+        monkeypatch.setattr(service_activation, "read_quarantine", lambda: quarantine)
+
+        envelope, exit_code = _cmd_service_status([], "cid")
+
+        assert exit_code == 0
+        assert envelope["status"] == "degraded"
+        assert envelope["data"]["quarantine"] == quarantine
+
+    def test_service_status_rejects_arguments(self) -> None:
+        from steamzero.cli.main import _cmd_service_status
+        from steamzero.core.errors import SteamZeroError
+
+        with pytest.raises(SteamZeroError, match="service status não aceita argumentos"):
+            _cmd_service_status(["--restart"], "cid")
+
     def test_the_flag_requires_a_value(self) -> None:
         """`--expect-release` sem argumento não pode virar o refresh antigo.
 
@@ -332,6 +493,7 @@ class TestTheCliContract:
         """
         from steamzero.cli.main import _USAGE
 
+        assert "service status" in _USAGE
         assert "--expect-release" in _USAGE
 
     @pytest.mark.parametrize(

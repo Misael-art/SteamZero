@@ -3402,3 +3402,20 @@ plan → apply → status → rollback.
 
 Próxima onda funcional: GAP-G17/GAP-G23, M10/M11 e adapters, conforme
 `docs/12-roadmap/EXECUTION-TO-1.0.md`.
+
+### 2026-07-29 — GAP-G17: status público e estritamente read-only
+
+`steamzero service status --json` deixou de ser ação desconhecida. O comando
+compara o alvo autoritativo de `/opt/steamzero/current` com a identidade
+declarada por `system.hello`, inclui o marcador de quarentena e publica
+`converged`, `pending`, `timeout` ou `unreadable`.
+
+O status não foi registrado como método JSON-RPC: rotear a observação por dentro
+do daemon observado criaria uma autorreferência e esconderia justamente a
+fronteira que o comando precisa medir. O observer também não recebe função de
+restart, não executa retry e não chama `converge()`. Testes encenam daemon
+correto, stale, ausente e `current` ausente, sempre comprovando zero reinícios.
+
+Próxima investigação operacional: GAP-G23. Próxima entrega funcional de
+adapters: M10/M11, sem declarar nenhum deles concluído antes da VM e da matriz
+real exigidas pelo roadmap.

@@ -149,6 +149,67 @@ def _daemon_release(identity: dict[str, Any]) -> str | None:
     return str(value) if value else None
 
 
+def observe(
+    *,
+    link: Path = CURRENT_LINK,
+    probe: Callable[[], dict[str, Any]] | None = None,
+) -> ConvergenceReport:
+    """Observa a release ativa e o daemon sem reiniciar ou aguardar nada.
+
+    ``service status`` não pode reutilizar :func:`converge`: até uma chamada
+    aparentemente idempotente pode reiniciar as units quando encontra drift.
+    Este caminho executa exatamente duas leituras e publica a divergência.
+    """
+    steps: list[str] = []
+    activated = read_activated_release(link)
+    steps.append("leu current")
+    if activated is None:
+        return ConvergenceReport(
+            ConvergenceState.UNREADABLE,
+            f"não foi possível ler a release ativada em {link}",
+            code=DIAG_UNREADABLE,
+            steps=tuple(steps),
+        )
+
+    read_identity = probe if probe is not None else _default_probe
+    identity = _safe_probe(read_identity)
+    steps.append("consultou o daemon")
+    if identity is None:
+        return ConvergenceReport(
+            ConvergenceState.TIMEOUT,
+            "o daemon não respondeu à consulta de status",
+            activated_release=activated,
+            code=DIAG_TIMEOUT,
+            steps=tuple(steps),
+        )
+
+    daemon = _daemon_release(identity)
+    daemon_commit = str(identity.get("sourceCommit") or "") or None
+    if daemon == activated:
+        return ConvergenceReport(
+            ConvergenceState.CONVERGED,
+            f"o daemon responde na release ativada {activated!r}",
+            activated_release=activated,
+            daemon_release=daemon,
+            daemon_commit=daemon_commit,
+            steps=tuple(steps),
+        )
+
+    if daemon is None:
+        detail = f"o daemon respondeu sem declarar releaseId; current aponta para {activated!r}"
+    else:
+        detail = f"current aponta para {activated!r}, mas o daemon responde por {daemon!r}"
+    return ConvergenceReport(
+        ConvergenceState.PENDING,
+        detail,
+        activated_release=activated,
+        daemon_release=daemon,
+        daemon_commit=daemon_commit,
+        code=DIAG_PENDING,
+        steps=tuple(steps),
+    )
+
+
 def converge(
     *,
     expect_release: str | None = None,

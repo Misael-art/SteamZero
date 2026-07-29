@@ -42,6 +42,7 @@ _USAGE = f"""steamzero <domínio> <ação> [flags]
 
 Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
+  service status         observa a release ativa e o daemon sem reiniciar
   service refresh        reinicia o serviço local na versão instalada
                          --expect-release <id>  exige convergência com a release ativada
   jobs list              lista jobs paginados (--limit N --cursor ID --state STATE)
@@ -166,6 +167,43 @@ def _cmd_service_refresh(args: list[str], correlation_id: str) -> tuple[dict[str
             correlation_id=correlation_id,
         ),
         EXIT_OK if ok else EXIT_FAILURE,
+    )
+
+
+def _cmd_service_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    """Publica a convergência atual sem rotear pelo daemon nem mutar as units."""
+    if args:
+        raise SteamZeroError("E-API-SCHEMA", detail="service status não aceita argumentos")
+
+    from steamzero.adapters.release_convergence import ConvergenceState, observe
+    from steamzero.adapters.service_activation import read_quarantine
+
+    report = observe()
+    quarantine = read_quarantine()
+    data = {**report.to_dict(), "quarantine": quarantine}
+    if report.state is ConvergenceState.UNREADABLE:
+        return (
+            build_envelope(
+                "service",
+                "status",
+                status="failed",
+                ok=False,
+                data=data,
+                error=build_error(report.code or "E-HOST-CURRENT-UNREADABLE", detail=report.detail),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    status = "ok" if report.ok and quarantine is None else "degraded"
+    return (
+        build_envelope(
+            "service",
+            "status",
+            status=status,
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
     )
 
 
@@ -1522,6 +1560,7 @@ def _cmd_theme_rollback(args: list[str], correlation_id: str) -> tuple[dict[str,
 #: Allowlist de ações. Chave (domínio, ação|None).
 HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
+    ("service", "status"): _cmd_service_status,
     ("service", "refresh"): _cmd_service_refresh,
     ("jobs", "list"): _cmd_jobs_list,
     ("operations", "list"): _cmd_operations_list,
