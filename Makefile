@@ -6,12 +6,14 @@ RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
 COVERAGE := $(VENV)/bin/coverage
 TEST_RUNNER := $(PY) tools/run_tests_isolated.py
+RELEASE_HOST := $(PY) tools/release_host.py
 
-.PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean
+.PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean release-inspect release-verify
 
 help:
 	@echo "Alvos: venv lint format-check typecheck boundaries test cov check"
 	@echo "Visual: qml-visual check-qml-goldens update-qml-goldens"
+	@echo "Operação: release-inspect release-verify BUNDLE=/caminho"
 
 venv:
 	python3 -m venv $(VENV)
@@ -58,3 +60,10 @@ update-qml-goldens: ## Regrava as baselines visuais (exige revisão do diff no c
 
 check-qml-goldens: ## Relata divergências visuais sem regravar nada
 	$(PY) tools/update_qml_goldens.py --check
+
+release-inspect: ## Diagnóstico read-only de checkout, host, daemon e componentes
+	$(RELEASE_HOST) inspect
+
+release-verify: ## Confere bundle CI; uso: make release-verify BUNDLE=/caminho
+	test -n "$(BUNDLE)"
+	$(RELEASE_HOST) verify-bundle --bundle "$(BUNDLE)"

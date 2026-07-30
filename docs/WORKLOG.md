@@ -3686,3 +3686,41 @@ ativa `0.1.0a41-c9111a00d3c0` preservada e rollback
 `0.1.0a41-31b30211ba85` preservado. Validação física (boot direto + GameMode
 real) segue pendente e exige release construída da main e autorização do
 operador.
+
+## 2026-08-02 — Sessão 52: automação de release/host rebasada e limpa (branch feat/release-host-automation)
+
+O PR #20 (`codex/automate-release-host`, draft) misturava duas frentes
+independentes e estava 45 commits atrás da `main` com conflitos reais em
+`Makefile` e `docs/WORKLOG.md`. Análise separou:
+
+- **Frente A — automação de release/host**: `tools/release_host.py`
+  (1267 linhas), `tests/unit/test_release_host.py` (645 linhas),
+  `docs/09-operations/RELEASE-HOST-AUTOMATION.md` (192 linhas), seção de
+  automação em `AGENTS.md` (8 linhas) e targets no `Makefile`. Coerente com
+  AGENTS.md §1/§4 — formaliza o caminho canônico de release, não enfraquece
+  regra de segurança (reforça: falha de gate encerra o fluxo);
+- **Frente B — `ai-memory`**: bloco de roteamento (~84 linhas em `AGENTS.md`)
+  + 5 skills em `.agents/skills/ai-memory-*/SKILL.md`. Infraestrutura de
+  ferramenta externa (`akitaonrails/ai-memory`), sem relação com o produto.
+
+Decisão do operador: descartar a Frente B e rebase da Frente A sobre a
+`main` atual. Execução: branch nova `feat/release-host-automation` criada de
+`origin/main` (`0012055`), cherry-pick seletivo do commit `a2d7e48` (só
+Frente A), resolução manual dos conflitos (`Makefile` manteve ambas as
+variáveis `TEST_RUNNER` e `RELEASE_HOST`; `WORKLOG` manteve as sessões da
+main). A Frente B (commit `2af2395`) foi inteiramente descartada.
+
+`tools/release_host.py` oferece `inspect`, `prepare`, `verify-bundle`,
+`install`, `rollback`, `cycle` e `publish`. As únicas chamadas privilegiadas
+geradas são `bigsudo /usr/bin/python3 tools/install_host.py install/rollback`;
+cada ativação exige token exato, converge duas vezes e reprova se a segunda
+chamada reiniciar. Publicação exige os quatro gates nominais de certificação.
+Nenhuma referência a projetos proibidos (AGENTS.md §7 verificado: zero
+ocorrências de phasezero/retrodeck/linuxtoys/ai-memory no código).
+
+Gates: 3476 testes isolados verdes (3450 → 3476, +26 do `release_host.py`
+que entraram limpos), ruff check limpo, ruff format limpo (379 arquivos),
+mypy success em 199 source files, `make independence boundaries` OK. Host
+intocado: zero mutações, sem instalação/rollback/tag/build. Release ativa
+`0.1.0a41-c9111a00d3c0` preservada. O PR #20 foi fechado e a branch remota
+`codex/automate-release-host` removida.
