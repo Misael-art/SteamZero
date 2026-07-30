@@ -643,3 +643,25 @@ def test_source_has_no_privileged_escape_hatch() -> None:
     assert source.count('"bigsudo"') == 2
     assert source.count('"tools/install_host.py"') == 2
     assert '"sudo"' not in source
+
+
+def test_agent_governance_requires_automation_and_memory_routing() -> None:
+    agents = (release_host.ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert "O caminho obrigatório é `tools/release_host.py`" in agents
+    assert "tools/release_host.py inspect" in agents
+    assert "não reproduz o processo manualmente" in agents
+    assert "<!-- ai-memory:start -->" in agents
+    assert "<!-- ai-memory:end -->" in agents
+
+    skill_root = release_host.ROOT / ".agents" / "skills"
+    expected_skills = {
+        "ai-memory-retrieval",
+        "ai-memory-handoff",
+        "ai-memory-durable-pages",
+        "ai-memory-learning-maintenance",
+        "ai-memory-routing-install",
+    }
+    assert {path.parent.name for path in skill_root.glob("*/SKILL.md")} == expected_skills
+    for path in skill_root.glob("*/SKILL.md"):
+        assert "<!-- ai-memory-managed: routing-skill -->" in path.read_text(encoding="utf-8")

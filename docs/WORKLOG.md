@@ -3602,3 +3602,26 @@ Citron, sem tentar repará-lo ou trocar o default.
 **Host:** nenhuma instalação, rollback, tag, push ou build de release foi
 executado. A a41 permanece ativa; a a40 continua disponível para rollback. O
 push desta branch ainda exige renovar a autenticação do GitHub CLI.
+
+## 2026-07-30 — Sessão 49: memória e governança obrigatória da automação
+
+A operação de release e host foi registrada como regra procedural fixada na
+memória durável do projeto. O `AGENTS.md` agora obriga todo agente a consultar
+essa regra e iniciar pelo `tools/release_host.py inspect`; diagnóstico,
+artefatos, mutações e publicação possuem subcomandos canônicos, e a ausência ou
+falha da automação bloqueia o fluxo em vez de permitir uma reprodução manual.
+
+O roteamento gerenciado do `ai-memory` foi instalado no próprio `AGENTS.md` e
+em cinco Agent Skills locais sob `.agents/skills`. Um teste de governança
+confere a redação obrigatória, os marcadores gerenciados e a presença exata das
+skills, tornando uma remoção ou suavização futura visível no gate.
+
+**Gates locais:** 3.284 testes aprovados; Ruff check/format, mypy em 188
+arquivos, independência e fronteiras verdes. A suíte integral usou homes XDG
+temporários. O wrapper `make` não encontrou uma `.venv` local nesta worktree;
+os dois scripts chamados por seus alvos foram executados diretamente com o
+mesmo Python validado e passaram.
+
+**Host:** nenhuma instalação, rollback, tag, publicação ou outra mutação foi
+executada. A regra continua sem ampliar autorização humana para operações
+privilegiadas.
