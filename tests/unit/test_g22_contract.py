@@ -14,6 +14,7 @@ import ast
 import subprocess
 import sys
 import textwrap
+from collections import Counter
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -24,16 +25,16 @@ CI_FILE = PROJECT_ROOT / ".github/workflows/ci.yml"
 # AST normalization helpers
 # ---------------------------------------------------------------------------
 
-_AUTHORIZED_BENCHMARK_ASSERTS: frozenset[str] = frozenset(
+_AUTHORIZED_BENCHMARK_ASSERTS: Counter[str] = Counter(
     {
-        "result.status == 'ok'",
-        "sum((1 for _ in fs.iter_files(root / 'nes'))) == 10000",
-        "not (root / 'incoming' / 'game-00000.nes').exists()",
-        "len(plan.actions) == 10000",
-        "rollback.status == 'rolled-back'",
-        "sum((1 for _ in fs.iter_files(root / 'incoming'))) == 10000",
-        "not (root / 'nes' / 'game-00000.nes').exists()",
-        "not paths.staging_for(result.operation_id).exists()",
+        "result.status == 'ok'": 1,
+        "sum((1 for _ in fs.iter_files(root / 'nes'))) == 10000": 1,
+        "not (root / 'incoming' / 'game-00000.nes').exists()": 1,
+        "len(plan.actions) == 10000": 1,
+        "rollback.status == 'rolled-back'": 1,
+        "sum((1 for _ in fs.iter_files(root / 'incoming'))) == 10000": 1,
+        "not (root / 'nes' / 'game-00000.nes').exists()": 1,
+        "not paths.staging_for(result.operation_id).exists()": 1,
     }
 )
 
@@ -50,23 +51,36 @@ def _get_benchmark_func() -> ast.FunctionDef:
     raise AssertionError("benchmark function not found in AST")
 
 
-def _normalize_assert_exprs(func: ast.FunctionDef) -> frozenset[str]:
-    result: set[str] = set()
+def _normalize_assert_exprs(func: ast.FunctionDef) -> Counter[str]:
+    result: list[str] = []
     for node in ast.walk(func):
         if isinstance(node, ast.Assert):
-            result.add(ast.unparse(node.test))
-    return frozenset(result)
+            result.append(ast.unparse(node.test))
+    return Counter(result)
 
 
 def _validate_benchmark_asserts(
     func: ast.FunctionDef,
 ) -> tuple[bool, set[str], set[str], list[str]]:
     exprs = _normalize_assert_exprs(func)
-    missing = set(_AUTHORIZED_BENCHMARK_ASSERTS) - exprs
-    extra = exprs - set(_AUTHORIZED_BENCHMARK_ASSERTS)
+    missing: set[str] = set()
+    extra: set[str] = set()
     errors: list[str] = []
+    total = sum(exprs.values())
+    if total != 8:
+        errors.append(f"total de asserts é {total}, esperado 8")
+    for expr, count in _AUTHORIZED_BENCHMARK_ASSERTS.items():
+        if exprs.get(expr, 0) < count:
+            missing.add(expr)
+    for expr, count in exprs.items():
+        auth_count = _AUTHORIZED_BENCHMARK_ASSERTS.get(expr, 0)
+        if count > auth_count:
+            if auth_count == 0:
+                extra.add(expr)
+            else:
+                errors.append(f"assert duplicado: {expr} (count={count})")
     if missing:
-        errors.append(f"asserções funcionais ausentes ({len(missing)}): {sorted(missing)}")
+        errors.append(f"asserções ausentes ({len(missing)}): {sorted(missing)}")
     if extra:
         errors.append(f"asserções não autorizadas ({len(extra)}): {sorted(extra)}")
     return len(errors) == 0, missing, extra, errors
@@ -99,8 +113,8 @@ def test_benchmark_collected_normally() -> None:
 def test_benchmark_assertions_are_exact_eight() -> None:
     func = _get_benchmark_func()
     exprs = _normalize_assert_exprs(func)
-    assert len(exprs) == 8, (
-        f"benchmark deve ter exatamente 8 asserts, tem {len(exprs)}: {sorted(exprs)}"
+    assert sum(exprs.values()) == 8, (
+        f"benchmark deve ter exatamente 8 asserts, tem {sum(exprs.values())}: {dict(exprs)}"
     )
 
 
@@ -177,8 +191,26 @@ def test_rejects_extra_nona_assert() -> None:
     assert "extra_thing" in next(iter(extra))
 
 
+def test_rejects_duplicate_assert() -> None:
+    src = """def f():
+    assert result.status == 'ok'
+    assert sum((1 for _ in fs.iter_files(root / 'nes'))) == 10000
+    assert not (root / 'incoming' / 'game-00000.nes').exists()
+    assert len(plan.actions) == 10000
+    assert rollback.status == 'rolled-back'
+    assert sum((1 for _ in fs.iter_files(root / 'incoming'))) == 10000
+    assert not (root / 'nes' / 'game-00000.nes').exists()
+    assert not paths.staging_for(result.operation_id).exists()
+    assert rollback.status == 'rolled-back'
+"""
+    func = _make_synthetic_func(src)
+    ok, _missing, _extra, errors = _validate_benchmark_asserts(func)
+    assert not ok, "deveria rejeitar assert duplicado"
+    assert any("duplicado" in e for e in errors), f"erro 'duplicado' não encontrado: {errors}"
+
+
 # ---------------------------------------------------------------------------
-# 3. CI workflow contract
+# 3. CI workflow helpers
 # ---------------------------------------------------------------------------
 
 
@@ -197,13 +229,11 @@ def _extract_step_block(yml_text: str, step_name: str) -> list[str]:
             break
     if start_idx is None:
         raise AssertionError(f"step '{step_name}' não encontrado no YAML")
-
     indent = len(lines[start_idx]) - len(lines[start_idx].lstrip())
     block: list[str] = []
     for line in lines[start_idx:]:
         if not line.strip():
             continue
-        # Próximo ``- name:`` ou chave de topo (sem espaço inicial) encerram o bloco
         stripped = line.lstrip()
         if stripped.startswith("- name:"):
             break
@@ -242,99 +272,93 @@ def _run_lines_from_block(block: list[str]) -> list[str]:
     return lines
 
 
-def test_ci_tests_step_has_durations() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Testes e cobertura")
-    run_lines = _run_lines_from_block(block)
-    assert any("--durations=20" in line for line in run_lines), (
-        f"--durations=20 não está em linha executável do step Testes e cobertura\n"
-        f"run_lines: {run_lines}"
-    )
+def _validate_ci_contract(yml_text: str) -> list[str]:
+    """Valida contrato do workflow CI.
 
-
-def test_ci_tests_step_has_junit_xml() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Testes e cobertura")
-    run_lines = _run_lines_from_block(block)
-    assert any("--junitxml" in line and "matrix.python-version" in line for line in run_lines), (
-        f"--junitxml com versão não está no step Testes e cobertura\nrun_lines: {run_lines}"
-    )
-
-
-def test_ci_publish_junit_step_has_always() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    block_text = "\n".join(block)
-    assert "if: always()" in block_text, (
-        f"if: always() não está no step Publicar resultados JUnit\nblock:\n{block}"
-    )
-
-
-def test_ci_publish_junit_uses_upload_artifact() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    assert any("actions/upload-artifact@" in line for line in block), (
-        f"actions/upload-artifact não encontrado no step JUnit\nblock:\n{block}"
-    )
-    assert any("test-results-${{ matrix.python-version }}" in line for line in block), (
-        f"name por versão ausente no step JUnit\nblock:\n{block}"
-    )
-
-
-def test_ci_publish_junit_path_has_version() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    found = any(
-        "matrix.python-version" in line and ("path" in line or "build/test-results" in line)
-        for line in block
-    )
-    assert found, f"path por versão ausente\nblock:\n{block}"
-
-
-def test_ci_publish_junit_if_no_files_error() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    assert any("if-no-files-found: error" in line for line in block), (
-        f"if-no-files-found: error ausente no step JUnit\nblock:\n{block}"
-    )
-
-
-def test_ci_publish_junit_retention_days_30() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    assert any("retention-days: 30" in line for line in block), (
-        f"retention-days: 30 ausente no step JUnit\nblock:\n{block}"
-    )
-
-
-def test_ci_publish_junit_sha_pinned() -> None:
-    text = CI_FILE.read_text(encoding="utf-8")
-    block = _extract_step_block(text, "Publicar resultados JUnit")
-    for line in block:
-        if "upload-artifact@" not in line:
-            continue
-        after_at = line.split("@", 1)[1].strip().split()[0]
-        assert len(after_at) >= 40 and all(c in "0123456789abcdef" for c in after_at), (
-            f"upload-artifact sem SHA pin (encontrado {after_at!r})\nblock:\n{block}"
-        )
-        return
-    raise AssertionError("actions/upload-artifact não encontrado no step JUnit")
-
-
-# ---------------------------------------------------------------------------
-# 4. CI negative controls (synthetic YAML)
-# ---------------------------------------------------------------------------
-
-
-def _yaml_with_step(text: str, step_name: str) -> str:
-    """Procura o step ``step_name`` no YAML sintético via _extract_step_block.
-    Retorna linhas encontradas ou levanta AssertionError.
+    Retorna lista de erros (vazia se tudo ok).
     """
-    return "\n".join(_extract_step_block(text.splitlines(keepends=True), step_name))
+    errors: list[str] = []
+
+    lines = yml_text.splitlines()
+    step_names: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("- name:"):
+            step_names.append(stripped[len("- name:") :].strip())
+
+    for required in ["Testes e cobertura", "Publicar resultados JUnit"]:
+        count = step_names.count(required)
+        if count == 0:
+            errors.append(f"step obrigatório ausente: {required}")
+        elif count > 1:
+            errors.append(f"step duplicado: {required}")
+
+    try:
+        coverage_block = _extract_step_block(yml_text, "Testes e cobertura")
+        run_lines = _run_lines_from_block(coverage_block)
+        non_echo_lines = [line for line in run_lines if not line.strip().startswith("echo")]
+        if not any("--durations=20" in line for line in non_echo_lines):
+            errors.append("--durations=20 ausente no step Testes e cobertura")
+        if not any(
+            "--junitxml" in line and "matrix.python-version" in line for line in non_echo_lines
+        ):
+            errors.append("--junitxml por versão ausente no step Testes e cobertura")
+    except AssertionError as e:
+        errors.append(str(e))
+
+    try:
+        junit_block = _extract_step_block(yml_text, "Publicar resultados JUnit")
+        block_text = "\n".join(junit_block)
+        if "if: always()" not in block_text:
+            errors.append("if: always() ausente no step Publicar resultados JUnit")
+        found_upload = False
+        for line in junit_block:
+            if "actions/upload-artifact@" not in line:
+                continue
+            found_upload = True
+            after_at = line.split("@", 1)[1].strip().split()[0]
+            if not (len(after_at) == 40 and all(c in "0123456789abcdef" for c in after_at)):
+                errors.append(
+                    f"upload-artifact sem SHA hex de 40 caracteres no step "
+                    f"Publicar resultados JUnit: {after_at!r}"
+                )
+        if not found_upload:
+            errors.append("actions/upload-artifact ausente no step Publicar resultados JUnit")
+        if not any("test-results-${{ matrix.python-version }}" in line for line in junit_block):
+            errors.append("name por versão ausente no step Publicar resultados JUnit")
+        if not any(
+            "matrix.python-version" in line and ("path" in line or "build/test-results" in line)
+            for line in junit_block
+        ):
+            errors.append("path por versão ausente no step Publicar resultados JUnit")
+        if not any("if-no-files-found: error" in line for line in junit_block):
+            errors.append("if-no-files-found: error ausente no step Publicar resultados JUnit")
+        if not any("retention-days: 30" in line for line in junit_block):
+            errors.append("retention-days: 30 ausente no step Publicar resultados JUnit")
+    except AssertionError as e:
+        errors.append(str(e))
+
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# 4. CI workflow contract (positive)
+# ---------------------------------------------------------------------------
+
+
+def test_ci_contract_validates_real_file() -> None:
+    text = CI_FILE.read_text(encoding="utf-8")
+    errors = _validate_ci_contract(text)
+    assert not errors, f"erros no CI real: {errors}"
+
+
+# ---------------------------------------------------------------------------
+# 5. CI negative controls (synthetic YAML)
+# ---------------------------------------------------------------------------
 
 
 def test_ci_negative_always_on_wrong_step() -> None:
-    synthetic = """jobs:
+    yml = """jobs:
   test:
     steps:
       - name: Publicar cobertura
@@ -343,31 +367,20 @@ def test_ci_negative_always_on_wrong_step() -> None:
       - name: Publicar resultados JUnit
         run: echo missing
 """
-    block = _extract_step_block(synthetic, "Publicar resultados JUnit")
-    assert not any("if: always()" in line for line in block), (
-        "if: always() não deveria estar no step JUnit quando só existe no step cobertura"
+    errors = _validate_ci_contract(yml)
+    assert any("if: always() ausente" in e for e in errors), (
+        f"erro 'if: always() ausente' não encontrado: {errors}"
     )
 
 
-def test_ci_negative_name_in_comment_only() -> None:
-    synthetic = """jobs:
+def test_ci_negative_value_in_comment_only() -> None:
+    yml = """jobs:
   test:
     steps:
-      - name: Publicar resultados JUnit
-        if: always()
+      - name: Testes e cobertura
         run: |
-          echo test-results-3.11
-"""
-    block = _extract_step_block(synthetic, "Publicar resultados JUnit")
-    assert not any("matrix.python-version" in line for line in block), (
-        "não deveria encontrar matrix.python-version em comentário"
-    )
-
-
-def test_ci_negative_path_missing_version() -> None:
-    synthetic = """jobs:
-  test:
-    steps:
+          echo some test
+          # --junitxml=build/test-results-${{ matrix.python-version }}.xml
       - name: Publicar resultados JUnit
         if: always()
         uses: actions/upload-artifact@abc123
@@ -377,17 +390,63 @@ def test_ci_negative_path_missing_version() -> None:
           if-no-files-found: error
           retention-days: 30
 """
-    block = _extract_step_block(synthetic, "Publicar resultados JUnit")
-    block_text = "\n".join(block)
-    assert "matrix.python-version" not in block_text, (
-        "path não deveria conter versão no caso negativo"
+    errors = _validate_ci_contract(yml)
+    assert any("--junitxml por versão" in e for e in errors), (
+        f"erro '--junitxml' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_value_in_echo_only() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          echo --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc123
+        with:
+          name: test-results-fixed
+          path: build/results.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("--junitxml por versão" in e for e in errors), (
+        f"erro '--junitxml' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_path_missing_version() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc123
+        with:
+          name: test-results-fixed
+          path: build/results.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("path por versão" in e for e in errors), (
+        f"erro 'path por versão' não encontrado: {errors}"
     )
 
 
 def test_ci_negative_if_no_files_is_warn() -> None:
-    synthetic = """jobs:
+    yml = """jobs:
   test:
     steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
       - name: Publicar resultados JUnit
         if: always()
         uses: actions/upload-artifact@abc123
@@ -397,21 +456,143 @@ def test_ci_negative_if_no_files_is_warn() -> None:
           if-no-files-found: warn
           retention-days: 30
 """
-    block = _extract_step_block(synthetic, "Publicar resultados JUnit")
-    assert not any("if-no-files-found: error" in line for line in block), (
-        "não deveria encontrar if-no-files-found: error quando é warn"
+    errors = _validate_ci_contract(yml)
+    assert any("if-no-files-found: error" in e for e in errors), (
+        f"erro 'if-no-files-found' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_missing_property() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc123
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("retention-days: 30" in e for e in errors), (
+        f"erro 'retention-days' não encontrado: {errors}"
     )
 
 
 def test_ci_negative_step_absent() -> None:
-    synthetic = """jobs:
+    yml = """jobs:
   test:
     steps:
       - name: Publicar cobertura
         run: echo coverage
 """
-    try:
-        _extract_step_block(synthetic, "Publicar resultados JUnit")
-        raise AssertionError("deveria levantar AssertionError quando step está ausente")
-    except AssertionError:
-        pass
+    errors = _validate_ci_contract(yml)
+    assert any("step obrigatório ausente: Publicar resultados JUnit" in e for e in errors), (
+        f"erro 'step obrigatório ausente' não encontrado: {errors}"
+    )
+    assert any("step obrigatório ausente: Testes e cobertura" in e for e in errors), (
+        f"erro 'step obrigatório ausente' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_step_duplicated() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc123
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc1234567890123456789012345678901234567890
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("step duplicado: Publicar resultados JUnit" in e for e in errors), (
+        f"erro 'step duplicado' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_action_without_sha() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("SHA hex" in e for e in errors), f"erro 'SHA hex' não encontrado: {errors}"
+
+
+def test_ci_negative_short_sha() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc123def
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("SHA hex" in e for e in errors), f"erro 'SHA hex' não encontrado: {errors}"
+
+
+def test_ci_negative_empty_yaml() -> None:
+    errors = _validate_ci_contract("")
+    assert any("step obrigatório ausente" in e for e in errors), (
+        f"erro 'step obrigatório ausente' não encontrado em YAML vazio: {errors}"
+    )
+
+
+def test_ci_negative_incorrect_retention() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@abc1234567890123456789012345678901234567890
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 7
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("retention-days: 30" in e for e in errors), (
+        f"erro 'retention-days' não encontrado: {errors}"
+    )

@@ -4,9 +4,9 @@
 
 **Branch:** `codex/fix-benchmark-g22`
 
-**Implementação avaliada:** `e7cb2fcffdd849223202cbf2c7bb0740624a2e1a`
+**Implementação avaliada:** `ee31286a1cd913743ebad8c5d023417eddd71b31`
 
-**Run:** https://github.com/Misael-art/SteamZero/actions/runs/30571131742
+**Run:** https://github.com/Misael-art/SteamZero/actions/runs/30574550249
 
 ## Causa
 
@@ -33,7 +33,8 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
 
 1. Removido o teto `elapsed < 180.0` do teste.
 2. Removido `time.monotonic()` e o `import time` (sem outros usos no arquivo).
-3. Preservadas todas as asserções funcionais (exatas 8, verificadas por AST):
+3. Preservadas todas as asserções funcionais (exatas 8, verificadas por AST
+   com `Counter` que detecta duplicatas):
    - `result.status == 'ok'`
    - `sum((1 for _ in fs.iter_files(root / 'nes'))) == 10000`
    - `not (root / 'incoming' / 'game-00000.nes').exists()`
@@ -45,8 +46,14 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
 4. Adicionado `--durations=20` à execução de pytest no CI.
 5. Adicionado `--junitxml=build/test-results-${{ matrix.python-version }}.xml`.
 6. Adicionado step de publicação do JUnit XML como artifact (`if: always()`).
+7. Contrato de workflow CI validado por `_validate_ci_contract()` que cobre
+   11 cenários negativos (always em step errado, valor em comentário/echo,
+   path sem versão, warn, propriedade ausente, step ausente/duplicado,
+   action sem SHA, SHA curto, retention incorreto).
 
-## Artifacts JUnit observados no run 30571131742
+## Artifacts JUnit observados
+
+### Run 30571131742 (SHA `e7cb2fc`)
 
 | Versão | ID do artifact | Tamanho (bytes) | Tempo do benchmark |
 |--------|----------------|-----------------|-------------------|
@@ -54,11 +61,19 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
 | 3.12   | 8770991496     | 54053           | 59,185 s          |
 | 3.14   | 8770924809     | 53908           | 37,809 s          |
 
+### Run 30574550249 (SHA `ee31286`)
+
+| Versão | ID do artifact | Tamanho (bytes) | Tempo do benchmark |
+|--------|----------------|-----------------|-------------------|
+| 3.11   | 8772290384     | 54189           | 53,352 s          |
+| 3.12   | 8772293242     | 54449           | 62,197 s          |
+| 3.14   | 8772257830     | 54066           | 38,578 s          |
+
 Os três artifacts foram publicados com `if: always()` e contêm o elemento
 `testcase` de `test_10k_fixture_apply_and_rollback_benchmark` com atributo
 `time` numérico.
 
-## Checks do PR #22
+## Checks do PR #22 (SHA `ee31286`)
 
 | Check | Tipo | Resultado |
 |-------|------|-----------|
@@ -78,8 +93,8 @@ Total: 8 checks GitHub Actions + 1 check externo (CodeRabbit). Todos verdes.
 
 - O tempo de execução não é critério de aprovação neste PR.
 - Não há baseline de performance entre máquinas diferentes.
-- Os tempos observados (44–59 s) são deste runner específico e não formam
-  baseline comparável entre máquinas.
+- Os tempos observados são deste runner específico e não formam baseline
+  comparável entre máquinas.
 - A medição publicada serve para consulta, não para gate automático.
 - Uma regressão de performance só poderá voltar a bloquear por comparação
   controlada no mesmo ambiente ou runner dedicado.
