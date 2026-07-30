@@ -69,16 +69,23 @@ feita contra esta linha consolidada; código presente aqui não será reconstru�
 
 | ID | Achado do diagnóstico | Destino no ciclo | Estado | Evidência |
 |---|---|---|---|---|
-| D1 | Emulador principal + fallback visual por plataforma | correção transversal/F5 | verified-dev | `docs/expansion/WI-D1.md` |
+| D1 | Emulador principal + fallback visual por plataforma | correção transversal/F5 | verified-dev, condicionado por GAP-G27 | `docs/expansion/WI-D1.md`; lifecycle real diverge entre AdapterEngine, CLI e QML |
 | D2 | DLC/update no scan e projeção para emuladores | F5, A4, A8 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D3 | Fiação de catálogos, mods e cheats existentes | A12 + composição | verified-dev | `docs/expansion/WI-D3.md` |
 | D4 | Gráficos e performance | G1, G3, G4, G6, R0–R2 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D5 | Controles editáveis e perfis | F6, R6 | in-progress | base reversível: `docs/expansion/WI-F6.md`; automação especializada: R6 |
 | D6 | vSaves, playtime, captura e lançamento | A1, G5 | in-progress | sessões/playtime: `docs/expansion/WI-A1.md`; captura/vSaves: G5 |
-| D7 | Scraping/download e fallback de artwork | F1, F5, A7, A12 | in-progress | fallback: `docs/expansion/WI-F5.md`; pipeline: A7/A12 |
+| D7 | Scraping/download e fallback de artwork | F1, F5, A7, A12 | in-progress, condicionado por GAP-G28 | fallback: `docs/expansion/WI-F5.md`; pipeline: A7/A12; falha remota persistida ainda não chega à UI |
 | D8 | Artwork e conversão de ROM | A7, A8 | in-progress | conversão: `docs/expansion/WI-D3.md`; artwork: A7 |
 | D9 | Armazenamento e exclusão linkada | A4, A7 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
 | D10 | Leitura de DLC, shader, firmware e região | F5, A4, A12 | pending | `docs/expansion/DIAGNOSTIC-EMULATION-RESOLUTION.md` |
+
+D1 continua implementado em desenvolvimento, mas GAP-G27 impede tratar a
+projeção física de lifecycle/default como verdade certificada. D7 continua
+parcial, e GAP-G28 impede considerar o caminho remoto de mídia operacionalmente
+validado. As aberturas posteriores de emuladores não provaram o primeiro jogo
+canônico. Mídia remota, primeiro jogo e efeitos GameMode permanecem sem
+`verified-hw`.
 
 ## Auditorias por lote
 

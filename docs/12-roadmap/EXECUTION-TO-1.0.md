@@ -1,8 +1,14 @@
 # Plano de execução até a 1.0
 
-**Base:** commit `8e17159d`, host em `0.1.0a39-8e17159d5122`
-(**certificação aprovada** — ver
-`docs/09-operations/A39-CERTIFICATION-RESULT.md`).
+**Base:** documentação em
+`175d83b79b6e472302c0a11ebc39d703078c02cc`, host em
+`0.1.0a41-31b30211ba85` (**mecânica de release certificada** — ver
+`docs/09-operations/A41-CERTIFICATION-RESULT.md`; diagnóstico operacional
+posterior em
+`docs/diagnostics/2026-07-30-a41-host-real-operational-diagnosis.md`).
+
+**Próxima release:** a42, exclusivamente de estabilização. Nenhuma feature do
+backlog entra antes de GAP-G25–G31 terem os gates definidos neste documento.
 
 Este documento não copia estado antigo. Cada linha foi conferida contra o
 código, os testes ou o host nesta sessão; onde não foi possível verificar, está
@@ -39,20 +45,26 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | # | Entrega | Estado real (verificado) | Dependências | Definition of Done | Prio | Próxima ação |
 |--:|---|---|---|---|---|---|
-| 0 | Certificação física a39 | **concluída** — ciclo a39→a37→a39 convergido e idempotente; tag exata criada | — | ciclo completo com rollback convergido | — | preservar evidência |
-| 1 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a39 certificada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
-| 2 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
-| 3 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
-| 4 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
-| 5 | Estabilidade operacional | **concluída** — GAP-G16–G20 e GAP-G23 fechados; testes de regressão e observabilidade ativos | CI/host | matriz e diagnósticos verdes | — | preservar os gates |
-| 6 | M10 — três emuladores | **parcial** — portas fake, sem mutação em VM | VM + origem DuckStation | install/update/rollback reais em VM | P1 | montar VM e matriz |
-| 7 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
-| 8 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
-| 9 | M12 — Game Mode UI | **não iniciado** | motor de temas + frontends | navegação 100% por controle, focus graph verde | P1 | slices |
-| 10 | P0-08 — máscaras e efeitos | **reservado no contrato**, nada implementado | scene tree | máscaras, hit test separado, transições, visual-rhi | P2 | só após base visual |
-| 11 | M13 — adoção | **não iniciado** | M10–M12 | import EmuDeck/RetroDECK sem perda em máquina real | P1 | corpus e hashes |
-| 12 | M14 — distribuição | **não iniciado** | host e canais estáveis | Flatpak, canais, update, rollback, downgrade | P1 | projetar canal |
-| 13 | M15 — 1.0 | **não iniciado** | todos | SBOM, assinaturas, docs, matriz HW, checklist | P0 | release candidate |
+| 0 | Certificação física a41 | **histórica aprovada** — ciclo a41→a40→a41 convergido e idempotente; nenhum emulador estava instalado naquele instante | — | preservar relatório e adendo sem reescrever o fato histórico | — | preservar evidência |
+| 1 | Isolamento de testes (GAP-G26) | **aberto** — suíte contaminou o XDG real | diagnóstico a41 | suíte integral com cinco homes XDG temporários e zero mudança no state real | P0 | PR `fix/test-state-isolation-g26` |
+| 2 | Recovery, doctor e state audit (GAP-G25) | **aberto** — dois jobs stale e doctor falso verde | GAP-G26 para prova confiável | restart recupera uma vez; doctor/audit detectam incoerência; cleanup só por plano/quarentena | P0 | PR `fix/job-recovery-doctor-g25` |
+| 3 | Verdade de componentes (GAP-G27) | **aberto** — Citron degradado é mostrado como ausente | gates isolados | AppImage/Flatpak roteados por origem; CLI/workspace/QML concordam; sem fallback silencioso | P1 | PR `fix/component-lifecycle-truth-g27` |
+| 4 | Verdade de mídia (GAP-G28) | **aberto** — quota persistida some na UI | recovery de jobs | saúde persistida; quota visível; uma tentativa por job após esgotamento | P1 | PR `fix/media-provider-truth-g28` |
+| 5 | Prontidão GameMode (GAP-G29) | **aberto** — presença do binário mascara helpers recusados | projeção honesta | binário, daemon, autorização e efeitos separados; nenhuma mutação administrativa automática | P1 | PR `fix/gamemode-readiness-g29` |
+| 6 | Recursos e probe QML (GAP-G30/G31) | **aberto** — consumo agregado e quatro `SIGABRT`; causalidade do probe é hipótese | runner/gates isolados | PSS atribuído; retorno Qt validado; zero novo aborto do probe | P1/P2 | PR `harden/resource-qml-g30-g31` |
+| 7 | Certificação física a42 | **bloqueada** — artifacts não preparados | itens 1–6 mesclados e autorização humana nova | ciclo a42→a41→a42, doctor/state/component/media/GameMode/UI/jogo canônico verdes | P0 | não iniciar antes dos gates |
+| 8 | Fechar P0-03 | **parcial** — a fatia traduz 11 atributos de texto; corpus tem 388 propriedades | a42 estabilizada | 388 migradas, cobertura 100%, relatório | P1 | migrar corpus por família |
+| 9 | Árvore de cena e texto avançado | **não iniciado** — `children` não existe no contrato (verificado: 0 ocorrências) | P0-03 | children, wrapping, elide, rich text, auto-fit com gates | P1 | especificar por slices |
+| 10 | Acessibilidade real | **infraestrutura pronta, sem consumidor** (GAP-G15) | tipografia/layout | textScale, reducedMotion, highContrast consumidos de verdade | P1 | fechar GAP-G12 e GAP-G15 |
+| 11 | Migração dos harnesses QML | **pendente** — 3 `skipif` restantes no arquivo legado | harness canônico | zero skip no gate visual | P2 | fechar GAP-G13 |
+| 12 | M10 — três emuladores | **parcial** — lifecycle existe, mas GAP-G27 impede verdade operacional consistente | a42 + VM + origem DuckStation | install/update/rollback reais em VM e truth consistente | P1 | retomar após a42 |
+| 13 | M11 — frontends | **parcial** | M10 | Steam/SRM/ES-DE idempotentes, sem duplicação | P1 | terminar adapters |
+| 14 | Hardware Deck completo | **parcial** | bancada recuperável | dock, hotplug, input, suspend, storage, TDP certificados | P0 | matriz física |
+| 15 | M12 — Game Mode UI | **não iniciado** | motor de temas + frontends | navegação 100% por controle, focus graph verde | P1 | slices |
+| 16 | P0-08 — máscaras e efeitos | **reservado no contrato**, nada implementado | scene tree | máscaras, hit test separado, transições, visual-rhi | P2 | só após base visual |
+| 17 | M13 — adoção | **não iniciado** | M10–M12 | import EmuDeck/RetroDECK sem perda em máquina real | P1 | corpus e hashes |
+| 18 | M14 — distribuição | **não iniciado** | host e canais estáveis | Flatpak, canais, update, rollback, downgrade | P1 | projetar canal |
+| 19 | M15 — 1.0 | **não iniciado** | todos | SBOM, assinaturas, docs, matriz HW, checklist | P0 | release candidate |
 
 ## Tabela 2 — Dívidas técnicas
 
@@ -73,6 +85,13 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 | GAP-G21 | 46 warnings QML do Breeze | **P3** | polui coleta de warnings próprios | — | filtrar por origem | coleta só de QML nosso |
 | GAP-G22 | benchmark de 10 mil arquivos usa teto de tempo de parede em runner compartilhado | **P2** | CI pode reprovar por carga do runner, não por regressão | asserções funcionais continuam fortes | entrega própria com medição comparável ou runner dedicado | repetição controlada sem falso vermelho |
 | ~~GAP-G23~~ | ~~round-trip de perfil do daemon falhou uma vez no Python 3.12~~ | — | **FECHADA**: o gatilho isolado não foi atribuído; a lacuna comprovável era o teste descartar `state`/`detail` e `status()` colapsar erros de leitura em ausência | — | — | 50 servidores locais + cinco por Python 3.11/3.12/3.14, todos `ready`, e matriz integral verde |
+| GAP-G25 | jobs stale, recovery desconectado e doctor falso verde | **P0** | operações interrompidas sobrevivem como `running`; cancelamento pode ficar inerte | não executar cleanup | recovery único no bootstrap + doctor/state audit + cleanup em duas fases | kill/restart idempotente, zero stale e nenhum artifact ativo removido |
+| GAP-G26 | testes escrevem no XDG real | **P0** | estado do usuário mutado e ~1,1 GB de artifacts sem confiança de referência | preservar tudo; nenhuma limpeza neste PR | runner com cinco XDG temporários + fixture autouse | suíte integral causa zero alteração no state real |
+| GAP-G27 | lifecycle AppImage/Flatpak diverge entre CLI/workspace/QML | **P1** | componente degradado vira ausente; default degradado não reduz prontidão | não trocar default automaticamente | lifecycle roteado por origem e read model único | matriz missing/installed/degraded concordante no host |
+| GAP-G28 | erro de quota da mídia não chega à UI | **P1** | 15 jogos/177 s/zero updates parecem sucesso | resultado persiste no job | saúde do provider persistida e projetada | quota visível, no máximo uma tentativa ScreenScraper por job |
+| GAP-G29 | GameMode mede binário, não autorização/efeito | **P1** | falso verde de performance | lançamento pode prosseguir degradado | quatro dimensões de prontidão e plano administrativo explícito | fora do grupo degrada; autorizado passa após nova sessão |
+| GAP-G30 | recursos de UI/job/emulador não atribuídos | **P1** | pico agregado não detecta nem localiza regressão | não atribuir 5,7 GB à UI | PSS e lifecycle por classe, com privacidade | limites de baseline/retorno e filhos separados |
+| GAP-G31 | probe Qt aceita retorno abortado | **P2** | falso verde visual e quatro `SIGABRT` observados | relação causal ainda é hipótese | probe bem-sucedido e return code obrigatório | zero novo aborto/coredump do probe |
 | GAP-G8 | matriz SteamOS/Steam Client | **P2** | compatibilidade desconhecida | estado observado | serviço de reconciliação | FM-10 verde |
 | DEBT-A1 | ENOSPC mid-apply não testado | **P1** | rollback sob disco cheio incerto | preflight | loopback/quota | FI real verde |
 | DEBT-A2 | dry-run sem `strace` | **P2** | ausência de writes não provada por syscall | asserção de estado | harness strace | zero writes observado |
@@ -85,20 +104,24 @@ Citar `A7` sem prefixo é ambíguo e não deve passar em revisão.
 
 | Onda | Objetivo | Entregas | Critério de saída |
 |--:|---|---|---|
-| 0 | Certificação física da a39 | GAP-G18 | **CONCLUÍDA** — rollback convergido e tag criada |
-| 1 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
-| 2 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
-| 3 | Operação e adapters | M10, M11 | três emuladores e frontends certificados |
-| 4 | Hardware | Deck/dock/input/suspend/storage/TDP | rótulo `verified-hw` real |
-| 5 | Game Mode | M12 + P0-08 necessário | navegação 100% por controle |
-| 6 | Adoção e distribuição | M13, M14 | import sem perda, downgrade demonstrado |
-| 7 | Estabilização | RCs, segurança, performance, docs | zero bloqueador aberto |
-| 8 | Release 1.0 | M15 | checklist integral, SBOM, assinaturas |
+| 0 | Preservar a certificação a41 | relatório + adendo pós-certificação | fato histórico intacto; gaps posteriores separados |
+| 1 | Isolar testes | GAP-G26 | suíte integral causa zero mudança no XDG real |
+| 2 | Recuperar e auditar estado | GAP-G25 | zero jobs stale; doctor/state audit sem falso verde |
+| 3 | Publicar verdade operacional | GAP-G27, GAP-G28, GAP-G29 | componente, mídia e GameMode concordam com o host |
+| 4 | Atribuir recursos e endurecer Qt | GAP-G30, GAP-G31 | baseline por processo e zero aborto do probe |
+| 5 | Certificar a42 | ciclo a42→a41→a42 | todos os gates P0/P1 físicos verdes; autorização humana |
+| 6 | Fundação de temas | 388 propriedades, fechamento P0-03 | cobertura 100%, nenhuma perda silenciosa |
+| 7 | UI e acessibilidade | scene tree, texto avançado, GAP-G12/GAP-G13/GAP-G15 | gate visual completo, foco estável |
+| 8 | Operação e adapters | M10, M11 | três emuladores e frontends certificados |
+| 9 | Hardware | Deck/dock/input/suspend/storage/TDP | rótulo `verified-hw` real |
+| 10 | Game Mode | M12 + P0-08 necessário | navegação 100% por controle |
+| 11 | Adoção e distribuição | M13, M14 | import sem perda, downgrade demonstrado |
+| 12 | Release 1.0 | M15 | checklist integral, SBOM, assinaturas |
 
 
 ## Tabela 4 — Matriz de rastreabilidade do Expansion Ledger
 
-Reconciliada com `docs/EXPANSION-LEDGER.md` em 2026-07-29. A presença do nome
+Reconciliada com `docs/EXPANSION-LEDGER.md` em 2026-07-30. A presença do nome
 de um contrato não é usada como sinônimo de implementação: `LEDGER-A7`, por
 exemplo, já tem `MediaRegistry` e o pipeline `masters → optimized → views`,
 embora `media-registry-v1` ainda não exista como contrato público; `LEDGER-G4`
@@ -174,13 +197,13 @@ tem LSFG funcional, mas não OptiScaler nem o contrato multi-provider.
 
 | WI | Estado do ledger | Destino protegido |
 |---|---|---|
-| `LEDGER-D1` | verified-dev | emulador principal e fallback por plataforma |
+| `LEDGER-D1` | verified-dev, condicionado por GAP-G27 | emulador principal e fallback por plataforma; lifecycle físico ainda diverge |
 | `LEDGER-D2` | pending | DLC/update: F5 + A4 + A8 |
 | `LEDGER-D3` | verified-dev | mods/cheats e conversão já conectados |
 | `LEDGER-D4` | pending | G1/G3/G4/G6 + R0–R2 |
 | `LEDGER-D5` | in-progress | F6 + R6 |
 | `LEDGER-D6` | in-progress | A1 + G5 |
-| `LEDGER-D7` | in-progress | F1/F5 + A7/A12 |
+| `LEDGER-D7` | in-progress, condicionado por GAP-G28 | F1/F5 + A7/A12; erro remoto ainda não é projetado |
 | `LEDGER-D8` | in-progress | A7 + A8 |
 | `LEDGER-D9` | pending | A4 + A7 |
 | `LEDGER-D10` | pending | F5/A4/A12 |
@@ -200,11 +223,13 @@ não apaga código parcial já existente, mas impede declarar o WI concluído.
 
 ### Ordem de retomada funcional
 
-Com `GAP-G16`, `GAP-G18`, `GAP-G19` e `GAP-G20` fechados e a a39 certificada,
-a retomada funcional segue:
+`GAP-G16`, `GAP-G18`, `GAP-G19`, `GAP-G20` e `GAP-G23` permanecem fechados.
+A observação da a41 abriu GAP-G25–G31; portanto, a retomada funcional só começa
+depois da a42 de estabilização:
 
 | onda | WIs |
 |---|---|
+| estabilização a42 | `GAP-G26`, `GAP-G25`, `GAP-G27`, `GAP-G28`, `GAP-G29`, `GAP-G30`, `GAP-G31` |
 | verdade operacional e adapters | M10, M11, `DEBT-A5`, `DEBT-A7` |
 | mídia, scraping, patches, achievements | `LEDGER-A7`, `LEDGER-A12`, `LEDGER-A8`, `LEDGER-A9` |
 | retro, performance, captura, controles | `LEDGER-R2`–`LEDGER-R8`, `LEDGER-G4`–`LEDGER-G6`, `LEDGER-A11` |
@@ -213,7 +238,11 @@ a retomada funcional segue:
 | adoção e distribuição | M13, M14, `LEDGER-A10`, `LEDGER-A6` |
 | 1.0 | M15 |
 
-## Detalhamento das próximas três entregas
+## Histórico das três correções que levaram à a39
+
+As seções abaixo são preservadas como racional histórico de GAP-G18–G20. Elas
+não são a fila atual; a sequência vigente está nas Tabelas 1 e 3 e no prompt
+`PROMPT-A42-STABILIZATION.md`.
 
 ### PR 2 — `fix/host-rollback-convergence` (P0, fecha GAP-G18) — **implementado e certificado**
 
@@ -288,11 +317,16 @@ padrão. A CLI mantém uma segunda, parcial, com só `probe`.
 
 | # | Bloqueador | Prio | Impede |
 |---|---|---|---|
+| GAP-G25, GAP-G26 | recovery/doctor e isolamento de estado | P0 | a42 e qualquer cleanup confiável |
+| GAP-G27–G30 | verdade de componentes/mídia/GameMode e atribuição de recursos | P1 | certificação operacional a42 |
+| GAP-G31 | probe QML pode aceitar processo abortado | P2 | gate visual confiável da a42 |
 | DEBT-A0, GAP-G11 | matriz física e boot direto | P0 | `verified-hw` e M15 |
 
 ## O que NÃO pode ser declarado
 
-Com M10–M15 pendentes e a matriz física incompleta, o projeto **não** é
+Com GAP-G25–G31, M10–M15 e a matriz física pendentes, o projeto **não** é
 "completo", **não** está em "produção" e **não** tem rótulo `verified-hw`. A
-a39 tem a mecânica de release certificada nas duas direções. Isso fecha o risco
-operacional G18, mas não substitui os marcos funcionais e físicos ainda abertos.
+a41 tem a mecânica de release certificada nas duas direções. Isso preserva o
+fechamento de GAP-G18, mas não substitui os gates operacionais, funcionais e
+físicos ainda abertos. A preparação, instalação e certificação da a42 exigem
+nova autorização humana.

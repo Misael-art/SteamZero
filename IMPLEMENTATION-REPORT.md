@@ -1,5 +1,14 @@
 # IMPLEMENTATION-REPORT — SteamZero
 
+> **Relatório histórico, não snapshot atual.** As contagens, a ausência de
+> daemon e o estado dos marcos abaixo descrevem a sessão de 2026-07-17. Não
+> devem ser usados para alegar o estado da a41. O snapshot vigente está em
+> [`EXECUTION-TO-1.0.md`](docs/12-roadmap/EXECUTION-TO-1.0.md), a certificação
+> em
+> [`A41-CERTIFICATION-RESULT.md`](docs/09-operations/A41-CERTIFICATION-RESULT.md)
+> e os achados operacionais posteriores em
+> [`2026-07-30-a41-host-real-operational-diagnosis.md`](docs/diagnostics/2026-07-30-a41-host-real-operational-diagnosis.md).
+
 **Data:** 2026-07-17 · **Sessão:** implementação 17 · **Escopo entregue:** Fases 1–3
 (M1–M9) + Fase 4 em andamento e baseline de confiança operacional
 
