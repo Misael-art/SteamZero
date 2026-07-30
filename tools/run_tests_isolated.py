@@ -27,6 +27,7 @@ _XDG_LAYOUT = {
     "XDG_CACHE_HOME": "cache",
     "XDG_RUNTIME_DIR": "runtime",
 }
+_HOME_SUBDIR = "home"
 _TEST_ROOT_ENV = "STEAMZERO_TEST_XDG_ROOT"
 _STATE_CHANGE_EXIT = 86
 
@@ -71,9 +72,17 @@ class StateSnapshot:
         )
 
 
-def resolve_real_state_home(environ: Mapping[str, str]) -> Path:
-    base = environ.get("XDG_STATE_HOME")
-    return (Path(base) if base else Path.home() / ".local" / "state") / "steamzero"
+def resolve_real_state_home(environ: Mapping[str, str]) -> tuple[Path, str]:
+    base_xdg = environ.get("XDG_STATE_HOME")
+    if base_xdg is not None:
+        return (Path(base_xdg) / "steamzero", "XDG_STATE_HOME")
+    base_home = environ.get("HOME")
+    if base_home is None:
+        raise RuntimeError(
+            "STEAMZERO: não é possível determinar o state home original — "
+            "nem XDG_STATE_HOME nem HOME estão definidos no ambiente"
+        )
+    return (Path(base_home) / ".local" / "state" / "steamzero", "HOME-default")
 
 
 def snapshot_state(root: Path) -> StateSnapshot:
@@ -124,6 +133,10 @@ def isolated_environment(root: Path, environ: Mapping[str, str]) -> dict[str, st
     child_env = dict(environ)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     root.chmod(0o700)
+    home_dir = root / _HOME_SUBDIR
+    home_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    home_dir.chmod(0o700)
+    child_env["HOME"] = str(home_dir)
     for variable, directory in _XDG_LAYOUT.items():
         target = root / directory
         target.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -163,27 +176,42 @@ def _report_state_change(before: StateSnapshot, after: StateSnapshot) -> None:
             print(f"{label}: {sample}{suffix}", file=sys.stderr)
 
 
+_INTERRUPT_EXIT = 130
+
+
 def run_pytest(args: Sequence[str], *, environ: Mapping[str, str] | None = None) -> int:
     original_env = dict(os.environ if environ is None else environ)
-    real_state_home = resolve_real_state_home(original_env)
+    real_state_home, source = resolve_real_state_home(original_env)
     before = snapshot_state(real_state_home)
-    print(f"real-state before: {before.summary()}")
+    print(f"real-state before: {before.summary()} source={source}")
 
+    interrupted = False
+    pytest_returncode = 0
+    state_mutated = False
     with tempfile.TemporaryDirectory(prefix="steamzero-tests-") as temporary:
         isolated_root = Path(temporary)
         child_env = isolated_environment(isolated_root, original_env)
-        completed = subprocess.run(
-            [sys.executable, "-m", "pytest", *args],
-            env=child_env,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                [sys.executable, "-m", "pytest", *args],
+                env=child_env,
+                check=False,
+            )
+            pytest_returncode = completed.returncode
+        except KeyboardInterrupt:
+            interrupted = True
+        finally:
+            after = snapshot_state(real_state_home)
+            print(f"real-state after:  {after.summary()} source={source}")
+            state_mutated = before != after
+            if state_mutated:
+                _report_state_change(before, after)
 
-    after = snapshot_state(real_state_home)
-    print(f"real-state after:  {after.summary()}")
-    if before != after:
-        _report_state_change(before, after)
+    if state_mutated:
         return _STATE_CHANGE_EXIT
-    return completed.returncode
+    if interrupted:
+        return _INTERRUPT_EXIT
+    return pytest_returncode
 
 
 def main(argv: Sequence[str] | None = None) -> int:

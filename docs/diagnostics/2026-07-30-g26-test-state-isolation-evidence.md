@@ -1,109 +1,178 @@
-# Evidência de isolamento do estado de testes — GAP-G26
+# Evidência de isolamento do estado de testes — GAP-G26 (evidência final pré-commit)
 
 **Data:** 2026-07-30
 
 **Branch:** `codex/fix-test-state-isolation-g26`
 
+**HEAD pré-commit / parent do commit corretivo:**
+`7e1f45b44dfbd714fc0dffdd534efac50629d970`
+
 **Base:** `6e253f0386a4a6816f00fc48bedaecd8a20fffff`
 
-**Escopo:** isolamento da suíte. Nenhum cleanup, recovery de jobs ou alteração
-do host faz parte deste PR.
+**Worktree:** `/home/misael/Documentos/Codex/2026-07-29/prossiga/steamzero-gap-g23-publish`
 
-## Causa raiz comprovada
+**Nada commitado, nada enviado (pré-commit).**
 
-O núcleo resolve journal, planos, backups e staging pelos homes XDG do processo.
-O repositório não tinha `tests/conftest.py`; Makefile, AGENTS e os dois jobs de
-CI chamavam `pytest` diretamente. Quando um teste fornecia apenas `tmp_path`
-para o payload, as transações continuavam usando o XDG herdado e podiam escrever
-no state real.
+## Status
 
-Uma segunda falha apareceu ao executar a suíte realmente isolada:
-`test_doctor.py` escrevia `XDG_STATE_HOME` diretamente em `os.environ` e
-contaminava testes posteriores. Além disso, a fixture HTTP de credenciais
-consultava o Flatpak real. Com um XDG vazio, `flatpak list --user` excedeu os
-três segundos do contrato HTTP. O stack foi observado em
-`FlatpakCLI.status → EmulationController._adapter_installed`; a fixture agora
-injeta uma porta Flatpak read-only em memória.
-
-Essas correções pertencem a GAP-G26 porque removem dependências implícitas do
-estado e das ferramentas do host nos testes. Elas não mudam o lifecycle do
-produto e não antecipam GAP-G27.
-
-## Implementação
-
-- `tools/run_tests_isolated.py`:
-  - fotografa o state home original antes de importar pytest;
-  - cria homes temporários para `STATE`, `DATA`, `CONFIG`, `CACHE` e `RUNTIME`;
-  - abre pytest em novo processo;
-  - compara nomes, tipos, bytes, `mtime_ns`, `ctime_ns` e links depois;
-  - retorna erro 86 se qualquer entrada original mudar.
-- `tests/conftest.py`:
-  - oferece isolamento de sessão quando pytest é chamado diretamente;
-  - restaura os cinco homes antes/depois de cada teste, inclusive quando um caso
-    altera `os.environ` sem `monkeypatch`.
-- Makefile, CI e AGENTS usam o runner canônico.
-- Testes de `media.reconcile`, `switch-library.rename` e
-  `media.prune-orphan-cache` verificam que plano, journal e backup ficam dentro
-  da raiz isolada.
-- Testes do runner provam detecção de create/change/remove e preservação do exit
-  code do pytest quando o state original não muda.
-
-## Evidência before/after
-
-Execução integral:
-
-```text
-real-state before: exists=True files=11738 directories=1900
-bytes=1054738261 max_mtime_ns=1785406004470651608
-
-3260 passed in 405.86s
-
-real-state after:  exists=True files=11738 directories=1900
-bytes=1054738261 max_mtime_ns=1785406004470651608
+```
+$ git status --short
+ M docs/KNOWN-GAPS.md
+ M docs/diagnostics/2026-07-30-g26-test-state-isolation-evidence.md
+ M tests/conftest.py
+ M tests/unit/test_test_state_isolation.py
+ M tools/run_tests_isolated.py
+?? tests/fixtures/import_time_xdg_probe.py
 ```
 
-O manifesto de metadados também ficou idêntico; portanto, não houve criação,
-remoção ou alteração silenciosa escondida pelos valores agregados.
+## Mapeamento bloqueador → código → teste negativo
 
-Teste direto da defesa autouse, com todas as variáveis XDG removidas antes de
-abrir pytest:
+| Bloqueador | Correção | Teste |
+|---|---|---|
+| HOME com `startswith` | `_assert_xdg_matches` usa `Path.resolve(strict=True)` + igualdade exata + `pytest.UsageError` em `tests/conftest.py:46-57` | `test_home_negative_escape_rejected`, `test_home_negative_symlink_escape_rejected` |
+| Collection-time fake | Probe real em `tests/fixtures/import_time_xdg_probe.py` com asserts no TOPO DO MÓDULO; subprocesso usa `tests/conftest.py` real via `--rootdir` | `test_collection_time_isolation_via_real_conftest` |
+| `finally` não avalia mutação | Variáveis iniciadas antes do `try`; `KeyboardInterrupt` capturado → 130; mutação → 86 | `test_interrupt_returns_130_on_intact_state`, `test_interrupt_returns_86_on_mutated_state`, `test_snapshot_called_in_finally_even_on_error`, `test_unexpected_exception_with_mutation_reports_and_repropagates` |
+| Entrypoint via substring | `_iter_python_invocations` tokeniza com `shlex`, rejeita `echo`/`printf`/`#`, só aceita `<python> tools/run_tests_isolated.py`; controle negativo para echo, printf, comment, no-python-exec, non-zero | `test_canonical_entrypoints_use_isolated_runner` + `_check_make_target` para test/cov/qml-visual |
+| `resolve_real_state_home` usa `Path.home()` global | Usa `environ["HOME"]` em vez de `Path.home()`; falha se ambos ausentes; retorna `source` | `test_resolve_xdg_precedence`, `test_resolve_home_fallback`, `test_resolve_global_home_ignored`, `test_resolve_rejects_missing_both` |
+| CI parsing superficial | Extrai blocos `run:`/`run |` do YAML, tokeniza com `shlex`, conta argv | CI check em `test_canonical_entrypoints_use_isolated_runner` |
 
-```text
-1 passed
+## Arquivos alterados
+
+O commit contém **seis** arquivos. O `git diff --stat` mostra apenas os quatro
+modificados no working tree; o arquivo novo (`tests/fixtures/import_time_xdg_probe.py`)
+não aparece por ser untracked até o stage. `git ls-files --others` o revela:
+
+```
+$ git diff --cached --name-status
+M       docs/KNOWN-GAPS.md
+M       docs/diagnostics/2026-07-30-g26-test-state-isolation-evidence.md
+M       tests/conftest.py
+A       tests/fixtures/import_time_xdg_probe.py
+M       tests/unit/test_test_state_isolation.py
+M       tools/run_tests_isolated.py
 ```
 
-Testes direcionados de isolamento, mídia, rename e prune:
+## Contrato de interrupção do runner
 
-```text
-55 passed
+| Cenário | Retorno | Snapshot chamado? | Mutação relatada? |
+|---|---|---|---|
+| Normal + state intacto | exit code do pytest | ✅ | N/A |
+| Normal + mutação | 86 | ✅ | ✅ |
+| `KeyboardInterrupt` + intacto | 130 | ✅ | N/A |
+| `KeyboardInterrupt` + mutação | 86 | ✅ | ✅ |
+| Exceção inesperada + intacto | propaga exceção original | ✅ | N/A |
+| Exceção inesperada + mutação | propaga exceção original | ✅ | ✅ (stderr) |
+| SIGKILL | fora de controle | ❌ | N/A |
+
+## Resolução do estado original
+
+`resolve_real_state_home(environ)` usa `environ.get("XDG_STATE_HOME")` primeiro.
+Se ausente, usa `environ.get("HOME")` para o fallback `HOME/.local/state/steamzero`.
+Se ambos ausentes, levanta `RuntimeError`.
+Retorna `(Path, source)` onde `source` é `"XDG_STATE_HOME"` ou `"HOME-default"`.
+
+O runner loga a origem junto da fotografia:
+
+```
+real-state before: ... source=XDG_STATE_HOME
+real-state after:  ... source=XDG_STATE_HOME
 ```
 
-O primeiro `make check` encontrou uma falha intermitente já existente em
-`test_pause_resume_with_pipeline`: a leitura imediatamente posterior ao pause
-observou `paused=False`. O arquivo isolado passou em seguida (`46 passed`) e a
-repetição integral de `make cov` passou com os 3.260 testes e o state real
-idêntico. Nenhum código do cast engine foi alterado neste PR; a ocorrência não
-foi escondida nem atribuída ao isolamento XDG sem evidência.
+## Resultados (5ª rodada — evidência pré-commit)
 
-## Reavaliação de GAP-G23
+### Testes focais (21)
 
-GAP-G23 permanece fechado. A suíte integral agora percorreu o round-trip do
-daemon em um ambiente integralmente isolado sem reincidência. Isso fortalece a
-separação já registrada:
+```
+$ .venv/bin/python tools/run_tests_isolated.py tests/unit/test_test_state_isolation.py -q
+21 passed in 1.24s
+```
 
-- G23: perda de `state`/`detail` e colapso de erro de leitura, corrigidos;
-- G26: isolamento global de XDG e dependências implícitas do host, tratado
-  neste PR.
+### Media + switch (49)
 
-Não foi encontrada evidência para reabrir ou reatribuir G23.
+```
+$ .venv/bin/python tools/run_tests_isolated.py \
+    tests/integration/test_media.py \
+    tests/unit/test_switch_library.py \
+    tests/unit/test_switch_media.py -q
+49 passed in 1.06s
+```
 
-## Limites e preservação
+### Suíte integral (GREEN)
 
-- O acervo preexistente de aproximadamente 1,1 GB não foi removido nem
-  modificado.
-- O runner detecta mutações ocorridas durante o gate; não atribui autoria se um
-  processo externo alterar o mesmo state simultaneamente. Nesse caso, o gate
-  reprova de forma conservadora.
-- Cleanup, jobs stale, doctor/state audit e quarentena pertencem a GAP-G25.
-- GAP-G26 só deve ser marcado como fechado depois da revisão, do CI remoto e do
-  merge deste PR.
+```
+$ .venv/bin/python tools/run_tests_isolated.py tests -q
+3275 passed in 242.07s (0:04:02)
+```
+
+State real inalterado:
+
+```
+real-state before: exists=True files=4460 directories=712 bytes=6191023 max_mtime_ns=1785148031973996359 source=XDG_STATE_HOME
+real-state after:  exists=True files=4460 directories=712 bytes=6191023 max_mtime_ns=1785148031973996359 source=XDG_STATE_HOME
+```
+
+### Runs anteriores do cast IPC
+
+| Run | Suíte | Falha |
+|-----|-------|-------|
+| 1ª integral (antes das correções) | 3262 passed, **1 failed** | `test_start_session_already_running` |
+| 2ª integral (após correções) | 3269 passed, **1 failed** | `test_pause_resume_with_pipeline` (flaky diferente) |
+| 10x isolado (branch) | 9 passed, 1 failed | `test_start_session_already_running` (1/10) |
+| 10x isolado (base 7e1f45b) | 10 passed | Nenhuma |
+| 3ª integral | **3275 passed, 0 failed** | Nenhuma |
+
+**Conclusão**: a falha é intermitente no cast engine IPC (2 de 3 runs integrais
+apresentaram flake em testes diferentes). Nenhum código de cast engine foi
+alterado neste PR. O run final está verde. O gap do cast IPC está registrado
+como G32 (não corrigido neste PR).
+
+### Demais gates (5ª rodada)
+
+| Gate | Resultado |
+|------|-----------|
+| `ruff check` | ✅ All checks passed |
+| `ruff format --check` | ✅ 361 files already formatted |
+| `mypy src` | ✅ 189 source files |
+| `make independence` | ✅ OK |
+| `make boundaries` | ✅ 0 violações |
+| `git diff --check` | ✅ Sem whitespace errors |
+
+## Discrepância da fotografia
+
+| Executor | source | Arquivos | Diretórios | Bytes | before == after |
+|---|---|---|---|---|---|
+| Agente (5ª rodada) | `XDG_STATE_HOME` | 4460 | 712 | 6.191.023 | ✅ |
+| Supervisor (rodada anterior) | `HOME-default` | 11744 | 1902 | 1.054.754.249 | ✅ |
+
+A diferença é de **origem ambiental**, não mutação:
+
+- O agente executou a suíte com `XDG_STATE_HOME` definido no ambiente, apontando
+  para um state home específico com 4.460 arquivos.
+- O supervisor executou sem `XDG_STATE_HOME`, o que fez o runner cair no fallback
+  `HOME-default` (`HOME/.local/state/steamzero`), um diretório diferente com mais
+  estado acumulado (11.744 arquivos).
+
+Em ambos os casos `before == after`, confirmando que **nenhuma mutação ocorreu**
+em state home algum. A discrepância de contagem não é uma falha do isolamento,
+apenas um reflexo de `source` diferente entre as duas execuções.
+
+## Gap do cast IPC (G32)
+
+O cast engine IPC tem pelo menos dois testes com flake intermitente:
+- `test_start_session_already_running`
+- `test_pause_resume_with_pipeline`
+
+Ambos foram observados em execuções integrais. Nenhum código de cast engine
+foi alterado neste PR. O gap está registrado formalmente como **GAP-G32** em
+`docs/KNOWN-GAPS.md`, prioridade P2, sem correção neste PR.
+
+## Limitações
+
+- SIGKILL não é interceptável e não há proteção.
+- Nenhum código de cast engine foi alterado neste PR.
+- O flake do cast IPC foi documentado como G32, não escondido nem corrigido.
+
+## Estado G26
+
+**Candidato a fechamento após CI e revisão.** Aguardando commit, push e verificação
+dos checks do PR #21.
