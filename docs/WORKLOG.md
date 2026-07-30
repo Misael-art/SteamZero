@@ -3527,3 +3527,20 @@ instalar.
 pode ser revertido sem migração de dados. O passo ainda exigido do operador é
 autorizar explicitamente a preparação e instalação da a41 e, depois, validar a
 navegação física da central.
+
+## 2026-07-29 — Sessão 46: preparação reproduzível da a41
+
+O operador autorizou explicitamente preparar, instalar e certificar a release
+`0.1.0a41` no ciclo físico `a41→a40→a41`. A branch de release descende do merge
+exato `cd709722cebfda533f1d9d6afbca546d2f755cc1`, que integrou o PR #16 após
+todos os checks obrigatórios aprovarem a correção da afinidade SQLite entre o
+dashboard e as threads da bridge HTTP.
+
+Esta preparação altera somente a versão do pacote e registra a trilha de
+release. Wheel, wheelhouse e manifesto serão gerados apenas de um commit final
+limpo. A tag `v0.1.0a41` permanece proibida até instalação, rollback para a40,
+roll-forward para a41, convergência e idempotência aprovados no host.
+
+**Rollback planejado:** `0.1.0a40-fa29b46ba796`, atualmente ativa, convergida e
+fisicamente certificada. O instalador é o único dono dos artefatos de host e
+nenhum dado XDG do usuário será migrado ou removido pelo ciclo.
