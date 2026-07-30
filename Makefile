@@ -4,8 +4,8 @@ VENV ?= .venv
 PY := $(VENV)/bin/python
 RUFF := $(VENV)/bin/ruff
 MYPY := $(VENV)/bin/mypy
-PYTEST := $(VENV)/bin/pytest
 COVERAGE := $(VENV)/bin/coverage
+TEST_RUNNER := $(PY) tools/run_tests_isolated.py
 
 .PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean
 
@@ -38,11 +38,11 @@ independence:
 	$(PY) tools/check_independence.py
 
 test:
-	$(PYTEST)
+	$(TEST_RUNNER)
 
 cov:
 	$(COVERAGE) erase
-	$(PYTEST) --cov=steamzero --cov-report=term-missing
+	$(TEST_RUNNER) --cov=steamzero --cov-report=term-missing
 
 # Gate completo: ordem barata->cara. Nenhum commit sem `make check` verde.
 check: format-check lint boundaries independence typecheck cov
@@ -51,7 +51,7 @@ clean:
 	rm -rf .mypy_cache .ruff_cache .pytest_cache .hypothesis htmlcov .coverage
 
 qml-visual: ## Gate visual: renderiza os cenários e compara com as baselines
-	$(VENV)/bin/pytest tests/integration/test_qml_visual_capture.py -q
+	$(TEST_RUNNER) tests/integration/test_qml_visual_capture.py -q
 
 update-qml-goldens: ## Regrava as baselines visuais (exige revisão do diff no commit)
 	$(PY) tools/update_qml_goldens.py --write

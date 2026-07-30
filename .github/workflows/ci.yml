@@ -82,7 +82,7 @@ jobs:
       - name: Testes e cobertura
         run: |
           mkdir -p build
-          pytest \
+          python tools/run_tests_isolated.py \
             -m "not visual" \
             --durations=20 \
             --junitxml=build/test-results-${{ matrix.python-version }}.xml \
@@ -313,7 +313,7 @@ jobs:
         # Manjaro não traz `ensurepip` para criar venv.
         run: pip install --break-system-packages --require-hashes -r requirements-dev.lock
       - name: Gate visual
-        run: pytest -m visual --tb=short -q
+        run: python tools/run_tests_isolated.py -m visual --tb=short -q
       - name: Publicar artefatos visuais
         # always(): em falha estes arquivos são a ÚNICA forma de descobrir o que
         # aconteceu numa máquina que não é a sua.

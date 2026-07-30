@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from steamzero.core import fs
+from steamzero.core import fs, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.switch_library import (
     DatIndex,
@@ -389,15 +389,19 @@ def test_organizer_rejects_source_outside_root_and_symlink(tmp_path: Path) -> No
         organizer.preview_rename(root, [link_match])
 
 
-def test_organizer_plan_apply_and_rollback(tmp_path: Path) -> None:
+def test_organizer_plan_apply_and_rollback(tmp_path: Path, isolated_xdg_root: Path) -> None:
     rom = tmp_path / "old.nsp"
     rom.write_bytes(b"dump")
     match = replace(SwitchLibraryScanner().scan(tmp_path)[0], canonical_name="Synthetic Adventure")
     organizer = SwitchLibraryOrganizer()
 
     plan = organizer.plan_rename(tmp_path, [match])
+    assert paths.plan_path(plan.plan_id).is_relative_to(isolated_xdg_root)
+    assert paths.plan_path(plan.plan_id).is_file()
     assert rom.exists()
     applied = organizer.apply(plan.plan_id, plan.confirm_token)
+    assert paths.journal_path(applied.operation_id).is_relative_to(isolated_xdg_root)
+    assert paths.backup_for(applied.operation_id).is_relative_to(isolated_xdg_root)
     renamed = tmp_path / "Synthetic Adventure.nsp"
     assert renamed.read_bytes() == b"dump"
     organizer.rollback(applied.operation_id)

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
-from steamzero.core import transaction
+from steamzero.core import paths, transaction
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.switch_media import GameMediaManager, GameMediaState, GameMediaStorePort
 
@@ -236,7 +236,7 @@ class TestSearchCandidates:
 
 
 def test_prune_orphan_cache_is_transactional_and_rollback_restores_bytes(
-    tmp_path: Path,
+    tmp_path: Path, isolated_xdg_root: Path
 ) -> None:
     media_root = tmp_path / "media"
     orphan = media_root / "masters" / "switch" / "icon" / "orphan.png"
@@ -246,7 +246,11 @@ def test_prune_orphan_cache_is_transactional_and_rollback_restores_bytes(
     pipeline = MediaPipeline(media_root)
 
     plan = pipeline.plan_prune_orphan_cache()
+    assert paths.plan_path(plan.plan_id).is_relative_to(isolated_xdg_root)
+    assert paths.plan_path(plan.plan_id).is_file()
     applied = transaction.apply(plan.plan_id, plan.confirm_token)
+    assert paths.journal_path(applied.operation_id).is_relative_to(isolated_xdg_root)
+    assert paths.backup_for(applied.operation_id).is_relative_to(isolated_xdg_root)
 
     assert not orphan.exists()
     rolled_back = transaction.rollback(applied.operation_id, reason="test")

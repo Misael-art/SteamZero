@@ -16,10 +16,10 @@ def test_pending_operations_returns_zero_when_no_journal_dir(
     assert _pending_operations() == 0
 
 
-def test_doctor_runs_and_returns_data_and_checks(tmp_path: Path) -> None:
-    import os
-
-    os.environ["XDG_STATE_HOME"] = str(tmp_path / "state")
+def test_doctor_runs_and_returns_data_and_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     data, checks = run_doctor()
     assert "version" in data
     assert "stateHome" in data
@@ -31,10 +31,10 @@ def test_doctor_runs_and_returns_data_and_checks(tmp_path: Path) -> None:
     assert any(c["name"] == "state.db.integrity" for c in checks)
 
 
-def test_doctor_handles_state_store_failure(tmp_path: Path) -> None:
-    import os
-
-    os.environ["XDG_STATE_HOME"] = str(tmp_path / "state")
+def test_doctor_handles_state_store_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     with patch("steamzero.diagnostics.doctor.StateStore") as mock_store:
         mock_store.side_effect = RuntimeError("db corrupt")
         data, checks = run_doctor()
