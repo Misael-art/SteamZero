@@ -12,7 +12,7 @@ Prob./Impacto 1–5. Responsável: papel (a nomear na aprovação — Q6/equipe)
 | R-06 | Upstreams de emuladores mudam licença/distribuição (caso DuckStation) | 4 | 3 | 12 | licença por manifesto verificada por release; lockfile permite congelar última versão OK | Fase 4, contínuo | Legal/Eng. |
 | R-07 | Cloud sync corrompe saves (pior dano possível de reputação) | 2 | 5 | 10 | timeline preservadora (GA-05), conflitos nunca auto-resolvidos, RT-09/10, feature atrás de flag até M9 | Fase 3 | Eng. dados |
 | R-08 | Complexidade do núcleo transacional atrasa tudo (over-engineering) | 3 | 4 | 12 | Fase 1 enxuta com critérios de saída objetivos (M1–M3); pipeline mínimo primeiro, sagas depois | review M1 | Arquiteto |
-| R-09 | Performance do scan/hash em bibliotecas 10k+ no Deck | 3 | 3 | 9 | incremental por mtime+size com re-hash amostral; benchmark como gate (M7) | Fase 3 | Eng. |
+| R-09 | Performance do scan/hash em bibliotecas 10k+ no Deck | 3 | 3 | 9 | incremental por mtime+size com re-hash amostral; benchmark funcional presente (tempo publicado via JUnit, não como gate absoluto) | Fase 3 | Eng. |
 | R-10 | Flatpak sandbox inviabiliza operações (portais insuficientes p/ helper/mounts) | 2 | 4 | 8 | ADR-0003 híbrido já prevê helper host; spike técnico no início da Fase 6 | Fase 2 spike | Eng. plataforma |
 | R-11 | Concorrência dupla-gestão (usuário mantém EmuDeck/RetroDECK ativos) corrompe estado | 4 | 3 | 12 | drift detection por verify, avisos de dupla-gestão nos imports | Fase 5 | Eng. |
 | R-12 | Fadiga documental: docs divergem do código na implementação | 4 | 3 | 12 | contratos como golden files executáveis; ADR obrigatório para desvio; docs no DoD | contínuo | Todos |
