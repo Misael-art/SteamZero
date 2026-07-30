@@ -3570,3 +3570,35 @@ porque o backend local de automação recusou entrada com a versão instalada do
 
 Detalhes e matriz de evidências:
 `docs/09-operations/A41-CERTIFICATION-RESULT.md`.
+
+## 2026-07-30 — Sessão 48: automação resiliente de release e host
+
+Foi criada uma máquina de estados local para reduzir as sequências manuais de
+artifact, instalação, rollback, convergência e publicação. O comando
+`tools/release_host.py` se localiza pelo próprio arquivo e oferece `inspect`,
+`prepare`, `verify-bundle`, `install`, `rollback`, `cycle` e `publish`.
+
+`prepare` aceita somente o run `push` verde do SHA completo em `origin/main`;
+wheel, wheelhouse, lock, checksums e proveniência precisam concordar. As únicas
+chamadas privilegiadas geradas são
+`bigsudo /usr/bin/python3 tools/install_host.py install/rollback`, sempre com
+`cwd` na raiz correta. Cada ativação exige token exato, converge duas vezes e
+reprova se a segunda chamada reiniciar ou usar qualquer tentativa. Publicação
+exige os quatro gates nominais da certificação, envia assets duráveis e confere
+os digests remotos antes de registrar sucesso.
+
+**Gates locais:** 3.283 testes aprovados; cobertura 85,97%; Ruff
+check/format, mypy em 188 arquivos, independência e fronteiras verdes. Os dois
+runs integrais usaram homes XDG temporários porque GAP-G26 ainda não estava
+disponível em `origin/main`.
+
+**Prova read-only no host:** o bundle histórico da a39 passou no novo
+validador. `inspect` confirmou que a a41 instalada coincide com a última tag
+`v0.1.0a41`; portanto, a diferença entre o host e o HEAD documental atual não
+foi classificada falsamente como release desatualizada. O mesmo diagnóstico
+expôs autenticação `gh` inválida e a falha conhecida de `component list` no
+Citron, sem tentar repará-lo ou trocar o default.
+
+**Host:** nenhuma instalação, rollback, tag, push ou build de release foi
+executado. A a41 permanece ativa; a a40 continua disponível para rollback. O
+push desta branch ainda exige renovar a autenticação do GitHub CLI.

@@ -17,6 +17,14 @@ read-only necessárias. Continua proibido executar `sudo`, usar `bigsudo` para
 comandos arbitrários, chamar `steamzero-host` para mutações ou editar diretamente
 `/opt/steamzero`, `/usr/local`, `/etc` ou `/boot`.
 
+O caminho preferencial é `tools/release_host.py`. Ele se localiza pelo próprio
+arquivo, valida commit/bundle/rollback e gera os únicos argv privilegiados
+permitidos acima. A automação não amplia autorização: `install`, `rollback`,
+`cycle` e `publish` continuam exigindo autorização explícita na thread atual e
+o token exato mostrado pelo comando. Falha de autenticação, CI, hash,
+proveniência, convergência ou idempotência encerra o fluxo; o agente não continua
+com comandos manuais equivalentes.
+
 > Incidente 2026-07-19: um agente de UI instalou uma release construída de árvore
 > desatualizada (sem os entry points de Game Mode). O boot direto caiu no greeter
 > por dois dias de trabalho. O preflight do instalador hoje bloqueia essa ativação
