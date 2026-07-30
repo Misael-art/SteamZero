@@ -214,114 +214,84 @@ def test_rejects_duplicate_assert() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _extract_step_block(yml_text: str, step_name: str) -> list[str]:
-    """Extrai as linhas do bloco YAML de um step identificado por ``name:``.
+def _parse_step(
+    yml_text: str, step_name: str
+) -> tuple[dict[str, str], dict[str, str], list[str], tuple[str, ...], tuple[str, ...]]:
+    """Parse a workflow step using indentation-aware state machine.
 
-    Retorna lista de linhas (sem o ``name:`` original), com indentação relativa
-    ao conteúdo do step. Levanta ``AssertionError`` se o step não for encontrado.
+    Returns (direct, with_values, run_lines, duplicate_direct, duplicate_with).
     """
     lines = yml_text.splitlines()
     target = f"- name: {step_name}"
-    start_idx: int | None = None
-    for idx, line in enumerate(lines):
-        if line.strip() == target:
-            start_idx = idx + 1
-            break
-    if start_idx is None:
+    step_start = next((i for i, line in enumerate(lines) if line.strip() == target), None)
+    if step_start is None:
         raise AssertionError(f"step '{step_name}' não encontrado no YAML")
-    indent = len(lines[start_idx]) - len(lines[start_idx].lstrip())
-    block: list[str] = []
-    for line in lines[start_idx:]:
+    dash_indent = len(lines[step_start]) - len(lines[step_start].lstrip())
+    body_indent = dash_indent + 2
+    direct: dict[str, str] = {}
+    with_values: dict[str, str] = {}
+    run_lines: list[str] = []
+    seen_direct: dict[str, int] = {}
+    seen_with: dict[str, int] = {}
+    dup_direct: list[str] = []
+    dup_with: list[str] = []
+    mode: str = "direct"
+    for line in lines[step_start + 1 :]:
         if not line.strip():
             continue
-        stripped = line.lstrip()
-        if stripped.startswith("- name:"):
+        stripped = line.strip()
+        if not line[0].isspace() and ":" in line and not stripped.startswith("-"):
             break
-        if line and not line[0].isspace() and ":" in line:
+        if stripped.startswith("- name:"):
             break
         if stripped.startswith("#"):
             continue
-        block.append(line[indent:] if len(line) > indent else line)
-    return block
-
-
-def _run_lines_from_block(block: list[str]) -> list[str]:
-    """Extrai linhas executáveis de dentro de um bloco ``run: |``."""
-    in_run = False
-    run_indent = 0
-    lines: list[str] = []
-    for line in block:
-        stripped = line.strip()
-        if stripped.startswith("run:") and " |" not in stripped:
-            remainder = stripped[len("run:") :].strip()
-            if remainder:
-                lines.append(remainder)
-        elif stripped.startswith("run") and " |" in stripped:
-            in_run = True
-            run_indent = len(line) - len(line.lstrip()) + 2
-        elif in_run:
-            if not stripped:
-                continue
-            line_indent = len(line) - len(line.lstrip())
-            if line_indent < run_indent and stripped:
-                in_run = False
-                continue
-            if stripped.startswith("#"):
-                continue
-            lines.append(stripped)
-    return lines
-
-
-def _parse_step(yml_text: str, step_name: str) -> tuple[dict[str, str], dict[str, str], list[str]]:
-    """Parse a workflow step into direct keys, with-values, and run lines."""
-    block = _extract_step_block(yml_text, step_name)
-    direct: dict[str, str] = {}
-    with_values: dict[str, str] = {}
-    in_with = False
-    for line in block:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
         line_indent = len(line) - len(line.lstrip())
-        if stripped == "with:":
-            in_with = True
-            continue
-        if in_with and line_indent == 0:
-            in_with = False
-        if ":" in stripped:
-            key, _, val = stripped.partition(":")
-            key = key.strip()
-            val = val.strip()
-            if key == "run":
+        rel_indent = line_indent - body_indent
+        if mode == "run_literal":
+            if rel_indent > 0:
+                run_lines.append(stripped)
                 continue
-            if " #" in val:
-                val = val.split(" #", 1)[0].strip()
-            if in_with:
-                with_values[key] = val
-            else:
-                direct[key] = val
-    run_lines = _run_lines_from_block(block)
-    return direct, with_values, run_lines
-
-
-def _find_dup_with_keys(block: list[str]) -> list[str]:
-    """Detect duplicate keys inside the ``with:`` mapping of a step block."""
-    in_with = False
-    seen: dict[str, int] = {}
-    for line in block:
-        stripped = line.strip()
-        if stripped == "with:":
-            in_with = True
-            continue
-        if in_with:
-            line_indent = len(line) - len(line.lstrip())
-            if line_indent == 0:
-                in_with = False
+            mode = "direct"
+        if mode == "with":
+            if rel_indent > 0:
+                if ":" in stripped:
+                    k, _, v = stripped.partition(":")
+                    k = k.strip()
+                    v = v.strip()
+                    if " #" in v:
+                        v = v.split(" #", 1)[0].strip()
+                    seen_with[k] = seen_with.get(k, 0) + 1
+                    if seen_with[k] > 1:
+                        dup_with.append(k)
+                    else:
+                        with_values[k] = v
                 continue
-            if ":" in stripped and not stripped.startswith("#"):
-                key = stripped.split(":", 1)[0].strip()
-                seen[key] = seen.get(key, 0) + 1
-    return [k for k, c in seen.items() if c > 1]
+            mode = "direct"
+        if mode == "direct":
+            if stripped.startswith("run:"):
+                if " |" in stripped:
+                    mode = "run_literal"
+                else:
+                    val = stripped[len("run:") :].strip()
+                    if val:
+                        run_lines.append(val)
+                continue
+            if stripped == "with:":
+                mode = "with"
+                continue
+            if ":" in stripped:
+                k, _, v = stripped.partition(":")
+                k = k.strip()
+                v = v.strip()
+                if " #" in v:
+                    v = v.split(" #", 1)[0].strip()
+                seen_direct[k] = seen_direct.get(k, 0) + 1
+                if seen_direct[k] > 1:
+                    dup_direct.append(k)
+                else:
+                    direct[k] = v
+    return direct, with_values, run_lines, tuple(dup_direct), tuple(dup_with)
 
 
 def _validate_ci_contract(yml_text: str) -> list[str]:
@@ -346,8 +316,7 @@ def _validate_ci_contract(yml_text: str) -> list[str]:
             errors.append(f"step duplicado: {required}")
 
     try:
-        coverage_block = _extract_step_block(yml_text, "Testes e cobertura")
-        run_lines = _run_lines_from_block(coverage_block)
+        _direct, _with_vals, run_lines, _dup_d, _dup_w = _parse_step(yml_text, "Testes e cobertura")
         non_echo_lines = [line for line in run_lines if not line.strip().startswith("echo")]
         if not any("--durations=20" in line for line in non_echo_lines):
             errors.append("--durations=20 ausente no step Testes e cobertura")
@@ -359,12 +328,14 @@ def _validate_ci_contract(yml_text: str) -> list[str]:
         errors.append(str(e))
 
     try:
-        direct, with_values, _run_lines = _parse_step(yml_text, "Publicar resultados JUnit")
-        junit_block = _extract_step_block(yml_text, "Publicar resultados JUnit")
+        direct, with_values, _run_lines, dup_direct, dup_with = _parse_step(
+            yml_text, "Publicar resultados JUnit"
+        )
 
-        dup_with = _find_dup_with_keys(junit_block)
         for k in dup_with:
             errors.append(f"chave duplicada em with no step Publicar resultados JUnit: {k}")
+        for k in dup_direct:
+            errors.append(f"chave direta duplicada no step Publicar resultados JUnit: {k}")
 
         if direct.get("if") != "always()":
             errors.append("if: always() ausente ou incorreto no step Publicar resultados JUnit")
@@ -819,3 +790,117 @@ def test_ci_negative_duplicate_path_in_with() -> None:
     assert any("chave duplicada em with" in e for e in errors), (
         f"erro 'chave duplicada' não encontrado: {errors}"
     )
+
+
+def test_ci_negative_run_literal_leak() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        run: |
+          if: always()
+          uses: actions/upload-artifact@0123456789012345678901234567890123456789
+          with:
+            name: test-results-${{ matrix.python-version }}
+            path: build/test-results-${{ matrix.python-version }}.xml
+            if-no-files-found: error
+            retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("if: always()" in e for e in errors), f"if não detectado: {errors}"
+    assert any("upload-artifact" in e for e in errors), f"upload não detectado: {errors}"
+    assert any("name por versão" in e for e in errors), f"name não detectado: {errors}"
+    assert any("path por versão" in e for e in errors), f"path não detectado: {errors}"
+    assert any("if-no-files-found" in e for e in errors), f"if-no-files não detectado: {errors}"
+    assert any("retention-days" in e for e in errors), f"retention não detectado: {errors}"
+
+
+def test_ci_negative_duplicate_direct_key() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        if: failure()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("chave direta duplicada" in e for e in errors), (
+        f"duplicata direta não detectada: {errors}"
+    )
+
+
+def test_ci_negative_duplicate_uses() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        uses: actions/upload-artifact@abcdefabcdefabcdefabcdefabcdefabcdefabcd
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("chave direta duplicada" in e for e in errors), (
+        f"duplicata uses não detectada: {errors}"
+    )
+
+
+def test_ci_positive_comment_before_properties() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        # comentário imediatamente após name
+        if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert not errors, f"comentário antes de props quebrou parser: {errors}"
+
+
+def test_ci_positive_empty_line_before_properties() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+
+        if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert not errors, f"linha vazia antes de props quebrou parser: {errors}"
