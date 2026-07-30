@@ -4,9 +4,9 @@
 
 **Branch:** `codex/fix-benchmark-g22`
 
-**Implementação avaliada:** `ee31286a1cd913743ebad8c5d023417eddd71b31`
+**Implementação avaliada:** `45d652f121ddb1114b595b7f16a695eb640e9291`
 
-**Run:** https://github.com/Misael-art/SteamZero/actions/runs/30574550249
+**Run:** https://github.com/Misael-art/SteamZero/actions/runs/30578113121
 
 ## Causa
 
@@ -69,11 +69,21 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
 | 3.12   | 8772293242     | 54449           | 62,197 s          |
 | 3.14   | 8772257830     | 54066           | 38,578 s          |
 
+### Run 30578113121 (SHA `45d652f`)
+
+| Versão | ID do artifact | Tamanho (bytes) | Tempo do benchmark |
+|--------|----------------|-----------------|-------------------|
+| 3.11   | 8773651201     | 54021           | 53,652 s          |
+| 3.12   | 8773638230     | 54020           | 50,763 s          |
+| 3.14   | 8773610135     | 54078           | 36,944 s          |
+
+O próximo run será verificado externamente pelo supervisor.
+
 Os três artifacts foram publicados com `if: always()` e contêm o elemento
 `testcase` de `test_10k_fixture_apply_and_rollback_benchmark` com atributo
 `time` numérico.
 
-## Checks do PR #22 (SHA `ee31286`)
+## Checks do PR #22 (SHA `45d652f`)
 
 | Check | Tipo | Resultado |
 |-------|------|-----------|

@@ -272,6 +272,58 @@ def _run_lines_from_block(block: list[str]) -> list[str]:
     return lines
 
 
+def _parse_step(yml_text: str, step_name: str) -> tuple[dict[str, str], dict[str, str], list[str]]:
+    """Parse a workflow step into direct keys, with-values, and run lines."""
+    block = _extract_step_block(yml_text, step_name)
+    direct: dict[str, str] = {}
+    with_values: dict[str, str] = {}
+    in_with = False
+    for line in block:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        line_indent = len(line) - len(line.lstrip())
+        if stripped == "with:":
+            in_with = True
+            continue
+        if in_with and line_indent == 0:
+            in_with = False
+        if ":" in stripped:
+            key, _, val = stripped.partition(":")
+            key = key.strip()
+            val = val.strip()
+            if key == "run":
+                continue
+            if " #" in val:
+                val = val.split(" #", 1)[0].strip()
+            if in_with:
+                with_values[key] = val
+            else:
+                direct[key] = val
+    run_lines = _run_lines_from_block(block)
+    return direct, with_values, run_lines
+
+
+def _find_dup_with_keys(block: list[str]) -> list[str]:
+    """Detect duplicate keys inside the ``with:`` mapping of a step block."""
+    in_with = False
+    seen: dict[str, int] = {}
+    for line in block:
+        stripped = line.strip()
+        if stripped == "with:":
+            in_with = True
+            continue
+        if in_with:
+            line_indent = len(line) - len(line.lstrip())
+            if line_indent == 0:
+                in_with = False
+                continue
+            if ":" in stripped and not stripped.startswith("#"):
+                key = stripped.split(":", 1)[0].strip()
+                seen[key] = seen.get(key, 0) + 1
+    return [k for k, c in seen.items() if c > 1]
+
+
 def _validate_ci_contract(yml_text: str) -> list[str]:
     """Valida contrato do workflow CI.
 
@@ -307,34 +359,43 @@ def _validate_ci_contract(yml_text: str) -> list[str]:
         errors.append(str(e))
 
     try:
+        direct, with_values, _run_lines = _parse_step(yml_text, "Publicar resultados JUnit")
         junit_block = _extract_step_block(yml_text, "Publicar resultados JUnit")
-        block_text = "\n".join(junit_block)
-        if "if: always()" not in block_text:
-            errors.append("if: always() ausente no step Publicar resultados JUnit")
-        found_upload = False
-        for line in junit_block:
-            if "actions/upload-artifact@" not in line:
-                continue
-            found_upload = True
-            after_at = line.split("@", 1)[1].strip().split()[0]
-            if not (len(after_at) == 40 and all(c in "0123456789abcdef" for c in after_at)):
-                errors.append(
-                    f"upload-artifact sem SHA hex de 40 caracteres no step "
-                    f"Publicar resultados JUnit: {after_at!r}"
-                )
-        if not found_upload:
+
+        dup_with = _find_dup_with_keys(junit_block)
+        for k in dup_with:
+            errors.append(f"chave duplicada em with no step Publicar resultados JUnit: {k}")
+
+        if direct.get("if") != "always()":
+            errors.append("if: always() ausente ou incorreto no step Publicar resultados JUnit")
+
+        uses_val = direct.get("uses", "")
+        if not uses_val.startswith("actions/upload-artifact@"):
             errors.append("actions/upload-artifact ausente no step Publicar resultados JUnit")
-        if not any("test-results-${{ matrix.python-version }}" in line for line in junit_block):
-            errors.append("name por versão ausente no step Publicar resultados JUnit")
-        if not any(
-            "matrix.python-version" in line and ("path" in line or "build/test-results" in line)
-            for line in junit_block
-        ):
-            errors.append("path por versão ausente no step Publicar resultados JUnit")
-        if not any("if-no-files-found: error" in line for line in junit_block):
+        else:
+            sha = uses_val.split("@", 1)[1]
+            if not (len(sha) == 40 and all(c in "0123456789abcdef" for c in sha)):
+                msg = f"upload-artifact sem SHA hex de 40 caracteres: {sha!r}"
+                errors.append(msg)
+
+        expected_name = "test-results-${{ matrix.python-version }}"
+        actual_name = with_values.get("name")
+        if actual_name != expected_name:
+            msg = f"name por versão incorreto no step Publicar resultados JUnit: {actual_name!r}"
+            errors.append(msg)
+
+        expected_path = "build/test-results-${{ matrix.python-version }}.xml"
+        actual_path = with_values.get("path")
+        if actual_path != expected_path:
+            msg = f"path por versão incorreto no step Publicar resultados JUnit: {actual_path!r}"
+            errors.append(msg)
+
+        if with_values.get("if-no-files-found") != "error":
             errors.append("if-no-files-found: error ausente no step Publicar resultados JUnit")
-        if not any("retention-days: 30" in line for line in junit_block):
+
+        if with_values.get("retention-days") != "30":
             errors.append("retention-days: 30 ausente no step Publicar resultados JUnit")
+
     except AssertionError as e:
         errors.append(str(e))
 
@@ -595,4 +656,166 @@ def test_ci_negative_incorrect_retention() -> None:
     errors = _validate_ci_contract(yml)
     assert any("retention-days: 30" in e for e in errors), (
         f"erro 'retention-days' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_echo_only_properties() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        run: |
+          echo if: always()
+          echo actions/upload-artifact@0123456789012345678901234567890123456789
+          echo test-results-${{ matrix.python-version }}
+          echo path: build/test-results-${{ matrix.python-version }}.xml
+          echo if-no-files-found: error
+          echo retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("if: always()" in e for e in errors), f"erro 'if: always()' não encontrado: {errors}"
+    assert any("upload-artifact" in e for e in errors), (
+        f"erro 'upload-artifact' não encontrado: {errors}"
+    )
+    assert any("name por versão" in e for e in errors), (
+        f"erro 'name por versão' não encontrado: {errors}"
+    )
+    assert any("path por versão" in e for e in errors), (
+        f"erro 'path por versão' não encontrado: {errors}"
+    )
+    assert any("if-no-files-found" in e for e in errors), (
+        f"erro 'if-no-files-found' não encontrado: {errors}"
+    )
+    assert any("retention-days" in e for e in errors), (
+        f"erro 'retention-days' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_values_in_comments_junit() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        # if: always()
+        # uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        # with:
+        #   name: test-results-${{ matrix.python-version }}
+        #   path: build/test-results-${{ matrix.python-version }}.xml
+        #   if-no-files-found: error
+        #   retention-days: 30
+        run: echo nothing
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("if: always()" in e for e in errors), f"erro 'if: always()' não encontrado: {errors}"
+    assert any("upload-artifact" in e for e in errors), (
+        f"erro 'upload-artifact' não encontrado: {errors}"
+    )
+    assert any("name por versão" in e for e in errors), (
+        f"erro 'name por versão' não encontrado: {errors}"
+    )
+    assert any("path por versão" in e for e in errors), (
+        f"erro 'path por versão' não encontrado: {errors}"
+    )
+
+
+def test_ci_negative_if_inside_run() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        run: |
+          echo if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("if: always()" in e for e in errors), f"erro 'if: always()' não encontrado: {errors}"
+    assert not any("upload-artifact" in e for e in errors), f"erro de upload inesperado: {errors}"
+
+
+def test_ci_negative_uses_inside_run() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        run: |
+          echo actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("upload-artifact" in e for e in errors), (
+        f"erro 'upload-artifact' não encontrado: {errors}"
+    )
+    assert not any("if: always()" in e for e in errors), f"erro de if inesperado: {errors}"
+
+
+def test_ci_negative_properties_outside_with() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        name: test-results-${{ matrix.python-version }}
+        path: build/test-results-${{ matrix.python-version }}.xml
+        with:
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("name por versão" in e for e in errors), (
+        f"erro 'name por versão' não encontrado: {errors}"
+    )
+    assert any("path por versão" in e for e in errors), (
+        f"erro 'path por versão' não encontrado: {errors}"
+    )
+    assert not any("if-no-files-found" in e for e in errors), (
+        f"erro de if-no-files-found inesperado: {errors}"
+    )
+
+
+def test_ci_negative_duplicate_path_in_with() -> None:
+    yml = """jobs:
+  test:
+    steps:
+      - name: Testes e cobertura
+        run: |
+          pytest --durations=20 --junitxml=build/test-results-${{ matrix.python-version }}.xml
+      - name: Publicar resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@0123456789012345678901234567890123456789
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
+          path: build/other.xml
+          if-no-files-found: error
+          retention-days: 30
+"""
+    errors = _validate_ci_contract(yml)
+    assert any("chave duplicada em with" in e for e in errors), (
+        f"erro 'chave duplicada' não encontrado: {errors}"
     )
