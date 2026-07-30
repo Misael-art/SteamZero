@@ -3544,3 +3544,29 @@ roll-forward para a41, convergência e idempotência aprovados no host.
 **Rollback planejado:** `0.1.0a40-fa29b46ba796`, atualmente ativa, convergida e
 fisicamente certificada. O instalador é o único dono dos artefatos de host e
 nenhum dado XDG do usuário será migrado ou removido pelo ciclo.
+
+## 2026-07-29 — Sessão 47: certificação física da a41
+
+**Veredito: APROVADA.** O ciclo autorizado `a41→a40→a41` convergiu nas duas
+direções. A instalação e o roll-forward declararam o refresh do daemon
+`pending`; o gate estável confirmou cada release em uma tentativa. As
+repetições foram idempotentes, com zero tentativas e `restarted=false`.
+
+O host terminou em `0.1.0a41-31b30211ba85`, commit
+`31b30211ba85ec9ef60096809616771ff1aef6b5`. CLI, doctor, socket, serviço,
+Game Mode, laboratório KVM/libvirt e status administrativo passaram. O doctor
+reportou schema 13 e zero operações pendentes. A tag `v0.1.0a41` foi publicada
+no commit certificado.
+
+A leitura instalada do workspace Switch confirmou 15 jogos, keys `rev21`,
+firmware `22.5.0` e uma ação `Instalar` para cada um dos três emuladores. A UI
+abriu fisicamente na rota Emulação sem cair no modelo mínimo. O bloqueador
+restante é verdadeiro: nenhum emulador Switch está instalado.
+
+**Limites:** nenhum reboot, entrada real no Game Mode ou instalação de emulador
+foi executado. A navegação integral por teclado/gamepad não foi certificada
+porque o backend local de automação recusou entrada com a versão instalada do
+`ydotool`. A a40 permanece preservada para rollback.
+
+Detalhes e matriz de evidências:
+`docs/09-operations/A41-CERTIFICATION-RESULT.md`.
