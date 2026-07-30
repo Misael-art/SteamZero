@@ -96,3 +96,34 @@ alterada, nenhum emulador foi instalado e nenhum reboot foi executado.
   lançáveis e a prontidão da plataforma continua em 35%.
 - Esta aprovação certifica release, rollback, convergência e a composição
   corrigida. Não declara o produto completo, em produção ou `verified-hw`.
+
+## Observações pós-certificação — 2026-07-30
+
+Esta seção é um adendo posterior. Ela **não altera** o veredito, as condições ou
+o estado histórico registrados acima.
+
+Depois da certificação, Eden, Citron e Ryubing foram instalados no host. Eden e
+Ryubing foram abertos e encerrados com sucesso; isso prova o lifecycle dos
+executáveis, não o lançamento canônico de uma ROM, uma sessão de jogo ou
+playtime. Citron tem payload e metadata AppImage, mas o status real está
+`degraded` por drift de manifesto. A UI o reduz incorretamente a “não
+instalado”, embora continue configurado como emulador padrão.
+
+A inspeção operacional posterior também encontrou:
+
+- dois jobs `media.global` ainda `running` desde 2026-07-26, invisíveis ao
+  doctor que permaneceu verde;
+- aproximadamente 1,1 GB de journal, planos, backups e staging no state home,
+  com forte evidência de escrita por testes no XDG real;
+- refresh de mídia de 15 jogos, zero atualizações e quota ScreenScraper
+  persistida, mas não projetada em `providerErrors` na UI;
+- GameMode invocado com efeitos privilegiados recusados;
+- recursos agregados da UI e dos emuladores sem atribuição por processo;
+- quatro `SIGABRT` de `qml6` durante gates, sem crash da sessão interativa.
+
+Os fatos, inferências, hipóteses e evidências negativas estão separados no
+diagnóstico canônico
+[`2026-07-30-a41-host-real-operational-diagnosis.md`](../diagnostics/2026-07-30-a41-host-real-operational-diagnosis.md).
+Eles originam GAP-G25–G31 e reservam a a42 exclusivamente para estabilização.
+Nenhum desses testes posteriores promove mídia, primeiro jogo ou GameMode a
+`verified-hw`.
