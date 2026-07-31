@@ -42,7 +42,7 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
    - `rollback.status == 'rolled-back'`
    - `sum((1 for _ in fs.iter_files(root / 'incoming'))) == 10000`
    - `not (root / 'nes' / 'game-00000.nes').exists()`
-   - `not paths.staging_for(result.operation_id).exists()`
+    - `not paths.staging_for(result.operation_id).exists()`
 4. Adicionado `--durations=20` à execução de pytest no CI.
 5. Adicionado `--junitxml=build/test-results-${{ matrix.python-version }}.xml`.
 6. Adicionado step de publicação do JUnit XML como artifact (`if: always()`).
@@ -50,6 +50,13 @@ não indicava regressão funcional. Todos os 3.092+ testes de lógica passaram.
    11 cenários negativos (always em step errado, valor em comentário/echo,
    path sem versão, warn, propriedade ausente, step ausente/duplicado,
    action sem SHA, SHA curto, retention incorreto).
+8. Validador de token `_validate_benchmark_has_no_timing_gate()` adicionado:
+   o contador `ast.Assert` só vê nós Assert, mas tetos reintroduzidos com
+   `if/raise`, `pytest.skip` ou `self.assertLess` não criam nó Assert e
+   furariam a contagem. O novo validador escaneia `ast.unparse(func)` por
+   tokens proibidos (monotonic, perf_counter, elapsed, assertLess, pytest.\*,
+   >/< 180), escopado à função de benchmark — sem risco de falso positivo
+   em outras funções do arquivo.
 
 ## Artifacts JUnit observados
 

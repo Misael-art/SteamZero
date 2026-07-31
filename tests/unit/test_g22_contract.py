@@ -86,6 +86,38 @@ def _validate_benchmark_asserts(
     return len(errors) == 0, missing, extra, errors
 
 
+def _validate_benchmark_has_no_timing_gate(func: ast.FunctionDef) -> list[str]:
+    """Proíbe tokens de tempo/teto no corpo da função de benchmark.
+
+    O contador ast.Assert só vê nós Assert; um teto reintroduzido com
+    ``if elapsed > 180: raise AssertionError(...)`` ou ``pytest.skip``
+    não cria nó Assert e furaria a contagem. Este validador escaneia o
+    texto completo da função (via ast.unparse) por tokens proibidos,
+    escopado ao benchmark — sem risco de falso positivo em outras funções.
+    """
+    forbidden = [
+        "monotonic",
+        "perf_counter",
+        "time.time",
+        ".time(",
+        "elapsed",
+        "assertLess",
+        "pytest.fail",
+        "pytest.skip",
+        "pytest.exit",
+        "> 180",
+        "< 180",
+        "> 180.0",
+        "< 180.0",
+    ]
+    body = ast.unparse(func)
+    errors: list[str] = []
+    for token in forbidden:
+        if token in body:
+            errors.append(f"função de benchmark contém token de tempo/teto proibido: {token!r}")
+    return errors
+
+
 def _make_synthetic_func(source: str) -> ast.FunctionDef:
     tree = ast.parse(textwrap.dedent(source))
     for node in ast.walk(tree):
@@ -124,6 +156,14 @@ def test_benchmark_assertions_match_authorized_set() -> None:
     assert ok, "; ".join(errors)
     assert not missing
     assert not extra
+    timing_errors = _validate_benchmark_has_no_timing_gate(func)
+    assert not timing_errors, f"timing gate detector disparou no benchmark limpo: {timing_errors}"
+
+
+def test_benchmark_has_no_timing_gate() -> None:
+    func = _get_benchmark_func()
+    errors = _validate_benchmark_has_no_timing_gate(func)
+    assert not errors, f"timing gate detector disparou no benchmark limpo: {errors}"
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +247,48 @@ def test_rejects_duplicate_assert() -> None:
     ok, _missing, _extra, errors = _validate_benchmark_asserts(func)
     assert not ok, "deveria rejeitar assert duplicado"
     assert any("duplicado" in e for e in errors), f"erro 'duplicado' não encontrado: {errors}"
+
+
+def test_rejects_if_raise_assertion_error() -> None:
+    src = """def f():
+    if elapsed > 180:
+        raise AssertionError('too slow')
+"""
+    func = _make_synthetic_func(src)
+    errors = _validate_benchmark_has_no_timing_gate(func)
+    assert errors, "if/raise deveria ser detectado"
+    assert any("> 180" in e for e in errors), f"> 180 não encontrado: {errors}"
+
+
+def test_rejects_pytest_skip() -> None:
+    src = """def f():
+    if elapsed > 180:
+        pytest.skip('slow')
+"""
+    func = _make_synthetic_func(src)
+    errors = _validate_benchmark_has_no_timing_gate(func)
+    assert errors, "pytest.skip deveria ser detectado"
+    assert any("pytest.skip" in e for e in errors), f"pytest.skip não encontrado: {errors}"
+
+
+def test_rejects_self_assert_less() -> None:
+    src = """def f():
+    self.assertLess(elapsed, 180)
+"""
+    func = _make_synthetic_func(src)
+    errors = _validate_benchmark_has_no_timing_gate(func)
+    assert errors, "assertLess deveria ser detectado"
+    assert any("assertLess" in e for e in errors), f"assertLess não encontrado: {errors}"
+
+
+def test_rejects_assert_monotonic() -> None:
+    src = """def f():
+    assert time.monotonic() - started < 180
+"""
+    func = _make_synthetic_func(src)
+    errors = _validate_benchmark_has_no_timing_gate(func)
+    assert errors, "assert + monotonic deveria ser detectado"
+    assert any("monotonic" in e for e in errors), f"monotonic não encontrado: {errors}"
 
 
 # ---------------------------------------------------------------------------
