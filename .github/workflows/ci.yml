@@ -84,6 +84,8 @@ jobs:
           mkdir -p build
           pytest \
             -m "not visual" \
+            --durations=20 \
+            --junitxml=build/test-results-${{ matrix.python-version }}.xml \
             --cov=steamzero \
             --cov-report=term-missing \
             --cov-report=xml:build/coverage-${{ matrix.python-version }}.xml \
@@ -97,6 +99,16 @@ jobs:
         with:
           name: coverage-python-3.14
           path: build/coverage-3.14.*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publicar resultados JUnit
+        # always(): preserva o relatório de duração mesmo quando um teste falha,
+        # permitindo consultar o tempo real do benchmark sem rerun.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: build/test-results-${{ matrix.python-version }}.xml
           if-no-files-found: error
           retention-days: 30
 

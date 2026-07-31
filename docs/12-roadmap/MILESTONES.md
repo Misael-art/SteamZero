@@ -10,7 +10,7 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M4 | Deck-aware: modos + fallback de display + microSD UUID em VM | 2 | L | FI-07/12 verdes |
 | M5 | Helper privilegiado auditado | 2 | M | ST-01 fuzzing verde |
 | M6 | Sessão segura: suspend/resume com checkpoint (VM) | 2 | L | FI-09 verde |
-| M7 | Biblioteca transacional: scan→plan→apply→rollback com 10k fixtures | 3 | L | RT-06/07 + benchmark |
+| M7 | Biblioteca transacional: scan→plan→apply→rollback com 10k fixtures | 3 | L | RT-06/07 + benchmark funcional (tempo publicado via JUnit, não como gate) |
 | M8 | BIOS center backend + saves timeline | 3 | M | AC-BI/SV verdes |
 | M9 | Sync não-destrutivo com conflito preservador | 3 | L | J6 automatizada |
 | M10 | Engine de adapters + 3 emuladores núcleo fim-a-fim | 4 | XL | instalar/atualizar/rollback DuckStation/RetroArch/Dolphin em VM |
