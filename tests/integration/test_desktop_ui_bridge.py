@@ -17,6 +17,7 @@ from steamzero.adapters import desktop_ui
 from steamzero.adapters.desktop_dashboard import DesktopDashboard
 from steamzero.adapters.desktop_ui import DesktopControlServer
 from steamzero.adapters.emulation import EmulationController, SessionSecretStore
+from steamzero.adapters.flatpak import FlatpakState
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import (
     DesktopConflictAction,
@@ -89,6 +90,14 @@ class BrokenContext:
 
 class FakeSecretStore(SessionSecretStore):
     """Cofre estritamente em memória para atravessar a bridge sem credenciais reais."""
+
+
+class FakeFlatpak:
+    """Porta read-only: a bridge de teste nunca consulta o Flatpak do host."""
+
+    @staticmethod
+    def status(ref: str) -> FlatpakState:
+        return FlatpakState(False, ref)
 
 
 def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
@@ -490,12 +499,14 @@ def credential_bridge(tmp_path: Path) -> tuple[str, str, FakeSecretStore]:
         which=lambda _command: None,
         spawn=lambda _argv: None,
         secret_store=secret_store,
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
     )
     dashboard = DesktopDashboard(
         store_factory=store_factory,
         emulation=emulation,
         which=lambda _command: None,
         spawn=lambda _argv: None,
+        flatpak_factory=FakeFlatpak,  # type: ignore[arg-type]
     )
 
     def run_server() -> None:

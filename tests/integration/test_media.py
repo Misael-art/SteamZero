@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from steamzero.core import fs, ids
+from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.media import MediaAssignment, MediaLibrary
 
@@ -23,7 +23,9 @@ def _assignment(game_id: str, kind: str = "boxart") -> MediaAssignment:
 
 @pytest.mark.integration
 @pytest.mark.rt
-def test_rt11_canonicalization_and_orphan_quarantine_rollback(tmp_path: Path) -> None:
+def test_rt11_canonicalization_and_orphan_quarantine_rollback(
+    tmp_path: Path, isolated_xdg_root: Path
+) -> None:
     root = tmp_path / "media"
     assigned = root / "downloads" / "cover.payload"
     orphan = root / "downloads" / "unused.payload"
@@ -33,7 +35,11 @@ def test_rt11_canonicalization_and_orphan_quarantine_rollback(tmp_path: Path) ->
     game_id = ids.new_ulid()
     media = MediaLibrary()
     plan = media.plan_reconcile(root, {"downloads/cover.payload": _assignment(game_id)})
+    assert paths.plan_path(plan.plan_id).is_relative_to(isolated_xdg_root)
+    assert paths.plan_path(plan.plan_id).is_file()
     result = media.apply(plan.plan_id, plan.confirm_token)
+    assert paths.journal_path(result.operation_id).is_relative_to(isolated_xdg_root)
+    assert paths.backup_for(result.operation_id).is_relative_to(isolated_xdg_root)
 
     canonical = root / "canonical" / game_id / "boxart.png"
     quarantined = list((root / ".quarantine" / "orphans").iterdir())
@@ -51,7 +57,9 @@ def test_rt11_canonicalization_and_orphan_quarantine_rollback(tmp_path: Path) ->
 
 @pytest.mark.integration
 @pytest.mark.rt
-def test_rt11_failed_validation_restores_canonical_and_orphan_sources(tmp_path: Path) -> None:
+def test_rt11_failed_validation_restores_canonical_and_orphan_sources(
+    tmp_path: Path, isolated_xdg_root: Path
+) -> None:
     root = tmp_path / "media"
     assigned = root / "cover.bin"
     orphan = root / "orphan.bin"
@@ -59,6 +67,8 @@ def test_rt11_failed_validation_restores_canonical_and_orphan_sources(tmp_path: 
     fs.write_atomic(orphan, _JPG)
     media = MediaLibrary()
     plan = media.plan_reconcile(root, {"cover.bin": _assignment(ids.new_ulid())})
+    assert paths.plan_path(plan.plan_id).is_relative_to(isolated_xdg_root)
+    assert paths.plan_path(plan.plan_id).is_file()
 
     def reject_index() -> None:
         raise RuntimeError("índice recusou a canonicalização")
@@ -74,7 +84,9 @@ def test_rt11_failed_validation_restores_canonical_and_orphan_sources(tmp_path: 
 
 @pytest.mark.integration
 @pytest.mark.security
-def test_st06_bad_magic_oversize_and_bidi_are_quarantined(tmp_path: Path) -> None:
+def test_st06_bad_magic_oversize_and_bidi_are_quarantined(
+    tmp_path: Path, isolated_xdg_root: Path
+) -> None:
     root = tmp_path / "media"
     bad_magic = root / "bad.png"
     oversized = root / "large.png"
@@ -88,7 +100,10 @@ def test_st06_bad_magic_oversize_and_bidi_are_quarantined(tmp_path: Path) -> Non
         root,
         {"bad.png": assignment, "large.png": assignment, "evil\u202ename.png": assignment},
     )
+    assert paths.plan_path(plan.plan_id).is_relative_to(isolated_xdg_root)
+    assert paths.plan_path(plan.plan_id).is_file()
     result = MediaLibrary.apply(plan.plan_id, plan.confirm_token)
+    assert paths.journal_path(result.operation_id).is_relative_to(isolated_xdg_root)
     quarantined = list((root / ".quarantine" / "orphans").iterdir())
     assert len(quarantined) == 3
     assert all(path.name.isascii() for path in quarantined)

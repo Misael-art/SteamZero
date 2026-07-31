@@ -86,7 +86,8 @@ de wheel. Se um wheel aparecer em `dist/` no seu diff, remova-o do commit.
 
 ## 6. Gates são inegociáveis
 
-Após CADA item (não só no final): `.venv/bin/pytest tests -q`,
+Após CADA item (não só no final):
+`.venv/bin/python tools/run_tests_isolated.py tests -q`,
 `.venv/bin/ruff check src tools tests`, `.venv/bin/mypy src`,
 `make independence boundaries`. Cobertura não regride. Nunca enfraqueça ou
 delete um teste para passar; se um contrato mudou de verdade, documente no
