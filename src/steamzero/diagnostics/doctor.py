@@ -19,6 +19,7 @@ from steamzero.core import fs as corefs
 from steamzero.core import journal, paths
 from steamzero.core.identity import runtime_identity
 from steamzero.core.state import StateStore
+from steamzero.domain import state_audit
 
 
 def _check(name: str, status: str, message: str) -> dict[str, str]:
@@ -79,11 +80,23 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
     layout_ok = all(f().is_dir() for f in paths.STATE_SUBDIRS)
     checks.append(_check("state.layout", "pass" if layout_ok else "fail", str(paths.state_home())))
 
+    stale_count = 0
+    orphan_staging = 0
+    orphan_backups = 0
+    orphan_journals = 0
     try:
         with StateStore() as store:
             store.migrate()
             integrity = store.integrity_ok()
             schema_version = store.user_version
+            # G25: auditoria de estado enquanto o store está aberto. O doctor
+            # antigo só contava journals não-terminais; jobs stalados em SQLite
+            # e artefatos órfãos passavam despercebidos (falso verde operacional).
+            report = state_audit.audit(store)
+            stale_count = len(report.stale_jobs)
+            orphan_staging = len(report.orphan_staging)
+            orphan_backups = len(report.orphan_backups)
+            orphan_journals = len(report.orphan_journals)
         checks.append(
             _check(
                 "state.db.integrity",
@@ -94,6 +107,45 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
     except Exception as exc:  # doctor nunca deve crashar
         schema_version = -1
         checks.append(_check("state.db.integrity", "fail", f"erro: {exc}"))
+
+    checks.append(
+        _check(
+            "jobs.stale",
+            "warn" if stale_count else "pass",
+            (
+                f"{stale_count} job(s) em estado running (stalado pós-reboot)"
+                if stale_count
+                else "nenhum job stalado"
+            ),
+        )
+    )
+    checks.append(
+        _check(
+            "staging.orphan",
+            "warn" if orphan_staging else "pass",
+            f"{orphan_staging} árvore(s) de staging sem operação no banco"
+            if orphan_staging
+            else "nenhum staging órfão",
+        )
+    )
+    checks.append(
+        _check(
+            "backup.orphan",
+            "warn" if orphan_backups else "pass",
+            f"{orphan_backups} backup(s) sem operação no banco"
+            if orphan_backups
+            else "nenhum backup órfão",
+        )
+    )
+    checks.append(
+        _check(
+            "journal.orphan",
+            "warn" if orphan_journals else "pass",
+            f"{orphan_journals} journal(is) sem operação no banco"
+            if orphan_journals
+            else "nenhum journal órfão",
+        )
+    )
 
     pending = _pending_operations()
     checks.append(
@@ -127,5 +179,9 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
         "schemaVersion": schema_version,
         "pendingOperations": pending,
         "deckInputKeys": deck_keys,
+        "staleJobs": stale_count,
+        "orphanStaging": orphan_staging,
+        "orphanBackups": orphan_backups,
+        "orphanJournals": orphan_journals,
     }
     return data, checks
