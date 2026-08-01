@@ -158,6 +158,64 @@ def test_safe_socket_path_and_direct_serve_cleanup(
     assert core._server_from_systemd() is None
 
 
+def test_serve_recovers_stale_jobs_at_boot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # G25: serve() chama recover() no boot; jobs running de um processo anterior
+    # são levados a terminal. Recovery é idempotente e best-effort (§8): serve()
+    # retorna 0 mesmo quando há trabalho de recovery a fazer.
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+    from steamzero.core import fs as core_fs
+    from steamzero.core import state as core_state
+    from steamzero.jobs.manager import JobManager
+
+    core_fs.ensure_state_layout()
+    store = core_state.open_state()
+    try:
+        mgr = JobManager(store)
+        stale = mgr.create("media.global")
+        # Simula job que ficou "running" após um crash/reboot.
+        stale.state = "running"
+        store.save_job(stale.to_row())
+    finally:
+        store.close()
+
+    monkeypatch.setattr(core.CoreServer, "serve_forever", lambda self, **_kwargs: None)
+    assert core.serve() == 0  # boot sobe mesmo com recovery pendente
+
+    # O job stalado agora está em estado terminal (cancelled + recovered).
+    store = core_state.open_state()
+    try:
+        row = store.get_job(stale.id)
+    finally:
+        store.close()
+    assert row is not None
+    assert row["state"] == "cancelled"
+    assert row["error_code"] == "recovered"
+
+
+def test_serve_boots_even_if_recovery_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # G25/§8: se recovery lança, serve() ainda retorna 0 (falha degrada, nunca
+    # trava). Patcheamos JobManager.recover para levantar e confirmamos o boot.
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+    from steamzero.jobs.manager import JobManager
+
+    def boom(self: JobManager) -> list:  # type: ignore[type-arg]
+        raise RuntimeError("recovery simulado falhando")
+
+    monkeypatch.setattr(JobManager, "recover", boom)
+    monkeypatch.setattr(core.CoreServer, "serve_forever", lambda self, **_kwargs: None)
+    assert core.serve() == 0  # §8: daemon sobe apesar da falha de recovery
+
+
 def test_safe_socket_path_rejects_symlinked_runtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

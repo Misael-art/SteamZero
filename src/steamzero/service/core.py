@@ -31,10 +31,11 @@ from steamzero.api.events import (
     follow_events,
     parse_event_cursor,
 )
-from steamzero.core import fs, ids
+from steamzero.core import fs, ids, log, transaction
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.identity import runtime_identity
 from steamzero.core.state import StateStore
+from steamzero.jobs.manager import JobManager
 from steamzero.service.methods import METHODS, InvalidParams, capabilities
 from steamzero.service.reconciler import SessionEnvironmentReconciler
 from steamzero.service.socket_path import safe_socket_path
@@ -438,10 +439,49 @@ def _server_from_systemd() -> CoreServer | None:
     return server
 
 
+def _recover_at_boot(store: StateStore) -> None:
+    """Recovery pós-reboot best-effort (G25, §8): jobs running -> terminal.
+
+    Primeiro JobManager.recover() resolve jobs "running" herdados (cêntrico em
+    jobs); depois transaction.recover_all() resolve journals/óperações não-
+    terminais sem job associado (cêntrico em journals). Qualquer falha é
+    registrada e o daemon segue o boot — recovery nunca derruba serve_forever.
+    """
+    logger = log.get_logger()
+    try:
+        recovered = JobManager(store).recover()
+        if recovered:
+            logger.info(
+                "boot.recovery.jobs",
+                count=len(recovered),
+                jobs=[
+                    {"id": j.id, "state": j.state, "error_code": j.error_code} for j in recovered
+                ],
+            )
+    except Exception as exc:  # recovery é best-effort; §8: nunca trava o boot
+        logger.warning("boot.recovery.jobs-failed", error=type(exc).__name__, detail=str(exc))
+    try:
+        results = transaction.recover_all()
+        if results:
+            logger.info(
+                "boot.recovery.operations",
+                count=len(results),
+                outcomes=[r.outcome for r in results],
+            )
+    except Exception as exc:  # pragma: no cover - best-effort
+        logger.warning("boot.recovery.operations-failed", error=type(exc).__name__, detail=str(exc))
+
+
 def serve(*, systemd: bool = False) -> int:
     # Migração serial antes de abrir concorrência entre handlers e reconciliador.
     with StateStore() as store:
         store.migrate()
+        # G25: recovery pós-reboot uma única vez no boot. Jobs "running" de um
+        # processo anterior (ex.: media.global stalado) são levados a terminal,
+        # e journals/óperações não-terminais são resolvidos. Best-effort (§8):
+        # falha aqui é registrada, mas nunca impede serve_forever — o daemon
+        # precisa subir mesmo que recovery não complete.
+        _recover_at_boot(store)
     server = _server_from_systemd() if systemd else None
     owned_path: Path | None = None
     if server is None:

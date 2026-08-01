@@ -754,3 +754,86 @@ def test_component_apply_requires_and_forwards_confirmation(
     assert code == cli.EXIT_OK
     assert fake.applied == ("01J000000000000000000000AA", "confirm")
     assert env["operationId"] == "01J000000000000000000000AB"
+
+
+def test_state_audit_reports_clean(capsys: pytest.CaptureFixture[str]) -> None:
+    # G25: state audit read-only; estado limpo -> status ok, clean True.
+    code = cli.main(["state", "audit", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert env["module"] == "state"
+    assert env["status"] == "ok"
+    assert env["data"]["clean"] is True
+
+
+def test_state_audit_flags_orphan_staging(capsys: pytest.CaptureFixture[str]) -> None:
+    # G25: staging órfão faz state audit reportar degraded com o órfão listado.
+    from steamzero.core import fs as core_fs
+    from steamzero.core import paths as core_paths
+
+    core_fs.ensure_state_layout()
+    (core_paths.staging_dir() / "op-sem-banco").mkdir(parents=True, exist_ok=True)
+    code = cli.main(["state", "audit", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert env["status"] == "degraded"
+    assert env["data"]["clean"] is False
+    assert "op-sem-banco" in env["data"]["orphanStaging"]
+
+
+def test_state_cleanup_plan_and_apply_roundtrip(capsys: pytest.CaptureFixture[str]) -> None:
+    # G25/A42: cleanup-plan gera plano com token; cleanup-apply move para
+    # quarentena (recoverable) usando --plan-id + --confirm. Não deleta.
+    from steamzero.core import fs as core_fs
+    from steamzero.core import paths as core_paths
+
+    core_fs.ensure_state_layout()
+    orphan = core_paths.staging_dir() / "orphan-tree"
+    orphan.mkdir(parents=True, exist_ok=True)
+    (orphan / "marker.txt").write_text("x")
+
+    # Fase 1: plano.
+    code = cli.main(["state", "cleanup-plan", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    plan = env["data"]
+    plan_id = plan["planId"]
+    confirm = plan["confirmToken"]
+    assert plan["count"] >= 1
+
+    # Fase 2: aplicar move o órfão para a quarentena; a fonte some.
+    code = cli.main(
+        ["state", "cleanup-apply", "--plan-id", plan_id, "--confirm", confirm, "--json"]
+    )
+    env = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert env["data"]["count"] >= 1
+    assert not orphan.exists()  # movido, não deletado
+    # Recuperável: está na quarentena.
+    quarantined = list(core_paths.quarantine_dir().rglob("marker.txt"))
+    assert quarantined, "artefato deve estar na quarentena (recoverable)"
+
+
+def test_state_cleanup_apply_rejects_wrong_token(capsys: pytest.CaptureFixture[str]) -> None:
+    # G25/A42: token incorreto não aplica — proteção contra plano desatualizado.
+    from steamzero.core import fs as core_fs
+    from steamzero.core import paths as core_paths
+
+    core_fs.ensure_state_layout()
+    (core_paths.staging_dir() / "op-sem-banco").mkdir(parents=True, exist_ok=True)
+    cli.main(["state", "cleanup-plan", "--json"])
+    capsys.readouterr()  # descarta saída do plano
+
+    # A aplicação com confirm errado falha sem mover nada.
+    code = cli.main(
+        [
+            "state",
+            "cleanup-apply",
+            "--plan-id",
+            "01J000000000000000000000AA",
+            "--confirm",
+            "errado",
+            "--json",
+        ]
+    )
+    assert code == cli.EXIT_FAILURE

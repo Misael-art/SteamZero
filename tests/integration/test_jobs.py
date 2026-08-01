@@ -202,9 +202,11 @@ def test_unknown_handler(env: tuple[JobManager, state.StateStore, Path]) -> None
     assert ei.value.code == "E-API-UNKNOWN-ACTION"
 
 
-def test_recover_requeues_running_without_op(
+def test_recover_cancels_running_without_op(
     env: tuple[JobManager, state.StateStore, Path],
 ) -> None:
+    # G25/D1: job running sem operação (media.global stalado) não pode ser
+    # reenfileirado — reativaria rede. Termina "cancelled" marcado recuperado.
     mgr, store, _ = env
     job = mgr.create("step")
     job = mgr.get(job.id)  # type: ignore[assignment]
@@ -212,7 +214,8 @@ def test_recover_requeues_running_without_op(
     store.save_job(job.to_row())
     recovered = mgr.recover()
     assert len(recovered) == 1
-    assert recovered[0].state == "queued"
+    assert recovered[0].state == "cancelled"
+    assert recovered[0].error_code == "recovered"
 
 
 def test_recover_committed_op_rolls_forward(env: tuple[JobManager, state.StateStore, Path]) -> None:
@@ -260,6 +263,53 @@ def test_recover_interrupted_op_rolls_back(env: tuple[JobManager, state.StateSto
     recovered = mgr.recover()
     assert recovered[0].state == "rolled-back"
     assert target.read_text() == "v0"
+
+
+def test_recover_is_idempotent(env: tuple[JobManager, state.StateStore, Path]) -> None:
+    # G25: chamar recover() duas vezes não tem efeito colateral — a segunda
+    # chamada não encontra jobs running e retorna [].
+    mgr, store, _ = env
+    job = mgr.create("step")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    store.save_job(job.to_row())
+    first = mgr.recover()
+    second = mgr.recover()
+    assert len(first) == 1
+    assert second == []
+
+
+def test_cancel_runnerless_running_forces_terminal(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    # G25/D2: cancel de job "running" sem handler vivo neste processo (caso de
+    # job stalado pós-reboot) não pode ser inerte. Deve atingir estado terminal.
+    mgr, store, _ = env
+    job = mgr.create("step")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    store.save_job(job.to_row())
+    # Sem registrar handler/executar via run(), _controls não tem o job.
+    assert job.id not in mgr._controls
+    cancelled = mgr.cancel(job.id)
+    assert cancelled.state == "cancelled"
+    assert cancelled.error_code == "recovered"
+
+
+def test_cancel_running_with_live_control_still_requests(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    # G25/D2: regressão — quando há handler vivo (_controls presente), cancel
+    # mantém o comportamento original (request_cancel, não força terminal).
+    mgr, store, _ = env
+    job = mgr.create("step")
+    job = mgr.get(job.id)  # type: ignore[assignment]
+    job.state = "running"
+    store.save_job(job.to_row())
+    mgr.request_cancel(job.id)  # simula handler vivo solicitando cancelamento
+    result = mgr.cancel(job.id)
+    # request_cancel apenas sinaliza; o job permanece running até o handler honrar.
+    assert result.state == "running"
 
 
 def test_invalid_transition_raises(env: tuple[JobManager, state.StateStore, Path]) -> None:
