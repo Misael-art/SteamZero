@@ -218,6 +218,20 @@ ApplicationWindow {
         "activeSessions": [],
         "detail": "O orquestrador de compartilhamento não foi configurado."
     })
+    property var fallbackResources: ({
+        "schemaVersion": 1,
+        "readOnly": true,
+        "complete": false,
+        "reason": "bridge-unavailable",
+        "classes": [],
+        "totals": {
+            "attributed": {"displayName": "Consumo atribuído", "processCount": 0,
+                "pssBytes": 0, "swapBytes": 0, "processesWithUnknownMemory": 0},
+            "unattributable": {"displayName": "Não atribuível", "processCount": 0,
+                "pssBytes": 0, "swapBytes": 0, "processesWithUnknownMemory": 0}
+        },
+        "processes": []
+    })
     readonly property var emulatorItems: desktopStatus.dashboard && desktopStatus.dashboard.components
         ? desktopStatus.dashboard.components : fallbackComponents
     readonly property var emulationData: desktopStatus.dashboard
@@ -251,6 +265,9 @@ ApplicationWindow {
         ? steamGameplayData.lsfgInstaller : fallbackSteamGameplay.lsfgInstaller
     readonly property var castData: desktopStatus.dashboard && desktopStatus.dashboard.cast
         ? desktopStatus.dashboard.cast : fallbackCast
+    readonly property var resourcesData: desktopStatus.dashboard
+        && desktopStatus.dashboard.resources
+        ? desktopStatus.dashboard.resources : fallbackResources
     property var liveTasks: null
     readonly property var taskItems: liveTasks !== null ? liveTasks
         : emulationData && emulationData.jobs ? emulationData.jobs : []
@@ -870,6 +887,38 @@ ApplicationWindow {
         if (external)
             parts.push(qsTr("Monitor %1 conectado").arg(external.name))
         parts.push(qsTr("Modo Desktop"))
+        return parts.join("  •  ")
+    }
+
+    function formatBytes(value) {
+        const bytes = Number(value || 0)
+        if (bytes < 1024)
+            return bytes + " B"
+        if (bytes < 1024 * 1024)
+            return (bytes / 1024).toFixed(1) + " KiB"
+        if (bytes < 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+    }
+
+    function resourceClassDetail(row) {
+        if (!row)
+            return ""
+        const parts = []
+        const lifecycle = row.lifecycle || {}
+        const running = Number(lifecycle.running || 0)
+        const zombies = Number(lifecycle.zombie || 0)
+        if (running > 0)
+            parts.push(qsTr("%1 em execução").arg(running))
+        if (zombies > 0)
+            parts.push(qsTr("%1 zumbi").arg(zombies))
+        const swap = Number(row.swapBytes || 0)
+        if (swap > 0)
+            parts.push(qsTr("swap %1").arg(formatBytes(swap)))
+        if (row.memoryMetric === "unavailable")
+            parts.push(qsTr("memória indisponível"))
+        else if (row.memoryMetric === "rss-fallback")
+            parts.push(qsTr("PSS indisponível; RSS usado"))
         return parts.join("  •  ")
     }
 
@@ -4680,6 +4729,153 @@ ApplicationWindow {
                                                 root.lsfgLastOperationId = ""
                                                 root.refreshStatus(response.message || qsTr("LSFG-VK restaurado"))
                                             })
+                                        }
+                                    }
+                                }
+                                Label { text: qsTr("Consumo de memória"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28; Layout.topMargin: 8 }
+                                Rectangle {
+                                    visible: root.resourcesData && !root.resourcesData.complete
+                                    color: "#24180b"
+                                    radius: 8
+                                    border.color: root.amberColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 58
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 14
+                                        ToolButton {
+                                            enabled: false
+                                            icon.name: "dialog-warning"
+                                            icon.color: root.amberColor
+                                            background: Item {}
+                                        }
+                                        Label {
+                                            text: qsTr("Leitura parcial do sistema: o consumo pode estar incompleto.")
+                                            color: root.amberColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                                Repeater {
+                                    model: root.resourcesData ? (root.resourcesData.classes || []) : []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        color: root.surfaceColor
+                                        radius: 7
+                                        border.color: root.borderColor
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: 28
+                                        Layout.rightMargin: 28
+                                        Layout.minimumHeight: 58
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 14
+                                            spacing: 12
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Label { text: modelData.displayName; color: root.textColor; font.bold: true }
+                                                    Label {
+                                                        text: modelData.processCount === 0
+                                                            ? qsTr("nenhum processo")
+                                                            : qsTr("%1 processo(s)").arg(modelData.processCount)
+                                                        color: root.mutedColor
+                                                        font.pixelSize: 12
+                                                    }
+                                                }
+                                                Label {
+                                                    text: root.resourceClassDetail(modelData)
+                                                    color: root.mutedColor
+                                                    font.pixelSize: 12
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                            Label {
+                                                text: root.formatBytes(modelData.pssBytes)
+                                                color: modelData.pssBytes > 0 ? root.textColor : root.mutedColor
+                                                font.pixelSize: 16
+                                                font.bold: modelData.pssBytes > 0
+                                            }
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 7
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 58
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 14
+                                        spacing: 12
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label {
+                                                text: qsTr("Consumo atribuído")
+                                                color: root.textColor
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                text: qsTr("%1 processo(s) atribuído(s)").arg(
+                                                    root.resourcesData
+                                                        ? Number(root.resourcesData.totals.attributed.processCount) : 0)
+                                                color: root.mutedColor
+                                                font.pixelSize: 12
+                                            }
+                                        }
+                                        Label {
+                                            text: root.formatBytes(root.resourcesData
+                                                ? root.resourcesData.totals.attributed.pssBytes : 0)
+                                            color: root.textColor
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 7
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 58
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 14
+                                        spacing: 12
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label {
+                                                text: qsTr("Não atribuível")
+                                                color: root.textColor
+                                                font.bold: true
+                                            }
+                                            Label {
+                                                text: qsTr("%1 processo(s) não atribuído(s)").arg(
+                                                    root.resourcesData
+                                                        ? Number(root.resourcesData.totals.unattributable.processCount) : 0)
+                                                color: root.mutedColor
+                                                font.pixelSize: 12
+                                            }
+                                        }
+                                        Label {
+                                            text: root.formatBytes(root.resourcesData
+                                                ? root.resourcesData.totals.unattributable.pssBytes : 0)
+                                            color: root.textColor
+                                            font.pixelSize: 16
+                                            font.bold: true
                                         }
                                     }
                                 }
