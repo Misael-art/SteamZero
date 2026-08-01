@@ -666,62 +666,60 @@ def test_desktop_status_surfaces_generic_owner_blocker(
     ]
 
 
-class _FakeComponentRegistry:
-    def list(self) -> list[SimpleNamespace]:
-        return [SimpleNamespace(id="demo-flatpak")]
-
-
-class _FakeComponentExecutor:
+class _FakeComponentLifecycle:
     def __init__(self) -> None:
         self.applied: tuple[str, str] | None = None
 
-    def status(self, adapter_id: str) -> dict[str, object]:
-        return {"id": adapter_id, "state": "missing", "pinned": False}
+    def status_all(self) -> list[dict[str, object]]:
+        return [
+            {
+                "id": "demo-flatpak",
+                "state": "missing",
+                "installed": False,
+                "installable": True,
+                "executor": "flatpak",
+                "sourceType": "flatpak",
+                "version": None,
+                "targetVersion": "a" * 64,
+                "origin": None,
+                "detail": None,
+                "endOfLife": False,
+            }
+        ]
 
-    def plan_install(self, adapter_id: str) -> SimpleNamespace:
+    def plan(self, adapter_id: str, action: str = "install") -> SimpleNamespace:
         data = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "planId": "01J000000000000000000000AA",
             "confirmToken": "confirm",
             "adapterId": adapter_id,
-            "ref": "org.example.Emulator",
-            "remote": "flathub",
-            "targetCommit": "a" * 64,
-            "before": {
-                "installed": False,
-                "ref": "org.example.Emulator",
-                "origin": None,
-                "commit": None,
-            },
-            "action": "install",
+            "executor": "flatpak",
+            "action": action,
+            "sourceFingerprint": {"type": "flatpak"},
+            "delegated": {"flatpakPlanId": "01J000000000000000000000AA"},
             "status": "pending",
             "createdAt": "2026-07-15T00:00:00+00:00",
             "expiresAt": "2026-07-15T01:00:00+00:00",
             "rollbackGuarantee": "G-DEPLOYMENT",
             "preview": "install demo",
         }
-        return SimpleNamespace(action="install", to_dict=lambda: data)
+        return SimpleNamespace(action=action, to_dict=lambda: data)
 
-    def apply(self, plan_id: str, confirm: str) -> SimpleNamespace:
+    def apply(self, plan_id: str, confirm: str) -> dict[str, object]:
         self.applied = (plan_id, confirm)
-        data = {
+        return {
             "operationId": "01J000000000000000000000AB",
             "status": "ok",
             "adapterId": "demo-flatpak",
             "commit": "a" * 64,
         }
-        return SimpleNamespace(
-            status="ok",
-            operation_id=data["operationId"],
-            to_dict=lambda: data,
-        )
 
 
 def test_component_list_and_plan_use_contract_envelopes(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeComponentExecutor()
-    monkeypatch.setattr(cli, "_component_runtime", lambda _store: (_FakeComponentRegistry(), fake))
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
 
     assert cli.main(["component", "list", "--json"]) == cli.EXIT_OK
     listed = json.loads(capsys.readouterr().out)
@@ -730,14 +728,14 @@ def test_component_list_and_plan_use_contract_envelopes(
 
     assert cli.main(["component", "plan", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
     planned = json.loads(capsys.readouterr().out)
-    contracts.validate(planned["data"]["plan"], "component-plan-v1.schema.json")
+    contracts.validate(planned["data"]["plan"], "component-plan-v2.schema.json")
 
 
 def test_component_apply_requires_and_forwards_confirmation(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = _FakeComponentExecutor()
-    monkeypatch.setattr(cli, "_component_runtime", lambda _store: (_FakeComponentRegistry(), fake))
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
 
     code = cli.main(
         [
