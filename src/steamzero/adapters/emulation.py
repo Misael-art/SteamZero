@@ -52,10 +52,11 @@ from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
 from steamzero.adapters.scraping.steamgriddb import SteamGridDbAdapter
 from steamzero.adapters.secret_service import SecretServiceStore
 from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
+from steamzero.adapters.state_store_provider_health import StateStoreProviderHealthAdapter
 from steamzero.adapters.steam_shortcuts import SteamShortcutManager
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, safezip, transaction
-from steamzero.core.errors import SteamZeroError
+from steamzero.core.errors import SteamZeroError, provider_error_category
 from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
@@ -2774,6 +2775,27 @@ class EmulationController:
         except OSError:
             cache_bytes = 0
 
+        provider_details: dict[str, dict[str, Any]] = {}
+        try:
+            with self._store_factory() as store:
+                store.migrate()
+                health_rows = StateStoreProviderHealthAdapter(store.adapter_connection()).list_all()
+        except Exception:
+            health_rows = []
+        health_by_provider = {row.provider: row for row in health_rows}
+        for provider, affected in provider_errors.items():
+            health = health_by_provider.get(provider)
+            provider_details[provider] = {
+                "gamesAffected": affected,
+                "code": health.last_error_code if health else None,
+                "category": health.last_error_category if health else None,
+                "state": health.state if health else "active",
+                "lastErrorAt": health.last_error if health else None,
+                "errorCount": health.error_count if health else 0,
+                "consecutiveFailures": health.consecutive_failures if health else 0,
+                "totalRequests": health.total_requests if health else 0,
+            }
+
         last_scan: str | None = None
         try:
             if self._library_cache_path.is_file() and not self._library_cache_path.is_symlink():
@@ -2811,6 +2833,7 @@ class EmulationController:
             "fallbacks": sources["fallback"],
             "pendingCandidates": pending_candidates,
             "providerErrors": provider_errors,
+            "providerDetails": provider_details,
             "lastAudit": last_audit,
             "lastScan": last_scan,
             "cacheBytes": cache_bytes,
@@ -4595,8 +4618,16 @@ class EmulationController:
             store.migrate()
             return self._execute_media_search(store, job, ctx)
 
-    def _execute_media_search(self, store: StateStore, job: Job, ctx: JobContext) -> dict[str, Any]:
+    def _execute_media_search(
+        self,
+        store: StateStore,
+        job: Job,
+        ctx: JobContext,
+        *,
+        skip_providers: set[str] | None = None,
+    ) -> dict[str, Any]:
         mgr = self._media_manager(store)
+        health = StateStoreProviderHealthAdapter(store.adapter_connection())
         params = job.params
         game_id = params["game_id"]
         title_id = params["title_id"]
@@ -4633,6 +4664,8 @@ class EmulationController:
         all_candidates: list[MediaCandidate] = []
         provider_errors: dict[str, str] = {}
         providers = self._ordered_media_providers(mgr._providers, kinds)
+        if skip_providers:
+            providers = [p for p in providers if p.name not in skip_providers]
         total_providers = len(providers)
         ctx.set_progress("search", current=0, total=total_providers, unit="providers")
         for idx, provider_item in enumerate(providers):
@@ -4646,10 +4679,16 @@ class EmulationController:
                     ctx,
                 )
                 all_candidates.extend(results)
+                health.record_success(provider_item.name)
             except SteamZeroError as exc:
                 provider_errors[provider_item.name] = exc.code
+                health.record_failure(provider_item.name, error_code=exc.code)
             except Exception:
                 provider_errors[provider_item.name] = "E-SCRAPE-PROVIDER-UNREACHABLE"
+                health.record_failure(
+                    provider_item.name,
+                    error_code="E-SCRAPE-PROVIDER-UNREACHABLE",
+                )
             ctx.set_progress(
                 "search",
                 current=idx + 1,
@@ -4689,10 +4728,16 @@ class EmulationController:
         elif provider_errors or not providers:
             state.metadata_state = "degraded"
             if not providers:
-                state.reason = (
-                    "Nenhum provider remoto configurado; mídia local/cache e "
-                    "ícone seguro da plataforma foram preservados."
-                )
+                if skip_providers:
+                    state.reason = (
+                        "Providers interrompidos por quota nesta execução; mídia "
+                        "local/cache e ícone seguro da plataforma foram preservados."
+                    )
+                else:
+                    state.reason = (
+                        "Nenhum provider remoto configurado; mídia local/cache e "
+                        "ícone seguro da plataforma foram preservados."
+                    )
             else:
                 state.reason = (
                     "Providers remotos falharam; mídia local/cache e fallback "
@@ -4792,7 +4837,10 @@ class EmulationController:
         skipped = 0
         updated = 0
         failures = 0
+        no_candidates = 0
         provider_errors: dict[str, str] = {}
+        provider_details: dict[str, dict[str, Any]] = {}
+        interrupted_providers: set[str] = set()
         ctx.set_progress("games", current=0, total=total, unit="games")
         with self._store_factory() as store:
             store.migrate()
@@ -4831,9 +4879,26 @@ class EmulationController:
                             "local_media_url": local_url,
                         },
                     )
-                    search_result = self._execute_media_search(store, search_job, ctx)
+                    search_result = self._execute_media_search(
+                        store,
+                        search_job,
+                        ctx,
+                        skip_providers=interrupted_providers,
+                    )
                     for provider, code in search_result["provider_errors"].items():
                         provider_errors[str(provider)] = str(code)
+                        details = provider_details.setdefault(
+                            str(provider), {"code": str(code), "gamesAffected": 0}
+                        )
+                        details["code"] = str(code)
+                        details["gamesAffected"] = int(details["gamesAffected"]) + 1
+                        if code == "E-SCRAPE-QUOTA-EXCEEDED":
+                            interrupted_providers.add(str(provider))
+                    if (
+                        int(search_result["candidate_count"]) == 0
+                        and not search_result["provider_errors"]
+                    ):
+                        no_candidates += 1
                     processed += 1
                     if overwrite and int(search_result["candidate_count"]) > 0:
                         selected = manager.select_candidate(game_id, 0)
@@ -4867,15 +4932,27 @@ class EmulationController:
                     unit="games",
                     current_item=title,
                 )
+        outcome = "degraded" if provider_errors else "partial" if no_candidates else "success"
         return {
             "mode": mode,
             "overwrite": overwrite,
+            "outcome": outcome,
             "total": total,
             "processed": processed,
             "skipped": skipped,
             "updated": updated,
             "failures": failures,
+            "no_candidates": no_candidates,
             "provider_errors": provider_errors,
+            "provider_details": {
+                provider: {
+                    "code": str(details["code"]),
+                    "category": provider_error_category(str(details["code"])),
+                    "gamesAffected": int(details["gamesAffected"]),
+                }
+                for provider, details in provider_details.items()
+            },
+            "interrupted_providers": sorted(interrupted_providers),
         }
 
     @staticmethod

@@ -161,6 +161,34 @@ def is_registered(code: str) -> bool:
     return code in ERROR_CATALOG
 
 
+#: Categoria estável por código de erro de provider de mídia (G28). A UI e a
+#: persistência de health usam a categoria, nunca o texto do catálogo.
+PROVIDER_ERROR_CATEGORY: dict[str, str] = {
+    "E-SCRAPE-QUOTA-EXCEEDED": "quota",
+    "E-SCRAPE-RATE-LIMITED": "rate-limit",
+    "E-SCRAPE-CREDENTIAL-REJECTED": "auth",
+    "E-SCRAPE-CREDENTIAL-MISSING": "auth",
+    "E-SCRAPE-PROVIDER-UNREACHABLE": "unreachable",
+    "E-SCRAPE-OFFLINE": "unreachable",
+    "E-SUPPLY-OFFLINE": "unreachable",
+    "E-SUPPLY-REMOTE-FAILED": "unreachable",
+    "E-NET-OFFLINE": "unreachable",
+    "E-NET-TIMEOUT": "unreachable",
+    "E-NET-HOST-DENIED": "unreachable",
+    "E-SCRAPE-HTTP-ERROR": "http",
+    "E-NET-HTTP": "http",
+    "E-SCRAPE-DOWNLOAD-FAILED": "download",
+    "E-SCRAPE-CORRUPT-MEDIA": "corrupt",
+    "E-SCRAPE-CACHE-FULL": "cache",
+    "E-SCRAPE-VAULT-UNAVAILABLE": "vault",
+}
+
+
+def provider_error_category(code: str) -> str:
+    """Categoria estável para erro de provider de mídia (default: ``generic``)."""
+    return PROVIDER_ERROR_CATEGORY.get(code, "generic")
+
+
 def build_error(
     code: str,
     *,
