@@ -212,6 +212,16 @@ class TestRoutingMatrix:
         assert status["version"] == expected
         assert status["origin"] == "flatpak"
 
+    def test_bundled_eol_source_stays_unavailable_with_flag(self, store: state.StateStore) -> None:
+        lifecycle = bundled_with_fake(
+            FakeFlatpak(FlatpakState(False, "org.duckstation.DuckStation")), store
+        )
+        status = lifecycle.status("duckstation")
+        assert status["state"] == "unavailable"
+        assert status["endOfLife"] is True
+        assert status["installable"] is False
+        assert "fim de vida" in status["detail"]
+
     def test_flatpak_degraded_preserves_commit(self, store: state.StateStore) -> None:
         fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
         lifecycle = bundled_with_fake(fake, store)

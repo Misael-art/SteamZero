@@ -646,8 +646,13 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 "id": f"game.launch:{published[0]['id']}",
                 "label": "Jogar",
                 "enabled": False,
-                "reason": "Selecione um emulador instalado para este jogo.",
+                "reason": "Selecione um emulador para este jogo.",
                 "requiresConfirmation": False,
+            },
+            "launchReadiness": {
+                "state": "blocked",
+                "emulator": "unconfigured",
+                "reason": "Selecione um emulador para este jogo.",
             },
             "deleteAction": {
                 "id": f"game.delete:{published[0]['id']}",

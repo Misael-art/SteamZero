@@ -420,6 +420,7 @@
         "installState": {
           "enum": [
             "installed",
+            "degraded",
             "not-installed",
             "unverified"
           ]
@@ -427,6 +428,7 @@
         "sourceState": {
           "enum": [
             "verified",
+            "degraded",
             "unverified",
             "end-of-life"
           ]
@@ -517,6 +519,38 @@
             "string",
             "null"
           ]
+        },
+        "launchReadiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "emulator",
+            "reason"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "ready",
+                "blocked"
+              ]
+            },
+            "emulator": {
+              "enum": [
+                "installed",
+                "degraded",
+                "not-installed",
+                "unconfigured",
+                "unverified"
+              ]
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       }
     },

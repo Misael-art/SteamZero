@@ -102,6 +102,7 @@ class LifecycleRoute:
     installable: bool
     reason: str | None = None
     target_version: str | None = None
+    end_of_life: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -139,6 +140,7 @@ def route_for(manifest: AdapterManifest) -> LifecycleRoute:
                 "none",
                 False,
                 "a fonte fixada deste componente está marcada como fim de vida",
+                end_of_life=True,
             )
         return LifecycleRoute(
             manifest.id, "", "none", False, "o componente não declara fonte instalável"
@@ -224,7 +226,7 @@ def unavailable_status(route: LifecycleRoute) -> dict[str, Any]:
         "targetVersion": route.target_version,
         "origin": None,
         "detail": route.reason,
-        "endOfLife": False,
+        "endOfLife": route.end_of_life,
     }
 
 
@@ -246,7 +248,7 @@ def failed_status(route: LifecycleRoute, error: Exception) -> dict[str, Any]:
         "targetVersion": route.target_version,
         "origin": None,
         "detail": detail,
-        "endOfLife": False,
+        "endOfLife": route.end_of_life,
     }
 
 

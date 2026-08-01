@@ -172,6 +172,7 @@ Item {
             return published
         const installed = emulators.findIndex(function(item) {
             return item.installState === "installed"
+                || item.installState === "degraded"
                 || item.state === "installed" || item.state === "ready"
         })
         return installed >= 0 ? installed : normalizedIndex(emulatorIndex, emulators)
@@ -593,6 +594,7 @@ Item {
     function installedEmulatorCount() {
         return emulators.filter(function(emulator) {
             return emulator.installState === "installed"
+                || emulator.installState === "degraded"
                 || emulator.state === "installed" || emulator.state === "ready"
         }).length
     }

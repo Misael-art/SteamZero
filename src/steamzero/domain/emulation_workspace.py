@@ -190,6 +190,10 @@ def _emulator_rows(
         install_state = str(row.get("installState", "unverified"))
         if install_state == "installed":
             state, status_label = "ready", "Instalado"
+        elif install_state == "degraded":
+            # G27: degradado nunca colapsa em "não instalado" — arquivos existem
+            # e o motivo do drift vem preservado para a UI oferecer "Reparar".
+            state, status_label = "attention", "Reparar"
         elif install_state == "not-installed":
             state, status_label = "unavailable", "Não instalado"
         else:
@@ -219,7 +223,7 @@ def _readiness(
         )
     if "unverified" in requirement_states:
         blockers.append("Valide keys e firmware para concluir o diagnóstico de compatibilidade.")
-    if not any(item.get("installState") == "installed" for item in emulators):
+    if not any(item.get("installState") in {"installed", "degraded"} for item in emulators):
         blockers.append("Nenhum emulador Switch foi confirmado como instalado.")
 
     if "missing" in requirement_states:
