@@ -541,6 +541,58 @@ def _cmd_state_export(args: list[str], correlation_id: str) -> tuple[dict[str, A
     return env, EXIT_OK
 
 
+def _cmd_state_audit(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # G25: auditoria read-only de inconsistências de estado (jobs stalados,
+    # staging/backups/journals órfãos). Não muta nada.
+    from steamzero.domain import state_audit
+
+    with StateStore() as store:
+        store.migrate()
+        report = state_audit.audit(store)
+    data = {
+        "clean": report.clean,
+        "staleJobs": report.stale_jobs,
+        "orphanStaging": report.orphan_staging,
+        "orphanBackups": report.orphan_backups,
+        "orphanJournals": report.orphan_journals,
+    }
+    status = "ok" if report.clean else "degraded"
+    env = build_envelope(
+        "state", "audit", status=status, data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_plan(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # G25/A42 fase 1: plano de quarentena dos artefatos órfãos. Persiste plano
+    # com token; o operador revisa antes da fase 2. Não muta artefatos.
+    from steamzero.domain import state_audit
+
+    with StateStore() as store:
+        store.migrate()
+        report = state_audit.audit(store)
+    data = state_audit.plan_cleanup(report)
+    env = build_envelope(
+        "state", "cleanup-plan", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # G25/A42 fase 2: move artefatos órfãos para quarentena (recoverable, nunca
+    # deleta). Requer --plan-id + --confirm do plano revisado. Aplicação no host
+    # exige autorização humana (AGENTS.md §1).
+    from steamzero.domain import state_audit
+
+    plan_id = _required_flag(args, "--plan-id")
+    confirm_token = _required_flag(args, "--confirm")
+    data = state_audit.apply_cleanup(plan_id, confirm_token)
+    env = build_envelope(
+        "state", "cleanup-apply", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
 def _component_runtime(store: StateStore) -> tuple[AdapterRegistry, FlatpakExecutor]:
     # Imports locais mantêm doctor/state utilizáveis mesmo sem o binário Flatpak.
     from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
@@ -1575,6 +1627,9 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("health", "apply"): _cmd_health_apply,
     ("events", "page"): _cmd_events_page,
     ("state", "export"): _cmd_state_export,
+    ("state", "audit"): _cmd_state_audit,
+    ("state", "cleanup-plan"): _cmd_state_cleanup_plan,
+    ("state", "cleanup-apply"): _cmd_state_cleanup_apply,
     ("component", "list"): _cmd_component_list,
     ("component", "status"): _cmd_component_status,
     ("component", "plan"): _cmd_component_plan,

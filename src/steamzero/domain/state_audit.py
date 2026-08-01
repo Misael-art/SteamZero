@@ -17,11 +17,12 @@ mesmo resultado. A auditoria nunca muta estado — é leitura.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths
+from steamzero.core import fs, ids, paths
 from steamzero.core.state import StateStore
 
 
@@ -96,3 +97,78 @@ def audit(store: StateStore) -> AuditReport:
             report.orphan_journals.append(name)
 
     return report
+
+
+# -- cleanup em 2 fases (G25/A42) ------------------------------------------
+# Fase 1 (plan): lista artefatos órfãos e devolve um plano persistido com
+# token de confirmação. Fase 2 (apply): move os artefatos para quarentena
+# (recoverable — NUNCA deleta). A aplicação no host exige autorização humana
+# (AGENTS.md §1); os comandos existem, mas não rodam contra o acervo sem isso.
+
+
+@dataclass
+class CleanupItem:
+    """Um artefato órfão candidato à quarentena."""
+
+    kind: str  # "staging" | "backup" | "journal"
+    name: str
+    source: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {"kind": self.kind, "name": self.name, "source": self.source}
+
+
+def plan_cleanup(report: AuditReport) -> dict[str, Any]:
+    """Constrói o plano de quarentena a partir de um AuditReport.
+
+    Persiste o plano em ``plans_dir`` com um token de confirmação para que
+    ``apply_cleanup`` só execute contra o plano exato revisado pelo operador.
+    """
+    items: list[CleanupItem] = []
+    for name in report.orphan_staging:
+        items.append(CleanupItem("staging", name, str(paths.staging_for(name))))
+    for name in report.orphan_backups:
+        items.append(CleanupItem("backup", name, str(paths.backup_for(name))))
+    for name in report.orphan_journals:
+        items.append(CleanupItem("journal", name, str(paths.journal_dir() / name)))
+
+    plan_id = ids.new_ulid()
+    confirm_token = ids.new_ulid()
+    payload = {
+        "planId": plan_id,
+        "confirmToken": confirm_token,
+        "items": [it.to_dict() for it in items],
+        "count": len(items),
+    }
+    paths.plans_dir().mkdir(parents=True, exist_ok=True)
+    fs.write_atomic_text(
+        paths.plan_path(plan_id),
+        json.dumps(payload, ensure_ascii=False, indent=2),
+    )
+    return payload
+
+
+def apply_cleanup(plan_id: str, confirm_token: str) -> dict[str, Any]:
+    """Move os artefatos do plano para ``quarantine_dir`` (recoverable).
+
+    Nunca deleta: o operador pode inspecionar/restaurar da quarentena. Requer o
+    token exato do plano — proteção contra aplicar um plano desatualizado.
+    """
+    plan_file = paths.plan_path(plan_id)
+    if not plan_file.is_file():
+        raise FileNotFoundError(f"plano de cleanup inexistente: {plan_id}")
+    payload = json.loads(plan_file.read_text(encoding="utf-8"))
+    if payload.get("confirmToken") != confirm_token:
+        raise PermissionError("token de confirmação não corresponde ao plano")
+    quarantine = paths.quarantine_dir()
+    quarantine.mkdir(parents=True, exist_ok=True)
+    quarantined: list[dict[str, str]] = []
+    for item in payload["items"]:
+        src = Path(item["source"])
+        if not src.exists():
+            continue
+        dest = quarantine / item["kind"] / item["name"]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        fs.move_tree(src, dest)
+        quarantined.append({"kind": item["kind"], "name": item["name"], "quarantined": str(dest)})
+    return {"planId": plan_id, "quarantined": quarantined, "count": len(quarantined)}
