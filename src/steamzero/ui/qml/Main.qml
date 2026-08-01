@@ -936,9 +936,12 @@ ApplicationWindow {
         }
         if (action.id.indexOf("emulator.install:") === 0
                 || action.id.indexOf("emulator.update:") === 0
-                || action.id.indexOf("emulator.uninstall:") === 0) {
+                || action.id.indexOf("emulator.uninstall:") === 0
+                || action.id.indexOf("emulator.repair:") === 0) {
             const parts = action.id.split(":")
-            const lifecycleAction = parts[0].split(".")[1]
+            let lifecycleAction = parts[0].split(".")[1]
+            if (lifecycleAction === "repair")
+                lifecycleAction = "update"
             requestAction("emulator.plan", {
                 "emulatorId": parts[1], "action": lifecycleAction
             }, function(response) {
