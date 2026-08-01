@@ -39,10 +39,7 @@ class AuditReport:
     def clean(self) -> bool:
         """True quando nenhuma inconsistência foi encontrada."""
         return not (
-            self.stale_jobs
-            or self.orphan_staging
-            or self.orphan_backups
-            or self.orphan_journals
+            self.stale_jobs or self.orphan_staging or self.orphan_backups or self.orphan_journals
         )
 
 

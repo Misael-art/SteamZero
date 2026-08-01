@@ -211,11 +211,7 @@ class JobManager:
                     self._transition(stale, "interrupted")
                     if stale.operation_id:
                         result = transaction.recover_operation(stale.operation_id)
-                        terminal = (
-                            "completed"
-                            if result.outcome == "kept"
-                            else "rolled-back"
-                        )
+                        terminal = "completed" if result.outcome == "kept" else "rolled-back"
                         self._transition(stale, terminal)
                     else:
                         self._transition(stale, "cancelled")

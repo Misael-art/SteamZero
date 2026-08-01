@@ -557,9 +557,7 @@ def _cmd_state_audit(_args: list[str], correlation_id: str) -> tuple[dict[str, A
         "orphanJournals": report.orphan_journals,
     }
     status = "ok" if report.clean else "degraded"
-    env = build_envelope(
-        "state", "audit", status=status, data=data, correlation_id=correlation_id
-    )
+    env = build_envelope("state", "audit", status=status, data=data, correlation_id=correlation_id)
     return env, EXIT_OK
 
 

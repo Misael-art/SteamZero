@@ -58,9 +58,7 @@ def test_doctor_reports_g25_audit_checks_when_clean(
     assert data["orphanJournals"] == 0
 
 
-def test_doctor_warns_on_stale_jobs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_doctor_warns_on_stale_jobs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # G25: um job running (stalado) faz jobs.stale virar warn — elimina o falso
     # verde operacional que motivou o G25.
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
@@ -85,9 +83,7 @@ def test_doctor_warns_on_stale_jobs(
     assert data["staleJobs"] == 1
 
 
-def test_doctor_warns_on_orphan_staging(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_doctor_warns_on_orphan_staging(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # G25: staging sem operação no banco é órfão -> staging.orphan warn.
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     from steamzero.core import fs as core_fs

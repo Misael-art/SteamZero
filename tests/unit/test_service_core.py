@@ -158,9 +158,7 @@ def test_safe_socket_path_and_direct_serve_cleanup(
     assert core._server_from_systemd() is None
 
 
-def test_serve_recovers_stale_jobs_at_boot(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_serve_recovers_stale_jobs_at_boot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # G25: serve() chama recover() no boot; jobs running de um processo anterior
     # são levados a terminal. Recovery é idempotente e best-effort (§8): serve()
     # retorna 0 mesmo quando há trabalho de recovery a fazer.

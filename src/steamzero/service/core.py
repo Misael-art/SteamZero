@@ -455,8 +455,7 @@ def _recover_at_boot(store: StateStore) -> None:
                 "boot.recovery.jobs",
                 count=len(recovered),
                 jobs=[
-                    {"id": j.id, "state": j.state, "error_code": j.error_code}
-                    for j in recovered
+                    {"id": j.id, "state": j.state, "error_code": j.error_code} for j in recovered
                 ],
             )
     except Exception as exc:  # recovery é best-effort; §8: nunca trava o boot
@@ -470,9 +469,7 @@ def _recover_at_boot(store: StateStore) -> None:
                 outcomes=[r.outcome for r in results],
             )
     except Exception as exc:  # pragma: no cover - best-effort
-        logger.warning(
-            "boot.recovery.operations-failed", error=type(exc).__name__, detail=str(exc)
-        )
+        logger.warning("boot.recovery.operations-failed", error=type(exc).__name__, detail=str(exc))
 
 
 def serve(*, systemd: bool = False) -> int:
