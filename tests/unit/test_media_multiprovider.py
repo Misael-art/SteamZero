@@ -107,6 +107,7 @@ def _plant_library(controller: EmulationController, tmp_path: Path, count: int) 
                 "id": f"game-{index}",
                 "name": f"Game {index}",
                 "state": "ready",
+                "statusLabel": "NSP · Identificado",
                 "path": str(rom),
                 "size": 2048,
                 "titleId": f"0100ABCDEF0{index:02d}000",
@@ -240,6 +241,8 @@ def test_retry_uses_bounded_exponential_backoff_then_succeeds(tmp_path: Path) ->
 
 def _with_data_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
 
 def test_global_job_quota_interrupts_provider_for_remaining_games(
@@ -384,6 +387,15 @@ def test_global_job_result_persists_and_rebuilds_workspace_after_restart(
     assert details["category"] == "quota"
     assert details["state"] == "active"
     assert details["gamesAffected"] == 1
+
+    workspace = restarted.snapshot({"context": {}})["platforms"][0]["areaData"]["media"]
+    assert workspace["mediaPipeline"]["providerErrors"] == {"screenscraper": 1}
+    assert (
+        workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["code"]
+        == "E-SCRAPE-QUOTA-EXCEEDED"
+    )
+    assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["category"] == "quota"
+    assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["gamesAffected"] == 1
 
 
 def test_later_successful_search_clears_persisted_error_and_health(
