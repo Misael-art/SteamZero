@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "component-plan-v2.schema.json",
+  "title": "Plano de componente executor-independente (envelope G27)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "planId",
+    "confirmToken",
+    "adapterId",
+    "executor",
+    "action",
+    "status",
+    "createdAt",
+    "expiresAt",
+    "rollbackGuarantee",
+    "sourceFingerprint",
+    "delegated",
+    "preview"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "planId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+    "confirmToken": {"type": "string", "minLength": 1},
+    "adapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "executor": {"enum": ["engine", "flatpak"]},
+    "action": {"enum": ["install", "update", "uninstall", "noop"]},
+    "status": {"enum": ["pending", "applied", "aborted"]},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "rollbackGuarantee": {"type": "string", "minLength": 1},
+    "sourceFingerprint": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["portable", "flatpak"]}
+      }
+    },
+    "delegated": {"type": "object", "minProperties": 1},
+    "preview": {"type": "string", "minLength": 1}
+  }
+}

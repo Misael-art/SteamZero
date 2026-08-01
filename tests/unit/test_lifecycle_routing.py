@@ -128,7 +128,7 @@ class TestNormalizedStatus:
         route = lifecycle.route_for(registry.get("duckstation"))
         payload = lifecycle.unavailable_status(route)
         assert payload["installable"] is False
-        assert payload["reason"]
+        assert payload["detail"]  # G27: motivo dizível, sob a chave normalizada
         assert payload["state"] == "unavailable"
 
 
