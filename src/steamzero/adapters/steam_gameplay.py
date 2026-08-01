@@ -22,6 +22,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from steamzero.adapters.gamemode_probe import GameModeProbe
 from steamzero.adapters.host_preparation import snapshot as host_preparation_snapshot
 from steamzero.adapters.lsfg import LSFG_APP_ID, LsfgInstaller
 from steamzero.adapters.steam_launch_options import SteamLaunchOptionsManager
@@ -33,6 +34,7 @@ from steamzero.core import ids, journal, paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.domain import vkbasalt
+from steamzero.domain.gamemode import GameModeTruth, build_admin_plan
 from steamzero.domain.hud import hud_catalog
 
 Which = Callable[[str], str | None]
@@ -124,6 +126,7 @@ class SteamGameplayController:
         media: SteamMediaManager | None = None,
         vkbasalt_config_root: Path | None = None,
         vkbasalt_manifests: Sequence[Path] | None = None,
+        gamemode_probe: GameModeProbe | None = None,
     ) -> None:
         self._roots = tuple(roots) if roots is not None else _default_roots()
         self._which = which
@@ -167,6 +170,9 @@ class SteamGameplayController:
         self._launch_options = launch_options or SteamLaunchOptionsManager(roots=self._roots)
         self._maintenance = maintenance or SteamMaintenance(roots=self._roots)
         self._media = media or SteamMediaManager(pipeline=None, roots=self._roots)
+        self._gamemode_probe = gamemode_probe or GameModeProbe(
+            which=which, store_factory=store_factory
+        )
         self._plans: dict[str, GameplayPlan] = {}
 
     def snapshot(self, desktop_status: dict[str, Any]) -> dict[str, Any]:
@@ -183,7 +189,8 @@ class SteamGameplayController:
         launcher = self._launcher.status(selected_id)
         if selected_id:
             launcher["configuration"] = self._launch_options.status(selected_id)
-        environment = self._environment(capabilities)
+        gamemode = self._gamemode()
+        environment = self._environment(capabilities, gamemode)
         ready_count = sum(row["state"] == "ready" for row in environment if row["required"])
         required_count = sum(row["required"] for row in environment)
         readiness = round(100 * ready_count / required_count) if required_count else 100
@@ -217,6 +224,7 @@ class SteamGameplayController:
                 "mode": "Modo Desktop",
             },
             "currentProfile": selected_profile,
+            "gamemode": gamemode.to_dict(),
             "truthState": (
                 launcher["state"]
                 if saved
@@ -736,8 +744,21 @@ class SteamGameplayController:
             "lsfg": any(path.is_file() for path in self._lsfg_manifests),
         }
 
+    def _gamemode(self) -> GameModeTruth:
+        """Verdade observada do GameMode; falha de sondagem degrada para unknown."""
+        try:
+            return self._gamemode_probe.probe()
+        except Exception:
+            return GameModeTruth.failure()
+
+    def gamemode_admin_plan(self) -> dict[str, Any]:
+        """Plano administrativo declarativo do GameMode (sem aplicação automática)."""
+        return build_admin_plan(self._gamemode())
+
     @staticmethod
-    def _environment(capabilities: dict[str, bool]) -> list[dict[str, Any]]:
+    def _environment(
+        capabilities: dict[str, bool], gamemode: GameModeTruth
+    ) -> list[dict[str, Any]]:
         definitions = (
             ("steam", "Steam", "Contexto de jogo e runtime", "Steam", True),
             ("gamescope", "Gamescope", "Composição e limite de quadros", "SteamZero", True),
@@ -759,7 +780,7 @@ class SteamGameplayController:
                 False,
             ),
         )
-        return [
+        rows = [
             {
                 "id": key,
                 "name": name,
@@ -775,6 +796,27 @@ class SteamGameplayController:
             }
             for key, name, detail, owner, required in definitions
         ]
+        for index, row in enumerate(rows):
+            if row["id"] != "gamemode":
+                continue
+            rows[index] = {
+                "id": "gamemode",
+                "name": "Feral GameMode",
+                "detail": (
+                    "Ocioso — nenhum jogo usando GameMode"
+                    if gamemode.condition == "idle"
+                    else "Prioridade de CPU e processos"
+                ),
+                "owner": "Steam",
+                "required": True,
+                "state": gamemode.state,
+                "statusLabel": gamemode.status_label,
+                "cause": gamemode.cause,
+                "remediation": gamemode.remediation,
+                "requiresOperator": gamemode.requires_operator,
+            }
+            break
+        return rows
 
     def _basis(self, desktop_status: dict[str, Any]) -> str:
         value = {

@@ -12,13 +12,32 @@ import pytest
 from steamzero.adapters.cast_orchestrator import CastOrchestrator
 from steamzero.adapters.desktop_dashboard import DesktopDashboard, SteamDesktopController
 from steamzero.adapters.flatpak import FlatpakState
+from steamzero.adapters.gamemode_probe import GameModeProbe
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
+from steamzero.domain.gamemode import GameModeTruth, build_truth
 from steamzero.domain.saves import SavesStore
 from steamzero.ports import CaptureConsent
+
+
+def ready_gamemode_probe() -> GameModeProbe:
+    """Probe determinística de happy path: daemon disponível, autorizado, ocioso."""
+    truth = build_truth(
+        binary_state="present",
+        daemon_state="available",
+        authorization_state="authorized",
+        activity_state="idle",
+        effects={"governor": "unknown", "splitLock": "unknown", "ioprio": "unknown"},
+    )
+
+    class FakeProbe(GameModeProbe):
+        def probe(self) -> GameModeTruth:
+            return truth
+
+    return FakeProbe()
 
 
 class FakeFlatpak:
@@ -476,6 +495,7 @@ def test_gameplay_snapshot_reads_real_manifest_and_capabilities(tmp_path: Path) 
         which=lambda command: f"/usr/bin/{command}" if command in available else None,
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         meminfo=meminfo,
+        gamemode_probe=ready_gamemode_probe(),
     )
 
     snapshot = controller.snapshot(
