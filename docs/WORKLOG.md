@@ -3570,3 +3570,29 @@ porque o backend local de automação recusou entrada com a versão instalada do
 
 Detalhes e matriz de evidências:
 `docs/09-operations/A41-CERTIFICATION-RESULT.md`.
+
+## 2026-08-01 — Sessão 48: G27 lifecycle único e estado verdadeiro (branch fix/component-lifecycle-truth-g27)
+
+Fachada `ComponentLifecycle` implementada em `src/steamzero/adapters/lifecycle.py`,
+roteando AppImage/Flatpak pela família da fonte declarada (ADR de roteamento,
+sem execução no plan): status normalizado (state/installed/installable/
+executor/sourceType/version/targetVersion/origin/detail/endOfLife), planos v2
+executor-independentes persistidos em `state/plans` (com `confirmToken`
+compartilhado com o plano delegado), apply revalidando executor + fingerprint
+(E-TX-STALE-PLAN) e ainda aplicando planos Flatpak v1 legados. `degraded` nunca
+colapsa em `missing`; falha de um adapter vira `unavailable` com motivo, sem
+derrubar lista/workspace; fonte end-of-life preserva o flag (teste de contrato
+adicionado).
+
+CLI (`component list/status/plan/apply/rollback/recover`, `--action`) passou a
+usar a fachada; workspace Switch ganhou `installState: degraded`, `sourceState:
+degraded`, `launchReadiness` por jogo com `playAction.enabled` derivado; QML
+trata degradado como presente (seleção/contagem) e despacha `emulator.repair`
+como plano de update; dashboard roteia plan/apply/launch/rollback/linhas de
+componente pela fachada (EOL+ausente continua "Fonte descontinuada", degradado
+vira "Reparar").
+
+Gates na branch: 3341 testes isolados verdes, ruff/mypy/independence/
+boundaries OK. Commits: `eb64180` (G26), `e979f74` (fachada + plano v2),
+`e6f62b0` (CLI), `882522f` (verdade no workspace), `2fdadd7` (repair no QML).
+Nenhum artefato de host tocado; push da branch e PR ficam para o operador.
