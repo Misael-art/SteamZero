@@ -581,7 +581,9 @@ class ComponentLifecycle:
     def stop(self, adapter_id: str) -> dict[str, Any]:
         """Encerra os grupos de processo do componente portátil (SIGTERM)."""
         route = route_for(self._registry.get(adapter_id))
-        if route.executor == "flatpak":
+        if route.executor == "flatpak" or (
+            route.end_of_life and route.source_type in FLATPAK_SOURCES
+        ):
             return {
                 "status": "not-supported",
                 "componentId": adapter_id,
@@ -675,12 +677,16 @@ class ComponentLifecycle:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail=f"plano não está pendente ({envelope.status})"
             )
+        if not all(ord(char) < 128 for char in confirm_token + envelope.confirm_token):
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="confirmToken deve ser ASCII")
         if not secrets.compare_digest(confirm_token, envelope.confirm_token):
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken incorreto")
         try:
             expires_at = datetime.fromisoformat(envelope.expires_at)
         except ValueError as exc:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano inválida") from exc
+        if expires_at.tzinfo is None:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano sem timezone")
         if self._utc_now() > expires_at:
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
 

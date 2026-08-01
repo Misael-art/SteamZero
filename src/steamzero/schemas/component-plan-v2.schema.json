@@ -22,13 +22,19 @@
   "properties": {
     "schemaVersion": {"const": 2},
     "planId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
-    "confirmToken": {"type": "string", "minLength": 1},
+    "confirmToken": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
     "adapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
     "executor": {"enum": ["engine", "flatpak"]},
     "action": {"enum": ["install", "update", "uninstall", "noop"]},
     "status": {"enum": ["pending", "applied", "aborted"]},
-    "createdAt": {"type": "string", "format": "date-time"},
-    "expiresAt": {"type": "string", "format": "date-time"},
+    "createdAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
     "rollbackGuarantee": {"type": "string", "minLength": 1},
     "sourceFingerprint": {
       "type": "object",
@@ -44,10 +50,34 @@
       "minProperties": 1,
       "maxProperties": 1,
       "properties": {
-        "flatpakPlanId": {"type": "string", "minLength": 1},
-        "transactionPlanId": {"type": "string", "minLength": 1}
+        "flatpakPlanId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+        "transactionPlanId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"}
       }
     },
     "preview": {"type": "string", "minLength": 1}
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"executor": {"const": "flatpak"}},
+        "required": ["executor"]
+      },
+      "then": {
+        "properties": {
+          "delegated": {"required": ["flatpakPlanId"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"executor": {"const": "engine"}},
+        "required": ["executor"]
+      },
+      "then": {
+        "properties": {
+          "delegated": {"required": ["transactionPlanId"]}
+        }
+      }
+    }
+  ]
 }

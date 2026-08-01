@@ -409,6 +409,61 @@ class TestPlanSurvivesProcess:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
         assert error.value.code == "E-STATE-INTEGRITY"
 
+    def test_v2_plan_rejects_executor_delegated_mismatch(self, store: state.StateStore) -> None:
+        payload = executable_payload()
+        _first, envelope = self._install(store, payload)
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["delegated"] = {"flatpakPlanId": "01J000000000000000000000CC"}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            _first.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_v2_plan_rejects_flatpak_delegated_mismatch(self, store: state.StateStore) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["delegated"] = {"transactionPlanId": "01J000000000000000000000CC"}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_v2_plan_rejects_non_ulid_delegated_id(self, store: state.StateStore) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["delegated"] = {"flatpakPlanId": "nao-ulid"}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_v2_plan_rejects_non_ascii_confirm_token(self, store: state.StateStore) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, "token-ç")
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_v2_plan_rejects_expiry_without_timezone(self, store: state.StateStore) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["expiresAt"] = "2026-08-01T00:00:00"
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
 
 class TestLaunchRouting:
     """launch roteia pela família da fonte, inclusive EOL instalado."""
@@ -428,6 +483,15 @@ class TestLaunchRouting:
         result = lifecycle.launch("duckstation")
         assert result["status"] == "started"
         assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)]
+
+    def test_stop_flatpak_eol_is_not_supported(self, store: state.StateStore) -> None:
+        duckstation = AdapterRegistry.bundled().get("duckstation")
+        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
+        lifecycle = bundled_with_fake(fake, store)
+        result = lifecycle.stop("duckstation")
+        assert result["status"] == "not-supported"
+        assert "Flatpak" in result["detail"]
 
 
 class TestRollbackRouting:

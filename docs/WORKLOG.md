@@ -3592,11 +3592,6 @@ como plano de update; dashboard roteia plan/apply/launch/rollback/linhas de
 componente pela fachada (EOL+ausente continua "Fonte descontinuada", degradado
 vira "Reparar").
 
-Gates na branch: 3347 testes isolados verdes, ruff/mypy/independence/
-boundaries OK. Commits: `eb64180` (G26), `e979f74` (fachada + plano v2),
-`e6f62b0` (CLI), `882522f` (verdade no workspace), `2fdadd7` (repair no QML).
-Nenhum artefato de host tocado; push da branch e PR ficam para o operador.
-
 Rodada de revisão (mesma sessão): as cinco falhas apontadas pelo avaliador
 foram corrigidas com regressões próprias no commit `d740b76` — snapshot
 sobrevive a componente degradado (`payload_path` guardado), `unavailable`
@@ -3607,4 +3602,13 @@ verdade observada. Segunda rodada: `launch()` roteia Flatpak EOL instalado
 para o executor correto (não mais pelo engine), degradado não recebe mais
 `emulator.launch`, schema v2 fecha `delegated` (additionalProperties false,
 exatamente uma chave) e rejeita raiz JSON não-objeto, e o dashboard repassa
-as injeções `which`/`spawn` e respeita `installable=false` na ação.
+as injeções `which`/`spawn` e respeita `installable=false` na ação. Terceira
+rodada: schema v2 amarra executor↔chave delegada (`flatpak` exige
+`flatpakPlanId`, `engine` exige `transactionPlanId`), exige ULID nos IDs
+delegados, confirmToken ASCII (base64url) e timestamps com offset de timezone
+(sem `format_checker` no validador, o pattern é a única defesa real); o
+`apply` ganhou guards em profundidade (ASCII antes do `compare_digest`,
+timezone antes da comparação com UTC) e `stop()` passou a tratar Flatpak EOL
+como Flatpak, não como portátil.
+
+Gates: 3358 testes isolados verdes, ruff/mypy/independence/boundaries OK.
