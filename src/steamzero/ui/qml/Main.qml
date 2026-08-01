@@ -188,7 +188,7 @@ ApplicationWindow {
         "environment": [
             {"id": "steam", "name": "Steam", "detail": "Contexto de jogo e runtime", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
             {"id": "gamescope", "name": "Gamescope", "detail": "Composição e limite de quadros", "owner": "SteamZero", "required": true, "state": "missing", "statusLabel": "ausente"},
-            {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente"},
+            {"id": "gamemode", "name": "Feral GameMode", "detail": "Prioridade de CPU e processos", "owner": "Steam", "required": true, "state": "missing", "statusLabel": "ausente", "cause": "A bridge local ainda não publicou a verificação do GameMode.", "remediation": "Abrir Sistema para diagnosticar a instalação do Feral GameMode.", "requiresOperator": false},
             {"id": "mangohud", "name": "MangoHud", "detail": "Métricas durante o jogo", "owner": "SteamZero", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
             {"id": "mangoapp", "name": "MangoApp", "detail": "Overlay compatível com Gamescope", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
             {"id": "vkbasalt", "name": "vkBasalt", "detail": "Pós-processamento Vulkan", "owner": "Sistema", "required": false, "state": "missing", "statusLabel": "ausente, opcional"},
