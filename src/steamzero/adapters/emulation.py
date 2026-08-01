@@ -36,6 +36,7 @@ from steamzero.adapters.converters import (
 )
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
+from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.mods.build_id_scanner import BuildIdScanner
 from steamzero.adapters.mods.composite_catalog import CompositeModCatalog
 from steamzero.adapters.mods.github_mod_source import GithubModSource
@@ -61,7 +62,10 @@ from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import (
+    build_switch_workspace,
+    compute_readiness,
+)
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import find_core
 from steamzero.domain.library import PlatformRomScanner
@@ -460,6 +464,15 @@ class EmulationController:
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
+        # G27: o probe do catálogo só sabe "instalado ou não"; a prontidão
+        # global precisa das linhas observadas do host, senão um emulador
+        # degradado produz 100% mesmo com drift.
+        truth_state, truth_label, readiness = compute_readiness(
+            {"keys": key_status, "firmware": firmware_status}, emulator_rows
+        )
+        platform["state"] = truth_state
+        platform["statusLabel"] = truth_label
+        platform["readiness"] = readiness
         configured_default = global_settings.get("defaultEmulatorId")
         primary_id, primary_source = _resolve_primary_emulator(
             emulator_rows,
@@ -483,35 +496,42 @@ class EmulationController:
             "source": primary_source,
         }
         for emulator in emulator_rows:
-            installed = emulator["installState"] == "installed"
+            install_state = emulator["installState"]
+            degraded = install_state == "degraded"
+            installed = install_state in {"installed", "degraded"}
             is_default = emulator["id"] == primary_id
             emulator["isDefault"] = is_default
             health = emulator["health"]
             health["firmwareReady"] = firmware_status["status"] == "ok"
-            ready = bool(
-                installed
-                and health["versionCurrent"]
-                and health["keysReady"]
-                and health["firmwareReady"]
-            )
-            health["state"] = "ready" if ready else "degraded" if installed else "unavailable"
-            missing: list[str] = []
-            if not installed:
-                missing.append("instalação")
-            if installed and not health["versionCurrent"]:
-                missing.append("atualização")
-            if installed and not health["keysReady"]:
-                missing.append("keys")
-            if not health["firmwareReady"]:
-                missing.append("firmware")
-            health["reason"] = (
-                "Emulador, versão, keys e firmware verificados."
-                if ready
-                else f"Pendente: {', '.join(missing)}."
-            )
+            if degraded:
+                # O motivo do drift vem da linha (status real); recomputar aqui
+                # derrubaria em "Pendente: instalação" — mentira sobre o host.
+                health["state"] = "degraded"
+            else:
+                ready = bool(
+                    installed
+                    and health["versionCurrent"]
+                    and health["keysReady"]
+                    and health["firmwareReady"]
+                )
+                health["state"] = "ready" if ready else "degraded" if installed else "unavailable"
+                missing: list[str] = []
+                if not installed:
+                    missing.append("instalação")
+                if installed and not health["versionCurrent"]:
+                    missing.append("atualização")
+                if installed and not health["keysReady"]:
+                    missing.append("keys")
+                if not health["firmwareReady"]:
+                    missing.append("firmware")
+                health["reason"] = (
+                    "Emulador, versão, keys e firmware verificados."
+                    if ready
+                    else f"Pendente: {', '.join(missing)}."
+                )
             if installed and not is_default:
                 emulator["actions"].insert(
-                    0,
+                    1 if degraded else 0,
                     self._action(
                         "game.emulator.default",
                         "Definir como padrão",
@@ -2430,38 +2450,84 @@ class EmulationController:
         with self._store_factory() as store:
             store.migrate()
             engine = AdapterEngine(store, registry, self._artifacts)
+            lifecycle = ComponentLifecycle(store, registry, artifacts=self._artifacts)
             for emulator_id, (name, icon_asset) in _emulator_presentation(registry).items():
                 manifest = registry.get(emulator_id)
-                status = engine.status(emulator_id)
+                status = lifecycle.status(emulator_id)
+                state = str(status["state"])
+                degraded = state == "degraded"
+                installed = state in {"installed", "degraded"}
                 source = manifest.preferred_source("appimage", allow_eol=False)
-                installed = status["state"] == "installed"
-                current = str(status.get("version", "—"))
+                current = str(status.get("version") or "—")
                 up_to_date = installed and current == source.version
-                running = bool(
-                    installed and self._managed_process_groups(engine.payload_path(emulator_id))
-                )
+                running = False
+                if installed:
+                    # Degradado não trava o snapshot: payload ausente derruba o
+                    # processo do jogo, mas a central continua navegável.
+                    try:
+                        running = bool(
+                            self._managed_process_groups(engine.payload_path(emulator_id))
+                        )
+                    except SteamZeroError:
+                        running = False
                 keys_ready = bool(installed and self._key_projection_valid(emulator_id))
+                if state == "installed":
+                    row_state, status_label, source_state = "ready", "Instalado", "verified"
+                elif degraded:
+                    row_state, status_label, source_state = "attention", "Reparar", "degraded"
+                elif state == "missing":
+                    row_state, status_label, source_state = (
+                        "unavailable",
+                        "Não instalado",
+                        "verified",
+                    )
+                else:
+                    row_state, status_label, source_state = (
+                        "unverified",
+                        "Não verificado",
+                        "unverified",
+                    )
+                install_state = (
+                    "installed"
+                    if state == "installed"
+                    else "degraded"
+                    if degraded
+                    else "not-installed"
+                )
                 actions = (
                     [
-                        self._action(f"emulator.launch:{emulator_id}", "Abrir"),
                         self._action(
-                            f"emulator.update:{emulator_id}",
-                            "Verificar atualização" if up_to_date else "Atualizar",
+                            f"emulator.repair:{emulator_id}",
+                            "Reparar",
                             confirmation=True,
-                        ),
-                        self._action(
-                            f"emulator.uninstall:{emulator_id}",
-                            "Desinstalar",
-                            confirmation=True,
-                        ),
+                        )
                     ]
-                    if installed
-                    else [
+                    if degraded
+                    else []
+                )
+                if installed:
+                    if not degraded:
+                        actions.append(self._action(f"emulator.launch:{emulator_id}", "Abrir"))
+                    actions.extend(
+                        [
+                            self._action(
+                                f"emulator.update:{emulator_id}",
+                                "Verificar atualização" if up_to_date else "Atualizar",
+                                confirmation=True,
+                            ),
+                            self._action(
+                                f"emulator.uninstall:{emulator_id}",
+                                "Desinstalar",
+                                confirmation=True,
+                            ),
+                        ]
+                    )
+                else:
+                    actions.append(
                         self._action(
                             f"emulator.install:{emulator_id}", "Instalar", confirmation=True
                         )
-                    ]
-                )
+                    )
                 if installed and not keys_ready:
                     actions.append(
                         self._action(
@@ -2493,13 +2559,13 @@ class EmulationController:
                         "name": name,
                         "iconAsset": icon_asset,
                         "platform": "switch",
-                        "state": "ready" if installed else "unavailable",
-                        "statusLabel": "Instalado" if installed else "Não instalado",
-                        "installState": "installed" if installed else "not-installed",
-                        "sourceState": "verified",
-                        "installable": True,
+                        "state": row_state,
+                        "statusLabel": status_label,
+                        "installState": install_state,
+                        "sourceState": source_state,
+                        "installable": bool(status["installable"]),
                         "version": current,
-                        "targetVersion": source.version,
+                        "targetVersion": status.get("targetVersion"),
                         "running": running,
                         "isDefault": False,
                         "libraryRootCount": len(roots),
@@ -2509,9 +2575,12 @@ class EmulationController:
                             "keysReady": keys_ready,
                             "firmwareReady": False,
                             "reason": (
-                                "Aguardando verificação completa da plataforma."
-                                if installed
-                                else "Pendente: instalação e firmware."
+                                status.get("detail")
+                                or (
+                                    "Aguardando verificação completa da plataforma."
+                                    if installed
+                                    else "Pendente: instalação e firmware."
+                                )
                             ),
                         },
                         "specialty": "AppImage verificado, configuração e dados preservados",
@@ -5596,7 +5665,9 @@ class EmulationController:
     ) -> list[dict[str, Any]]:
         settings = self._load_game_settings(strict=False)
         published = self._shortcuts.managed_game_ids()
-        installed = {str(row["id"]) for row in emulators if row.get("installState") == "installed"}
+        emulator_states = {
+            str(row["id"]): str(row.get("installState") or "unverified") for row in emulators
+        }
         enriched: list[dict[str, Any]] = []
         with self._store_factory() as store:
             store.migrate()
@@ -5626,22 +5697,38 @@ class EmulationController:
                 game_id = str(game["id"])
                 selected = self._settings_for_game_with_global(game, settings)
                 emulator_id = selected.get("emulatorId")
-                emulator_ready = isinstance(emulator_id, str) and emulator_id in installed
+                emulator_state = (
+                    emulator_states.get(str(emulator_id), "unconfigured")
+                    if isinstance(emulator_id, str)
+                    else "unconfigured"
+                )
+                emulator_ready = emulator_state == "installed"
                 keys_ready = bool(
                     emulator_ready
                     and isinstance(emulator_id, str)
                     and self._key_projection_valid(emulator_id)
                 )
                 firmware_ready = firmware.get("status") == "ok"
-                ready = emulator_ready and keys_ready and firmware_ready
-                if not emulator_ready:
-                    play_reason = "Selecione um emulador instalado para este jogo."
+                launch_ready = emulator_ready and keys_ready and firmware_ready
+                if emulator_state == "unconfigured":
+                    play_reason = "Selecione um emulador para este jogo."
+                elif emulator_state == "degraded":
+                    play_reason = f"Repare o {emulator_id} antes de jogar."
+                elif emulator_state == "not-installed":
+                    play_reason = "Instale o emulador deste jogo antes de jogar."
+                elif emulator_state == "unverified":
+                    play_reason = "Emulador ainda não verificado neste contexto."
                 elif not keys_ready:
                     play_reason = f"Sincronize prod.keys com {emulator_id}."
                 elif not firmware_ready:
                     play_reason = "Importe e valide o firmware antes de jogar."
                 else:
                     play_reason = None
+                launch_readiness = {
+                    "state": "ready" if launch_ready else "blocked",
+                    "emulator": emulator_state,
+                    "reason": play_reason,
+                }
                 mods, cheats = extras.get(game_id, ([], []))
                 mod_candidates, cheat_candidates = catalog_extras.get(game_id, ([], []))
                 title_id = game.get("titleId") or ""
@@ -5841,9 +5928,10 @@ class EmulationController:
                         "playAction": self._action(
                             f"game.launch:{game_id}",
                             "Jogar",
-                            enabled=ready,
-                            reason=play_reason,
+                            enabled=launch_readiness["state"] == "ready",
+                            reason=launch_readiness["reason"],
                         ),
+                        "launchReadiness": launch_readiness,
                         "deleteAction": self._action(
                             f"game.delete:{game_id}", "Excluir ROM", confirmation=True
                         ),

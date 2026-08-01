@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import queue
@@ -76,6 +77,104 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     }
     assert by_id["ryubing"]["running"] is False
     assert by_id["ryubing"]["libraryRootCount"] == 0
+
+
+def _plant_portable_deployment(
+    tmp_path: Path, adapter_id: str, version: str, payload: bytes
+) -> None:
+    """Monta um deployment portátil (current.json + payload) sem download."""
+    from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.core import paths as core_paths
+
+    manifest = AdapterRegistry.bundled().get(adapter_id)
+    component_root = core_paths.data_home() / "components" / adapter_id
+    (component_root / "releases" / version).mkdir(parents=True, exist_ok=True)
+    (component_root / "releases" / version / "payload").write_bytes(payload)
+    (component_root / "current.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "adapterId": adapter_id,
+                "version": version,
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "origin": "appimage",
+                "manifestHash": manifest.manifest_hash,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _plant_degraded_deployment(tmp_path: Path, adapter_id: str, version: str) -> None:
+    """current.json apontando para payload ausente: degradado real do engine."""
+    from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.core import paths as core_paths
+
+    manifest = AdapterRegistry.bundled().get(adapter_id)
+    component_root = core_paths.data_home() / "components" / adapter_id
+    component_root.mkdir(parents=True, exist_ok=True)
+    (component_root / "current.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "adapterId": adapter_id,
+                "version": version,
+                "sha256": "0" * 64,
+                "origin": "appimage",
+                "manifestHash": manifest.manifest_hash,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_degraded_emulator_never_crashes_snapshot(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """G27: payload ausente (degradado) não pode derrubar payload_path()."""
+    controller = _controller(monkeypatch, tmp_path)
+    _plant_degraded_deployment(tmp_path, "citron", "1.0.0")
+
+    platform = controller.snapshot({"context": {}})["platforms"][0]
+    citron = next(row for row in platform["emulators"] if row["id"] == "citron")
+    assert citron["installState"] == "degraded"
+    assert citron["state"] == "attention"
+    assert citron["statusLabel"] == "Reparar"
+    assert citron["running"] is False
+    assert citron["actions"][0]["id"] == "emulator.repair:citron"
+    assert all("emulator.launch" not in action["id"] for action in citron["actions"]), (
+        "degradado não pode oferecer launch — payload_path() falha imediatamente"
+    )
+    assert citron["health"]["state"] == "degraded"
+    assert citron["health"]["reason"] == "payload ausente ou checksum divergente"
+
+
+def test_degraded_emulator_blocks_global_readiness(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """G27: degradado presente nunca produz prontidão global de 100%."""
+    controller = _controller(monkeypatch, tmp_path)
+    _plant_portable_deployment(tmp_path, "eden", "1.0.0", b"#!/bin/sh\necho ok\n")
+    _plant_degraded_deployment(tmp_path, "citron", "1.0.0")
+
+    keys = tmp_path / "prod.keys"
+    keys.write_text(
+        "master_key_00 = " + "01" * 16 + "\n"
+        "master_key_01 = " + "02" * 16 + "\n"
+        "header_key = " + "03" * 16 + "\n"
+        "titlekek_00 = " + "04" * 16 + "\n",
+        encoding="utf-8",
+    )
+    key_plan = controller.plan_action({"actionId": "keys.import", "path": str(keys)})
+    _apply(controller, key_plan)
+
+    firmware = tmp_path / "firmware.nca"
+    firmware.write_bytes(b"owned-firmware")
+    firmware_plan = controller.plan_action(
+        {"actionId": "firmware.import", "path": str(firmware), "version": "18.1.0"}
+    )
+    _apply(controller, firmware_plan)
+
+    platform = controller.snapshot({"context": {}})["platforms"][0]
+    assert platform["state"] == "attention"
+    assert platform["readiness"]["percent"] == 45
+    assert any("Repare emuladores degradados" in item for item in platform["readiness"]["blockers"])
 
 
 def test_snapshot_owns_job_store_in_the_calling_thread(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -646,8 +745,13 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 "id": f"game.launch:{published[0]['id']}",
                 "label": "Jogar",
                 "enabled": False,
-                "reason": "Selecione um emulador instalado para este jogo.",
+                "reason": "Selecione um emulador para este jogo.",
                 "requiresConfirmation": False,
+            },
+            "launchReadiness": {
+                "state": "blocked",
+                "emulator": "unconfigured",
+                "reason": "Selecione um emulador para este jogo.",
             },
             "deleteAction": {
                 "id": f"game.delete:{published[0]['id']}",

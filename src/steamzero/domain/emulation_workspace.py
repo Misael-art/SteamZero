@@ -81,7 +81,7 @@ def build_switch_workspace(
     }
     emulators = _emulator_rows(catalog or SwitchEmulatorCatalog(), probe, emulator_capabilities)
     game_rows = [dict(game) for game in games]
-    state, status_label, readiness = _readiness(requirements, emulators)
+    state, status_label, readiness = compute_readiness(requirements, emulators)
     areas = _areas(requirements, state, switch_manifest)
     area_data = _area_data(requirements, emulators, game_rows)
     area_data = {str(area["id"]): area_data[str(area["id"])] for area in switch_manifest.areas}
@@ -190,6 +190,10 @@ def _emulator_rows(
         install_state = str(row.get("installState", "unverified"))
         if install_state == "installed":
             state, status_label = "ready", "Instalado"
+        elif install_state == "degraded":
+            # G27: degradado nunca colapsa em "não instalado" — arquivos existem
+            # e o motivo do drift vem preservado para a UI oferecer "Reparar".
+            state, status_label = "attention", "Reparar"
         elif install_state == "not-installed":
             state, status_label = "unavailable", "Não instalado"
         else:
@@ -206,9 +210,15 @@ def _emulator_rows(
     return output
 
 
-def _readiness(
+def compute_readiness(
     requirements: Mapping[str, Mapping[str, Any]], emulators: Sequence[Mapping[str, Any]]
 ) -> tuple[str, str, dict[str, Any]]:
+    """Prontidão global a partir das linhas reais (inclui ``degraded``).
+
+    Pública porque o controller recomputa com as linhas observadas do host:
+    o probe do catálogo só sabe "instalado ou não", e um emulador degradado
+    silencioso produziria 100% mesmo com drift.
+    """
     blockers: list[str] = []
     requirement_states = {str(value["status"]) for value in requirements.values()}
     if "missing" in requirement_states:
@@ -219,12 +229,16 @@ def _readiness(
         )
     if "unverified" in requirement_states:
         blockers.append("Valide keys e firmware para concluir o diagnóstico de compatibilidade.")
-    if not any(item.get("installState") == "installed" for item in emulators):
+    if not any(item.get("installState") in {"installed", "degraded"} for item in emulators):
         blockers.append("Nenhum emulador Switch foi confirmado como instalado.")
+    if any(item.get("installState") == "degraded" for item in emulators):
+        blockers.append("Repare emuladores degradados antes de iniciar jogos.")
 
     if "missing" in requirement_states:
         state, label, percent = "blocked", "Ação necessária", 20
-    elif "outdated" in requirement_states:
+    elif "outdated" in requirement_states or any(
+        item.get("installState") == "degraded" for item in emulators
+    ):
         state, label, percent = "attention", "Atualização recomendada", 45
     elif blockers:
         state, label, percent = "unverified", "Verificação pendente", 35

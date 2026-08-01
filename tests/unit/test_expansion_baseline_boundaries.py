@@ -324,14 +324,14 @@ def test_component_rows_cover_missing_degraded_installed_and_eol_states() -> Non
     dolphin = registry.get("dolphin")
     missing = dashboard._component_row(
         dolphin,
-        Executor({"state": "missing", "pinned": True, "endOfLife": False}),  # type: ignore[arg-type]
+        Executor({"state": "missing", "installable": True, "pinned": True, "endOfLife": False}),  # type: ignore[arg-type]
         conflicts=False,
     )
     assert missing["state"] == "missing"
     assert missing["action"]["enabled"] is True
     blocked = dashboard._component_row(
         dolphin,
-        Executor({"state": "degraded", "pinned": True, "endOfLife": False}),  # type: ignore[arg-type]
+        Executor({"state": "degraded", "installable": True, "pinned": True, "endOfLife": False}),  # type: ignore[arg-type]
         conflicts=True,
     )
     assert blocked["state"] == "attention"

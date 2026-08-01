@@ -27,7 +27,8 @@ from steamzero.adapters.desktop_kde import (
 )
 from steamzero.adapters.diagnostics import DiagnosticsService
 from steamzero.adapters.emulation import EmulationController
-from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
+from steamzero.adapters.flatpak import FlatpakCLI
+from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog
@@ -373,9 +374,15 @@ class DesktopDashboard:
         try:
             with self._store_factory() as store:
                 store.migrate()
-                executor = FlatpakExecutor(store, registry, self._flatpak_factory())
+                lifecycle = ComponentLifecycle(
+                    store,
+                    registry,
+                    flatpak_factory=self._flatpak_factory,
+                    which=self._which,
+                    spawn=self._spawn,
+                )
                 components = [
-                    self._component_row(manifest, executor, conflicts=bool(conflicts))
+                    self._component_row(manifest, lifecycle, conflicts=bool(conflicts))
                     for manifest in registry.list()
                     if manifest.id in _COMPONENT_LABELS
                 ]
@@ -777,8 +784,14 @@ class DesktopDashboard:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            executor = FlatpakExecutor(store, registry, self._flatpak_factory())
-            return executor.rollback(operation_id)
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.rollback(operation_id)
 
     def plan_diagnostics_export(
         self, destination: Path, kind: str, desktop_status: dict[str, Any]
@@ -873,37 +886,44 @@ class DesktopDashboard:
     def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
         return self._gameplay.rollback_lsfg_install(operation_id)
 
-    def plan_component(self, adapter_id: str) -> dict[str, Any]:
+    def plan_component(self, adapter_id: str, action: str = "install") -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            executor = FlatpakExecutor(store, registry, self._flatpak_factory())
-            return executor.plan_install(adapter_id).to_dict()
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.plan(adapter_id, action).to_dict()
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            executor = FlatpakExecutor(store, registry, self._flatpak_factory())
-            return executor.apply(plan_id, confirm_token).to_dict()
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.apply(plan_id, confirm_token)
 
     def launch_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            executor = FlatpakExecutor(store, registry, self._flatpak_factory())
-            status = executor.status(adapter_id)
-            if status["state"] == "missing":
-                raise SteamZeroError(
-                    "E-COMPONENT-DEGRADED", detail=f"{adapter_id} não está instalado"
-                )
-            manifest = registry.get(adapter_id)
-            source = manifest.preferred_source("flatpak")
-            executable = self._which("flatpak")
-            if executable is None or source.ref is None:
-                raise SteamZeroError("E-COMPONENT-DEGRADED", detail="runtime Flatpak indisponível")
-            self._spawn((executable, "run", "--user", source.ref))
-            return {"status": "started", "componentId": adapter_id}
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.launch(adapter_id)
 
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
@@ -1036,16 +1056,17 @@ class DesktopDashboard:
             game["tagIds"] = assignments.get(game_ref, [])
 
     def _component_row(
-        self, manifest: AdapterManifest, executor: FlatpakExecutor, *, conflicts: bool
+        self, manifest: AdapterManifest, lifecycle: ComponentLifecycle, *, conflicts: bool
     ) -> dict[str, Any]:
         try:
-            status = executor.status(manifest.id)
+            status = lifecycle.status(manifest.id)
         except Exception as exc:
             return self._degraded_component_row(manifest, exc)
-        source = manifest.preferred_source("flatpak")
         raw_state = str(status["state"])
-        installed = raw_state != "missing"
-        pinned = bool(status.get("pinned"))
+        installed = raw_state in {"installed", "degraded"}
+        version = status.get("version")
+        target_version = status.get("targetVersion")
+        pinned = bool(version and version == target_version)
         end_of_life = bool(status.get("endOfLife"))
 
         if end_of_life and not installed:
@@ -1056,10 +1077,15 @@ class DesktopDashboard:
             status_label = "Não instalado"
         elif raw_state == "degraded":
             state = "attention"
-            status_label = "Atualização disponível"
+            status_label = "Reparar"
+        elif raw_state == "unavailable":
+            state = "attention"
+            status_label = "Indisponível"
         else:
             state = "installed"
             status_label = "Instalado"
+
+        installable = bool(status.get("installable"))
 
         if state == "unsupported":
             action = {"kind": "detail", "label": "Indisponível", "enabled": False}
@@ -1067,11 +1093,23 @@ class DesktopDashboard:
         elif state in {"missing", "attention"}:
             action = {
                 "kind": "component-plan",
-                "label": "Instalar" if state == "missing" else "Atualizar",
-                "enabled": not conflicts,
+                "label": (
+                    "Instalar"
+                    if state == "missing"
+                    else "Reparar"
+                    if raw_state == "degraded"
+                    else "Verificar"
+                ),
+                "enabled": not conflicts and installable,
             }
             blocked_reason = (
-                "Resolva o conflito de controle antes de alterar o componente." if conflicts else ""
+                "Resolva o conflito de controle antes de alterar o componente."
+                if conflicts
+                else str(status.get("detail") or "")
+                if raw_state == "unavailable"
+                else "O componente não declara fonte instalável."
+                if not installable
+                else ""
             )
         else:
             action = {
@@ -1084,9 +1122,8 @@ class DesktopDashboard:
         label, description, icon_name = _COMPONENT_LABELS.get(
             manifest.id, (manifest.id.title(), "Componente de emulação", "applications-games")
         )
-        commit = status.get("commit")
-        version = str(commit)[:8] if isinstance(commit, str) and commit else "—"
-        target_version = source.version[:8]
+        current = str(version) if version else "—"
+        target = str(target_version) if target_version else "—"
         return {
             "id": manifest.id,
             "name": label,
@@ -1095,8 +1132,8 @@ class DesktopDashboard:
             "systems": [_PLATFORM_LABELS.get(value, value) for value in manifest.platforms],
             "state": state,
             "statusLabel": status_label,
-            "versionLabel": version,
-            "targetVersion": target_version,
+            "versionLabel": current[:8],
+            "targetVersion": target[:8],
             "pinned": pinned,
             "endOfLife": end_of_life,
             "detail": (

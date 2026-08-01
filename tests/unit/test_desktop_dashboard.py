@@ -12,6 +12,7 @@ import pytest
 from steamzero.adapters.cast_orchestrator import CastOrchestrator
 from steamzero.adapters.desktop_dashboard import DesktopDashboard, SteamDesktopController
 from steamzero.adapters.flatpak import FlatpakState
+from steamzero.adapters.registry import AdapterRegistry
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.core import ids
 from steamzero.core.errors import SteamZeroError
@@ -217,6 +218,11 @@ def test_collection_catalog_unifies_sources_and_enriches_recent_games() -> None:
     ]
 
 
+class BrokenFlatpak(FakeFlatpak):
+    def status(self, ref: str) -> FlatpakState:
+        raise SteamZeroError("E-COMPONENT-DEGRADED", detail="probe quebrada")
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -280,6 +286,117 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     eden = platform["emulators"][0]
     assert eden["sourceState"] == "verified"
     assert eden["action"]["id"] == "emulator.install:eden"
+
+
+def test_dashboard_unavailable_component_never_looks_installed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=lambda: BrokenFlatpak(),  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda command: "/usr/bin/flatpak" if command == "flatpak" else None,
+        spawn=lambda _argv: None,
+        reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
+    )
+
+    snapshot = dashboard.snapshot(_status())
+    retroarch = next(row for row in snapshot["components"] if row["id"] == "retroarch")
+    assert retroarch["state"] == "attention"
+    assert retroarch["statusLabel"] == "Indisponível"
+    assert retroarch["action"]["kind"] == "component-plan"
+    assert retroarch["action"]["label"] == "Verificar"
+    assert retroarch["blockedReason"] == "E-COMPONENT-DEGRADED: probe quebrada"
+
+
+def test_dashboard_launch_component_uses_injected_which_and_spawn(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    source = AdapterRegistry.bundled().get("retroarch").preferred_source("flatpak")
+    flatpak = FakeFlatpak(
+        {source.ref: FlatpakState(True, source.ref, source.remote, source.version)}
+    )
+    spawned: list[tuple[str, ...]] = []
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda name: "/usr/bin/flatpak" if name == "flatpak" else None,
+        spawn=lambda argv: spawned.append(tuple(argv)) or 0,  # type: ignore[return-value]
+        reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
+    )
+
+    result = dashboard.launch_component("retroarch")
+
+    assert result["status"] == "started"
+    assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)], (
+        "launch_component precisa usar o which/spawn injetados, não os reais"
+    )
+
+
+def test_dashboard_action_respects_installable_false(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=lambda: FakeFlatpak(),  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda command: "/usr/bin/flatpak" if command == "flatpak" else None,
+        spawn=lambda _argv: None,
+        reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
+    )
+    manifest = AdapterRegistry.bundled().get("retroarch")
+    lifecycle = MagicMock()
+    lifecycle.status.return_value = {
+        "id": "retroarch",
+        "state": "unavailable",
+        "installed": False,
+        "installable": False,
+        "executor": "none",
+        "sourceType": "flatpak",
+        "version": None,
+        "targetVersion": "1.0.0",
+        "origin": None,
+        "detail": "sem fonte instalável",
+        "endOfLife": False,
+    }
+
+    row = dashboard._component_row(manifest, lifecycle, conflicts=False)  # type: ignore[attr-defined]
+
+    assert row["action"]["enabled"] is False, (
+        "componente com installable=false não pode oferecer ação habilitada"
+    )
+    assert row["blockedReason"] == "sem fonte instalável"
 
 
 def test_sync_snapshot_lists_real_queue_without_inventing_mutations(

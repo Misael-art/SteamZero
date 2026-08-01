@@ -221,7 +221,7 @@ class AdapterEngine:
 
         result = transaction.apply(prepared.plan.plan_id, confirm_token, smoke=verify_component)
         try:
-            self._persist_status(prepared.manifest.id)
+            self.persist_status(prepared.manifest.id)
         except Exception:
             transaction.rollback(result.operation_id, reason="component-state-failed")
             raise
@@ -233,7 +233,7 @@ class AdapterEngine:
             source = self._registry.get(adapter_id).preferred_source(allow_eol=True)
             if source.type == "appimage":
                 fs.set_mode(self.payload_path(adapter_id), 0o700)
-        self._persist_status(adapter_id)
+        self.persist_status(adapter_id)
         return result
 
     def detect(self, adapter_id: str) -> bool:
@@ -295,7 +295,7 @@ class AdapterEngine:
             "sha256": expected,
         }
 
-    def _persist_status(self, adapter_id: str) -> None:
+    def persist_status(self, adapter_id: str) -> None:
         manifest = self._registry.get(adapter_id)
         status = self.status(adapter_id)
         self._store.save_component(

@@ -54,10 +54,10 @@ Domínios (Fase 1):
   operations rollback-apply aplica rollback confirmado (--plan-id ID --confirm TOKEN)
   events page            lê eventos paginados (--cursor SEQ --limit N)
   state export [--out F] exporta o State Store (JSON)
-  component list         lista adapters e deployments Flatpak
-  component status      mostra um deployment (--id ADAPTER)
-  component plan        planeja install/update pinado (--id ADAPTER)
-  component apply       aplica plano (--plan-id ID --confirm TOKEN)
+  component list         lista componentes roteados pela fonte (engine/Flatpak)
+  component status      mostra um componente (--id ADAPTER)
+  component plan        planeja install/update/uninstall (--id ADAPTER [--action A])
+  component apply       aplica plano v2 ou v1 (--plan-id ID --confirm TOKEN)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
   admin health          verifica helper e autorização Polkit (read-only)
@@ -321,8 +321,7 @@ def _cmd_operations_list(args: list[str], correlation_id: str) -> tuple[dict[str
 def _component_rollback_for_history(operation_id: str) -> Any:
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        return executor.rollback(operation_id)
+        return _component_lifecycle(store).rollback(operation_id)
 
 
 def _operation_history() -> Any:
@@ -600,12 +599,23 @@ def _component_runtime(store: StateStore) -> tuple[AdapterRegistry, FlatpakExecu
     return registry, FlatpakExecutor(store, registry, FlatpakCLI())
 
 
+def _component_lifecycle(store: StateStore) -> Any:
+    # G27: a fachada decide o executor pela família da fonte; CLI não escolhe.
+    from steamzero.adapters.lifecycle import ComponentLifecycle
+
+    return ComponentLifecycle(store, AdapterRegistry.bundled())
+
+
 def _cmd_component_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     with StateStore() as store:
         store.migrate()
-        registry, executor = _component_runtime(store)
-        components = [executor.status(manifest.id) for manifest in registry.list()]
-    status = "degraded" if any(item["state"] == "degraded" for item in components) else "ok"
+        lifecycle = _component_lifecycle(store)
+        components = lifecycle.status_all()
+    status = (
+        "degraded"
+        if any(item["state"] in {"degraded", "unavailable"} for item in components)
+        else "ok"
+    )
     return (
         build_envelope(
             "component",
@@ -622,9 +632,9 @@ def _cmd_component_status(args: list[str], correlation_id: str) -> tuple[dict[st
     adapter_id = _required_flag(args, "--id")
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        data = executor.status(adapter_id)
-    status = "degraded" if data["state"] == "degraded" else "ok"
+        lifecycle = _component_lifecycle(store)
+        data = lifecycle.status(adapter_id)
+    status = "degraded" if data["state"] in {"degraded", "unavailable"} else "ok"
     return (
         build_envelope(
             "component", "status", status=status, data=data, correlation_id=correlation_id
@@ -635,10 +645,11 @@ def _cmd_component_status(args: list[str], correlation_id: str) -> tuple[dict[st
 
 def _cmd_component_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     adapter_id = _required_flag(args, "--id")
+    action = _optional_flag(args, "--action", default="install")
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        plan = executor.plan_install(adapter_id)
+        lifecycle = _component_lifecycle(store)
+        plan = lifecycle.plan(adapter_id, action)
     return (
         build_envelope(
             "component",
@@ -656,15 +667,15 @@ def _cmd_component_apply(args: list[str], correlation_id: str) -> tuple[dict[str
     confirm_token = _required_flag(args, "--confirm")
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        result = executor.apply(plan_id, confirm_token)
+        lifecycle = _component_lifecycle(store)
+        result = lifecycle.apply(plan_id, confirm_token)
     return (
         build_envelope(
             "component",
             "apply",
-            status=result.status,
-            data=result.to_dict(),
-            operation_id=result.operation_id or None,
+            status=result["status"],
+            data=result,
+            operation_id=result.get("operationId") or None,
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -675,15 +686,15 @@ def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[
     operation_id = _required_flag(args, "--operation-id")
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        result = executor.rollback(operation_id)
+        lifecycle = _component_lifecycle(store)
+        result = lifecycle.rollback(operation_id)
     return (
         build_envelope(
             "component",
             "rollback",
-            status=result.status,
-            data=result.to_dict(),
-            operation_id=result.operation_id,
+            status=result["status"],
+            data=result,
+            operation_id=result.get("operationId"),
             correlation_id=correlation_id,
         ),
         EXIT_OK,
@@ -693,9 +704,9 @@ def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[
 def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     with StateStore() as store:
         store.migrate()
-        _registry, executor = _component_runtime(store)
-        recovered = executor.recover()
-    data = {"operations": [result.to_dict() for result in recovered], "count": len(recovered)}
+        lifecycle = _component_lifecycle(store)
+        recovered = lifecycle.recover()
+    data = {"operations": recovered, "count": len(recovered)}
     return (
         build_envelope(
             "component",
@@ -942,6 +953,11 @@ def _required_flag(args: list[str], flag: str) -> str:
     if not value:
         raise SteamZeroError("E-API-SCHEMA", detail=f"flag obrigatória ausente: {flag}")
     return value
+
+
+def _optional_flag(args: list[str], flag: str, *, default: str) -> str:
+    value = _flag_value(args, flag)
+    return value if value else default
 
 
 def _cmd_desktop_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:

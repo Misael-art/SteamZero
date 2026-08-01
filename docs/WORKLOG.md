@@ -3570,3 +3570,45 @@ porque o backend local de automação recusou entrada com a versão instalada do
 
 Detalhes e matriz de evidências:
 `docs/09-operations/A41-CERTIFICATION-RESULT.md`.
+
+## 2026-08-01 — Sessão 48: G27 lifecycle único e estado verdadeiro (branch fix/component-lifecycle-truth-g27)
+
+Fachada `ComponentLifecycle` implementada em `src/steamzero/adapters/lifecycle.py`,
+roteando AppImage/Flatpak pela família da fonte declarada (ADR de roteamento,
+sem execução no plan): status normalizado (state/installed/installable/
+executor/sourceType/version/targetVersion/origin/detail/endOfLife), planos v2
+executor-independentes persistidos em `state/plans` (com `confirmToken`
+compartilhado com o plano delegado), apply revalidando executor + fingerprint
+(E-TX-STALE-PLAN) e ainda aplicando planos Flatpak v1 legados. `degraded` nunca
+colapsa em `missing`; falha de um adapter vira `unavailable` com motivo, sem
+derrubar lista/workspace; fonte end-of-life preserva o flag (teste de contrato
+adicionado).
+
+CLI (`component list/status/plan/apply/rollback/recover`, `--action`) passou a
+usar a fachada; workspace Switch ganhou `installState: degraded`, `sourceState:
+degraded`, `launchReadiness` por jogo com `playAction.enabled` derivado; QML
+trata degradado como presente (seleção/contagem) e despacha `emulator.repair`
+como plano de update; dashboard roteia plan/apply/launch/rollback/linhas de
+componente pela fachada (EOL+ausente continua "Fonte descontinuada", degradado
+vira "Reparar").
+
+Rodada de revisão (mesma sessão): as cinco falhas apontadas pelo avaliador
+foram corrigidas com regressões próprias no commit `d740b76` — snapshot
+sobrevive a componente degradado (`payload_path` guardado), `unavailable`
+nunca aparece como instalado no dashboard, degradado bloqueia a prontidão
+global (45% attention, nunca 100%), plano v2 corrompido é rejeitado antes da
+desserialização (E-STATE-INTEGRITY) e componente EOL instalado preserva a
+verdade observada. Segunda rodada: `launch()` roteia Flatpak EOL instalado
+para o executor correto (não mais pelo engine), degradado não recebe mais
+`emulator.launch`, schema v2 fecha `delegated` (additionalProperties false,
+exatamente uma chave) e rejeita raiz JSON não-objeto, e o dashboard repassa
+as injeções `which`/`spawn` e respeita `installable=false` na ação. Terceira
+rodada: schema v2 amarra executor↔chave delegada (`flatpak` exige
+`flatpakPlanId`, `engine` exige `transactionPlanId`), exige ULID nos IDs
+delegados, confirmToken ASCII (base64url) e timestamps com offset de timezone
+(sem `format_checker` no validador, o pattern é a única defesa real); o
+`apply` ganhou guards em profundidade (ASCII antes do `compare_digest`,
+timezone antes da comparação com UTC) e `stop()` passou a tratar Flatpak EOL
+como Flatpak, não como portátil.
+
+Gates: 3358 testes isolados verdes, ruff/mypy/independence/boundaries OK.
