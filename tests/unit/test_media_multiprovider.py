@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from steamzero.adapters.emulation import EmulationController, SessionSecretStore
-from steamzero.core.errors import SteamZeroError
+from steamzero.adapters.state_store_media import StateStoreGameMediaAdapter
+from steamzero.core.errors import SteamZeroError, provider_error_category
 from steamzero.core.state import StateStore
 from steamzero.ports import GameIdentity, MediaCandidate
 
@@ -21,11 +23,13 @@ class FakeProvider:
         calls: list[str],
         *,
         failures: int = 0,
+        error_code: str | None = None,
     ) -> None:
         self._name = name
         self._kinds = frozenset(kinds)
         self._calls = calls
         self._failures = failures
+        self._error_code = error_code
 
     @property
     def name(self) -> str:
@@ -44,9 +48,13 @@ class FakeProvider:
         _region_priority: list[str] | None = None,
     ) -> list[MediaCandidate]:
         self._calls.append(self.name)
+        if self._error_code is not None:
+            raise SteamZeroError(self._error_code, detail="secret-in-detail")
         if self._failures > 0:
             self._failures -= 1
             raise SteamZeroError("E-SCRAPE-PROVIDER-UNREACHABLE", detail="secret-in-detail")
+        if not media_kinds:
+            return []
         kind = next(kind for kind in media_kinds if kind in self._kinds)
         return [
             MediaCandidate(
@@ -56,6 +64,19 @@ class FakeProvider:
                 confidence=0.9,
             )
         ]
+
+
+class EmptyResultProvider(FakeProvider):
+    """Provider saudável que nunca encontra candidato (resposta válida vazia)."""
+
+    def search(
+        self,
+        _identity: GameIdentity,
+        _media_kinds: list[str],
+        _region_priority: list[str] | None = None,
+    ) -> list[MediaCandidate]:
+        self._calls.append(self.name)
+        return []
 
 
 def _controller(
@@ -72,6 +93,48 @@ def _controller(
         media_providers=providers,
         media_retry_delay=(delays.append if delays is not None else lambda _delay: None),
     )
+
+
+def _plant_library(controller: EmulationController, tmp_path: Path, count: int) -> None:
+    cache = controller._library_cache_path  # type: ignore[attr-defined]
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    games = []
+    for index in range(count):
+        rom = tmp_path / f"Game{index}.nsp"
+        rom.write_bytes(b"A" * 2048)
+        games.append(
+            {
+                "id": f"game-{index}",
+                "name": f"Game {index}",
+                "state": "ready",
+                "statusLabel": "NSP · Identificado",
+                "path": str(rom),
+                "size": 2048,
+                "titleId": f"0100ABCDEF0{index:02d}000",
+            }
+        )
+    cache.write_text(
+        json.dumps({"schemaVersion": 1, "games": games, "unidentified": 0}),
+        encoding="utf-8",
+    )
+
+
+def _run_global(
+    controller: EmulationController,
+    *,
+    mode: str = "refresh",
+    overwrite: bool = False,
+):
+    job = controller._jobs.create(  # type: ignore[attr-defined]
+        "media.global",
+        params={"mode": mode, "overwrite": overwrite},
+        priority="interactive",
+        created_by="qam",
+    )
+    completed = controller._jobs.run(job.id)
+    assert completed.state == "completed"
+    assert isinstance(completed.result, dict)
+    return completed.result
 
 
 def _run_search(
@@ -169,3 +232,233 @@ def test_retry_uses_bounded_exponential_backoff_then_succeeds(tmp_path: Path) ->
     assert result["provider_errors"] == {}
     assert calls == ["screenscraper", "screenscraper", "screenscraper"]
     assert delays == [0.25, 0.5]
+
+
+# =============================================================================
+# G28 — resultado terminal do job global, quota e persistência
+# =============================================================================
+
+
+def _with_data_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+
+def test_global_job_quota_interrupts_provider_for_remaining_games(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    provider = FakeProvider(
+        "screenscraper",
+        {"boxart"},
+        calls,
+        error_code="E-SCRAPE-QUOTA-EXCEEDED",
+    )
+    controller = _controller(tmp_path, [provider])
+    _plant_library(controller, tmp_path, 3)
+
+    result = _run_global(controller)
+
+    assert calls == ["screenscraper"]  # quota na 1ª busca; 2ª e 3ª não chamam
+    assert result["outcome"] == "degraded"
+    assert result["processed"] == 3
+    assert result["no_candidates"] == 2  # jogos restantes sem candidato e sem erro novo
+    assert result["interrupted_providers"] == ["screenscraper"]
+    assert result["provider_errors"] == {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+    assert result["provider_details"]["screenscraper"]["category"] == "quota"
+    assert result["provider_details"]["screenscraper"]["gamesAffected"] == 1
+
+
+def test_global_job_healthy_provider_continues_after_other_quota(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    quota = FakeProvider("steamgriddb", {"grid"}, calls, error_code="E-SCRAPE-QUOTA-EXCEEDED")
+    healthy = FakeProvider("screenscraper", {"boxart"}, calls)
+    controller = _controller(tmp_path, [quota, healthy])
+    _plant_library(controller, tmp_path, 3)
+
+    result = _run_global(controller)
+
+    assert calls == ["steamgriddb", "screenscraper", "screenscraper", "screenscraper"]
+    assert result["outcome"] == "degraded"
+    assert result["interrupted_providers"] == ["steamgriddb"]
+    assert result["provider_errors"] == {"steamgriddb": "E-SCRAPE-QUOTA-EXCEEDED"}
+
+
+def test_global_job_no_candidates_without_errors_is_partial(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    empty = EmptyResultProvider("screenscraper", {"boxart"}, calls)
+    controller = _controller(tmp_path, [empty])
+    _plant_library(controller, tmp_path, 2)
+
+    result = _run_global(controller)
+
+    assert result["outcome"] == "partial"
+    assert result["no_candidates"] == 2
+    assert result["provider_errors"] == {}
+    assert result["interrupted_providers"] == []
+    assert result["provider_details"] == {}
+
+
+def test_global_job_success_outcome(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    provider = FakeProvider("steamgriddb", {"grid"}, calls)
+    controller = _controller(tmp_path, [provider])
+    _plant_library(controller, tmp_path, 2)
+
+    result = _run_global(controller)
+
+    assert result["outcome"] == "success"
+    assert result["no_candidates"] == 0
+    assert result["provider_errors"] == {}
+    assert result["processed"] == 2
+
+
+def test_global_job_invalid_mode_rejected_before_any_provider_call(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    provider = FakeProvider("screenscraper", {"boxart"}, calls)
+    controller = _controller(tmp_path, [provider])
+    _plant_library(controller, tmp_path, 2)
+
+    job = controller._jobs.create(  # type: ignore[attr-defined]
+        "media.global",
+        params={"mode": "modo-inexistente"},
+        priority="interactive",
+        created_by="qam",
+    )
+    completed = controller._jobs.run(job.id)
+    assert completed.state == "rolled-back"
+    assert completed.error_code == "E-API-SCHEMA"
+    assert calls == []
+
+
+def test_global_job_result_persists_and_rebuilds_workspace_after_restart(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    quota = FakeProvider("screenscraper", {"boxart"}, calls, error_code="E-SCRAPE-QUOTA-EXCEEDED")
+    controller = _controller(tmp_path, [quota])
+    _plant_library(controller, tmp_path, 1)
+
+    result = _run_global(controller)
+    assert result["outcome"] == "degraded"
+
+    healthy = FakeProvider("screenscraper", {"boxart"}, calls)
+    restarted = _controller(tmp_path, [healthy])
+
+    job_row = restarted._jobs.list_jobs(states=["completed"])  # type: ignore[attr-defined]
+    assert len(job_row) == 1
+    persisted = job_row[0].result
+    assert persisted["outcome"] == "degraded"
+    assert persisted["provider_errors"] == {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+
+    with restarted._store_factory() as store:  # type: ignore[attr-defined]
+        store.migrate()
+        media = StateStoreGameMediaAdapter(store.adapter_connection())
+        assert media.load("game-0") is not None
+        assert media.load("game-0").errors == {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+
+    summary = restarted._media_pipeline_summary(  # type: ignore[attr-defined]
+        [
+            {
+                "id": "game-0",
+                "titleId": "0100ABCDEF000000",
+                "name": "Game 0",
+                "mediaSource": "fallback",
+                "mediaErrors": {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"},
+            }
+        ]
+    )
+    assert summary["providerErrors"] == {"screenscraper": 1}
+    details = summary["providerDetails"]["screenscraper"]
+    assert details["code"] == "E-SCRAPE-QUOTA-EXCEEDED"
+    assert details["category"] == "quota"
+    assert details["state"] == "active"
+    assert details["gamesAffected"] == 1
+
+    workspace = restarted.snapshot({"context": {}})["platforms"][0]["areaData"]["media"]
+    assert workspace["mediaPipeline"]["providerErrors"] == {"screenscraper": 1}
+    assert (
+        workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["code"]
+        == "E-SCRAPE-QUOTA-EXCEEDED"
+    )
+    assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["category"] == "quota"
+    assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["gamesAffected"] == 1
+
+
+def test_later_successful_search_clears_persisted_error_and_health(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    failing = FakeProvider("screenscraper", {"boxart"}, calls, error_code="E-SCRAPE-QUOTA-EXCEEDED")
+    controller = _controller(tmp_path, [failing])
+    _plant_library(controller, tmp_path, 1)
+    assert _run_global(controller)["outcome"] == "degraded"
+
+    healthy = FakeProvider("screenscraper", {"boxart"}, calls)
+    restarted = _controller(tmp_path, [healthy])
+    _plant_library(restarted, tmp_path, 1)
+    second = _run_global(restarted)
+    assert second["outcome"] == "success"
+
+    with restarted._store_factory() as store:  # type: ignore[attr-defined]
+        store.migrate()
+        media = StateStoreGameMediaAdapter(store.adapter_connection())
+        assert media.load("game-0").errors == {}
+
+    summary = restarted._media_pipeline_summary(  # type: ignore[attr-defined]
+        [{"id": "game-0", "titleId": "0100ABCDEF000000", "name": "Game 0"}]
+    )
+    assert summary["providerErrors"] == {}
+    assert summary["providerDetails"] == {}
+
+
+def test_provider_health_persists_code_category_and_no_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _with_data_home(monkeypatch, tmp_path)
+    calls: list[str] = []
+    failing = FakeProvider("screenscraper", {"boxart"}, calls, error_code="E-SCRAPE-RATE-LIMITED")
+    controller = _controller(tmp_path, [failing])
+    _plant_library(controller, tmp_path, 1)
+    _run_global(controller)
+
+    restarted = _controller(tmp_path, [])
+    with restarted._store_factory() as store:  # type: ignore[attr-defined]
+        store.migrate()
+        from steamzero.adapters.state_store_provider_health import (
+            StateStoreProviderHealthAdapter,
+        )
+
+        health = StateStoreProviderHealthAdapter(store.adapter_connection()).load("screenscraper")
+        assert health is not None
+        assert health.last_error_code == "E-SCRAPE-RATE-LIMITED"
+        assert health.last_error_category == "rate-limit"
+        assert health.error_count == 1
+        assert health.total_requests == 1
+        assert "secret-in-detail" not in (health.last_error or "")
+        assert health.last_error is not None
+
+
+def test_error_categories_are_stable() -> None:
+    assert provider_error_category("E-SCRAPE-QUOTA-EXCEEDED") == "quota"
+    assert provider_error_category("E-SCRAPE-RATE-LIMITED") == "rate-limit"
+    assert provider_error_category("E-SCRAPE-CREDENTIAL-REJECTED") == "auth"
+    assert provider_error_category("E-SCRAPE-CREDENTIAL-MISSING") == "auth"
+    assert provider_error_category("E-SCRAPE-PROVIDER-UNREACHABLE") == "unreachable"
+    assert provider_error_category("E-NET-HTTP") == "http"
+    assert provider_error_category("E-SCRAPE-DOWNLOAD-FAILED") == "download"
+    assert provider_error_category("E-CODIGO-DESCONHECIDO") == "generic"

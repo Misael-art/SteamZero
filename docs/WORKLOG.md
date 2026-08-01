@@ -3612,3 +3612,37 @@ timezone antes da comparação com UTC) e `stop()` passou a tratar Flatpak EOL
 como Flatpak, não como portátil.
 
 Gates: 3358 testes isolados verdes, ruff/mypy/independence/boundaries OK.
+
+## 2026-08-01 — Sessão 49: G28 verdade de erros de provider de mídia (branch fix/g28-media-provider-errors)
+
+Causa raiz: `StateStoreGameMediaAdapter.save()` nunca persistia
+`GameMediaState.errors` (e `_row_to_state` nunca lia) — a quota excedida
+persistida pelo refresh não chegava a workspace/UI (`providerErrors: {}`).
+
+Implementação em 4 commits (PR #26):
+- `91fafb7` — m0014 `errors_json` em `switch_game_media`; adapter persiste e
+  limpa erros por jogo (resave bem-sucedido limpa);
+- `108a520` — m0015 `scraping_provider_status` (`last_error_code`,
+  `last_error_category`, `state`); `ProviderHealth` sanitizado (só códigos,
+  categorias estáveis, contadores, timestamps — nunca credenciais/detalhes/
+  URLs); circuit breaker abre após 5 falhas consecutivas e `record_success`
+  reativa; contrato terminal do job `media.global` (outcome
+  success/partial/degraded, provider_errors, provider_details,
+  interrupted_providers, no_candidates) persistido em `job.result`; quota
+  interrompe ScreenScraper nos jogos restantes do mesmo job (1 tentativa);
+  `_enrich_games` emite `mediaErrorCategories` por jogo;
+- `d7d0624` — QML: card `media-provider-health` (PT-BR por categoria), label
+  por jogo e `taskResultSummary` para `media.global`;
+- `dda707e` — testes isolados do XDG real (`XDG_DATA/CONFIG/STATE_HOME`
+  pinados) e regressão de restart reforçada no snapshot do workspace
+  (providerDetails reconstruído da health).
+
+Regressões: 12 mapeadas no PR (persistência por jogo, limpeza em resave,
+sobrevivência a restart, contrato do job, interrupção por quota com provider
+saudável seguindo, zero candidatos ≠ erro, modo inválido antes de chamadas,
+limpeza por busca bem-sucedida, health sem segredos, circuit breaker,
+categorias estáveis).
+
+Gates: 3374 testes isolados verdes (3359 → 3374), ruff check/format, mypy e
+`make independence boundaries` OK. Host intocado; release e instalação
+dependem de merge e autorização do operador.

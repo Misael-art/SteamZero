@@ -290,6 +290,7 @@ class TestStateStorePersistence:
                 steam_view_state TEXT NOT NULL DEFAULT 'unpublished',
                 steam_appid INTEGER,
                 steam_artwork_json TEXT NOT NULL DEFAULT '[]',
+                errors_json TEXT NOT NULL DEFAULT '{}',
                 created_at TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL DEFAULT ''
             )"""
@@ -319,6 +320,7 @@ class TestStateStorePersistence:
             steam_view_state="published",
             steam_appid=123,
             steam_artwork_kinds=["steam-icon"],
+            errors={"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"},
         )
         adapter.save(state)
         loaded = adapter.load("g1")
@@ -331,6 +333,17 @@ class TestStateStorePersistence:
         assert loaded.steam_view_state == "published"
         assert loaded.steam_appid == 123
         assert loaded.steam_artwork_kinds == ["steam-icon"]
+        assert loaded.errors == {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+
+    def test_errors_cleared_on_successful_resave(self, conn: sqlite3.Connection) -> None:
+        adapter = StateStoreGameMediaAdapter(conn)
+        failed = GameMediaState(game_id="g1", title_id="0100", title="Game")
+        failed.errors = {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+        adapter.save(failed)
+        assert adapter.load("g1").errors == {"screenscraper": "E-SCRAPE-QUOTA-EXCEEDED"}
+        ok = GameMediaState(game_id="g1", title_id="0100", title="Game")
+        adapter.save(ok)
+        assert adapter.load("g1").errors == {}
 
     def test_list_all(self, conn: sqlite3.Connection) -> None:
         adapter = StateStoreGameMediaAdapter(conn)
@@ -371,6 +384,7 @@ class TestStateStorePersistence:
                 steam_view_state TEXT NOT NULL DEFAULT 'unpublished',
                 steam_appid INTEGER,
                 steam_artwork_json TEXT NOT NULL DEFAULT '[]',
+                errors_json TEXT NOT NULL DEFAULT '{}',
                 created_at TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL DEFAULT ''
             )"""
