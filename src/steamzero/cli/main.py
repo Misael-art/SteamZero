@@ -930,6 +930,30 @@ def _cmd_desktop_status(_args: list[str], correlation_id: str) -> tuple[dict[str
     )
 
 
+def _cmd_desktop_gamemode_status(
+    _args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.gamemode_probe import GameModeProbe
+    from steamzero.domain.gamemode import build_admin_plan
+
+    truth = GameModeProbe().probe()
+    state = truth.state
+    status = "ok" if state == "ready" else "degraded"
+    return (
+        build_envelope(
+            "desktop",
+            "gamemode-status",
+            status=status,
+            data={
+                "gamemode": truth.to_dict(),
+                "adminPlan": build_admin_plan(truth),
+            },
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_desktop_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     requested = _flag_value(args, "--profile") or "auto"
     with _desktop_coordinator() as coordinator:
@@ -1657,6 +1681,7 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("playtime", "list"): _cmd_playtime_list,
     ("playtime", "show"): _cmd_playtime_show,
     ("desktop", "status"): _cmd_desktop_status,
+    ("desktop", "gamemode-status"): _cmd_desktop_gamemode_status,
     ("desktop", "plan"): _cmd_desktop_plan,
     ("desktop", "apply"): _cmd_desktop_apply,
     ("desktop", "reset"): _cmd_desktop_reset,

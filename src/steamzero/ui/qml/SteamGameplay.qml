@@ -66,6 +66,7 @@ Item {
     property bool gameModeEnabled: true
     property bool initialized: false
     property var reviewedPlan: null
+    property var gamemodeGuidance: null
     property string profileLastOperationId: ""
     property var launchOptionsPlan: null
     property var maintenancePlan: null
@@ -508,6 +509,54 @@ Item {
                     page.hardware.gpuMax ? "%1–%2 MHz".arg(page.hardware.gpuMin).arg(page.hardware.gpuMax) : qsTr("não observado")
                 ).arg(page.hardware.refreshHz || "—")
                 color: page.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Dialog {
+        id: gamemodeGuidanceDialog
+        modal: true
+        title: qsTr("Feral GameMode — instruções")
+        width: Math.min(page.width - 48, 620)
+        x: (page.width - width) / 2
+        y: (page.height - height) / 2
+        standardButtons: Dialog.Close
+        onClosed: page.restoreDialogFocus()
+        background: Rectangle {
+            color: page.raisedColor
+            radius: 10
+            border.color: page.amberColor
+            border.width: 1
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: page.gamemodeGuidance ? page.gamemodeGuidance.statusLabel : ""
+                color: page.amberColor
+                font.pixelSize: 17
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: page.gamemodeGuidance ? page.gamemodeGuidance.cause : ""
+                color: page.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: page.gamemodeGuidance ? page.gamemodeGuidance.remediation : ""
+                color: page.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: Boolean(page.gamemodeGuidance && page.gamemodeGuidance.requiresOperator)
+                text: qsTr("Este ajuste exige ação do operador; o SteamZero não o aplica.")
+                color: page.amberColor
+                font.pixelSize: 12
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -1082,6 +1131,17 @@ Item {
                                                 Layout.fillWidth: true
                                             }
                                             Label { text: modelData.detail; color: page.mutedColor; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
+                                        }
+                                        ToolButton {
+                                            visible: modelData.id === "gamemode" && modelData.state !== "ready"
+                                            text: qsTr("Ver instruções")
+                                            font.pixelSize: 10
+                                            Layout.preferredHeight: 32
+                                            Accessible.name: text
+                                            onClicked: {
+                                                page.gamemodeGuidance = modelData
+                                                gamemodeGuidanceDialog.open()
+                                            }
                                         }
                                         Label {
                                             text: modelData.owner

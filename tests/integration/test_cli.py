@@ -539,6 +539,38 @@ def test_desktop_status_works_without_optional_commands(
     assert code == cli.EXIT_OK
 
 
+def test_desktop_gamemode_status_is_read_only_with_validated_plan(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    code = cli.main(["desktop", "gamemode-status", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    contracts.validate(env, "envelope-v2.schema.json")
+    assert env["module"] == "desktop"
+    assert env["action"] == "gamemode-status"
+    assert code == cli.EXIT_OK
+    gamemode = env["data"]["gamemode"]
+    for key in (
+        "binaryState",
+        "daemonState",
+        "authorizationState",
+        "capabilityState",
+        "activityState",
+        "effects",
+        "condition",
+        "state",
+        "statusLabel",
+        "cause",
+        "remediation",
+        "requiresOperator",
+    ):
+        assert key in gamemode
+    assert gamemode["state"] in {"ready", "degraded", "missing", "unknown"}
+    plan = env["data"]["adminPlan"]
+    contracts.validate(plan, "gamemode-admin-plan-v1.schema.json")
+    assert plan["executesHostChanges"] is False
+
+
 def test_desktop_plan_and_apply_without_optional_commands(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

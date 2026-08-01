@@ -162,6 +162,13 @@ def test_compile_mangohud_without_gamescope_and_public_summary(tmp_path: Path) -
     }
 
 
+def test_compile_gamemode_succeeds_when_daemon_is_degraded(tmp_path: Path) -> None:
+    _save_profile(tmp_path / "state.db", gamescope=False, mangoHud="off", upscaling="native")
+    spec = _launcher(tmp_path).compile("10", ("/games/My Game/game",))
+    assert "/usr/bin/gamemoderun" in spec.argv
+    assert spec.public()["appliedEffects"] == ["Feral GameMode"]
+
+
 def test_run_records_canonical_session_and_returns_child_code(tmp_path: Path) -> None:
     _save_profile(
         tmp_path / "state.db",

@@ -3646,3 +3646,43 @@ categorias estáveis).
 Gates: 3374 testes isolados verdes (3359 → 3374), ruff check/format, mypy e
 `make independence boundaries` OK. Host intocado; release e instalação
 dependem de merge e autorização do operador.
+
+## 2026-08-01 — Sessão 50: G29 verdade observada do Feral GameMode (branch fix/g29-gamemode-operational-truth)
+
+Causa raiz (GAP-G29): a linha "Feral GameMode" era publicada como pronta pela
+presença de `gamemoderun` (`_capabilities`), embora o daemon pudesse estar
+fora do ar, a autorização do usuário negada e governor/split lock/ioprio
+recusados — prontidão de performance falsa.
+
+Implementação em 2 commits (PR #27):
+- `2300423` — `domain/gamemode.py` (verdade observada em seis dimensões:
+  binaryState, daemonState, authorizationState, capabilityState,
+  activityState + efeitos governor/splitLock/ioprio; hierarquia de condições
+  nunca mascara falha superior; rótulos PT-BR do contrato); `adapters/
+  gamemode_probe.py` (probe read-only injetável: which, `gamemoded -s` ou
+  socket, conexão sem requisição, sysfs/proc e State Store de sessões;
+  timeout/erro -> unknown, nunca falso verde); schema
+  `gamemode-admin-plan-v1.schema.json` + plano administrativo declarativo
+  validado por `contracts.validate` (inválido -> `E-STATE-INTEGRITY`, nunca
+  KeyError/TypeError; sem endpoint de aplicação); `steam_gameplay.py`
+  (linha `gamemode` do ambiente + seção `gamemode` no snapshot, ocioso
+  explícito, readiness reflete degradação); CLI `desktop gamemode-status`
+  read-only com o mesmo modelo; 16 regressões em `test_gamemode_probe.py`;
+- `ea62c00` — QML: rótulos PT-BR por estado, botão seguro "Ver instruções"
+  (diálogo com causa, orientação e aviso quando a ação depende do operador,
+  sem botão que aplique mutação) e fallback do Main.qml com
+  causa/remediação.
+
+Semânticas garantidas por teste: binário sozinho nunca é ready; daemon
+ausente degrada; autorização negada visível; idle não é falha; parcial é
+degraded listando efeitos recusados; falha/timeout de sondagem é unknown;
+nada sensível (argv/stdout/paths privados/jogos) vaza no snapshot, log ou
+plano; nenhum teste toca ferramentas reais do host (dependências injetadas);
+degradação não bloqueia lançamento (launcher intacto, regressão própria).
+
+Gates: 3401 testes isolados verdes (3374 → 3401), ruff check/format, mypy e
+`make independence boundaries` OK. Host intocado: zero mutações, release
+ativa `0.1.0a41-c9111a00d3c0` preservada e rollback
+`0.1.0a41-31b30211ba85` preservado. Validação física (boot direto + GameMode
+real) segue pendente e exige release construída da main e autorização do
+operador.
