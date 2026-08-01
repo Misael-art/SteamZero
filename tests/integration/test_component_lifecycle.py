@@ -383,6 +383,52 @@ class TestPlanSurvivesProcess:
             second.apply(envelope.plan_id, "token-errado")
         assert error.value.code == "E-TX-CONFIRM-REQUIRED"
 
+    def test_corrupt_v2_plan_with_wrong_delegated_key_is_rejected(
+        self, store: state.StateStore
+    ) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["delegated"] = {"wrongKey": "x"}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_corrupt_v2_plan_with_non_object_root_is_rejected(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        plan_path = paths.plan_path(envelope.plan_id)
+        plan_path.write_text("[1, 2, 3]", encoding="utf-8")
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+
+class TestLaunchRouting:
+    """launch roteia pela família da fonte, inclusive EOL instalado."""
+
+    def test_flatpak_eol_installed_launches_through_flatpak(self, store: state.StateStore) -> None:
+        duckstation = AdapterRegistry.bundled().get("duckstation")
+        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
+        spawned: list[tuple[object, ...]] = []
+        lifecycle = ComponentLifecycle(
+            store,
+            AdapterRegistry.bundled(),
+            flatpak_factory=lambda: fake,  # type: ignore[arg-type]
+            which=lambda _name: "/usr/bin/flatpak",
+            spawn=lambda argv: spawned.append(tuple(argv)) or 0,  # type: ignore[return-value]
+        )
+        result = lifecycle.launch("duckstation")
+        assert result["status"] == "started"
+        assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)]
+
 
 class TestRollbackRouting:
     def test_flatpak_rollback_uses_operation_file(self, store: state.StateStore) -> None:

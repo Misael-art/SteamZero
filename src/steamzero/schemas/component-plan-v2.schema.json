@@ -38,7 +38,16 @@
         "type": {"enum": ["portable", "flatpak"]}
       }
     },
-    "delegated": {"type": "object", "minProperties": 1},
+    "delegated": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "flatpakPlanId": {"type": "string", "minLength": 1},
+        "transactionPlanId": {"type": "string", "minLength": 1}
+      }
+    },
     "preview": {"type": "string", "minLength": 1}
   }
 }

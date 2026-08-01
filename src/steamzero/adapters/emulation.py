@@ -2506,9 +2506,10 @@ class EmulationController:
                     else []
                 )
                 if installed:
+                    if not degraded:
+                        actions.append(self._action(f"emulator.launch:{emulator_id}", "Abrir"))
                     actions.extend(
                         [
-                            self._action(f"emulator.launch:{emulator_id}", "Abrir"),
                             self._action(
                                 f"emulator.update:{emulator_id}",
                                 "Verificar atualização" if up_to_date else "Atualizar",

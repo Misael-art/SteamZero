@@ -140,6 +140,9 @@ def test_degraded_emulator_never_crashes_snapshot(monkeypatch, tmp_path: Path) -
     assert citron["statusLabel"] == "Reparar"
     assert citron["running"] is False
     assert citron["actions"][0]["id"] == "emulator.repair:citron"
+    assert all("emulator.launch" not in action["id"] for action in citron["actions"]), (
+        "degradado não pode oferecer launch — payload_path() falha imediatamente"
+    )
     assert citron["health"]["state"] == "degraded"
     assert citron["health"]["reason"] == "payload ausente ou checksum divergente"
 

@@ -375,7 +375,11 @@ class DesktopDashboard:
             with self._store_factory() as store:
                 store.migrate()
                 lifecycle = ComponentLifecycle(
-                    store, registry, flatpak_factory=self._flatpak_factory
+                    store,
+                    registry,
+                    flatpak_factory=self._flatpak_factory,
+                    which=self._which,
+                    spawn=self._spawn,
                 )
                 components = [
                     self._component_row(manifest, lifecycle, conflicts=bool(conflicts))
@@ -780,7 +784,13 @@ class DesktopDashboard:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            lifecycle = ComponentLifecycle(store, registry, flatpak_factory=self._flatpak_factory)
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
             return lifecycle.rollback(operation_id)
 
     def plan_diagnostics_export(
@@ -880,21 +890,39 @@ class DesktopDashboard:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            lifecycle = ComponentLifecycle(store, registry, flatpak_factory=self._flatpak_factory)
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
             return lifecycle.plan(adapter_id, action).to_dict()
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            lifecycle = ComponentLifecycle(store, registry, flatpak_factory=self._flatpak_factory)
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
             return lifecycle.apply(plan_id, confirm_token)
 
     def launch_component(self, adapter_id: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
-            lifecycle = ComponentLifecycle(store, registry, flatpak_factory=self._flatpak_factory)
+            lifecycle = ComponentLifecycle(
+                store,
+                registry,
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
             return lifecycle.launch(adapter_id)
 
     def open_steam(self, target: str) -> dict[str, Any]:
@@ -1057,6 +1085,8 @@ class DesktopDashboard:
             state = "installed"
             status_label = "Instalado"
 
+        installable = bool(status.get("installable"))
+
         if state == "unsupported":
             action = {"kind": "detail", "label": "Indisponível", "enabled": False}
             blocked_reason = "A origem pinada está end-of-life e não será promovida."
@@ -1070,13 +1100,15 @@ class DesktopDashboard:
                     if raw_state == "degraded"
                     else "Verificar"
                 ),
-                "enabled": not conflicts,
+                "enabled": not conflicts and installable,
             }
             blocked_reason = (
                 "Resolva o conflito de controle antes de alterar o componente."
                 if conflicts
                 else str(status.get("detail") or "")
                 if raw_state == "unavailable"
+                else "O componente não declara fonte instalável."
+                if not installable
                 else ""
             )
         else:

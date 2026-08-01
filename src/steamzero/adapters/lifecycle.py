@@ -566,7 +566,9 @@ class ComponentLifecycle:
                 "E-COMPONENT-DEGRADED",
                 detail=current.get("detail") or f"{adapter_id} não está instalado",
             )
-        if route.executor == "flatpak":
+        if route.executor == "flatpak" or (
+            route.end_of_life and route.source_type in FLATPAK_SOURCES
+        ):
             source = manifest.preferred_source("flatpak", allow_eol=True)
             executable = self._which("flatpak")
             if executable is None or source.ref is None:
@@ -711,6 +713,10 @@ class ComponentLifecycle:
             raise SteamZeroError(
                 "E-STATE-INTEGRITY", detail=f"plano de componente corrompido: {exc}"
             ) from exc
+        if not isinstance(data, dict):
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail="plano de componente corrompido: raiz não é objeto JSON"
+            )
         if data.get("schemaVersion") not in {1, 2}:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de componente")
         return data
