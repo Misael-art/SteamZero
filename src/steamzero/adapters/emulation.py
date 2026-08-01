@@ -62,7 +62,10 @@ from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import (
+    build_switch_workspace,
+    compute_readiness,
+)
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import find_core
 from steamzero.domain.library import PlatformRomScanner
@@ -461,6 +464,15 @@ class EmulationController:
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
+        # G27: o probe do catálogo só sabe "instalado ou não"; a prontidão
+        # global precisa das linhas observadas do host, senão um emulador
+        # degradado produz 100% mesmo com drift.
+        truth_state, truth_label, readiness = compute_readiness(
+            {"keys": key_status, "firmware": firmware_status}, emulator_rows
+        )
+        platform["state"] = truth_state
+        platform["statusLabel"] = truth_label
+        platform["readiness"] = readiness
         configured_default = global_settings.get("defaultEmulatorId")
         primary_id, primary_source = _resolve_primary_emulator(
             emulator_rows,
@@ -484,35 +496,42 @@ class EmulationController:
             "source": primary_source,
         }
         for emulator in emulator_rows:
-            installed = emulator["installState"] == "installed"
+            install_state = emulator["installState"]
+            degraded = install_state == "degraded"
+            installed = install_state in {"installed", "degraded"}
             is_default = emulator["id"] == primary_id
             emulator["isDefault"] = is_default
             health = emulator["health"]
             health["firmwareReady"] = firmware_status["status"] == "ok"
-            ready = bool(
-                installed
-                and health["versionCurrent"]
-                and health["keysReady"]
-                and health["firmwareReady"]
-            )
-            health["state"] = "ready" if ready else "degraded" if installed else "unavailable"
-            missing: list[str] = []
-            if not installed:
-                missing.append("instalação")
-            if installed and not health["versionCurrent"]:
-                missing.append("atualização")
-            if installed and not health["keysReady"]:
-                missing.append("keys")
-            if not health["firmwareReady"]:
-                missing.append("firmware")
-            health["reason"] = (
-                "Emulador, versão, keys e firmware verificados."
-                if ready
-                else f"Pendente: {', '.join(missing)}."
-            )
+            if degraded:
+                # O motivo do drift vem da linha (status real); recomputar aqui
+                # derrubaria em "Pendente: instalação" — mentira sobre o host.
+                health["state"] = "degraded"
+            else:
+                ready = bool(
+                    installed
+                    and health["versionCurrent"]
+                    and health["keysReady"]
+                    and health["firmwareReady"]
+                )
+                health["state"] = "ready" if ready else "degraded" if installed else "unavailable"
+                missing: list[str] = []
+                if not installed:
+                    missing.append("instalação")
+                if installed and not health["versionCurrent"]:
+                    missing.append("atualização")
+                if installed and not health["keysReady"]:
+                    missing.append("keys")
+                if not health["firmwareReady"]:
+                    missing.append("firmware")
+                health["reason"] = (
+                    "Emulador, versão, keys e firmware verificados."
+                    if ready
+                    else f"Pendente: {', '.join(missing)}."
+                )
             if installed and not is_default:
                 emulator["actions"].insert(
-                    0,
+                    1 if degraded else 0,
                     self._action(
                         "game.emulator.default",
                         "Definir como padrão",
@@ -2441,9 +2460,16 @@ class EmulationController:
                 source = manifest.preferred_source("appimage", allow_eol=False)
                 current = str(status.get("version") or "—")
                 up_to_date = installed and current == source.version
-                running = bool(
-                    installed and self._managed_process_groups(engine.payload_path(emulator_id))
-                )
+                running = False
+                if installed:
+                    # Degradado não trava o snapshot: payload ausente derruba o
+                    # processo do jogo, mas a central continua navegável.
+                    try:
+                        running = bool(
+                            self._managed_process_groups(engine.payload_path(emulator_id))
+                        )
+                    except SteamZeroError:
+                        running = False
                 keys_ready = bool(installed and self._key_projection_valid(emulator_id))
                 if state == "installed":
                     row_state, status_label, source_state = "ready", "Instalado", "verified"

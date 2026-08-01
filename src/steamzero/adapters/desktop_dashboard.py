@@ -1050,6 +1050,9 @@ class DesktopDashboard:
         elif raw_state == "degraded":
             state = "attention"
             status_label = "Reparar"
+        elif raw_state == "unavailable":
+            state = "attention"
+            status_label = "Indisponível"
         else:
             state = "installed"
             status_label = "Instalado"
@@ -1060,11 +1063,21 @@ class DesktopDashboard:
         elif state in {"missing", "attention"}:
             action = {
                 "kind": "component-plan",
-                "label": "Instalar" if state == "missing" else "Reparar",
+                "label": (
+                    "Instalar"
+                    if state == "missing"
+                    else "Reparar"
+                    if raw_state == "degraded"
+                    else "Verificar"
+                ),
                 "enabled": not conflicts,
             }
             blocked_reason = (
-                "Resolva o conflito de controle antes de alterar o componente." if conflicts else ""
+                "Resolva o conflito de controle antes de alterar o componente."
+                if conflicts
+                else str(status.get("detail") or "")
+                if raw_state == "unavailable"
+                else ""
             )
         else:
             action = {

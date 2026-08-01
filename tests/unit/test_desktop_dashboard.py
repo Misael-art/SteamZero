@@ -217,6 +217,11 @@ def test_collection_catalog_unifies_sources_and_enriches_recent_games() -> None:
     ]
 
 
+class BrokenFlatpak(FakeFlatpak):
+    def status(self, ref: str) -> FlatpakState:
+        raise SteamZeroError("E-COMPONENT-DEGRADED", detail="probe quebrada")
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -280,6 +285,37 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     eden = platform["emulators"][0]
     assert eden["sourceState"] == "verified"
     assert eden["action"]["id"] == "emulator.install:eden"
+
+
+def test_dashboard_unavailable_component_never_looks_installed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=lambda: BrokenFlatpak(),  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda command: "/usr/bin/flatpak" if command == "flatpak" else None,
+        spawn=lambda _argv: None,
+        reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
+    )
+
+    snapshot = dashboard.snapshot(_status())
+    retroarch = next(row for row in snapshot["components"] if row["id"] == "retroarch")
+    assert retroarch["state"] == "attention"
+    assert retroarch["statusLabel"] == "Indisponível"
+    assert retroarch["action"]["kind"] == "component-plan"
+    assert retroarch["action"]["label"] == "Verificar"
+    assert retroarch["blockedReason"] == "E-COMPONENT-DEGRADED: probe quebrada"
 
 
 def test_sync_snapshot_lists_real_queue_without_inventing_mutations(

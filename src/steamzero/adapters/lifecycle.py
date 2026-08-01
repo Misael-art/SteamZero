@@ -204,7 +204,7 @@ def normalize_status(raw: dict[str, Any], route: LifecycleRoute) -> dict[str, An
         "targetVersion": str(target) if target else None,
         "origin": raw.get("origin"),
         "detail": detail,
-        "endOfLife": bool(raw.get("endOfLife", False)),
+        "endOfLife": bool(raw.get("endOfLife", route.end_of_life)),
     }
 
 
@@ -351,6 +351,12 @@ class ComponentLifecycle:
                 return normalize_status(self._flatpak().status(adapter_id), route)
             if route.executor == "engine":
                 return normalize_status(self._engine().status(adapter_id), route)
+            if route.end_of_life and route.source_type in FLATPAK_SOURCES:
+                # EOL não é ausência: o executor ainda observa o deployment.
+                # Consultá-lo preserva versão/origem/existência instalada.
+                return normalize_status(self._flatpak().status(adapter_id), route)
+            if route.end_of_life and route.source_type in PORTABLE_SOURCES:
+                return normalize_status(self._engine().status(adapter_id), route)
             return unavailable_status(route)
         except Exception as exc:
             return failed_status(route, exc)
@@ -472,6 +478,12 @@ class ComponentLifecycle:
                 "executor": "flatpak",
                 "planVersion": 1,
             }
+        try:
+            contracts.validate(raw, _PLAN_SCHEMA_V2)
+        except ValidationError as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"plano de componente v2 inválido: {exc}"
+            ) from exc
         envelope = ComponentPlan.from_dict(raw)
         self._validate_pending(envelope, confirm_token)
         manifest = self._registry.get(envelope.adapter_id)

@@ -20,7 +20,7 @@ import pytest
 from steamzero.adapters.flatpak import FlatpakState
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
-from steamzero.core import fs, state
+from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
 
 TARGET = "a" * 64
@@ -212,15 +212,29 @@ class TestRoutingMatrix:
         assert status["version"] == expected
         assert status["origin"] == "flatpak"
 
-    def test_bundled_eol_source_stays_unavailable_with_flag(self, store: state.StateStore) -> None:
+    def test_bundled_eol_source_not_installed_stays_honest(self, store: state.StateStore) -> None:
         lifecycle = bundled_with_fake(
             FakeFlatpak(FlatpakState(False, "org.duckstation.DuckStation")), store
         )
         status = lifecycle.status("duckstation")
-        assert status["state"] == "unavailable"
+        assert status["state"] == "missing"
         assert status["endOfLife"] is True
         assert status["installable"] is False
         assert "fim de vida" in status["detail"]
+
+    def test_bundled_eol_source_installed_preserves_observed_truth(
+        self, store: state.StateStore
+    ) -> None:
+        duckstation = AdapterRegistry.bundled().get("duckstation")
+        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
+        lifecycle = bundled_with_fake(fake, store)
+        status = lifecycle.status("duckstation")
+        assert status["state"] == "installed"
+        assert status["version"] == source.version
+        assert status["origin"] == "flatpak"
+        assert status["endOfLife"] is True
+        assert status["installable"] is False
 
     def test_flatpak_degraded_preserves_commit(self, store: state.StateStore) -> None:
         fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
@@ -230,10 +244,11 @@ class TestRoutingMatrix:
         assert status["installed"] is False
         assert status["version"] == "b" * 64, "commit do drift precisa ser preservado"
 
-    def test_eol_source_is_unavailable_with_reason(self, store: state.StateStore) -> None:
+    def test_eol_source_not_installed_is_missing_with_reason(self, store: state.StateStore) -> None:
         lifecycle = bundled_with_fake(FakeFlatpak(), store)
         status = lifecycle.status("duckstation")
-        assert status["state"] == "unavailable"
+        assert status["state"] == "missing"
+        assert status["endOfLife"] is True
         assert status["installable"] is False
         assert "fim de vida" in (status["detail"] or "")
 
@@ -330,6 +345,33 @@ class TestPlanSurvivesProcess:
         assert second.status("demo-emulator")["state"] == "missing", (
             "plano stale não pode ter efeito"
         )
+
+    def test_corrupt_v2_plan_is_rejected_before_deserialization(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        plan_id = "01J000000000000000000000CC"
+        plan_path = paths.plan_path(plan_id)
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(
+            json.dumps({"schemaVersion": 2, "planId": plan_id, "executor": "engine"}),
+            encoding="utf-8",
+        )
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(plan_id, "confirm")
+        assert error.value.code == "E-STATE-INTEGRITY"
+
+    def test_corrupt_v2_plan_without_schema_version_is_stale(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        plan_id = "01J000000000000000000000CD"
+        plan_path = paths.plan_path(plan_id)
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(json.dumps({"planId": plan_id}), encoding="utf-8")
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(plan_id, "confirm")
+        assert error.value.code == "E-TX-STALE-PLAN"
 
     def test_wrong_confirm_token_is_rejected(self, store: state.StateStore) -> None:
         payload = executable_payload()
