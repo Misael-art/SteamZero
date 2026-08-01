@@ -140,7 +140,7 @@ def plan_cleanup(report: AuditReport) -> dict[str, Any]:
         "items": [it.to_dict() for it in items],
         "count": len(items),
     }
-    paths.plans_dir().mkdir(parents=True, exist_ok=True)
+    fs.ensure_dir(paths.plans_dir())
     fs.write_atomic_text(
         paths.plan_path(plan_id),
         json.dumps(payload, ensure_ascii=False, indent=2),
@@ -161,14 +161,14 @@ def apply_cleanup(plan_id: str, confirm_token: str) -> dict[str, Any]:
     if payload.get("confirmToken") != confirm_token:
         raise PermissionError("token de confirmação não corresponde ao plano")
     quarantine = paths.quarantine_dir()
-    quarantine.mkdir(parents=True, exist_ok=True)
+    fs.ensure_dir(quarantine)
     quarantined: list[dict[str, str]] = []
     for item in payload["items"]:
         src = Path(item["source"])
         if not src.exists():
             continue
         dest = quarantine / item["kind"] / item["name"]
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        fs.ensure_dir(dest.parent)
         fs.move_tree(src, dest)
         quarantined.append({"kind": item["kind"], "name": item["name"], "quarantined": str(dest)})
     return {"planId": plan_id, "quarantined": quarantined, "count": len(quarantined)}
