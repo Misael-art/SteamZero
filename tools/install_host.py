@@ -630,6 +630,7 @@ After=steamzero-core.socket
 Type=simple
 ExecStart={executable} --systemd
 Environment=PYTHONNOUSERSITE=1
+Environment=STEAMZERO_CLASS=daemon
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true

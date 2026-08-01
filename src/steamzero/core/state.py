@@ -392,6 +392,7 @@ class StateStore:
             "game_id": session["game_id"],
             "state": session["state"],
             "pid": session.get("pid"),
+            "start_ticks": session.get("start_ticks"),
             "profile_digest": session.get("profile_digest"),
             "owner": session["owner"],
             "started_at": session.get("started_at") or now,
@@ -406,10 +407,10 @@ class StateStore:
             self._conn.execute(
                 """
                 INSERT INTO game_session (
-                  id,game_id,state,pid,profile_digest,owner,started_at,updated_at,
+                  id,game_id,state,pid,start_ticks,profile_digest,owner,started_at,updated_at,
                   finished_at,exit_code,failure_code,metadata_json
                 ) VALUES (
-                  :id,:game_id,:state,:pid,:profile_digest,:owner,:started_at,:updated_at,
+                  :id,:game_id,:state,:pid,:start_ticks,:profile_digest,:owner,:started_at,:updated_at,
                   :finished_at,:exit_code,:failure_code,:metadata_json
                 )
                 """,
@@ -432,6 +433,7 @@ class StateStore:
         """Faz compare-and-transition serializado e emite o evento canônico."""
         allowed = {
             "pid",
+            "start_ticks",
             "profile_digest",
             "finished_at",
             "exit_code",
@@ -498,6 +500,22 @@ class StateStore:
             values,
         ).fetchone()
         return dict(row) if row is not None else None
+
+    def active_game_sessions(self, owner: str) -> list[dict[str, Any]]:
+        """Sessões ativas com processo observável (PID persistido).
+
+        Usado pelo probe de recursos (GAP-G30): a identidade efêmera
+        (pid, start_ticks) permite atribuir consumo do emulador sem ler
+        command line nem caminhos.
+        """
+        placeholders = ",".join("?" for _ in ACTIVE_SESSION_STATES)
+        values = [owner, *sorted(ACTIVE_SESSION_STATES)]
+        rows = self._conn.execute(
+            f"SELECT * FROM game_session WHERE owner=? AND state IN ({placeholders}) "  # noqa: S608
+            "AND pid IS NOT NULL ORDER BY updated_at DESC",
+            values,
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def playtime_total_seconds(self) -> int:
         row = self._conn.execute(

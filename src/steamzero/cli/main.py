@@ -43,6 +43,7 @@ _USAGE = f"""steamzero <domínio> <ação> [flags]
 Domínios (Fase 1):
   doctor                 diagnóstico do núcleo
   service status         observa a release ativa e o daemon sem reiniciar
+  system resources       observa PSS/swap/lifecycle por classe (read-only)
   service refresh        reinicia o serviço local na versão instalada
                          --expect-release <id>  exige convergência com a release ativada
   jobs list              lista jobs paginados (--limit N --cursor ID --state STATE)
@@ -930,6 +931,42 @@ def _cmd_desktop_status(_args: list[str], correlation_id: str) -> tuple[dict[str
     )
 
 
+def _cmd_system_resources(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    from steamzero.adapters.resource_probe import ResourceProbe
+    from steamzero.core.session_state import SESSION_OWNER
+    from steamzero.service.client import daemon_pid
+
+    def emulator_processes() -> list[tuple[int, int | None]]:
+        with StateStore() as store:
+            store.migrate()
+            rows = store.active_game_sessions(SESSION_OWNER)
+        return [
+            (
+                int(row["pid"]),
+                int(row["start_ticks"]) if isinstance(row.get("start_ticks"), int) else None,
+            )
+            for row in rows
+            if isinstance(row.get("pid"), int) and int(row["pid"]) > 1
+        ]
+
+    resources = ResourceProbe(
+        daemon_pid=daemon_pid,
+        emulator_processes=emulator_processes,
+        media_job_processes=lambda: [],
+    ).snapshot()
+    status = "ok" if resources.get("complete") else "degraded"
+    return (
+        build_envelope(
+            "system",
+            "resources",
+            status=status,
+            data={"resources": resources},
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_desktop_gamemode_status(
     _args: list[str], correlation_id: str
 ) -> tuple[dict[str, Any], int]:
@@ -1651,6 +1688,7 @@ def _cmd_theme_rollback(args: list[str], correlation_id: str) -> tuple[dict[str,
 HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("doctor", None): _cmd_doctor,
     ("service", "status"): _cmd_service_status,
+    ("system", "resources"): _cmd_system_resources,
     ("service", "refresh"): _cmd_service_refresh,
     ("jobs", "list"): _cmd_jobs_list,
     ("operations", "list"): _cmd_operations_list,

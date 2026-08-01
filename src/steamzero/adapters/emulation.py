@@ -46,6 +46,7 @@ from steamzero.adapters.mods.semd_source import SemdSource
 from steamzero.adapters.mods.state_store_mods import StateStoreModsAdapter
 from steamzero.adapters.preservation import PreservationService, PreservationTarget
 from steamzero.adapters.registry import AdapterRegistry
+from steamzero.adapters.resource_probe import parse_stat as parse_proc_stat
 from steamzero.adapters.rom_metadata.emulator_cache import EmulatorCacheReader
 from steamzero.adapters.scraping.registry import ProviderRegistry
 from steamzero.adapters.scraping.screenscraper import ScreenScraperAdapter
@@ -249,6 +250,17 @@ def _guess_mime(header: bytes) -> str:
     raise SteamZeroError("E-CONTENT-UNSUPPORTED", detail="tipo de arquivo não reconhecido")
 
 
+def _spawn_environment() -> dict[str, str]:
+    """Ambiente dos processos de emulador iniciados pelo SteamZero.
+
+    O marcador ``STEAMZERO_CLASS=emulator`` fica no environ do processo (e é
+    herdado pelos filhos); é a evidência efêmera que o probe de recursos
+    (GAP-G30) usa para classificar emulador/filho sem ler command line. Filhos
+    são distinguidos pela cadeia de PPID, nunca pelo marcador sozinho.
+    """
+    return {**os.environ, "APPIMAGELAUNCHER_DISABLE": "true", "STEAMZERO_CLASS": "emulator"}
+
+
 def _spawn_detached(argv: Sequence[str]) -> int:
     process = subprocess.Popen(  # noqa: S603
         list(argv),
@@ -256,9 +268,26 @@ def _spawn_detached(argv: Sequence[str]) -> int:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
-        env={**os.environ, "APPIMAGELAUNCHER_DISABLE": "true"},
+        env=_spawn_environment(),
     )
     return process.pid
+
+
+def _read_proc_start_ticks(pid: int) -> int | None:
+    """Start-time (campo 22 de /proc/<pid>/stat) no instante do spawn.
+
+    Compõe com o PID a identidade efêmera da sessão de jogo; ``None`` quando o
+    processo já saiu ou o procfs está restrito — o probe então verifica o
+    marcador do environ como segunda evidência.
+    """
+    try:
+        text = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    parsed = parse_proc_stat(text)
+    if parsed is None:
+        return None
+    return parsed.get("starttime")
 
 
 def _wait_pid(pid: int) -> int:
@@ -283,6 +312,7 @@ class EmulationController:
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = _spawn_detached,
         process_waiter: ProcessWaiter | None = None,
+        read_start_ticks: Callable[[int], int | None] = _read_proc_start_ticks,
         monotonic: Callable[[], float] = time.monotonic,
         shortcuts: SteamShortcutManager | None = None,
         job_manager: JobManager | None = None,
@@ -304,6 +334,7 @@ class EmulationController:
         self._flatpak_factory = flatpak_factory
         self._which = which
         self._spawn = spawn
+        self._read_start_ticks = read_start_ticks
         self._process_waiter = (
             process_waiter
             if process_waiter is not None
@@ -813,7 +844,12 @@ class EmulationController:
             if session_id is not None:
                 with self._store_factory() as store:
                     store.migrate()
-                    store.transition_game_session(session_id, "running", pid=pid)
+                    store.transition_game_session(
+                        session_id,
+                        "running",
+                        pid=pid,
+                        start_ticks=self._read_start_ticks(pid),
+                    )
                 watcher = threading.Thread(
                     target=self._watch_tracked_game,
                     args=(session_id, emulator_id, pid, started_monotonic),

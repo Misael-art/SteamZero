@@ -966,6 +966,50 @@ def test_detached_spawn_disables_appimage_launcher_and_preserves_argv(
         "/home/test/Game With Spaces.nsp",
     ]
     assert observed["env"]["APPIMAGELAUNCHER_DISABLE"] == "true"  # type: ignore[index]
+    assert observed["env"]["STEAMZERO_CLASS"] == "emulator"  # type: ignore[index]
+
+
+def test_launch_game_persists_ephemeral_start_ticks_identity(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    ticks = iter((10.0, 11.0))
+    controller._spawn = lambda _argv: 4242  # type: ignore[attr-defined]
+    controller._process_waiter = lambda _pid: 0  # type: ignore[attr-defined]
+    controller._monotonic = lambda: next(ticks)  # type: ignore[attr-defined]
+    controller._read_start_ticks = lambda _pid: 777  # type: ignore[attr-defined]
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    rom = roms / "Example [0100ABCDEF123000].nsp"
+    rom.write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "game.emulator.set",
+                "gameId": game["id"],
+                "emulatorId": "ryubing",
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.AdapterEngine.payload_path",
+        lambda _self, _emulator_id: tmp_path / f"{_emulator_id}.AppImage",
+    )
+    monkeypatch.setattr(controller, "_require_key_projection", lambda _emulator_id: None)
+
+    controller.launch_game(game["id"])
+
+    with StateStore(tmp_path / "state.db") as store:
+        store.migrate()
+        running = store.active_game_sessions("steamzero-game-session")
+    assert [(row["pid"], row["start_ticks"]) for row in running] == [(4242, 777)]
 
 
 def test_stop_emulator_signals_only_managed_process_group(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

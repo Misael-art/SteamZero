@@ -68,6 +68,20 @@ def daemon_identity(*, timeout: float = 2.0) -> dict[str, Any]:
     }
 
 
+def daemon_pid(*, timeout: float = 2.0) -> int | None:
+    """PID do daemon via ``system.hello``; None se indisponível ou ambíguo.
+
+    É a identidade efêmera usada pelo probe de recursos (GAP-G30) para
+    atribuir o consumo do daemon sem tocar em units nem command lines.
+    """
+    try:
+        result = _call(1, "system.hello", {}, timeout=timeout)
+    except (CoreProtocolError, CoreUnavailable, OSError):
+        return None
+    pid = result.get("pid")
+    return pid if isinstance(pid, int) and pid > 1 else None
+
+
 def verify_generation(*, timeout: float = 2.0) -> dict[str, Any]:
     """Confronta a identidade do processo local com a do daemon.
 

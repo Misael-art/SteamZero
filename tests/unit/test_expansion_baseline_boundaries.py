@@ -204,6 +204,9 @@ def test_dashboard_delegates_all_registered_controller_actions(tmp_path: Path) -
     dashboard._diagnostics = diagnostics
     dashboard._steam = steam
     dashboard._doctor_runner = lambda: ({"status": "ok"}, [])
+    resources = MagicMock()
+    resources.snapshot.return_value = {}
+    dashboard._resources = resources
 
     emulation.plan_emulator.return_value = marker
     emulation.apply_emulator.return_value = marker

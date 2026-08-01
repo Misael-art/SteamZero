@@ -118,6 +118,7 @@ class DiagnosticsService:
         kind: str,
         doctor: dict[str, Any],
         desktop_status: dict[str, Any],
+        resources: dict[str, Any] | None = None,
     ) -> tuple[transaction.Plan, dict[str, Any]]:
         if kind not in {"state", "support"}:
             raise SteamZeroError("E-API-SCHEMA", detail="tipo de exportação inválido")
@@ -131,6 +132,7 @@ class DiagnosticsService:
         payload = self._export_payload(
             doctor=doctor,
             desktop_status=desktop_status,
+            resources=resources,
             include_state_tables=kind == "state",
         )
         _assert_sanitized(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode())
@@ -160,6 +162,7 @@ class DiagnosticsService:
         *,
         doctor: dict[str, Any],
         desktop_status: dict[str, Any],
+        resources: dict[str, Any] | None,
         include_state_tables: bool,
     ) -> dict[str, Any]:
         with self._store_factory() as store:
@@ -183,6 +186,7 @@ class DiagnosticsService:
             "operations": self.operations(page=1, page_size=100),
             "doctor": sanitize_payload(doctor),
             "session": _session_state(desktop_status),
+            "resources": resources or {},
         }
         sanitized = sanitize_payload(payload)
         if not isinstance(sanitized, dict):

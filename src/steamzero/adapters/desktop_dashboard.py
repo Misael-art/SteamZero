@@ -30,11 +30,13 @@ from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
+from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
 from steamzero.adapters.theme_catalog import ThemeCatalog
 from steamzero.core import log
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
+from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
 from steamzero.domain.collections import CollectionManager
@@ -53,6 +55,34 @@ EmulationBuilder = Callable[..., dict[str, Any]]
 ReducedMotionProbe = Callable[[], bool]
 HighContrastProbe = Callable[[], bool]
 _log = logging.getLogger(__name__)
+
+
+def _daemon_pid_provider() -> Callable[[], int | None]:
+    def provider() -> int | None:
+        from steamzero.service.client import daemon_pid
+
+        return daemon_pid()
+
+    return provider
+
+
+def _session_emulator_provider(
+    store_factory: StoreFactory,
+) -> Callable[[], list[tuple[int, int | None]]]:
+    def provider() -> list[tuple[int, int | None]]:
+        with store_factory() as store:
+            store.migrate()
+            rows = store.active_game_sessions(SESSION_OWNER)
+        processes: list[tuple[int, int | None]] = []
+        for row in rows:
+            pid = row.get("pid")
+            ticks = row.get("start_ticks")
+            if isinstance(pid, int) and pid > 1:
+                processes.append((pid, ticks if isinstance(ticks, int) else None))
+        return processes
+
+    return provider
+
 
 _COMPONENT_LABELS: dict[str, tuple[str, str, str]] = {
     "dolphin": ("Dolphin", "Emulador de Wii e GameCube", "dolphin-emu"),
@@ -299,6 +329,7 @@ class DesktopDashboard:
         collections: CollectionManager | None = None,
         cast_orchestrator: CastOrchestrator | None = None,
         theme_editor: ThemeEditorManager | None = None,
+        resources: ResourceProbe | None = None,
     ) -> None:
         self._store_factory = store_factory
         self._registry_factory = registry_factory
@@ -337,6 +368,12 @@ class DesktopDashboard:
         self._theme_catalog = ThemeCatalog()
         self._theme_prefs = ThemePreferenceManager()
         self._theme_editor = theme_editor or ThemeEditorManager()
+        self._resources = resources or ResourceProbe(
+            own_class="ui",
+            daemon_pid=_daemon_pid_provider(),
+            emulator_processes=_session_emulator_provider(store_factory),
+            media_job_processes=lambda: [],
+        )
 
     def close_request_context(self) -> None:
         """Libera recursos locais à thread usados pelo read model."""
@@ -621,6 +658,7 @@ class DesktopDashboard:
                 "detail": "Catálogo de temas temporariamente indisponível.",
             }
 
+        resources = self._resources.snapshot()
         current = desktop_status.get("current") if isinstance(desktop_status, dict) else {}
         profile = current.get("profile") if isinstance(current, dict) else {}
         touch_mode = bool(profile.get("touchMode")) if isinstance(profile, dict) else False
@@ -643,6 +681,7 @@ class DesktopDashboard:
             "collections": collections,
             "libraryHealth": library_health,
             "cast": cast,
+            "resources": resources,
             "touchMode": touch_mode,
         }
 
@@ -802,6 +841,7 @@ class DesktopDashboard:
             kind=kind,
             doctor={"data": doctor_data, "checks": doctor_checks},
             desktop_status=desktop_status,
+            resources=self._resources.snapshot(),
         )
         return {
             "plan": {
