@@ -23,7 +23,10 @@ VALID_TRANSITIONS: dict[str, frozenset[str]] = {
     "cancelling": frozenset({"cancelled"}),
     "failed": frozenset({"rolling-back"}),
     "rolling-back": frozenset({"rolled-back", "rollback-failed"}),
-    "interrupted": frozenset({"queued", "rolling-back", "completed"}),
+    # G25: "interrupted -> cancelled" permite que recover() termine jobs
+    # running sem operation_id marcando-os como recuperados, em vez de
+    # reenfileirá-los para "queued" (o que reativaria rede em media.global).
+    "interrupted": frozenset({"queued", "rolling-back", "completed", "cancelled"}),
     # terminais não transicionam
     "completed": frozenset(),
     "cancelled": frozenset(),

@@ -200,7 +200,29 @@ class JobManager:
             self._transition(job, "cancelling")
             self._transition(job, "cancelled")
         elif job.state == "running":
-            self.request_cancel(job_id)
+            # G25/D2: cancel de job "running" só é útil se houver um handler
+            # vivo neste processo consumindo o controle. _controls é populado
+            # apenas por request_cancel/run; um job "running" recuperado de um
+            # reboot anterior não tem controle aqui — request_cancel seria
+            # inerte. Sem runner, forçamos o caminho terminal via recover().
+            if job_id not in self._controls:
+                stale = self.get(job_id)
+                if stale is not None and stale.state == "running":
+                    self._transition(stale, "interrupted")
+                    if stale.operation_id:
+                        result = transaction.recover_operation(stale.operation_id)
+                        terminal = (
+                            "completed"
+                            if result.outcome == "kept"
+                            else "rolled-back"
+                        )
+                        self._transition(stale, terminal)
+                    else:
+                        self._transition(stale, "cancelled")
+                        stale.error_code = "recovered"
+                        self._persist(stale)
+            else:
+                self.request_cancel(job_id)
         elif job.state != "cancelling":
             raise SteamZeroError("E-API-SCHEMA", detail=f"job não cancelável no estado {job.state}")
         return self._require(job_id)
@@ -306,6 +328,11 @@ class JobManager:
                     self._transition(job, "rolling-back")
                     self._transition(job, "rolled-back")
             else:
-                self._transition(job, "queued")  # trabalho idempotente: reenfileira
+                # G25/D1: job running sem operação (ex.: media.global stalado) não
+                # pode ser reenfileirado — reativaria rede no próximo request. Em
+                # vez de "queued", termina "cancelled" marcado como recuperado.
+                self._transition(job, "cancelled")
+                job.error_code = "recovered"
+                self._persist(job)
             recovered.append(self._require(job.id))
         return recovered
