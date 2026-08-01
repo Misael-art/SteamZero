@@ -28,8 +28,8 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
                 metadata_state, reason, checked_at,
                 selected_candidate_idx, candidate_json, master_state,
                 optimized_state, steam_view_state, steam_appid,
-                steam_artwork_json, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                steam_artwork_json, errors_json, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 state.game_id,
                 state.title_id,
@@ -51,6 +51,7 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
                 state.steam_view_state,
                 state.steam_appid,
                 json.dumps(state.steam_artwork_kinds),
+                json.dumps(state.errors),
                 now,
             ),
         )
@@ -112,4 +113,5 @@ class StateStoreGameMediaAdapter(GameMediaStorePort):
             steam_artwork_kinds=(
                 json.loads(row["steam_artwork_json"]) if row["steam_artwork_json"] else []
             ),
+            errors=(json.loads(row["errors_json"]) if row["errors_json"] else {}),
         )
