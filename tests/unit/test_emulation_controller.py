@@ -769,6 +769,7 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "mediaCandidateIdx": -1,
             "mediaCandidates": [],
             "mediaErrors": {},
+            "mediaErrorCategories": {},
             "masterState": "none",
             "optimizedState": "none",
             "steamViewState": "unpublished",

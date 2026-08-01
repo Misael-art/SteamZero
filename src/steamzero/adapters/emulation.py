@@ -6031,6 +6031,10 @@ class EmulationController:
                             for c in media_candidates
                         ],
                         "mediaErrors": media_errors,
+                        "mediaErrorCategories": {
+                            str(provider): provider_error_category(str(code))
+                            for provider, code in media_errors.items()
+                        },
                         "masterState": master_state,
                         "optimizedState": optimized_state,
                         "steamViewState": steam_view_state,

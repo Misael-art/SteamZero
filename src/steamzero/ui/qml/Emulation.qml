@@ -753,11 +753,64 @@ Item {
         ]
     }
 
+    function providerCategoryLabel(codeOrCategory) {
+        const value = String(codeOrCategory || "generic")
+        const category = value.indexOf("E-SCRAPE") === 0 || value.indexOf("E-NET") === 0
+            ? value : value
+        if (category.indexOf("QUOTA") >= 0 || category === "quota")
+            return qsTr("quota esgotada")
+        if (category.indexOf("RATE-LIMITED") >= 0 || category === "rate-limit")
+            return qsTr("limite temporário")
+        if (category.indexOf("CREDENTIAL") >= 0 || category === "auth")
+            return qsTr("autenticação rejeitada")
+        if (category === "unreachable" || category.indexOf("UNREACHABLE") >= 0
+                || category.indexOf("OFFLINE") >= 0)
+            return qsTr("provider indisponível")
+        if (category === "http" || category.indexOf("HTTP") >= 0)
+            return qsTr("erro HTTP")
+        if (category === "download" || category.indexOf("DOWNLOAD") >= 0)
+            return qsTr("falha de download")
+        if (category === "corrupt")
+            return qsTr("mídia corrompida")
+        if (category === "cache")
+            return qsTr("cache cheio")
+        if (category === "vault")
+            return qsTr("cofre de credenciais indisponível")
+        return qsTr("falha genérica")
+    }
+
     function cards() {
         if (isGlobalOverview())
             return overviewCards()
         if (selectedArea.id === "modsCheats" && scopeId() === "game")
             return gameExtraCards()
+        if (selectedArea.id === "media" && areaData.media) {
+            const pipeline = areaData.media.mediaPipeline || {}
+            const providerDetails = pipeline.providerDetails || {}
+            const names = Object.keys(providerDetails)
+            if (names.length > 0) {
+                const summaries = names.map(function(name) {
+                    const detail = providerDetails[name] || {}
+                    return qsTr("%1: %2 (%3 jogo(s))").arg(name)
+                        .arg(page.providerCategoryLabel(detail.category || "generic"))
+                        .arg(detail.gamesAffected || 0)
+                })
+                var published = areaData.cards || []
+                var mergedMedia = [{
+                    "id": "media-provider-health",
+                    "title": qsTr("Providers de mídia com erro"),
+                    "icon": "network-server",
+                    "state": "attention",
+                    "statusLabel": qsTr("%1 provider(s) degradado(s)").arg(names.length),
+                    "detail": summaries.join("; "),
+                    "metric": qsTr("Último erro registrado"),
+                    "actions": []
+                }]
+                for (var mi = 0; mi < published.length; mi++)
+                    mergedMedia.push(published[mi])
+                return mergedMedia
+            }
+        }
         if (selectedArea.id === "graphicsPerformance") {
             var merged = []
             if (areaData.cards) {
@@ -3680,10 +3733,20 @@ Item {
                                         visible: page.selectedGame.mediaErrors !== undefined
                                             && Object.keys(page.selectedGame.mediaErrors).length > 0
                                         text: qsTr("Provedores com erro: %1").arg(
-                                            Object.keys(page.selectedGame.mediaErrors || {}).join(", "))
+                                            Object.keys(page.selectedGame.mediaErrors || {}).map(
+                                                function(name) {
+                                                    const categories = page.selectedGame.mediaErrorCategories || {}
+                                                    return qsTr("%1 (%2)").arg(name).arg(
+                                                        page.providerCategoryLabel(
+                                                            categories[name] || page.selectedGame.mediaErrors[name]
+                                                        )
+                                                    )
+                                                }
+                                            ).join(", "))
                                         color: page.amberColor
                                         font.pixelSize: 10
                                         Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
                                     }
                                 }
                                 RowLayout {

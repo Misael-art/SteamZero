@@ -463,6 +463,21 @@ ApplicationWindow {
                     .arg(result.candidate_count || 0).arg(degraded)
                 : qsTr("%1 candidato(s) encontrado(s)").arg(result.candidate_count || 0)
         }
+        if (job.type === "media.global") {
+            const outcome = result.outcome || "success"
+            if (outcome === "degraded") {
+                const interrupted = result.interrupted_providers || []
+                return interrupted.length > 0
+                    ? qsTr("Busca encerrada: %1 atingiu a quota e foi interrompido")
+                        .arg(interrupted.join(", "))
+                    : qsTr("Busca encerrada com provider(s) degradado(s); %1 jogo(s) atualizado(s)")
+                        .arg(result.updated || 0)
+            }
+            if (outcome === "partial")
+                return qsTr("Busca encerrada; %1 jogo(s) sem candidato remoto")
+                    .arg(result.no_candidates || 0)
+            return qsTr("Busca encerrada; %1 jogo(s) atualizado(s)").arg(result.updated || 0)
+        }
         if (result.message)
             return String(result.message)
         if (job.errorCode)
