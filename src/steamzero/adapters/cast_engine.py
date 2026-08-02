@@ -647,8 +647,13 @@ class CastEngine:
                 try:
                     data = conn.recv(4096)
                 except TimeoutError:
+                    # Não é falha: as sondagens periódicas mantêm o loop vivo
+                    # enquanto não há mensagem. Estado distinto de EOF/processo
+                    # morto para o diagnóstico.
                     continue
                 if not data:
+                    # EOF limpo: o cliente fechou a conexão normalmente.
+                    _log.info("client eof (fechamento limpo)")
                     break
                 buf += data
                 if len(buf) > MAX_MESSAGE_BYTES:
@@ -666,6 +671,10 @@ class CastEngine:
                     if not line.strip():
                         continue
                     self._dispatch(conn, line.decode("utf-8"))
+        except OSError as exc:
+            # Processo/cliente morto (reset) ou socket quebrado — distinto do
+            # EOF limpo acima.
+            _log.info("client peer gone: %s", exc)
         except Exception as exc:
             _log.error("client error: %s", exc)
         finally:
@@ -736,24 +745,43 @@ class CastEngine:
             conn.sendall(data)
 
     def _cmd_start_session(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
-        if self._session.running or self._session.portal_phase == PORTAL_PHASE_PENDING:
+        scope = msg.get("scope", "monitor")
+        audio = msg.get("audio", False)
+        if scope not in ("monitor", "window", "virtual"):
             self._send(
                 conn,
                 {
                     "version": IPC_VERSION,
-                    "type": "START_SESSION_OK",
+                    "type": "error",
                     "seq": seq,
-                    "detail": "already running",
+                    "detail": f"invalid scope: {scope}",
                 },
             )
             return
-        try:
-            scope = msg.get("scope", "monitor")
-            audio = msg.get("audio", False)
-
-            if scope not in ("monitor", "window", "virtual"):
-                raise ValueError(f"invalid scope: {scope}")
-
+        # G32: o check-e-cria é ATÔMICO sob o lock. Sessões chegam de conexões
+        # diferentes em threads distintas; sem serialização uma conexão nova
+        # lê a referência antiga e inicia uma segunda sessão em vez de
+        # reconhecer "already running", e o estado publicado perde o commit.
+        with self._lock:
+            # "Sessão ativa" = qualquer fase depois de STARTED, não só
+            # PENDING/running: entre a fase CAPTURE_READY e o commit de
+            # running=True há construção do pipeline numa thread assíncrona.
+            # Se o cheque testasse só `running or PENDING`, uma conexão nova
+            # nessa janela criava uma segunda sessão em vez de responder
+            # "already running".
+            if self._session.running or self._session.portal_phase != PORTAL_PHASE_IDLE:
+                self._send(
+                    conn,
+                    {
+                        "version": IPC_VERSION,
+                        "type": "START_SESSION_OK",
+                        "seq": seq,
+                        "detail": "already running",
+                        "running": True,
+                        "ready": False,
+                    },
+                )
+                return
             cancel = threading.Event()
             generation = self._session.generation + 1
             self._session = SessionState(
@@ -762,15 +790,22 @@ class CastEngine:
                 portal_cancel=cancel,
                 generation=generation,
             )
-
-            self._send(
-                conn,
-                {"version": IPC_VERSION, "type": "START_SESSION_OK", "seq": seq},
-            )
+        # Estado commitado antes de o cliente prosseguir.
+        self._send(
+            conn,
+            {
+                "version": IPC_VERSION,
+                "type": "START_SESSION_OK",
+                "seq": seq,
+                "running": False,
+                "portal_phase": PORTAL_PHASE_PENDING,
+            },
+        )
+        try:
             self._start_portal_async(scope, audio, conn, generation, cancel)
             _log.info("portal session pending (scope=%s, audio=%s)", scope, audio)
         except Exception as exc:
-            _log.error("start session failed: %s", exc)
+            _log.error("start portal failed: %s", exc)
             self._send(
                 conn,
                 {
@@ -989,9 +1024,12 @@ class CastEngine:
             self._send(conn, payload)
 
     def _cmd_stop_session(self, conn: socket.socket, seq: int) -> None:
-        is_idle = not self._session.running
-        is_idle = is_idle and self._session.pipeline is None
-        is_idle = is_idle and self._session.portal_phase != PORTAL_PHASE_PENDING
+        with self._lock:
+            is_idle = (
+                not self._session.running
+                and self._session.pipeline is None
+                and self._session.portal_phase != PORTAL_PHASE_PENDING
+            )
         if is_idle:
             self._send(
                 conn,
@@ -1033,54 +1071,77 @@ class CastEngine:
             portal.close(state.portal_session)
 
     def _cmd_pause_session(self, conn: socket.socket, seq: int) -> None:
-        if self._session.pipeline is not None:
-            self._session.pipeline.set_state(Gst.State.PAUSED)
+        # G32: o estado de pausa é commitado SOB o lock e independente do
+        # pipeline (o portal é assíncrono). Sem isso, PAUSE respondia OK mas
+        # `paused` continuava False quando o pipeline ainda não existia, e um
+        # GET_STATUS imediato via um estado que o OK já declarava no passado.
+        with self._lock:
+            pipeline = self._session.pipeline
+            if pipeline is not None:
+                pipeline.set_state(Gst.State.PAUSED)
             self._session.paused = True
             _log.info("session paused")
-        self._send(conn, {"version": IPC_VERSION, "type": "PAUSE_SESSION_OK", "seq": seq})
+        self._send(
+            conn,
+            {"version": IPC_VERSION, "type": "PAUSE_SESSION_OK", "seq": seq, "paused": True},
+        )
 
     def _cmd_resume_session(self, conn: socket.socket, seq: int) -> None:
-        if self._session.pipeline is not None:
-            self._session.pipeline.set_state(Gst.State.PLAYING)
+        with self._lock:
+            pipeline = self._session.pipeline
+            if pipeline is not None:
+                pipeline.set_state(Gst.State.PLAYING)
             self._session.paused = False
             _log.info("session resumed")
-        self._send(conn, {"version": IPC_VERSION, "type": "RESUME_SESSION_OK", "seq": seq})
+        self._send(
+            conn,
+            {"version": IPC_VERSION, "type": "RESUME_SESSION_OK", "seq": seq, "paused": False},
+        )
 
     def _cmd_set_quality(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
         bitrate = msg.get("bitrate_kbps", 2000)
-        if self._session.pipeline is not None:
-            encoder = self._session.pipeline.get_by_name("encoder")
-            if encoder is not None:
-                encoder.set_property("bitrate", bitrate)
+        with self._lock:
+            pipeline = self._session.pipeline
+            if pipeline is not None:
+                encoder = pipeline.get_by_name("encoder")
+                if encoder is not None:
+                    encoder.set_property("bitrate", bitrate)
         self._send(conn, {"version": IPC_VERSION, "type": "SET_QUALITY_OK", "seq": seq})
 
     def _cmd_request_keyframe(self, conn: socket.socket, seq: int) -> None:
-        if self._session.pipeline is not None:
-            webrtc = self._session.pipeline.get_by_name("webrtc")
-            if webrtc is not None:
-                with suppress(Exception):
-                    webrtc.emit("request-keyframe")
+        with self._lock:
+            pipeline = self._session.pipeline
+            if pipeline is not None:
+                webrtc = pipeline.get_by_name("webrtc")
+                if webrtc is not None:
+                    with suppress(Exception):
+                        webrtc.emit("request-keyframe")
         self._send(conn, {"version": IPC_VERSION, "type": "REQUEST_KEYFRAME_OK", "seq": seq})
 
     def _cmd_get_status(self, conn: socket.socket, seq: int) -> None:
+        with self._lock:
+            running = self._session.running
+            paused = self._session.paused
+            portal_phase = self._session.portal_phase
+            pipeline = self._session.pipeline
+            start_time = self._session.start_time
         status: dict[str, Any] = {
-            "running": self._session.running,
-            "paused": self._session.paused,
+            "running": running,
+            "paused": paused,
+            "ready": bool(running),
             "capture_state": (
                 "streaming"
-                if self._session.running
+                if running
                 else "requesting"
-                if self._session.portal_phase == PORTAL_PHASE_PENDING
+                if portal_phase == PORTAL_PHASE_PENDING
                 else "ready"
-                if self._session.portal_phase == PORTAL_PHASE_CAPTURE_READY
+                if portal_phase == PORTAL_PHASE_CAPTURE_READY
                 else "idle"
             ),
-            "duration_seconds": (
-                int(time.monotonic() - self._session.start_time) if self._session.start_time else 0
-            ),
+            "duration_seconds": (int(time.monotonic() - start_time) if start_time else 0),
         }
-        if self._session.pipeline is not None:
-            webrtc = self._session.pipeline.get_by_name("webrtc")
+        if pipeline is not None:
+            webrtc = pipeline.get_by_name("webrtc")
             if webrtc is not None and hasattr(webrtc, "get_stats"):
                 with suppress(Exception):
                     stats = webrtc.get_stats()
@@ -1088,16 +1149,19 @@ class CastEngine:
         self._send(conn, {"version": IPC_VERSION, "type": "GET_STATUS_OK", "seq": seq, **status})
 
     def _cmd_offer(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
-        self._session.offer = msg.get("sdp", "")
+        with self._lock:
+            self._session.offer = msg.get("sdp", "")
         self._send(conn, {"version": IPC_VERSION, "type": "OFFER_OK", "seq": seq})
 
     def _cmd_answer(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
-        self._session.answer = msg.get("sdp", "")
-        if self._session.pipeline is not None and msg.get("sdp"):
+        sdp = msg.get("sdp", "")
+        with self._lock:
+            self._session.answer = sdp
+        if self._session.pipeline is not None and sdp:
             try:
                 webrtc = self._session.pipeline.get_by_name("webrtc")
                 if webrtc is not None:
-                    result, sdp_message = GstSdp.SDPMessage.new_from_text(msg["sdp"])
+                    result, sdp_message = GstSdp.SDPMessage.new_from_text(sdp)
                     if result != GstSdp.SDPResult.OK:
                         raise RuntimeError("invalid answer SDP")
                     answer = GstWebRTC.WebRTCSessionDescription.new(
@@ -1114,21 +1178,24 @@ class CastEngine:
         self._send(conn, {"version": IPC_VERSION, "type": "ANSWER_OK", "seq": seq})
 
     def _cmd_candidate(self, conn: socket.socket, msg: dict[str, Any], seq: int) -> None:
-        if self._session.pipeline is not None and msg.get("candidate"):
+        if msg.get("candidate"):
             try:
-                webrtc = self._session.pipeline.get_by_name("webrtc")
-                if webrtc is not None:
-                    candidate = msg["candidate"]
-                    if isinstance(candidate, dict):
-                        value = str(candidate.get("candidate", ""))
-                        mline_index = _nonnegative_int(candidate.get("sdpMLineIndex"))
-                        webrtc.emit(
-                            "add-ice-candidate",
-                            mline_index if mline_index is not None else 0,
-                            value,
-                        )
-                    else:
-                        webrtc.emit("add-ice-candidate", 0, str(candidate))
+                with self._lock:
+                    pipeline = self._session.pipeline
+                if pipeline is not None:
+                    webrtc = pipeline.get_by_name("webrtc")
+                    if webrtc is not None:
+                        candidate = msg["candidate"]
+                        if isinstance(candidate, dict):
+                            value = str(candidate.get("candidate", ""))
+                            mline_index = _nonnegative_int(candidate.get("sdpMLineIndex"))
+                            webrtc.emit(
+                                "add-ice-candidate",
+                                mline_index if mline_index is not None else 0,
+                                value,
+                            )
+                        else:
+                            webrtc.emit("add-ice-candidate", 0, str(candidate))
             except Exception as exc:
                 _log.error("add ice candidate failed: %s", exc)
         self._send(conn, {"version": IPC_VERSION, "type": "CANDIDATE_OK", "seq": seq})
