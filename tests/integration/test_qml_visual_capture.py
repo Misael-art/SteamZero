@@ -540,11 +540,12 @@ class TestG31GateTruth:
         write_artifacts(result, tmp_path, resolved_node=_node().to_dict())
         after = CrashSnapshot.collect()
         # Histórico antigo não conta; nenhum pid novo do runtime QML pode ter
-        # abortado durante a captura — se tivesse, capture() já teria
-        # reprovado pelo returncode, e este guard prova a ausência de coredump.
+        # abortado durante a captura — capture() já roda o guard internamente
+        # com o PID real do harness; esta asserção externa prova de forma
+        # independente a ausência de coredump novo.
         assert_no_new_crashes(before, after, spawned_pids=[])
 
     def test_packaged_main_qml_resolves_through_importlib_resources(self) -> None:
         packaged = verify_packaged_qml()
-        assert packaged["resolved"] is True
-        assert packaged["sizeBytes"] > 0
+        assert packaged.resolved is True
+        assert packaged.size_bytes > 0

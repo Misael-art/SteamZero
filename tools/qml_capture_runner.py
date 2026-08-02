@@ -64,6 +64,9 @@ DIAG_QT_SIGNAL = "QML-VISUAL-QT-SIGNAL-016"
 DIAG_QT_EXIT = "QML-VISUAL-QT-EXIT-017"
 DIAG_QT_STDERR = "QML-VISUAL-QT-STDERR-018"
 DIAG_CRASH = "QML-VISUAL-CRASH-019"
+# G31 — runtime ausente/inexecutável (OSError no probe) é estado de ambiente,
+# distinto de "terminou com código de erro": o processo nem chegou a iniciar.
+DIAG_QT_RUNTIME = "QML-VISUAL-QT-RUNTIME-020"
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "qml_capture" / "CaptureHarness.qml"
@@ -338,6 +341,20 @@ class RuntimeProbe:
             return f"signal-{self.signal_number}"
 
 
+@dataclass(frozen=True)
+class PackagedQmlStatus:
+    """Resultado tipado de ``verify_packaged_qml`` (G31).
+
+    Substitui o ``dict[str, Any]`` de chaves mágicas: cada campo é nomeado,
+    imutável e verificado em estática — um typo de chave não passa mais
+    silenciosamente pelo gate.
+    """
+
+    resolved: bool
+    reason: str | None
+    size_bytes: int
+
+
 def sanitize_stderr(text: str, *, limit: int = 4096) -> str:
     """Stderr limitado e marcado: o diagnóstico nunca carrega saída em bruto."""
     stripped = text.strip()
@@ -365,10 +382,10 @@ def probe_runtime(runtime: Path, *, timeout: float = 30.0) -> RuntimeProbe:
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raw = exc.stderr
-        stderr = sanitize_stderr(
-            raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw)
-        )
+        # stderr pode ser None quando o filho não produziu nada antes do
+        # timeout; normalizar para vazio evita o literal "None" no diagnóstico.
+        raw = exc.stderr or b""
+        stderr = sanitize_stderr(raw.decode(errors="replace") if isinstance(raw, bytes) else raw)
         return RuntimeProbe(
             ok=False,
             version=(),
@@ -436,6 +453,16 @@ def check_runtime_version(runtime: Path, *, timeout: float = 30.0) -> tuple[int,
             DIAG_QT_SIGNAL,
             f"qml6 --version foi morto por {probe.signal_name} (sinal "
             f"{probe.signal_number}) — processo abortado nunca prova renderização",
+        )
+    # G31 — OSError (binário ausente/inexecutável): o processo nem iniciou. É
+    # estado de ambiente, distinto de "terminou com código de erro". Identificar
+    # pelo exit_code None combinado com ausência de signal/timeout evita a
+    # mensagem enganosa "saiu com código None".
+    if not probe.ok and probe.exit_code is None and probe.signal_number is None:
+        raise CaptureError(
+            DIAG_QT_RUNTIME,
+            f"runtime {runtime} não executável (ausente ou sem permissão); "
+            f"stderr:\n{probe.stderr_sanitized}",
         )
     if not probe.ok:
         raise CaptureError(
@@ -601,10 +628,10 @@ def capture(
     # G31: o gate valida o QML que o usuário executa (pacote instalado ou
     # árvore via o mesmo mecanismo de recursos), nunca só um arquivo solto.
     packaged = verify_packaged_qml()
-    if not packaged["resolved"]:
+    if not packaged.resolved:
         raise CaptureError(
             DIAG_ENVIRONMENT,
-            f"{packaged.get('reason')}; o gate visual não valida apenas a árvore fonte",
+            f"{packaged.reason}; o gate visual não valida apenas a árvore fonte",
         )
 
     output.mkdir(parents=True, exist_ok=True)
@@ -619,31 +646,56 @@ def capture(
         "imagePath": str(image),
     }
 
+    # G31: baseline de coredump ANTES de lançar o harness. O guard
+    # baseline/delta detecta crash de processo filho que produziria um verde
+    # falso — captura bem-sucedida escondendo coredump. `Popen` é necessário
+    # porque o guard precisa do PID do harness para atribuição precisa
+    # (precedente: adapters/emulation.py, adapters/screencast_web.py).
+    crash_before = CrashSnapshot.collect()
+    argv = [
+        str(runtime),
+        str(HARNESS),
+        "--",
+        "--config-json",
+        json.dumps(config, ensure_ascii=False),
+    ]
+    proc = subprocess.Popen(
+        argv,
+        cwd=ROOT,
+        env=env_spec.to_env(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
     try:
-        completed = subprocess.run(
-            [
-                str(runtime),
-                str(HARNESS),
-                "--",
-                "--config-json",
-                json.dumps(config, ensure_ascii=False),
-            ],
-            cwd=ROOT,
-            env=env_spec.to_env(),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
         # Timeout não é "demorou": é layout que não estabilizou. O estado
-        # coletado até aqui é o que permite descobrir por quê.
-        stderr = exc.stderr or b""
+        # coletado até aqui é o que permite descobrir por quê. Mate o processo
+        # e drene o stderr parcial antes de reportar.
+        proc.kill()
+        _partial_stdout, partial_stderr = proc.communicate()
         raise CaptureError(
             DIAG_CAPTURE,
-            f"layout não estabilizou em {timeout}s; stderr:\n"
-            f"{stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr}",
-        ) from exc
+            f"layout não estabilizou em {timeout}s; stderr:\n{partial_stderr or ''}",
+        ) from None
+    finally:
+        # Garante que os pipes são fechados mesmo em caminhos de exceção não
+        # previstos — Popen não fecha sozinho como subprocess.run faz.
+        for stream in (proc.stdout, proc.stderr):
+            if stream is not None and not stream.closed:
+                stream.close()
+
+    # Reconstrói o CompletedProcess para que toda a lógica downstream (parse,
+    # returncode<0, !=0, image) permaneça inalterada — só o mecanismo de spawn
+    # mudou, para expor o PID ao guard de crash.
+    completed = subprocess.CompletedProcess(
+        args=argv,
+        returncode=proc.returncode if proc.returncode is not None else -1,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
     messages = parse_messages(completed.stderr)
 
@@ -708,6 +760,14 @@ def capture(
         "notdefWidth": geometry.get("notdefWidth", 0),
         "canvas": {"width": canvas[0], "height": canvas[1]},
     }
+
+    # G31: guard baseline/delta — só roda quando a captura chegou até aqui
+    # (sucesso aparente). É o ponto semanticamente correto: nos caminhos de
+    # falha acima (signal/exit/timeout/plugin) o gate já reprova; o guard pega
+    # exatamente o verde falso — captura bem-sucedida com coredump novo
+    # atribuível ao harness (PID que lançamos) ou a um processo qml filho.
+    crash_after = CrashSnapshot.collect()
+    assert_no_new_crashes(crash_before, crash_after, spawned_pids=[proc.pid])
 
     return CaptureResult(
         image=image,
@@ -983,7 +1043,7 @@ def assert_no_new_crashes(
         )
 
 
-def verify_packaged_qml() -> dict[str, Any]:
+def verify_packaged_qml() -> PackagedQmlStatus:
     """Confere que o QML do produto resolve no pacote instalado/unpacked.
 
     Usa o MESMO mecanismo de resolução do produto (``importlib.resources``):
@@ -999,9 +1059,11 @@ def verify_packaged_qml() -> dict[str, Any]:
         exists = bool(entry.is_file())
         size = int(entry.stat().st_size) if exists else 0
     except Exception as exc:
-        return {"resolved": False, "reason": f"pacote não importável: {exc}", "sizeBytes": 0}
-    return {
-        "resolved": exists,
-        "reason": None if exists else "Main.qml ausente no pacote instalado/unpacked",
-        "sizeBytes": size,
-    }
+        return PackagedQmlStatus(
+            resolved=False, reason=f"pacote não importável: {exc}", size_bytes=0
+        )
+    return PackagedQmlStatus(
+        resolved=exists,
+        reason=None if exists else "Main.qml ausente no pacote instalado/unpacked",
+        size_bytes=size,
+    )

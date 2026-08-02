@@ -3687,6 +3687,61 @@ ativa `0.1.0a41-c9111a00d3c0` preservada e rollback
 real) segue pendente e exige release construída da main e autorização do
 operador.
 
+## 2026-08-02 — Sessão 51: G31 fechamento do guard de crash e diagnósticos do probe (branch fix/g31-crash-guard-wiring-and-diagnostics)
+
+Motivo: o merge do PR #29 (G31) veio com `mergeStateStatus: UNSTABLE` porque
+o check "Sourcery review" (IA externa) falhou. Investigação dos comentários
+revelou achados reais — divergências entre o contrato declarado do G31 e o
+código mergeado — que comprometiam a verdade observada, embora o núcleo do
+gate (rejeição de SIGABRT/exit≠0 do harness) estivesse intacto. Esta sessão
+fecha essas divergências.
+
+Causa raiz de cada achado e correção:
+- **Guard baseline/delta sem caller**: `CrashSnapshot.collect()` e
+  `assert_no_new_crashes()` existiam e tinham testes, mas `capture()` nunca
+  os chamava — a defesa declarada ("falha só por coredump novo atribuível à
+  execução") não protegia capturas reais. Verde falso possível: captura
+  bem-sucedida escondendo coredump de processo filho. Correção: `capture()`
+  agora coleta baseline antes do harness e delta antes de retornar sucesso,
+  passando o PID do harness (`Popen` no lugar de `subprocess.run`) para
+  atribuição precisa (precedente: `adapters/emulation.py`,
+  `adapters/screencast_web.py`);
+- **OSError virava "saiu com código None"**: binário `qml6` ausente ou
+  inexecutável (OSError no probe) produzia `exit_code=None`, e
+  `check_runtime_version()` emitia `DIAG_QT_EXIT` com a mensagem enganosa
+  "saiu com código None" — fere o contrato G31 "cada modo de falha é estado
+  distinto". Correção: novo diagnóstico `DIAG_QT_RUNTIME-020`
+  ("QML-VISUAL-QT-RUNTIME-020") para OSError, detectado pela combinação
+  `exit_code is None and signal_number is None and not timed_out`;
+- **Timeout produzia stderr literal "None"**: `subprocess.TimeoutExpired` com
+  `stderr=None` (filho que não produziu saída) virava `str(None)` →
+  `sanitize_stderr("None")` → o literal "None" no diagnóstico. Correção:
+  `raw = exc.stderr or b""` normaliza para vazio;
+- **`verify_packaged_qml()` retornava `dict[str, Any]`**: chaves mágicas
+  ("resolved", "reason", "sizeBytes") sem verificação de tipo — typo de chave
+  passaria silenciosamente. Correção: dataclass `PackagedQmlStatus`
+  (`@dataclass(frozen=True)`, precedente de `RuntimeProbe`/`QmlMessage`).
+
+Testes reparados/aumentados (3 novos): teste do wiring do guard (prova que
+`capture()` chama `assert_no_new_crashes` com o PID real do harness numa
+captura bem-sucedida); teste do probe OSError (afirma `DIAG_QT_RUNTIME`, não
+`DIAG_QT_EXIT`, e ausência de "código None" na mensagem); teste do reader de
+coredump que lança exceção (`CrashSnapshot.collect` degrada para vazio,
+nunca levanta). PNG-residual reparado: o PNG agora é escrito durante a
+execução do harness (via hook `on_start`), não antes — `capture()` apaga o
+arquivo antes de lançar o processo, então o teste anterior nunca atingia o
+estado que declarava provar.
+
+Falso-positivo de segurança (Sourcery): `subprocess.run([tool, ...])` em
+`read_coredumpctl` com `executable` default hardcoded `"coredumpctl"` em
+lista (sem `shell=True`, sem input externo) — sem superfície de injeção;
+nenhuma mudança necessária.
+
+Gates: 3450 testes isolados verdes (sem regressão, +3 novos), ruff check
+limpo em `src tools tests`, mypy success em 199 source files,
+`make independence boundaries` OK. Host intocado: zero mutações, sem
+release/wheel. Validação física (gate visual real no boot direto) segue
+pendente e exige release construída da main e reinicialização pelo operador.
 ## 2026-08-02 — Sessão 52: automação de release/host rebasada e limpa (branch feat/release-host-automation)
 
 O PR #20 (`codex/automate-release-host`, draft) misturava duas frentes

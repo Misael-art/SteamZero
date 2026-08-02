@@ -15,6 +15,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -25,12 +26,14 @@ from qml_capture_runner import (  # noqa: E402
     DIAG_CRASH,
     DIAG_ENVIRONMENT,
     DIAG_QT_EXIT,
+    DIAG_QT_RUNTIME,
     DIAG_QT_SIGNAL,
     DIAG_QT_STDERR,
     DIAG_QT_TIMEOUT,
     DIAG_QT_VERSION,
     CaptureError,
     CrashSnapshot,
+    PackagedQmlStatus,
     assert_no_new_crashes,
     capture,
     check_runtime_version,
@@ -59,14 +62,65 @@ class _Timeout:
 
 
 def _fake_run(monkeypatch: pytest.MonkeyPatch, result: object) -> None:
+    """Probe de versão roda sob ``subprocess.run``: injeta o resultado.
+
+    Aceita um ``subprocess.TimeoutExpired`` (lança), um ``OSError`` (lança) ou
+    um ``_Done`` (retorna).
+    """
     import qml_capture_runner as runner
 
     def fake_run(*_args: object, **_kwargs: object) -> object:
-        if isinstance(result, subprocess.TimeoutExpired):
+        if isinstance(result, BaseException):
             raise result
         return result
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+
+class _FakePopen:
+    """Substituto de ``subprocess.Popen`` para o harness em ``capture()``.
+
+    O harness agora usa ``Popen`` + ``communicate`` (para expor o PID ao guard
+    de crash). Este fake reproduz a interface mínima que ``capture()`` toca:
+    ``pid``, ``communicate(timeout=)``, ``kill()``, ``returncode`` e o fechamento
+    dos pipes no ``finally``.
+    """
+
+    _next_pid = 10_000
+
+    def __init__(
+        self,
+        *,
+        returncode: int = 0,
+        stdout: str = "",
+        stderr: str = "",
+        on_start: object = None,
+    ) -> None:
+        type(self)._next_pid += 1
+        self.pid = type(self)._next_pid
+        self.returncode = returncode
+        self._stdout = stdout
+        self._stderr = stderr
+        self._on_start = on_start
+        self.stdout = None
+        self.stderr = None
+
+    def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+        # Hook para o teste PNG-residual escrever a imagem durante a execução
+        # do harness — reproduz o cenário declarado (PNG só existe se o
+        # harness produziu algo antes de abortar).
+        if self._on_start is not None:
+            self._on_start()
+        return self._stdout, self._stderr
+
+    def kill(self) -> None:
+        pass
+
+
+def _fake_popen(monkeypatch: pytest.MonkeyPatch, popen: _FakePopen) -> None:
+    import qml_capture_runner as runner
+
+    monkeypatch.setattr(runner.subprocess, "Popen", lambda *a, **k: popen)
 
 
 class TestProbeStates:
@@ -77,9 +131,29 @@ class TestProbeStates:
         assert probe.timed_out is True
         assert probe.signal_number is None
         assert probe.exit_code is None
+        # G31: stderr None no timeout não vira o literal "None" no diagnóstico.
+        assert probe.stderr_sanitized == ""
         with pytest.raises(CaptureError) as raised:
             check_runtime_version(Path("/usr/bin/qml6"))
         assert raised.value.code == DIAG_QT_TIMEOUT
+
+    def test_oserror_is_a_distinct_state_not_exit_code_none(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Binário ausente/inexecutável: OSError no probe é estado de ambiente,
+        # distinto de "terminou com código de erro". Não pode virar a mensagem
+        # enganosa "saiu com código None".
+        _fake_run(monkeypatch, OSError("[Errno 2] No such file or directory: '/usr/bin/qml6'"))
+        probe = probe_runtime(Path("/usr/bin/qml6"))
+        assert probe.ok is False
+        assert probe.exit_code is None
+        assert probe.signal_number is None
+        assert probe.timed_out is False
+        with pytest.raises(CaptureError) as raised:
+            check_runtime_version(Path("/usr/bin/qml6"))
+        assert raised.value.code == DIAG_QT_RUNTIME
+        assert "código None" not in raised.value.detail
 
     def test_killed_by_signal_is_a_distinct_state_and_refused(
         self,
@@ -175,31 +249,91 @@ class TestCaptureAbortNeverProvesRendering:
     ) -> None:
         import qml_capture_runner as runner
 
-        calls: list[int] = []
-
-        def fake_run(argv: list[str], **_kwargs: object) -> object:
-            calls.append(1)
-            if len(calls) == 1:
-                return _Done(returncode=0, stdout="Qt 6.11.1")
-            return _Done(returncode=-6)
-
-        monkeypatch.setattr(runner.subprocess, "run", fake_run)
+        # Probe de versão sob subprocess.run: termina com sucesso para não
+        # mascarar o caminho do abort do harness.
+        monkeypatch.setattr(
+            runner.subprocess,
+            "run",
+            lambda *a, **k: _Done(returncode=0, stdout="Qt 6.11.1"),
+        )
         monkeypatch.setattr(runner, "find_runtime", lambda: Path("/usr/bin/qml6"))
         monkeypatch.setattr(
             runner,
             "verify_packaged_qml",
-            lambda: {"resolved": True, "reason": None, "sizeBytes": 1},
+            lambda: PackagedQmlStatus(resolved=True, reason=None, size_bytes=1),
         )
         # A fronteira de payload já é testada à parte; aqui só o caminho do
         # abort do harness importa.
         monkeypatch.setattr(runner, "_reject_pending_payload", lambda model: None)
-        # Mesmo que uma imagem de "captura" tenha sobrado do zero, o abort
-        # reprova antes de qualquer checagem de render.
-        (tmp_path / "actual.png").write_bytes(b"png")
+
+        # O PNG precisa existir QUANDO o check de signal roda — ou seja, só
+        # pode ser escrito durante a execução do harness, não antes (capture()
+        # apaga o arquivo antes de lançar o processo). O hook on_start do fake
+        # reproduz o cenário declarado: um PNG sobreviveu de um processo que
+        # abortou; o gate reprova pelo signal ANTES de olhar a imagem.
+        def write_residual_png() -> None:
+            (tmp_path / "actual.png").write_bytes(b"png")
+
+        popen = _FakePopen(returncode=-6, on_start=write_residual_png)
+        _fake_popen(monkeypatch, popen)
+
         with pytest.raises(CaptureError) as raised:
             capture({"text": "x"}, output=tmp_path)
         assert raised.value.code == DIAG_QT_SIGNAL
         assert "abortado por SIGABRT" in raised.value.detail
+
+    def test_successful_capture_runs_crash_guard_with_harness_pid(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # G31 fechamento: o guard baseline/delta tem que rodar numa captura que
+        # chegou ao sucesso aparente (verde que esconde coredump). Este teste
+        # prova o wiring — antes desta mudança capture() nunca chamava o guard.
+        import qml_capture_runner as runner
+
+        original_collect = runner.CrashSnapshot.collect
+        calls: list[tuple] = []
+
+        def fake_collect(reader=None):
+            calls.append("collect")
+            return original_collect(reader)
+
+        def fake_assert(before, after, *, spawned_pids):
+            calls.append(("assert", tuple(spawned_pids)))
+
+        monkeypatch.setattr(
+            runner.subprocess,
+            "run",
+            lambda *a, **k: _Done(returncode=0, stdout="Qt 6.11.1"),
+        )
+        monkeypatch.setattr(runner, "find_runtime", lambda: Path("/usr/bin/qml6"))
+        monkeypatch.setattr(
+            runner,
+            "verify_packaged_qml",
+            lambda: PackagedQmlStatus(resolved=True, reason=None, size_bytes=1),
+        )
+        monkeypatch.setattr(runner, "_reject_pending_payload", lambda model: None)
+        monkeypatch.setattr(runner.CrashSnapshot, "collect", staticmethod(fake_collect))
+        monkeypatch.setattr(runner, "assert_no_new_crashes", fake_assert)
+
+        def write_png_and_geometry() -> None:
+            (tmp_path / "actual.png").write_bytes(b"png")
+
+        popen = _FakePopen(
+            returncode=0,
+            stdout="",
+            stderr="HARNESS-GEOMETRY {}",
+            on_start=write_png_and_geometry,
+        )
+        _fake_popen(monkeypatch, popen)
+
+        capture({"text": "x"}, output=tmp_path)
+
+        # O guard foi chamado: duas coletas (baseline + delta) e a asserção
+        # recebeu o PID do harness que capture() lançou.
+        assert calls.count("collect") == 2
+        assert_calls = [c for c in calls if isinstance(c, tuple) and c[0] == "assert"]
+        assert len(assert_calls) == 1
+        assert assert_calls[0][1] == (popen.pid,)
 
 
 class TestCrashGuard:
@@ -242,13 +376,23 @@ class TestCrashGuard:
         assert "/" not in one
         assert "usr" not in one
 
+    def test_collect_degrades_to_empty_when_reader_raises(self) -> None:
+        # Um coredumpctl quebrado (ex.: permissão negada, JSON inválido) nunca
+        # derruba o gate: collect() engole a exceção e devolve snapshot vazio.
+        def broken_reader() -> list[dict[str, Any]]:
+            raise RuntimeError("coredumpctl failed")
+
+        snapshot = CrashSnapshot.collect(broken_reader)
+        assert snapshot.records == ()
+        assert snapshot.fingerprints == frozenset()
+
 
 class TestPackagedQml:
     def test_product_main_qml_resolves_in_the_package(self) -> None:
         result = verify_packaged_qml()
-        assert result["resolved"] is True
-        assert result["sizeBytes"] > 0
-        assert result["reason"] is None
+        assert result.resolved is True
+        assert result.size_bytes > 0
+        assert result.reason is None
 
     def test_capture_refuses_when_packaged_qml_is_missing(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -258,11 +402,11 @@ class TestPackagedQml:
         monkeypatch.setattr(
             runner,
             "verify_packaged_qml",
-            lambda: {
-                "resolved": False,
-                "reason": "Main.qml ausente no pacote instalado/unpacked",
-                "sizeBytes": 0,
-            },
+            lambda: PackagedQmlStatus(
+                resolved=False,
+                reason="Main.qml ausente no pacote instalado/unpacked",
+                size_bytes=0,
+            ),
         )
         monkeypatch.setattr(runner, "find_runtime", lambda: Path("/usr/bin/qml6"))
         monkeypatch.setattr(
