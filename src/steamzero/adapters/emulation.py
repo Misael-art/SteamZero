@@ -156,6 +156,8 @@ _EMULATOR_ROWS_ORDER: tuple[str, ...] = (
     "ppsspp",
     "melonds",
     "azahar",
+    "retroarch",
+    "flycast",
 )
 
 
@@ -868,12 +870,18 @@ class EmulationController:
     def launch_emulator(self, emulator_id: str) -> dict[str, Any]:
         self._require_launchable_emulator(emulator_id)
         platform = self._primary_platform_for(emulator_id)
-        profile = self._launch_profile_for(platform, emulator_id)
         source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
-        if profile is None:
-            raise SteamZeroError(
-                "E-API-SCHEMA", detail=f"{emulator_id} não declara perfil de launch"
-            )
+        profile: LaunchProfile | None
+        if platform == "multi":
+            # Emulador multi-plataforma (RetroArch): "Abrir" é o executor base,
+            # sem perfil de plataforma — cada jogo decide o core.
+            profile = LaunchProfile(platform_id="multi", adapter_id=emulator_id, game_args=())
+        else:
+            profile = self._launch_profile_for(platform, emulator_id)
+            if profile is None:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail=f"{emulator_id} não declara perfil de launch"
+                )
         argv = self._build_exec_argv(
             profile,
             source_type=source_type,

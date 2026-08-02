@@ -63,7 +63,17 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
     by_id = {row["id"]: row for row in rows}
 
-    assert set(by_id) == {"eden", "citron", "ryubing", "dolphin", "ppsspp", "melonds", "azahar"}
+    assert set(by_id) == {
+        "eden",
+        "citron",
+        "ryubing",
+        "dolphin",
+        "ppsspp",
+        "melonds",
+        "azahar",
+        "retroarch",
+        "flycast",
+    }
     assert by_id["ryubing"]["sourceState"] == "verified"
     assert by_id["ryubing"]["targetVersion"] == "1.3.3"
     assert by_id["ryubing"]["iconAsset"] == "../assets/ryubing.png"
