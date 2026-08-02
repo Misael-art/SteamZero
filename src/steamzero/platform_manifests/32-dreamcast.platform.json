@@ -16,8 +16,8 @@
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
   "emulators": [
-    {"id": "flycast", "name": "Flycast", "adapterId": "flycast", "precedence": 1, "role": "primary"},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+    {"id": "flycast", "name": "Flycast", "adapterId": "flycast", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}},
+    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback", "launch": {"core": "flycast", "openArgs": [], "gameArgs": ["-L", "{core}", "{rom}"]}}
   ],
   "media": {"extensions": ["cdi", "chd", "cue", "dat", "elf", "gdi", "iso", "lst", "m3u"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["dreamcast-gamepad"], "maxPlayers": 4, "specialized": ["light-gun", "keyboard", "mouse"]},

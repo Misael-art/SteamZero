@@ -34,6 +34,42 @@ ALLOWED_PLACEHOLDERS = frozenset({ROM_PLACEHOLDER, CORE_PLACEHOLDER})
 _PLACEHOLDER_RE = re.compile(r"\{[a-z_]+\}")
 _CORE_RE = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 
+#: Cores libretro sancionados por plataforma — fonte de verdade da validação
+#: de core. RetroArch é multi-plataforma; o core é propriedade da PLATAFORMA.
+#: O manifesto que declara um core fora deste registro é contrato quebrado:
+#: aceitar produziria um "Jogar" com core de outra plataforma (ou inexistente).
+#: A entrada da plataforma é exigida sempre que um core é declarado, para que
+#: este registro não envelheça silenciosamente quando um core novo chegar.
+PLATFORM_CORES: dict[str, frozenset[str]] = {
+    "nintendo-handheld": frozenset({"mgba"}),
+    "nes-famicom": frozenset({"mesen"}),
+    "snes": frozenset({"snes9x"}),
+    "mega-drive": frozenset({"genesis_plus_gx"}),
+    "arcade": frozenset({"fbneo"}),
+    "playstation": frozenset({"swanstation"}),
+    "nintendo-console": frozenset({"dolphin"}),
+    "master-system": frozenset({"genesis_plus_gx"}),
+    "game-gear": frozenset({"genesis_plus_gx"}),
+    "pc-engine-turbografx": frozenset({"mednafen_pce"}),
+    "atari-classics": frozenset({"stella"}),
+    "neo-geo-pocket": frozenset({"mednafen_ngp"}),
+    "wonderswan": frozenset({"mednafen_wswan"}),
+    "msx": frozenset({"bluemsx"}),
+    "zx-spectrum": frozenset({"fuse"}),
+    "commodore-64": frozenset({"vice_x64"}),
+    "amiga": frozenset({"puae"}),
+    "colecovision": frozenset({"bluemsx"}),
+    "intellivision": frozenset({"freeintv"}),
+    "virtual-boy": frozenset({"mednafen_vb"}),
+    "three-do": frozenset({"opera"}),
+    "sega-cd-32x": frozenset({"genesis_plus_gx"}),
+    "nintendo-64": frozenset({"mupen64plus_next"}),
+    "playstation-2": frozenset({"pcsx2"}),
+    "playstation-portable": frozenset({"ppsspp"}),
+    "nintendo-ds": frozenset({"melonds"}),
+    "dreamcast": frozenset({"flycast"}),
+}
+
 
 @dataclass(frozen=True)
 class LaunchProfile:
@@ -87,6 +123,16 @@ def parse_launch(platform_id: str, adapter_id: str, raw: Any) -> LaunchProfile |
         raise SteamZeroError(
             "E-API-SCHEMA", detail=f"core inválido em {platform_id}/{adapter_id}: {core!r}"
         )
+    if core is not None:
+        sanctioned = PLATFORM_CORES.get(platform_id)
+        if sanctioned is None or core not in sanctioned:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=(
+                    f"core {core!r} não é sancionado para a plataforma {platform_id} "
+                    f"(sancionados: {sorted(sanctioned) if sanctioned else 'nenhum'})"
+                ),
+            )
 
     for argument in (*game_args, *open_args):
         for placeholder in _PLACEHOLDER_RE.findall(argument):
