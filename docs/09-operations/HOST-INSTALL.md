@@ -4,6 +4,11 @@ Este procedimento instala o SteamZero sem depender de PhaseZero, de um checkout
 permanente ou do Python do usuário. Ele é destinado ao BigLinux/Manjaro em modo
 Desktop e usa `bigsudo` somente para publicar arquivos do sistema.
 
+Para o fluxo retomável usado por agentes — diagnóstico, download do run exato,
+validação, instalação, ciclo e publicação — use
+[`RELEASE-HOST-AUTOMATION.md`](RELEASE-HOST-AUTOMATION.md). Este documento
+permanece como contrato detalhado do instalador subjacente.
+
 ## Modelo operacional
 
 | Caminho | Função |
