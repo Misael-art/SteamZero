@@ -307,6 +307,67 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
     assert eden["action"]["id"] == "emulator.install:eden"
 
 
+class StubResourceProbe:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+
+    def snapshot(self) -> dict[str, object]:
+        return self._payload
+
+
+def test_dashboard_snapshot_publishes_resource_attribution(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    resources_payload = {
+        "schemaVersion": 1,
+        "readOnly": True,
+        "complete": True,
+        "reason": None,
+        "classes": [],
+        "totals": {
+            "attributed": {
+                "displayName": "Consumo atribuído",
+                "processCount": 1,
+                "pssBytes": 1024,
+                "swapBytes": 0,
+                "processesWithUnknownMemory": 0,
+            },
+            "unattributable": {
+                "displayName": "Não atribuível",
+                "processCount": 1,
+                "pssBytes": 512,
+                "swapBytes": 0,
+                "processesWithUnknownMemory": 0,
+            },
+        },
+        "processes": [],
+    }
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        flatpak_factory=lambda: FakeFlatpak(),  # type: ignore[arg-type]
+        doctor_runner=lambda: ({"version": "test"}, []),
+        steam=SteamDesktopController(
+            which=lambda _command: None,
+            running_probe=lambda: False,
+            spawn=lambda _argv: None,
+        ),
+        gameplay=FakeGameplay(),  # type: ignore[arg-type]
+        which=lambda _command: None,
+        spawn=lambda _argv: None,
+        reduced_motion_probe=lambda: True,
+        high_contrast_probe=lambda: True,
+        resources=StubResourceProbe(resources_payload),  # type: ignore[arg-type]
+    )
+    snapshot = dashboard.snapshot(_status())
+    resources = snapshot["resources"]
+    assert resources == resources_payload
+    assert resources["totals"]["attributed"]["processCount"] == 1
+    assert resources["totals"]["unattributable"]["processCount"] == 1
+
+
 def test_dashboard_unavailable_component_never_looks_installed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

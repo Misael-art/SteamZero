@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+import os
 import secrets
 import shutil
 import subprocess
@@ -735,6 +736,7 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
                     token,
                 ],
                 stdin=subprocess.DEVNULL,
+                env={**os.environ, "STEAMZERO_CLASS": "ui"},
             )
             while process.poll() is None:
                 server.handle_request()

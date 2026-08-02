@@ -571,6 +571,35 @@ def test_desktop_gamemode_status_is_read_only_with_validated_plan(
     assert plan["executesHostChanges"] is False
 
 
+def test_system_resources_is_read_only_with_class_attribution(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PATH", "")
+    code = cli.main(["system", "resources", "--json"])
+    env = json.loads(capsys.readouterr().out)
+    contracts.validate(env, "envelope-v2.schema.json")
+    assert env["module"] == "system"
+    assert env["action"] == "resources"
+    assert code == cli.EXIT_OK
+    resources = env["data"]["resources"]
+    assert resources["schemaVersion"] == 1
+    assert resources["readOnly"] is True
+    assert isinstance(resources["complete"], bool)
+    assert [row["processClass"] for row in resources["classes"]] == [
+        "ui",
+        "daemon",
+        "media-job",
+        "emulator",
+        "emulator-child",
+        "unknown",
+    ]
+    totals = resources["totals"]
+    assert "attributed" in totals
+    assert "unattributable" in totals
+    assert "leak" not in json.dumps(env).lower()
+    assert "cmdline" not in json.dumps(env)
+
+
 def test_desktop_plan_and_apply_without_optional_commands(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
