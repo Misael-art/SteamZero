@@ -23,7 +23,7 @@ from steamzero.domain.platform_composer import (
     compose_platform,
     facts_from_status,
 )
-from steamzero.domain.platforms import PlatformRegistry
+from steamzero.domain.platforms import PlatformRegistry, load_platform_manifest
 
 
 @pytest.fixture(scope="module")
@@ -50,6 +50,16 @@ def _absent(adapter_id: str) -> EmulatorFacts:
         installable=True,
         installed=False,
     )
+
+
+def _raw_without_launch(name: str) -> dict[str, Any]:
+    import json
+    from pathlib import Path
+
+    data = json.loads((Path("src/steamzero/platform_manifests") / name).read_text(encoding="utf-8"))
+    for emulator in data["emulators"]:
+        emulator.pop("launch", None)
+    return data
 
 
 def _validate(platform: dict[str, Any]) -> None:
@@ -88,10 +98,13 @@ class TestLaunchability:
         assert platform["launchable"] is False
         assert "não está instalado" in platform["launchReason"]
 
-    def test_platform_without_launch_profile_says_so(self, registry: PlatformRegistry) -> None:
-        """O Switch agora declara launch (LAUNCH-E2E-01); usa-se o melonDS,
-        que segue sem perfil -> a plataforma exibe a causa, nunca o silêncio."""
-        platform = compose_platform(registry.get("nintendo-ds"), facts_for=_installed)
+    def test_platform_without_launch_profile_says_so(self) -> None:
+        """Todos os primários reais já declaram launch; derrubar os perfis de
+        um manifesto provoca a causa explícita, nunca o silêncio."""
+        manifest = load_platform_manifest(
+            _raw_without_launch("31-playstation-portable.platform.json")
+        )
+        platform = compose_platform(manifest, facts_for=_installed)
         assert platform["launchable"] is False
         assert "lançar" in platform["launchReason"]
 

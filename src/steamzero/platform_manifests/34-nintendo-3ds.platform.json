@@ -16,7 +16,7 @@
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
   "emulators": [
-    {"id": "azahar", "name": "Azahar", "adapterId": "azahar", "precedence": 1, "role": "primary"},
+    {"id": "azahar", "name": "Azahar", "adapterId": "azahar", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}},
     {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
   ],
   "media": {"extensions": ["3ds", "3dsx", "app", "axf", "cci", "cxi", "elf", "z3dsx", "zcci", "zcxi"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},

@@ -148,10 +148,10 @@ class TestAdapterPresentationAssets:
 
     def test_operational_emulators_resolve_through_the_contract(self) -> None:
         """A função que a UI consome deriva do registry, não de dict paralelo."""
-        from steamzero.adapters.emulation import _emulator_presentation
+        from steamzero.adapters.emulation import _EMULATOR_ROWS_ORDER, _emulator_presentation
 
         rows = _emulator_presentation()
-        assert set(rows) == {"eden", "citron", "ryubing"}
+        assert set(rows) == set(_EMULATOR_ROWS_ORDER)
         for emulator_id, (name, icon) in rows.items():
             assert name, f"{emulator_id} sem nome"
             assert Path(icon).name in _packaged_assets()
@@ -185,9 +185,9 @@ class TestDisplayOrderIsDeclared:
     """
 
     def test_order_follows_the_declaration(self) -> None:
-        from steamzero.adapters.emulation import _MANAGED_EMULATORS, _emulator_presentation
+        from steamzero.adapters.emulation import _EMULATOR_ROWS_ORDER, _emulator_presentation
 
-        assert list(_emulator_presentation()) == list(_MANAGED_EMULATORS)
+        assert list(_emulator_presentation()) == list(_EMULATOR_ROWS_ORDER)
 
     def test_order_is_not_alphabetical_by_accident(self) -> None:
         from steamzero.adapters.emulation import _emulator_presentation

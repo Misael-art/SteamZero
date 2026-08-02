@@ -146,6 +146,18 @@ class SessionSecretStore:
 #: por ordem alfabética, mudando a UI sem intenção. Declarada aqui, é decisão.
 _MANAGED_EMULATORS: tuple[str, ...] = ("eden", "citron", "ryubing")
 
+#: Emuladores com lifecycle completo (instalar, atualizar, reparar, abrir,
+#: fechar, requisitos) exibidos na central. Cada id aqui tem fonte instalável
+#: e perfil de launch declarado; os demais continuam fora das linhas até que
+#: cada família fique real (LAUNCH-E2E-02 B e C).
+_EMULATOR_ROWS_ORDER: tuple[str, ...] = (
+    *_MANAGED_EMULATORS,
+    "dolphin",
+    "ppsspp",
+    "melonds",
+    "azahar",
+)
+
 
 def _emulator_presentation(
     registry: AdapterRegistry | None = None,
@@ -162,7 +174,7 @@ def _emulator_presentation(
     by_id = {manifest.id: manifest for manifest in source.list()}
     rows: dict[str, tuple[str, str]] = {}
     # Percorre na ordem declarada, não na do registry: a ordem é contrato de UI.
-    for emulator_id in _MANAGED_EMULATORS:
+    for emulator_id in _EMULATOR_ROWS_ORDER:
         manifest = by_id.get(emulator_id)
         if manifest is None or manifest.presentation is None:
             continue
@@ -271,6 +283,15 @@ def _spawn_detached(argv: Sequence[str]) -> int:
         env=_spawn_environment(),
     )
     return process.pid
+
+
+def _process_alive(pid: int) -> bool:
+    """O processo ainda existe? Sondagem sem efeito colateral."""
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
 
 
 def _read_proc_start_ticks(pid: int) -> int | None:
@@ -697,7 +718,7 @@ class EmulationController:
         return payload
 
     def plan_emulator(self, emulator_id: str, action: str) -> dict[str, Any]:
-        self._require_managed_emulator(emulator_id)
+        self._require_known_emulator(emulator_id)
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
@@ -869,14 +890,27 @@ class EmulationController:
         return {"status": "started", "emulatorId": emulator_id, "pid": pid}
 
     def stop_emulator(self, emulator_id: str) -> dict[str, Any]:
-        self._require_managed_emulator(emulator_id)
-        with self._store_factory() as store:
-            store.migrate()
-            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
-            payload = engine.payload_path(emulator_id)
-        groups = self._managed_process_groups(payload)
-        for process_group in groups:
-            os.killpg(process_group, signal.SIGTERM)
+        self._require_known_emulator(emulator_id)
+        source_type, _flatpak_ref, _payload = self._emulator_source(emulator_id)
+        groups: set[int] = set()
+        if source_type == "flatpak":
+            # O spawn usa start_new_session, então o pid registrado é o líder
+            # do grupo; derrubar o grupo derruba o wrapper e o aplicativo.
+            pid = self._running_pids.get(emulator_id)
+            if pid is not None and _process_alive(pid):
+                try:
+                    os.killpg(pid, signal.SIGTERM)
+                except OSError:
+                    pass
+                else:
+                    groups.add(pid)
+        else:
+            with self._store_factory() as store:
+                store.migrate()
+                engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
+                groups = self._managed_process_groups(engine.payload_path(emulator_id))
+            for process_group in groups:
+                os.killpg(process_group, signal.SIGTERM)
         self._running_pids.pop(emulator_id, None)
         return {
             "status": "stopping" if groups else "not-running",
@@ -1634,7 +1668,7 @@ class EmulationController:
             plan = self._nsz_conversion().plan_convert(source, target_format)
         elif action == "game.emulator.default":
             emulator_id = self._required_string(payload, "emulatorId")
-            self._require_managed_emulator(emulator_id)
+            self._require_known_emulator(emulator_id)
             plan = self._plan_global_setting("defaultEmulatorId", emulator_id)
         elif action == "game.emulator.clear_default":
             plan = self._plan_global_setting("defaultEmulatorId", None)
@@ -1664,7 +1698,7 @@ class EmulationController:
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
             emulator_id = self._required_string(payload, "emulatorId")
-            self._require_managed_emulator(emulator_id)
+            self._require_known_emulator(emulator_id)
             plan = self._plan_game_setting(
                 game_id,
                 "emulatorId",
@@ -2621,17 +2655,27 @@ class EmulationController:
                 state = str(status["state"])
                 degraded = state == "degraded"
                 installed = state in {"installed", "degraded"}
-                source = manifest.preferred_source("appimage", allow_eol=False)
+                try:
+                    source = manifest.preferred_source(None, allow_eol=False)
+                except SteamZeroError:
+                    # Fonte declarada, porém ausente ou EOL: a linha continua com
+                    # estado real, sem versão-alvo — o motivo fica no status.
+                    source = None
+                flatpak = source is not None and str(source.type) == "flatpak"
                 current = str(status.get("version") or "—")
-                up_to_date = installed and current == source.version
+                up_to_date = installed and source is not None and current == source.version
                 running = False
                 if installed:
                     # Degradado não trava o snapshot: payload ausente derruba o
                     # processo do jogo, mas a central continua navegável.
                     try:
-                        running = bool(
-                            self._managed_process_groups(engine.payload_path(emulator_id))
-                        )
+                        if flatpak:
+                            pid = self._running_pids.get(emulator_id)
+                            running = pid is not None and _process_alive(pid)
+                        else:
+                            running = bool(
+                                self._managed_process_groups(engine.payload_path(emulator_id))
+                            )
                     except SteamZeroError:
                         running = False
                 keys_ready = bool(installed and self._key_projection_valid(emulator_id))
@@ -2722,7 +2766,7 @@ class EmulationController:
                         "displayName": name,
                         "name": name,
                         "iconAsset": icon_asset,
-                        "platform": "switch",
+                        "platform": self._primary_platform_for(emulator_id),
                         "state": row_state,
                         "statusLabel": status_label,
                         "installState": install_state,
@@ -2747,7 +2791,11 @@ class EmulationController:
                                 )
                             ),
                         },
-                        "specialty": "AppImage verificado, configuração e dados preservados",
+                        "specialty": (
+                            "Flatpak do flathub, sandbox do aplicativo preservado"
+                            if flatpak
+                            else "AppImage verificado, configuração e dados preservados"
+                        ),
                         "capabilities": [],
                         "actions": actions,
                         "action": actions[0],
@@ -5385,7 +5433,7 @@ class EmulationController:
                 home / ".config/Ryujinx/system/prod.keys",
                 home / "Ryujinx/system/prod.keys",
             ),
-        }[emulator_id]
+        }.get(emulator_id, ())
 
     @staticmethod
     def _emulator_title_key_targets(emulator_id: str) -> tuple[Path, ...]:
@@ -5400,7 +5448,7 @@ class EmulationController:
                 home / ".config/Ryujinx/system/title.keys",
                 home / "Ryujinx/system/title.keys",
             ),
-        }[emulator_id]
+        }.get(emulator_id, ())
 
     def _key_projection_copies(self, emulator_id: str) -> list[tuple[Path, Path]]:
         """Projeta as keys centrais ao consumidor escolhido no mesmo plano.
@@ -5495,12 +5543,16 @@ class EmulationController:
             return None
 
     def _key_projection_valid(self, emulator_id: str) -> bool:
+        targets = self._emulator_key_targets(emulator_id)
+        if not targets:
+            # Emulador sem projeção de keys (não-Switch) não exige sincronia.
+            return True
         try:
             source = self._current_key_source()
             digest = fs.hash_file(source, algo="sha256")
         except (OSError, SteamZeroError):
             return False
-        for target in self._emulator_key_targets(emulator_id):
+        for target in targets:
             try:
                 if target.is_file() and fs.hash_file(target, algo="sha256") == digest:
                     return True
@@ -5570,7 +5622,7 @@ class EmulationController:
             "eden": (home / ".local/share/eden/nand/system/Contents/registered" / filename,),
             "citron": (home / ".local/share/citron/nand/system/Contents/registered" / filename,),
             "ryubing": (home / ".config/Ryujinx/bis/system/Contents/registered" / filename / "00",),
-        }[emulator_id]
+        }.get(emulator_id, ())
 
     def _emulator_game_directory_writes(self, roots: Sequence[Path]) -> dict[Path, bytes]:
         home = Path.home()
@@ -5717,7 +5769,7 @@ class EmulationController:
             for key in allowed:
                 value = data["settings"].get(key)
                 if value is not None:
-                    if key == "defaultEmulatorId" and value not in _MANAGED_EMULATORS:
+                    if key == "defaultEmulatorId" and not self._known_emulator(value):
                         continue
                     if key in {"autoPublishSteam", "preferNativeNca"} and not isinstance(
                         value, bool
@@ -5764,7 +5816,7 @@ class EmulationController:
                     raise ValueError("campo desconhecido")
                 emulator_id = raw.get("emulatorId")
                 selected = raw.get("steamSelected")
-                if emulator_id is not None and emulator_id not in _MANAGED_EMULATORS:
+                if emulator_id is not None and not self._known_emulator(emulator_id):
                     raise ValueError("emulador inválido")
                 if selected is not None and not isinstance(selected, bool):
                     raise ValueError("seleção Steam inválida")
@@ -6554,3 +6606,26 @@ class EmulationController:
     def _require_managed_emulator(emulator_id: str) -> None:
         if emulator_id not in _MANAGED_EMULATORS:
             raise SteamZeroError("E-API-SCHEMA", detail="emulador não gerenciado")
+
+    @staticmethod
+    def _require_known_emulator(emulator_id: str) -> None:
+        """O emulador é declarado no registry de adapters (qualquer fonte).
+
+        Seleção de preferência, instalação e parada aceitam todo adapter
+        conhecido; lançar um jogo continua exigindo fonte instalável e instalada
+        via ``_require_launchable_emulator``.
+        """
+        try:
+            registry = AdapterRegistry.bundled()
+            manifest = registry.get(emulator_id)
+        except SteamZeroError:
+            manifest = None
+        if manifest is None:
+            raise SteamZeroError("E-API-SCHEMA", detail="emulador não declarado")
+
+    def _known_emulator(self, emulator_id: str) -> bool:
+        try:
+            registry = self._registry_factory()
+            return registry.get(emulator_id) is not None
+        except Exception:
+            return False
