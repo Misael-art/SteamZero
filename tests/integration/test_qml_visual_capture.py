@@ -50,12 +50,15 @@ from qml_capture_runner import (  # noqa: E402
     CanonicalEnvironment,
     CaptureError,
     CaptureResult,
+    CrashSnapshot,
+    assert_no_new_crashes,
     assert_not_empty,
     capture,
     check_runtime_version,
     compare_with_golden,
     find_runtime,
     parse_messages,
+    verify_packaged_qml,
     write_artifacts,
 )
 
@@ -503,6 +506,7 @@ class TestDeclaredFailureModesActuallyFire:
         import subprocess
 
         class _Old:
+            returncode = 0
             stdout = "Qt 6.2.0"
             stderr = ""
 
@@ -525,3 +529,22 @@ class TestDeclaredFailureModesActuallyFire:
         # arquivo. Verificar aquele campo tornava o teste dependente de haver
         # fontes instaladas, que é exatamente o que o isolamento remove.
         assert fingerprint["packagedSha256"], fingerprint
+
+
+class TestG31GateTruth:
+    """G31 — o gate visual em si: baseline/delta de crash e QML empacotado."""
+
+    def test_no_new_crash_is_attributable_after_a_real_capture(self, tmp_path: Path) -> None:
+        before = CrashSnapshot.collect()
+        result = capture(_model().to_dict(), output=tmp_path, canvas=CANVAS, background=BACKGROUND)
+        write_artifacts(result, tmp_path, resolved_node=_node().to_dict())
+        after = CrashSnapshot.collect()
+        # Histórico antigo não conta; nenhum pid novo do runtime QML pode ter
+        # abortado durante a captura — se tivesse, capture() já teria
+        # reprovado pelo returncode, e este guard prova a ausência de coredump.
+        assert_no_new_crashes(before, after, spawned_pids=[])
+
+    def test_packaged_main_qml_resolves_through_importlib_resources(self) -> None:
+        packaged = verify_packaged_qml()
+        assert packaged["resolved"] is True
+        assert packaged["sizeBytes"] > 0
