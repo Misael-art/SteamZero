@@ -15,7 +15,7 @@
     {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
-  "emulators": [{"id": "cemu", "name": "Cemu", "adapterId": "cemu", "precedence": 1, "role": "primary"}],
+  "emulators": [{"id": "cemu", "name": "Cemu", "adapterId": "cemu", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["-g", "{rom}"]}}],
   "media": {"extensions": ["elf", "rpx", "tmd", "wua", "wud", "wuhb", "wux"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["wii-u-gamepad"], "maxPlayers": 8, "specialized": ["touchscreen", "motion", "microphone"]},
   "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},

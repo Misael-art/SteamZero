@@ -73,6 +73,10 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
         "azahar",
         "retroarch",
         "flycast",
+        "cemu",
+        "rpcs3",
+        "xemu",
+        "xenia-canary",
     }
     assert by_id["ryubing"]["sourceState"] == "verified"
     assert by_id["ryubing"]["targetVersion"] == "1.3.3"

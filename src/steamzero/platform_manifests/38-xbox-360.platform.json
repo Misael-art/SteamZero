@@ -15,7 +15,7 @@
     {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
-  "emulators": [{"id": "xenia-canary", "name": "Xenia Canary", "adapterId": "xenia-canary", "precedence": 1, "role": "primary"}],
+  "emulators": [{"id": "xenia-canary", "name": "Xenia Canary", "adapterId": "xenia-canary", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}}],
   "media": {"extensions": ["iso", "xex", "zar"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["xbox-360-gamepad"], "maxPlayers": 4, "specialized": ["guitar", "drums", "wheel"]},
   "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
