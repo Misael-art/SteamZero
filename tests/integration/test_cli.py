@@ -792,6 +792,20 @@ def test_component_list_and_plan_use_contract_envelopes(
     contracts.validate(planned["data"]["plan"], "component-plan-v2.schema.json")
 
 
+def test_component_lifecycle_builder_imports_adapter_registry_at_runtime(
+    tmp_path: Path,
+) -> None:
+    """Regressão G27/G31: `AdapterRegistry` vive só sob `if TYPE_CHECKING:` no
+    topo do módulo; `_component_lifecycle` precisa importá-lo no próprio escopo,
+    senão `component list` quebra em runtime com NameError (visto em release
+    instalada e confirmado no fonte da main)."""
+    store = StateStore(tmp_path / "state.db")
+    store.migrate()
+    lifecycle = cli._component_lifecycle(store)
+    assert lifecycle is not None
+    store.close()
+
+
 def test_component_apply_requires_and_forwards_confirmation(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
