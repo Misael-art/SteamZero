@@ -89,8 +89,9 @@ class TestLaunchability:
         assert "não está instalado" in platform["launchReason"]
 
     def test_platform_without_launch_profile_says_so(self, registry: PlatformRegistry) -> None:
-        """Switch não declara launch nos manifests de plataforma."""
-        platform = compose_platform(registry.get("switch"), facts_for=_installed)
+        """O Switch agora declara launch (LAUNCH-E2E-01); usa-se o melonDS,
+        que segue sem perfil -> a plataforma exibe a causa, nunca o silêncio."""
+        platform = compose_platform(registry.get("nintendo-ds"), facts_for=_installed)
         assert platform["launchable"] is False
         assert "lançar" in platform["launchReason"]
 

@@ -22,8 +22,10 @@
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
   "emulators": [
-    {"id": "pcsx2", "name": "PCSX2", "adapterId": "pcsx2", "precedence": 1, "role": "primary"},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+    {"id": "pcsx2", "name": "PCSX2", "adapterId": "pcsx2", "precedence": 1, "role": "primary",
+     "launch": {"gameArgs": ["--fullscreen", "{rom}"]}},
+    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback",
+     "launch": {"core": "pcsx2", "gameArgs": ["-L", "{core}", "{rom}"]}}
   ],
   "media": {"extensions": ["bin", "chd", "ciso", "cso", "dump", "elf", "gz", "m3u", "mdf", "img", "iso", "isz", "nrg", "zso"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["dualshock-2"], "maxPlayers": 8, "specialized": ["multitap", "light-gun", "wheel"]},
