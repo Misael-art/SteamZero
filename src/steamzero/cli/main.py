@@ -602,7 +602,11 @@ def _component_runtime(store: StateStore) -> tuple[AdapterRegistry, FlatpakExecu
 
 def _component_lifecycle(store: StateStore) -> Any:
     # G27: a fachada decide o executor pela família da fonte; CLI não escolhe.
+    # AdapterRegistry precisa ser importado AQUI: no topo do módulo ele vive
+    # só sob `if TYPE_CHECKING`, e referenciá-lo sem import local quebra o
+    # `component list` em runtime (NameError em release instalada).
     from steamzero.adapters.lifecycle import ComponentLifecycle
+    from steamzero.adapters.registry import AdapterRegistry
 
     return ComponentLifecycle(store, AdapterRegistry.bundled())
 
