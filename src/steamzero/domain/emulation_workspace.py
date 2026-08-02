@@ -36,19 +36,26 @@ def _project_platform(
     manifest: PlatformManifest,
     emulator_facts: Callable[[str], EmulatorFacts] | None,
     core_present: Callable[[str], bool] | None,
+    bios_present: Callable[[str, str, str], bool] | None,
 ) -> dict[str, Any]:
     """Compõe a plataforma quando há fatos reais; senão, projeta o placeholder.
 
     Os fatos vêm INJETADOS porque quem os conhece é a camada de adapters — o
-    executor de lifecycle e a busca de core no host. Domínio não importa
-    adapters (fronteira BND-DOMAIN-ADAPTER), então a dependência é invertida.
+    executor de lifecycle, a busca de core no host e o store central de BIOS.
+    Domínio não importa adapters (fronteira BND-DOMAIN-ADAPTER), então a
+    dependência é invertida.
 
     Sem fatos, o placeholder continua sendo a resposta honesta: significa que
     ninguém consultou o host, não que a plataforma esteja indisponível.
     """
     if emulator_facts is None:
         return platform_placeholder(manifest)
-    return compose_platform(manifest, facts_for=emulator_facts, core_present_for=core_present)
+    return compose_platform(
+        manifest,
+        facts_for=emulator_facts,
+        core_present_for=core_present,
+        bios_present_for=bios_present,
+    )
 
 
 def build_switch_workspace(
@@ -64,6 +71,7 @@ def build_switch_workspace(
     selected_area: str = "overview",
     emulator_facts: Callable[[str], EmulatorFacts] | None = None,
     core_present: Callable[[str], bool] | None = None,
+    bios_present: Callable[[str, str, str], bool] | None = None,
 ) -> dict[str, Any]:
     """Compõe o snapshot Switch e valida o próprio contrato antes de retornar."""
     registry = platform_registry or PlatformRegistry.bundled()
@@ -135,7 +143,7 @@ def build_switch_workspace(
         "platforms": [
             switch_platform,
             *[
-                _project_platform(manifest, emulator_facts, core_present)
+                _project_platform(manifest, emulator_facts, core_present, bios_present)
                 for manifest in registry.list()
                 if manifest.id != "switch"
             ],

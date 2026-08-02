@@ -13,6 +13,8 @@ sintéticos; nenhum consulta o host.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from steamzero.domain.emulation_workspace import build_switch_workspace
@@ -137,6 +139,110 @@ class TestSwitchIsUntouched:
         assert isinstance(platforms, list)
         switch = platforms[0]
         assert switch["requirements"]["keys"]["installed"] == "rev21"  # type: ignore[index]
+
+
+class TestBiosRequirementsAreProjected:
+    """REQUIREMENTS-E2E: BIOS é requisito por plataforma e emulador.
+
+    A presença vem do store central via callable injetado (quem conhece o host é
+    a camada de adapters). O requisito faltante identifica plataforma e emulador
+    afetados; sem leitura, declara-se sem afirmar — nunca se obtém BIOS.
+    """
+
+    @staticmethod
+    def _platform(payload: dict[str, object], platform_id: str) -> dict[str, Any]:
+        return next(p for p in payload["platforms"] if p["id"] == platform_id)  # type: ignore[index]
+
+    def test_missing_bios_blocks_primary_with_platform_and_emulator(self) -> None:
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, _n: False,
+        )
+        amiga = self._platform(payload, "amiga")
+        assert amiga["launchable"] is False
+        reason = str(amiga["launchReason"])
+        assert "Amiga" in reason and "retroarch" in reason
+        assert "kick34005.A500" in reason
+
+    def test_present_bios_makes_the_platform_launchable(self) -> None:
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, _n: True,
+        )
+        amiga = self._platform(payload, "amiga")
+        assert amiga["launchable"] is True
+        assert amiga["launchReason"] is None
+
+    def test_partial_bios_presence_is_missing_not_silent(self) -> None:
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, name: name == "kick34005.A500",
+        )
+        amiga = self._platform(payload, "amiga")
+        assert amiga["launchable"] is False
+        bios = amiga["requirements"]["bios"]  # type: ignore[index]
+        assert bios["kind"] == "bios"
+        assert bios["status"] == "missing"
+        assert bios["blocksPlay"] is True
+        assert bios["importAction"] == "bios.import"
+        assert bios["required"] == "kick34005.A500, kick40068.A1200"
+        assert bios["installed"] == "kick34005.A500"
+        assert "retroarch" in str(bios["detail"])
+        assert "kick40068.A1200" in str(bios["detail"])
+
+    def test_requirement_is_unverified_without_a_probe(self) -> None:
+        """Sem leitura do host não há como afirmar ausência: declara sem bloquear."""
+        payload = build_switch_workspace(emulator_facts=_installed, core_present=lambda _c: True)
+        amiga = self._platform(payload, "amiga")
+        bios = amiga["requirements"]["bios"]  # type: ignore[index]
+        assert bios["status"] == "unverified"
+        assert bios["blocksPlay"] is False
+        assert amiga["launchable"] is True
+
+    def test_emulator_row_carries_required_and_present(self) -> None:
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, name: name == "kick34005.A500",
+        )
+        row = self._platform(payload, "amiga")["emulators"][0]  # type: ignore[index]
+        assert row["biosRequired"] == ["kick34005.A500", "kick40068.A1200"]
+        assert row["biosPresent"] == {"kick34005.A500": True, "kick40068.A1200": False}
+
+    def test_bios_of_a_non_primary_emulator_does_not_block(self) -> None:
+        """PlayStation declara BIOS só no fallback RetroArch; o primário
+        DuckStation não exige, e a plataforma não bloqueia por causa do fallback."""
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, _n: False,
+        )
+        playstation = self._platform(payload, "playstation")
+        assert playstation["launchable"] is True
+        assert "bios" not in playstation["requirements"]  # type: ignore[index]
+
+    def test_failing_bios_probe_degrades_only_its_platform(self) -> None:
+        def broken(_p: str, _a: str, _n: str) -> bool:
+            raise RuntimeError("store central inacessível")
+
+        payload = build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=broken,
+        )
+        assert len(_others(payload)) >= 30, "a central continua navegável"
+        amiga = self._platform(payload, "amiga")
+        assert amiga["launchable"] is False, "ausência não provada por leitura falha"
+
+    def test_composed_bios_payload_still_validates(self) -> None:
+        build_switch_workspace(
+            emulator_facts=_installed,
+            core_present=lambda _c: True,
+            bios_present=lambda _p, _a, _n: False,
+        )
 
 
 class TestContractStillHolds:
