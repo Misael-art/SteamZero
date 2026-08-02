@@ -3779,3 +3779,54 @@ mypy success em 199 source files, `make independence boundaries` OK. Host
 intocado: zero mutações, sem instalação/rollback/tag/build. Release ativa
 `0.1.0a41-c9111a00d3c0` preservada. O PR #20 foi fechado e a branch remota
 `codex/automate-release-host` removida.
+
+## 2026-08-02 — Sessão 53: release consolidada `0.1.0a41-d0e45da1fd2d` instalada no host
+
+Promoção da primeira release consolidada da linha de estabilização
+(G27–G32 + release/host automation) sobre a release ativa anterior
+`0.1.0a41-c9111a00d3c0` (G27/G28), mediante autorização explícita do
+operador para atualizar o host.
+
+Quatro PRs mergeados como pré-requisito:
+- `#29` G31 (gate visual que rejeita SIGABRT/exit≠0);
+- `#30` G31 (fechamento do guard de crash, `DIAG_QT_RUNTIME-020`);
+- `#31` `feat/release-host-automation` (`tools/release_host.py`);
+- `#32` fix `component list` (import de `AdapterRegistry` em runtime).
+
+Dois defeitos reais encontrados no caminho e corrigidos:
+- **`component list` quebrava em runtime** (`NameError: name 'AdapterRegistry'
+  is not defined`) na release ativa E no fonte de main — `AdapterRegistry` só
+  importado sob `if TYPE_CHECKING:`; corrigido no #32 com import local;
+- **`bigsudo` (pkexec) redefine o cwd para `/root`**, quebrando o argv
+  relativo `tools/install_host.py` do `release_host.py`; corrigido no #33 com
+  caminho absoluto (`str(ROOT / "tools" / "install_host.py")`).
+
+Bloco de instalação: `release_host.py prepare` baixou o artifact do run `push`
+verde do commit `d0e45da1fd2d` e validou bundle/wheelhouse; `install` exigiu
+aprovação interativa do polkit (o `bigsudo`/pkexec em subprocesso
+não-interativo pendura aguardando o diálogo; o operador autorizou na tela).
+Resultado `install` (release_host): converge 2× (idempotente, daemon na nova
+geração, `restarted:false`), doctor `schemaVersion` 16, service/socket ativos.
+
+Verificação read-only pós-instalação:
+- `readlink /opt/steamzero/current` → `releases/0.1.0a41-d0e45da1fd2d`;
+- `steamzero --version` → `0.1.0a41`;
+- `doctor`: `runtime.provenance=0.1.0a41-d0e45da1fd2d`, `service.generation`
+  pass (daemon na mesma geração), 8 pass / 3 warn (resíduo G26 pré-existente
+  de ~1,1 GB de órfãos staging/backup/journal);
+- `component list`: exit 0, 16 componentes, Eden/Citron/Ryubing instalados,
+  status honesto (bug #32 corrigido no host);
+- `desktop gamemode-status`: `unknown`/"Não foi possível verificar" — honesto,
+  o probe não fecha verde falso;
+- `system resources`: 6 classes, atribuição real, `complete:false`
+  (`reason: proc-incomplete`) — degradação honesta conforme G30;
+- `service`/`socket`: `active`.
+
+Rollback preservado: `0.1.0a41-c9111a00d3c0` (release anterior, com
+manifesto) disponível. Wheel sha256 `a2d8fecbcb88523a8c2a574f4cd6735176...`.
+
+Validação física pendente (NÃO autorizada por esta sessão): boot direto,
+UI, RetroArch/cores, standalone, Switch, BIOS/keys/firmware, launch, playtime,
+encerramento/crash, saves, controles, mídia, GameMode, consumo por processo,
+rollback `nova→anterior→nova`. A instalação de uma release consolidada com
+teste físico exige nova autorização.
