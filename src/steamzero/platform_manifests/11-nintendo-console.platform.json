@@ -102,7 +102,12 @@
       "name": "Dolphin",
       "adapterId": "dolphin",
       "precedence": 1,
-      "role": "primary"
+      "role": "primary",
+      "launch": {
+        "gameArgs": [
+          "{rom}"
+        ]
+      }
     },
     {
       "id": "retroarch",

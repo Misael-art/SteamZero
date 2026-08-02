@@ -22,8 +22,8 @@
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
   "emulators": [
-    {"id": "ppsspp", "name": "PPSSPP", "adapterId": "ppsspp", "precedence": 1, "role": "primary"},
-    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback"}
+    {"id": "ppsspp", "name": "PPSSPP", "adapterId": "ppsspp", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}},
+    {"id": "retroarch", "name": "RetroArch", "adapterId": "retroarch", "precedence": 2, "role": "fallback", "launch": {"core": "ppsspp", "openArgs": [], "gameArgs": ["-L", "{core}", "{rom}"]}}
   ],
   "media": {"extensions": ["chd", "cso", "elf", "iso", "pbp", "prx"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["psp-handheld"], "maxPlayers": 1, "specialized": []},
