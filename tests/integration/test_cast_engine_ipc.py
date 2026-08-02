@@ -574,17 +574,19 @@ class TestEngineProtocol:
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
 
-        def _paused_false() -> bool:
-            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
-            return status.get("paused") is False
-
-        assert _wait_until(_paused_false)
+        # G32: o estado de pausa é commitado pelo engine de forma síncrona e
+        # independente do pipeline (o portal é assíncrono). A asserção depende
+        # do estado commitado, não de uma espera por sleep por carreira.
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "PAUSE_SESSION"})
         assert resp.get("type") == "PAUSE_SESSION_OK"
+        assert resp.get("paused") is True
         status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
         assert status.get("paused") is True
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "RESUME_SESSION"})
         assert resp.get("type") == "RESUME_SESSION_OK"
+        assert resp.get("paused") is False
+        status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+        assert status.get("paused") is False
 
     def test_set_quality_with_pipeline(self, engine_env) -> None:
         sock_path, ce = engine_env
