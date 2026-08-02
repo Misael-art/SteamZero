@@ -88,7 +88,8 @@
       "name": "DuckStation",
       "adapterId": "duckstation",
       "precedence": 1,
-      "role": "primary"
+      "role": "primary",
+      "launch": {"gameArgs": ["{rom}"]}
     },
     {
       "id": "retroarch",

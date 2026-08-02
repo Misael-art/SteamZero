@@ -69,7 +69,7 @@ from steamzero.domain.emulation_workspace import (
     compute_readiness,
 )
 from steamzero.domain.input_profiles import InputProfileManager
-from steamzero.domain.launch_profile import find_core
+from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
 from steamzero.domain.library import PlatformRomScanner
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
@@ -762,17 +762,108 @@ class EmulationController:
         self._prepared_emulators.pop(plan_id, None)
         return {"status": result.status, "operationId": result.operation_id}
 
-    def launch_emulator(self, emulator_id: str) -> dict[str, Any]:
-        self._require_managed_emulator(emulator_id)
+    def _require_launchable_emulator(self, emulator_id: str) -> None:
+        # Emuladores Switch legados têm launch completo e são sempre aceitos.
+        if emulator_id in _MANAGED_EMULATORS:
+            return
+        # Demais emuladores só são lançáveis se forem realmente instaláveis e
+        # instalados — nunca oferecer um Flap para um componente que não existe.
+        registry = self._registry_factory()
+        manifest = registry.get(emulator_id)
+        route = lifecycle.route_for(manifest)
+        if not route.installable or not self._adapter_installed(emulator_id, route):
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"{emulator_id} não está instalado ou não tem fonte lançável",
+            )
+
+    def _primary_platform_for(self, emulator_id: str) -> str:
+        registry = PlatformRegistry.bundled()
+        for platform in registry.list():
+            for emulator in platform.emulators:
+                if emulator["adapterId"] == emulator_id and emulator.get("role") == "primary":
+                    return platform.id
+        return "multi"
+
+    def _launch_profile_for(self, platform_id: str, adapter_id: str) -> LaunchProfile | None:
+        registry = PlatformRegistry.bundled()
+        try:
+            platform = registry.get(platform_id)
+        except KeyError:
+            return None
+        for emulator in platform.emulators:
+            if emulator["adapterId"] == adapter_id:
+                return parse_launch(platform_id, adapter_id, emulator.get("launch"))
+        return None
+
+    def _emulator_source(self, emulator_id: str) -> tuple[str, str | None, Path | None]:
+        """Fonte escolhida: (source_type, flatpak_ref, payload_path).
+
+        Para fontes portáteis (appimage/native) o payload é o caminho do
+        binário; para Flatpak o ref pinado. Retorna sempre a fonte declarada,
+        mesmo EOL — um emulador já instalado continua lançável.
+        """
+        registry = self._registry_factory()
+        manifest = registry.get(emulator_id)
+        source = manifest.preferred_source(None, allow_eol=True)
+        source_type = str(source.type)
+        if source_type == "flatpak":
+            return source_type, str(source.ref), None
         with self._store_factory() as store:
             store.migrate()
-            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
-            payload = engine.payload_path(emulator_id)
-        if self._managed_process_groups(payload):
+            engine = AdapterEngine(store, registry, self._artifacts)
+            return source_type, None, engine.payload_path(emulator_id)
+
+    def _build_exec_argv(
+        self,
+        profile: LaunchProfile,
+        *,
+        source_type: str,
+        flatpak_ref: str | None,
+        payload: Path | None,
+        rom: Path | None = None,
+        core_path: Path | None = None,
+    ) -> list[str]:
+        """Monta o argv do executor derivado da fonte fixada.
+
+        ``build_argv`` resolve placeholders allowlisted positionally; a ROM é
+        sempre um argumento atômico. Flatpak → ``flatpak run --user <ref> args``;
+        portátil → wrapper AppImage + payload + args. Nunca é shell.
+        """
+        applied = list(build_argv(profile, "EXEC", rom=rom, core_path=core_path))
+        args = applied[1:]
+        if source_type == "flatpak":
+            if not flatpak_ref:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail=f"perfil Flatpak sem ref: {profile.adapter_id}"
+                )
+            return ["flatpak", "run", "--user", flatpak_ref, *args]
+        if payload is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"fonte portátil sem payload: {profile.adapter_id}"
+            )
+        return list(self._appimage_argv(payload, *args))
+
+    def launch_emulator(self, emulator_id: str) -> dict[str, Any]:
+        self._require_launchable_emulator(emulator_id)
+        platform = self._primary_platform_for(emulator_id)
+        profile = self._launch_profile_for(platform, emulator_id)
+        source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
+        if profile is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"{emulator_id} não declara perfil de launch"
+            )
+        argv = self._build_exec_argv(
+            profile,
+            source_type=source_type,
+            flatpak_ref=flatpak_ref,
+            payload=payload,
+        )
+        if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
             )
-        pid = self._spawn(self._appimage_argv(payload))
+        pid = self._spawn(argv)
         if isinstance(pid, int) and pid > 1:
             self._running_pids[emulator_id] = pid
         return {"status": "started", "emulatorId": emulator_id, "pid": pid}
@@ -802,34 +893,66 @@ class EmulationController:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail="defina o emulador padrão deste jogo"
             )
-        self._require_managed_emulator(emulator_id)
-        with self._store_factory() as store:
-            store.migrate()
-            engine = AdapterEngine(store, self._registry_factory(), self._artifacts)
-            payload = engine.payload_path(emulator_id)
+        self._require_launchable_emulator(emulator_id)
+        platform_id = str(game.get("platformId") or "switch")
         rom = Path(str(game["path"]))
-        classification = SwitchLibraryScanner.classify(
-            rom,
-            root=self._root_for_game(rom.resolve(strict=True)),
-            fmt=str(game.get("format", rom.suffix.lstrip(".").casefold())),
-            title_id=str(game["titleId"]) if game.get("titleId") else None,
-        )
-        if classification[0] != "base" or game.get("contentKind", "base") != "base":
-            raise SteamZeroError(
-                "E-CONTENT-FW-INCOMPAT",
-                detail="updates e DLCs não podem ser iniciados; selecione a ROM base",
+
+        # Switch: classificação base/update/dlc e keys são restritos ao Switch.
+        # Jogo não-Switch nunca exige prod.keys e nunca passa pelo scanner
+        # Switch (a ROM já foi validada/classificada no scan da biblioteca).
+        if platform_id == "switch":
+            classification = SwitchLibraryScanner.classify(
+                rom,
+                root=self._root_for_game(rom.resolve(strict=True)),
+                fmt=str(game.get("format", rom.suffix.lstrip(".").casefold())),
+                title_id=str(game["titleId"]) if game.get("titleId") else None,
             )
-        self._require_key_projection(emulator_id)
-        if self._managed_process_groups(payload):
+            if classification[0] != "base" or game.get("contentKind", "base") != "base":
+                raise SteamZeroError(
+                    "E-CONTENT-FW-INCOMPAT",
+                    detail="updates e DLCs não podem ser iniciados; selecione a ROM base",
+                )
+            self._require_key_projection(emulator_id)
+
+        profile = self._launch_profile_for(platform_id, emulator_id)
+        if profile is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=(
+                    f"plataforma {platform_id} não declara um perfil de launch para {emulator_id}"
+                ),
+            )
+        source_type, flatpak_ref, payload = self._emulator_source(emulator_id)
+        if payload is not None and self._managed_process_groups(payload):
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"{emulator_id} já está em execução"
             )
+        core_path: Path | None = None
+        if profile.requires_core:
+            # Core ausente → nunca "Jogar": o usuário precisa instalar/verificar
+            # o core primeiro; não se oferece um botão que falha depois.
+            core_path = find_core(profile.core or "")
+            if core_path is None:
+                raise SteamZeroError(
+                    "E-CONTENT-UNSUPPORTED",
+                    detail=f"o core {profile.core} não está instalado no RetroArch; "
+                    "instale/verifique o core antes de jogar",
+                )
+        argv = self._build_exec_argv(
+            profile,
+            source_type=source_type,
+            flatpak_ref=flatpak_ref,
+            payload=payload,
+            rom=rom,
+            core_path=core_path,
+        )
+
         session_id: str | None = None
         started_monotonic = self._monotonic()
         if self._process_waiter is not None:
-            session_id = self._create_tracked_game_session(game, emulator_id)
+            session_id = self._create_tracked_game_session(game, emulator_id, platform_id)
         try:
-            pid = self._spawn(self._launch_argv(emulator_id, payload, rom))
+            pid = self._spawn(argv)
         except Exception:
             if session_id is not None:
                 self._finish_tracked_game_session(
@@ -871,10 +994,12 @@ class EmulationController:
         return {
             "status": "started",
             "gameId": game_id,
+            "platformId": platform_id,
             "emulatorId": emulator_id,
             "name": str(game["name"]),
             "pid": pid,
             "sessionId": session_id,
+            "argv": argv,
         }
 
     def cloud_platforms(self) -> list[dict[str, Any]]:
@@ -883,13 +1008,15 @@ class EmulationController:
     def launch_cloud(self, platform_id: str) -> dict[str, Any]:
         return self._cloud.launch(platform_id)
 
-    def _create_tracked_game_session(self, game: Mapping[str, Any], emulator_id: str) -> str:
+    def _create_tracked_game_session(
+        self, game: Mapping[str, Any], emulator_id: str, platform_id: str
+    ) -> str:
         session_id = ids.new_ulid()
         metadata = json.dumps(
             {
                 "source": "emulation",
                 "title": str(game.get("name") or "")[:160],
-                "platformId": "switch",
+                "platformId": platform_id,
                 "coverUrl": str(game.get("coverUrl") or game.get("bannerAsset") or "")[:4096],
                 "emulatorId": emulator_id,
             },
@@ -5427,14 +5554,6 @@ class EmulationController:
             except (OSError, ProcessLookupError):
                 continue
         return groups
-
-    def _launch_argv(self, emulator_id: str, payload: Path, rom: Path) -> tuple[str, ...]:
-        """Monta argv sem shell; cada caminho permanece um argumento atômico."""
-        if emulator_id in {"eden", "citron"}:
-            return self._appimage_argv(payload, "-f", "-g", str(rom))
-        if emulator_id == "ryubing":
-            return self._appimage_argv(payload, "-f", "--hide-updates", str(rom))
-        raise SteamZeroError("E-API-SCHEMA", detail="emulador não permitido")
 
     @staticmethod
     def _firmware_projection_targets(digest: str) -> tuple[Path, ...]:

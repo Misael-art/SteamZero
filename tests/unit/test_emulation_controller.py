@@ -1045,13 +1045,54 @@ def test_launch_argv_uses_explicit_appimage_bypass(monkeypatch, tmp_path: Path) 
     payload = tmp_path / "Eden.AppImage"
     rom = tmp_path / "Game With Spaces.nsp"
 
-    assert controller._launch_argv("eden", payload, rom) == (  # type: ignore[attr-defined]
-        str(bypass),
-        str(payload),
-        "-f",
-        "-g",
-        str(rom),
+    # O argv do Switch agora vem do perfil de launch declarado no platform
+    # manifest ("-f -g {rom}") — deve reproduzir exatamente o que o código
+    # hardcoded antigo produzia, via _build_exec_argv.
+    profile = controller._launch_profile_for("switch", "eden")  # type: ignore[attr-defined]
+    assert profile is not None
+    assert controller._build_exec_argv(  # type: ignore[attr-defined]
+        profile,
+        source_type="appimage",
+        flatpak_ref=None,
+        payload=payload,
+        rom=rom,
+    ) == [str(bypass), str(payload), "-f", "-g", str(rom)]
+
+
+def test_launch_argv_flatpak_standalone_from_platform_profile(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    rom = tmp_path / "Rugby Reigns [Disc 1].iso"
+    profile = controller._launch_profile_for("playstation-2", "pcsx2")  # type: ignore[attr-defined]
+    assert profile is not None
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        profile,
+        source_type="flatpak",
+        flatpak_ref="net.pcsx2.PCSX2",
+        payload=None,
+        rom=rom,
     )
+    assert argv == ["flatpak", "run", "--user", "net.pcsx2.PCSX2", "--fullscreen", str(rom)]
+
+
+def test_launch_core_missing_refuses_jogar_before_spawn(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    from steamzero.domain.launch_profile import LaunchProfile
+
+    profile = LaunchProfile(
+        platform_id="nes-famicom",
+        adapter_id="retroarch",
+        game_args=("-L", "{core}", "{rom}"),
+        core="mesen",
+    )
+    with pytest.raises(SteamZeroError, match="core"):
+        controller._build_exec_argv(  # type: ignore[attr-defined]
+            profile,
+            source_type="flatpak",
+            flatpak_ref="org.libretro.RetroArch",
+            payload=None,
+            rom=tmp_path / "Super (U).nes",
+            core_path=None,
+        )
 
 
 def test_runtime_prepare_mutes_interactive_update_checks(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

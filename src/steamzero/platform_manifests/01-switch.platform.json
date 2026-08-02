@@ -34,9 +34,12 @@
     {"id": "advanced", "label": "Avançado", "iconKey": "tune", "capabilityId": "advanced"}
   ],
   "emulators": [
-    {"id": "eden", "name": "Eden", "adapterId": "eden", "precedence": 1, "role": "primary"},
-    {"id": "citron", "name": "Citron", "adapterId": "citron", "precedence": 2, "role": "fallback"},
-    {"id": "ryubing", "name": "Ryubing", "adapterId": "ryubing", "precedence": 3, "role": "fallback"}
+    {"id": "eden", "name": "Eden", "adapterId": "eden", "precedence": 1, "role": "primary",
+     "launch": {"gameArgs": ["-f", "-g", "{rom}"]}},
+    {"id": "citron", "name": "Citron", "adapterId": "citron", "precedence": 2, "role": "fallback",
+     "launch": {"gameArgs": ["-f", "-g", "{rom}"]}},
+    {"id": "ryubing", "name": "Ryubing", "adapterId": "ryubing", "precedence": 3, "role": "fallback",
+     "launch": {"gameArgs": ["-f", "--hide-updates", "{rom}"]}}
   ],
   "media": {"extensions": ["nsp", "xci", "nsz", "nca", "zip"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["standard-gamepad", "joycon-pair"], "maxPlayers": 8, "specialized": ["motion"]},
