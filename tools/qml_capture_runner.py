@@ -35,8 +35,9 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -56,6 +57,13 @@ DIAG_FONT_HASH = "QML-VISUAL-FONT-HASH-011"
 DIAG_FONT_REGISTRATION = "QML-VISUAL-FONT-REGISTRATION-012"
 DIAG_FONT_FALLBACK_USED = "QML-VISUAL-FONT-FALLBACK-013"
 DIAG_FONT_LICENSE = "QML-VISUAL-FONT-LICENSE-014"
+# G31 — o probe de versão é um gate próprio: um processo que não termina com
+# sucesso nunca prova nada, e cada modo de falha tem diagnóstico distinto.
+DIAG_QT_TIMEOUT = "QML-VISUAL-QT-TIMEOUT-015"
+DIAG_QT_SIGNAL = "QML-VISUAL-QT-SIGNAL-016"
+DIAG_QT_EXIT = "QML-VISUAL-QT-EXIT-017"
+DIAG_QT_STDERR = "QML-VISUAL-QT-STDERR-018"
+DIAG_CRASH = "QML-VISUAL-CRASH-019"
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "qml_capture" / "CaptureHarness.qml"
@@ -303,33 +311,156 @@ def find_runtime() -> Path:
     return Path(found)
 
 
-def check_runtime_version(runtime: Path) -> tuple[int, ...]:
-    """Confere a versão do Qt. Golden gerado noutra versão não vale."""
+@dataclass(frozen=True)
+class RuntimeProbe:
+    """Resultado estruturado do probe ``qml6 --version`` (G31).
+
+    Cada modo de falha é um estado distinto: ``timed_out`` (não terminou),
+    ``signal`` (morto por sinal — abortado nunca prova renderização) e
+    ``exit_code`` (terminou com código de erro). O stderr vai SEMPRE
+    sanitizado (truncado e marcado), nunca em bruto.
+    """
+
+    ok: bool
+    version: tuple[int, ...]
+    exit_code: int | None
+    signal_number: int | None
+    timed_out: bool
+    stderr_sanitized: str
+
+    @property
+    def signal_name(self) -> str | None:
+        if self.signal_number is None:
+            return None
+        try:
+            return signal.Signals(self.signal_number).name
+        except ValueError:
+            return f"signal-{self.signal_number}"
+
+
+def sanitize_stderr(text: str, *, limit: int = 4096) -> str:
+    """Stderr limitado e marcado: o diagnóstico nunca carrega saída em bruto."""
+    stripped = text.strip()
+    if not stripped:
+        return ""
+    if len(stripped) <= limit:
+        return stripped
+    return stripped[:limit] + "\n…[stderr truncado pelo gate]"
+
+
+def probe_runtime(runtime: Path, *, timeout: float = 30.0) -> RuntimeProbe:
+    """Executa ``qml6 --version`` e classifica a terminação.
+
+    O gate anterior lia o stdout e ignorava o return code: um qml6 abortado
+    que ainda imprimisse "Qt 6.x" passava. Aqui um processo que não termina
+    com sucesso é sempre reprovado, com timeout/sinal/código de saída
+    separados.
+    """
     try:
         completed = subprocess.run(
             [str(runtime), "--version"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=timeout,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise CaptureError(DIAG_QT_VERSION, f"não foi possível consultar a versão: {exc}") from exc
-
-    match = _QT_VERSION.search(completed.stdout + completed.stderr)
-    if match is None:
-        raise CaptureError(
-            DIAG_QT_VERSION,
-            f"versão do Qt não identificada em {completed.stdout!r} {completed.stderr!r}",
+    except subprocess.TimeoutExpired as exc:
+        raw = exc.stderr
+        stderr = sanitize_stderr(
+            raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw)
         )
-    version = tuple(int(part) for part in match.groups() if part is not None)
-    if version[:2] < MINIMUM_QT:
+        return RuntimeProbe(
+            ok=False,
+            version=(),
+            exit_code=None,
+            signal_number=None,
+            timed_out=True,
+            stderr_sanitized=stderr,
+        )
+    except OSError as exc:
+        return RuntimeProbe(
+            ok=False,
+            version=(),
+            exit_code=None,
+            signal_number=None,
+            timed_out=False,
+            stderr_sanitized=sanitize_stderr(str(exc)),
+        )
+    stderr = sanitize_stderr(completed.stderr)
+    if completed.returncode < 0:
+        return RuntimeProbe(
+            ok=False,
+            version=(),
+            exit_code=completed.returncode,
+            signal_number=-completed.returncode,
+            timed_out=False,
+            stderr_sanitized=stderr,
+        )
+    if completed.returncode != 0:
+        return RuntimeProbe(
+            ok=False,
+            version=(),
+            exit_code=completed.returncode,
+            signal_number=None,
+            timed_out=False,
+            stderr_sanitized=stderr,
+        )
+    match = _QT_VERSION.search(completed.stdout + completed.stderr)
+    version = tuple(int(part) for part in match.groups() if part is not None) if match else ()
+    return RuntimeProbe(
+        ok=True,
+        version=version,
+        exit_code=0,
+        signal_number=None,
+        timed_out=False,
+        stderr_sanitized=stderr,
+    )
+
+
+def check_runtime_version(runtime: Path, *, timeout: float = 30.0) -> tuple[int, ...]:
+    """Confere a versão do Qt. Golden gerado noutra versão não vale.
+
+    G31: o probe precisa TERMINAR com sucesso; timeout, sinal e código de
+    saída diferente de zero são estados distintos que reprovam antes de
+    qualquer interpretação de saída — um processo abortado nunca prova
+    renderização.
+    """
+    probe = probe_runtime(runtime, timeout=timeout)
+    if probe.timed_out:
+        raise CaptureError(
+            DIAG_QT_TIMEOUT,
+            f"qml6 --version não terminou em {timeout:.0f}s; stderr:\n{probe.stderr_sanitized}",
+        )
+    if probe.signal_number is not None:
+        raise CaptureError(
+            DIAG_QT_SIGNAL,
+            f"qml6 --version foi morto por {probe.signal_name} (sinal "
+            f"{probe.signal_number}) — processo abortado nunca prova renderização",
+        )
+    if not probe.ok:
+        raise CaptureError(
+            DIAG_QT_EXIT,
+            f"qml6 --version saiu com código {probe.exit_code}; stderr:\n{probe.stderr_sanitized}",
+        )
+    if not probe.version:
         raise CaptureError(
             DIAG_QT_VERSION,
-            f"Qt {'.'.join(str(part) for part in version)} abaixo do mínimo "
+            f"versão do Qt não identificada em stdout/stderr de {runtime}",
+        )
+    if probe.version[:2] < MINIMUM_QT:
+        raise CaptureError(
+            DIAG_QT_VERSION,
+            f"Qt {'.'.join(str(part) for part in probe.version)} abaixo do mínimo "
             f"{'.'.join(str(part) for part in MINIMUM_QT)}",
         )
-    return version
+    # G31: um probe que termina com sucesso mas despeja erro crítico no stderr
+    # é estado distinto — o stderr chega sempre sanitizado, nunca em bruto.
+    if any(marker in probe.stderr_sanitized.casefold() for marker in ("critical|", "fatal|")):
+        raise CaptureError(
+            DIAG_QT_STDERR,
+            f"qml6 --version emitiu erro crítico; stderr:\n{probe.stderr_sanitized}",
+        )
+    return probe.version
 
 
 def parse_messages(stderr: str) -> tuple[QmlMessage, ...]:
@@ -467,6 +598,15 @@ def capture(
     runtime = find_runtime()
     version = check_runtime_version(runtime)
 
+    # G31: o gate valida o QML que o usuário executa (pacote instalado ou
+    # árvore via o mesmo mecanismo de recursos), nunca só um arquivo solto.
+    packaged = verify_packaged_qml()
+    if not packaged["resolved"]:
+        raise CaptureError(
+            DIAG_ENVIRONMENT,
+            f"{packaged.get('reason')}; o gate visual não valida apenas a árvore fonte",
+        )
+
     output.mkdir(parents=True, exist_ok=True)
     image = output / "actual.png"
     image.unlink(missing_ok=True)
@@ -517,6 +657,20 @@ def capture(
     if failure is not None:
         code, _, detail = failure.partition(" ")
         raise CaptureError(code or DIAG_CAPTURE, detail)
+
+    if completed.returncode < 0:
+        # G31: um harness morto por sinal (SIGABRT/SIGSEGV) é crash, não
+        # resultado. A checagem de imagem vem depois — um processo abortado
+        # nunca prova renderização, mesmo que um arquivo .png tenha sobrado.
+        try:
+            signal_name = signal.Signals(-completed.returncode).name
+        except ValueError:
+            signal_name = f"signal-{-completed.returncode}"
+        raise CaptureError(
+            DIAG_QT_SIGNAL,
+            f"harness abortado por {signal_name} (sinal {-completed.returncode}); "
+            f"stderr:\n{sanitize_stderr(completed.stderr)}",
+        )
 
     if completed.returncode != 0:
         raise CaptureError(
@@ -729,3 +883,125 @@ def compare_with_golden(actual: Path, golden: Path, output: Path) -> ComparisonM
         json.dumps(metrics.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
     )
     return metrics
+
+
+#: Leitores de coredump são injetáveis: em máquinas sem coredumpctl o guard
+#: degrada para lista vazia e a atribuição por sinal do próprio probe
+#: (returncode < 0) continua sendo o mecanismo primário.
+CoredumpReader = Callable[[], list[dict[str, Any]]]
+
+
+def read_coredumpctl(executable: str = "coredumpctl") -> list[dict[str, Any]]:
+    """Registros de coredump do sistema via ``coredumpctl --json=short list``.
+
+    Retorna ``[]`` quando a ferramenta falta ou falha — nunca reprova sozinho.
+    """
+    tool = shutil.which(executable)
+    if tool is None:
+        return []
+    try:
+        completed = subprocess.run(
+            [tool, "--json=short", "list"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if completed.returncode != 0 or not completed.stdout.strip():
+        return []
+    try:
+        records = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return []
+    return records if isinstance(records, list) else []
+
+
+def crash_fingerprint(record: Mapping[str, Any]) -> str:
+    """Identidade estável de um registro de coredump.
+
+    Só campos neutros (PID, comando, sinal, instante) — nunca caminhos de
+    arquivos de dump (``exe``/``corefile``) nem conteúdo.
+    """
+    return json.dumps(
+        {key: record.get(key) for key in ("pid", "comm", "signal", "time", "timestamp")},
+        sort_keys=True,
+    )
+
+
+@dataclass(frozen=True)
+class CrashSnapshot:
+    """Baseline/delta de coredumps do sistema no instante da coleta."""
+
+    records: tuple[dict[str, Any], ...]
+    fingerprints: frozenset[str]
+
+    @classmethod
+    def collect(cls, reader: CoredumpReader | None = None) -> CrashSnapshot:
+        try:
+            records = (reader or read_coredumpctl)()
+        except Exception:
+            records = []
+        clean = tuple(record for record in records if isinstance(record, dict))
+        return cls(records=clean, fingerprints=frozenset(crash_fingerprint(r) for r in clean))
+
+
+def assert_no_new_crashes(
+    before: CrashSnapshot,
+    after: CrashSnapshot,
+    *,
+    spawned_pids: Sequence[int],
+) -> None:
+    """Falha SOMENTE por eventos novos atribuíveis à execução (G31).
+
+    Histórico antigo nunca é falha nova: apenas registros que não existiam na
+    baseline (``after - before``) são considerados, e entre eles só os que se
+    atribuem a este gate — PID que o runner iniciou, ou abort de um processo
+    do runtime QML (comm contendo ``qml``).
+    """
+    new = after.fingerprints - before.fingerprints
+    if not new:
+        return
+    spawned = set(spawned_pids)
+    attributable: list[dict[str, Any]] = []
+    for record in after.records:
+        if crash_fingerprint(record) not in new:
+            continue
+        pid = record.get("pid")
+        comm = str(record.get("comm") or record.get("exe") or "")
+        if pid in spawned or "qml" in comm.casefold():
+            attributable.append(record)
+    if attributable:
+        summary = ", ".join(
+            f"pid={record.get('pid')} sinal={record.get('signal')}" for record in attributable[:5]
+        )
+        raise CaptureError(
+            DIAG_CRASH,
+            f"{len(attributable)} novo(s) coredump/SIGABRT atribuível(is) ao gate "
+            f"({summary}); o gate visual reprova crash novo do runtime QML.",
+        )
+
+
+def verify_packaged_qml() -> dict[str, Any]:
+    """Confere que o QML do produto resolve no pacote instalado/unpacked.
+
+    Usa o MESMO mecanismo de resolução do produto (``importlib.resources``):
+    em dev o recurso resolve o arquivo da árvore fonte e num wheel
+    instalado/unpacked resolve o arquivo empacotado. O gate visual não pode
+    validar só a árvore fonte — o mesmo arquivo que o usuário executa precisa
+    existir no pacote.
+    """
+    try:
+        import importlib.resources
+
+        entry = importlib.resources.files("steamzero.ui").joinpath("qml/Main.qml")
+        exists = bool(entry.is_file())
+        size = int(entry.stat().st_size) if exists else 0
+    except Exception as exc:
+        return {"resolved": False, "reason": f"pacote não importável: {exc}", "sizeBytes": 0}
+    return {
+        "resolved": exists,
+        "reason": None if exists else "Main.qml ausente no pacote instalado/unpacked",
+        "sizeBytes": size,
+    }
