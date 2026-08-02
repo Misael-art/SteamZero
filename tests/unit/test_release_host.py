@@ -404,7 +404,7 @@ def test_install_calls_only_versioned_installer_for_privilege(
     privileged = (
         "bigsudo",
         "/usr/bin/python3",
-        "tools/install_host.py",
+        str(release_host.ROOT / "tools" / "install_host.py"),
         "install",
         "--release",
         bundle.release,
@@ -450,7 +450,7 @@ def test_rollback_calls_only_versioned_installer_for_privilege(
             (
                 "bigsudo",
                 "/usr/bin/python3",
-                "tools/install_host.py",
+                str(release_host.ROOT / "tools" / "install_host.py"),
                 "rollback",
                 "--release",
                 release,
@@ -470,7 +470,7 @@ def test_rollback_calls_only_versioned_installer_for_privilege(
         (
             "bigsudo",
             "/usr/bin/python3",
-            "tools/install_host.py",
+            str(release_host.ROOT / "tools" / "install_host.py"),
             "rollback",
             "--release",
             release,
@@ -641,5 +641,6 @@ def test_source_has_no_privileged_escape_hatch() -> None:
     source = (release_host.ROOT / "tools" / "release_host.py").read_text(encoding="utf-8")
 
     assert source.count('"bigsudo"') == 2
-    assert source.count('"tools/install_host.py"') == 2
+    assert source.count('"tools" / "install_host.py"') == 2
+    assert source.count('"tools/install_host.py"') == 0
     assert '"sudo"' not in source
