@@ -776,7 +776,7 @@ def install(
     command = [
         "bigsudo",
         "/usr/bin/python3",
-        "tools/install_host.py",
+        str(ROOT / "tools" / "install_host.py"),
         "install",
         "--release",
         bundle.release,
@@ -837,7 +837,7 @@ def rollback(
         [
             "bigsudo",
             "/usr/bin/python3",
-            "tools/install_host.py",
+            str(ROOT / "tools" / "install_host.py"),
             "rollback",
             "--release",
             release,
