@@ -15,7 +15,7 @@
     {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
-  "emulators": [{"id": "xemu", "name": "xemu", "adapterId": "xemu", "precedence": 1, "role": "primary"}],
+  "emulators": [{"id": "xemu", "name": "xemu", "adapterId": "xemu", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["-dvd_path", "{rom}"]}}],
   "media": {"extensions": ["iso", "xiso"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["xbox-controller-s"], "maxPlayers": 4, "specialized": ["light-gun"]},
   "timing": {"standards": ["ntsc-u", "ntsc-j", "pal"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},

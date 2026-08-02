@@ -158,6 +158,10 @@ _EMULATOR_ROWS_ORDER: tuple[str, ...] = (
     "azahar",
     "retroarch",
     "flycast",
+    "cemu",
+    "rpcs3",
+    "xemu",
+    "xenia-canary",
 )
 
 

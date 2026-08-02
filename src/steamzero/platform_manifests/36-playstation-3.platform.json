@@ -15,7 +15,7 @@
     {"id": "controls", "label": "Controles", "iconKey": "gamepad", "capabilityId": "controls"},
     {"id": "media", "label": "Mídia", "iconKey": "image", "capabilityId": "media"}
   ],
-  "emulators": [{"id": "rpcs3", "name": "RPCS3", "adapterId": "rpcs3", "precedence": 1, "role": "primary"}],
+  "emulators": [{"id": "rpcs3", "name": "RPCS3", "adapterId": "rpcs3", "precedence": 1, "role": "primary", "launch": {"gameArgs": ["{rom}"]}}],
   "media": {"extensions": ["iso", "ps3", "ps3dir"], "artworkKinds": ["cover", "background", "logo", "icon", "video"], "providers": ["screenscraper", "steamgriddb"]},
   "controls": {"profiles": ["dualshock-3"], "maxPlayers": 7, "specialized": ["motion", "guitar", "drums", "light-gun"]},
   "timing": {"standards": ["ntsc-progressive", "pal-progressive"], "defaultStandard": null, "unknownFallback": "unknown-explicit"},
