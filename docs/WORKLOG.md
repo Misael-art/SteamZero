@@ -4017,3 +4017,57 @@ Descobertas registradas:
 Validação física pendente (operador): revisão da PR, merge e teste físico
 de boot da linha de tema. Suíte completa: 3808 passed; cobertura 86.42%;
 mypy 203 arquivos; fronteiras e independência 0 violações.
+
+## 2026-08-03 — Sessão 56: PR 3 tema default — shell de entrada + ponte shell→tema→QML (branch codex/theme-default-pr3)
+
+Terceira PR da linha de tema default, sobre `origin/main` (`017c4c7`, merge da
+PR #47). Entrega o shell de entrada: eventos de controle viram movimento de
+foco no domínio, e o anel de foco — primeiro consumidor real do token
+`color.focusRing` — é desenhado no QML sobre a célula focada. Nenhuma ação de
+host; trabalho apenas em worktree próprio.
+
+Três commits, todos com os gates da seção 6 verdes:
+
+- `e32ed64` — **shell de entrada no domínio**: `theme_shell.py` —
+  `ControlEvent` (vocabulário mínimo: as quatro direções), `map_control`
+  (recusa evento desconhecido; desconhecido não vira direção adivinhada) e
+  `apply_control` delegando a `move_focus` (`current=None` foca o primeiro
+  item). `default_theme.py` ganhou a geometria do anel: `focus_ring_geometry`
+  (capa expandida pela margem) e as constantes `FOCUS_RING_INSET`/`FOCUS_RING_WIDTH`.
+- `f55f02a` — **ponte shell→tema→QML**: `SceneFocusRing.qml` (renderizador
+  burro do anel: atribui o modelo, não decide nada), `CaptureShellHarness.qml`
+  (nós de texto/imagem + `kind: "focus"`, reporta geometria de todos) e
+  `HarnessKind.SHELL` no runner; `shell_bridge.py` monta o payload do shell —
+  cena resolvida e traduzida (adapter) + anel da célula focada.
+- docs — WORKLOG + handoff P0-03 (este registro e a seção nova do P0-03).
+
+Provas de que a ponte funciona no runtime real:
+
+- integração (`test_qml_theme_shell.py`, fatia 3x3 em 800x480): anel em foco 0
+  e foco 5 nas coordenadas exatas de `focus_ring_geometry`; o pixel `#22d3ee`
+  é desenhado na tela e é a ÚNICA fonte da cor (cena sem o nó focus não tem
+  nenhum pixel dele); duas capturas do mesmo foco são idênticas byte a byte.
+- unidade (`test_theme_shell.py`, `test_shell_bridge.py`): mapeamento
+  controle→direção, wrap/clamp, foco inicial, geometria do anel e payload da
+  ponte (cena + anel por último, recusa de foco fora do grid).
+- sem goldens novos: a prova é a geometria do anel + contagem de pixels, não
+  uma imagem congelada — o mesmo critério de `test_qml_default_theme.py`.
+
+Descobertas registradas:
+
+- Adicionar a MESMA margem aos dois lados de uma caixa 16:9 NÃO preserva a
+  razão — o teste inicial do anel assumia o contrário e reprovou (correto); a
+  propriedade honesta é "o anel envolve a capa", não "o anel é 16:9".
+- `Image.getdata` do Pillow está deprecado (remoção prevista para Pillow 14);
+  a contagem de pixels usa `getcolors`, o mesmo mecanismo do runner.
+- Defesas de invariante interno (ramo "impossível") seguem o precedente do
+  repo com `# pragma: no cover` — `gamemode.py:190`, `net.py:253`.
+
+Fora de escopo (decisões conscientes): read model da biblioteca (títulos
+seguem no fallback `Jogo sem título` — caminho de degradação real), migração
+de capas reais do corpus, eventos de confirm/back (A/B chegam com o controle
+de seleção) e persistência do foco entre sessões.
+
+Validação física pendente (operador): revisão da PR, merge e teste físico de
+boot da linha de tema. Suíte completa: 3842 passed; cobertura 86.42% (sem
+regressão); mypy 205 arquivos; fronteiras e independência 0 violações.

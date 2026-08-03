@@ -72,6 +72,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "qml_capture" / "CaptureHarness.qml"
 IMAGE_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureImageHarness.qml"
 SCENE_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureSceneHarness.qml"
+SHELL_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureShellHarness.qml"
 
 #: Fixture de fonte determinística. Ver `SOURCE.md` no diretório.
 FONT_FIXTURE = ROOT / "tests" / "fixtures" / "fonts" / "liberation-sans-2.1.5"
@@ -132,6 +133,7 @@ class HarnessKind(StrEnum):
     TEXT = "text"
     IMAGE = "image"
     SCENE = "scene"
+    SHELL = "shell"
 
 
 class CaptureError(RuntimeError):
@@ -627,12 +629,15 @@ def capture(
     resolvido, já traduzido. O harness não tem acesso a registry nenhum, e não
     teria como ter: o que atravessa é um dicionário de escalares.
 
-    ``harness`` escolhe o cenário. Em ``IMAGE``/``SCENE``, ``media_files``
-    mapeia cada ``source`` de asset do modelo para o arquivo REAL no disco —
-    o papel do shell na fronteira do QML; o harness é explícito em recusar um
-    nó de imagem cujo asset o runner não mapeou.
+    ``harness`` escolhe o cenário. Em ``IMAGE``/``SCENE``/``SHELL``,
+    ``media_files`` mapeia cada ``source`` de asset do modelo para o arquivo
+    REAL no disco — o papel do shell na fronteira do QML; o harness é
+    explícito em recusar um nó de imagem cujo asset o runner não mapeou.
+    ``SHELL`` estende ``SCENE`` com o anel de foco: o payload traz um nó
+    ``kind: "focus"`` junto dos nós de texto/imagem, e o harness reporta a
+    geometria de todos — é assim que o teste prova ONDE o anel está.
     """
-    if harness is HarnessKind.SCENE:
+    if harness in (HarnessKind.SCENE, HarnessKind.SHELL):
         for index, node in enumerate(model.get("nodes", [])):
             _reject_pending_payload(dict(node), where=f"nodes[{index}]")
     else:
@@ -667,7 +672,17 @@ def capture(
     image = output / "actual.png"
     image.unlink(missing_ok=True)
 
-    if harness is HarnessKind.SCENE:
+    if harness is HarnessKind.SHELL:
+        harness_file = SHELL_HARNESS
+        config = {
+            "nodes": [dict(node) for node in model.get("nodes", [])],
+            "mediaFiles": dict(media_files or {}),
+            "canvasWidth": canvas[0],
+            "canvasHeight": canvas[1],
+            "background": background,
+            "imagePath": str(image),
+        }
+    elif harness is HarnessKind.SCENE:
         harness_file = SCENE_HARNESS
         config = {
             "nodes": [dict(node) for node in model.get("nodes", [])],

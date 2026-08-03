@@ -85,6 +85,28 @@ biblioteca (os títulos caem no fallback `Jogo sem título` — caminho de
 degradação real), migração de capas reais do corpus e a ponte
 shell→tema→QML (Game Mode).
 
+## PR 3 tema default — shell de entrada + ponte shell→tema→QML (2026-08-03)
+
+A terceira PR (`codex/theme-default-pr3`, base `017c4c7` — merge da PR #47)
+entregou o shell de entrada: o evento de controle vira movimento de foco no
+domínio e o anel de foco é desenhado no QML. Três commits, gates verdes:
+
+| commit | entrega |
+|---|---|
+| `e32ed64` | `theme_shell.py`: `ControlEvent` (quatro direções), `map_control` (recusa desconhecido), `apply_control` delegando a `move_focus`; `focus_ring_geometry` + `FOCUS_RING_INSET/WIDTH` no tema |
+| `f55f02a` | `SceneFocusRing.qml` burro, `CaptureShellHarness.qml` com `kind: "focus"`, `HarnessKind.SHELL`; `shell_bridge.py` monta o payload cena + anel |
+
+O shell de entrada é o segundo consumidor real da fundação (depois do próprio
+tema), e o primeiro a atravessar a ponte inteira: control event → domínio
+(`move_focus`) → payload do shell → QML desenhando o anel na célula certa.
+Prova em runtime: geometria do anel em foco 0/5, pixel `#22d3ee` desenhado
+(única fonte da cor), determinismo byte a byte.
+
+Ainda fora de escopo nesta PR (decisões conscientes): read model da
+biblioteca (títulos caem no fallback `Jogo sem título`), migração de capas
+reais do corpus, eventos de confirm/back (A/B chegam com o controle de
+seleção) e persistência do foco entre sessões.
+
 ## O pipeline que está provado
 
 ```
