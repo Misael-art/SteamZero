@@ -1500,6 +1500,29 @@ class EmulationController:
                 "Divergências serão marcadas como suspect; nenhum conteúdo será "
                 "reparado, removido ou substituído."
             )
+        elif action == "library.projection.repair":
+            plan, removed, total = self._projection_repair_plan()
+            plan_extra["preview"] = (
+                f"Reparo de projeção: {removed} de {total} jogos cujo arquivo sumiu "
+                "do disco deixam o catálogo. Apenas o cache do SteamZero é reescrito; "
+                "nenhum arquivo seu é apagado ou movido."
+            )
+        elif action == "bios.link":
+            platform_id = self._required_string(payload, "platformId")
+            adapter_id = self._required_string(payload, "adapterId")
+            copies = self._bios_projection_copies(platform_id, adapter_id)
+            root = self._compatible_root({candidate: b"" for _, candidate in copies})
+            plan = (
+                transaction.plan_copy_files(copies, root=root, kind="emulation.bios-link")
+                if copies
+                else transaction.plan_write_files({}, root=root, kind="emulation.bios-link")
+            )
+            targets = self._emulator_bios_targets(adapter_id)
+            plan_extra["preview"] = (
+                f"Projeta as BIOS de {platform_id} · {adapter_id} para "
+                f"{' e '.join(str(target) for target in targets)}. Arquivos já "
+                "presentes e idênticos são mantidos; divergências bloqueiam a projeção."
+            )
         elif action == "library.root.add":
             plan = self._plan_root_add(Path(self._required_string(payload, "path")))
         elif action.startswith("library.root.open:"):
@@ -2158,6 +2181,13 @@ class EmulationController:
                 response["auditPreview"] = pending.metadata["audit"]
             elif pending.kind == "library-root-quarantine":
                 response["quarantineId"] = pending.metadata["quarantineId"]
+            elif pending.kind == "projection-repair":
+                ghosts_after = self._count_projection_ghosts()
+                response["verify"] = {
+                    "ghostsAfterApply": ghosts_after,
+                    "userFilesUntouched": True,
+                }
+                response["projectionRepair"] = pending.metadata
             elif pending.kind == "rom-scan":
                 roots = pending.metadata.get("roots", [])
                 job = self._jobs.create(
@@ -2625,6 +2655,7 @@ class EmulationController:
             or kind.startswith("input-profile.activate:")
             or kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"}
             or kind in {"switch-library.rename", "switch-library.quarantine"}
+            or kind in {"emulation.bios-link", "emulation.library-projection-repair"}
         )
         if not allowed:
             raise SteamZeroError(
@@ -4256,6 +4287,65 @@ class EmulationController:
             kind="emulation.library-roots",
         )
 
+    def _projection_repair_plan(self) -> tuple[transaction.Plan, int, int]:
+        """Reconcilia o cache de biblioteca com o disco sem tocar na origem.
+
+        Jogos cujo arquivo sumiu ou virou symlink deixam a projeção; o cache é
+        reescrito de forma transacional (rollback automático restaura o cache
+        anterior). Nenhum arquivo do usuário é apagado, movido ou reescrito.
+        """
+        cache_path = self._library_cache_path
+        if not cache_path.is_file() or cache_path.is_symlink():
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail="faça uma varredura da biblioteca antes do reparo de projeção",
+            )
+        try:
+            data = json.loads(cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail="cache de biblioteca ilegível; faça uma varredura",
+            ) from exc
+        games = data.get("games")
+        if not isinstance(games, list):
+            raise SteamZeroError(
+                "E-CONTENT-INCOMPLETE",
+                detail="cache de biblioteca sem catálogo; faça uma varredura",
+            )
+        ghosts: list[str] = []
+        kept: list[dict[str, Any]] = []
+        for game in games:
+            if not isinstance(game, dict):
+                ghosts.append("<inválido>")
+                continue
+            path_value = game.get("path")
+            candidate = Path(path_value) if isinstance(path_value, str) else None
+            if candidate is None or candidate.is_symlink() or not candidate.is_file():
+                ghosts.append(str(path_value))
+                continue
+            kept.append(game)
+        reconciled = dict(data)
+        reconciled["games"] = kept
+        if ghosts:
+            payload = json.dumps(
+                reconciled, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+            ).encode()
+            plan = transaction.plan_write_files(
+                {cache_path: payload},
+                root=paths.data_home(),
+                kind="emulation.library-projection-repair",
+            )
+        else:
+            plan = transaction.plan_write_files(
+                {}, root=paths.data_home(), kind="emulation.library-projection-repair"
+            )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "projection-repair",
+            {"removed": len(ghosts), "total": len(games), "ghostPaths": ghosts[:20]},
+        )
+        return plan, len(ghosts), len(games)
+
     def _plan_keys(self, selected: Path) -> transaction.Plan:
         candidates = self._selected_files(selected, suffixes={".keys"})
         exact = [path for path in candidates if path.name.casefold() == "prod.keys"]
@@ -5462,6 +5552,51 @@ class EmulationController:
             ),
         }.get(emulator_id, ())
 
+    @staticmethod
+    def _emulator_bios_targets(adapter_id: str) -> tuple[Path, ...]:
+        home = Path.home()
+        return {
+            "retroarch": (home / ".config/retroarch/system",),
+            "duckstation": (home / ".config/duckstation/bios",),
+            "pcsx2": (home / ".config/PCSX2/bios",),
+            "melonds": (home / ".config/melonDS/bios",),
+        }.get(adapter_id, ())
+
+    def _bios_projection_copies(self, platform_id: str, adapter_id: str) -> list[tuple[Path, Path]]:
+        """Projeta as BIOS do store central aos diretórios reais dos emuladores.
+
+        Cada BIOS declarada no perfil de lançamento é copiada do store central
+        (``bios_dir/<plataforma>/<nome>``) para os diretórios de BIOS de todos
+        os consumidores gerenciados do emulador. Alvos idênticos já presentes
+        são mantidos; divergências bloqueiam para nunca sobrescrever dados
+        externos.
+        """
+        profile = self._launch_profile_for(platform_id, adapter_id)
+        if profile is None or not profile.requires_bios:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"{platform_id} · {adapter_id} não declara BIOS para projetar",
+            )
+        targets = self._emulator_bios_targets(adapter_id)
+        if not targets:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"{adapter_id} não possui diretório de BIOS gerenciado",
+            )
+        copies: list[tuple[Path, Path]] = []
+        for name in profile.requires_bios:
+            source = paths.bios_dir() / platform_id / name
+            if source.is_symlink() or not source.is_file():
+                raise SteamZeroError(
+                    "E-CONTENT-BIOS-MISSING",
+                    detail=f"importe a BIOS '{name}' de {platform_id} antes de projetar",
+                )
+            digest = fs.hash_file(source, algo="sha256")
+            copies.extend(
+                self._new_copy_targets(source, [target / name for target in targets], digest)
+            )
+        return copies
+
     def _key_projection_copies(self, emulator_id: str) -> list[tuple[Path, Path]]:
         """Projeta as keys centrais ao consumidor escolhido no mesmo plano.
 
@@ -6411,6 +6546,23 @@ class EmulationController:
             return valid, max(0, unidentified)
         except (OSError, ValueError, json.JSONDecodeError):
             return [], 0
+
+    def _count_projection_ghosts(self) -> int:
+        """Conta jogos do cache cujo arquivo sumiu (verificação pós-reparo)."""
+        try:
+            data = json.loads(self._library_cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            return -1
+        ghosts = 0
+        for game in data.get("games", []):
+            if not isinstance(game, dict):
+                ghosts += 1
+                continue
+            path_value = game.get("path")
+            candidate = Path(path_value) if isinstance(path_value, str) else None
+            if candidate is None or candidate.is_symlink() or not candidate.is_file():
+                ghosts += 1
+        return ghosts
 
     @staticmethod
     def _cover_asset(title_id: str | None) -> tuple[str, str]:
