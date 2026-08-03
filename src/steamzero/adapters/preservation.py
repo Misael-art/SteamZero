@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Backup/restore operacional de saves e shader caches de emuladores Switch."""
+"""Backup/restore operacional de saves, save states e shader caches de emuladores."""
 
 from __future__ import annotations
 
@@ -20,9 +20,19 @@ from steamzero.domain.switch_content import ContentRecord, SwitchContentManager
 
 _SAVE_FILE_LIMIT = 64 * 1024 * 1024
 _SAVE_TOTAL_LIMIT = 256 * 1024 * 1024
+_STATE_FILE_LIMIT = 512 * 1024 * 1024
+_STATE_TOTAL_LIMIT = 4 * 1024 * 1024 * 1024
 _SHADER_FILE_LIMIT = 1024 * 1024 * 1024
 _SHADER_TOTAL_LIMIT = 4 * 1024 * 1024 * 1024
 _MAX_FILES = 20_000
+
+#: Emuladores que guardam save/state como arquivo nomeado pelo jogo (rom stem)
+#: dentro de um diretório plano — kind -> extensão(s) candidatas.
+_NAME_BASED_FILES: dict[str, dict[str, tuple[str, ...]]] = {
+    "retroarch": {"save": (".srm",), "state": (".state",)},
+    "duckstation": {"state": (".savestate",)},
+    "flycast": {"state": (".state",)},
+}
 
 
 @dataclass(frozen=True)
@@ -34,12 +44,14 @@ class PreservationTarget:
     root: Path
     emulator_version: str = "unknown"
     compatibility_fingerprint: str = ""
+    file: str | None = None
 
 
 @dataclass(frozen=True)
 class PreparedPreservationPlan:
     plan: transaction.Plan
     staging_root: Path
+    conflict: bool = False
 
 
 class PreservationService:
@@ -59,9 +71,15 @@ class PreservationService:
         self._emulator_version = emulator_version or (lambda _emulator_id: "unknown")
 
     def target_status(
-        self, game_id: str, title_id: str, emulator_id: str, kind: str
+        self,
+        game_id: str,
+        title_id: str,
+        emulator_id: str,
+        kind: str,
+        *,
+        game_name: str | None = None,
     ) -> dict[str, object]:
-        matches = self._matching_targets(game_id, title_id, emulator_id, kind)
+        matches = self._matching_targets(game_id, title_id, emulator_id, kind, game_name=game_name)
         if len(matches) != 1:
             return {
                 "confirmed": False,
@@ -73,7 +91,7 @@ class PreservationService:
                 "ambiguous": len(matches) > 1,
             }
         target = matches[0]
-        files = _safe_tree_files(target.root, kind)
+        files = _target_files(target)
         total = sum(path.stat().st_size for path in files)
         return {
             "confirmed": True,
@@ -108,29 +126,39 @@ class PreservationService:
                     "integrity": _record_integrity(record),
                     "emulatorId": record.emulator_id,
                     "compatibilityFingerprint": metadata.get("fingerprint", ""),
+                    "treeDigest": str(metadata.get("treeDigest", "")),
                 }
             )
         return result
 
     def plan_backup(
-        self, game_id: str, title_id: str, emulator_id: str, kind: str
+        self,
+        game_id: str,
+        title_id: str,
+        emulator_id: str,
+        kind: str,
+        *,
+        game_name: str | None = None,
     ) -> PreparedPreservationPlan:
-        target = self._require_target(game_id, title_id, emulator_id, kind)
+        target = self._require_target(game_id, title_id, emulator_id, kind, game_name=game_name)
         staging = paths.staging_dir() / "preservation" / ids.new_ulid()
         archive = staging / "tree.zip"
         try:
-            _archive_tree(target.root, archive, kind, progress=self._progress)
+            _archive_tree(target, archive, progress=self._progress)
             created_at = datetime.now(UTC).isoformat()
             metadata = {
                 "schemaVersion": 1,
                 "createdAt": created_at,
                 "fingerprint": target.compatibility_fingerprint if kind == "shader-cache" else "",
+                # 20 hex (80 bits): digest curto o bastante para o version (128 chars
+                # no record key), usado só para comparação de igualdade de árvore.
+                "treeDigest": _tree_digest(target.root, _target_files(target))[:20],
             }
             decision = self._content.plan_import(
                 archive,
                 kind=kind,
                 title_id=title_id,
-                version="backup:" + _compact_metadata(metadata),
+                version=_encode_backup_version(metadata),
                 emulator_id=emulator_id,
             )
             if decision.plan is None:
@@ -147,8 +175,10 @@ class PreservationService:
         emulator_id: str,
         kind: str,
         record_key: str,
+        *,
+        game_name: str | None = None,
     ) -> PreparedPreservationPlan:
-        target = self._require_target(game_id, title_id, emulator_id, kind)
+        target = self._require_target(game_id, title_id, emulator_id, kind, game_name=game_name)
         record = self._record(record_key, title_id, emulator_id, kind)
         metadata = _backup_metadata(record.version)
         if metadata is None:
@@ -162,6 +192,15 @@ class PreservationService:
                     f"backup={expected or 'ausente'} atual={target.compatibility_fingerprint}"
                 ),
             )
+        conflict = False
+        expected_digest = metadata.get("treeDigest")
+        if expected_digest:
+            try:
+                conflict = (
+                    str(expected_digest) != _tree_digest(target.root, _target_files(target))[:20]
+                )
+            except SteamZeroError:
+                conflict = False
         staging = paths.staging_dir() / "preservation" / ids.new_ulid()
         extracted = staging / "extracted"
         try:
@@ -169,7 +208,7 @@ class PreservationService:
             incoming = _safe_tree_files(extracted, kind)
             copies = [(source, target.root / source.relative_to(extracted)) for source in incoming]
             incoming_targets = {destination for _source, destination in copies}
-            current = _safe_tree_files(target.root, kind)
+            current = _target_files(target)
             removals = {path for path in current if path not in incoming_targets}
             plan = transaction.plan_copy_files(
                 copies,
@@ -185,7 +224,7 @@ class PreservationService:
         except Exception:
             self.cleanup(staging)
             raise
-        return PreparedPreservationPlan(plan, staging)
+        return PreparedPreservationPlan(plan, staging, conflict=conflict)
 
     def plan_shader_invalidation(
         self, game_id: str, title_id: str, emulator_id: str
@@ -224,9 +263,15 @@ class PreservationService:
         return record
 
     def _require_target(
-        self, game_id: str, title_id: str, emulator_id: str, kind: str
+        self,
+        game_id: str,
+        title_id: str,
+        emulator_id: str,
+        kind: str,
+        *,
+        game_name: str | None = None,
     ) -> PreservationTarget:
-        matches = self._matching_targets(game_id, title_id, emulator_id, kind)
+        matches = self._matching_targets(game_id, title_id, emulator_id, kind, game_name=game_name)
         if len(matches) != 1:
             raise SteamZeroError(
                 "E-CONTENT-UNSAFE-PATH",
@@ -239,7 +284,13 @@ class PreservationService:
         return matches[0]
 
     def _matching_targets(
-        self, game_id: str, title_id: str, emulator_id: str, kind: str
+        self,
+        game_id: str,
+        title_id: str,
+        emulator_id: str,
+        kind: str,
+        *,
+        game_name: str | None = None,
     ) -> list[PreservationTarget]:
         explicit = [
             target
@@ -258,6 +309,7 @@ class PreservationService:
             emulator_id,
             kind,
             emulator_version=self._emulator_version(emulator_id),
+            game_name=game_name,
         )
 
 
@@ -299,12 +351,35 @@ def _discover_targets(
     *,
     emulator_version: str,
     home: Path | None = None,
+    game_name: str | None = None,
 ) -> list[PreservationTarget]:
     # ``home`` injetável: caminhar o diretório real do usuário torna a cobertura
     # dependente de quais emuladores estão instalados na máquina.
     home = home if home is not None else Path.home()
     roots = _candidate_roots(home, emulator_id, kind)
     matches: list[PreservationTarget] = []
+    name_based = _NAME_BASED_FILES.get(emulator_id, {}).get(kind)
+    if name_based and game_name:
+        for base in roots:
+            if base.is_symlink() or not base.is_dir() or not _safe_target_root(base):
+                continue
+            for extension in name_based:
+                candidate = base / f"{game_name}{extension}"
+                if candidate.is_symlink() or not candidate.is_file():
+                    continue
+                matches.append(
+                    PreservationTarget(
+                        kind=kind,
+                        game_id=game_id,
+                        title_id=title_id.upper(),
+                        emulator_id=emulator_id,
+                        root=base.resolve(),
+                        emulator_version=emulator_version,
+                        file=candidate.name,
+                    )
+                )
+        unique = {target.root / (target.file or ""): target for target in matches}
+        return list(unique.values())
     wanted = title_id.casefold()
     for base in roots:
         if base.is_symlink() or not base.is_dir():
@@ -345,6 +420,19 @@ def _shader_fingerprint(emulator_id: str, emulator_version: str) -> str:
 
 
 def _candidate_roots(home: Path, emulator_id: str, kind: str) -> tuple[Path, ...]:
+    name_based = _NAME_BASED_FILES.get(emulator_id)
+    if name_based and kind in name_based:
+        table = {
+            "retroarch": {
+                "save": (home / ".config/retroarch/saves",),
+                "state": (home / ".config/retroarch/states",),
+            },
+            "duckstation": {"state": (home / ".config/duckstation/savestates",)},
+            "flycast": {"state": (home / ".config/flycast/state",)},
+        }
+        return tuple(dict.fromkeys(table[emulator_id][kind]))
+    if kind not in ("save", "shader-cache"):
+        return ()
     aliases = {
         "eden": ("eden", "Eden", "yuzu"),
         "citron": ("citron", "Citron", "yuzu"),
@@ -385,6 +473,8 @@ def _safe_target_root(root: Path) -> bool:
 def _limits(kind: str) -> tuple[int, int]:
     if kind == "save":
         return _SAVE_FILE_LIMIT, _SAVE_TOTAL_LIMIT
+    if kind == "state":
+        return _STATE_FILE_LIMIT, _STATE_TOTAL_LIMIT
     if kind == "shader-cache":
         return _SHADER_FILE_LIMIT, _SHADER_TOTAL_LIMIT
     raise SteamZeroError("E-API-SCHEMA", detail="tipo de preservação inválido")
@@ -414,6 +504,19 @@ def _safe_tree_files(root: Path, kind: str) -> list[Path]:
     return files
 
 
+def _target_files(target: PreservationTarget) -> list[Path]:
+    """Arquivos do destino: um arquivo nomeado (save/state por jogo) ou a árvore."""
+    if target.file is None:
+        return _safe_tree_files(target.root, target.kind)
+    candidate = target.root / target.file
+    if target.root.is_symlink() or candidate.is_symlink() or not candidate.is_file():
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="destino contém symlink ou é inválido")
+    file_limit, _total_limit = _limits(target.kind)
+    if candidate.stat().st_size > file_limit:
+        raise SteamZeroError("E-CONTENT-LIMIT", detail="arquivo excede limite seguro")
+    return [candidate]
+
+
 def _tree_digest(root: Path, files: Sequence[Path]) -> str:
     digest = hashlib.sha256()
     for path in files:
@@ -424,15 +527,15 @@ def _tree_digest(root: Path, files: Sequence[Path]) -> str:
 
 
 def _archive_tree(
-    root: Path,
+    target: PreservationTarget,
     archive: Path,
-    kind: str,
     *,
     progress: Callable[[int, int], None] | None,
 ) -> None:
-    files = _safe_tree_files(root, kind)
+    files = _target_files(target)
     if not files:
         raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="árvore de preservação está vazia")
+    root = target.root
     fs.ensure_dir(archive.parent)
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as output:
         manifest_files: list[dict[str, object]] = []
@@ -520,18 +623,43 @@ def _record_integrity(record: ContentRecord) -> str:
     return "verified"
 
 
-def _compact_metadata(value: dict[str, object]) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"))
-    if len(encoded) > 120:
-        raise SteamZeroError("E-API-SCHEMA", detail="metadados de backup excedem limite")
-    return encoded
+def _encode_backup_version(metadata: dict[str, object]) -> str:
+    """Version compacto (`backup:v1:c<epoch>:f<fp>:d<digest>`) que cabe nos
+    128 chars do record key mesmo com fingerprint e digest completos."""
+    created = metadata.get("createdAt", "")
+    created_epoch = "0"
+    if isinstance(created, str):
+        try:
+            created_epoch = str(int(datetime.fromisoformat(created).timestamp()))
+        except ValueError:
+            created_epoch = "0"
+    return (
+        f"backup:v1:c{created_epoch}"
+        f":f{metadata.get('fingerprint', '')}"
+        f":d{metadata.get('treeDigest', '')}"
+    )
 
 
 def _backup_metadata(version: str | None) -> dict[str, object] | None:
     if version is None or not version.startswith("backup:"):
         return None
-    try:
-        value = json.loads(version.removeprefix("backup:"))
-    except json.JSONDecodeError:
+    payload = version.removeprefix("backup:")
+    if payload.startswith("{"):
+        try:
+            value = json.loads(payload)
+        except json.JSONDecodeError:
+            return None
+        return value if isinstance(value, dict) and value.get("schemaVersion") == 1 else None
+    parts = payload.split(":")
+    if len(parts) != 4 or parts[0] != "v1" or not parts[1].startswith("c"):
         return None
-    return value if isinstance(value, dict) and value.get("schemaVersion") == 1 else None
+    try:
+        created = datetime.fromtimestamp(int(parts[1][1:]), UTC).isoformat()
+    except (ValueError, OSError, OverflowError):
+        created = ""
+    return {
+        "schemaVersion": 1,
+        "createdAt": created,
+        "fingerprint": parts[2][1:] if parts[2].startswith("f") else "",
+        "treeDigest": parts[3][1:] if parts[3].startswith("d") else "",
+    }

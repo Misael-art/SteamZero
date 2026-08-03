@@ -822,8 +822,15 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 "reason": "defina um emulador e confirme o Title ID",
             },
             "saveBackups": [],
+            "stateTarget": {
+                "confirmed": False,
+                "ambiguous": False,
+                "reason": "defina um emulador e confirme o Title ID",
+            },
+            "stateBackups": [],
             "shaderBackups": [],
             "saveState": "Destino não confirmado",
+            "stateCount": 0,
             "shaderCount": 0,
         }
     ]
@@ -2467,3 +2474,121 @@ def test_bios_import_never_leaks_content_into_logs(
     captured = capsys.readouterr().out + capsys.readouterr().err
     assert "conteudo-sintetico-de-bios-falsa" not in captured
     assert hashlib.sha256(b"conteudo-sintetico-de-bios-falsa").hexdigest() not in captured
+
+
+def _preservation_controller(  # type: ignore[no-untyped-def]
+    monkeypatch, tmp_path: Path, kind: str, file: str | None
+):
+    from steamzero.adapters.preservation import PreservationService, PreservationTarget
+
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    (roms / "Example [0100ABCDEF123000].nsp").write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game_id = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["id"]
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.set", "gameId": game_id, "emulatorId": "ryubing"}
+        ),
+    )
+    root = tmp_path / "emulator" / "saves"
+    root.mkdir(parents=True)
+    if file is not None:
+        (root / file).write_bytes(b"initial")
+    target = PreservationTarget(
+        kind=kind,
+        game_id=game_id,
+        title_id="0100ABCDEF123000",
+        emulator_id="ryubing",
+        root=root,
+        emulator_version="1.0",
+        file=file,
+    )
+    service = PreservationService(
+        controller._content,  # type: ignore[attr-defined]
+        targets=[target],
+        emulator_version=lambda _emulator_id: "1.0",
+    )
+    controller._preservation = service  # type: ignore[attr-defined]
+    return controller, game_id, root
+
+
+def test_preservation_actions_blocked_while_game_session_runs(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    import os
+
+    controller, game_id, root = _preservation_controller(monkeypatch, tmp_path, "save", None)
+    (root / "save.bin").write_bytes(b"dado")
+    controller._running_pids["ryubing"] = os.getpid()  # type: ignore[attr-defined]
+    for action in (
+        f"game.save.backup:{game_id}",
+        f"game.shader.backup:{game_id}",
+        f"game.state.restore:{game_id}:qualquer",
+    ):
+        with pytest.raises(SteamZeroError) as error:
+            controller.plan_action({"actionId": action})
+        assert error.value.code == "E-CONTENT-BUSY"
+    controller._running_pids.clear()  # type: ignore[attr-defined]
+    plan = controller.plan_action({"actionId": f"game.save.backup:{game_id}"})
+    assert plan["planId"]
+
+
+def test_session_save_checkpoint_captures_once_and_trims_to_eight(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller, game_id, root = _preservation_controller(monkeypatch, tmp_path, "save", None)
+    save = root / "save.bin"
+    save.write_bytes(b"v1")
+    controller._session_save_checkpoint(game_id, "0100ABCDEF123000", "ryubing")  # type: ignore[attr-defined]
+    assert len(controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")) == 1  # type: ignore[attr-defined]
+    controller._session_save_checkpoint(game_id, "0100ABCDEF123000", "ryubing")  # type: ignore[attr-defined]
+    assert len(controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")) == 1  # type: ignore[attr-defined]
+    for index in range(2, 12):
+        save.write_bytes(f"v{index}".encode())
+        controller._session_save_checkpoint(game_id, "0100ABCDEF123000", "ryubing")  # type: ignore[attr-defined]
+    rows = controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")  # type: ignore[attr-defined]
+    assert len(rows) == 8
+    assert save.read_bytes() == b"v11"
+
+
+def test_state_backup_restore_roundtrip_via_controller(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller, game_id, root = _preservation_controller(
+        monkeypatch, tmp_path, "state", "Zelda (USA).state"
+    )
+    (root / "Zelda (USA).state").write_bytes(b"state-one")
+    backup = controller.plan_action({"actionId": f"game.state.backup:{game_id}"})
+    _apply(controller, backup)
+    rows = controller._preservation.backups("0100ABCDEF123000", "ryubing", "state")  # type: ignore[attr-defined]
+    assert len(rows) == 1
+    (root / "Zelda (USA).state").write_bytes(b"state-two")
+    restore = controller.plan_action(
+        {"actionId": f"game.state.restore:{game_id}:{rows[0]['recordKey']}"}
+    )
+    assert "preservado como um novo backup" in restore["preview"]
+    applied = _apply(controller, restore)
+    assert applied.get("restoreApplied") is True
+    assert (root / "Zelda (USA).state").read_bytes() == b"state-one"
+    after = controller._preservation.backups("0100ABCDEF123000", "ryubing", "state")  # type: ignore[attr-defined]
+    assert len(after) == 2
+
+
+def test_conflicting_save_restore_preserves_both_versions(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller, game_id, root = _preservation_controller(monkeypatch, tmp_path, "save", None)
+    save = root / "save.bin"
+    save.write_bytes(b"v1")
+    _apply(controller, controller.plan_action({"actionId": f"game.save.backup:{game_id}"}))
+    save.write_bytes(b"v2")
+    rows = controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")  # type: ignore[attr-defined]
+    assert len(rows) == 1
+    restore = controller.plan_action(
+        {"actionId": f"game.save.restore:{game_id}:{rows[0]['recordKey']}"}
+    )
+    applied = _apply(controller, restore)
+    assert applied.get("restoreApplied") is True
+    assert save.read_bytes() == b"v1"
+    after = controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")  # type: ignore[attr-defined]
+    assert len(after) == 2

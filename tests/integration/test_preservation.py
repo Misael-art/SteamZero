@@ -223,3 +223,127 @@ def test_restore_blocks_archive_traversal_and_cleans_staging(
     assert not (tmp_path / "escape.bin").exists()
     staging = paths.staging_dir() / "preservation"
     assert not staging.exists() or not any(staging.iterdir())
+
+
+def _named_target(kind: str, root: Path, file: str) -> PreservationTarget:
+    return PreservationTarget(
+        kind=kind,
+        game_id=_GAME,
+        title_id=_TITLE,
+        emulator_id="retroarch",
+        root=root,
+        emulator_version="1.19.0",
+        file=file,
+    )
+
+
+def test_named_file_backup_restore_is_byte_identical_and_detects_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saves = tmp_path / ".config" / "retroarch" / "saves"
+    saves.mkdir(parents=True)
+    fs.write_atomic(saves / "Zelda (USA).srm", b"version-one")
+    service, content = _service(
+        tmp_path,
+        monkeypatch,
+        [_named_target("save", saves, "Zelda (USA).srm")],
+    )
+
+    status = service.target_status(_GAME, _TITLE, "retroarch", "save")
+    assert status["confirmed"] is True
+    assert status["fileCount"] == 1
+
+    backup = service.plan_backup(_GAME, _TITLE, "retroarch", "save")
+    content.apply_import(backup.plan.plan_id, backup.plan.confirm_token)
+    service.cleanup(backup.staging_root)
+    rows = service.backups(_TITLE, "retroarch", "save")
+    assert len(rows) == 1
+    assert rows[0]["treeDigest"]
+    assert rows[0]["treeDigest"] == str(status["integrity"])[:20]
+
+    same = service.plan_restore(_GAME, _TITLE, "retroarch", "save", str(rows[0]["recordKey"]))
+    assert same.conflict is False
+
+    fs.write_atomic(saves / "Zelda (USA).srm", b"version-two")
+    diverged = service.plan_restore(_GAME, _TITLE, "retroarch", "save", str(rows[0]["recordKey"]))
+    assert diverged.conflict is True
+    restored = transaction.apply(diverged.plan.plan_id, diverged.plan.confirm_token)
+    assert (saves / "Zelda (USA).srm").read_bytes() == b"version-one"
+    transaction.rollback(restored.operation_id)
+    assert (saves / "Zelda (USA).srm").read_bytes() == b"version-two"
+    service.cleanup(diverged.staging_root)
+
+
+def test_state_kind_roundtrip_and_limits_apply(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    states = tmp_path / ".config" / "retroarch" / "states"
+    states.mkdir(parents=True)
+    fs.write_atomic(states / "Metroid.state", b"state-one")
+    service, content = _service(
+        tmp_path,
+        monkeypatch,
+        [_named_target("state", states, "Metroid.state")],
+    )
+    backup = service.plan_backup(_GAME, _TITLE, "retroarch", "state")
+    content.apply_import(backup.plan.plan_id, backup.plan.confirm_token)
+    record_key = str(service.backups(_TITLE, "retroarch", "state")[0]["recordKey"])
+
+    fs.write_atomic(states / "Metroid.state", b"state-two")
+    restore = service.plan_restore(_GAME, _TITLE, "retroarch", "state", record_key)
+    assert restore.conflict is True
+    applied = transaction.apply(restore.plan.plan_id, restore.plan.confirm_token)
+    assert (states / "Metroid.state").read_bytes() == b"state-one"
+    transaction.rollback(applied.operation_id)
+    assert (states / "Metroid.state").read_bytes() == b"state-two"
+    service.cleanup(restore.staging_root)
+
+    oversized = states / "Metroid.state"
+    with oversized.open("wb") as stream:
+        stream.truncate(512 * 1024 * 1024 + 1)
+    with pytest.raises(SteamZeroError) as error:
+        service.plan_backup(_GAME, _TITLE, "retroarch", "state")
+    assert error.value.code == "E-CONTENT-LIMIT"
+
+
+def test_legacy_json_version_backups_still_list_with_created_at(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    active = tmp_path / "emulator" / "save" / _TITLE
+    fs.write_atomic(active / "save.bin", b"old-format")
+    service, content = _service(tmp_path, monkeypatch, [_target("save", active)])
+    legacy = tmp_path / "legacy.zip"
+    with zipfile.ZipFile(legacy, "w") as archive:
+        archive.writestr("save.bin", b"old-format")
+        archive.writestr(
+            "STEAMZERO-MANIFEST.json",
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "files": [
+                        {
+                            "path": "save.bin",
+                            "sha256": fs.hash_bytes(b"old-format"),
+                            "size": len(b"old-format"),
+                        }
+                    ],
+                }
+            ),
+        )
+    decision = content.plan_import(
+        legacy,
+        kind="save",
+        title_id=_TITLE,
+        version='backup:{"createdAt":"2025-01-01T00:00:00+00:00","fingerprint":"","schemaVersion":1}',
+        emulator_id="citron",
+    )
+    assert decision.plan is not None
+    content.apply_import(decision.plan.plan_id, decision.plan.confirm_token)
+
+    rows = service.backups(_TITLE, "citron", "save")
+    assert len(rows) == 1
+    assert rows[0]["createdAt"] == "2025-01-01T00:00:00+00:00"
+    assert rows[0]["treeDigest"] == ""
+    restore = service.plan_restore(_GAME, _TITLE, "citron", "save", str(rows[0]["recordKey"]))
+    assert restore.conflict is False
+    service.cleanup(restore.staging_root)

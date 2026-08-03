@@ -123,6 +123,82 @@ class TestDiscoverTargets:
             == []
         )
 
+    def _retroarch_home(self, home: Path, rom_stem: str) -> None:
+        (home / ".config" / "retroarch" / "saves").mkdir(parents=True)
+        (home / ".config" / "retroarch" / "states").mkdir(parents=True)
+        (home / ".config" / "retroarch" / "saves" / f"{rom_stem}.srm").write_bytes(b"save")
+        (home / ".config" / "retroarch" / "states" / f"{rom_stem}.state").write_bytes(b"state")
+
+    def test_finds_named_save_and_state_by_rom_stem(self, tmp_path: Path) -> None:
+        self._retroarch_home(tmp_path, "Zelda (USA)")
+        saves = preservation._discover_targets(
+            "jogo-5",
+            "0100ABCDEF000001",
+            "retroarch",
+            "save",
+            emulator_version="1.0",
+            home=tmp_path,
+            game_name="Zelda (USA)",
+        )
+        assert len(saves) == 1
+        assert saves[0].file == "Zelda (USA).srm"
+        assert saves[0].root == tmp_path / ".config/retroarch/saves"
+        states = preservation._discover_targets(
+            "jogo-5",
+            "0100ABCDEF000001",
+            "retroarch",
+            "state",
+            emulator_version="1.0",
+            home=tmp_path,
+            game_name="Zelda (USA)",
+        )
+        assert len(states) == 1
+        assert states[0].file == "Zelda (USA).state"
+        assert states[0].root == tmp_path / ".config/retroarch/states"
+
+    def test_named_discovery_ignores_missing_rom_and_other_emulators(self, tmp_path: Path) -> None:
+        self._retroarch_home(tmp_path, "Zelda (USA)")
+        assert (
+            preservation._discover_targets(
+                "jogo-6",
+                "0100ABCDEF000001",
+                "retroarch",
+                "save",
+                emulator_version="1.0",
+                home=tmp_path,
+                game_name="Mario (USA)",
+            )
+            == []
+        )
+        # duckstation tem savestates; retroarch não tem estados no dir do duckstation
+        duck = tmp_path / ".config/duckstation/savestates"
+        duck.mkdir(parents=True)
+        (duck / "Gran Turismo.savestate").write_bytes(b"state")
+        found = preservation._discover_targets(
+            "jogo-7",
+            "0100ABCDEF000002",
+            "duckstation",
+            "state",
+            emulator_version="1.0",
+            home=tmp_path,
+            game_name="Gran Turismo",
+        )
+        assert len(found) == 1
+        assert found[0].file == "Gran Turismo.savestate"
+        # rpcs3 não participa do mapeamento por nome: nenhum root candidato
+        assert (
+            preservation._discover_targets(
+                "jogo-8",
+                "0100ABCDEF000003",
+                "rpcs3",
+                "state",
+                emulator_version="1.0",
+                home=tmp_path,
+                game_name="Gran Turismo",
+            )
+            == []
+        )
+
 
 class TestSteamRunningProbe:
     """Detecção de Steam em execução, sem depender de Steam estar aberto."""
