@@ -28,6 +28,29 @@ raciocínio a partir dos diffs.
 
 Base: `9109483` (VS-01).
 
+## PR 1 tema default — fundação de cena (2026-08-02)
+
+A primeira PR do tema default (`codex/theme-scene-foundation`) entregou a
+fundação do IR sobre a qual a migração das 388 propriedades vai acontecer.
+Quatro commits, gates verdes:
+
+| commit | entrega |
+|---|---|
+| `954f970` | `children` no `ElementContract`, `scene_tree.py` (limites 40/128/4096, ids únicos) e serialização v2 com leitura v1 |
+| `6793766` | `DisplaySpec` fechado e bindings `display.*` por eixo com invalidação seletiva |
+| `50151db` | `CONTRACT_PROPERTY_TYPES` (44 entradas) como tabela única; registro derivado, sem `content`/`source` fantasmas |
+| `e6be003` | auditoria executável da migração (`theme_migration_audit`, `tools/audit_theme_migration.py`) com fidelidade por área |
+
+Com isso, dois itens de "O que falta" abaixo mudaram de estado: a árvore de
+cena tem contrato e serialização (item 2) e o display tem estado fechado além
+de largura/altura (item 5) — a fatia de texto ainda não os PRODUZ, o que o
+gate `test_no_scene_tree_is_introduced` afirma por escolha, não por ausência
+de projeto.
+
+A auditoria executável (`python tools/audit_theme_migration.py`) é o corpo do
+gate de escopo: relata por área quantas declarações reais têm tradutor e a
+lista nominal do que ficou para trás (hoje, nas fixtures, `layer` e `src`).
+
 ## O pipeline que está provado
 
 ```
@@ -116,6 +139,7 @@ make check                    # os quatro gates + cobertura
 make qml-visual               # as dez baselines
 make check-qml-goldens        # relata divergência visual sem regravar
 make update-qml-goldens       # regrava baselines (exige revisão do diff)
+python tools/audit_theme_migration.py   # relatório de migração por área
 ```
 
 O job `qml-visual-linux` do CI nasce sem `continue-on-error`: ambiente sem Qt

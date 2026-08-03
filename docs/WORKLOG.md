@@ -3830,3 +3830,42 @@ UI, RetroArch/cores, standalone, Switch, BIOS/keys/firmware, launch, playtime,
 encerramento/crash, saves, controles, mídia, GameMode, consumo por processo,
 rollback `nova→anterior→nova`. A instalação de uma release consolidada com
 teste físico exige nova autorização.
+
+## 2026-08-02 — Sessão 54: PR 1 tema default — fundação de cena (branch codex/theme-scene-foundation)
+
+Primeira PR da linha de tema default do SteamZero, sobre `origin/main`
+(`59f22a8`): fundação do IR de cena para o motor de temas. Nenhuma ação de
+host; trabalho apenas em worktree próprio.
+
+Quatro commits, todos com os gates da seção 6 verdes:
+
+- `954f970` — **árvore de cena**: `children` no `ElementContract` com
+  validação recursiva e serialização v2 (leitura v1 preservada); novo
+  `scene_tree.py` com limites fechados (profundidade 40, filhos 128, nós
+  4096, ids únicos) e validação na leitura do documento.
+- `6793766` — **display responsivo**: `DisplaySpec` fechado
+  (largura/altura/dpr/orientação/safe-area) e bindings `display.*` por eixo
+  no resolver, com invalidação seletiva por geração e `set_display`.
+- `50151db` — **fechamento do contrato**: `CONTRACT_PROPERTY_TYPES` (44
+  entradas) como tabela única; o registro de tipos passou a derivar dela,
+  eliminando nomes fantasmas (`content`, `source`) e os enums do catálogo
+  de slots de valor; testes de fechamento nos dois sentidos.
+- `e6be003` — **auditoria executável da migração**: `theme_migration_audit`
+  (fidelidade por área, nomes sem tradutor expostos) e
+  `tools/audit_theme_migration.py` (relatório por layout, `--json`); o gate
+  `source_property_count < 388` ganhou corpo inspecionável.
+
+Descobertas registradas:
+
+- a divergência contrato↔registro era real e silenciosa: `content`/`source`
+  viviam no registro sem existir no contrato (ver commit 3);
+- `expected_for_property` (registro de propriedades) não tem chamadores —
+  a resolução usa o vocabulário de bindings; o catálogo de propriedades é
+  hoje consumido apenas por testes e pela auditoria;
+- flakiness pré-existente confirmada: `test_desktop_ui_bridge` quebra com
+  `BrokenPipeError` em loopback sob carga (passa isolado, sem relação com
+  esta PR).
+
+Validação física pendente (operador): revisão da PR, merge e testes de
+tema futuros. Suíte completa: 3691 passed (1 flaky de rede reconfirmado
+verde isolado); mypy 202 arquivos; fronteiras e independência 0 violações.
