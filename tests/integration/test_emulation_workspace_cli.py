@@ -220,19 +220,20 @@ class TestEveryStateArgumentIsExercised:
         assert argument in passed, f"o controller não passa {argument!r}"
 
 
-class TestAPartialRequirementDegradesSilently:
-    """Observação registrada durante o GAP-G20, não corrigida aqui.
+class TestAPartialRequirementIsDiagnosed:
+    """G24: requisito parcial é diagnosticado, nunca degrada em silêncio.
 
-    `_requirement_payload` exige seis chaves e, faltando qualquer uma, devolve
-    `unverified` **sem diagnóstico**. É defensivo — um requisito parcial não é
-    confiável —, mas o silêncio tem a forma exata do defeito da a37: o usuário
-    vê "não verificado" e não distingue de "sumiu".
+    Antes, `_requirement_payload` exigia as seis chaves e, faltando qualquer
+    uma, devolvia `unverified` **sem diagnóstico**, descartando o valor
+    informado — o usuário via "não verificado" sem distinguir de "sumiu"
+    (forma exata do defeito da a37).
 
-    O teste congela o comportamento atual para que uma mudança futura seja
-    deliberada, e nomeia o custo.
+    A correção preserva o valor parcial (visível na UI), mantém o status
+    honesto (`unverified`: parcial não é confiável) e nomeia no detail
+    exatamente as chaves que faltam.
     """
 
-    def test_an_incomplete_requirement_becomes_unverified(self) -> None:
+    def test_an_incomplete_requirement_is_diagnosed_not_silent(self) -> None:
         from steamzero.domain.emulation_workspace import build_switch_workspace
 
         workspace = build_switch_workspace(
@@ -242,4 +243,22 @@ class TestAPartialRequirementDegradesSilently:
         platform = next(item for item in workspace["platforms"] if item.get("id") == "switch")
         keys = (platform.get("requirements") or {}).get("keys", {})
         assert keys.get("status") == "unverified"
-        assert keys.get("installed") is None, "o valor informado é descartado junto"
+        assert keys.get("installed") == "rev21", "o valor parcial é preservado, não descartado"
+        detail = str(keys.get("detail"))
+        assert "required" in detail and "blocksPlay" in detail, (
+            "o diagnóstico nomeia as chaves que faltam"
+        )
+
+    def test_partial_value_keeps_authoritative_kind(self) -> None:
+        """A posição no contrato continua autoritativa sobre o produtor."""
+        from steamzero.domain.emulation_workspace import build_switch_workspace
+
+        workspace = build_switch_workspace(
+            probe=lambda _emulator_id: True,
+            firmware={"kind": "keys", "installed": "22.5.0"},
+        )
+        platform = next(item for item in workspace["platforms"] if item.get("id") == "switch")
+        firmware = (platform.get("requirements") or {}).get("firmware", {})
+        assert firmware.get("kind") == "firmware"
+        assert firmware.get("installed") == "22.5.0"
+        assert firmware.get("blocksPlay") is False

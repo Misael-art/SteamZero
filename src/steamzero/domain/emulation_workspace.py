@@ -163,6 +163,24 @@ def _requirement_payload(
             # rotulado como keys (ou vice-versa) por um produtor defeituoso.
             normalized["kind"] = kind
             return normalized
+        # G24: dado parcial gera diagnóstico, não degrada silenciosamente. O
+        # valor informado é preservado (visível na UI), o status é honesto
+        # (parcial não é confiável) e o detail nomeia exatamente o que falta —
+        # o usuário distingue "faltou informação" de "sumiu".
+        missing = sorted(expected - set(candidate))
+        label = "Keys" if kind == "keys" else "Firmware"
+        return {
+            "kind": kind,
+            "status": "unverified",
+            "required": candidate.get("required"),
+            "installed": candidate.get("installed"),
+            "detail": (
+                f"{label} parcial: faltam {', '.join(missing)}. O valor informado "
+                "foi preservado, mas não é confiável; nenhuma ação será tomada "
+                "sobre ele."
+            ),
+            "blocksPlay": False,
+        }
     label = "Keys" if kind == "keys" else "Firmware"
     return {
         "kind": kind,
