@@ -11,11 +11,13 @@ import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
+import jsonschema.exceptions
 import pytest
 
 from steamzero.adapters import emulation
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
+from steamzero.api.contracts import validate
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.state import StateStore
 from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
@@ -2097,6 +2099,233 @@ def test_library_scan_publishes_global_job_progress(monkeypatch, tmp_path: Path)
     listed = controller.list_jobs()
     assert listed[0]["jobId"] == result["jobId"]
     assert "params" not in listed[0]
+
+
+def _plant_library_cache(tmp_path: Path, games: list[dict]) -> Path:
+    cache = tmp_path / "data" / "steamzero" / "emulation-library-cache-v1.json"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(
+        json.dumps({"schemaVersion": 1, "games": games}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return cache
+
+
+class TestProjectionRepair:
+    """library.projection.repair: plan/apply/verify/rollback do catálogo."""
+
+    def test_removes_ghosts_and_keeps_real_files(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        rom = tmp_path / "data" / "roms" / "Game.nsp"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"owned-game")
+        _plant_library_cache(
+            tmp_path,
+            [
+                {"id": "a", "name": "Game", "state": "ready", "path": str(rom)},
+                {"id": "b", "name": "Ghost", "state": "ready", "path": str(tmp_path / "sumiu.nsp")},
+            ],
+        )
+
+        plan = controller.plan_action({"actionId": "library.projection.repair"})
+        assert "1 de 2" in str(plan["preview"])
+        result = _apply(controller, plan)
+
+        assert result["projectionRepair"]["removed"] == 1  # type: ignore[index]
+        assert result["verify"]["ghostsAfterApply"] == 0  # type: ignore[index]
+        assert result["verify"]["userFilesUntouched"] is True  # type: ignore[index]
+        data = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+        assert [game["id"] for game in data["games"]] == ["a"]
+        assert rom.read_bytes() == b"owned-game"
+
+    def test_is_noop_when_projection_is_consistent(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        rom = tmp_path / "data" / "roms" / "Game.nsp"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"owned-game")
+        cache = _plant_library_cache(
+            tmp_path,
+            [{"id": "a", "name": "Game", "state": "ready", "path": str(rom)}],
+        )
+        before = cache.read_bytes()
+
+        plan = controller.plan_action({"actionId": "library.projection.repair"})
+        assert "0 de 1" in str(plan["preview"])
+        result = _apply(controller, plan)
+
+        assert result["projectionRepair"]["removed"] == 0  # type: ignore[index]
+        assert result["verify"]["ghostsAfterApply"] == 0  # type: ignore[index]
+        assert cache.read_bytes() == before
+
+    def test_rollback_restores_cache_with_ghost(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        rom = tmp_path / "data" / "roms" / "Game.nsp"
+        rom.parent.mkdir(parents=True)
+        rom.write_bytes(b"owned-game")
+        cache = _plant_library_cache(
+            tmp_path,
+            [
+                {"id": "a", "name": "Game", "state": "ready", "path": str(rom)},
+                {"id": "b", "name": "Ghost", "state": "ready", "path": str(tmp_path / "sumiu.nsp")},
+            ],
+        )
+        before = cache.read_bytes()
+
+        result = _apply(
+            controller, controller.plan_action({"actionId": "library.projection.repair"})
+        )
+        assert result["verify"]["ghostsAfterApply"] == 0  # type: ignore[index]
+
+        controller.rollback_action(str(result["operationId"]))
+        assert cache.read_bytes() == before
+
+    def test_blocks_without_cache(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        with pytest.raises(SteamZeroError) as excinfo:
+            controller.plan_action({"actionId": "library.projection.repair"})
+        assert excinfo.value.code == "E-CONTENT-INCOMPLETE"
+
+
+class TestBiosLink:
+    """bios.link: projeção do store central de BIOS para emuladores."""
+
+    def _plant_bios(self, tmp_path: Path, platform: str, names: dict[str, bytes]) -> None:
+        root = tmp_path / "data" / "steamzero" / "bios" / platform
+        root.mkdir(parents=True)
+        for name, content in names.items():
+            (root / name).write_bytes(content)
+
+    def test_projects_central_store_to_emulator_dirs(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        self._plant_bios(
+            tmp_path,
+            "amiga",
+            {"kick34005.A500": b"a500", "kick40068.A1200": b"a1200"},
+        )
+
+        plan = controller.plan_action(
+            {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+        )
+        _apply(controller, plan)
+
+        system = tmp_path / "home" / ".config" / "retroarch" / "system"
+        assert (system / "kick34005.A500").read_bytes() == b"a500"
+        assert (system / "kick40068.A1200").read_bytes() == b"a1200"
+        assert controller._bios_projection_copies("amiga", "retroarch") == []  # type: ignore[attr-defined]
+
+    def test_blocks_when_bios_missing_in_store(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        with pytest.raises(SteamZeroError) as excinfo:
+            controller.plan_action(
+                {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+            )
+        assert excinfo.value.code == "E-CONTENT-BIOS-MISSING"
+        assert "kick34005.A500" in str(excinfo.value.detail)
+
+    def test_blocks_adapter_without_declared_bios(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        with pytest.raises(SteamZeroError) as excinfo:
+            controller.plan_action(
+                {"actionId": "bios.link", "platformId": "playstation", "adapterId": "duckstation"}
+            )
+        assert excinfo.value.code == "E-API-SCHEMA"
+
+    def test_blocks_divergent_existing_target(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        self._plant_bios(
+            tmp_path, "amiga", {"kick34005.A500": b"a500", "kick40068.A1200": b"a1200"}
+        )
+        system = tmp_path / "home" / ".config" / "retroarch" / "system"
+        system.mkdir(parents=True)
+        (system / "kick34005.A500").write_bytes(b"divergente")
+
+        with pytest.raises(SteamZeroError) as excinfo:
+            controller.plan_action(
+                {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+            )
+        assert excinfo.value.code == "E-CONTENT-FW-INCOMPAT"
+
+    def test_rollback_removes_projected_copies(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        self._plant_bios(
+            tmp_path, "amiga", {"kick34005.A500": b"a500", "kick40068.A1200": b"a1200"}
+        )
+        system = tmp_path / "home" / ".config" / "retroarch" / "system"
+
+        result = _apply(
+            controller,
+            controller.plan_action(
+                {"actionId": "bios.link", "platformId": "amiga", "adapterId": "retroarch"}
+            ),
+        )
+        assert (system / "kick34005.A500").is_file()
+
+        controller.rollback_action(str(result["operationId"]))
+        assert not (system / "kick34005.A500").exists()
+
+
+class TestAssociatedContentProjection:
+    """update/DLC como conteúdo associado: nunca viram jogos duplicados."""
+
+    def test_game_rows_carry_associated_content_and_validate(
+        self, monkeypatch, tmp_path: Path
+    ) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        roms = tmp_path / "home" / "Games" / "Switch"
+        roms.mkdir(parents=True)
+        root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
+        _apply(controller, root_plan)
+        rom = roms / "Game [0100ABCDEF123000][v0].nsp"
+        rom.write_bytes(b"owned-game")
+        controller.scan_library()
+        data = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+        data["games"][0].update({"updateCount": 2, "dlcCount": 1, "updateVersion": "v3"})
+        controller._library_cache_path.write_text(  # type: ignore[attr-defined]
+            json.dumps(data, ensure_ascii=False), encoding="utf-8"
+        )
+
+        workspace = controller.snapshot({"context": {}})
+        game = workspace["platforms"][0]["games"][0]  # type: ignore[index]
+        assert game["updateCount"] == 2
+        assert game["dlcCount"] == 1
+        assert game["updateVersion"] == "v3"
+        assert game["contentKind"] == "base"
+
+    def test_auxiliary_content_never_becomes_a_game(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        controller = _controller(monkeypatch, tmp_path)
+        roms = tmp_path / "home" / "Games" / "Switch"
+        roms.mkdir(parents=True)
+        root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
+        _apply(controller, root_plan)
+        rom = roms / "Game [0100ABCDEF123000][v0].nsp"
+        rom.write_bytes(b"owned-game")
+        controller.scan_library()
+        data = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+        data["games"][0]["contentKind"] = "update"
+        controller._library_cache_path.write_text(  # type: ignore[attr-defined]
+            json.dumps(data, ensure_ascii=False), encoding="utf-8"
+        )
+
+        workspace = controller.snapshot({"context": {}})
+        games = workspace["platforms"][0]["games"]  # type: ignore[index]
+        assert games == []
+
+
+def test_contract_rejects_auxiliary_kind_in_game_row(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """O contrato cimenta: update/DLC nunca podem aparecer como jogo."""
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "home" / "Games" / "Switch"
+    roms.mkdir(parents=True)
+    root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
+    _apply(controller, root_plan)
+    (roms / "Game [0100ABCDEF123000][v0].nsp").write_bytes(b"owned-game")
+    controller.scan_library()
+
+    workspace = controller.snapshot({"context": {}})
+    game = workspace["platforms"][0]["games"][0]  # type: ignore[index]
+    game["contentKind"] = "update"
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validate(workspace, "emulation-workspace-v1.schema.json")
 
 
 def test_bios_import_plans_applies_and_persists(monkeypatch, tmp_path: Path) -> None:
