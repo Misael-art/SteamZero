@@ -31,6 +31,7 @@ from steamzero.domain.retrofe_declarations import (
     derived,
 )
 from steamzero.domain.retrofe_text_slice import SliceResult, TextSliceCompiler
+from steamzero.domain.scene_contract import ElementContract
 from steamzero.domain.scene_registry import (
     FORBIDDEN_NAMESPACES,
     DeferredValue,
@@ -709,11 +710,79 @@ class TestScopeLimitsStayGreen:
             assert marker not in text, f"{marker} pertence ao adapter, não ao IR"
 
     def test_no_scene_tree_is_introduced(self, corpus: tuple[str, Any, SliceResult]) -> None:
-        """A fatia é plana. Filhos entrariam sem que ninguém tivesse projetado."""
+        """A fatia continua plana — mas agora por escolha, não por falta de contrato.
+
+        O contrato ganhou ``children`` e a serialização v2 os carrega (ver
+        ``TestSceneTreeRoundTrip``); o que este teste garante é que esta fatia,
+        que só compila texto, ainda não produz filhos. A diferença importa: antes
+        da PR, uma árvore era um formato que NINGUÉM havia projetado; agora é o
+        próximo passo, com contrato para escrever.
+        """
         _name, _declarations, result = corpus
         for element in result.elements:
-            assert not hasattr(element, "children")
+            assert element.children == ()
             assert "children" not in element.to_dict()
+
+
+class TestSceneTreeRoundTrip:
+    """A árvore sobrevive ao disco com os mesmos gates do documento plano."""
+
+    def _tree(self) -> ElementContract:
+        return ElementContract(
+            id="root",
+            type="container",
+            children=(
+                ElementContract(
+                    id="header",
+                    type="container",
+                    children=(ElementContract(id="title", type="text"),),
+                ),
+                ElementContract(id="footer", type="container"),
+            ),
+        )
+
+    def test_a_tree_round_trips_semantically(self) -> None:
+        before, after = _round_trip([self._tree()])
+        assert semantic_equal(before, after)
+        assert not semantic_diff(before, after)
+
+    def test_children_come_back_as_contracts(self) -> None:
+        payload = document([self._tree()])
+        reparsed = parse_document(json.loads(canonical_json(payload)))
+        root = reparsed[0]
+        assert root.children[0].id == "header"
+        assert root.children[0].children[0].id == "title"
+        assert root.children[1].children == ()
+
+    def test_a_v1_flat_document_is_still_read(self) -> None:
+        """Documento legado da vertical slice abre sem filhos."""
+        payload = document([ElementContract(id="t", type="text")])
+        payload["schemaVersion"] = 1
+        reparsed = parse_document(payload)
+        assert reparsed[0].id == "t"
+        assert reparsed[0].children == ()
+
+    def test_a_future_version_is_still_refused(self) -> None:
+        """v3 não existe; ler tentando seria adivinhar o formato."""
+        payload = document([ElementContract(id="t", type="text")])
+        payload["schemaVersion"] = 3
+        with pytest.raises(SerializationError, match="schemaVersion"):
+            parse_document(payload)
+
+    def test_an_out_of_limits_tree_is_refused_on_read(self) -> None:
+        """A validação da árvore acontece na leitura, não no renderizador."""
+        payload = document([ElementContract(id="root", type="container")])
+        payload["elements"][0]["children"] = [
+            {"id": f"c{index}", "type": "text"} for index in range(129)
+        ]
+        with pytest.raises(SerializationError, match="filhos"):
+            parse_document(payload)
+
+    def test_duplicate_ids_are_refused_on_read(self) -> None:
+        payload = document([ElementContract(id="a", type="text")])
+        payload["elements"][0]["children"] = [{"id": "a", "type": "text"}]
+        with pytest.raises(SerializationError, match="duplicado"):
+            parse_document(payload)
 
 
 class TestDiagnosticsAreStructured:
