@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from steamzero.domain.scene_display import DISPLAY_BINDING_TYPES
 from steamzero.domain.scene_typing import (
     SourceReference,
     TypeError_,
@@ -321,6 +322,9 @@ def default_registries() -> Registries:
         "system.date": ValueType.STRING,
         "system.battery": ValueType.NUMBER,
     }.items():
+        registries.bindings.declare(path, value_type)
+
+    for path, value_type in DISPLAY_BINDING_TYPES.items():
         registries.bindings.declare(path, value_type)
 
     for token in (
