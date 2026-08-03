@@ -20,7 +20,7 @@ from steamzero.core import fs, transaction
 from steamzero.core.errors import SteamZeroError
 
 _TITLE_ID = re.compile(r"^[0-9A-F]{16}$")
-_KINDS = frozenset({"update", "dlc", "mod", "shader-cache", "save", "keys", "firmware"})
+_KINDS = frozenset({"update", "dlc", "mod", "shader-cache", "save", "state", "keys", "firmware"})
 
 
 @dataclass(frozen=True)

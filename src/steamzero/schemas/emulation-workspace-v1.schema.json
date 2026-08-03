@@ -588,6 +588,21 @@
             "string",
             "null"
           ]
+        },
+        "stateTarget": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "stateBackups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "stateCount": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
