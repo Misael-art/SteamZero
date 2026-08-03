@@ -76,6 +76,13 @@ TITLE_SLOT_HEIGHT = 44.0
 TITLE_GAP = 8.0
 GRID_BOTTOM_PAD = 48.0
 
+#: Anel visual de foco: quanto o anel cresce além da caixa da capa e a
+#: espessura da borda, em pixels lógicos. O anel é GEOMETRIA do tema — o QML só
+#: desenha o que o modelo manda (SceneFocusRing.qml) e o shell só decide onde o
+#: foco está.
+FOCUS_RING_INSET = 4.0
+FOCUS_RING_WIDTH = 3.0
+
 
 @dataclass(frozen=True)
 class DefaultGridMetrics:
@@ -140,6 +147,23 @@ class DefaultGridMetrics:
             y=round(cover.y + self.cover_height + self.title_gap, 4),
             width=round(self.cell_width, 4),
             height=self.title_slot_height,
+        )
+
+    def focus_ring_geometry(self, index: int) -> ResolvedGeometry:
+        """Caixa do anel de foco: a capa expandida pela margem do anel.
+
+        O anel é desenhado FORA da capa (cresce além dela), então a caixa é a
+        da capa menos o inset em cada lado — não há sobreposição com a arte,
+        e o ``FOCUS_RING_WIDTH`` da borda ainda cabe dentro da margem.
+        """
+        cover = self.cover_geometry(index)
+        if cover.width is None or cover.height is None:
+            raise ValueError("a capa do grid nunca é implicitamente dimensionada")
+        return ResolvedGeometry(
+            x=round(cover.x - FOCUS_RING_INSET, 4),
+            y=round(cover.y - FOCUS_RING_INSET, 4),
+            width=round(cover.width + 2 * FOCUS_RING_INSET, 4),
+            height=round(cover.height + 2 * FOCUS_RING_INSET, 4),
         )
 
 
