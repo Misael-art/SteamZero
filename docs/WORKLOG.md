@@ -3830,3 +3830,39 @@ UI, RetroArch/cores, standalone, Switch, BIOS/keys/firmware, launch, playtime,
 encerramento/crash, saves, controles, mídia, GameMode, consumo por processo,
 rollback `nova→anterior→nova`. A instalação de uma release consolidada com
 teste físico exige nova autorização.
+
+## 2026-08-02 — Sessão: Etapa 6 REQUIREMENTS-E2E completa (PRs #40, #41, #42)
+
+### Etapa 6 do Programa de Conclusão da Emulação — todos os critérios entregues
+
+**PR 1 — `feat/emulation-requirements-truth` (PR #40, commit `8f5d225`)**
+BIOS por plataforma/emulador com projeção honesta no workspace
+(`biosRequired`/`biosPresent` no emulador, `requirements.bios` na plataforma,
+bloqueio de lançamento nomeando plataforma e emulador) e ação segura
+`bios.import` (validação de nome contra o manifest, limite 64 MiB, reimport
+idempotente, divergência bloqueada, hash nunca em logs). 15 testes novos;
+suite 3605 passed.
+
+**G24 — `feat/emulation-g24-diagnosis` (PR #41, commit `0e1c97a`)**
+Requisito parcial agora é diagnosticado (status `unverified`, valor preservado,
+chaves faltantes nomeadas), não degrada em silêncio. `KNOWN-GAPS.md` atualizado.
+
+**PR 2 — `feat/emulation-content-projection` (PR #42, commit `3441557`)**
+- `library.projection.repair`: reparo de projeção plan/apply/verify/rollback
+  (G-FULL) — reconcilia o cache de biblioteca com o disco sem apagar, mover ou
+  reescrever nenhum arquivo do usuário; no-op honesto quando íntegro.
+- `bios.link`: links gerenciados com ownership — projeção do store central
+  (`bios_dir/<plataforma>/<nome>`) para os dirs reais dos emuladores
+  (RetroArch/DuckStation/PCSX2/melonDS), idempotente, divergência bloqueia,
+  rollback remove cópias. Independente do PR 1 (base `main@31afa6f`);
+  `E-CONTENT-BIOS-MISSING` orienta a importação.
+- Contrato: `contentKind` (const `base`), `updateCount`, `dlcCount`,
+  `updateVersion` declarados no game row — update/DLC são conteúdo associado,
+  nunca jogos duplicados. 12 testes novos; suite 3602 passed.
+
+**Base verificada no início:** `main@31afa6f`, nenhuma release tocada no host
+(`real-state` idêntico antes/depois em todas as execuções).
+
+**Pendências do operador:** merge de PRs #40/#41/#42 (nessa ordem);
+Etapa 7 — SESSION-E2E (`feat/emulation-session-saves-e2e`,
+`feat/emulation-controls-e2e`) quando autorizado.
