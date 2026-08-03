@@ -31,6 +31,7 @@ from enum import StrEnum
 from typing import Any
 
 from steamzero.domain.scene_contract import DimensionUnit, DimensionValue
+from steamzero.domain.scene_display import DISPLAY_FIELDS, DisplaySpec
 from steamzero.domain.scene_registry import Registries, ResolutionPhase
 from steamzero.domain.scene_typing import (
     MAX_FALLBACK_DEPTH,
@@ -152,6 +153,18 @@ class Generations:
     #: primeira.
     reference_width: float = 1920.0
     reference_height: float = 1080.0
+    #: Gerações do display, POR EIXO. Uma janela que muda de 1920x1080 para
+    #: 1280x1080 mudou só a largura; invalidar quem depende da altura junto
+    #: recomputaria metade da cena por nada. Safe area por lado segue o mesmo
+    #: princípio: um entalhe novo num lado não derruba quem só lê o outro.
+    display_width: int = 0
+    display_height: int = 0
+    display_dpr: int = 0
+    display_orientation: int = 0
+    safe_area_left: int = 0
+    safe_area_top: int = 0
+    safe_area_right: int = 0
+    safe_area_bottom: int = 0
 
     def key(self) -> tuple[Any, ...]:
         return (
@@ -177,6 +190,10 @@ class Generations:
         names: set[str] = {"theme"}
         for dependency in dependencies:
             specific = LAYOUT_DEPENDENCIES.get(dependency)
+            if specific is not None:
+                names.update(specific)
+                continue
+            specific = DISPLAY_DEPENDENCIES.get(dependency)
             if specific is not None:
                 names.update(specific)
                 continue
@@ -214,6 +231,24 @@ LAYOUT_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "layout:referenceHeight": ("reference_height",),
 }
 
+#: Dependências do display, com geração POR EIXO e POR CAMPO.
+#:
+#: O `aspectRatio` depende dos DOIS eixos: mudar a largura ou a altura altera a
+#: proporção. Os demais campos têm geração própria — dpr, orientação e cada
+#: lado de safe area invalidam SÓ quem os lê. O vocabulário é o mesmo de
+#: ``scene_display.DISPLAY_FIELDS``, travado lá e derivado daqui para o registro.
+DISPLAY_DEPENDENCIES: dict[str, tuple[str, ...]] = {
+    "display:width": ("display_width",),
+    "display:height": ("display_height",),
+    "display:aspectRatio": ("display_width", "display_height"),
+    "display:dpr": ("display_dpr",),
+    "display:orientation": ("display_orientation",),
+    "display:safeArea.left": ("safe_area_left",),
+    "display:safeArea.top": ("safe_area_top",),
+    "display:safeArea.right": ("safe_area_right",),
+    "display:safeArea.bottom": ("safe_area_bottom",),
+}
+
 
 @dataclass
 class ResolutionContext:
@@ -229,6 +264,7 @@ class ResolutionContext:
     states: frozenset[str] = frozenset()
     generations: Generations = field(default_factory=Generations)
     theme_id: str | None = None
+    display: DisplaySpec = field(default_factory=DisplaySpec)
 
 
 @dataclass(frozen=True)
@@ -647,6 +683,79 @@ class Resolver:
             self._batched |= affected
         return frozenset(affected)
 
+    def set_display(self, spec: DisplaySpec) -> frozenset[str]:
+        """Troca o display. Devolve o que foi invalidado.
+
+        Campo a campo, como o ``set_reference_box``: rotação muda orientação e
+        safe areas; trocar o dpr não muda tamanho; mudar a largura não pode
+        derrubar quem só lê a altura. ``aspectRatio`` depende dos dois eixos e
+        é invalidado por qualquer mudança de tamanho.
+        """
+        self._assert_owner_thread()
+        current = self._context.generations
+        current_spec = self._context.display
+        if spec == current_spec:
+            return frozenset()
+
+        updates: set[str] = set()
+        affected: set[str] = set()
+
+        def _mark(dependency: str, attribute: str) -> None:
+            nonlocal affected
+            updates.add(attribute)
+            affected |= self.graph.dependents_of(dependency)
+
+        if spec.logical_width != current_spec.logical_width:
+            _mark("display:width", "display_width")
+            affected |= self.graph.dependents_of("display:aspectRatio")
+        if spec.logical_height != current_spec.logical_height:
+            _mark("display:height", "display_height")
+            affected |= self.graph.dependents_of("display:aspectRatio")
+        if spec.dpr != current_spec.dpr:
+            _mark("display:dpr", "display_dpr")
+        if spec.orientation is not current_spec.orientation:
+            _mark("display:orientation", "display_orientation")
+        for side, attribute, dependency in (
+            ("left", "safe_area_left", "display:safeArea.left"),
+            ("top", "safe_area_top", "display:safeArea.top"),
+            ("right", "safe_area_right", "display:safeArea.right"),
+            ("bottom", "safe_area_bottom", "display:safeArea.bottom"),
+        ):
+            if getattr(spec.safe_area, side) != getattr(current_spec.safe_area, side):
+                _mark(dependency, attribute)
+
+        display_marker = (
+            f"{spec.logical_width:g}x{spec.logical_height:g}@{spec.dpr:g}/{spec.orientation.value}"
+        )
+        self._context.generations = Generations(
+            theme=current.theme,
+            theme_settings=current.theme_settings,
+            tokens=current.tokens,
+            read_model=current.read_model,
+            translation_catalog=current.translation_catalog,
+            asset_registry=current.asset_registry,
+            locale=current.locale,
+            accessibility=current.accessibility,
+            display=display_marker,
+            state_variant=current.state_variant,
+            reference_width=current.reference_width,
+            reference_height=current.reference_height,
+            display_width=current.display_width + ("display_width" in updates),
+            display_height=current.display_height + ("display_height" in updates),
+            display_dpr=current.display_dpr + ("display_dpr" in updates),
+            display_orientation=current.display_orientation + ("display_orientation" in updates),
+            safe_area_left=current.safe_area_left + ("safe_area_left" in updates),
+            safe_area_top=current.safe_area_top + ("safe_area_top" in updates),
+            safe_area_right=current.safe_area_right + ("safe_area_right" in updates),
+            safe_area_bottom=current.safe_area_bottom + ("safe_area_bottom" in updates),
+        )
+        self._context.display = spec
+        if affected and not self._batch_depth:
+            self._drop(frozenset(affected))
+        elif affected:
+            self._batched |= affected
+        return frozenset(affected)
+
     def resolve_dimension(
         self,
         dimension: Any,
@@ -833,6 +942,11 @@ class Resolver:
                 reference=reference,
             )
 
+        if path.startswith("display."):
+            return self._resolve_display(
+                value, path, expected, dependencies, trail, reference, target
+            )
+
         dependencies.add(f"bind:{path}")
         if path in self._context.read_model:
             resolved = self._context.read_model[path]
@@ -849,6 +963,49 @@ class Resolver:
             DIAG_UNKNOWN_BINDING,
             f"caminho não disponível: {path}",
         )
+
+    def _resolve_display(
+        self,
+        value: dict[str, Any],
+        path: str,
+        expected: ValueType,
+        dependencies: set[str],
+        trail: tuple[str, ...],
+        reference: SourceReference | None,
+        target: str,
+    ) -> tuple[Any, bool, ResolutionPhase]:
+        """Bindings ``display.*``: estado do display, com geração POR CAMPO.
+
+        Não passam pelo read model — descrevem o display, não o jogo — e
+        invalidam pela geração do campo (largura, altura, dpr, orientação,
+        safe area por lado) em vez de pela geração geral do read model. A
+        dependência registrada é ``display:<campo>``, que ``DISPLAY_DEPENDENCIES``
+        mapeia para a geração exata.
+        """
+        field = path.removeprefix("display.")
+        spec_field = DISPLAY_FIELDS.get(field)
+        if spec_field is None:
+            return self._fallback_or_fail(
+                value,
+                expected,
+                dependencies,
+                trail,
+                reference,
+                target,
+                DIAG_UNKNOWN_BINDING,
+                f"campo de display desconhecido: {field}",
+            )
+        declared_type, getter = spec_field
+        if expected is not declared_type:
+            # Segunda linha de defesa: o registro de tipos é a primeira, mas um
+            # Registries montado à mão pode não declarar o caminho.
+            raise ResolutionError(
+                DIAG_TYPE,
+                f"display.{field} produz {declared_type.value}, mas {expected.value} era esperado",
+                reference=reference,
+            )
+        dependencies.add(f"display:{field}")
+        return getter(self._context.display), False, ResolutionPhase.RUNTIME
 
     def _resolve_asset(
         self,
