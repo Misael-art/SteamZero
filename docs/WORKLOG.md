@@ -3967,3 +3967,53 @@ verde isolado); mypy 202 arquivos; fronteiras e independência 0 violações.
 
 **Pendências do operador:** revisar e commitar/pushar o PR 2 da Etapa 7
 (`feat/emulation-controls-e2e`); depois merge.
+
+## 2026-08-03 — Sessão 55: PR 2 tema default — tema renderizável (branch codex/theme-default-pr2)
+
+Segunda PR da linha de tema default, sobre `origin/main` (`87cf493`): o tema
+default renderizável consumindo a fundação de cena. Nenhuma ação de host;
+trabalho apenas em worktree próprio.
+
+Quatro commits, todos com os gates da seção 6 verdes:
+
+- `ad72bd9` — **imagem/mídia no pipeline**: `imageContent` no contrato
+  (tabela 45 entradas), `ResolvedImageNode` + `ImageFillMode` (CROP/STRETCH/
+  FIT/ORIGINAL), `build_image_node` (percentuais via `LayoutBox`, recusa
+  elemento sem `imageContent`), `QmlImageRenderModel` + `to_image_render_model`
+  (`_MEDIA` fechada em `assets/...`, recusa de caminho de host e de valor
+  pendente) e `SceneImage.qml` burro. Fallback de asset degrada com
+  diagnóstico emitido pelo resolver (`DIAG_MISSING_ASSET`); fixtures de mídia
+  (320x180) sob `tests/fixtures/scene-media/`.
+- `0a14670` — **harnesses VS-03 de imagem/cena + navegação de grid**:
+  `CaptureImageHarness.qml` (imagem única) e `CaptureSceneHarness.qml`
+  (composição texto+imagem via `Loader.setSource` com propriedades iniciais —
+  `setSourceComponent` não existe no Qt 6.11); runner ganhou `HarnessKind` e
+  o test-double do mapeamento de assets do shell (`mediaFiles`); cada nó
+  publica geometria (painted vs caixa prova o crop em números);
+  `grid_navigation.py` (`move_focus`, `Direction`, `GridSpec` com
+  wrap/clamp documentados).
+- `f5028dc` — **tema default renderizável**: `default_theme.py` — primeiro
+  consumidor real da fundação — com paleta Aura, `DefaultGridMetrics`
+  (geometria derivada 6x4 em 1920x1080), `build_default_scene` (cabeçalho +
+  24 células capa/título validado por `validate_tree`), resolução com tokens/
+  bindings/fallbacks e `focus_target` delegando a `move_focus`.
+- `fe20c65` — **WORKLOG + handoff**: este registro e a seção nova do P0-03.
+
+Descobertas registradas:
+
+- `Loader.setSourceComponent(component, props)` não existe no QML Qt 6.11 —
+  `ReferenceError`; o caminho é `setSource(url, props)` com a URL do
+  componente do produto (ver commit 2).
+- `paintedWidth/Height` refletem a ESCALA coberta (crop escala a fonte e a
+  caixa clipe); a prova numérica do crop é painted > caixa.
+- `Alignment` não tem `MIDDLE`/`TOP`: o contrato mapeia START/CENTER/END →
+  TOP/MIDDLE/BOTTOM no construtor de nós.
+- C1 saiu sem os fixtures de mídia (criados na sessão, referenciados pelo
+  teste do C2); como C1 não tinha sido pushado, os fixtures entraram por
+  amend do C1 — história local, sem force push.
+- onAfterRendering do runtime offscreen entrega 2 frames; o harness de cena
+  esperava 3 e travava em "layout não estabilizou" com stderr vazio.
+
+Validação física pendente (operador): revisão da PR, merge e teste físico
+de boot da linha de tema. Suíte completa: 3808 passed; cobertura 86.42%;
+mypy 203 arquivos; fronteiras e independência 0 violações.

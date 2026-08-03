@@ -542,6 +542,12 @@ class ElementContract:
     #: Conteúdo de um elemento de texto. Aceita ``Value<T>`` como qualquer outra
     #: propriedade — literal, binding, tradução ou condicional.
     text_content: Any = None
+    #: Conteúdo de um elemento de imagem. Aceita ``Value<T>`` como qualquer outra
+    #: propriedade; o valor resolvido é sempre um asset do pacote do tema
+    #: (``assets/...``), nunca caminho do host. O correto é usar ``asset()``; um
+    #: binding que produza um asset também passa — é o que liga a capa ao
+    #: read model da biblioteca.
+    image_content: Any = None
     #: Filhos deste nó. Cada filho é um ``ElementContract`` completo; a árvore
     #: formada é validada por ``scene_tree.validate_tree`` — profundidade,
     #: filhos por nó, total de nós e ids únicos. A fatia de texto compila plana;
@@ -572,6 +578,7 @@ class ElementContract:
                 "clip": self.clip,
                 "overflow": self.overflow,
                 "textContent": self.text_content,
+                "imageContent": self.image_content,
                 "children": [child.to_dict() for child in self.children] or None,
             }
         )
@@ -613,6 +620,7 @@ CONTRACT_PROPERTY_TYPES: dict[str, ValueType] = {
     "clip": ValueType.BOOLEAN,
     "overflow": ValueType.BOOLEAN,
     "textContent": ValueType.STRING,
+    "imageContent": ValueType.MEDIA,
     "x": ValueType.DIMENSION,
     "y": ValueType.DIMENSION,
     "width": ValueType.DIMENSION,

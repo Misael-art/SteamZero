@@ -43,6 +43,8 @@ from steamzero.domain.resolved_node import (
     FontAssetHandle,
     FontOrigin,
     FontStyle,
+    ImageFillMode,
+    ResolvedImageNode,
     ResolvedTextNode,
     TextAlignment,
     TextVerticalAlignment,
@@ -61,6 +63,7 @@ DIAG_FONT_UNAVAILABLE = "QML-ADAPTER-FONT-UNAVAILABLE-005"
 DIAG_FONT_FALLBACK = "QML-ADAPTER-FONT-FALLBACK-006"
 DIAG_APPROXIMATED = "QML-ADAPTER-APPROXIMATED-007"
 DIAG_PENDING_VALUE = "QML-ADAPTER-PENDING-VALUE-008"
+DIAG_INVALID_MEDIA = "QML-ADAPTER-INVALID-MEDIA-009"
 
 #: Nomes do QML para alinhamento horizontal. `justify` sobrevive porque o Qt o
 #: implementa; se um backend futuro não implementar, é ele que degrada — não o
@@ -86,6 +89,21 @@ _ITALIC = {FontStyle.NORMAL: False, FontStyle.ITALIC: True, FontStyle.OBLIQUE: T
 #: Cor no formato que o QML aceita. `rgba()` foi recusado no passado por
 #: "Invalid property assignment"; hexadecimal com alfa é o que funciona.
 _COLOR = re.compile(r"^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+
+#: Caminho de mídia relativo ao PACOTE do tema. Mesma gramática fechada do
+#: construtor de asset do IR (`scene_value.asset`): permitir qualquer string
+#: aqui abriria a porta a um caminho do host atravessando o adapter — e o DTO
+#: é a fronteira que o proíbe.
+_MEDIA = re.compile(r"^assets/[a-zA-Z0-9_. /()'&-]+\.[a-zA-Z0-9]+$")
+
+#: Nomes que o QML aceita em `Image[model.fillMode]`. `crop` é o comportamento
+#: de capa: a imagem preenche a caixa e o excesso é cortado, sem deformar.
+_FILL_MODE = {
+    ImageFillMode.CROP: "PreserveAspectCrop",
+    ImageFillMode.STRETCH: "Stretch",
+    ImageFillMode.FIT: "PreserveAspectFit",
+    ImageFillMode.ORIGINAL: "Original",
+}
 
 #: Namespace autorizado para fonte, dentro da gramática do handle.
 _FONT_NAMESPACE = "font"
@@ -290,6 +308,47 @@ class QmlTextRenderModel:
         return payload
 
 
+@dataclass(frozen=True)
+class QmlImageRenderModel:
+    """Exatamente o que ``SceneImage.qml`` atribui às suas propriedades.
+
+    ``width``/``height`` em ``None`` significam "dimensione pelo conteúdo" —
+    para imagem, pelo tamanho natural do arquivo — e é diferente de ``0.0``.
+    O QML distingue os dois deixando a propriedade sem atribuir.
+
+    ``source`` é o caminho de asset do pacote. O shell mapeia para o arquivo
+    real na fronteira do QML (o mesmo papel que a referência interna autorizada
+    de fonte); o modelo nunca carrega caminho do host.
+    """
+
+    id: str
+    source: str
+    x: float
+    y: float
+    width: float | None
+    height: float | None
+    visible: bool
+    opacity: float
+    fill_mode: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Forma determinística, para golden e para a ponte com o QML."""
+        payload: dict[str, Any] = {
+            "id": self.id,
+            "source": self.source,
+            "x": self.x,
+            "y": self.y,
+            "visible": self.visible,
+            "opacity": self.opacity,
+            "fillMode": self.fill_mode,
+        }
+        if self.width is not None:
+            payload["width"] = self.width
+        if self.height is not None:
+            payload["height"] = self.height
+        return payload
+
+
 class _Collector:
     """Acumula diagnósticos sem interromper a tradução.
 
@@ -455,6 +514,24 @@ def _color(raw: Any, diagnostics: _Collector) -> Any:
     return _UNSET
 
 
+def _media_source(raw: Any, diagnostics: _Collector) -> Any:
+    """Origem de imagem: caminho de asset do pacote, nunca caminho do host.
+
+    A gramática é revalidada aqui, e não assumida do DTO: o adapter pode
+    receber um nó desserializado de disco. Um caminho que não seja asset do
+    pacote é defeito de tradução, não consulta de arquivo.
+    """
+    if isinstance(raw, str) and _MEDIA.match(raw) and ".." not in raw:
+        return raw
+    diagnostics.fatal(
+        DIAG_INVALID_MEDIA,
+        f"origem de imagem {raw!r} não é asset do pacote (assets/...)",
+        field_name="source",
+        original=raw,
+    )
+    return _UNSET
+
+
 def _opacity(raw: Any, diagnostics: _Collector) -> Any:
     if isinstance(raw, bool) or not isinstance(raw, int | float) or not math.isfinite(raw):
         diagnostics.fatal(
@@ -503,12 +580,13 @@ def _dimension(raw: Any, *, field_name: str, diagnostics: _Collector) -> Any:
     return number
 
 
-def _reject_pending(node: ResolvedTextNode, diagnostics: _Collector) -> None:
+def _reject_pending(node: object, diagnostics: _Collector) -> None:
     """Última barreira: valor não resolvido não atravessa o adapter.
 
     O DTO é tipado, então isto não acontece por engano — acontece quando um
     construtor novo esquece de resolver um campo, e aí o QML receberia um
     dicionário onde espera um escalar e renderizaria vazio sem reclamar.
+    Aceita qualquer DTO de nó (texto ou imagem): a varredura é a mesma.
     """
     for name, item in vars(node).items():
         if is_pending_value(item):
@@ -588,6 +666,43 @@ def to_render_model(node: ResolvedTextNode) -> AdaptationResult[QmlTextRenderMod
         )
 
     model = QmlTextRenderModel(**fields)
+    if diagnostics.entries:
+        return AdaptationResult(
+            status=AdaptationStatus.DEGRADED, model=model, diagnostics=tuple(diagnostics.entries)
+        )
+    return AdaptationResult(status=AdaptationStatus.SUCCESS, model=model)
+
+
+def to_image_render_model(node: ResolvedImageNode) -> AdaptationResult[QmlImageRenderModel]:
+    """Traduz um nó de imagem resolvido para o modelo que o QML consome.
+
+    Função pura, na mesma disciplina de ``to_render_model``: o nó de entrada
+    não é modificado e nada é escolhido aqui para o que não se sabe traduzir.
+    """
+    diagnostics = _Collector(node.id, node.source_reference)
+
+    _reject_pending(node, diagnostics)
+
+    fields: dict[str, Any] = {
+        "id": node.id,
+        "source": _media_source(node.source, diagnostics),
+        "x": _number(node.geometry.x, field_name="x", diagnostics=diagnostics),
+        "y": _number(node.geometry.y, field_name="y", diagnostics=diagnostics),
+        "width": _dimension(node.geometry.width, field_name="width", diagnostics=diagnostics),
+        "height": _dimension(node.geometry.height, field_name="height", diagnostics=diagnostics),
+        "visible": bool(node.visible),
+        "opacity": _opacity(node.opacity, diagnostics),
+        "fill_mode": _map_enum(
+            node.fill_mode, _FILL_MODE, field_name="fillMode", diagnostics=diagnostics
+        ),
+    }
+
+    if diagnostics.has_fatal:
+        return AdaptationResult(
+            status=AdaptationStatus.FAILED, model=None, diagnostics=tuple(diagnostics.entries)
+        )
+
+    model = QmlImageRenderModel(**fields)
     if diagnostics.entries:
         return AdaptationResult(
             status=AdaptationStatus.DEGRADED, model=model, diagnostics=tuple(diagnostics.entries)

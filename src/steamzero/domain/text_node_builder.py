@@ -26,7 +26,9 @@ from steamzero.domain.resolved_node import (
     FontOrigin,
     FontStyle,
     FontWeight,
+    ImageFillMode,
     ResolvedGeometry,
+    ResolvedImageNode,
     ResolvedTextNode,
     TextAlignment,
     TextVerticalAlignment,
@@ -274,6 +276,70 @@ def build_text_node(
         font_style=style,
         horizontal_alignment=horizontal,
         vertical_alignment=vertical,
+        source_reference=element.source_reference,
+        resolution_diagnostics=emitted,
+    )
+
+
+def build_image_node(
+    element: ElementContract,
+    *,
+    resolver: Resolver,
+    box: LayoutBox | None = None,
+) -> ResolvedImageNode:
+    """Resolve um contrato de imagem até valores finais.
+
+    Sem ``image_content`` não há o que desenhar, e não existe default legítimo
+    (texto vazio é texto; imagem sem origem é apenas defeito de autor). Recusar
+    aqui, na construção, é o mesmo comportamento dos casos ``invalid`` do
+    compilador: o erro aparece onde o tema foi descrito.
+    """
+    if element.image_content is None:
+        raise ValueError(f"elemento de imagem sem imageContent: {element.id!r}")
+
+    if box is not None:
+        resolver.set_reference_box(box.width, box.height)
+    diagnostics_before = len(resolver.diagnostics.entries)
+
+    def resolve(value: Any, expected: ValueType, name: str, default: Any) -> Any:
+        if value is None:
+            return default
+        return resolver.resolve(
+            value,
+            expected,
+            target=f"{element.id}.{name}",
+            reference=element.source_reference,
+        ).value
+
+    source = resolve(element.image_content, ValueType.MEDIA, "imageContent", None)
+    visible = resolve(element.visible, ValueType.BOOLEAN, "visible", True)
+    opacity = resolve(element.opacity, ValueType.NUMBER, "opacity", 1.0)
+
+    layout = element.layout
+    geometry = ResolvedGeometry(
+        x=resolver.resolve_dimension(layout.x, axis="width", target=f"{element.id}.x") or 0.0,
+        y=resolver.resolve_dimension(layout.y, axis="height", target=f"{element.id}.y") or 0.0,
+        width=(
+            resolver.resolve_dimension(layout.width, axis="width", target=f"{element.id}.width")
+            if layout.width is not None
+            else None
+        ),
+        height=(
+            resolver.resolve_dimension(layout.height, axis="height", target=f"{element.id}.height")
+            if layout.height is not None
+            else None
+        ),
+    )
+
+    emitted = tuple(entry.to_dict() for entry in resolver.diagnostics.entries[diagnostics_before:])
+
+    return ResolvedImageNode(
+        id=element.id,
+        source=str(source) if source is not None else "",
+        geometry=geometry,
+        visible=bool(visible),
+        opacity=float(opacity),
+        fill_mode=ImageFillMode.CROP,
         source_reference=element.source_reference,
         resolution_diagnostics=emitted,
     )

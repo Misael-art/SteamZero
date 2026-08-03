@@ -26,6 +26,9 @@ raciocínio a partir dos diffs.
 | **VIS-01** | `1d9a52e` | Liberation Sans 2.1.5 empacotada |
 | **VS-07** | `6fb2a75` | dez baselines visuais versionadas |
 
+PR 2 do tema default (2026-08-03): `ad72bd9`, `0a14670`, `f5028dc` — tema
+renderizável (imagem no pipeline, harnesses de imagem/cena, grid 6x4).
+
 Base: `9109483` (VS-01).
 
 ## PR 1 tema default — fundação de cena (2026-08-02)
@@ -50,6 +53,37 @@ de projeto.
 A auditoria executável (`python tools/audit_theme_migration.py`) é o corpo do
 gate de escopo: relata por área quantas declarações reais têm tradutor e a
 lista nominal do que ficou para trás (hoje, nas fixtures, `layer` e `src`).
+
+## PR 2 tema default — tema renderizável (2026-08-03)
+
+A segunda PR (`codex/theme-default-pr2`, base `87cf493`) entregou o primeiro
+consumidor real da fundação: o tema default renderiza. Quatro commits, gates
+verdes:
+
+| commit | entrega |
+|---|---|
+| `ad72bd9` | imagem/mídia no pipeline IR→QML: `imageContent` (tabela 45), `ResolvedImageNode`/`ImageFillMode`, `build_image_node`, `QmlImageRenderModel` (recusa host path e valor pendente), `SceneImage.qml`, fixtures de capa |
+| `0a14670` | harnesses VS-03 de imagem (`CaptureImageHarness.qml`) e de cena (`CaptureSceneHarness.qml`, composição texto+imagem) com `mediaFiles` como test-double do mapeamento do shell; `HarnessKind` no runner; `grid_navigation.move_focus` |
+| `f5028dc` | `default_theme.py`: paleta Aura, `DefaultGridMetrics` (6x4 em 1920x1080), cena validada por `validate_tree`, resolução com tokens/bindings/fallback, `focus_target` |
+
+O que o pipeline ganhou:
+
+- o caminho de IMAGEM completo: contrato → nó → modelo QML → `SceneImage.qml`
+  → captura, com o mesmo contrato de fronteira do texto (QML burro, adapter
+  recusa default);
+- a composição de cena provada por captura: o harness de cena resolve cada
+  nó via `Loader.setSource(url, props)` — `setSourceComponent` não existe no
+  Qt 6.11 — e publica geometria por nó;
+- `paintedWidth/Height` como prova numérica de fillMode: crop escala a fonte
+  além da caixa (painted > caixa), fit mantém a fonte inteira dentro;
+- a navegação por controle como função pura: `move_focus` com wrap/clamp, e o
+  tema a consome (`focus_target`).
+
+Ainda fora de escopo nesta PR (decisões conscientes): foco VISUAL do tema
+(anel de foco desenhado no QML chega com o shell de entrada), read model da
+biblioteca (os títulos caem no fallback `Jogo sem título` — caminho de
+degradação real), migração de capas reais do corpus e a ponte
+shell→tema→QML (Game Mode).
 
 ## O pipeline que está provado
 
