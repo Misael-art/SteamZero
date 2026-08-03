@@ -497,6 +497,7 @@ class EmulationController:
         key_status, firmware_status = self._requirements(emulator_rows)
         games = self._enrich_games(games, emulator_rows, key_status, firmware_status)
         games = self._enrich_preservation(games)
+        games = self._enrich_controls(games)
         content = self._content.list_records()
         integrity = self._content.integrity_report()
         physical_dock = self._physical_dock(desktop_status)
@@ -1771,15 +1772,50 @@ class EmulationController:
             scope = self._optional_string(payload, "scope") or "platform"
             scope_id = self._optional_string(payload, "scopeId")
             orientation = self._optional_string(payload, "orientation")
-            plan = self._input_profiles.plan_activate(
-                platform_id="switch",
-                profile_id=profile_id,
-                scope=scope,
-                scope_id=scope_id,
-                orientation=orientation,
-            )
+            if scope == "game":
+                scope_subject = scope_id or self._optional_string(payload, "gameId")
+                if not scope_subject:
+                    raise SteamZeroError(
+                        "E-API-SCHEMA", detail="scope game exige gameId ou scopeId"
+                    )
+                game = self._current_game(scope_subject)
+                settings = self._settings_for_game_with_global(
+                    game, self._load_game_settings(strict=False)
+                )
+                game_emulator = settings.get("emulatorId")
+                if isinstance(game_emulator, str):
+                    self._require_game_session_idle(game_emulator, scope_subject)
+                plan = self._input_profiles.plan_activate(
+                    platform_id="switch",
+                    profile_id=profile_id,
+                    scope=scope,
+                    scope_id=scope_subject,
+                    orientation=orientation,
+                )
+            else:
+                plan = self._input_profiles.plan_activate(
+                    platform_id="switch",
+                    profile_id=profile_id,
+                    scope=scope,
+                    scope_id=scope_id,
+                    orientation=orientation,
+                )
             plan_extra["profileId"] = profile_id
             plan_extra["orientation"] = orientation or "landscape"
+        elif action.startswith("controls.profile.clear:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            settings = self._settings_for_game_with_global(
+                game, self._load_game_settings(strict=False)
+            )
+            game_emulator = settings.get("emulatorId")
+            if isinstance(game_emulator, str):
+                self._require_game_session_idle(game_emulator, game_id)
+            plan = self._input_profiles.plan_clear(
+                platform_id="switch",
+                scope="game",
+                scope_id=game_id,
+            )
         elif action == "game.emulator.set":
             game_id = self._required_string(payload, "gameId")
             self._current_game(game_id)
@@ -2104,7 +2140,7 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "switch-shader.invalidate":
             result = self._content.apply_shader_invalidation(plan_id, confirm_token)
-        elif plan.kind.startswith("input-profile.activate:"):
+        elif plan.kind.startswith("input-profile."):
             result = self._input_profiles.apply(plan_id, confirm_token)
         elif plan.kind.startswith("preservation."):
             result = transaction.apply(plan_id, confirm_token)
@@ -2719,7 +2755,7 @@ class EmulationController:
         kind = str(begins[0].get("kind", "")) if len(begins) == 1 else ""
         allowed = (
             kind.startswith("emulation.game-delete:")
-            or kind.startswith("input-profile.activate:")
+            or kind.startswith("input-profile.")
             or kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"}
             or kind in {"switch-library.rename", "switch-library.quarantine"}
             or kind in {"emulation.bios-link", "emulation.library-projection-repair"}
@@ -2734,7 +2770,7 @@ class EmulationController:
             )
         result = (
             self._input_profiles.rollback(operation_id)
-            if kind.startswith("input-profile.activate:")
+            if kind.startswith("input-profile.")
             else transaction.rollback(operation_id, reason="emulation-user-request")
         )
         response: dict[str, Any] = {
@@ -6712,6 +6748,83 @@ class EmulationController:
             )
             game["stateCount"] = len(game["stateBackups"])
             game["shaderCount"] = len(game["shaderBackups"])
+        return games
+
+    def _enrich_controls(self, games: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Perfil de input por jogo com herança game → plataforma e prontidão
+        honesta de controles. A prontidão NUNCA bloqueia o launch: informa,
+        não interdita (falha degrada, nunca trava)."""
+        platform_status = self._input_profiles.status("switch")
+        controllers = self._controller_count()
+        for game in games:
+            game_id = str(game.get("id", ""))
+            game_status = self._input_profiles.status(
+                "switch", scope="game", scope_id=game_id
+            )
+            if game_status["state"] == "unverified":
+                effective = platform_status
+                source = "platform"
+            else:
+                effective = game_status
+                source = "game"
+            available = [
+                row
+                for row in effective["available"]
+                if isinstance(row, Mapping)
+            ]
+            activate_actions = [
+                self._action(
+                    f"controls.profile.activate:{row['id']}",
+                    str(row.get("label") or row["id"]),
+                    confirmation=True,
+                )
+                | {"gameId": game_id, "scope": "game", "scopeId": game_id}
+                for row in available
+            ]
+            clear_action = (
+                self._action(
+                    f"controls.profile.clear:{game_id}",
+                    "Voltar ao perfil da plataforma",
+                    confirmation=True,
+                )
+                if source == "game"
+                else None
+            )
+            active = effective.get("active")
+            game["controlsProfile"] = {
+                "state": str(effective.get("state") or "unverified"),
+                "statusLabel": str(effective.get("statusLabel") or "Perfil não selecionado"),
+                "source": source,
+                "scope": (
+                    str(active.get("scope", source)) if isinstance(active, Mapping) else source
+                ),
+                "active": active,
+                "available": [
+                    {
+                        "id": str(row["id"]),
+                        "revision": int(row.get("revision") or 0),
+                        "label": str(row.get("label") or row["id"]),
+                    }
+                    for row in available
+                ],
+                "activateActions": activate_actions,
+                "clearAction": clear_action,
+            }
+            profile_configured = isinstance(active, Mapping)
+            reasons: list[str] = []
+            if not profile_configured:
+                reasons.append(
+                    "Nenhum perfil de input ativo; o jogo usará os padrões do emulador."
+                )
+            if controllers == 0:
+                reasons.append("Nenhum controle detectado no host.")
+            ready = profile_configured and controllers > 0
+            game["controlsReadiness"] = {
+                "state": "ready" if ready else "attention",
+                "reason": None if ready else " ".join(reasons),
+                "profileConfigured": profile_configured,
+                "controllers": controllers,
+            }
         return games
 
     def _current_game(self, game_id: str) -> dict[str, Any]:
