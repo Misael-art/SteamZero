@@ -572,6 +572,138 @@
             }
           }
         },
+        "controlsProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "statusLabel",
+            "source",
+            "scope",
+            "active",
+            "available",
+            "activateActions",
+            "clearAction"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "ready",
+                "degraded",
+                "unverified"
+              ]
+            },
+            "statusLabel": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "enum": [
+                "game",
+                "platform"
+              ]
+            },
+            "scope": {
+              "type": "string"
+            },
+            "active": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            },
+            "available": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "revision",
+                  "label"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "activateActions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": [
+                  "id",
+                  "label",
+                  "enabled",
+                  "reason",
+                  "requiresConfirmation"
+                ]
+              }
+            },
+            "clearAction": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "id",
+                    "label",
+                    "enabled",
+                    "reason",
+                    "requiresConfirmation"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "controlsReadiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "reason",
+            "profileConfigured",
+            "controllers"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "ready",
+                "attention"
+              ]
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "profileConfigured": {
+              "type": "boolean"
+            },
+            "controllers": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
         "contentKind": {
           "const": "base"
         },

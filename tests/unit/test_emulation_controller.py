@@ -832,6 +832,54 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "saveState": "Destino não confirmado",
             "stateCount": 0,
             "shaderCount": 0,
+            # CONTROLS-E2E: o game row agora publica o perfil de input por jogo
+            # (herdado da plataforma quando não há override) e a prontidão de
+            # controles, que informa sem bloquear o launch.
+            "controlsProfile": {
+                "state": "unverified",
+                "statusLabel": "Perfil não selecionado",
+                "source": "platform",
+                "scope": "platform",
+                "active": None,
+                "available": [
+                    {"id": "standard-gamepad", "revision": 1, "label": "Controle padrão"},
+                    {"id": "joycon-pair", "revision": 1, "label": "Par de Joy-Con"},
+                ],
+                "activateActions": [
+                    {
+                        "id": "controls.profile.activate:standard-gamepad",
+                        "label": "Controle padrão",
+                        "enabled": True,
+                        "reason": None,
+                        "requiresConfirmation": True,
+                        "gameId": published[0]["id"],
+                        "scope": "game",
+                        "scopeId": published[0]["id"],
+                    },
+                    {
+                        "id": "controls.profile.activate:joycon-pair",
+                        "label": "Par de Joy-Con",
+                        "enabled": True,
+                        "reason": None,
+                        "requiresConfirmation": True,
+                        "gameId": published[0]["id"],
+                        "scope": "game",
+                        "scopeId": published[0]["id"],
+                    },
+                ],
+                "clearAction": None,
+            },
+            "controlsReadiness": {
+                "state": "attention",
+                "reason": (
+                    "Nenhum perfil de input ativo; o jogo usará os padrões do emulador."
+                    if published[0]["controlsReadiness"]["controllers"] > 0
+                    else "Nenhum perfil de input ativo; o jogo usará os padrões do emulador. "
+                    "Nenhum controle detectado no host."
+                ),
+                "profileConfigured": False,
+                "controllers": published[0]["controlsReadiness"]["controllers"],
+            },
         }
     ]
 
@@ -2592,3 +2640,126 @@ def test_conflicting_save_restore_preserves_both_versions(monkeypatch, tmp_path:
     assert save.read_bytes() == b"v1"
     after = controller._preservation.backups("0100ABCDEF123000", "ryubing", "save")  # type: ignore[attr-defined]
     assert len(after) == 2
+
+
+def _controls_game(monkeypatch, tmp_path: Path) -> tuple[EmulationController, str]:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    roms = tmp_path / "roms"
+    roms.mkdir()
+    (roms / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"owned-game")
+    root_plan = controller.plan_action({"actionId": "library.root.add", "path": str(roms)})
+    _apply(controller, root_plan)
+    controller.scan_library()
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    return controller, str(game["id"])
+
+
+def test_game_row_exposes_controls_profile_inheritance_and_clear(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller, game_id = _controls_game(monkeypatch, tmp_path)
+
+    def _row() -> dict:
+        return controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+
+    game = _row()
+    profile = game["controlsProfile"]
+    assert profile["source"] == "platform"
+    assert profile["state"] == "unverified"
+    assert profile["clearAction"] is None
+    assert profile["active"] is None
+    assert {action["id"] for action in profile["activateActions"]} == {
+        "controls.profile.activate:standard-gamepad",
+        "controls.profile.activate:joycon-pair",
+    }
+    assert all(
+        action["gameId"] == game_id and action["scope"] == "game" and action["scopeId"] == game_id
+        for action in profile["activateActions"]
+    )
+    readiness = game["controlsReadiness"]
+    assert readiness["profileConfigured"] is False
+    assert readiness["state"] == "attention"
+    assert readiness["controllers"] >= 0
+    assert readiness["reason"]
+
+    platform_plan = controller.plan_action({"actionId": "controls.profile.activate:joycon-pair"})
+    _apply(controller, platform_plan)
+    profile = _row()["controlsProfile"]
+    assert profile["source"] == "platform"
+    assert profile["state"] == "ready"
+    assert profile["active"]["id"] == "joycon-pair"
+    assert profile["clearAction"] is None
+
+    plan = controller.plan_action(
+        {
+            "actionId": "controls.profile.activate:standard-gamepad",
+            "gameId": game_id,
+            "scope": "game",
+        }
+    )
+    _apply(controller, plan)
+    game = _row()
+    profile = game["controlsProfile"]
+    assert profile["source"] == "game"
+    assert profile["state"] == "ready"
+    assert profile["active"]["id"] == "standard-gamepad"
+    assert profile["active"]["scope"] == "game"
+    assert profile["active"]["scopeId"] == game_id
+    assert profile["clearAction"]["id"] == f"controls.profile.clear:{game_id}"
+    assert game["controlsReadiness"]["profileConfigured"] is True
+    assert (game["controlsReadiness"]["state"] == "ready") == (
+        game["controlsReadiness"]["controllers"] > 0
+    )
+
+    clear = controller.plan_action({"actionId": f"controls.profile.clear:{game_id}"})
+    clear_result = _apply(controller, clear)
+    profile = _row()["controlsProfile"]
+    assert profile["source"] == "platform"
+    assert profile["state"] == "ready"
+    assert profile["active"]["id"] == "joycon-pair"
+    assert profile["clearAction"] is None
+
+    rollback = controller.rollback_action(str(clear_result["operationId"]))
+    assert rollback["status"] == "rolled-back"
+    profile = _row()["controlsProfile"]
+    assert profile["source"] == "game"
+    assert profile["state"] == "ready"
+    assert profile["active"]["id"] == "standard-gamepad"
+
+
+def test_game_scope_controls_profile_blocked_while_session_runs(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    import os
+
+    controller, game_id = _controls_game(monkeypatch, tmp_path)
+    settings_path = Path(os.environ["XDG_CONFIG_HOME"]) / "steamzero" / "emulation-games-v1.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps({"schemaVersion": 1, "games": {game_id: {"emulatorId": "citron"}}}),
+        encoding="utf-8",
+    )
+    controller._running_pids["citron"] = os.getpid()  # type: ignore[attr-defined]
+
+    with pytest.raises(SteamZeroError) as busy:
+        controller.plan_action(
+            {
+                "actionId": "controls.profile.activate:standard-gamepad",
+                "gameId": game_id,
+                "scope": "game",
+            }
+        )
+    assert busy.value.code == "E-CONTENT-BUSY"
+    with pytest.raises(SteamZeroError) as busy_clear:
+        controller.plan_action({"actionId": f"controls.profile.clear:{game_id}"})
+    assert busy_clear.value.code == "E-CONTENT-BUSY"
+
+    controller._running_pids.clear()  # type: ignore[attr-defined]
+    plan = controller.plan_action(
+        {
+            "actionId": "controls.profile.activate:standard-gamepad",
+            "gameId": game_id,
+            "scope": "game",
+        }
+    )
+    assert plan["planId"]
