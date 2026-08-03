@@ -23,7 +23,7 @@ Nenhum gate offscreen promove experiência física ou sensorial a `verified-hw`.
 | A4 | Anti-bitrot limitado, re-hash e estado suspect | feat-bitrot-v1 | verified-dev | `docs/expansion/WI-A4.md` |
 | A5 | Plataformas cloud declarativas e atalhos reversíveis | platform-manifest-v1 | verified-dev | `docs/expansion/WI-A5.md` |
 | A6 | Sessões co-op por QR atrás de feature flag | co-op-session-v1 | pending | — |
-| A7 | MediaHub canônico masters → optimized → views | media-registry-v1 | pending | — |
+| A7 | MediaHub canônico masters → optimized → views | media-registry-v1 | verified-dev | contrato `media-registry-v1.schema.json`; snapshot hash-associado com órfãos em `tests/integration/test_mediahub_canonical.py` |
 | A8 | Patches IPS/BPS/xdelta sobre cópia imutável | patch-operation-v1 | pending | — |
 | A9 | RetroAchievements, keyring, offline e hardcore | achievement-v1 | pending | — |
 | A10 | Reserva compatível do catálogo de produto | capability payload | pending | — |

@@ -4,6 +4,7 @@ import hashlib
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 from steamzero.core import fs, paths, transaction
@@ -138,6 +139,11 @@ class MediaPipeline:
         if not master_path.is_file():
             fs.write_atomic(master_path, data)
         result.collected[kind] = master_path
+        self._registry.register_platform(
+            "switch",
+            "Switch",
+            ("box2d", "hero", "logo", "icon", "screenshot"),
+        )
         previous = self._registry.get_entry(game_id)
         masters = dict(previous.masters) if previous is not None else {}
         masters[kind] = master_rel.as_posix()
@@ -180,6 +186,11 @@ class MediaPipeline:
         if not master_path.is_file():
             fs.write_atomic(master_path, data)
         result.collected[kind] = master_path
+        self._registry.register_platform(
+            "switch",
+            "Switch",
+            ("box2d", "hero", "logo", "icon", "screenshot"),
+        )
         provenance = Provenance(
             provider=candidate.provider,
             source_url=candidate.url,
@@ -450,6 +461,119 @@ class MediaPipeline:
 
         report.add("info", "audit-complete", f"Auditoria concluída: {report.stats}")
         return report
+
+    # --- 5. CANONICAL SNAPSHOT (media-registry-v1) ---
+    def registry_snapshot(self) -> dict[str, object]:
+        """Read model canônico do MediaHub, associado por hash de conteúdo.
+
+        O schema público é ``media-registry-v1.schema.json``: masters
+        content-addressed, optimized por perfil, views por frontend e os
+        órfãos detectados em disco. Valida quando emitido pelo pipeline.
+        """
+        masters_dir = self._media_root / "masters"
+        optimized_dir = self._media_root / "optimized"
+        views_dir = self._media_root / "views"
+
+        platforms: dict[str, object] = {}
+        for slug, platform in sorted(self._registry.platforms.items()):
+            platforms[slug] = {"name": platform.name, "kinds": list(platform.kinds)}
+
+        hash_index: dict[str, list[str]] = {}
+        entries: dict[str, object] = {}
+        for game_id, entry in sorted(self._registry.entries.items()):
+            masters: dict[str, object] = {}
+            for kind, rel in sorted(entry.masters.items()):
+                rel_path = Path(rel)
+                master_rec = {
+                    "relPath": rel,
+                    "sha256": rel_path.stem,
+                    "extension": rel_path.suffix,
+                }
+                masters[kind] = master_rec
+                hash_index.setdefault(str(rel_path.stem), []).append(game_id)
+            entry_dict: dict[str, object] = {
+                "gameId": entry.game_id,
+                "titleId": entry.title_id,
+                "fingerprint": entry.fingerprint,
+                "canonicalName": entry.canonical_name,
+                "confirmed": entry.confirmed,
+                "masters": masters,
+                "metadataOrigin": entry.metadata_origin,
+                "steamAppid": entry.steam_appid,
+            }
+            if entry.provenance is not None:
+                entry_dict["provenance"] = {
+                    "provider": entry.provenance.provider,
+                    "sourceUrl": entry.provenance.source_url,
+                    "license": entry.provenance.license,
+                    "attribution": entry.provenance.attribution,
+                    "downloadedAt": entry.provenance.downloaded_at,
+                    "hashSha256": entry.provenance.hash_sha256,
+                }
+            entries[game_id] = entry_dict
+
+        optimized: dict[str, dict[str, str]] = {}
+        optimized_orphans: list[str] = []
+        if optimized_dir.is_dir():
+            for f in optimized_dir.rglob("*"):
+                if not f.is_file() or f.is_symlink():
+                    continue
+                rel = f.relative_to(self._media_root).as_posix()
+                parts = f.relative_to(optimized_dir).parts
+                if len(parts) != 3:
+                    optimized_orphans.append(rel)
+                    continue
+                _platform, profile, filename = parts
+                game_id = filename.split("_", 1)[0]
+                if game_id in entries:
+                    optimized.setdefault(game_id, {})[profile] = rel
+                else:
+                    optimized_orphans.append(rel)
+
+        views: dict[str, list[str]] = {}
+        broken_views: list[str] = []
+        if views_dir.is_dir():
+            for f in views_dir.rglob("*"):
+                if not f.is_symlink():
+                    continue
+                rel = f.relative_to(self._media_root).as_posix()
+                frontend = f.relative_to(views_dir).parts[0]
+                views.setdefault(frontend, []).append(rel)
+                if not f.exists():
+                    broken_views.append(rel)
+
+        referenced_masters = {
+            (self._media_root / Path(rel)).resolve(strict=False)
+            for entry in self._registry.entries.values()
+            for rel in entry.masters.values()
+        }
+        orphan_masters: list[str] = []
+        if masters_dir.is_dir():
+            for f in masters_dir.rglob("*"):
+                if not f.is_file() or f.is_symlink():
+                    continue
+                resolved = f.resolve(strict=True)
+                if (
+                    resolved.is_relative_to(masters_dir.resolve(strict=True))
+                    and resolved not in referenced_masters
+                ):
+                    orphan_masters.append(str(f.relative_to(self._media_root)))
+
+        snapshot: dict[str, object] = {
+            "schemaVersion": 1,
+            "generatedAt": datetime.now(UTC).isoformat(),
+            "platforms": platforms,
+            "entries": entries,
+            "hashIndex": dict(sorted(hash_index.items())),
+            "optimized": optimized,
+            "views": views,
+            "orphans": {
+                "masterFiles": sorted(orphan_masters),
+                "optimizedFiles": sorted(optimized_orphans),
+                "brokenViewLinks": sorted(broken_views),
+            },
+        }
+        return snapshot
 
     def plan_prune_orphan_cache(self) -> transaction.Plan:
         """Planeja remover somente masters sem referência no registro canônico."""

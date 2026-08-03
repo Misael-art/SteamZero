@@ -46,6 +46,7 @@ def test_registry_loads_all_schemas() -> None:
         "gtool-hud-v1.schema.json",
         "gtool-launch-environment-v1.schema.json",
         "gtool-vkbasalt-v1.schema.json",
+        "media-registry-v1.schema.json",
         "screen-cast-v1.schema.json",
     } <= got
 

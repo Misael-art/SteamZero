@@ -5407,19 +5407,31 @@ class EmulationController:
         if mode == "audit":
             with self._store_factory() as store:
                 store.migrate()
-                report = self._media_manager(store).audit().to_dict()
+                manager = self._media_manager(store)
+                report = manager.audit().to_dict()
+                snapshot = manager.registry_snapshot()
             checked_at = datetime.now(UTC).isoformat()
             fs.write_atomic_text(
                 self._media_audit_path,
                 json.dumps(
-                    {"schemaVersion": 1, "checkedAt": checked_at, "report": report},
+                    {
+                        "schemaVersion": 1,
+                        "checkedAt": checked_at,
+                        "report": report,
+                        "registry": snapshot,
+                    },
                     sort_keys=True,
                     ensure_ascii=False,
                     separators=(",", ":"),
                 ),
             )
             ctx.set_progress("done", current=1, total=1, unit="audit")
-            return {"mode": mode, "checked_at": checked_at, "report": report}
+            return {
+                "mode": mode,
+                "checked_at": checked_at,
+                "report": report,
+                "registry": snapshot,
+            }
 
         games, _unidentified = self._load_library_cache()
         total = len(games)

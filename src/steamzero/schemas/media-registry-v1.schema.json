@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "media-registry-v1.schema.json",
+  "title": "SteamZero MediaHub canonical registry v1",
+  "description": "Read model canônico do MediaHub: masters content-addressed, optimized por perfil e views por frontend, com índice de associação por hash e órfãos detectados.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "platforms",
+    "entries",
+    "hashIndex",
+    "optimized",
+    "views",
+    "orphans"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "platforms": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "kinds"],
+        "properties": {
+          "name": {"type": "string"},
+          "kinds": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "entries": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/entry"
+      }
+    },
+    "hashIndex": {
+      "type": "object",
+      "description": "Associação por conteúdo: sha256 do master -> gameIds que referenciam esse master.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"},
+        "uniqueItems": true
+      }
+    },
+    "optimized": {
+      "type": "object",
+      "description": "gameId -> perfil -> relpath de optimized.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {"type": "string"}
+      }
+    },
+    "views": {
+      "type": "object",
+      "description": "frontend -> lista de relpaths publicados em views (artwork por frontend).",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    },
+    "orphans": {
+      "$ref": "#/$defs/orphans"
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"type": "string"},
+        "sourceUrl": {"type": "string"},
+        "license": {"type": "string"},
+        "attribution": {"type": "string"},
+        "downloadedAt": {"type": "string"},
+        "hashSha256": {"type": "string"}
+      }
+    },
+    "master": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relPath", "sha256", "extension"],
+      "properties": {
+        "relPath": {"type": "string"},
+        "sha256": {"type": "string"},
+        "extension": {"type": "string"}
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameId",
+        "titleId",
+        "fingerprint",
+        "canonicalName",
+        "confirmed",
+        "masters"
+      ],
+      "properties": {
+        "gameId": {"type": "string"},
+        "titleId": {"type": "string"},
+        "fingerprint": {"type": "string"},
+        "canonicalName": {"type": "string"},
+        "confirmed": {"type": "boolean"},
+        "metadataOrigin": {"type": "string"},
+        "steamAppid": {"type": ["integer", "null"]},
+        "masters": {
+          "type": "object",
+          "description": "kind -> master content-addressed.",
+          "additionalProperties": {"$ref": "#/$defs/master"},
+          "minProperties": 1
+        },
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "orphans": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["masterFiles", "optimizedFiles", "brokenViewLinks"],
+      "properties": {
+        "masterFiles": {
+          "description": "Masters em disco sem reference no registro canônico.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "optimizedFiles": {
+          "description": "Arquivos optimized sem master correspondente conectado.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "brokenViewLinks": {
+          "description": "Links em views cujo alvo não resolve mais.",
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
