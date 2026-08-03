@@ -3967,3 +3967,30 @@ verde isolado); mypy 202 arquivos; fronteiras e independência 0 violações.
 
 **Pendências do operador:** revisar e commitar/pushar o PR 2 da Etapa 7
 (`feat/emulation-controls-e2e`); depois merge.
+
+## 2026-08-03 — Sessão: Etapa 8 MEDIA/STORAGE-E2E, PR 1 — MediaHub canônico
+
+### PR 1 — `feat/mediahub-canonical-e2e`
+
+- **Contrato público `media-registry-v1`**: criado `src/steamzero/schemas/media-registry-v1.schema.json`
+  (schemaVersion, generatedAt, platforms, entries, hashIndex, optimized, views, orphans) —
+  primeiro contrato público do MediaHub (A7, "pipeline e registry internos presentes; contrato público ausente").
+- **Snapshot canônico hash-associado**: `MediaPipeline.registry_snapshot()` emite o read model
+  validável: masters content-addressed (sha256 do conteúdo no relpath), índice `hashIndex` de
+  associação por hash (um master compartilhado aparece em todos os games que o referenciam),
+  optimized por game/perfil, views por frontend (Steam hoje), e órfãos detectados em disco
+  (`orphans.masterFiles`/`optimizedFiles`/`brokenViewLinks`). Exposed via `GameMediaManager.registry_snapshot()`.
+- **Plataforma registrada no collect**: `collect`/`collect_from_candidate` agora registram a
+  plataforma `switch` no registry canônico (antes o registro ficava vazio).
+- **Audit job enriquecido**: `media.audit` persiste e retorna também o `registry` snapshot ao
+  lado de `report`/`checkedAt` (chave aditiva, retrocompatível).
+- **Testes**: 8 testes novos em `tests/integration/test_mediahub_canonical.py` (E2E masters →
+  optimized → views com associação por hash compartilhado, órfãos + broken views, proveniência
+  de scraper, snapshot vazio válido, contrato rejeita inválido) + golden `test_contracts.py`
+  registra o schema. Suite 3726 passed; gates verdes (ruff check + format, mypy, independence,
+  boundaries); `real-state` idêntico antes/depois.
+
+**Pendências do operador:** revisar PR 1 (`feat/mediahub-canonical-e2e`); depois PR 2 da
+Etapa 8 — `feat/emulation-storage-linked-assets` (exclusão linkada reversível, migração
+SSD/microSD por UUID, mount ausente → unavailable, zero escrita em mountpoint fantasma,
+G28 preservando quota/erros reais, schema `patch-operation-v1`).
