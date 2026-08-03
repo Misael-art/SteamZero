@@ -590,35 +590,73 @@ class ElementContract:
         return payload
 
 
-#: Tipo aceito por cada propriedade do contrato comum, para o resolver consultar.
+#: Campos que aceitam ``Value<T>`` e NÃO têm tipo fechado até o P0-08.
+#:
+#: São slots de valor de verdade — o autor pode declarar literal, token, binding
+#: ou condicional — mas a FORMA do tipo será definida pela implementação do
+#: P0-08 (ClipSpec, MaskStack, HitTestShape). Tipá-los agora seria desenhar o
+#: P0-08 por antecipação, e um tipo errado congelaria a migração futura de todo
+#: tema importado.
+RESERVED_VALUE_FIELDS = frozenset({"clipSpec", "maskStack", "hitTestShape"})
+
+#: Tipo aceito por cada propriedade do contrato, FECHADO.
+#:
+#: É a tabela única de onde o registro de tipos deriva as declarações de
+#: propriedade — ver ``scene_registry.default_registries`` — para que contrato e
+#: gate de compilação não divirjam. A completude é travada por teste: todo campo
+#: tipado ``Any`` dos dataclasses do contrato tem entrada aqui (exceto os
+#: reservados acima), e toda entrada corresponde a um campo real.
 CONTRACT_PROPERTY_TYPES: dict[str, ValueType] = {
     "visible": ValueType.BOOLEAN,
     "enabled": ValueType.BOOLEAN,
     "opacity": ValueType.NUMBER,
     "clip": ValueType.BOOLEAN,
+    "overflow": ValueType.BOOLEAN,
+    "textContent": ValueType.STRING,
     "x": ValueType.DIMENSION,
     "y": ValueType.DIMENSION,
     "width": ValueType.DIMENSION,
     "height": ValueType.DIMENSION,
-    "rotation": ValueType.NUMBER,
+    "minWidth": ValueType.DIMENSION,
+    "minHeight": ValueType.DIMENSION,
+    "maxWidth": ValueType.DIMENSION,
+    "maxHeight": ValueType.DIMENSION,
+    "margin": ValueType.DIMENSION,
+    "padding": ValueType.DIMENSION,
+    "gap": ValueType.DIMENSION,
+    "translateX": ValueType.DIMENSION,
+    "translateY": ValueType.DIMENSION,
     "scaleX": ValueType.NUMBER,
     "scaleY": ValueType.NUMBER,
+    "rotation": ValueType.NUMBER,
+    "skewX": ValueType.NUMBER,
+    "skewY": ValueType.NUMBER,
+    "mirrorX": ValueType.BOOLEAN,
+    "mirrorY": ValueType.BOOLEAN,
     "background": ValueType.COLOR,
-    "color": ValueType.COLOR,
-    "strokeColor": ValueType.COLOR,
-    "strokeWidth": ValueType.NUMBER,
+    "border": ValueType.COLOR,
+    "borderRadius": ValueType.DIMENSION,
+    "shadow": ValueType.COLOR,
     "fontFamily": ValueType.STRING,
     "fontAsset": ValueType.FONT,
     "fontSize": ValueType.NUMBER,
     "fontWeight": ValueType.NUMBER,
+    "fontStyle": ValueType.STRING,
+    "fontStretch": ValueType.STRING,
     "lineHeight": ValueType.NUMBER,
     "letterSpacing": ValueType.NUMBER,
     "wordSpacing": ValueType.NUMBER,
+    "color": ValueType.COLOR,
+    "strokeColor": ValueType.COLOR,
+    "strokeWidth": ValueType.NUMBER,
     "maxLines": ValueType.NUMBER,
+    "autoFit": ValueType.BOOLEAN,
     "minimumFontSize": ValueType.NUMBER,
     "maximumFontSize": ValueType.NUMBER,
-    "textContent": ValueType.STRING,
 }
+
+#: Todos os slots de valor do contrato: os tipados mais os reservados.
+CONTRACT_VALUE_FIELDS = frozenset(CONTRACT_PROPERTY_TYPES) | RESERVED_VALUE_FIELDS
 
 
 def _compact(payload: dict[str, Any]) -> dict[str, Any]:

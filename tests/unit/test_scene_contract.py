@@ -15,14 +15,18 @@ linguagem de expressão entrando pela porta dos fundos.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, ClassVar
 
 import pytest
 
 from steamzero.domain import scene_value as value
 from steamzero.domain.scene_contract import (
+    CONTRACT_PROPERTY_TYPES,
+    CONTRACT_VALUE_FIELDS,
     RESERVED_MASK_CAPABILITIES,
     RESERVED_MASK_TYPES,
     RESERVED_NAMESPACES,
+    RESERVED_VALUE_FIELDS,
     Alignment,
     AppearanceSpec,
     ColorValue,
@@ -35,6 +39,7 @@ from steamzero.domain.scene_contract import (
     GradientValue,
     LayoutSpec,
     TextLayoutSpec,
+    TransformSpec,
     TypographySpec,
     WrapMode,
 )
@@ -402,3 +407,102 @@ class TestMaskReservationSurvivesTheFreeze:
         text = document.read_text(encoding="utf-8")
         for required in ("ClipSpec", "MaskSpec", "MaskStack", "HitTestShape", "visual-rhi"):
             assert required in text, required
+
+
+class TestContractClosure:
+    """O contrato é fechado: nenhum campo ``Any`` sem tipo, nenhum tipo sem campo.
+
+    A tabela ``CONTRACT_PROPERTY_TYPES`` é a fonte única da qual o registro de
+    tipos deriva. Dois defeitos precisam de trava: um campo novo acrescentado a
+    um spec sem ganhar tipo (propriedade que aceita qualquer coisa em silêncio)
+    e uma entrada de tabela que não corresponde a campo nenhum (tipo morto que
+    ninguém consulta).
+    """
+
+    _DATACLASSES: ClassVar[dict[str, type]] = {
+        "element": ElementContract,
+        "layout": LayoutSpec,
+        "transform": TransformSpec,
+        "appearance": AppearanceSpec,
+        "typography": TypographySpec,
+        "textLayout": TextLayoutSpec,
+    }
+
+    @staticmethod
+    def _camel(snake: str) -> str:
+        head, *rest = snake.split("_")
+        return head + "".join(part.capitalize() for part in rest)
+
+    @staticmethod
+    def _snake(camel: str) -> str:
+        import re
+
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", camel).lower()
+
+    def _any_fields(self) -> dict[str, str]:
+        """campo camelCase -> onde mora, para cada campo tipado ``Any``."""
+        found: dict[str, str] = {}
+        for where, cls in self._DATACLASSES.items():
+            for name, field in cls.__dataclass_fields__.items():
+                # Com `from __future__ import annotations` o tipo chega como a
+                # STRING "Any", não como o objeto. Comparar com `is` seria um
+                # falso negativo silencioso: todo campo pareceria tipado.
+                if str(field.type) == "Any":
+                    found[self._camel(name)] = where
+        return found
+
+    def test_every_value_field_has_an_entry(self) -> None:
+        any_fields = self._any_fields()
+        missing = sorted(set(any_fields) - set(CONTRACT_VALUE_FIELDS))
+        assert missing == [], f"campo Any sem tipo no contrato: {missing}"
+
+    def test_the_reserved_trio_is_the_only_untyped_slot(self) -> None:
+        typed = set(CONTRACT_PROPERTY_TYPES)
+        assert set(RESERVED_VALUE_FIELDS) == {"clipSpec", "maskStack", "hitTestShape"}
+        assert typed.isdisjoint(RESERVED_VALUE_FIELDS)
+
+    def test_every_entry_maps_to_a_real_field(self) -> None:
+        any_fields = self._any_fields()
+        snakes = {self._snake(name) for name in any_fields}
+        ghost = sorted(name for name in CONTRACT_VALUE_FIELDS if self._snake(name) not in snakes)
+        assert ghost == [], f"entradas sem campo correspondente: {ghost}"
+
+    def test_every_entry_names_an_any_field(self) -> None:
+        for name in CONTRACT_PROPERTY_TYPES:
+            cls = self._DATACLASSES[self._any_fields()[name]]
+            field = cls.__dataclass_fields__[self._snake(name)]
+            assert str(field.type) == "Any", (
+                f"{name} é campo tipado ({field.type}), não slot de valor"
+            )
+
+    def test_the_registry_derives_from_the_table(self) -> None:
+        """Uma segunda lista escrita à mão divergiria do contrato."""
+        properties = default_registries().properties
+        assert set(properties.types) == set(CONTRACT_PROPERTY_TYPES)
+        for name, value_type in CONTRACT_PROPERTY_TYPES.items():
+            assert properties.type_of(name) is value_type, name
+
+    def test_the_legacy_names_are_gone_from_the_registry(self) -> None:
+        """`content` e `source` eram nomes que o contrato nunca teve."""
+        properties = default_registries().properties.types
+        assert "content" not in properties
+        assert "source" not in properties
+
+    def test_enums_are_not_value_slots(self) -> None:
+        """`horizontalAlignment` é enum fechado (campo tipado), não ``Value<T>``.
+
+        A distinção é o ponto do fechamento: valor que aceita literal, token,
+        binding e condicional precisa de tipo na tabela; enum fechado já é o
+        próprio tipo, e declará-lo como slot abriria a porta para
+        ``horizontalAlignment = token(...)`` sem contrato.
+        """
+        for name in ("horizontal_alignment", "vertical_alignment", "wrap", "elide"):
+            cls = (
+                LayoutSpec
+                if name.startswith("horizontal") or name.startswith("vertical")
+                else TextLayoutSpec
+            )
+            field = cls.__dataclass_fields__[name]
+            assert field.type is not Any
+        assert "horizontalAlignment" not in CONTRACT_PROPERTY_TYPES
+        assert "verticalAlignment" not in CONTRACT_PROPERTY_TYPES

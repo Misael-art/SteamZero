@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from steamzero.domain.scene_contract import CONTRACT_PROPERTY_TYPES
 from steamzero.domain.scene_display import DISPLAY_BINDING_TYPES
 from steamzero.domain.scene_typing import (
     SourceReference,
@@ -281,30 +282,11 @@ def default_registries() -> Registries:
     """
     registries = Registries()
 
-    for name, value_type in {
-        "color": ValueType.COLOR,
-        "strokeColor": ValueType.COLOR,
-        "background": ValueType.COLOR,
-        "fontFamily": ValueType.STRING,
-        "fontAsset": ValueType.FONT,
-        "fontSize": ValueType.NUMBER,
-        "fontWeight": ValueType.NUMBER,
-        "lineHeight": ValueType.NUMBER,
-        "letterSpacing": ValueType.NUMBER,
-        "horizontalAlignment": ValueType.ENUM,
-        "verticalAlignment": ValueType.ENUM,
-        "opacity": ValueType.NUMBER,
-        "visible": ValueType.BOOLEAN,
-        "x": ValueType.DIMENSION,
-        "y": ValueType.DIMENSION,
-        "width": ValueType.DIMENSION,
-        "height": ValueType.DIMENSION,
-        "rotation": ValueType.NUMBER,
-        "scaleX": ValueType.NUMBER,
-        "scaleY": ValueType.NUMBER,
-        "content": ValueType.STRING,
-        "source": ValueType.MEDIA,
-    }.items():
+    # Derivado da tabela fechada do contrato. Uma segunda lista escrita à mão
+    # divergiria dela — e foi exatamente essa divergência que fez `content` e
+    # `source` (nomes que o contrato não tem) viverem no registro enquanto o
+    # contrato publicava outras propriedades.
+    for name, value_type in CONTRACT_PROPERTY_TYPES.items():
         registries.properties.declare(name, value_type)
 
     for path, value_type in {
