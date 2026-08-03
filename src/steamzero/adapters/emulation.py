@@ -20,7 +20,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import unquote, urlsplit
 
 from steamzero.adapters import lifecycle
@@ -1041,7 +1041,14 @@ class EmulationController:
                     )
                 watcher = threading.Thread(
                     target=self._watch_tracked_game,
-                    args=(session_id, emulator_id, pid, started_monotonic),
+                    args=(
+                        session_id,
+                        emulator_id,
+                        pid,
+                        started_monotonic,
+                        str(game["id"]),
+                        str(game["titleId"]) if isinstance(game.get("titleId"), str) else None,
+                    ),
                     name=f"steamzero-game-{session_id[-8:]}",
                     daemon=True,
                 )
@@ -1115,6 +1122,8 @@ class EmulationController:
         emulator_id: str,
         pid: int,
         started_monotonic: float,
+        game_id: str,
+        title_id: str | None,
     ) -> None:
         waiter = self._process_waiter
         if waiter is None:
@@ -1140,6 +1149,8 @@ class EmulationController:
             )
         finally:
             self._running_pids.pop(emulator_id, None)
+            if title_id is not None:
+                self._session_save_checkpoint(game_id, title_id, emulator_id)
 
     def _finish_tracked_game_session(
         self,
@@ -1651,9 +1662,10 @@ class EmulationController:
             )
         elif action.startswith("game.save.backup:"):
             game_id = action.split(":", 1)[1]
-            game, emulator_id = self._preservation_context(game_id)
+            game, emulator_id, game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
             prepared = self._preservation.plan_backup(
-                game_id, str(game["titleId"]), emulator_id, "save"
+                game_id, str(game["titleId"]), emulator_id, "save", game_name=game_name
             )
             plan = prepared.plan
             self._pending[plan.plan_id] = _PendingMutation(
@@ -1664,17 +1676,36 @@ class EmulationController:
             if len(parts) != 3:
                 raise SteamZeroError("E-API-SCHEMA", detail="ação de restore inválida")
             game_id, record_key = parts[1], parts[2]
-            game, emulator_id = self._preservation_context(game_id)
-            prepared = self._preservation.plan_restore(
-                game_id, str(game["titleId"]), emulator_id, "save", record_key
+            game, emulator_id, game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
+            plan, plan_extra = self._plan_preservation_restore(
+                game, game_id, game_name, emulator_id, "save", record_key
+            )
+        elif action.startswith("game.state.backup:"):
+            game_id = action.split(":", 1)[1]
+            game, emulator_id, game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
+            prepared = self._preservation.plan_backup(
+                game_id, str(game["titleId"]), emulator_id, "state", game_name=game_name
             )
             plan = prepared.plan
             self._pending[plan.plan_id] = _PendingMutation(
                 "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
             )
+        elif action.startswith("game.state.restore:"):
+            parts = action.split(":", 2)
+            if len(parts) != 3:
+                raise SteamZeroError("E-API-SCHEMA", detail="ação de restore inválida")
+            game_id, record_key = parts[1], parts[2]
+            game, emulator_id, game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
+            plan, plan_extra = self._plan_preservation_restore(
+                game, game_id, game_name, emulator_id, "state", record_key
+            )
         elif action.startswith("game.shader.backup:"):
             game_id = action.split(":", 1)[1]
-            game, emulator_id = self._preservation_context(game_id)
+            game, emulator_id, _game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
             prepared = self._preservation.plan_backup(
                 game_id, str(game["titleId"]), emulator_id, "shader-cache"
             )
@@ -1687,21 +1718,15 @@ class EmulationController:
             if len(parts) != 3:
                 raise SteamZeroError("E-API-SCHEMA", detail="ação de restore inválida")
             game_id, record_key = parts[1], parts[2]
-            game, emulator_id = self._preservation_context(game_id)
-            prepared = self._preservation.plan_restore(
-                game_id,
-                str(game["titleId"]),
-                emulator_id,
-                "shader-cache",
-                record_key,
-            )
-            plan = prepared.plan
-            self._pending[plan.plan_id] = _PendingMutation(
-                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            game, emulator_id, _game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
+            plan, plan_extra = self._plan_preservation_restore(
+                game, game_id, None, emulator_id, "shader-cache", record_key
             )
         elif action.startswith("game.shader.invalidate:"):
             game_id = action.split(":", 1)[1]
-            game, emulator_id = self._preservation_context(game_id)
+            game, emulator_id, _game_name = self._preservation_context(game_id)
+            self._require_game_session_idle(emulator_id, game_id)
             plan = self._preservation.plan_shader_invalidation(
                 game_id, str(game["titleId"]), emulator_id
             )
@@ -2228,6 +2253,20 @@ class EmulationController:
                 self._jobs.run(job.id)
             elif pending.kind == "preservation-cleanup":
                 self._preservation.cleanup(Path(str(pending.metadata["staging_root"])))
+            elif pending.kind == "preservation-conflict-restore":
+                self._preservation.cleanup(Path(str(pending.metadata["staging_root"])))
+                restore = self._preservation.plan_restore(
+                    str(pending.metadata["game_id"]),
+                    str(pending.metadata["title_id"]),
+                    str(pending.metadata["emulator_id"]),
+                    str(pending.metadata["kind"]),
+                    str(pending.metadata["record_key"]),
+                    game_name=pending.metadata.get("game_name"),
+                )
+                restored = transaction.apply(restore.plan.plan_id, restore.plan.confirm_token)
+                self._preservation.cleanup(restore.staging_root)
+                response["restoreApplied"] = True
+                response["operationId"] = restored.operation_id
         tracked_type: str | None = None
         if plan.kind == "library.convert":
             tracked_type = "nsz.convert"
@@ -2924,10 +2963,25 @@ class EmulationController:
         }
         return key, firmware
 
+    _PRESERVATION_PREFIX: ClassVar[dict[str, str]] = {
+        "save": "game.save",
+        "state": "game.state",
+        "shader-cache": "game.shader",
+    }
+
     def _preservation_cards(self, games: list[dict[str, Any]], kind: str) -> list[dict[str, Any]]:
         is_shader = kind == "shader-cache"
-        target_key = "shaderTarget" if is_shader else "saveTarget"
-        backups_key = "shaderBackups" if is_shader else "saveBackups"
+        target_key = {
+            "save": "saveTarget",
+            "state": "stateTarget",
+            "shader-cache": "shaderTarget",
+        }[kind]
+        backups_key = {
+            "save": "saveBackups",
+            "state": "stateBackups",
+            "shader-cache": "shaderBackups",
+        }[kind]
+        action_prefix = self._PRESERVATION_PREFIX[kind]
         cards: list[dict[str, Any]] = []
         for game in games:
             game_id = str(game.get("id", ""))
@@ -2936,7 +2990,6 @@ class EmulationController:
             confirmed = isinstance(target, dict) and target.get("confirmed") is True
             actions: list[dict[str, Any]] = []
             if confirmed and int(target.get("fileCount", 0)) > 0:
-                action_prefix = "game.shader" if is_shader else "game.save"
                 actions.append(
                     self._action(
                         f"{action_prefix}.backup:{game_id}",
@@ -2981,7 +3034,7 @@ class EmulationController:
                     and backup_fingerprint == current_fingerprint
                 )
                 restore = self._action(
-                    f"{'game.shader' if is_shader else 'game.save'}.restore:{game_id}:{record_key}",
+                    f"{action_prefix}.restore:{game_id}:{record_key}",
                     "Restaurar",
                     enabled=confirmed and compatible,
                     reason=(
@@ -3527,6 +3580,10 @@ class EmulationController:
             },
             "saves": {
                 "cards": self._preservation_cards(games, "save"),
+                "primaryAction": self._action("emulation.refresh", "Verificar integridade"),
+            },
+            "saveStates": {
+                "cards": self._preservation_cards(games, "state"),
                 "primaryAction": self._action("emulation.refresh", "Verificar integridade"),
             },
             "shaderCache": {
@@ -4172,7 +4229,7 @@ class EmulationController:
                     result[right.id].append(left.name)
         return result
 
-    def _preservation_context(self, game_id: str) -> tuple[dict[str, Any], str]:
+    def _preservation_context(self, game_id: str) -> tuple[dict[str, Any], str, str | None]:
         game = self._current_game(game_id)
         title_id = game.get("titleId")
         if not isinstance(title_id, str) or _TITLE_ID.fullmatch(title_id) is None:
@@ -4185,7 +4242,89 @@ class EmulationController:
                 detail="defina um emulador para confirmar o destino",
             )
         self._require_managed_emulator(emulator_id)
-        return game, emulator_id
+        return game, emulator_id, self._rom_stem(game)
+
+    @staticmethod
+    def _rom_stem(game: Mapping[str, Any]) -> str | None:
+        raw = game.get("path")
+        return Path(str(raw)).stem if isinstance(raw, str) and raw else None
+
+    def _plan_preservation_restore(
+        self,
+        game: Mapping[str, Any],
+        game_id: str,
+        game_name: str | None,
+        emulator_id: str,
+        kind: str,
+        record_key: str,
+    ) -> tuple[transaction.Plan, dict[str, Any]]:
+        prepared = self._preservation.plan_restore(
+            game_id, str(game["titleId"]), emulator_id, kind, record_key, game_name=game_name
+        )
+        if not prepared.conflict:
+            plan = prepared.plan
+            self._pending[plan.plan_id] = _PendingMutation(
+                "preservation-cleanup", {"staging_root": str(prepared.staging_root)}
+            )
+            return plan, {}
+        conflict = self._preservation.plan_backup(
+            game_id, str(game["titleId"]), emulator_id, kind, game_name=game_name
+        )
+        plan = conflict.plan
+        self._pending[plan.plan_id] = _PendingMutation(
+            "preservation-conflict-restore",
+            {
+                "staging_root": str(conflict.staging_root),
+                "kind": kind,
+                "record_key": record_key,
+                "game_id": game_id,
+                "title_id": str(game["titleId"]),
+                "emulator_id": emulator_id,
+                "game_name": game_name,
+            },
+        )
+        return plan, {
+            "preview": (
+                "O estado atual diverge do backup escolhido: ele será preservado "
+                "como um novo backup antes do restore; o restore é aplicado na "
+                "sequência, com rollback próprio."
+            )
+        }
+
+    def _require_game_session_idle(self, emulator_id: str, game_id: str) -> None:
+        pid = self._running_pids.get(emulator_id)
+        if pid is not None and _process_alive(pid):
+            raise SteamZeroError(
+                "E-CONTENT-BUSY",
+                detail="o jogo está em execução; encerre a sessão antes de alterar conteúdo",
+            )
+
+    def _session_save_checkpoint(self, game_id: str, title_id: str, emulator_id: str) -> None:
+        """Checkpoint automático do save ao encerrar a sessão; nunca interrompe
+        o encerramento (falha é silenciosa, como o padrão do watcher)."""
+        with suppress(Exception):
+            status = self._preservation.target_status(game_id, title_id, emulator_id, "save")
+            if status.get("confirmed") is not True:
+                return
+            last = self._preservation.backups(title_id, emulator_id, "save")
+            expected = str(status.get("integrity", ""))[:20]
+            if expected and last and str(last[0].get("treeDigest", "")) == expected:
+                return
+            prepared = self._preservation.plan_backup(game_id, title_id, emulator_id, "save")
+            transaction.apply(prepared.plan.plan_id, prepared.plan.confirm_token)
+            self._preservation.cleanup(prepared.staging_root)
+            self._trim_save_backups(title_id, emulator_id, "save", keep=8)
+
+    def _trim_save_backups(self, title_id: str, emulator_id: str, kind: str, *, keep: int) -> None:
+        rows = self._preservation.backups(title_id, emulator_id, kind)
+        if len(rows) <= keep:
+            return
+        for row in rows[keep:]:
+            record_key = str(row.get("recordKey", ""))
+            if not record_key:
+                continue
+            plan = self._content.plan_remove(record_key)
+            transaction.apply(plan.plan_id, plan.confirm_token)
 
     def _selected_mod_tree(self, selected: Path) -> tuple[list[Path], Path]:
         if selected.is_symlink() or not selected.exists():
@@ -6537,18 +6676,25 @@ class EmulationController:
                     "reason": "defina um emulador e confirme o Title ID",
                 }
                 game["saveTarget"] = unavailable
+                game["stateTarget"] = unavailable
                 game["shaderTarget"] = unavailable
                 game["saveBackups"] = []
+                game["stateBackups"] = []
                 game["shaderBackups"] = []
                 game["saveState"] = "Destino não confirmado"
+                game["stateCount"] = 0
                 game["shaderCount"] = 0
                 continue
+            game_name = self._rom_stem(game)
             for kind, target_key, backups_key in (
                 ("save", "saveTarget", "saveBackups"),
+                ("state", "stateTarget", "stateBackups"),
                 ("shader-cache", "shaderTarget", "shaderBackups"),
             ):
                 try:
-                    target = self._preservation.target_status(game_id, title_id, emulator_id, kind)
+                    target = self._preservation.target_status(
+                        game_id, title_id, emulator_id, kind, game_name=game_name
+                    )
                     backups = self._preservation.backups(title_id, emulator_id, kind)
                 except SteamZeroError as exc:
                     target = {
@@ -6564,6 +6710,7 @@ class EmulationController:
                 if game["saveTarget"].get("confirmed")
                 else "Destino indisponível"
             )
+            game["stateCount"] = len(game["stateBackups"])
             game["shaderCount"] = len(game["shaderBackups"])
         return games
 

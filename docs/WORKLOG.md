@@ -3866,3 +3866,33 @@ chaves faltantes nomeadas), não degrada em silêncio. `KNOWN-GAPS.md` atualizad
 **Pendências do operador:** merge de PRs #40/#41/#42 (nessa ordem);
 Etapa 7 — SESSION-E2E (`feat/emulation-session-saves-e2e`,
 `feat/emulation-controls-e2e`) quando autorizado.
+
+## 2026-08-03 — Sessão: Etapa 7 SESSION-E2E, PR 1 — preservação de saves/estados
+
+### PR 1 — `feat/emulation-session-saves-e2e`
+
+- **Mapeamento amplo**: `PreservationService` cobre saves de RetroArch
+  (`.srm`), save states de RetroArch (`.state`), DuckStation (`.savestate`) e
+  Flycast (`.state`) como arquivo nomeado pelo stem da ROM; kind novo `"state"`
+  com limites próprios (512 MiB/arquivo, 4 GiB/árvore); Switch continua por
+  Title ID. Match por nome sem ambigüidade; destino inseguro continua bloqueado.
+- **Protocolo seguro**: `game.save|state|shader.backup/restore` e
+  `game.shader.invalidate` bloqueiam com a sessão em execução
+  (`E-CONTENT-BUSY`, catalogado + i18n pt-BR) — saves/estados são gravados pelo
+  emulador enquanto o jogo roda.
+- **Checkpoint automático**: ao encerrar a sessão, o save é catalogado se o
+  digest da árvore mudou (debounce por `treeDigest` de 80 bits no version);
+  retenção limitada a 8 backups por jogo; falha nunca interrompe o encerramento.
+- **Conflito preserva ambas versões**: restore com estado atual divergente do
+  backup escolhido primeiro cataloga o estado atual como novo backup, depois
+  aplica o restore no settle (`restoreApplied` + operationId no response);
+  rollback do restore segue G-FULL.
+- **Formato de version compacto**: `backup:v1:c<epoch>:f<fp>:d<digest>` cabe
+  nos 128 chars do record key com fingerprint e digest completos; leitura
+  retrocompatível com o formato JSON antigo.
+- `stateTarget`/`stateBackups`/`stateCount` declarados no schema do game row;
+  seção `saveStates` na dashboard. 12 testes novos (integration + unit);
+  suite 3627 passed; gates completos verdes; `real-state` idêntico antes/depois.
+
+**Pendências do operador:** merge do PR #43; depois PR 2 da Etapa 7 —
+`feat/emulation-controls-e2e`.
