@@ -2326,3 +2326,144 @@ def test_contract_rejects_auxiliary_kind_in_game_row(monkeypatch, tmp_path: Path
     game["contentKind"] = "update"
     with pytest.raises(jsonschema.exceptions.ValidationError):
         validate(workspace, "emulation-workspace-v1.schema.json")
+
+
+def test_bios_import_plans_applies_and_persists(monkeypatch, tmp_path: Path) -> None:
+    """REQUIREMENTS-E2E: importar BIOS local copia para o store central e
+    registra presença no state — nunca baixa, nunca loga conteúdo."""
+    controller = _controller(monkeypatch, tmp_path)
+    from steamzero.core import paths as core_paths
+
+    bios_file = tmp_path / "panafz1.bin"
+    bios_file.write_bytes(b"owned-bios")
+    plan = controller.plan_action(
+        {
+            "actionId": "bios.import",
+            "path": str(bios_file),
+            "platformId": "three-do",
+            "adapterId": "retroarch",
+        }
+    )
+    _apply(controller, plan)
+    target = core_paths.bios_dir() / "three-do" / "panafz1.bin"
+    assert target.is_file()
+    assert target.read_bytes() == b"owned-bios"
+    with controller._store_factory() as store:  # type: ignore[attr-defined]
+        store.migrate()
+        items = store.list_bios("three-do")
+    assert len(items) == 1
+    assert items[0]["state"] == "present"
+    assert items[0]["relpath"] == "three-do/panafz1.bin"
+    assert items[0]["hash"] == hashlib.sha256(b"owned-bios").hexdigest()
+
+
+def test_bios_import_rejects_undeclared_name(monkeypatch, tmp_path: Path) -> None:
+    """Só nomes declarados no perfil de launch da plataforma são aceitos."""
+    controller = _controller(monkeypatch, tmp_path)
+    foreign = tmp_path / "scph5501.bin"
+    foreign.write_bytes(b"foreign-bios")
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action(
+            {
+                "actionId": "bios.import",
+                "path": str(foreign),
+                "platformId": "three-do",
+                "adapterId": "retroarch",
+            }
+        )
+    assert exc.value.code == "E-CONTENT-FW-INCOMPAT"
+
+
+def test_bios_import_rejects_platform_without_bios(monkeypatch, tmp_path: Path) -> None:
+    """Plataforma/emulador que não declara BIOS não aceita import."""
+    controller = _controller(monkeypatch, tmp_path)
+    bios_file = tmp_path / "scph5501.bin"
+    bios_file.write_bytes(b"bios")
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action(
+            {
+                "actionId": "bios.import",
+                "path": str(bios_file),
+                "platformId": "playstation",
+                "adapterId": "duckstation",
+            }
+        )
+    assert exc.value.code == "E-API-SCHEMA"
+
+
+def test_bios_import_rejects_oversized_or_missing_source(monkeypatch, tmp_path: Path) -> None:
+    controller = _controller(monkeypatch, tmp_path)
+    huge = tmp_path / "panafz1.bin"
+    huge.write_bytes(b"x" * (64 * 1024**2 + 1))
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action(
+            {
+                "actionId": "bios.import",
+                "path": str(huge),
+                "platformId": "three-do",
+                "adapterId": "retroarch",
+            }
+        )
+    assert exc.value.code == "E-CONTENT-UNSAFE-ARCHIVE"
+    missing = tmp_path / "nunca-existiu.bin"
+    with pytest.raises(SteamZeroError) as exc:
+        controller.plan_action(
+            {
+                "actionId": "bios.import",
+                "path": str(missing),
+                "platformId": "three-do",
+                "adapterId": "retroarch",
+            }
+        )
+    assert exc.value.code == "E-CONTENT-UNSAFE-PATH"
+
+
+def test_bios_import_reimport_is_idempotent_on_the_file(monkeypatch, tmp_path: Path) -> None:
+    """Reimportar a mesma BIOS não sobrescreve nem duplica o arquivo central."""
+    controller = _controller(monkeypatch, tmp_path)
+    from steamzero.core import paths as core_paths
+
+    bios_file = tmp_path / "panafz1.bin"
+    bios_file.write_bytes(b"owned-bios")
+    first = controller.plan_action(
+        {
+            "actionId": "bios.import",
+            "path": str(bios_file),
+            "platformId": "three-do",
+            "adapterId": "retroarch",
+        }
+    )
+    _apply(controller, first)
+    second = controller.plan_action(
+        {
+            "actionId": "bios.import",
+            "path": str(bios_file),
+            "platformId": "three-do",
+            "adapterId": "retroarch",
+        }
+    )
+    _apply(controller, second)
+    target = core_paths.bios_dir() / "three-do" / "panafz1.bin"
+    assert target.is_file()
+    assert target.read_bytes() == b"owned-bios"
+
+
+def test_bios_import_never_leaks_content_into_logs(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-BI-01/SR-14: conteúdo e hash completo de BIOS nunca vão para log."""
+    controller = _controller(monkeypatch, tmp_path)
+    bios_file = tmp_path / "panafz1.bin"
+    bios_file.write_bytes(b"conteudo-sintetico-de-bios-falsa")
+    plan = controller.plan_action(
+        {
+            "actionId": "bios.import",
+            "path": str(bios_file),
+            "platformId": "three-do",
+            "adapterId": "retroarch",
+        }
+    )
+    _apply(controller, plan)
+    captured = capsys.readouterr().out + capsys.readouterr().err
+    assert "conteudo-sintetico-de-bios-falsa" not in captured
+    assert hashlib.sha256(b"conteudo-sintetico-de-bios-falsa").hexdigest() not in captured

@@ -56,11 +56,15 @@ def _launch_readiness(
     *,
     installed: bool,
     core_present: bool | None,
+    platform_label: str,
+    adapter_id: str,
+    bios_present: bool | None,
 ) -> tuple[bool, str | None]:
     """Se dá para jogar nesta plataforma, e o motivo quando não dá.
 
-    ``core_present`` é ``None`` quando a plataforma não exige core — o caso dos
-    standalone. Exigir core de quem não usa produziria recusa falsa.
+    ``core_present``/``bios_present`` são ``None`` quando a plataforma não exige
+    core/BIOS ou quando ninguém leu o host — exigir de quem não usa, ou bloquear
+    sem informação, produziria recusa falsa.
     """
     if profile is None:
         return False, "esta plataforma ainda não declara como lançar jogos"
@@ -68,11 +72,85 @@ def _launch_readiness(
         return False, "o emulador desta plataforma não está instalado"
     if profile.requires_core and not core_present:
         return False, f"o core {profile.core} não está instalado no RetroArch"
-    if profile.requires_bios:
-        # BIOS é conteúdo do próprio usuário: declaramos a exigência, nunca
-        # afirmamos que está presente nem tentamos obtê-lo.
-        return True, None
+    if profile.requires_bios and bios_present is False:
+        # BIOS é conteúdo do próprio usuário: declaramos a exigência e a
+        # verificamos pelo store central; nunca a obtemos nem baixamos. O
+        # requisito faltante identifica plataforma e emulador afetados.
+        return False, (
+            f"a BIOS de {platform_label} · {adapter_id} está ausente "
+            f"({', '.join(profile.requires_bios)}); importe o arquivo local"
+        )
     return True, None
+
+
+def _bios_presence(
+    probe: Callable[[str, str, str], bool] | None,
+    platform_id: str,
+    adapter_id: str,
+    names: tuple[str, ...],
+) -> dict[str, bool] | None:
+    """Presença de cada BIOS exigida no store central; ``None`` quando não lida.
+
+    A falha de UMA sondagem degrada apenas este requisito (AGENTS.md §8): a
+    ausência não pode ser provada, então o requisito sai como ausente — nunca
+    derruba a composição da central.
+    """
+    if probe is None:
+        return None
+    result: dict[str, bool] = {}
+    for name in names:
+        try:
+            result[name] = bool(probe(platform_id, adapter_id, name))
+        except Exception:
+            result[name] = False
+    return result
+
+
+def _bios_requirement(
+    platform_label: str,
+    adapter_id: str,
+    names: tuple[str, ...],
+    present: dict[str, bool] | None,
+) -> dict[str, Any]:
+    """Requisito BIOS no formato do contrato (mesmas seis chaves de keys).
+
+    O dado parcial nunca degrada em silêncio: sem leitura o status é
+    ``unverified`` com motivo; com leitura, ``missing``/``ok`` e o detail
+    identifica plataforma e emulador afetados (REQUIREMENTS-E2E).
+    """
+    if present is None:
+        return {
+            "kind": "bios",
+            "status": "unverified",
+            "required": ", ".join(names),
+            "installed": None,
+            "detail": (
+                f"BIOS de {platform_label} · {adapter_id} ainda não verificada neste contexto."
+            ),
+            "blocksPlay": False,
+        }
+    missing = [name for name in names if not present.get(name)]
+    if missing:
+        return {
+            "kind": "bios",
+            "status": "missing",
+            "required": ", ".join(names),
+            "installed": ", ".join(name for name in names if present.get(name)) or None,
+            "detail": (
+                f"BIOS de {platform_label} · {adapter_id} ausente: {', '.join(missing)}; "
+                "importe o arquivo local."
+            ),
+            "blocksPlay": True,
+            "importAction": "bios.import",
+        }
+    return {
+        "kind": "bios",
+        "status": "ok",
+        "required": ", ".join(names),
+        "installed": ", ".join(names),
+        "detail": f"BIOS de {platform_label} · {adapter_id} presente e reconhecida.",
+        "blocksPlay": False,
+    }
 
 
 def compose_platform(
@@ -80,12 +158,17 @@ def compose_platform(
     *,
     facts_for: Callable[[str], EmulatorFacts],
     core_present_for: Callable[[str], bool] | None = None,
+    bios_present_for: Callable[[str, str, str], bool] | None = None,
 ) -> dict[str, Any]:
     """Compõe a plataforma sobre o placeholder, substituindo o que é sabido.
 
     Parte do placeholder de propósito: ele já produz a forma completa que o
     schema exige, e reescrever essa estrutura aqui criaria duas verdades sobre o
     mesmo contrato — o defeito que este trabalho existe para eliminar.
+
+    ``bios_present_for`` responde ``(platform_id, adapter_id, nome) -> presente``
+    para cada BIOS declarada no perfil de launch. Quem conhece o host é a camada
+    de adapters; domínio só projeta.
     """
     payload = platform_placeholder(manifest)
 
@@ -93,6 +176,9 @@ def compose_platform(
     any_installed = False
     launchable = False
     launch_reason: str | None = None
+    primary_bios_names: tuple[str, ...] = ()
+    primary_adapter_id: str | None = None
+    primary_bios_present: dict[str, bool] | None = None
 
     declared = sorted(manifest.emulators, key=lambda item: item["precedence"])
     for emulator in declared:
@@ -146,11 +232,32 @@ def compose_platform(
             row["launch"] = profile.to_dict()
             if profile.requires_core:
                 row["coreInstalled"] = bool(core_present)
+            if profile.requires_bios:
+                row["biosRequired"] = list(profile.requires_bios)
+                bios_present = _bios_presence(
+                    bios_present_for, manifest.id, adapter_id, profile.requires_bios
+                )
+                if bios_present is not None:
+                    row["biosPresent"] = bios_present
 
         # A primeira linha por precedência define a jogabilidade da plataforma.
         if not rows:
+            primary_adapter_id = adapter_id
+            primary_bios_names = profile.requires_bios if profile is not None else ()
+            primary_bios_present = (
+                _bios_presence(bios_present_for, manifest.id, adapter_id, profile.requires_bios)
+                if profile is not None and profile.requires_bios
+                else None
+            )
             launchable, launch_reason = _launch_readiness(
-                profile, installed=facts.installed, core_present=core_present
+                profile,
+                installed=facts.installed,
+                core_present=core_present,
+                platform_label=manifest.name,
+                adapter_id=adapter_id,
+                bios_present=(
+                    None if primary_bios_present is None else all(primary_bios_present.values())
+                ),
             )
         rows.append(row)
 
@@ -168,6 +275,14 @@ def compose_platform(
     payload["emulators"] = rows
     payload["launchable"] = launchable
     payload["launchReason"] = launch_reason
+
+    if primary_bios_names and primary_adapter_id is not None:
+        payload["requirements"]["bios"] = _bios_requirement(
+            manifest.name,
+            primary_adapter_id,
+            primary_bios_names,
+            primary_bios_present,
+        )
 
     if any_installed:
         payload["state"] = "unverified" if not launchable else "ready"
