@@ -183,6 +183,7 @@ class TestEveryStateArgumentIsExercised:
             "platform_registry",
             "emulator_facts",
             "core_present",
+            "bios_present",
         }
     )
 
@@ -201,7 +202,17 @@ class TestEveryStateArgumentIsExercised:
         )
 
     @pytest.mark.parametrize(
-        "argument", sorted({"keys", "firmware", "games", "emulator_facts", "core_present"})
+        "argument",
+        sorted(
+            {
+                "keys",
+                "firmware",
+                "games",
+                "emulator_facts",
+                "core_present",
+                "bios_present",
+            }
+        ),
     )
     def test_the_controller_passes_the_state_argument(self, argument: str) -> None:
         """O controller é a composição autoritativa: ele precisa passar cada um."""

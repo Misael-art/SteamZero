@@ -215,6 +215,8 @@ _KEY_LINE = re.compile(r"^\s*([a-z0-9_]+)\s*=\s*([0-9a-fA-F]{32,})\s*$")
 _MASTER_KEY = re.compile(r"^master_key_([0-9a-f]{2})$")
 _MAX_IMPORT_FILES = 10_000
 _MAX_IMPORT_BYTES = 2 * 1024**3
+#: BIOS reais cabem folgadamente abaixo de 16 MiB; o teto é um guarda-corpo.
+_MAX_BIOS_BYTES = 64 * 1024**2
 _MAX_MOD_BYTES = 512 * 1024**2
 _BUILD_ID = re.compile(r"^[0-9A-Fa-f]{16,64}$")
 _REMOTE_MOD_SUFFIXES = frozenset({".zip", ".ips", ".bps", ".pchtxt", ".txt", ".bin"})
@@ -515,6 +517,7 @@ class EmulationController:
             games=games,
             emulator_facts=self._platform_facts_provider(self._registry_factory()),
             core_present=self._core_present,
+            bios_present=self._bios_present_for,
         )
         composed_cloud = {row["id"]: row for row in self._cloud.platforms()}
         workspace["platforms"] = [
@@ -703,6 +706,23 @@ class EmulationController:
         try:
             return find_core(core) is not None
         except SteamZeroError:
+            return False
+
+    @staticmethod
+    def _bios_present_for(platform_id: str, adapter_id: str, name: str) -> bool:
+        """Se a BIOS exigida existe no store central, por nome (nunca conteúdo).
+
+        A ausência por falha de leitura trata-se como ausente: a leitura que
+        falhou não prova presença, e sondar não pode derrubar a central
+        (AGENTS.md §8).
+        """
+        try:
+            target = fs.resolve_within(paths.bios_dir(), paths.bios_dir() / platform_id / name)
+        except SteamZeroError:
+            return False
+        try:
+            return target.is_file()
+        except OSError:
             return False
 
     def _plan_flatpak_emulator(
@@ -1577,6 +1597,12 @@ class EmulationController:
                 Path(self._required_string(payload, "path")),
                 self._required_string(payload, "version"),
             )
+        elif action == "bios.import":
+            plan = self._plan_bios_import(
+                Path(self._required_string(payload, "path")),
+                self._required_string(payload, "platformId"),
+                self._required_string(payload, "adapterId"),
+            )
         elif action in {"content.update.import", "content.dlc.import"}:
             kind = "update" if ".update." in action else "dlc"
             title_id = self._required_title_id(payload)
@@ -2068,6 +2094,8 @@ class EmulationController:
         if pending is not None:
             if pending.kind in {"key", "firmware"}:
                 self._persist_import(pending)
+            elif pending.kind == "bios":
+                self._persist_bios_import(pending)
             elif pending.kind in {
                 "mod-install",
                 "cheat-install",
@@ -4390,6 +4418,56 @@ class EmulationController:
         )
         return plan
 
+    def _plan_bios_import(
+        self, selected: Path, platform_id: str, adapter_id: str
+    ) -> transaction.Plan:
+        """Importa uma BIOS do usuário para o store central (REQUIREMENTS-E2E).
+
+        Segura por construção: só são aceitos arquivos cujo NOME está declarado
+        no perfil de launch da plataforma (``requiresBios``) — o mesmo contrato
+        que a projeção de requisitos consome. Nada é baixado; o hash completo
+        nunca vai para log (SR-14), e arquivo existente divergente recusa em vez
+        de sobrescrever.
+        """
+        profile = self._launch_profile_for(platform_id, adapter_id)
+        if profile is None or not profile.requires_bios:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"{platform_id} · {adapter_id} não declara BIOS exigida",
+            )
+        if selected.is_symlink() or not selected.is_file():
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem local inválida")
+        if selected.name not in profile.requires_bios:
+            raise SteamZeroError(
+                "E-CONTENT-FW-INCOMPAT",
+                detail=(
+                    f"arquivo não corresponde a nenhuma BIOS exigida por "
+                    f"{platform_id} · {adapter_id}: {', '.join(profile.requires_bios)}"
+                ),
+            )
+        if not (0 < selected.stat().st_size <= _MAX_BIOS_BYTES):
+            raise SteamZeroError(
+                "E-CONTENT-UNSAFE-ARCHIVE", detail="arquivo de BIOS fora dos limites"
+            )
+        digest = fs.hash_file(selected, algo="sha256")
+        dest = fs.resolve_within(paths.bios_dir(), paths.bios_dir() / platform_id / selected.name)
+        copies = self._new_copy_targets(selected, [dest], digest)
+        root = self._compatible_root({candidate: b"" for _, candidate in copies})
+        plan = (
+            transaction.plan_copy_files(copies, root=root, kind="emulation.bios-import")
+            if copies
+            else transaction.plan_write_files({}, root=root, kind="emulation.bios-import")
+        )
+        self._pending[plan.plan_id] = _PendingMutation(
+            "bios",
+            {
+                "platform": platform_id,
+                "name": selected.name,
+                "digest": digest,
+            },
+        )
+        return plan
+
     def _selected_files(
         self, selected: Path, *, suffixes: set[str], allow_single_any: bool = False
     ) -> list[Path]:
@@ -4484,6 +4562,30 @@ class EmulationController:
                     "revision": metadata.get("revision"),
                     "version": metadata.get("version"),
                     "relpath": metadata["relpath"],
+                    "last_validated": datetime.now(UTC).isoformat(),
+                }
+            )
+
+    def _persist_bios_import(self, pending: _PendingMutation) -> None:
+        """Registra a BIOS no state (hash completo é dado persistido, não log)."""
+        metadata = pending.metadata
+        platform_id = str(metadata["platform"])
+        try:
+            platform_name = PlatformRegistry.bundled().get(platform_id).name
+        except KeyError:
+            platform_name = platform_id
+        with self._store_factory() as store:
+            store.migrate()
+            store.save_platform({"id": platform_id, "name": platform_name})
+            store.save_bios_item(
+                {
+                    "id": ids.new_ulid(),
+                    "platform_id": platform_id,
+                    "relpath": f"{platform_id}/{metadata['name']}",
+                    "hash": str(metadata["digest"]),
+                    "region": None,
+                    "version": None,
+                    "state": "present",
                     "last_validated": datetime.now(UTC).isoformat(),
                 }
             )
