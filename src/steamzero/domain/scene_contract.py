@@ -542,9 +542,16 @@ class ElementContract:
     #: Conteúdo de um elemento de texto. Aceita ``Value<T>`` como qualquer outra
     #: propriedade — literal, binding, tradução ou condicional.
     text_content: Any = None
+    #: Filhos deste nó. Cada filho é um ``ElementContract`` completo; a árvore
+    #: formada é validada por ``scene_tree.validate_tree`` — profundidade,
+    #: filhos por nó, total de nós e ids únicos. A fatia de texto compila plana;
+    #: filhos entram junto com os elementos de contêiner.
+    children: tuple[ElementContract, ...] = ()
 
     def validate(self) -> None:
         self.layout.validate()
+        for child in self.children:
+            child.validate()
 
     def to_dict(self) -> dict[str, Any]:
         payload = _compact(
@@ -565,6 +572,7 @@ class ElementContract:
                 "clip": self.clip,
                 "overflow": self.overflow,
                 "textContent": self.text_content,
+                "children": [child.to_dict() for child in self.children] or None,
             }
         )
         for name, spec in (

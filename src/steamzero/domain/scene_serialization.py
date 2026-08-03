@@ -38,13 +38,22 @@ from steamzero.domain.scene_contract import (
     TextLayoutSpec,
     TypographySpec,
 )
+from steamzero.domain.scene_tree import validate_tree
 from steamzero.domain.scene_typing import SourceReference
 from steamzero.domain.scene_value import is_pending_value
 
 #: Versão do documento serializado. Um documento sem versão, ou com versão que
 #: este código não conhece, é recusado: adivinhar o formato produziria um tema
 #: parcialmente lido que renderiza errado sem reclamar.
-SCHEMA_VERSION = 1
+#:
+#: v2 acrescenta ``children``: a cena deixou de ser plana. Documentos v1 (planos)
+#: continuam sendo lidos — o campo é opcional na leitura; o que NÃO é aceito é a
+#: direção contrária, um leitor v1 encontrando ``children`` e os descartando em
+#: silêncio.
+SCHEMA_VERSION = 2
+
+#: Versões que este código sabe ler. v1 era o documento plano da vertical slice.
+READABLE_SCHEMA_VERSIONS = frozenset({1, SCHEMA_VERSION})
 
 
 class SerializationError(ValueError):
@@ -260,6 +269,13 @@ def element_from_dict(payload: Mapping[str, Any]) -> ElementContract:
             **_spec_kwargs(raw, frozenset(TextLayoutSpec.__dataclass_fields__))
         )
 
+    children: tuple[ElementContract, ...] = ()
+    if "children" in payload:
+        raw_children = payload["children"]
+        if not isinstance(raw_children, list):
+            raise SerializationError("'children' precisa ser lista")
+        children = tuple(element_from_dict(item) for item in raw_children)
+
     return ElementContract(
         id=str(payload["id"]),
         type=str(payload["type"]),
@@ -278,6 +294,7 @@ def element_from_dict(payload: Mapping[str, Any]) -> ElementContract:
         layout=layout,
         typography=typography,
         text_layout=text_layout,
+        children=children,
     )
 
 
@@ -299,14 +316,20 @@ def document(elements: list[ElementContract], **extra: Any) -> dict[str, Any]:
 
 def parse_document(payload: Mapping[str, Any]) -> list[ElementContract]:
     version = payload.get("schemaVersion")
-    if version != SCHEMA_VERSION:
+    if version not in READABLE_SCHEMA_VERSIONS:
         raise SerializationError(
             f"schemaVersion {version!r} incompatível; este código lê {SCHEMA_VERSION}"
         )
     elements = payload.get("elements")
     if not isinstance(elements, list):
         raise SerializationError("campo obrigatório ausente: 'elements'")
-    return [element_from_dict(item) for item in elements]
+    parsed = [element_from_dict(item) for item in elements]
+    for element in parsed:
+        try:
+            validate_tree(element)
+        except ValueError as exc:
+            raise SerializationError(f"árvore de cena inválida: {exc}") from None
+    return parsed
 
 
 def assert_no_frozen_dynamics(before: Mapping[str, Any], after: Mapping[str, Any]) -> list[str]:
