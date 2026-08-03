@@ -6758,20 +6758,14 @@ class EmulationController:
         controllers = self._controller_count()
         for game in games:
             game_id = str(game.get("id", ""))
-            game_status = self._input_profiles.status(
-                "switch", scope="game", scope_id=game_id
-            )
+            game_status = self._input_profiles.status("switch", scope="game", scope_id=game_id)
             if game_status["state"] == "unverified":
                 effective = platform_status
                 source = "platform"
             else:
                 effective = game_status
                 source = "game"
-            available = [
-                row
-                for row in effective["available"]
-                if isinstance(row, Mapping)
-            ]
+            available = [row for row in effective["available"] if isinstance(row, Mapping)]
             activate_actions = [
                 self._action(
                     f"controls.profile.activate:{row['id']}",
@@ -6813,9 +6807,7 @@ class EmulationController:
             profile_configured = isinstance(active, Mapping)
             reasons: list[str] = []
             if not profile_configured:
-                reasons.append(
-                    "Nenhum perfil de input ativo; o jogo usará os padrões do emulador."
-                )
+                reasons.append("Nenhum perfil de input ativo; o jogo usará os padrões do emulador.")
             if controllers == 0:
                 reasons.append("Nenhum controle detectado no host.")
             ready = profile_configured and controllers > 0

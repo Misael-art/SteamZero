@@ -2673,9 +2673,7 @@ def test_game_row_exposes_controls_profile_inheritance_and_clear(
         "controls.profile.activate:joycon-pair",
     }
     assert all(
-        action["gameId"] == game_id
-        and action["scope"] == "game"
-        and action["scopeId"] == game_id
+        action["gameId"] == game_id and action["scope"] == "game" and action["scopeId"] == game_id
         for action in profile["activateActions"]
     )
     readiness = game["controlsReadiness"]
@@ -2684,9 +2682,7 @@ def test_game_row_exposes_controls_profile_inheritance_and_clear(
     assert readiness["controllers"] >= 0
     assert readiness["reason"]
 
-    platform_plan = controller.plan_action(
-        {"actionId": "controls.profile.activate:joycon-pair"}
-    )
+    platform_plan = controller.plan_action({"actionId": "controls.profile.activate:joycon-pair"})
     _apply(controller, platform_plan)
     profile = _row()["controlsProfile"]
     assert profile["source"] == "platform"
