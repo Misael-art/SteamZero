@@ -254,9 +254,37 @@ class InputProfileManager:
             skip_unchanged=True,
         )
 
+    def plan_clear(
+        self,
+        *,
+        platform_id: str,
+        scope: str,
+        scope_id: str | None = None,
+    ) -> transaction.Plan:
+        """Remove a ativação de um escopo (ex.: perfil por jogo) para que a
+        herança volte a valer. A remoção é transacional (G-FULL): backup do
+        arquivo é feito e o rollback o restaura."""
+        target = self._target(platform_id, scope, scope_id)
+        if target.is_symlink() or (target.exists() and not target.is_file()):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="ativação de input existente não é arquivo regular"
+            )
+        if not target.exists():
+            return transaction.plan_write_files(
+                {},
+                root=self._root,
+                kind=f"input-profile.clear:{platform_id}:{scope}",
+            )
+        return transaction.plan_write_files(
+            {},
+            root=self._root,
+            kind=f"input-profile.clear:{platform_id}:{scope}",
+            removals={target},
+        )
+
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         plan = transaction.load_plan(plan_id)
-        if not plan.kind.startswith("input-profile.activate:"):
+        if not plan.kind.startswith("input-profile."):
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence a perfil de input")
 
         def verify() -> None:
@@ -265,7 +293,8 @@ class InputProfileManager:
             for target in targets:
                 self._load_activation(target)
 
-        return transaction.apply(plan_id, confirm_token, smoke=verify)
+        smoke = verify if plan.kind.startswith("input-profile.activate:") else None
+        return transaction.apply(plan_id, confirm_token, smoke=smoke)
 
     def rollback(self, operation_id: str) -> transaction.RollbackResult:
         if not ids.is_ulid(operation_id):
@@ -273,7 +302,7 @@ class InputProfileManager:
         records = journal.read_records(operation_id)
         beginnings = [record for record in records if record.get("type") == "operation.begin"]
         kind = str(beginnings[0].get("kind", "")) if len(beginnings) == 1 else ""
-        if not kind.startswith("input-profile.activate:"):
+        if not kind.startswith("input-profile."):
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail="operação não pertence a perfil de input"
             )

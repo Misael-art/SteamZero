@@ -3936,6 +3936,38 @@ verde isolado); mypy 202 arquivos; fronteiras e independência 0 violações.
 **Pendências do operador:** merge do PR #43; depois PR 2 da Etapa 7 —
 `feat/emulation-controls-e2e`.
 
+## 2026-08-03 — Sessão: Etapa 7 SESSION-E2E, PR 2 — perfil de input por jogo
+
+### PR 2 — `feat/emulation-controls-e2e`
+
+- **Perfil por jogo com herança**: o game row agora publica `controlsProfile`
+  (`state`, `statusLabel`, `source` game/platform, `scope`, `active`,
+  `available`, `activateActions`, `clearAction`). Sem override do jogo, o perfil
+  efetivo é herdado da plataforma (`source: "platform"`); com ativação
+  `scope=game`, é próprio (`source: "game"`) e ganha a action de limpar.
+- **Actions e2e**: `controls.profile.activate:<perfil>` agora aceita
+  `scope=game` + `gameId`/`scopeId` e valida `E-CONTENT-BUSY` (sessão em
+  execução) antes de ativar; nova action `controls.profile.clear:<gameId>`
+  remove só o override por jogo (transação G-FULL com backup; rollback
+  restaura) e também bloqueia com sessão rodando.
+- **Prontidão honesta sem interditar**: `controlsReadiness` no game row
+  (`state` ready/attention, `reason`, `profileConfigured`, `controllers`)
+  informa se há perfil ativo e controle detectado — NUNCA bloqueia o launch.
+- **Domínio**: `InputProfileManager.plan_clear` (remoção transacional com
+  `removals`, noop idempotente quando não há override) e `apply`/`rollback`
+  passam a aceitar o prefixo `input-profile.` (activate + clear).
+- **Contrato**: `controlsProfile`/`controlsReadiness` declarados no
+  `emulation-workspace-v1.schema.json` (game def); `operation_history` rotula
+  `input-profile.clear:` como "Perfil de controle".
+- **Testes**: 5 de domínio (ativação/clear/rollback por jogo, noop, symlink,
+  plano stale) + 2 de controller (game row com herança/ativação/clear/rollback
+  e `E-CONTENT-BUSY` por jogo) + contrato literal do game row atualizado
+  (mudança de contrato documentada). Suite 3632 passed; gates verdes
+  (ruff/mypy/independence); `real-state` idêntico antes/depois.
+
+**Pendências do operador:** revisar e commitar/pushar o PR 2 da Etapa 7
+(`feat/emulation-controls-e2e`); depois merge.
+
 ## 2026-08-03 — Sessão 55: PR 2 tema default — tema renderizável (branch codex/theme-default-pr2)
 
 Segunda PR da linha de tema default, sobre `origin/main` (`87cf493`): o tema
@@ -3965,7 +3997,7 @@ Quatro commits, todos com os gates da seção 6 verdes:
   (geometria derivada 6x4 em 1920x1080), `build_default_scene` (cabeçalho +
   24 células capa/título validado por `validate_tree`), resolução com tokens/
   bindings/fallbacks e `focus_target` delegando a `move_focus`.
-- (pendente) **WORKLOG + handoff**: este registro e a seção nova do P0-03.
+- `fe20c65` — **WORKLOG + handoff**: este registro e a seção nova do P0-03.
 
 Descobertas registradas:
 

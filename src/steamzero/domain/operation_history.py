@@ -60,6 +60,7 @@ def _title(kind: str) -> str:
         ("emulation.game-delete:", "Exclusão de jogo"),
         ("emulation.", "Emulação"),
         ("input-profile.activate:", "Perfil de controle"),
+        ("input-profile.clear:", "Perfil de controle"),
         ("media.", "Mídia"),
         ("preservation.", "Restauração de preservação"),
         ("saves.restore", "Restauração de save"),

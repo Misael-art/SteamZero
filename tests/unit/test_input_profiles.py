@@ -266,6 +266,90 @@ def test_rollback_rejects_foreign_operation(manager: InputProfileManager, tmp_pa
         manager.rollback("not-an-operation")
 
 
+_GAME_ID = "1234567890abcdef12345678"
+
+
+def test_game_scope_activation_clear_and_rollback(manager: InputProfileManager) -> None:
+    target = manager._root / f"active/switch/game-{_GAME_ID}.json"  # type: ignore[attr-defined]
+    assert manager.status("switch", scope="game", scope_id=_GAME_ID)["state"] == "unverified"
+
+    plan = manager.plan_activate(
+        platform_id="switch",
+        profile_id="standard-gamepad",
+        scope="game",
+        scope_id=_GAME_ID,
+    )
+    manager.apply(plan.plan_id, plan.confirm_token)
+    assert target.is_file()
+    active = manager.status("switch", scope="game", scope_id=_GAME_ID)
+    assert active["state"] == "ready"
+    assert active["active"]["id"] == "standard-gamepad"
+    assert active["active"]["scope"] == "game"
+    assert active["active"]["scopeId"] == _GAME_ID
+    assert manager.status("switch")["state"] == "unverified"
+
+    clear = manager.plan_clear(platform_id="switch", scope="game", scope_id=_GAME_ID)
+    clear_result = manager.apply(clear.plan_id, clear.confirm_token)
+    assert clear_result.status == "ok"
+    assert not target.exists()
+    assert manager.status("switch", scope="game", scope_id=_GAME_ID)["state"] == "unverified"
+
+    rollback = manager.rollback(clear_result.operation_id)
+    assert rollback.status == "rolled-back"
+    assert target.is_file()
+    assert manager.status("switch", scope="game", scope_id=_GAME_ID)["state"] == "ready"
+
+    second_clear = manager.plan_clear(platform_id="switch", scope="game", scope_id=_GAME_ID)
+    assert second_clear.actions
+    assert manager.apply(second_clear.plan_id, second_clear.confirm_token).status == "ok"
+    assert not target.exists()
+
+    noop = manager.plan_clear(platform_id="switch", scope="game", scope_id=_GAME_ID)
+    assert noop.actions == []
+    assert manager.apply(noop.plan_id, noop.confirm_token).status == "ok"
+    assert not target.exists()
+
+
+def test_clear_rejects_symlink_and_foreign_platform(
+    manager: InputProfileManager, tmp_path: Path
+) -> None:
+    target = manager._root / f"active/switch/game-{_GAME_ID}.json"  # type: ignore[attr-defined]
+    target.parent.mkdir(parents=True)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+    target.symlink_to(outside)
+
+    with pytest.raises(SteamZeroError, match="arquivo regular"):
+        manager.plan_clear(platform_id="switch", scope="game", scope_id=_GAME_ID)
+    with pytest.raises(SteamZeroError, match="scopeId"):
+        manager.plan_clear(platform_id="switch", scope="game")
+    with pytest.raises(SteamZeroError, match="escopo"):
+        manager.plan_clear(platform_id="switch", scope="weird", scope_id=_GAME_ID)
+
+
+def test_clear_stale_plan_when_activation_changes_after_plan(
+    manager: InputProfileManager,
+) -> None:
+    plan = manager.plan_activate(
+        platform_id="switch",
+        profile_id="standard-gamepad",
+        scope="game",
+        scope_id=_GAME_ID,
+    )
+    manager.apply(plan.plan_id, plan.confirm_token)
+    clear = manager.plan_clear(platform_id="switch", scope="game", scope_id=_GAME_ID)
+    replaced = manager.plan_activate(
+        platform_id="switch",
+        profile_id="joycon-pair",
+        scope="game",
+        scope_id=_GAME_ID,
+    )
+    manager.apply(replaced.plan_id, replaced.confirm_token)
+
+    with pytest.raises(SteamZeroError, match="precondição mudou"):
+        manager.apply(clear.plan_id, clear.confirm_token)
+
+
 @pytest.mark.parametrize(
     ("kwargs", "message"),
     [
