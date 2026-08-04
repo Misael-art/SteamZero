@@ -4150,3 +4150,22 @@ a ponta com o scan real de `/proc` (dono externo nomeado por pid e argv,
 Ações de host executadas: **nenhuma**. Nenhuma instalação, rollback ou mutação de
 release. O daemon foi deixado rodando de propósito, por ser a condição que
 reprovava.
+
+### Adendo da mesma sessão — CI e footprint do watcher
+
+Primeira execução de CI da branch reprovou no Python 3.11 em
+`test_desktop_ui_bridge.py::test_status_keeps_full_emulation_model_across_http_thread`
+(`TimeoutError` no timeout de parede de 3 s do cliente em loopback). Reexecutada,
+a mesma CI ficou **verde nos oito jobs**, incluindo 3.11. A `main` foi verde em
+duas execuções. O mesmo teste flakeou 1 vez em 10 suítes completas locais.
+
+Ou seja: teste flaky sob carga, sem prova de relação com esta mudança (o diff não
+toca `src/`). Mas como não dá para **excluir** que o polling de `/proc` a cada 2 s
+somasse carga, o watcher passou a só rodar onde pode achar algo: se o state home
+real não existe — o caso do CI, que roda em home limpo — não há dono externo
+possível e a thread não sobe. As amostras de abertura e fechamento continuam
+sempre, então nenhuma atribuição se perde (`6e9ee19`).
+
+Validação final, com o daemon do host rodando: cinco execuções consecutivas da
+suíte completa, `EXIT=0` nas cinco, 3857 passed cada. `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries`: exit 0.
