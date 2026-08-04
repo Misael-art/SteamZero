@@ -87,6 +87,9 @@ class FakeEffect:
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         return self.verify_ok and self.state == profile.profile_id
 
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return self.verify(profile, context)
+
     def restore(self, snapshot: dict[str, Any]) -> None:
         if self.restore_fails:
             raise RuntimeError("restore indisponível")
@@ -254,6 +257,50 @@ def test_verify_failure_rolls_back(deck_context: DesktopContext, store: StateSto
     assert effect.state == "original"
 
 
+class ReadBackEffect:
+    """O efeito observa rápido no contexto, mas o apply só obriga a releitura.
+
+    ``matches_observed`` (leitura barata de estado pré-mutação) concorda com o
+    perfil alvo; ``verify`` relê o host e revela que a mutação não pegou. A
+    aplicação DEVE usar `verify` — confiar na observação pré-mutação seria um
+    falso verde.
+    """
+
+    name = "read-back-effect"
+
+    def __init__(self) -> None:
+        self.mutated = False
+
+    def available(self, context: DesktopContext) -> bool:
+        return True
+
+    def capture(self, context: DesktopContext) -> dict[str, Any]:
+        return {}
+
+    def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
+        self.mutated = True
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return profile.profile_id == "handheld-desktop"
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return not self.mutated and profile.profile_id == "handheld-desktop"
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        self.mutated = False
+
+
+def test_apply_confirms_by_reread_not_pre_mutation_observation(
+    deck_context: DesktopContext, store: StateStore
+) -> None:
+    effect = ReadBackEffect()
+    coordinator = ExperienceCoordinator(FakeContext(deck_context), (effect,), store)
+    assert coordinator.status()["observedProfile"] == "handheld-desktop"
+    plan = coordinator.plan()
+    with pytest.raises(SteamZeroError, match="E-DESKTOP-VERIFY"):
+        coordinator.apply(plan.plan_id, plan.confirm_token)
+
+
 @pytest.mark.fi
 def test_power_loss_leaves_recoverable_snapshot(
     deck_context: DesktopContext, store: StateStore
@@ -365,6 +412,9 @@ class UniformEffect:
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         return True
 
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return True
+
     def restore(self, snapshot: dict[str, Any]) -> None:
         return None
 
@@ -409,6 +459,9 @@ class ExcludingEffect:
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         return not (self.exclude and profile.profile_id == "handheld-desktop")
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        return self.verify(profile, context)
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         return None

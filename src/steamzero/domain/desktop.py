@@ -78,6 +78,7 @@ class DesktopContext:
     capabilities: frozenset[str]
     conflicts: tuple[str, ...] = ()
     deck_input_keys: bool = False
+    display_probe_error: str = ""
 
     @property
     def external_display(self) -> bool:
@@ -210,7 +211,16 @@ class OwnershipLease:
 
 
 class DesktopEffectPort(Protocol):
-    """Efeito reversível sobre uma parte da sessão Desktop."""
+    """Efeito reversível sobre uma parte da sessão Desktop.
+
+    A verificação tem DOIS caminhos com semânticas distintas desde a
+    assinatura: ``matches_observed`` compara o alvo contra o estado já
+    observado e entregue no contexto (nunca sonda o host de novo); ``verify``
+    relê o host imediatamente — obrigatório depois de um ``apply`` para
+    confirmar que a mutação realmente pegou. Confundir os dois faz o apply
+    confirmar contra um contexto pré-mutação (falso verde) ou pagar um
+    subprocesso redundante para cada perfil numa mera leitura.
+    """
 
     name: str
 
@@ -220,7 +230,18 @@ class DesktopEffectPort(Protocol):
 
     def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None: ...
 
-    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool: ...
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Perfil satisfeito pelo estado JÁ observado em ``context``?
+
+        Nunca toca o host: apenas compara o alvo contra o que o chamador
+        já capturou (ex.: ``context.displays``). Indisponibilidade de
+        observação é erro com causa (raise), nunca ``False`` silencioso.
+        """
+        ...
+
+    def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Relê o host agora e confirma a mutação do ``apply``."""
+        ...
 
     def restore(self, snapshot: dict[str, Any]) -> None: ...
 
@@ -546,7 +567,12 @@ class ExperienceCoordinator:
         return profile_id if profile_id in PROFILE_IDS else None
 
     def _observe_profile(self, context: DesktopContext) -> tuple[str | None, dict[str, Any]]:
-        """Infere o perfil vivo sem converter intenção ou persistência em observação."""
+        """Infere o perfil vivo sem converter intenção ou persistência em observação.
+
+        Uma única observação (``context``) é compartilhada por todos os
+        perfis: cada efeito compara o alvo contra o estado já capturado
+        (`matches_observed`), em vez de reler o host por perfil.
+        """
         errors: list[str] = []
         available_effects: list[DesktopEffectPort] = []
         unavailable: list[str] = []
@@ -567,7 +593,7 @@ class ExperienceCoordinator:
                 matches = True
                 for effect in available:
                     try:
-                        if not effect.verify(profile, context):
+                        if not effect.matches_observed(profile, context):
                             matches = False
                             break
                     except Exception as exc:
@@ -576,6 +602,8 @@ class ExperienceCoordinator:
                         break
                 if matches:
                     candidates.append(profile_id)
+        if context.display_probe_error:
+            errors.append(context.display_probe_error)
         observed = candidates[0] if len(candidates) == 1 else None
         return observed, {
             "checkedEffects": [effect.name for effect in available],

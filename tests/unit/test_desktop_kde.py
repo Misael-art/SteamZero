@@ -34,9 +34,15 @@ from steamzero.adapters.desktop_kde import (
 from steamzero.adapters.desktop_kde import (
     _maliit_language_for as maliit_language_for,
 )
-from steamzero.core.errors import SteamZeroError
+from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
-from steamzero.domain.desktop import PROFILE_HANDHELD, DesktopContext, DisplayState, profile_for
+from steamzero.domain.desktop import (
+    PROFILE_HANDHELD,
+    DesktopContext,
+    DisplayState,
+    ExperienceCoordinator,
+    profile_for,
+)
 
 KSCREEN = """Output: 1 eDP-1 uuid-a
 \tenabled
@@ -1487,3 +1493,92 @@ def test_status_reports_deck_input_keys_state(monkeypatch: pytest.MonkeyPatch) -
     assert context.deck_input_keys is True
     assert "deck-keys-available" in context.capabilities
     assert context.to_dict()["deckInputKeys"] is True
+
+
+def test_observe_shares_one_display_probe_across_profiles(tmp_path: Path) -> None:
+    probes: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        if argv[0] == "kscreen-doctor" and argv[1:] == ("-o",):
+            probes.append(tuple(argv))
+            return CommandResult(0, KSCREEN)
+        if argv[0] == "systemctl":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    def which(command: str) -> str | None:
+        return command if command in {"kscreen-doctor", "systemctl"} else None
+
+    store = StateStore(tmp_path / "state.db")
+    store.migrate()
+    try:
+        coordinator = ExperienceCoordinator(
+            LinuxDesktopContext(runner=runner, which=which),
+            (KDEDisplayEffect(runner=runner, which=which),),
+            store,
+        )
+        coordinator.status()
+    finally:
+        store.close()
+    assert probes == [("kscreen-doctor", "-o")]
+
+
+def test_probe_failure_publishes_cause_and_stays_unknown(tmp_path: Path) -> None:
+    probes: list[tuple[str, ...]] = []
+
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        if argv[0] == "kscreen-doctor" and argv[1:] == ("-o",):
+            probes.append(tuple(argv))
+            return CommandResult(124, "", "display busying")
+        if argv[0] == "systemctl":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    def which(command: str) -> str | None:
+        return command if command in {"kscreen-doctor", "systemctl"} else None
+
+    store = StateStore(tmp_path / "state.db")
+    store.migrate()
+    try:
+        coordinator = ExperienceCoordinator(
+            LinuxDesktopContext(runner=runner, which=which),
+            (KDEDisplayEffect(runner=runner, which=which),),
+            store,
+        )
+        status = coordinator.status()
+        assert status["observedProfile"] is None
+        published = status["observation"]["errors"]
+        assert any("kscreen-doctor" in error for error in published)
+        # A causa da sonda não basta: o código levantado precisa existir no
+        # catálogo. Sem o registro, `build_error` recusa e o usuário lê
+        # "código de erro não registrado" no lugar do motivo real — foi assim
+        # que E-DESKTOP-OBSERVE chegou ao host publicando o meta-erro.
+        assert not any("não registrado no catálogo" in error for error in published)
+        assert build_error("E-DESKTOP-OBSERVE")["title"]
+    finally:
+        store.close()
+    assert probes == [("kscreen-doctor", "-o")]
+
+
+def test_display_probe_memory_skips_rerun_inside_cooldown() -> None:
+    probes = 0
+
+    def runner(argv: Sequence[str], _timeout: float) -> CommandResult:
+        nonlocal probes
+        if argv[0] == "kscreen-doctor":
+            probes += 1
+            return CommandResult(124, "", "display busy")
+        if argv[0] == "systemctl":
+            return CommandResult(0, "")
+        return CommandResult(127, "")
+
+    def which(command: str) -> str | None:
+        return command if command in {"kscreen-doctor", "systemctl"} else None
+
+    context = LinuxDesktopContext(runner=runner, which=which)
+    first = context.snapshot()
+    second = context.snapshot()
+
+    assert probes == 1
+    assert first.display_probe_error == second.display_probe_error != ""
+    assert first.displays == second.displays == ()
