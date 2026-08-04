@@ -4169,3 +4169,23 @@ sempre, então nenhuma atribuição se perde (`6e9ee19`).
 Validação final, com o daemon do host rodando: cinco execuções consecutivas da
 suíte completa, `EXIT=0` nas cinco, 3857 passed cada. `ruff check`,
 `ruff format --check`, `mypy src`, `make independence boundaries`: exit 0.
+
+### Adendo 2 — o flake do bridge é da `main`, não desta branch
+
+Caracterizado por dispatch repetido de CI em 2026-08-04:
+
+| Ref | Execuções | Python 3.11 |
+|---|---|---|
+| `main` | 3 | 2 verdes, 1 vermelha |
+| `codex/fix-state-guard-attribution` | 3 | 1 verde, 2 vermelhas |
+
+Sempre o mesmo teste e o mesmo erro
+(`test_status_keeps_full_emulation_model_across_http_thread`, `TimeoutError` no
+timeout de 3 s do cliente). **A `main` reproduz.** Além disso, no CI o state home
+real não existe (`real-state before: exists=False`), então a thread do watcher
+nem sobe — a mudança é inerte em tempo de execução justamente no job que reprova.
+Somado ao diff sem nenhuma linha de `src/`, a branch está descartada como causa.
+
+Registrado como **G34** em `KNOWN-GAPS.md`: CI ~1 em 3 no 3.11 por teto de parede
+absoluto em runner compartilhado — mesma classe do já fechado G22. Fora do escopo
+desta sessão; não corrigido aqui.
