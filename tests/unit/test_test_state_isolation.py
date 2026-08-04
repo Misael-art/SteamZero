@@ -18,6 +18,7 @@ from run_tests_isolated import (
     _STATE_CHANGE_EXIT,
     _TEST_ROOT_ENV,
     _XDG_LAYOUT,
+    ForeignWriter,
     changed_entries,
     isolated_environment,
     resolve_real_state_home,
@@ -627,4 +628,332 @@ def test_unexpected_exception_with_mutation_reports_and_repropagates(
     assert "E-TEST-REAL-STATE-MUTATED" in stderr_output, (
         f"mutation must be reported via _report_state_change on stderr when "
         f"unexpected exception + mutation occur.\nstderr:\n{stderr_output}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Atribuição da mutação: dono externo do state real vs. vazamento da suíte
+#
+# O daemon instalado (``steamzero-core --systemd``) e comandos ``steamzero`` do
+# operador escrevem no MESMO state home que o guard fotografa. Sem atribuição, o
+# guard culpa o pytest por escrita alheia e o gate fica vermelho de rotina.
+# ---------------------------------------------------------------------------
+
+
+def _write_fake_proc(
+    root: Path, pid: int, *, cmdline: str, environ: dict[str, str], ticks: int
+) -> None:
+    entry = root / str(pid)
+    entry.mkdir(parents=True)
+    (entry / "cmdline").write_bytes(("\0".join(cmdline.split(" ")) + "\0").encode())
+    (entry / "environ").write_bytes(("".join(f"{k}={v}\0" for k, v in environ.items())).encode())
+    # /proc/<pid>/stat: pid (comm) state ... starttime é o campo 22.
+    tail = " ".join(["S"] + ["0"] * 18 + [str(ticks)])
+    (entry / "stat").write_text(f"{pid} (fake proc) {tail} 0 0 0\n", encoding="utf-8")
+
+
+def _fake_writer(
+    pid: int, *, predates: bool, cmd: str = "steamzero-core --systemd"
+) -> ForeignWriter:
+    return ForeignWriter(pid=pid, cmdline=cmd, start_boottime=1.0, predates_window=predates)
+
+
+def _run_with_mutation_and_writers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    writers: list[ForeignWriter],
+    returncode: int = 0,
+) -> int:
+    real_base = tmp_path / "real-state"
+    real_root = real_base / "steamzero"
+    real_root.mkdir(parents=True)
+
+    def mutate(argv, *, env, check):
+        journal = real_root / "journal"
+        journal.mkdir()
+        (journal / "unexpected.jsonl").write_text("mutation", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, returncode)
+
+    monkeypatch.setattr(run_tests_isolated.subprocess, "run", mutate)
+    monkeypatch.setattr(
+        run_tests_isolated,
+        "scan_foreign_writers",
+        lambda root, *, window_start_boottime: {w.pid: w for w in writers},
+    )
+    return run_tests_isolated.run_pytest([], environ={"XDG_STATE_HOME": str(real_base)})
+
+
+def test_external_writer_predating_window_does_not_fail_the_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Daemon do host vivo desde antes da janela: mutação real, culpa que não é da suíte."""
+    result = _run_with_mutation_and_writers(
+        tmp_path, monkeypatch, [_fake_writer(4242, predates=True)], returncode=0
+    )
+
+    assert result == 0, f"dono externo não pode reprovar o gate, got {result}"
+    stderr_output = capsys.readouterr().err
+    assert "W-TEST-REAL-STATE-EXTERNAL-WRITER" in stderr_output
+    assert "pid=4242" in stderr_output, "o guard precisa nomear o processo externo"
+    assert "E-TEST-REAL-STATE-MUTATED" not in stderr_output
+
+
+def test_external_writer_preserves_pytest_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dono externo não pode mascarar teste reprovado."""
+    result = _run_with_mutation_and_writers(
+        tmp_path, monkeypatch, [_fake_writer(4242, predates=True)], returncode=1
+    )
+    assert result == 1
+
+
+def test_process_born_during_window_is_blamed_as_suite_leak(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Processo steamzero nascido dentro da janela é vazamento da suíte: 86."""
+    result = _run_with_mutation_and_writers(
+        tmp_path, monkeypatch, [_fake_writer(5150, predates=False)]
+    )
+
+    assert result == _STATE_CHANGE_EXIT
+    stderr_output = capsys.readouterr().err
+    assert "E-TEST-REAL-STATE-MUTATED" in stderr_output
+    assert "pid=5150" in stderr_output
+    assert "NASCEU durante a janela" in stderr_output
+
+
+def test_suspect_wins_over_external_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Daemon ativo não pode servir de álibi para processo nascido na janela."""
+    result = _run_with_mutation_and_writers(
+        tmp_path,
+        monkeypatch,
+        [_fake_writer(4242, predates=True), _fake_writer(5150, predates=False)],
+    )
+
+    assert result == _STATE_CHANGE_EXIT, "suspeito nascido na janela tem de reprovar"
+    assert "pid=5150" in capsys.readouterr().err
+
+
+def test_mutation_without_writers_still_fails_and_names_operator_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Sem processo observado, o guard mantém 86 e ensina o falso positivo do operador."""
+    result = _run_with_mutation_and_writers(tmp_path, monkeypatch, [])
+
+    assert result == _STATE_CHANGE_EXIT
+    stderr_output = capsys.readouterr().err
+    assert "E-TEST-REAL-STATE-MUTATED" in stderr_output
+    assert "FALSO POSITIVO DO OPERADOR" in stderr_output, (
+        "quem lê o 86 precisa saber, no ponto do erro, que um comando `steamzero` "
+        f"concorrente dispara o guard.\nstderr:\n{stderr_output}"
+    )
+    assert "systemctl --user" in stderr_output
+
+
+def test_intact_state_never_reports_writers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    real_base = tmp_path / "real-state"
+
+    monkeypatch.setattr(
+        run_tests_isolated.subprocess,
+        "run",
+        lambda argv, *, env, check: subprocess.CompletedProcess(argv, 0),
+    )
+    monkeypatch.setattr(
+        run_tests_isolated,
+        "scan_foreign_writers",
+        lambda root, *, window_start_boottime: {4242: _fake_writer(4242, predates=True)},
+    )
+
+    assert run_tests_isolated.run_pytest([], environ={"XDG_STATE_HOME": str(real_base)}) == 0
+    stderr_output = capsys.readouterr().err
+    assert "EXTERNAL-WRITER" not in stderr_output
+    assert "E-TEST-REAL-STATE-MUTATED" not in stderr_output
+
+
+def test_writer_appearing_only_at_window_close_is_still_observed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """A amostra de fechamento tem de entrar na decisão.
+
+    O ``__exit__`` do watcher roda depois do ``finally`` que decide o veredito;
+    sem uma amostra explícita no fechamento, um dono que só aparece no fim da
+    janela some e o gate culpa a suíte por escrita alheia.
+    """
+    real_base = tmp_path / "real-state"
+    real_root = real_base / "steamzero"
+    real_root.mkdir(parents=True)
+    calls: list[int] = []
+
+    def mutate(argv, *, env, check):
+        (real_root / "tocado.jsonl").write_text("mutation", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+
+    def scan_visible_only_after_first_call(root, *, window_start_boottime):
+        calls.append(1)
+        if len(calls) == 1:
+            return {}
+        return {4242: _fake_writer(4242, predates=True)}
+
+    monkeypatch.setattr(run_tests_isolated.subprocess, "run", mutate)
+    monkeypatch.setattr(
+        run_tests_isolated, "scan_foreign_writers", scan_visible_only_after_first_call
+    )
+
+    result = run_tests_isolated.run_pytest([], environ={"XDG_STATE_HOME": str(real_base)})
+
+    assert len(calls) >= 2, "o watcher precisa amostrar também no fechamento da janela"
+    stderr_output = capsys.readouterr().err
+    assert result == 0, (
+        f"dono externo visto na amostra de fechamento não pode reprovar o gate "
+        f"(got {result}).\nstderr:\n{stderr_output}"
+    )
+    assert "pid=4242" in stderr_output
+
+
+def test_scan_finds_steamzero_process_sharing_the_real_state_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    _write_fake_proc(
+        fake_proc,
+        4242,
+        cmdline="/opt/steamzero/current/venv/bin/steamzero-core --systemd",
+        environ={"HOME": str(home)},
+        ticks=100,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    found = run_tests_isolated.scan_foreign_writers(
+        home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+    )
+
+    assert set(found) == {4242}
+    assert found[4242].predates_window is True, "nascido em t=1s, janela em t=500s"
+    assert "steamzero-core" in found[4242].cmdline
+
+
+def test_scan_marks_process_born_after_window_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    _write_fake_proc(
+        fake_proc,
+        4243,
+        cmdline="/usr/local/bin/steamzero doctor",
+        environ={"HOME": str(home)},
+        ticks=99999,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    found = run_tests_isolated.scan_foreign_writers(
+        home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+    )
+
+    assert found[4243].predates_window is False
+
+
+def test_scan_ignores_isolated_suite_processes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Processo com o marcador de isolamento escreve no root temporário, nunca no real."""
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    _write_fake_proc(
+        fake_proc,
+        4244,
+        cmdline="/usr/local/bin/steamzero doctor",
+        environ={"HOME": str(home), _TEST_ROOT_ENV: str(tmp_path / "steamzero-tests-abc")},
+        ticks=100,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    assert (
+        run_tests_isolated.scan_foreign_writers(
+            home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+        )
+        == {}
+    )
+
+
+def test_scan_ignores_process_that_only_mentions_steamzero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mencionar "steamzero" não faz de ninguém dono do state home.
+
+    Um shell, grep ou editor com a palavra na linha de comando viraria um dono
+    externo inventado — e um dono inventado serviria de álibi para uma escrita
+    real da suíte, que é justamente o que o guard existe para pegar.
+    """
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    _write_fake_proc(
+        fake_proc,
+        4247,
+        cmdline="/bin/bash -c grep -rn steamzero /mnt/projeto/src",
+        environ={"HOME": str(home)},
+        ticks=100,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    assert (
+        run_tests_isolated.scan_foreign_writers(
+            home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+        )
+        == {}
+    )
+
+
+def test_scan_accepts_interpreter_running_a_steamzero_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O daemon real é `python3 .../steamzero-core --systemd`: o nome está no argv[1]."""
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    _write_fake_proc(
+        fake_proc,
+        4248,
+        cmdline="/opt/releases/venv/bin/python3 /opt/current/venv/bin/steamzero-core --systemd",
+        environ={"HOME": str(home)},
+        ticks=100,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    found = run_tests_isolated.scan_foreign_writers(
+        home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+    )
+
+    assert set(found) == {4248}
+
+
+def test_scan_ignores_unrelated_and_foreign_state_homes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_proc = tmp_path / "proc"
+    home = tmp_path / "home"
+    # Processo do usuário sem relação com o projeto: mesmo HOME, não é escritor.
+    _write_fake_proc(
+        fake_proc, 4245, cmdline="/usr/bin/firefox", environ={"HOME": str(home)}, ticks=100
+    )
+    # Processo steamzero apontado para OUTRO state home.
+    _write_fake_proc(
+        fake_proc,
+        4246,
+        cmdline="/usr/local/bin/steamzero doctor",
+        environ={"HOME": str(home), "XDG_STATE_HOME": str(tmp_path / "outro")},
+        ticks=100,
+    )
+    monkeypatch.setattr(run_tests_isolated, "_PROC_ROOT", fake_proc)
+
+    assert (
+        run_tests_isolated.scan_foreign_writers(
+            home / ".local" / "state" / "steamzero", window_start_boottime=500.0
+        )
+        == {}
     )
