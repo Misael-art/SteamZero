@@ -219,6 +219,11 @@ MESSAGES: dict[str, str] = {
     "error.E-DESKTOP-RECOVERY.impact": "Novas mudanças ficam bloqueadas para evitar divergência adicional.",
     "error.E-DESKTOP-RECOVERY.cause": "Provider ausente ou estado externo incompatível durante o rollback.",
     "error.E-DESKTOP-RECOVERY.action": "Use o modo seguro e revise os efeitos indicados no diagnóstico.",
+    "error.E-DESKTOP-OBSERVE.title": "Estado do Desktop não observado",
+    "error.E-DESKTOP-OBSERVE.what": "Uma sonda de estado não respondeu e o perfil ativo não pôde ser identificado.",
+    "error.E-DESKTOP-OBSERVE.impact": "Nada foi alterado; o perfil aplicado permanece como está.",
+    "error.E-DESKTOP-OBSERVE.cause": "Provider de display ausente, sem permissão ou excedendo o tempo de resposta.",
+    "error.E-DESKTOP-OBSERVE.action": "Consulte a causa da sonda no diagnóstico e verifique novamente em instantes.",
     # ---- HOST — ativação e convergência -----------------------------------
     "error.E-HOST-RELEASE-MISMATCH.title": "Release ativa diferente da esperada",
     "error.E-HOST-RELEASE-MISMATCH.what": "A release ativada no host não corresponde à solicitada para verificação.",
