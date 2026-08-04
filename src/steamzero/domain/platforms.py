@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -145,7 +146,15 @@ class PlatformRegistry:
             self._items[manifest.id] = manifest
 
     @classmethod
+    @lru_cache(maxsize=1)
     def bundled(cls) -> PlatformRegistry:
+        """Manifestos empacotados, validados uma única vez por processo.
+
+        O snapshot compõe o registry repetidamente (por jogo e por emulador);
+        antes do cache cada chamada relia e revalidava os 36 manifestos contra
+        o schema — ~77 ms por chamada, dezenas de chamadas por snapshot.
+        Os manifestos são estáticos da release: cache é seguro e idempotente.
+        """
         directory = importlib.resources.files("steamzero.platform_manifests")
         manifests: list[PlatformManifest] = []
         for entry in sorted(directory.iterdir(), key=lambda item: item.name):

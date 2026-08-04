@@ -262,6 +262,12 @@ def test_registry_rejects_duplicate_platform_ids() -> None:
         PlatformRegistry([manifest, manifest])
 
 
+def test_bundled_registry_is_cached_per_process() -> None:
+    # O snapshot compõe o registry repetidamente; o cache impede que os 36
+    # manifestos sejam relidos e revalidados contra o schema a cada chamada.
+    assert PlatformRegistry.bundled() is PlatformRegistry.bundled()
+
+
 @settings(max_examples=50, deadline=None)
 @given(
     st.dictionaries(

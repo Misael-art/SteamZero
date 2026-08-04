@@ -8,6 +8,7 @@ import importlib.resources
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from jsonschema import ValidationError
@@ -270,6 +271,7 @@ class AdapterRegistry:
                 )
 
     @classmethod
+    @lru_cache(maxsize=1)
     def bundled(cls) -> AdapterRegistry:
         directory = importlib.resources.files("steamzero.adapters").joinpath("manifests")
         manifests: list[AdapterManifest] = []
