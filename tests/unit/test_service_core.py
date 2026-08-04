@@ -15,6 +15,7 @@ from steamzero.cli import main as cli
 from steamzero.core.errors import SteamZeroError
 from steamzero.service import core
 from steamzero.service.client import (
+    CoreAmbiguousResult,
     CoreProtocolError,
     CoreUnavailable,
     invoke,
@@ -312,6 +313,116 @@ def test_client_falls_back_only_when_connect_never_happened(
     server.close()
     with pytest.raises(CoreUnavailable):
         invoke("doctor.run", {})
+
+
+def _slow_daemon_response(
+    socket_path: Path, delay: float, response: bytes
+) -> tuple[threading.Thread, socket.socket]:
+    """Servidor sintético que responde só depois de ``delay`` segundos."""
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(str(socket_path))
+    socket_path.chmod(0o600)
+    server.listen(1)
+
+    def respond() -> None:
+        connection, _address = server.accept()
+        connection.recv(65536)
+        threading.Event().wait(delay)
+        try:
+            connection.sendall(response)
+        except OSError:
+            pass  # cliente desistiu (timeout curto): quem testa é o cliente
+        finally:
+            connection.close()
+
+    thread = threading.Thread(target=respond)
+    thread.start()
+    return thread, server
+
+
+def test_invoke_waits_for_slow_method_beyond_legacy_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """BUG-01: round-trip de 3 s expirava no timeout fixo de 2,0 s.
+
+    Antes do fix, ``invoke`` com ``emulation.workspace`` estourava em 2,0 s e
+    virava E-API-CONTRACT na tela principal; o MethodSpec agora carrega o
+    timeout da operação (30,0 s), e o round-trip lento completa.
+    """
+    import time
+
+    from steamzero.service.methods import METHODS
+
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    response = b'{"jsonrpc":"2.0","id":1,"result":{"envelope":{"ok":true},"exitCode":0}}\n'
+    thread, server = _slow_daemon_response(socket_path, delay=3.0, response=response)
+    try:
+        spec = METHODS["emulation.workspace"]
+        started = time.monotonic()
+        result = invoke("emulation.workspace", {}, timeout=spec.timeout)
+        elapsed = time.monotonic() - started
+    finally:
+        thread.join(timeout=10)
+        server.close()
+    assert result.exit_code == 0
+    assert elapsed >= 2.5, "resposta só chega depois do antigo timeout de 2,0 s"
+
+
+def test_invoke_short_timeout_raises_ambiguous_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Timeout de transporte é ambiguidade (CoreAmbiguousResult), degradável."""
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    response = b'{"jsonrpc":"2.0","id":1,"result":{"envelope":{"ok":true},"exitCode":0}}\n'
+    thread, server = _slow_daemon_response(socket_path, delay=3.0, response=response)
+    try:
+        with pytest.raises(CoreAmbiguousResult, match="ambíguo"):
+            invoke("emulation.workspace", {}, timeout=0.5)
+    finally:
+        thread.join(timeout=10)
+        server.close()
+
+
+def test_try_daemon_uses_method_timeout_for_slow_workspace(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """BUG-01 no caminho real: ``_try_daemon`` passa o timeout do MethodSpec.
+
+    O daemon sintético leva 3 s para responder — além do antigo timeout fixo de
+    2,0 s. Com o fix, ``_try_daemon("emulation", "workspace")`` completa com o
+    envelope do daemon; sem o fix, ``invoke`` usava 2,0 s e devolvia
+    E-API-CONTRACT (a tela principal quebrava).
+    """
+    import time
+
+    from steamzero.service import client as mod
+
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    response = b'{"jsonrpc":"2.0","id":1,"result":{"envelope":{"ok":true},"exitCode":0}}\n'
+    thread, server = _slow_daemon_response(socket_path, delay=3.0, response=response)
+    monkeypatch.setattr(mod, "verify_generation", lambda **kw: {"sourceCommit": "x"})
+    monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+    try:
+        started = time.monotonic()
+        result = cli._try_daemon("emulation", "workspace", [], "corr-9")
+        elapsed = time.monotonic() - started
+    finally:
+        thread.join(timeout=10)
+        server.close()
+    assert result is not None, "leitura lenta não pode falhar com timeout fixo"
+    envelope, code = result
+    assert code == 0
+    assert envelope["ok"] is True
+    assert elapsed >= 2.5, "resposta só chega depois do antigo timeout de 2,0 s"
 
 
 def test_subscription_client_reconnects_from_confirmed_cursor_without_duplicates(

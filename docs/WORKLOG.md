@@ -4131,3 +4131,193 @@ handler em 4,00 s — ainda acima do timeout default de 2,0 s de `invoke()` em
 `origin/main`, ou seja, o sintoma pelo daemon só fecha com as três juntas, e
 as três ainda não foram medidas em conjunto. Instalação no host e validação
 física seguem pendentes de autorização do operador (§1 do AGENTS.md).
+## 2026-08-04 — Sessão: gate canônico saindo 86 na `main` (atribuição do state real)
+
+Branch `codex/fix-state-guard-attribution`, base `origin/main`
+`1d23cbf598940e376b82e2905979901e93645c52`.
+
+### A premissa da tarefa estava errada
+
+A investigação anterior tratava o exit 86 como vazamento intermitente da suíte e
+já tinha descartado, por bissecção, arquivo único, metades, `test_core_service`
+e `test_fi04_sigkill_subprocess`. Nenhum culpado dentro da suíte existia.
+
+**O autor é o daemon instalado do host** (`steamzero-core --systemd`, pid 135687,
+release `0.1.0a41-d0e45da1fd2d`), que roda com `HOME=/home/misael` e sem
+`XDG_STATE_HOME` — resolvendo para o MESMO state home que o guard fotografa. O
+reconciliador (`service/reconciler.py:101`) grava `session.environment.changed` a
+cada flap de rede/energia (`state.db` + `logs/core.jsonl`), e o `ensure_dir` do
+`AppendWriter` (`core/fs.py:43`) faz `chmod` incondicional que bumpa o **ctime**
+do diretório `logs`. Uma única amostra do daemon muda exatamente as três entradas
+da assinatura relatada.
+
+A intermitência é a irregularidade dos flaps, que vêm em rajadas: 6 mutações em
+6 min de uma janela, depois ~50 min sem nenhuma (incluindo 5 suítes completas com
+o state intocado).
+
+**Prova decisiva:** a própria lógica de snapshot do guard, rodada por 25 min
+**sem pytest algum**, deu `IDLE_MUTATIONS=6` e `GUARD_VERDICT=EXIT=86`.
+
+### O defeito real
+
+O guard media *presença temporal* na janela e reportava *autoria* ("pytest
+alterou o state home original"). As duas coisas divergem sempre que outro dono
+legítimo do state home está ativo — que é o caso permanente num host com a
+release instalada. Por isso o CI sempre foi verde: lá não há daemon.
+
+### Entregue
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Guard atribui a mutação: varre `/proc` por processos steamzero fora do isolamento que resolvam para o mesmo state home; dono anterior à janela → `W-TEST-REAL-STATE-EXTERNAL-WRITER` (não reprova), nascido na janela → 86 | `f3e4914` | `test_external_writer_predating_window_does_not_fail_the_gate`, `test_process_born_during_window_is_blamed_as_suite_leak`, `test_suspect_wins_over_external_writer`, `test_external_writer_preserves_pytest_failure` |
+| Amostra explícita no fechamento da janela (o `__exit__` do watcher roda depois da decisão) | `f3e4914` | `test_writer_appearing_only_at_window_close_is_still_observed` (verificada reprovando sem a correção) |
+| Match restrito ao executável/script (argv[0:2]): mencionar "steamzero" não faz de um shell ou grep um dono do state home | `f3e4914` | `test_scan_ignores_process_that_only_mentions_steamzero`, `test_scan_accepts_interpreter_running_a_steamzero_script` |
+| Mensagem do 86 nomeia suspeitos e abre pelas hipóteses acionáveis, começando pelo falso positivo do operador | `f3e4914` | `test_mutation_without_writers_still_fails_and_names_operator_command` |
+| G33 em `KNOWN-GAPS.md`, com o limite da atribuição degradada | `f3e4914` | — |
+
+Nenhum caminho entrou em lista de exceções e nenhuma escrita foi tolerada por
+path. Zero mudança em `src/` (`git diff origin/main -- src/` vazio).
+
+### Limite conhecido (G33)
+
+Com um dono externo ativo, a atribuição é **degradada**: uma escrita da própria
+suíte ficaria encoberta por ele. O guard diz isso na própria mensagem e recomenda
+rodar com o daemon parado para rigor total. Comando `steamzero` curto do operador
+pode terminar entre duas amostragens (poll de 2 s) e não ser nomeado — por isso a
+mensagem do 86 lista esse falso positivo como primeira hipótese.
+
+### Gates
+
+Cinco execuções consecutivas da suíte completa: `EXIT=0` nas cinco, 3855 passed
+cada. `ruff check`, `ruff format --check`, `mypy src` (206 arquivos) e
+`make independence boundaries`: exit 0. Honestidade sobre o alcance dessa
+evidência: o daemon ficou quieto durante as cinco execuções (state real byte a
+byte idêntico), então elas provam que o gate está verde, **não** que o caminho do
+dono externo funciona em produção. Isso é provado separadamente pelo ensaio ponta
+a ponta com o scan real de `/proc` (dono externo nomeado por pid e argv,
+`GATE_EXIT=0`, state sintético mutado durante a janela) e pelos testes acima.
+
+### Fora de escopo, registrado
+
+- `desktop_kde.py:47` fixa `phasezero-steamdeck-mode-watcher.service` — referência
+  a projeto de pesquisa que o gate de independência não pega (AGENTS.md §7).
+- `test_desktop_ui_bridge.py::test_status_keeps_full_emulation_model_across_http_thread`
+  reprovou uma vez sob carga (timeout de 3 s do cliente em loopback) numa bateria
+  anterior; flakiness pré-existente já registrada neste WORKLOG (linha 3901).
+- State home real com ~1,1 GB de resíduo histórico: **nada foi removido**.
+
+Ações de host executadas: **nenhuma**. Nenhuma instalação, rollback ou mutação de
+release. O daemon foi deixado rodando de propósito, por ser a condição que
+reprovava.
+
+### Adendo da mesma sessão — CI e footprint do watcher
+
+Primeira execução de CI da branch reprovou no Python 3.11 em
+`test_desktop_ui_bridge.py::test_status_keeps_full_emulation_model_across_http_thread`
+(`TimeoutError` no timeout de parede de 3 s do cliente em loopback). Reexecutada,
+a mesma CI ficou **verde nos oito jobs**, incluindo 3.11. A `main` foi verde em
+duas execuções. O mesmo teste flakeou 1 vez em 10 suítes completas locais.
+
+Ou seja: teste flaky sob carga, sem prova de relação com esta mudança (o diff não
+toca `src/`). Mas como não dá para **excluir** que o polling de `/proc` a cada 2 s
+somasse carga, o watcher passou a só rodar onde pode achar algo: se o state home
+real não existe — o caso do CI, que roda em home limpo — não há dono externo
+possível e a thread não sobe. As amostras de abertura e fechamento continuam
+sempre, então nenhuma atribuição se perde (`6e9ee19`).
+
+Validação final, com o daemon do host rodando: cinco execuções consecutivas da
+suíte completa, `EXIT=0` nas cinco, 3857 passed cada. `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries`: exit 0.
+
+### Adendo 2 — o flake do bridge é da `main`, não desta branch
+
+Caracterizado por dispatch repetido de CI em 2026-08-04:
+
+| Ref | Execuções | Python 3.11 |
+|---|---|---|
+| `main` | 3 | 2 verdes, 1 vermelha |
+| `codex/fix-state-guard-attribution` | 3 | 1 verde, 2 vermelhas |
+
+Sempre o mesmo teste e o mesmo erro
+(`test_status_keeps_full_emulation_model_across_http_thread`, `TimeoutError` no
+timeout de 3 s do cliente). **A `main` reproduz.** Além disso, no CI o state home
+real não existe (`real-state before: exists=False`), então a thread do watcher
+nem sobe — a mudança é inerte em tempo de execução justamente no job que reprova.
+Somado ao diff sem nenhuma linha de `src/`, a branch está descartada como causa.
+
+Registrado como **G34** em `KNOWN-GAPS.md`: CI ~1 em 3 no 3.11 por teto de parede
+absoluto em runner compartilhado — mesma classe do já fechado G22. Fora do escopo
+desta sessão; não corrigido aqui.
+
+## 2026-08-04 — Sessão: G34 verificada antes de corrigida (já estava fechada)
+
+Tarefa de verificação. **Nenhuma correção foi escrita**, porque o defeito não
+existe mais.
+
+### O que estava errado no registro da G34
+
+A G34 foi medida sobre `origin/main` e `codex/fix-state-guard-attribution` — e
+**nenhuma das duas contém as PRs #49/#50**. A correção já existia nas PRs
+abertas; as amostras é que foram tiradas de branches sem elas.
+
+A causa nunca foi o teste. `/status` compõe o snapshot inteiro da dashboard e
+custava 3,3–3,75 s contra um teto de 3 s: **margem negativa**. O teste passava
+por sorte, e o CI 3.11 (runner compartilhado, mais lento) simplesmente perdia a
+sorte ~1 em 3.
+
+### Medição própria (não herdada do prompt)
+
+| ref | teto | custo da chamada | resultado local |
+|---|---|---|---|
+| `origin/main` | 3 s | 3,01 s (bate no teto) | **reprova, sem carga alguma** |
+| `main`+#49+#50 (`05f2f0b`) | 10 s | 1,58 s | passa, ~6,3× de margem |
+
+Que `origin/main` reprove localmente **sem carga** é mais forte que o registro
+original sugeria: não era só flakiness de runner, era margem negativa.
+
+### CI — 10 execuções serializadas sobre `05f2f0b`
+
+| # | run | Python 3.11 | duração |
+|---|---|---|---|
+| 1 | 30892569708 | success | 291 s |
+| 2 | 30892960248 | success | 309 s |
+| 3 | 30893358083 | success | 273 s |
+| 4 | 30893785407 | success | 288 s |
+| 5 | 30894184615 | success | 264 s |
+| 6 | 30894558905 | success | 613 s |
+| 7 | 30896242288 | success | 299 s |
+| 8 | 30896755389 | success | 304 s |
+| 9 | 30897145962 | success | 302 s |
+| 10 | 30897585693 | success | 285 s |
+
+**10/10 verdes, zero reprovações.** Se a taxa de ~1 em 3 ainda valesse, isso
+teria ~1,7 % de chance de sair por acaso (`(2/3)^10`). Job 3.11 caiu de ~10 min
+para ~4,8 min (efeito da #50).
+
+Serialização foi obrigatória: `ci.yml` tem `concurrency` com
+`cancel-in-progress`, então disparo concorrente vira cancelamento, não amostra.
+Duas execuções (30896101133, 30896134478) foram canceladas por disparo duplo
+após erro de rede da API e **não foram contadas como verdes** — foram repostas.
+
+Armadilha que quase virou relatório errado: falhas de leitura da API do GitHub
+produziram campos vazios que o script classificou como "FALHA REAL" em dois
+momentos. Consultado o registro autoritativo (`gh run list`), os dois runs eram
+`success`. Campo vazio não é reprovação — conferir antes de reportar.
+
+### Entregue
+
+| Item | Commit | Evidência |
+|---|---|---|
+| G34 fechada em `KNOWN-GAPS.md`, com causa real e as 10 execuções | este | tabela acima |
+| G35 registrada (P3): `timeout=10` ainda é teto de parede absoluto em runner compartilhado — mesma classe da G22 | este | — |
+
+**Não** foi alterada nenhuma linha de teste para fechar a G34, e o teto não foi
+aumentado de novo: a lacuna fechou por correção de custo em produção (#50).
+
+### Ressalva
+
+A closure só vale **quando #49 e #50 forem mergeadas**. Enquanto abertas, a
+`main` segue com teto de 3 s e com o flake. A branch de verificação
+`verify/g34-pr49-50` (`05f2f0b` = `main`+#49+#50) fica como artefato da medição.
+
+Ações de host: **nenhuma**.

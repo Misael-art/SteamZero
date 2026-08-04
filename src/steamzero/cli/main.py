@@ -1892,12 +1892,19 @@ def main(argv: list[str] | None = None) -> int:
 def _try_daemon(
     domain: str, action: str | None, args: list[str], correlation_id: str
 ) -> tuple[dict[str, Any], int] | None:
-    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente."""
+    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente.
+
+    Leitura pode degradar para o caminho local quando o transporte é ambíguo
+    (timeout/resposta sem resultado determinístico) ou a geração diverge;
+    recusa de segurança do socket nunca degrada.
+    """
     if os.environ.get("STEAMZERO_NO_DAEMON") == "1":
         return None
     from steamzero.service.client import (
+        CoreAmbiguousResult,
         CoreGenerationMismatch,
         CoreProtocolError,
+        CoreSecurityRefusal,
         CoreUnavailable,
         invoke,
         verify_generation,
@@ -1920,6 +1927,19 @@ def _try_daemon(
         verify_generation()
     except CoreUnavailable:
         return None
+    except CoreSecurityRefusal as exc:
+        # Socket inseguro não é ausência de daemon: nunca degrada, nem leitura.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
     except CoreProtocolError:
         return None
     except CoreGenerationMismatch as exc:
@@ -1942,9 +1962,41 @@ def _try_daemon(
         )
 
     try:
-        invocation = invoke(spec.method, params)
+        invocation = invoke(spec.method, params, timeout=spec.timeout)
     except CoreUnavailable:
         return None
+    except CoreSecurityRefusal as exc:
+        # Socket inseguro nunca degrada, nem leitura (mesma política do handshake).
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    except CoreAmbiguousResult:
+        if not spec.mutation:
+            # Leitura interrompida no transporte: o daemon pode ter executado ou
+            # não, mas leitura não tem efeito — degradar é seguro, resposta
+            # correta vem do caminho local, código desta mesma geração.
+            return None
+        # Mutação NUNCA é repetida localmente quando o resultado é ambíguo —
+        # repetir é como se produz efeito duplicado.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail="resultado da chamada é ambíguo"),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
     except CoreProtocolError as exc:
         return (
             build_envelope(

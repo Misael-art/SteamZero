@@ -218,3 +218,106 @@ class TestCliRefusesMutationOnMismatch:
 
         domain, action = self._arrange(monkeypatch, mutation=False)
         assert cli._try_daemon(domain, action, [], "corr-2") is None
+
+
+class TestCliDegradesReadOnAmbiguousTransport:
+    """BUG-01: timeout do transporte virou E-API-CONTRACT na tela principal.
+
+    Um round-trip interrompido (timeout, resposta ausente, resultado tipado
+    inválido) é ``CoreAmbiguousResult``: o daemon pode ter executado ou não.
+    Leitura não tem efeito — degradar para o caminho local é seguro.
+    """
+
+    def _arrange(self, monkeypatch: pytest.MonkeyPatch, *, mutation: bool) -> tuple[str, str]:
+        from types import SimpleNamespace
+
+        from steamzero.service import client as mod
+        from steamzero.service.methods import CLI_METHODS
+
+        def _ambiguous(*_args: Any, **_kw: Any) -> None:
+            raise mod.CoreAmbiguousResult("resultado da chamada é ambíguo")
+
+        monkeypatch.setattr(mod, "verify_generation", lambda **kw: {"sourceCommit": "x"})
+        monkeypatch.setattr(mod, "invoke", _ambiguous)
+        monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+        key = ("fake", "acao")
+        monkeypatch.setitem(
+            CLI_METHODS,
+            key,
+            SimpleNamespace(
+                method="fake.acao",
+                mutation=mutation,
+                timeout=2.0,
+                args_to_params=lambda _a, _c: {},
+            ),
+        )
+        return key
+
+    def test_read_degrades_to_local(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from steamzero.cli import main as cli
+
+        domain, action = self._arrange(monkeypatch, mutation=False)
+        assert cli._try_daemon(domain, action, [], "corr-3") is None
+
+    def test_mutation_never_degrades_on_ambiguity(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Repetir localmente uma mutação ambígua produz efeito duplicado."""
+        from steamzero.cli import main as cli
+
+        domain, action = self._arrange(monkeypatch, mutation=True)
+        result = cli._try_daemon(domain, action, [], "corr-4")
+        assert result is not None, "mutação ambígua não pode cair no caminho local"
+        envelope, code = result
+        assert code == cli.EXIT_FAILURE
+        assert envelope["error"]["code"] == "E-API-CONTRACT"
+        assert "ambíguo" in envelope["error"]["detail"]
+
+
+class TestCliNeverDegradesSecurityRefusal:
+    """Socket inseguro não é ausência de daemon: é condição de segurança.
+
+    Recusa de segurança NUNCA degrada, nem leitura — degradar esconderia um
+    socket substituído (symlink/ownership alheio) atrás de um resultado local.
+    """
+
+    def _arrange(self, monkeypatch: pytest.MonkeyPatch, *, in_handshake: bool) -> tuple[str, str]:
+        from types import SimpleNamespace
+
+        from steamzero.service import client as mod
+        from steamzero.service.methods import CLI_METHODS
+
+        def _refuse(*_args: Any, **_kw: Any) -> None:
+            raise mod.CoreSecurityRefusal("socket local possui ownership ou permissões inseguras")
+
+        monkeypatch.setattr(
+            mod,
+            "verify_generation",
+            _refuse if in_handshake else lambda **kw: {"sourceCommit": "x"},
+        )
+        monkeypatch.setattr(mod, "invoke", _refuse)
+        monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+        key = ("fake", "acao")
+        monkeypatch.setitem(
+            CLI_METHODS,
+            key,
+            SimpleNamespace(
+                method="fake.acao",
+                mutation=False,
+                timeout=2.0,
+                args_to_params=lambda _a, _c: {},
+            ),
+        )
+        return key
+
+    @pytest.mark.parametrize("in_handshake", [False, True])
+    def test_security_refusal_never_degrades_even_for_reads(
+        self, monkeypatch: pytest.MonkeyPatch, in_handshake: bool
+    ) -> None:
+        from steamzero.cli import main as cli
+
+        domain, action = self._arrange(monkeypatch, in_handshake=in_handshake)
+        result = cli._try_daemon(domain, action, [], "corr-5")
+        assert result is not None, "recusa de segurança não pode degradar"
+        envelope, code = result
+        assert code == cli.EXIT_FAILURE
+        assert envelope["error"]["code"] == "E-API-CONTRACT"
+        assert "inseguras" in envelope["error"]["detail"]

@@ -85,3 +85,19 @@ def test_optional_profile_and_choices_are_validated() -> None:
         desktop.params_to_args({"profile": "turbo"})
     with pytest.raises(InvalidParams, match="valor inválido"):
         desktop.args_to_params(["--profile", "turbo"], "correlation")
+
+
+def test_method_specs_carry_per_method_transport_timeout() -> None:
+    """BUG-01: o round-trip de emulation.workspace mede ~13,3 s no host.
+
+    O timeout do transporte é por método: leituras leves seguem com 2,0 s;
+    operações lentas conhecidas declaram teto verificado (30,0 s).
+    """
+    by_method = {spec.method: spec for spec in METHOD_SPECS}
+    assert by_method["emulation.workspace"].timeout == 30.0
+    assert by_method["doctor.run"].timeout == 30.0
+    fast = ("jobs.list", "session.status", "cloud.launch", "controls.apply")
+    for method in fast:
+        assert by_method[method].timeout == 2.0
+    for spec in METHOD_SPECS:
+        assert spec.timeout > 0.0
