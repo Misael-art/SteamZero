@@ -4072,7 +4072,7 @@ Validação física pendente (operador): revisão da PR, merge e teste físico d
 boot da linha de tema. Suíte completa: 3842 passed; cobertura 86.42% (sem
 regressão); mypy 205 arquivos; fronteiras e independência 0 violações.
 
-## 2026-08-03 — PR #51: latência real do coordinator Desktop (status 12,07 s → 1,29 s)
+## 2026-08-03 — PR #52: latência real do coordinator Desktop (status 12,07 s → 1,29 s)
 
 Sessão (branch `codex/fix-desktop-coordinator-latency`, base `1d23cbf`).
 Causa raiz: `status()` pagava 4 subprocessos `kscreen-doctor -o` (1 do
