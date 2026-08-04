@@ -4072,6 +4072,65 @@ Validação física pendente (operador): revisão da PR, merge e teste físico d
 boot da linha de tema. Suíte completa: 3842 passed; cobertura 86.42% (sem
 regressão); mypy 205 arquivos; fronteiras e independência 0 violações.
 
+## 2026-08-03 — PR #52: latência real do coordinator Desktop (status 12,07 s → 1,29 s)
+
+Sessão (branch `codex/fix-desktop-coordinator-latency`, base `1d23cbf`).
+Causa raiz: `status()` pagava 4 subprocessos `kscreen-doctor -o` (1 do
+`LinuxDesktopContext.snapshot` + 3 das `verify` dos perfis), cada um batendo
+o timeout de 3,0 s no host (o comando nunca retorna em `WAYLAND_DISPLAY=wayland-0`).
+
+Mudanças:
+
+- `domain/desktop.py`: protocolo `DesktopEffectPort` separa `matches_observed`
+  (compara contra o estado JÁ observado no `context`, nunca toca o host) de
+  `verify` (relê o host, obrigatório depois do `apply`). `_observe_profile`
+  usa `matches_observed`; `_apply_locked` continua com `verify`. Novo campo
+  `DesktopContext.display_probe_error` (fora do `to_dict` — não muda o schema).
+- `adapters/desktop_kde.py`: `KDEDisplayEffect.matches_observed` decide só do
+  `context.displays` (zero subprocesso); sonda com memória de indisponibilidade
+  (cooldown 10 s por instância, timeout reduzido 3,0 → 1,25 s) e causa
+  publicada quando rc ∈ {124, 126, 127} → `observedProfile: null` com erro em
+  `observation.errors` (antes: silêncio com `errors=[]`). Demais efeitos
+  ganham `matches_observed` delegando a `verify` (leitura barata).
+- `core/errors.py` + `i18n/messages_pt_br.py`: registro de `E-DESKTOP-OBSERVE`
+  no catálogo. Sem ele o código levantado pela sonda não passava por
+  `build_error`, e a primeira linha publicada em `observation.errors` era
+  `"código de erro não registrado no catálogo: 'E-DESKTOP-OBSERVE'"` — o
+  meta-erro no lugar do motivo. Os quatro gates não pegavam: o teste da etapa
+  afirmava apenas que a causa aparecia em ALGUM item da lista, e ela aparecia,
+  no segundo. Mesma reincidência do GAP-G19.
+- Testes novos: sonda única por `status()`; falha de sonda publica causa **e não
+  vaza meta-erro de catálogo**; cooldown evita re-sondagem; trap do apply que
+  confia em observação pré-mutação (falso verde) reprova `E-DESKTOP-VERIFY`.
+
+Medição no host, com o código do checkout (venv editable — medir NÃO exige
+instalar release; só certificar exige):
+
+| | antes | depois |
+|---|---:|---:|
+| `_desktop_coordinator().status()` | 12,07 s | 1,29 s |
+| handler `emulation workspace` | 13,31 s | 4,00 s |
+
+Três execuções cada. O ganho vem da sonda única mais o timeout reduzido; o
+cooldown de 10 s **não chega a atuar** no caminho CLI/daemon, porque
+`build_desktop_coordinator()` cria efeitos novos a cada chamada e a memória
+vive na instância — três `status()` no mesmo processo custaram 1,29 / 1,30 /
+1,29 s. Mantido por ser correto para consumidores de instância longa, mas não
+é ele que produz o número acima.
+
+Gates: ruff, `ruff format --check`, mypy (206 arquivos), independência e
+fronteiras 0 violações.
+
+Fora de escopo: não mexi no `verify` do apply (relê com 3,0 s de propósito),
+nem na sondagem quando `kscreen-doctor` está ausente (sem capacidade). Por que
+`kscreen-doctor -o` pendura neste host é anomalia do KDE, não do SteamZero.
+
+Pendente: esta branch parte de `1d23cbf` e **não** contém as PRs #49 (timeout
+por método) nem #50 (cache de registries), ambas abertas. Sozinha, ela deixa o
+handler em 4,00 s — ainda acima do timeout default de 2,0 s de `invoke()` em
+`origin/main`, ou seja, o sintoma pelo daemon só fecha com as três juntas, e
+as três ainda não foram medidas em conjunto. Instalação no host e validação
+física seguem pendentes de autorização do operador (§1 do AGENTS.md).
 ## 2026-08-04 — Sessão: gate canônico saindo 86 na `main` (atribuição do state real)
 
 Branch `codex/fix-state-guard-attribution`, base `origin/main`
