@@ -540,7 +540,11 @@ def request_json(
         method="GET" if payload is None else "POST",
         headers={"X-SteamZero-Token": token, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=3) as response:  # noqa: S310 - loopback fixture
+    # BUG-01: /status compõe o snapshot inteiro da dashboard (emulação + jogos +
+    # recursos); medido em 3,3-3,75 s em máquina de dev sem carga e o timeout de
+    # 3 s estourava no CI (Python 3.11, runner compartilhado) - a Manifestação B.
+    # 10 s = pior caso medido (~3,8 s) x ~2,5 de margem para CI compartilhado.
+    with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - loopback fixture
         loaded: dict[str, object] = json.loads(response.read())
         return loaded
 

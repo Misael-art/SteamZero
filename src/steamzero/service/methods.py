@@ -32,6 +32,7 @@ class MethodSpec:
     action: str | None
     fields: tuple[Field, ...] = ()
     mutation: bool = False
+    timeout: float = 2.0
 
     def params_to_args(self, params: object) -> list[str]:
         if params is None:
@@ -118,7 +119,8 @@ _ORIENTATION = Field(
 _ACTION_JSON = Field("actionJson", "--action-json")
 
 METHOD_SPECS: tuple[MethodSpec, ...] = (
-    MethodSpec("doctor.run", "doctor", None),
+    # doctor.run varre o host inteiro; os testes já o invocam com timeout=10.
+    MethodSpec("doctor.run", "doctor", None, timeout=30.0),
     MethodSpec("jobs.list", "jobs", "list", (_LIMIT, _CURSOR, _STATE)),
     MethodSpec("operations.list", "operations", "list", (_LIMIT, _CURSOR)),
     MethodSpec("operations.show", "operations", "show", (_OPERATION_ID,)),
@@ -200,7 +202,10 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("desktop.apply", "desktop", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("desktop.reset", "desktop", "reset", (_PLAN_ID, _CONFIRM), mutation=True),
     MethodSpec("desktop.recover", "desktop", "recover", mutation=True),
-    MethodSpec("emulation.workspace", "emulation", "workspace"),
+    # BUG-01: workspace compõe o estado de emulação inteiro; medido em ~13,3 s
+    # no host (13.28/13.32/13.33 s com timeout=60 → ready). O default de 2,0 s
+    # expirava e virava E-API-CONTRACT. 30,0 s é o teto verificado do round-trip.
+    MethodSpec("emulation.workspace", "emulation", "workspace", timeout=30.0),
     MethodSpec("cloud.list", "cloud", "list"),
     MethodSpec("cloud.launch", "cloud", "launch", (_PLATFORM_ID,), mutation=True),
     MethodSpec("cloud.plan", "cloud", "plan", mutation=True),

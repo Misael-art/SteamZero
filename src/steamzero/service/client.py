@@ -26,6 +26,23 @@ class CoreProtocolError(RuntimeError):
     """Resposta do daemon não respeita o contrato JSON-RPC."""
 
 
+class CoreAmbiguousResult(CoreProtocolError):
+    """Round-trip interrompido ou resposta sem resultado determinístico.
+
+    O daemon pode ter executado a chamada ou não. Para leitura o chamador
+    pode degradar para o caminho local (código desta mesma geração); mutação
+    nunca é repetida localmente.
+    """
+
+
+class CoreSecurityRefusal(CoreProtocolError):
+    """Socket local com ownership ou permissões inseguras.
+
+    Não é ausência de daemon: é condição de segurança. Nunca degrada — a
+    chamada falha com a causa declarada.
+    """
+
+
 class CoreGenerationMismatch(RuntimeError):
     """O daemon em execução pertence a outra geração da release.
 
@@ -134,7 +151,7 @@ def _call(
         client.sendall(request)
         payload = _read_line(client)
     except OSError as exc:
-        raise CoreProtocolError("resultado da chamada é ambíguo") from exc
+        raise CoreAmbiguousResult("resultado da chamada é ambíguo") from exc
     finally:
         client.close()
     try:
@@ -152,7 +169,7 @@ def _call(
         raise CoreProtocolError(f"daemon recusou a chamada: {error}")
     result = response.get("result")
     if not isinstance(result, dict):
-        raise CoreProtocolError("resultado ausente")
+        raise CoreAmbiguousResult("resultado ausente")
     return result
 
 
@@ -161,7 +178,7 @@ def invoke(method: str, params: dict[str, str], *, timeout: float = 2.0) -> Invo
     envelope = result.get("envelope")
     exit_code = result.get("exitCode")
     if not isinstance(envelope, dict) or not isinstance(exit_code, int):
-        raise CoreProtocolError("resultado tipado inválido")
+        raise CoreAmbiguousResult("resultado tipado inválido")
     return Invocation(envelope=envelope, exit_code=exit_code)
 
 
@@ -276,7 +293,7 @@ def _connect(timeout: float) -> socket.socket:
     try:
         path = safe_socket_path()
     except PermissionError as exc:
-        raise CoreProtocolError("socket local possui ownership ou permissões inseguras") from exc
+        raise CoreSecurityRefusal("socket local possui ownership ou permissões inseguras") from exc
     try:
         metadata = path.lstat()
     except OSError as exc:
@@ -287,7 +304,7 @@ def _connect(timeout: float) -> socket.socket:
         or metadata.st_uid != os.getuid()
         or metadata.st_mode & 0o077
     ):
-        raise CoreProtocolError("socket local possui ownership ou permissões inseguras")
+        raise CoreSecurityRefusal("socket local possui ownership ou permissões inseguras")
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client.settimeout(timeout)
     try:
