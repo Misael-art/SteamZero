@@ -4189,3 +4189,76 @@ Somado ao diff sem nenhuma linha de `src/`, a branch está descartada como causa
 Registrado como **G34** em `KNOWN-GAPS.md`: CI ~1 em 3 no 3.11 por teto de parede
 absoluto em runner compartilhado — mesma classe do já fechado G22. Fora do escopo
 desta sessão; não corrigido aqui.
+
+## 2026-08-04 — Sessão: G34 verificada antes de corrigida (já estava fechada)
+
+Tarefa de verificação. **Nenhuma correção foi escrita**, porque o defeito não
+existe mais.
+
+### O que estava errado no registro da G34
+
+A G34 foi medida sobre `origin/main` e `codex/fix-state-guard-attribution` — e
+**nenhuma das duas contém as PRs #49/#50**. A correção já existia nas PRs
+abertas; as amostras é que foram tiradas de branches sem elas.
+
+A causa nunca foi o teste. `/status` compõe o snapshot inteiro da dashboard e
+custava 3,3–3,75 s contra um teto de 3 s: **margem negativa**. O teste passava
+por sorte, e o CI 3.11 (runner compartilhado, mais lento) simplesmente perdia a
+sorte ~1 em 3.
+
+### Medição própria (não herdada do prompt)
+
+| ref | teto | custo da chamada | resultado local |
+|---|---|---|---|
+| `origin/main` | 3 s | 3,01 s (bate no teto) | **reprova, sem carga alguma** |
+| `main`+#49+#50 (`05f2f0b`) | 10 s | 1,58 s | passa, ~6,3× de margem |
+
+Que `origin/main` reprove localmente **sem carga** é mais forte que o registro
+original sugeria: não era só flakiness de runner, era margem negativa.
+
+### CI — 10 execuções serializadas sobre `05f2f0b`
+
+| # | run | Python 3.11 | duração |
+|---|---|---|---|
+| 1 | 30892569708 | success | 291 s |
+| 2 | 30892960248 | success | 309 s |
+| 3 | 30893358083 | success | 273 s |
+| 4 | 30893785407 | success | 288 s |
+| 5 | 30894184615 | success | 264 s |
+| 6 | 30894558905 | success | 613 s |
+| 7 | 30896242288 | success | 299 s |
+| 8 | 30896755389 | success | 304 s |
+| 9 | 30897145962 | success | 302 s |
+| 10 | 30897585693 | success | 285 s |
+
+**10/10 verdes, zero reprovações.** Se a taxa de ~1 em 3 ainda valesse, isso
+teria ~1,7 % de chance de sair por acaso (`(2/3)^10`). Job 3.11 caiu de ~10 min
+para ~4,8 min (efeito da #50).
+
+Serialização foi obrigatória: `ci.yml` tem `concurrency` com
+`cancel-in-progress`, então disparo concorrente vira cancelamento, não amostra.
+Duas execuções (30896101133, 30896134478) foram canceladas por disparo duplo
+após erro de rede da API e **não foram contadas como verdes** — foram repostas.
+
+Armadilha que quase virou relatório errado: falhas de leitura da API do GitHub
+produziram campos vazios que o script classificou como "FALHA REAL" em dois
+momentos. Consultado o registro autoritativo (`gh run list`), os dois runs eram
+`success`. Campo vazio não é reprovação — conferir antes de reportar.
+
+### Entregue
+
+| Item | Commit | Evidência |
+|---|---|---|
+| G34 fechada em `KNOWN-GAPS.md`, com causa real e as 10 execuções | este | tabela acima |
+| G35 registrada (P3): `timeout=10` ainda é teto de parede absoluto em runner compartilhado — mesma classe da G22 | este | — |
+
+**Não** foi alterada nenhuma linha de teste para fechar a G34, e o teto não foi
+aumentado de novo: a lacuna fechou por correção de custo em produção (#50).
+
+### Ressalva
+
+A closure só vale **quando #49 e #50 forem mergeadas**. Enquanto abertas, a
+`main` segue com teto de 3 s e com o flake. A branch de verificação
+`verify/g34-pr49-50` (`05f2f0b` = `main`+#49+#50) fica como artefato da medição.
+
+Ações de host: **nenhuma**.
