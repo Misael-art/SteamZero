@@ -815,6 +815,22 @@ def test_writer_appearing_only_at_window_close_is_still_observed(
     assert "pid=4242" in stderr_output
 
 
+def test_watcher_skips_polling_when_real_state_home_is_absent(tmp_path: Path) -> None:
+    """Sem state home real (o caso do CI) o gate não paga thread de polling."""
+    watcher = run_tests_isolated._WriterWatcher(tmp_path / "inexistente", window_start_boottime=0.0)
+    with watcher:
+        assert not watcher._thread.is_alive(), "não deve haver polling sem state home real"
+    assert watcher.writers == {}
+
+
+def test_watcher_polls_when_real_state_home_exists(tmp_path: Path) -> None:
+    real_root = tmp_path / "steamzero"
+    real_root.mkdir()
+    watcher = run_tests_isolated._WriterWatcher(real_root, window_start_boottime=0.0)
+    with watcher:
+        assert watcher._thread.is_alive(), "com state home real, o polling precisa rodar"
+
+
 def test_scan_finds_steamzero_process_sharing_the_real_state_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -297,12 +297,18 @@ class _WriterWatcher:
 
     def __enter__(self) -> _WriterWatcher:
         self.sample()
-        self._thread.start()
+        # Sem state home real não há dono externo possível — é o caso do CI, que
+        # roda em home limpo. Amostrar a abertura e o fechamento basta, e o gate
+        # não paga uma thread de polling durante a suíte inteira à toa. Se a
+        # suíte criar o state home, o delta reprova de qualquer forma.
+        if self._root.exists():
+            self._thread.start()
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self._stop.set()
-        self._thread.join(timeout=5.0)
+        if self._thread.is_alive():
+            self._thread.join(timeout=5.0)
 
     @property
     def writers(self) -> dict[int, ForeignWriter]:
