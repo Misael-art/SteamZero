@@ -131,6 +131,12 @@ def test_bundled_registry_is_locked_without_manifest_drift() -> None:
     ]
 
 
+def test_bundled_registry_is_cached_per_process() -> None:
+    # O snapshot consulta o registry por emulador e por jogo; o cache evita
+    # reler e revalidar todos os manifestos + lockfile a cada chamada.
+    assert AdapterRegistry.bundled() is AdapterRegistry.bundled()
+
+
 def test_lockfile_manifest_drift_is_rejected() -> None:
     manifest = load_manifest(portable_manifest("1.0.0", b"v1"))
     source = manifest.sources[0]
