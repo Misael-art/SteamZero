@@ -113,6 +113,45 @@ Spawn = Callable[[Sequence[str]], int | None]
 ProcessWaiter = Callable[[int], int]
 
 
+def editorial_platform_index(
+    registry: PlatformRegistry, games: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """Projeta todos os manifestos para a navegação editorial, sem inferências.
+
+    A central técnica continua centrada no workspace Switch. Esta projeção
+    separada torna cada plataforma canônica navegável no tema, mesmo quando não
+    há ROM publicada, e só associa jogos cujo ``platform`` já foi determinado
+    pela varredura de biblioteca.
+    """
+    by_platform: dict[str, list[dict[str, Any]]] = {}
+    for game in games:
+        platform_id = game.get("platform")
+        if not isinstance(platform_id, str):
+            continue
+        by_platform.setdefault(platform_id, []).append(dict(game))
+
+    rows: list[dict[str, Any]] = []
+    for manifest in registry.list():
+        platform_games = by_platform.get(manifest.id, [])
+        has_games = bool(platform_games)
+        rows.append(
+            {
+                "id": manifest.id,
+                "name": manifest.name,
+                "shortName": manifest.short_name,
+                "games": platform_games,
+                "state": "ready" if has_games else "unverified",
+                "statusLabel": (
+                    "Jogos inventariados" if has_games else "Nenhum jogo inventariado"
+                ),
+                "readiness": {"percent": 100 if has_games else 0},
+                "requirements": {},
+                "subsystems": [],
+            }
+        )
+    return rows
+
+
 class SessionSecretStore:
     """SecretStorePort em memória (sessão atual apenas).
 
@@ -550,6 +589,12 @@ class EmulationController:
         workspace["platforms"] = [
             composed_cloud.get(str(row["id"]), row) for row in workspace["platforms"]
         ]
+        # O workspace técnico preserva a superfície Switch. A biblioteca
+        # editorial recebe em paralelo o índice completo de manifests e nunca
+        # precisa criar plataformas a partir dos nomes de diretórios locais.
+        workspace["editorialPlatforms"] = editorial_platform_index(
+            PlatformRegistry.bundled(), games
+        )
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows

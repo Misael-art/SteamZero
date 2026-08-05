@@ -95,7 +95,8 @@ Item {
             "subsystems": [],
             "requirements": ({})
         })
-        const platforms = emulation && emulation.platforms ? emulation.platforms : []
+        const platforms = emulation && emulation.editorialPlatforms
+            ? emulation.editorialPlatforms : (emulation && emulation.platforms ? emulation.platforms : [])
         for (let i = 0; i < platforms.length; ++i) {
             const platform = platforms[i]
             rows.push({
@@ -141,7 +142,8 @@ Item {
                 "launchReason": ""
             })
         }
-        const platforms = emulation && emulation.platforms ? emulation.platforms : []
+        const platforms = emulation && emulation.editorialPlatforms
+            ? emulation.editorialPlatforms : (emulation && emulation.platforms ? emulation.platforms : [])
         for (let p = 0; p < platforms.length; ++p) {
             const platform = platforms[p]
             const platformGames = platform.games || []

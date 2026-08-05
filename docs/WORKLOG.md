@@ -4665,3 +4665,15 @@ Quick.
 Validação dirigida: 16 testes QML handheld/offscreen verdes e inspeção visual
 em 800×1280 com alto contraste e movimento reduzido. Nenhuma ação de host,
 release ou push foi executada.
+
+## 2026-08-05 — Índice editorial de plataformas canônicas
+
+O read model editorial agora projeta todos os manifests canônicos, inclusive
+plataformas sem ROM inventariada. Jogos só entram na plataforma cujo ID já foi
+determinado pela varredura; itens sem classificação permanecem fora da jornada
+em vez de serem associados por nome de diretório. O workspace técnico de Switch
+não foi alterado.
+
+Validação dirigida: 17 testes de índice editorial e QML handheld/offscreen,
+`ruff`, `mypy` e `make independence boundaries` verdes. Nenhuma ação de host,
+release ou push foi executada.
