@@ -62,6 +62,7 @@ from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
+from steamzero.domain.bios_catalog import BiosLibrary
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import (
@@ -402,6 +403,7 @@ class EmulationController:
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
+        self._bios_library = BiosLibrary()
         self._running_pids: dict[str, int] = {}
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
@@ -469,6 +471,30 @@ class EmulationController:
 
     def close(self) -> None:
         self.close_request_context()
+
+    # -- BIOS v2 -----------------------------------------------------------
+    # These endpoints are intentionally separate from ``plan_action``: scan is
+    # read-only and import plans carry their own source/catalog fingerprints.
+    def bios_scan(self, source: Path) -> dict[str, Any]:
+        return self._bios_library.scan(source)
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, Any]:
+        return self._bios_library.scan_status(scan_id)
+
+    def bios_import_plan(self, scan_id: str, selection: list[str] | None = None) -> dict[str, Any]:
+        return self._bios_library.import_plan(scan_id, selection)
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._bios_library.import_apply(plan_id, confirm_token)
+
+    def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._bios_library.import_rollback(operation_id)
+
+    def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
+        return self._bios_library.status(platform_id)
+
+    def bios_audit(self) -> dict[str, Any]:
+        return self._bios_library.audit()
 
     @property
     def _roots_path(self) -> Path:

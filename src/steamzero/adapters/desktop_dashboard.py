@@ -712,6 +712,27 @@ class DesktopDashboard:
     def rollback_emulation_action(self, operation_id: str) -> dict[str, Any]:
         return self._emulation.rollback_action(operation_id)
 
+    def bios_scan(self, source: str) -> dict[str, Any]:
+        return self._emulation.bios_scan(Path(source))
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, Any]:
+        return self._emulation.bios_scan_status(scan_id)
+
+    def bios_import_plan(self, scan_id: str, selection: list[str] | None = None) -> dict[str, Any]:
+        return self._emulation.bios_import_plan(scan_id, selection)
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.bios_import_apply(plan_id, confirm_token)
+
+    def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback(operation_id)
+
+    def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
+        return self._emulation.bios_status(platform_id)
+
+    def bios_audit(self) -> dict[str, Any]:
+        return self._emulation.bios_audit()
+
     def scan_emulation_library(self) -> dict[str, Any]:
         return self._emulation.scan_library()
 

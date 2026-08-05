@@ -715,6 +715,20 @@ class StateStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def save_bios_object(self, item: dict[str, Any]) -> None:
+        """Upsert an immutable CAS object; its full hash never enters logs."""
+        self._conn.execute(
+            "INSERT INTO bios_object (sha256,size,state,last_validated,operation_id) "
+            "VALUES (:sha256,:size,:state,:last_validated,:operation_id) "
+            "ON CONFLICT(sha256) DO UPDATE SET size=excluded.size,state=excluded.state, "
+            "last_validated=excluded.last_validated,operation_id=excluded.operation_id",
+            item,
+        )
+
+    def list_bios_objects(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM bios_object ORDER BY sha256").fetchall()
+        return [dict(row) for row in rows]
+
     # -- keys/firmware (nunca hash completo; só hash_truncated — SR-14) ------
     def save_firmware_key_item(self, item: dict[str, Any]) -> None:
         cols = (
