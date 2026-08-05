@@ -4552,3 +4552,15 @@ controller), `ruff`, `mypy`, `make independence boundaries` e
 `git diff --check` verdes. A suíte integral foi iniciada fora do `tmpfs`
 saturado, mas interrompida após erros preexistentes de integração; nenhuma ação
 de host, release ou push foi executada.
+
+## 2026-08-05 — Probe real de provedores de mídia
+
+O teste autenticado do SteamGridDB passou depois de trocar o App ID inexistente
+do probe por um jogo Steam estável. A credencial do ScreenScraper existe, mas o
+probe oficial recebeu cota indisponível (HTTP 403); o provider permanece em
+fallback e nenhum download ou publicação de mídia foi iniciado. Valores de
+credenciais nunca foram exibidos ou persistidos.
+
+Validação dirigida: 47 testes de adapters/credenciais verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
