@@ -55,6 +55,14 @@ Domínios (Fase 1):
   operations rollback-apply aplica rollback confirmado (--plan-id ID --confirm TOKEN)
   events page            lê eventos paginados (--cursor SEQ --limit N)
   state export [--out F] exporta o State Store (JSON)
+  state audit            audita jobs stalados e artefatos órfãos (read-only)
+  state cleanup-plan     planeja quarentena dos órfãos (digest, bytes, prazo 60min)
+  state cleanup-apply    move para quarentena isolada (--plan-id ID --confirm TOKEN)
+  state cleanup-status   inspeciona uma quarentena (--cleanup-id ID, read-only)
+  state cleanup-restore-plan  planeja devolver da quarentena (--cleanup-id ID)
+  state cleanup-restore-apply devolve confirmado (--plan-id ID --confirm TOKEN)
+  state cleanup-purge-plan    planeja expurgo; recusa antes de 7 dias (--cleanup-id ID)
+  state cleanup-purge-apply   expurga em definitivo (--plan-id ID --confirm TOKEN)
   component list         lista componentes roteados pela fonte (engine/Flatpak)
   component status      mostra um componente (--id ADAPTER)
   component plan        planeja install/update/uninstall (--id ADAPTER [--action A])
@@ -562,14 +570,15 @@ def _cmd_state_audit(_args: list[str], correlation_id: str) -> tuple[dict[str, A
 
 
 def _cmd_state_cleanup_plan(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    # G25/A42 fase 1: plano de quarentena dos artefatos órfãos. Persiste plano
-    # com token; o operador revisa antes da fase 2. Não muta artefatos.
-    from steamzero.domain import state_audit
+    # A42 fase 1: plano de quarentena dos artefatos órfãos, com digest, bytes e
+    # prazo. Persiste plano com token; o operador revisa antes da fase 2. Não
+    # muta artefatos.
+    from steamzero.domain import state_audit, state_cleanup
 
     with StateStore() as store:
         store.migrate()
         report = state_audit.audit(store)
-    data = state_audit.plan_cleanup(report)
+    data = state_cleanup.plan(report)
     env = build_envelope(
         "state", "cleanup-plan", status="ok", data=data, correlation_id=correlation_id
     )
@@ -577,16 +586,89 @@ def _cmd_state_cleanup_plan(_args: list[str], correlation_id: str) -> tuple[dict
 
 
 def _cmd_state_cleanup_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    # G25/A42 fase 2: move artefatos órfãos para quarentena (recoverable, nunca
-    # deleta). Requer --plan-id + --confirm do plano revisado. Aplicação no host
-    # exige autorização humana (AGENTS.md §1).
-    from steamzero.domain import state_audit
+    # A42 fase 2: move artefatos órfãos para quarentena isolada por operação
+    # (recoverable, nunca deleta). Requer --plan-id + --confirm do plano
+    # revisado. Aplicação no host exige autorização humana (AGENTS.md §1).
+    from steamzero.domain import state_cleanup
 
     plan_id = _required_flag(args, "--plan-id")
     confirm_token = _required_flag(args, "--confirm")
-    data = state_audit.apply_cleanup(plan_id, confirm_token)
+    data = state_cleanup.apply(plan_id, confirm_token)
+    # Falha parcial cujo rollback também falhou não pode sair como sucesso.
+    failed = data.get("status") == "failed"
     env = build_envelope(
-        "state", "cleanup-apply", status="ok", data=data, correlation_id=correlation_id
+        "state",
+        "cleanup-apply",
+        status="failed" if failed else "ok",
+        ok=not failed,
+        data=data,
+        correlation_id=correlation_id,
+    )
+    return env, (EXIT_FAILURE if failed else EXIT_OK)
+
+
+def _cmd_state_cleanup_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # Read-only: inspeciona o manifesto da quarentena, ou o tombstone quando a
+    # operação já foi expurgada. Não muta nada.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.status(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-status", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_restore_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.plan_restore(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-restore-plan", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_restore_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.apply_restore(
+        _required_flag(args, "--plan-id"), _required_flag(args, "--confirm")
+    )
+    env = build_envelope(
+        "state", "cleanup-restore-apply", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_purge_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    # Recusa antes dos sete dias de retenção. Não existe flag de bypass.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.plan_purge(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-purge-plan", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_purge_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    # Irreversível: revalida cada digest e deixa só um tombstone sem conteúdo.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.apply_purge(
+        _required_flag(args, "--plan-id"), _required_flag(args, "--confirm")
+    )
+    env = build_envelope(
+        "state", "cleanup-purge-apply", status="ok", data=data, correlation_id=correlation_id
     )
     return env, EXIT_OK
 
@@ -1710,6 +1792,11 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("state", "audit"): _cmd_state_audit,
     ("state", "cleanup-plan"): _cmd_state_cleanup_plan,
     ("state", "cleanup-apply"): _cmd_state_cleanup_apply,
+    ("state", "cleanup-status"): _cmd_state_cleanup_status,
+    ("state", "cleanup-restore-plan"): _cmd_state_cleanup_restore_plan,
+    ("state", "cleanup-restore-apply"): _cmd_state_cleanup_restore_apply,
+    ("state", "cleanup-purge-plan"): _cmd_state_cleanup_purge_plan,
+    ("state", "cleanup-purge-apply"): _cmd_state_cleanup_purge_apply,
     ("component", "list"): _cmd_component_list,
     ("component", "status"): _cmd_component_status,
     ("component", "plan"): _cmd_component_plan,

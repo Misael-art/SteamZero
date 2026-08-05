@@ -116,7 +116,16 @@ def test_valid_bundle_binds_version_commit_and_run(tmp_path: Path) -> None:
 
 
 def test_package_version_reads_the_real_source() -> None:
-    assert release_host._package_version() == "0.1.0a41"
+    """O parse por regex precisa concordar com o import — não é tautologia.
+
+    ``_package_version`` lê ``__init__.py`` por expressão regular, sem importar
+    o pacote; comparar com ``steamzero.__version__`` cruza dois caminhos
+    independentes até a mesma verdade. Antes o valor era cravado no teste, o que
+    exigia editá-lo a cada bump e não provava nada além do literal.
+    """
+    import steamzero
+
+    assert release_host._package_version() == steamzero.__version__
 
 
 def test_bundle_rejects_tampered_wheel(tmp_path: Path) -> None:
