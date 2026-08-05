@@ -16,7 +16,7 @@ import hashlib
 import json
 import warnings
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -35,6 +35,7 @@ class MediaRecord:
     height: int | None
     has_alpha: bool | None
     bytes: int
+    mtime_ns: int
     sha256: str | None
     perceptual_hash: str | None
     classification: str
@@ -65,7 +66,37 @@ def _iter_files(root: Path) -> Iterable[Path]:
         yield path
 
 
-def inspect_media(root: Path, *, max_files: int | None = None) -> list[MediaRecord]:
+def load_checkpoint(path: Path) -> dict[str, MediaRecord]:
+    """Lê registros JSONL válidos de uma execução anterior, sem tocar no acervo."""
+    if not path.is_file() or path.is_symlink():
+        return {}
+    records: dict[str, MediaRecord] = {}
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                record = MediaRecord(**json.loads(line))
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            records[record.relative_path] = record
+    return records
+
+
+def append_checkpoint(path: Path, record: MediaRecord) -> None:
+    """Acrescenta um resultado atômico por linha; pode ser retomado após Ctrl-C."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(asdict(record), ensure_ascii=False, separators=(",", ":")))
+        handle.write("\n")
+        handle.flush()
+
+
+def inspect_media(
+    root: Path,
+    *,
+    max_files: int | None = None,
+    cached: Mapping[str, MediaRecord] | None = None,
+    on_record: Callable[[MediaRecord], None] | None = None,
+) -> list[MediaRecord]:
     """Lê metadados e hashes; não cria nenhum arquivo sob ``root``."""
     records: list[MediaRecord] = []
     for path in _iter_files(root):
@@ -74,58 +105,69 @@ def inspect_media(root: Path, *, max_files: int | None = None) -> list[MediaReco
         relative = path.relative_to(root).as_posix()
         category = relative.split("/", 1)[0]
         try:
-            size = path.stat().st_size
+            stat = path.stat()
+            size = stat.st_size
         except OSError as exc:
-            records.append(
-                MediaRecord(
-                    relative, category, None, None, None, None, 0, None, None,
-                    "D_DUPLICATE_OR_INVALID", type(exc).__name__
-                )
+            record = MediaRecord(
+                relative, category, None, None, None, None, 0, 0, None, None,
+                "D_DUPLICATE_OR_INVALID", type(exc).__name__
             )
+            records.append(record)
+            if on_record is not None:
+                on_record(record)
+            continue
+        previous = (cached or {}).get(relative)
+        if (
+            previous is not None
+            and previous.bytes == size
+            and previous.mtime_ns == stat.st_mtime_ns
+        ):
+            records.append(previous)
             continue
         if path.suffix.casefold() not in _IMAGE_SUFFIXES:
-            records.append(
-                MediaRecord(
-                    relative, category, None, None, None, None, size, None, None,
-                    "D_DUPLICATE_OR_INVALID", "unsupported-format"
-                )
+            record = MediaRecord(
+                relative, category, None, None, None, None, size, stat.st_mtime_ns, None, None,
+                "D_DUPLICATE_OR_INVALID", "unsupported-format"
             )
-            continue
-        try:
-            with Image.open(path) as image:
-                # Pillow avisa sobre uma conversão interna de transparência de
-                # paleta. Ela é esperada e ``image.info`` preserva o fato de
-                # haver alpha para o relatório.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore",
-                        message="Palette images with Transparency expressed in bytes.*",
-                        category=UserWarning,
-                    )
-                    image.load()
-                    perceptual_hash = _perceptual_hash(image)
-                records.append(
-                    MediaRecord(
-                        relative_path=relative,
-                        category=category,
-                        format=image.format,
-                        width=image.width,
-                        height=image.height,
-                        has_alpha="A" in image.getbands() or "transparency" in image.info,
-                        bytes=size,
-                        sha256=_hash_file(path),
-                        perceptual_hash=perceptual_hash,
-                        classification="C_REFERENCE_UNVERIFIED",
-                    )
-                )
-        except (OSError, UnidentifiedImageError, ValueError) as exc:
-            records.append(
-                MediaRecord(
-                    relative, category, None, None, None, None, size, None, None,
-                    "D_DUPLICATE_OR_INVALID", type(exc).__name__
-                )
-            )
+        else:
+            record = _inspect_image(path, relative, category, size, stat.st_mtime_ns)
+        records.append(record)
+        if on_record is not None:
+            on_record(record)
     return _mark_duplicates(records)
+
+
+def _inspect_image(
+    path: Path, relative: str, category: str, size: int, mtime_ns: int
+) -> MediaRecord:
+    try:
+        with Image.open(path) as image:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="Palette images with Transparency expressed in bytes.*",
+                    category=UserWarning,
+                )
+                image.load()
+                perceptual_hash = _perceptual_hash(image)
+            return MediaRecord(
+                relative_path=relative,
+                category=category,
+                format=image.format,
+                width=image.width,
+                height=image.height,
+                has_alpha="A" in image.getbands() or "transparency" in image.info,
+                bytes=size,
+                mtime_ns=mtime_ns,
+                sha256=_hash_file(path),
+                perceptual_hash=perceptual_hash,
+                classification="C_REFERENCE_UNVERIFIED",
+            )
+    except (OSError, UnidentifiedImageError, ValueError) as exc:
+        return MediaRecord(
+            relative, category, None, None, None, None, size, mtime_ns, None, None,
+            "D_DUPLICATE_OR_INVALID", type(exc).__name__
+        )
 
 
 def _mark_duplicates(records: list[MediaRecord]) -> list[MediaRecord]:
@@ -192,6 +234,11 @@ def main() -> int:
     parser.add_argument("root", type=Path, help="raiz externa somente leitura")
     parser.add_argument("--output", type=Path, help="arquivo JSON de relatório (opcional)")
     parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        help="arquivo JSONL fora do acervo para retomar uma auditoria interrompida",
+    )
+    parser.add_argument(
         "--max-files", type=int, help="limita a amostra; omita para auditar tudo"
     )
     parser.add_argument(
@@ -202,7 +249,18 @@ def main() -> int:
         parser.error("root precisa ser um diretório real, não um link simbólico")
     if args.max_files is not None and args.max_files < 1:
         parser.error("--max-files precisa ser positivo")
-    report = build_report(inspect_media(args.root, max_files=args.max_files))
+    cached = load_checkpoint(args.checkpoint) if args.checkpoint is not None else {}
+    records = inspect_media(
+        args.root,
+        max_files=args.max_files,
+        cached=cached,
+        on_record=(
+            (lambda record: append_checkpoint(args.checkpoint, record))
+            if args.checkpoint is not None
+            else None
+        ),
+    )
+    report = build_report(records)
     if args.output is not None:
         args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     payload = report["summary"] if args.summary_only else report

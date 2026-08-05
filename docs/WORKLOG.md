@@ -4614,6 +4614,18 @@ Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
 
+## 2026-08-05 — Auditoria externa retomável
+
+A auditoria de mídia externa agora aceita checkpoint JSONL fora do repositório.
+Cada registro é reutilizado somente quando tamanho e `mtime_ns` conferem,
+permitindo retomar SHA-256 e assinatura perceptual após uma interrupção sem
+reler imagens já verificadas. O checkpoint contém somente o catálogo local do
+operador e não é versionado; o acervo continua estritamente read-only.
+
+Validação: amostra real retomada sem reprocessar os 50 arquivos já registrados,
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
 ## 2026-08-05 — Verificação visual de receitas editoriais
 
 O harness QML passou a provar a ordem de source e `fit` de uma receita sem
