@@ -155,8 +155,25 @@ def test_effect_namespace_round_trips_with_its_own_version() -> None:
 def test_renderer_uses_one_source_and_never_accepts_a_theme_shader() -> None:
     component = Path("src/steamzero/ui/qml/MediaEffectLayer.qml").read_text(encoding="utf-8")
     assert component.count("source: root.source") == 1
-    assert "source: mediaSource" in component
-    assert "ShaderEffect" not in component
+    assert "source: mediaTexture" in component
+    assert "ShaderEffect {" not in component
+    assert "ReflectionLayer" in component
+    assert "VignetteLayer" in component
+
+
+def test_default_renderer_negotiates_trusted_reflection_and_gradient_mask() -> None:
+    stacks = {
+        "media": (
+            EffectSpec.from_dict({"type": "reflection", "opacity": 0.3, "scale": 0.2}),
+            EffectSpec.from_dict({"type": "gradientMask", "start": 0.8, "end": 0.1}),
+        )
+    }
+    effects, diagnostics = resolve_effect_stacks(stacks)
+    assert not diagnostics
+    assert [effect.type for effect in effects["media"]] == [
+        EffectType.REFLECTION,
+        EffectType.GRADIENT_MASK,
+    ]
 
 
 def test_media_recipe_selects_one_published_source_without_io() -> None:

@@ -4677,3 +4677,17 @@ não foi alterado.
 Validação dirigida: 17 testes de índice editorial e QML handheld/offscreen,
 `ruff`, `mypy` e `make independence boundaries` verdes. Nenhuma ação de host,
 release ou push foi executada.
+
+## 2026-08-05 — Reflexo, máscara e vinheta no renderer confiável
+
+O `MediaEffectLayer` agora reaproveita uma única textura capturada da mídia para
+renderizar reflexão espelhada com máscara de alpha gradiente e vinheta
+procedural. `graphics.effect.reflection` e `graphics.mask.gradient` passaram a
+ser capabilities anunciadas somente porque há implementação local confiável;
+nenhum manifesto pode fornecer shader, path adicional ou código. A cor do glow
+também passa a ser aplicada pela própria entrada de glow, não pela sombra.
+
+Validação dirigida: 15 testes de Theme API, harness QML dedicado de efeitos,
+captura offscreen inspecionada com mídia sintética e `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

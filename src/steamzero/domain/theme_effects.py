@@ -137,9 +137,8 @@ _RULES: dict[EffectType, _EffectRule] = {
 ALL_EFFECT_CAPABILITIES = frozenset(rule.capability for rule in _RULES.values()) | frozenset(
     {"graphics.palette.dynamic"}
 )
-# A implementação QML atual usa MultiEffect. Máscara e reflexão ficam
-# declaradas, mas não são anunciadas até terem uma primitiva confiável no
-# renderer; assim um tema nunca recebe uma fidelidade que o runtime não possui.
+# A implementação QML usa MultiEffect e fontes de máscara locais geradas pelo
+# renderer. Nenhum tema pode fornecer shader ou fonte adicional.
 DEFAULT_RENDERER_CAPABILITIES = frozenset(
     {
         "graphics.effect.blur",
@@ -147,6 +146,8 @@ DEFAULT_RENDERER_CAPABILITIES = frozenset(
         "graphics.effect.colorize",
         "graphics.effect.shadow",
         "graphics.effect.glow",
+        "graphics.effect.reflection",
+        "graphics.mask.gradient",
     }
 )
 
