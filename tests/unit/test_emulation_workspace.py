@@ -52,6 +52,13 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     assert set(platform["areaData"]) == {area["id"] for area in platform["areas"]}
     assert platform["emulators"][0]["name"] == "Eden"
     assert platform["emulators"][0]["state"] == "ready"
+    assert len(payload["canonicalExperiences"]) == 155
+    assert (
+        next(item for item in payload["canonicalExperiences"] if item["id"] == "game-boy-color")[
+            "technicalPlatformId"
+        ]
+        == "nintendo-handheld"
+    )
     assert len(payload["platforms"]) == 36
     assert payload["platforms"][1]["areas"][0]["id"] == "overview"
     cloud_platforms = [p for p in payload["platforms"] if p.get("cloud")]

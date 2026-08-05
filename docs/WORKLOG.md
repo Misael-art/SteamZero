@@ -4321,3 +4321,27 @@ A closure só vale **quando #49 e #50 forem mergeadas**. Enquanto abertas, a
 `verify/g34-pr49-50` (`05f2f0b` = `main`+#49+#50) fica como artefato da medição.
 
 Ações de host: **nenhuma**.
+
+## 2026-08-05 — Sessão: catálogo canônico básico de experiências
+
+Separada a identidade histórica apresentada pelo tema da plataforma técnica que
+executa o conteúdo. Os 36 manifests operacionais permanecem compatíveis; o novo
+catálogo versionado publica 155 experiências com tipo, grupo, runtime, relação
+pai, plataforma técnica e estado honesto (`supported`, `experimental`,
+`planned` ou `unavailable`). Nenhuma experiência foi marcada `certified` sem
+certificação física.
+
+| Item | Commit | Evidência |
+|---|---|---|
+| Schema e registry fechados do catálogo canônico | este | testes de unicidade, pais e referências técnicas |
+| N64DD, Sega CD 32X, Jaguar CD, PS4, MSU-1, MD+/MSU-MD, arcade, PC, engines e lojas | este | 155 entradas validadas pelo schema |
+| Catálogo publicado no workspace e exposto ao tema | este | `test_emulation_workspace.py` e contrato JSON |
+
+Gates: 3916 testes passaram; Ruff check e format-check, mypy (210 módulos),
+independência, boundaries e matriz de capabilities limpos. A primeira execução
+integral encontrou 14 colisões de socket UNIX causadas pelo caminho temporário
+longo da aplicação; o arquivo afetado passou 39/39 e a suíte integral passou
+3916/3916 com `TMPDIR=/tmp/szcan-tests`, sem alteração dos testes envolvidos.
+
+Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
+executado**.
