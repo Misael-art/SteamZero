@@ -145,9 +145,15 @@ produto.
 ## Proveniência
 
 As seis imagens e layouts externos foram somente auditados como referência
-visual read-only: a hierarquia focal, o espaço negativo e o índice alfabético
-informaram a direção; textura, fontes, logos e mídia não foram copiados. A
-implementação atual não adiciona assets. A mídia permanece do usuário,
-gerenciada pelo store existente; fixtures sintéticas continuam restritas aos
-testes. Qualquer asset futuro exige registro de autor, licença, atribuição e
-transformação antes de entrar no tema builtin.
+visual read-only. Decisões mantidas: uma capa focal, vizinhos com peso visual
+reduzido, metadados próximos à seleção, espaço negativo que separa navegação de
+detalhe e trilho alfabético. Decisões descartadas: marcas de terceiros,
+relógio/data decorativos, ilustrações de controle, marcas d'água de sistema,
+texturas de fundo e qualquer arte/mídia de jogo presente nas referências.
+
+Esses princípios aparecem na composição mineral e nos componentes próprios do
+SteamZero, não como reprodução de uma tela de referência. A implementação atual
+não adiciona assets. A mídia permanece do usuário, gerenciada pelo store
+existente; fixtures sintéticas continuam restritas aos testes. Qualquer asset
+futuro exige registro de autor, licença, atribuição e transformação antes de
+entrar no tema builtin.

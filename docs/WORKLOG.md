@@ -4725,3 +4725,14 @@ contrato semântico e não passe a capturar `Keys` diretamente.
 Validação dirigida: 16 testes de Theme API, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria das referências editoriais
+
+As seis referências visuais locais foram abertas somente para leitura. A análise
+reteve foco central, periferia atenuada, metadados próximos e trilho alfabético;
+descartou qualquer marca, arte de jogo, textura, relógio, data ou diagrama de
+controle de terceiros. A Design Bible agora registra essas decisões e confirma
+que nenhuma referência foi importada.
+
+Validação: inspeção visual read-only e `git diff --check`. Nenhuma ação de
+host, release ou push foi executada.
