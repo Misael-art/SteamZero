@@ -4577,3 +4577,15 @@ relatório completo, que requer tempo proporcional ao acervo.
 Validação: amostra real de 50 arquivos processada, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Fila de mídia por plataforma inventariada
+
+O job global de mídia passou a propagar o `platform` factual de cada jogo
+inventariado para a identidade de busca. O fallback para Switch permanece só
+para caches legados sem esse campo. Assim, uma pesquisa real não reclassifica
+um jogo de outra plataforma como Switch; renderização continua sem rede e a
+execução permanece no job persistente/cancelável existente.
+
+Validação dirigida: 16 testes de mídia multiprovider verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

@@ -5270,6 +5270,7 @@ class EmulationController:
         game_id = params["game_id"]
         title_id = params["title_id"]
         title = params["title"]
+        platform_slug = str(params.get("platform_slug") or "switch")
         media_kinds = params.get("media_kinds")
         kinds = media_kinds or [
             "grid",
@@ -5296,7 +5297,7 @@ class EmulationController:
         identity = GameIdentity(
             game_id=game_id,
             title=title,
-            platform_slug="switch",
+            platform_slug=platform_slug,
             title_id=title_id,
         )
         all_candidates: list[MediaCandidate] = []
@@ -5512,6 +5513,7 @@ class EmulationController:
                             "game_id": game_id,
                             "title_id": title_id,
                             "title": title,
+                            "platform_slug": str(game.get("platform") or "switch"),
                             "media_kinds": None,
                             "local_media_source": str(game.get("mediaSource") or "fallback"),
                             "local_media_url": local_url,
