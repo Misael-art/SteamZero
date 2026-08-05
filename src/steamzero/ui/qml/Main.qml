@@ -5149,6 +5149,7 @@ ApplicationWindow {
                             sync: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
                                 ? root.desktopStatus.dashboard.sync : ({})
                             effectStacks: root._themeBridge.effectStacks
+                            mediaRecipes: root._themeBridge.mediaRecipes
                             backgroundColor: root.backgroundColor
                             surfaceColor: root.surfaceColor
                             raisedColor: root.raisedColor

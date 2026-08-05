@@ -4601,3 +4601,15 @@ backdrop contextual e capas focada/periférica com fallbacks determinísticos.
 Validação dirigida: 63 testes de temas/effects verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Runtime editorial das receitas de mídia
+
+`EditorialLibrary` agora consome as receitas resolvidas pelo Theme API para
+escolher uma source já publicada, o `fillMode` e a pilha de efeitos por papel
+visual. Backdrop contextual, capa focada e capa periférica preservam os
+fallbacks anteriores quando o tema não declara receitas. O QML não consulta
+rede/disco e continua usando uma única source por camada.
+
+Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

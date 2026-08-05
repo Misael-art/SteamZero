@@ -21,6 +21,7 @@ Item {
     property var steamGameplay: ({})
     property var sync: ({})
     property var effectStacks: ({})
+    property var mediaRecipes: ({})
     required property color backgroundColor
     required property color surfaceColor
     required property color raisedColor
@@ -40,6 +41,41 @@ Item {
 
     signal launchSteamRequested(string gameId)
     signal openSteamConfigurationRequested(string gameId)
+
+    function mediaRecipe(role) {
+        return mediaRecipes && mediaRecipes[role] ? mediaRecipes[role] : ({})
+    }
+
+    function recipeFillMode(role) {
+        return mediaRecipe(role).fit === "contain" ? Image.PreserveAspectFit
+            : Image.PreserveAspectCrop
+    }
+
+    function recipeEffects(role, fallbackStack) {
+        const stack = String(mediaRecipe(role).effectStack || fallbackStack)
+        return effectStacks[stack] || []
+    }
+
+    function recipeMediaSource(game, role) {
+        const source = game || ({})
+        const values = {
+            "hero": source.heroUrl || "",
+            "fanart": source.heroUrl || "",
+            "cover": source.coverUrl || "",
+            "screenshot": source.screenshotUrl || "",
+            "banner": source.bannerUrl || "",
+            "platformArt": "",
+            "geometric": ""
+        }
+        const fallback = role === "contextualBackdrop"
+            ? ["hero", "fanart", "cover", "screenshot", "banner"] : ["cover"]
+        const order = mediaRecipe(role).sourceOrder || fallback
+        for (let i = 0; i < order.length; ++i) {
+            if (values[order[i]])
+                return values[order[i]]
+        }
+        return ""
+    }
 
     // `systems` é a primeira vista da jornada. A entrada Steam é construída
     // apenas quando o read model existe; as demais vêm do catálogo de
@@ -416,10 +452,10 @@ Item {
     MediaEffectLayer {
         id: contextualBackdrop
         anchors.fill: parent
-        visible: !root.highContrast && root.contextualMediaSource(root.selectedGame) !== ""
-        source: root.contextualMediaSource(root.selectedGame)
-        fillMode: Image.PreserveAspectCrop
-        effects: root.effectStacks.contextualBackdrop || []
+        visible: !root.highContrast && root.recipeMediaSource(root.selectedGame, "contextualBackdrop") !== ""
+        source: root.recipeMediaSource(root.selectedGame, "contextualBackdrop")
+        fillMode: root.recipeFillMode("contextualBackdrop")
+        effects: root.recipeEffects("contextualBackdrop", "contextualBackdrop")
         opacity: root.highContrast ? 0 : 0.34
     }
     Rectangle {
@@ -968,10 +1004,11 @@ Item {
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
-                                    fillMode: Image.PreserveAspectCrop
+                                    fillMode: root.recipeFillMode(index === root.selectedIndex
+                                        ? "focusedCover" : "peripheralCover")
                                     effects: index === root.selectedIndex
-                                        ? (root.effectStacks.focusedCover || [])
-                                        : (root.effectStacks.peripheralCover || [])
+                                        ? root.recipeEffects("focusedCover", "focusedCover")
+                                        : root.recipeEffects("peripheralCover", "peripheralCover")
                                     opacity: index === root.selectedIndex ? 1 : root.themePeripheralOpacity
                                 }
                                 NavigationIcon {
@@ -1038,8 +1075,8 @@ Item {
                                     anchors.fill: parent
                                     source: modelData.coverUrl
                                     visible: modelData.coverUrl !== ""
-                                    fillMode: Image.PreserveAspectCrop
-                                    effects: root.effectStacks.peripheralCover || []
+                                    fillMode: root.recipeFillMode("peripheralCover")
+                                    effects: root.recipeEffects("peripheralCover", "peripheralCover")
                                 }
                                 NavigationIcon {
                                     anchors.centerIn: parent
