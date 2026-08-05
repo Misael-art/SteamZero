@@ -51,6 +51,12 @@ Window {
             {"id": "20", "name": "Fixture Steam Two", "coverUrl": "", "state": "installed"}
         ]
         emulation: ({
+            "editorialPlatforms": [
+                {"id": "switch", "name": "Fixture Switch", "state": "attention",
+                    "statusLabel": "BIOS pendente", "games": [{"id": "rom-1", "name": "Fixture ROM"}]},
+                {"id": "playstation", "name": "Fixture PlayStation", "state": "unverified",
+                    "statusLabel": "Nenhum jogo inventariado", "games": []}
+            ],
             "platforms": [{"id": "switch", "name": "Fixture Switch", "state": "attention",
                 "statusLabel": "BIOS pendente", "games": [{"id": "rom-1", "name": "Fixture ROM"}]}]
         })
@@ -92,8 +98,9 @@ Window {
                 check(home.collectionItems.length === 1
                       && home.primaryCollection.id === "fixture-collection",
                       "coleções devem vir do read model publicado")
-                check(home.systems.length === 2, "Home deve publicar sistemas reais")
-                check(home.attentionSystems.length === 1, "pendência deve refletir estado da plataforma")
+                check(home.systems.length === 3 && home.systems[2].id === "playstation",
+                      "Home deve publicar plataformas canônicas sem jogo inventado")
+                check(home.attentionSystems.length === 2, "pendência deve refletir estado da plataforma")
                 check(home.componentAttention === 1 && home.syncAttention === 2 && home.libraryAttention === 1,
                       "Home deve resumir somente pendências operacionais publicadas")
                 home.libraryRequested("switch")

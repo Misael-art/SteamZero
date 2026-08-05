@@ -4736,3 +4736,14 @@ que nenhuma referência foi importada.
 
 Validação: inspeção visual read-only e `git diff --check`. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Índice canônico também na Home
+
+`EditorialHome` passou a consumir `editorialPlatforms`, com fallback compatível
+ao read model técnico anterior. Assim, Home e Biblioteca mostram as mesmas
+plataformas canônicas; plataforma sem ROM permanece visível com contagem zero,
+sem categoria ou jogo sintético.
+
+Validação dirigida: harness QML da Home, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

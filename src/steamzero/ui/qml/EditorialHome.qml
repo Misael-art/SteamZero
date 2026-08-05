@@ -42,6 +42,8 @@ Item {
 
     readonly property int minimumTarget: Math.max(48, themeMinimumTarget)
     readonly property bool compact: width < 980
+    readonly property var editorialPlatforms: emulation && emulation.editorialPlatforms
+        ? emulation.editorialPlatforms : (emulation && emulation.platforms ? emulation.platforms : [])
     readonly property var catalog: {
         const rows = []
         const steam = steamGames || []
@@ -57,7 +59,7 @@ Item {
                 "launchable": /^[0-9]+$/.test(String(game.id || ""))
             })
         }
-        const platforms = emulation && emulation.platforms ? emulation.platforms : []
+        const platforms = editorialPlatforms
         for (let p = 0; p < platforms.length; ++p) {
             const platform = platforms[p]
             const games = platform.games || []
@@ -92,7 +94,7 @@ Item {
             "detail": (steamGames || []).length > 0 ? qsTr("Biblioteca disponível")
                 : qsTr("Nenhum jogo Steam publicado")
         }]
-        const platforms = emulation && emulation.platforms ? emulation.platforms : []
+        const platforms = editorialPlatforms
         for (let i = 0; i < platforms.length; ++i) {
             const platform = platforms[i]
             rows.push({
