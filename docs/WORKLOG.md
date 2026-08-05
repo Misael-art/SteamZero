@@ -4626,6 +4626,20 @@ Validação: amostra real retomada sem reprocessar os 50 arquivos já registrado
 `ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
 Nenhuma ação de host, release ou push foi executada.
 
+## 2026-08-05 — Matriz integral do acervo visual externo
+
+A auditoria integral terminou no cache privado do operador: 16.191 arquivos,
+14.142 PNG, 1.802 JPEG, 14 WEBP e 233 itens não suportados; 13.883 imagens
+possuem alpha. Foram identificados 2.377 grupos de hash exato e 2.271 grupos
+perceptuais. A matriz conserva 5.641 itens como referência sem proveniência
+verificada e marca 10.550 como duplicados ou inválidos; A/B permanecem zero.
+O auditor recusa decodificar imagens acima de 64 milhões de pixels para evitar
+expansão de memória. Relatórios e checkpoints permanecem fora do repositório.
+
+Validação: execução integral retomável, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
 ## 2026-08-05 — Verificação visual de receitas editoriais
 
 O harness QML passou a provar a ordem de source e `fit` de uma receita sem

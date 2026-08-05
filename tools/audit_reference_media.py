@@ -24,6 +24,7 @@ from typing import Any
 from PIL import Image, UnidentifiedImageError
 
 _IMAGE_SUFFIXES = frozenset({".bmp", ".gif", ".jpeg", ".jpg", ".png", ".webp"})
+_MAX_AUDIT_PIXELS = 64_000_000
 
 
 @dataclass(frozen=True)
@@ -141,15 +142,23 @@ def _inspect_image(
     path: Path, relative: str, category: str, size: int, mtime_ns: int
 ) -> MediaRecord:
     try:
-        with Image.open(path) as image:
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message="Palette images with Transparency expressed in bytes.*",
-                    category=UserWarning,
-                )
-                image.load()
-                perceptual_hash = _perceptual_hash(image)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", category=Image.DecompressionBombWarning)
+            with Image.open(path) as image:
+                if image.width * image.height > _MAX_AUDIT_PIXELS:
+                    return MediaRecord(
+                        relative, category, image.format, image.width, image.height,
+                        None, size, mtime_ns, None, None,
+                        "D_DUPLICATE_OR_INVALID", "image-too-large"
+                    )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="Palette images with Transparency expressed in bytes.*",
+                        category=UserWarning,
+                    )
+                    image.load()
+                    perceptual_hash = _perceptual_hash(image)
             return MediaRecord(
                 relative_path=relative,
                 category=category,
@@ -163,7 +172,7 @@ def _inspect_image(
                 perceptual_hash=perceptual_hash,
                 classification="C_REFERENCE_UNVERIFIED",
             )
-    except (OSError, UnidentifiedImageError, ValueError) as exc:
+    except (OSError, UnidentifiedImageError, ValueError, Image.DecompressionBombWarning) as exc:
         return MediaRecord(
             relative, category, None, None, None, None, size, mtime_ns, None, None,
             "D_DUPLICATE_OR_INVALID", type(exc).__name__
