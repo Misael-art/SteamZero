@@ -4313,27 +4313,35 @@ ApplicationWindow {
                                 spacing: 16
                                 Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
                                 Label { text: qsTr("Somente leitura: a bridge ainda não publicou provider nem mutações seguras."); color: root.amberColor; Layout.leftMargin: 28 }
-                                Repeater {
-                                    model: [
-                                        {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh"},
-                                        {"label": qsTr("Conflitos preservados"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.conflicted || 0 : 0, "icon": "dialog-warning"},
-                                        {"label": qsTr("Concluídos"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.done || 0 : 0, "icon": "dialog-ok-apply"}
-                                    ]
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        color: root.surfaceColor
-                                        radius: 8
-                                        border.color: root.borderColor
-                                        Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 64
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 16
-                                            ToolButton { enabled: false; icon.name: modelData.icon; icon.color: root.cyanColor; background: Item {} }
-                                            Label { text: modelData.label; color: root.textColor; Layout.fillWidth: true }
-                                            Label { text: String(modelData.value); color: root.textColor; font.pixelSize: 20; font.bold: true }
+                                GridLayout {
+                                    columns: root.compactLayout ? 1 : 3
+                                    columnSpacing: 12
+                                    rowSpacing: 12
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Repeater {
+                                        model: [
+                                            {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh", "state": "pending"},
+                                            {"label": qsTr("Conflitos preservados"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.conflicted || 0 : 0, "icon": "dialog-warning", "state": "conflicted"},
+                                            {"label": qsTr("Concluídos"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.done || 0 : 0, "icon": "dialog-ok-apply", "state": "done"}
+                                        ]
+                                        delegate: OperationalMetricCard {
+                                            required property var modelData
+                                            title: modelData.label
+                                            value: String(modelData.value)
+                                            iconName: modelData.icon
+                                            state: modelData.state
+                                            surfaceColor: root.surfaceColor
+                                            raisedColor: root.raisedColor
+                                            borderColor: root.borderColor
+                                            textColor: root.textColor
+                                            mutedColor: root.mutedColor
+                                            cyanColor: root.cyanColor
+                                            greenColor: root.greenColor
+                                            amberColor: root.amberColor
+                                            redColor: root.redColor
+                                            Layout.fillWidth: true
                                         }
                                     }
                                 }

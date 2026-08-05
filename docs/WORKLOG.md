@@ -4525,3 +4525,14 @@ técnico `installed`, agora apresentado como “Instalado”.
 Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Métricas editoriais de Saves e Sync
+
+`OperationalMetricCard.qml` passa a compor Pendentes, Conflitos preservados e
+Concluídos como uma grade responsiva, factual e menos dramática que descoberta
+de jogos. Provider, detalhes e rollback continuam nas ações operacionais já
+publicadas; nenhum fluxo mutável foi criado ou alterado.
+
+Validação dirigida: 92 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

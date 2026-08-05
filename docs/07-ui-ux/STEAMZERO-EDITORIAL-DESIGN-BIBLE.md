@@ -88,6 +88,11 @@ Emuladores, saves e sync, saúde de biblioteca e diagnóstico aparecem como
 cartões de manutenção discretos e levam às seções operacionais existentes; não
 recebem tratamento cinematográfico nem ações próprias.
 
+`OperationalMetricCard.qml` aplica a mesma hierarquia factual às telas de
+manutenção. A primeira adoção é Saves e Sync: pendentes, conflitos preservados
+e concluídos são uma grade responsiva com estado explícito, enquanto provider,
+detalhes e rollback continuam nas rotas operacionais já existentes.
+
 `EditorialLibrary.qml` implementa **Sistemas → Sistema → Biblioteca → Dossiê →
 Preparar para jogar** com `steamGameplay.games` e
 `emulation.platforms[].games`. A vista de sistema mostra estado e ação real;
