@@ -150,7 +150,18 @@ Window {
                     captureAndExit()
                     return
                 }
-                check(library.systems.length === 2, "Steam e a plataforma emulada devem compor sistemas")
+                library.emulation.editorialPlatforms = [
+                    library.emulation.platforms[0],
+                    {
+                        "id": "playstation", "name": "Fixture PlayStation", "state": "unverified",
+                        "statusLabel": "Nenhum jogo inventariado", "readiness": {"percent": 0},
+                        "requirements": {}, "subsystems": [], "games": []
+                    }
+                ]
+                check(library.systems.length === 3,
+                      "a jornada deve incluir Steam e as plataformas editoriais publicadas")
+                check(library.systems[2].id === "playstation" && library.systems[2].gameCount === 0,
+                      "plataforma canônica sem ROM deve permanecer visível sem jogos inventados")
                 check(library.games.length === 3, "catálogo deve preservar jogos Steam e emulados")
                 check(library.contextualMediaSource({"heroUrl": "hero", "coverUrl": "cover"}) === "hero"
                       && library.contextualMediaSource({"coverUrl": "cover", "screenshotUrl": "shot"}) === "cover"
