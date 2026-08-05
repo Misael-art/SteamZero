@@ -110,8 +110,18 @@ def inspect_media(
             size = stat.st_size
         except OSError as exc:
             record = MediaRecord(
-                relative, category, None, None, None, None, 0, 0, None, None,
-                "D_DUPLICATE_OR_INVALID", type(exc).__name__
+                relative,
+                category,
+                None,
+                None,
+                None,
+                None,
+                0,
+                0,
+                None,
+                None,
+                "D_DUPLICATE_OR_INVALID",
+                type(exc).__name__,
             )
             records.append(record)
             if on_record is not None:
@@ -127,8 +137,18 @@ def inspect_media(
             continue
         if path.suffix.casefold() not in _IMAGE_SUFFIXES:
             record = MediaRecord(
-                relative, category, None, None, None, None, size, stat.st_mtime_ns, None, None,
-                "D_DUPLICATE_OR_INVALID", "unsupported-format"
+                relative,
+                category,
+                None,
+                None,
+                None,
+                None,
+                size,
+                stat.st_mtime_ns,
+                None,
+                None,
+                "D_DUPLICATE_OR_INVALID",
+                "unsupported-format",
             )
         else:
             record = _inspect_image(path, relative, category, size, stat.st_mtime_ns)
@@ -147,9 +167,18 @@ def _inspect_image(
             with Image.open(path) as image:
                 if image.width * image.height > _MAX_AUDIT_PIXELS:
                     return MediaRecord(
-                        relative, category, image.format, image.width, image.height,
-                        None, size, mtime_ns, None, None,
-                        "D_DUPLICATE_OR_INVALID", "image-too-large"
+                        relative,
+                        category,
+                        image.format,
+                        image.width,
+                        image.height,
+                        None,
+                        size,
+                        mtime_ns,
+                        None,
+                        None,
+                        "D_DUPLICATE_OR_INVALID",
+                        "image-too-large",
                     )
                 with warnings.catch_warnings():
                     warnings.filterwarnings(
@@ -174,8 +203,18 @@ def _inspect_image(
             )
     except (OSError, UnidentifiedImageError, ValueError, Image.DecompressionBombWarning) as exc:
         return MediaRecord(
-            relative, category, None, None, None, None, size, mtime_ns, None, None,
-            "D_DUPLICATE_OR_INVALID", type(exc).__name__
+            relative,
+            category,
+            None,
+            None,
+            None,
+            None,
+            size,
+            mtime_ns,
+            None,
+            None,
+            "D_DUPLICATE_OR_INVALID",
+            type(exc).__name__,
         )
 
 
@@ -186,9 +225,7 @@ def _mark_duplicates(records: list[MediaRecord]) -> list[MediaRecord]:
     )
     marked: list[MediaRecord] = []
     for record in records:
-        duplicate = (
-            record.sha256 is not None and exact[record.sha256] > 1
-        ) or (
+        duplicate = (record.sha256 is not None and exact[record.sha256] > 1) or (
             record.perceptual_hash is not None and perceptual[record.perceptual_hash] > 1
         )
         marked.append(
@@ -247,9 +284,7 @@ def main() -> int:
         type=Path,
         help="arquivo JSONL fora do acervo para retomar uma auditoria interrompida",
     )
-    parser.add_argument(
-        "--max-files", type=int, help="limita a amostra; omita para auditar tudo"
-    )
+    parser.add_argument("--max-files", type=int, help="limita a amostra; omita para auditar tudo")
     parser.add_argument(
         "--summary-only", action="store_true", help="não inclui registros individuais no stdout"
     )

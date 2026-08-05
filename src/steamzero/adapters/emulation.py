@@ -141,9 +141,7 @@ def editorial_platform_index(
                 "shortName": manifest.short_name,
                 "games": platform_games,
                 "state": "ready" if has_games else "unverified",
-                "statusLabel": (
-                    "Jogos inventariados" if has_games else "Nenhum jogo inventariado"
-                ),
+                "statusLabel": ("Jogos inventariados" if has_games else "Nenhum jogo inventariado"),
                 "readiness": {"percent": 100 if has_games else 0},
                 "requirements": {},
                 "subsystems": [],

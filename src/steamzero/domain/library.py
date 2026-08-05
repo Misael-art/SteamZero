@@ -394,15 +394,11 @@ class PlatformDirectoryInventory:
             if child.is_symlink() or not child.is_dir():
                 continue
             if _is_non_game_directory(child.name):
-                results.append(
-                    PlatformDirectory(child, "excluded", None, 0, (), 0)
-                )
+                results.append(PlatformDirectory(child, "excluded", None, 0, (), 0))
                 continue
             platform_id = self._aliases.get(_directory_key(child.name))
             if platform_id is None:
-                results.append(
-                    PlatformDirectory(child, "unmatched", None, 0, (), 0)
-                )
+                results.append(PlatformDirectory(child, "unmatched", None, 0, (), 0))
                 continue
             candidates, skipped = self._inventory_tree(child, platform_id)
             selected = self._select_unique_games(candidates, child, max_games_per_platform)
@@ -479,7 +475,8 @@ class PlatformDirectoryInventory:
             key = cls._game_key(candidate, root)
             current = chosen.get(key)
             if current is None or (
-                priority.get(candidate.format, 5), candidate.path.name.casefold()
+                priority.get(candidate.format, 5),
+                candidate.path.name.casefold(),
             ) < (priority.get(current.format, 5), current.path.name.casefold()):
                 chosen[key] = candidate
         return [chosen[key] for key in sorted(chosen)]

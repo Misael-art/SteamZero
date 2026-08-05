@@ -452,9 +452,7 @@ class ResolvedTheme:
                 stack: [effect.to_dict() for effect in entries]
                 for stack, entries in self.effects.items()
             },
-            "mediaRecipes": {
-                role: recipe.to_dict() for role, recipe in self.media_recipes.items()
-            },
+            "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
 
@@ -471,9 +469,7 @@ class ResolvedTheme:
                 stack: [effect.to_dict() for effect in entries]
                 for stack, entries in self.effects.items()
             },
-            "mediaRecipes": {
-                role: recipe.to_dict() for role, recipe in self.media_recipes.items()
-            },
+            "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
 
