@@ -1288,6 +1288,34 @@ def test_library_root_read_model_open_scan_and_unregister_without_deleting_roms(
     assert str(root) not in controller.library_roots()
 
 
+def test_library_scan_indexes_known_platform_directories_without_scanning_bios(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "owned-roms"
+    psx = root / "PSX"
+    psx.mkdir(parents=True)
+    for index in range(12):
+        (psx / f"Game {index:02}.chd").write_bytes(b"owned-game")
+    bios = root / "bios"
+    bios.mkdir()
+    (bios / "ignored.chd").write_bytes(b"firmware")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+
+    result = controller.scan_library()
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+
+    assert result["games"] == 10
+    assert {game["platform"] for game in cached["games"]} == {"playstation"}
+    report = {item["root"]: item for item in cached["directoryInventory"]}
+    assert report[str(psx)]["gameCount"] == 12
+    assert report[str(psx)]["selectedCount"] == 10
+    assert report[str(bios)]["disposition"] == "excluded"
+
+
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

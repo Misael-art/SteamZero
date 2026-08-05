@@ -71,7 +71,7 @@ from steamzero.domain.emulation_workspace import (
 )
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
-from steamzero.domain.library import PlatformRomScanner
+from steamzero.domain.library import PlatformDirectoryInventory, PlatformRomScanner
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
@@ -1322,6 +1322,7 @@ class EmulationController:
         registry = PlatformRegistry.bundled()
         manifest_dicts = [{"id": m.id, "media": dict(m.media)} for m in registry.list()]
         platform_scanner = PlatformRomScanner.from_manifests(manifest_dicts)
+        directory_inventory = PlatformDirectoryInventory.from_registry(registry)
         emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
         auxiliary: list[Any] = []
@@ -1330,6 +1331,7 @@ class EmulationController:
         roots = self.library_roots()
         scanned_at = datetime.now(UTC).isoformat()
         root_stats: dict[str, dict[str, Any]] = {}
+        directory_report: list[dict[str, Any]] = []
         if ctx is not None:
             ctx.set_progress("scan", current=0, total=len(roots), unit="roots")
         for root_index, raw_root in enumerate(roots):
@@ -1354,6 +1356,25 @@ class EmulationController:
             switch_base_count = sum(1 for m in matches if m.content_kind == "base")
             if switch_base_count == 0:
                 plat_matches = platform_scanner.inventory(root)
+                if not any(match.content_kind == "base" for match in plat_matches):
+                    directory_rows = directory_inventory.inventory(root)
+                    directory_report.extend(
+                        {
+                            "root": str(row.path),
+                            "disposition": row.disposition,
+                            "platformId": row.platform_id,
+                            "gameCount": row.game_count,
+                            "selectedCount": len(row.selected_games),
+                            "skippedSymlinks": row.skipped_symlinks,
+                        }
+                        for row in directory_rows
+                    )
+                    plat_matches = [
+                        game
+                        for row in directory_rows
+                        if row.disposition == "matched"
+                        for game in row.selected_games
+                    ]
                 for pm in plat_matches:
                     if pm.content_kind != "base":
                         continue
@@ -1517,6 +1538,7 @@ class EmulationController:
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
             "rootStats": root_stats,
+            "directoryInventory": directory_report,
             "scannedAt": scanned_at,
         }
         fs.write_atomic_text(

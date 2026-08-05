@@ -4536,3 +4536,19 @@ publicadas; nenhum fluxo mutável foi criado ou alterado.
 Validação dirigida: 92 testes verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Inventário canônico de diretórios de ROMs
+
+O scan de biblioteca agora reconhece diretórios de plataforma a partir dos
+manifestos canônicos e aliases locais explícitos. Pastas de BIOS, keys,
+firmware, atualizações, DLC, mods, mídia, cache, backups e metadados são
+excluídas; links simbólicos não são seguidos. Itens sem vínculo inequívoco
+permanecem no relatório como `unmatched`, e cada plataforma publica no máximo
+dez jogos únicos, agrupando discos e priorizando descritores `.m3u`/`.cue`.
+Nenhuma ROM, BIOS ou mídia foi criada, copiada, movida ou removida.
+
+Validação dirigida: 48 testes verdes (`test_library_rom_classify` e o fluxo do
+controller), `ruff`, `mypy`, `make independence boundaries` e
+`git diff --check` verdes. A suíte integral foi iniciada fora do `tmpfs`
+saturado, mas interrompida após erros preexistentes de integração; nenhuma ação
+de host, release ou push foi executada.
