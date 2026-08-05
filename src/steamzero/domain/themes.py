@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from steamzero.domain.media_recipes import (
+    MediaRecipe,
+    media_recipes_to_dict,
+    parse_media_recipes,
+    validate_recipe_effect_stacks,
+)
 from steamzero.domain.theme_effects import (
     EffectDiagnostic,
     EffectSpec,
@@ -251,6 +257,7 @@ class ThemeManifest:
     tokens: dict[str, Any] = field(default_factory=dict)
     assets: dict[str, str] = field(default_factory=dict)
     effects: dict[str, tuple[EffectSpec, ...]] = field(default_factory=dict)
+    media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -275,13 +282,18 @@ class ThemeManifest:
             result["assets"] = self.assets
         if self.effects:
             result["effects"] = effect_stacks_to_dict(self.effects)
+        if self.media_recipes:
+            result["mediaRecipes"] = media_recipes_to_dict(self.media_recipes)
         return result
 
     @staticmethod
     def from_dict(data: dict[str, Any]) -> ThemeManifest:
         raw_effects = data.get("effects")
+        raw_media_recipes = data.get("mediaRecipes")
         if raw_effects is not None and not isinstance(raw_effects, dict):
             raise ValueError("effects precisa ser objeto")
+        if raw_media_recipes is not None and not isinstance(raw_media_recipes, dict):
+            raise ValueError("mediaRecipes precisa ser objeto")
         return ThemeManifest(
             schemaVersion=data.get("schemaVersion", THEME_MANIFEST_SCHEMA_VERSION),
             kind=data.get("kind", "steamzero-theme-v1"),
@@ -297,6 +309,7 @@ class ThemeManifest:
             tokens=data.get("tokens", {}),
             assets=data.get("assets", {}),
             effects=parse_effect_stacks(raw_effects),
+            media_recipes=parse_media_recipes(raw_media_recipes),
         )
 
 
@@ -318,6 +331,7 @@ class ResolvedTheme:
     performance: ThemePerformanceTokens = field(default_factory=ThemePerformanceTokens)
     assets: dict[str, ThemeAsset] = field(default_factory=dict)
     effects: dict[str, tuple[ResolvedEffect, ...]] = field(default_factory=dict)
+    media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
     effect_diagnostics: tuple[EffectDiagnostic, ...] = ()
     high_contrast: bool = False
     reduced_motion: bool = False
@@ -380,6 +394,7 @@ class ResolvedTheme:
                 )
                 for stack, entries in self.effects.items()
             },
+            media_recipes=self.media_recipes,
             effect_diagnostics=self.effect_diagnostics,
             high_contrast=high_contrast,
             reduced_motion=reduced_motion,
@@ -410,6 +425,9 @@ class ResolvedTheme:
                 stack: [effect.to_dict() for effect in entries]
                 for stack, entries in self.effects.items()
             },
+            "mediaRecipes": {
+                role: recipe.to_dict() for role, recipe in self.media_recipes.items()
+            },
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
 
@@ -425,6 +443,9 @@ class ResolvedTheme:
             "effects": {
                 stack: [effect.to_dict() for effect in entries]
                 for stack, entries in self.effects.items()
+            },
+            "mediaRecipes": {
+                role: recipe.to_dict() for role, recipe in self.media_recipes.items()
             },
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
@@ -495,6 +516,7 @@ class ThemeResolver:
         performance = ThemePerformanceTokens()
         assets: dict[str, str] = {}
         effects: dict[str, tuple[EffectSpec, ...]] = {}
+        media_recipes: dict[str, MediaRecipe] = {}
         name = ""
         version = ""
         author = ""
@@ -545,6 +567,10 @@ class ThemeResolver:
                 assets.update(manifest.assets)
             if manifest.effects:
                 effects.update(manifest.effects)
+            if manifest.media_recipes:
+                media_recipes.update(manifest.media_recipes)
+
+        validate_recipe_effect_stacks(tuple(media_recipes.values()), effects)
 
         resolved_assets = {slot: ThemeAsset(slot=slot, path=path) for slot, path in assets.items()}
         effect_kwargs: dict[str, Any] = {
@@ -573,6 +599,7 @@ class ThemeResolver:
             performance=performance,
             assets=resolved_assets,
             effects=resolved_effects,
+            media_recipes=media_recipes,
             effect_diagnostics=effect_diagnostics,
         )
         return resolved.apply_accessibility(high_contrast, reduced_motion)

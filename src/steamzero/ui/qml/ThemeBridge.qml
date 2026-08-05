@@ -33,6 +33,9 @@ QtObject {
         ? resolved.effects : ({})
     readonly property var effectDiagnostics: resolved && resolved.effectDiagnostics
         ? resolved.effectDiagnostics : ([])
+    // Receita decide fit/focal/source role; a URL continua vindo do read model.
+    readonly property var mediaRecipes: resolved && resolved.mediaRecipes
+        ? resolved.mediaRecipes : ({})
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")

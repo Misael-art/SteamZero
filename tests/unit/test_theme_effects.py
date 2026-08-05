@@ -6,6 +6,13 @@ from pathlib import Path
 import jsonschema
 import pytest
 
+from steamzero.domain.media_recipes import (
+    MediaRecipe,
+    MediaRole,
+    MediaSourceKind,
+    choose_media_source,
+    parse_media_recipes,
+)
 from steamzero.domain.theme_effects import (
     ALL_EFFECT_CAPABILITIES,
     EffectSpec,
@@ -150,3 +157,42 @@ def test_renderer_uses_one_source_and_never_accepts_a_theme_shader() -> None:
     assert component.count("source: root.source") == 1
     assert "source: mediaSource" in component
     assert "ShaderEffect" not in component
+
+
+def test_media_recipe_selects_one_published_source_without_io() -> None:
+    recipe = MediaRecipe(
+        role=MediaRole.CONTEXTUAL_BACKDROP,
+        source_order=(MediaSourceKind.HERO, MediaSourceKind.COVER, MediaSourceKind.GEOMETRIC),
+        effect_stack="backdrop",
+    )
+    assert choose_media_source(recipe, {"cover": "file:///cover.png"}) == (
+        MediaSourceKind.COVER,
+        "file:///cover.png",
+    )
+    assert choose_media_source(recipe, {}) is None
+
+
+def test_media_recipe_is_versioned_and_requires_known_effect_stack() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "recipes": {
+            "focusedCover": {
+                "sourceOrder": ["cover", "hero"],
+                "fit": "contain",
+                "effectStack": "focusedCover",
+                "maxDecodeWidth": 1024,
+            }
+        },
+    }
+    recipes = parse_media_recipes(raw)
+    manifest = ThemeManifest(
+        id="org.test.recipe",
+        name="Recipe",
+        version="1.0.0",
+        author="Test",
+        license="MIT",
+        effects={"focusedCover": ()},
+        media_recipes=recipes,
+    )
+    resolved = ThemeResolver({manifest.id: manifest}).resolve(manifest.id)
+    assert resolved.to_theme_qml_object()["mediaRecipes"]["focusedCover"]["fit"] == "contain"

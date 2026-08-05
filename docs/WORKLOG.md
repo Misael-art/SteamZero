@@ -4589,3 +4589,15 @@ execução permanece no job persistente/cancelável existente.
 Validação dirigida: 16 testes de mídia multiprovider verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Receitas declarativas de apresentação de mídia
+
+O Theme API ganhou `mediaRecipes` v1. Cada papel visual declara apenas ordem de
+fontes publicadas, crop/contain, ponto focal, stack de efeitos allowlisted e
+largura máxima de decode. A receita não carrega URL, arquivo, shader ou código;
+o renderer continua aplicando uma única source no runtime. O tema padrão define
+backdrop contextual e capas focada/periférica com fallbacks determinísticos.
+
+Validação dirigida: 63 testes de temas/effects verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
