@@ -4703,3 +4703,14 @@ revisão, retorno e a recusa honesta de jogo emulado sem contrato seguro.
 Validação dirigida: runtime QML offscreen e harness editorial, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Foco visual da navegação editorial
+
+O foco semântico agora também governa a moldura visual dos sistemas, da grade e
+da lista. A captura offscreen 1280×800 confirmou o card Steam dominante com
+contorno ciano e o sistema vizinho atenuado, sem depender de hover ou foco de
+teclado bruto.
+
+Validação dirigida: runtime e captura QML offscreen, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

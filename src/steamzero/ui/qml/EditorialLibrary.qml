@@ -631,11 +631,16 @@ Item {
                             Layout.columnSpan: root.compact ? 1 : 1
                             Accessible.name: qsTr("%1, %2 jogos, %3")
                                 .arg(modelData.name).arg(modelData.gameCount).arg(modelData.statusLabel)
-                            onClicked: root.openSystemDetails(index)
+                            onClicked: {
+                                root.selectedSystemIndex = index
+                                root.openSystemDetails(index)
+                            }
                             background: Rectangle {
-                                color: parent.down ? root.raisedColor : root.surfaceColor
-                                border.color: parent.activeFocus ? root.cyanColor : root.borderColor
-                                border.width: parent.activeFocus ? 3 : 1
+                                color: parent.down || index === root.selectedSystemIndex
+                                    ? root.raisedColor : root.surfaceColor
+                                border.color: parent.activeFocus || index === root.selectedSystemIndex
+                                    ? root.cyanColor : root.borderColor
+                                border.width: parent.activeFocus || index === root.selectedSystemIndex ? 3 : 1
                                 radius: 16
                             }
                             contentItem: ColumnLayout {
@@ -1167,8 +1172,9 @@ Item {
                             background: Rectangle {
                                 color: root.raisedColor
                                 radius: 12
-                                border.color: parent.activeFocus ? root.cyanColor : root.borderColor
-                                border.width: parent.activeFocus ? 3 : 1
+                                border.color: parent.activeFocus || index === root.selectedIndex
+                                    ? root.cyanColor : root.borderColor
+                                border.width: parent.activeFocus || index === root.selectedIndex ? 3 : 1
                                 clip: true
                                 MediaEffectLayer {
                                     anchors.fill: parent
@@ -1244,6 +1250,13 @@ Item {
                                     Label { text: modelData.systemName; color: root.mutedColor; font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
                                 Label { text: modelData.launchable ? qsTr("Disponível") : qsTr("Sem launcher"); color: modelData.launchable ? root.greenColor : root.mutedColor; font.pixelSize: 12 }
+                            }
+                            background: Rectangle {
+                                color: root.surfaceColor
+                                radius: 10
+                                border.color: parent.activeFocus || index === root.selectedIndex
+                                    ? root.cyanColor : root.borderColor
+                                border.width: parent.activeFocus || index === root.selectedIndex ? 3 : 1
                             }
                         }
                     }
