@@ -4652,3 +4652,16 @@ podem carregar conteúdo do usuário.
 Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Fluxo compacto da Biblioteca editorial
+
+As visualizações de carrossel, grade e lista passaram a reservar altura somente
+quando ativas. O estado vazio só preenche a área da Biblioteca quando é de fato
+exibido. O harness QML troca as visualizações em frames distintos, prova que a
+vista ativa não herda o espaço da anterior e espera um frame antes de gravar
+capturas; assim a evidência offscreen não registra geometria obsoleta do Qt
+Quick.
+
+Validação dirigida: 16 testes QML handheld/offscreen verdes e inspeção visual
+em 800×1280 com alto contraste e movimento reduzido. Nenhuma ação de host,
+release ou push foi executada.

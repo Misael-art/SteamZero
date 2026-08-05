@@ -917,9 +917,15 @@ Item {
                         }
                     }
                     Item {
+                        id: emptyLibraryState
                         visible: root.visibleGames.length === 0
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        // It must fill the page only when it is the active empty
+                        // state; otherwise it pushes the active library view down.
+                        Layout.fillHeight: visible
+                        Layout.minimumHeight: 0
+                        Layout.preferredHeight: 0
+                        Layout.maximumHeight: visible ? Number.MAX_VALUE : 0
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(parent.width, 460)
@@ -955,8 +961,11 @@ Item {
                         clip: true
                         Layout.fillWidth: true
                         Layout.fillHeight: false
-                        Layout.preferredHeight: root.coverHeight()
-                        Layout.maximumHeight: root.coverHeight()
+                        Layout.preferredHeight: root.libraryView === "carousel"
+                            && root.visibleGames.length > 0 ? root.coverHeight() : 0
+                        Layout.minimumHeight: 0
+                        Layout.maximumHeight: root.libraryView === "carousel"
+                            && root.visibleGames.length > 0 ? root.coverHeight() : 0
                         orientation: ListView.Horizontal
                         model: root.visibleGames
                         spacing: root.compact ? 12 : 22
@@ -1048,7 +1057,11 @@ Item {
                         visible: root.visibleGames.length > 0 && root.libraryView === "grid"
                         clip: true
                         Layout.fillWidth: true
-                        Layout.preferredHeight: root.compact ? 330 : 430
+                        Layout.preferredHeight: root.libraryView === "grid"
+                            && root.visibleGames.length > 0 ? (root.compact ? 330 : 430) : 0
+                        Layout.minimumHeight: 0
+                        Layout.maximumHeight: root.libraryView === "grid"
+                            && root.visibleGames.length > 0 ? (root.compact ? 330 : 430) : 0
                         model: root.visibleGames
                         cellWidth: root.compact ? Math.max(142, width / 2) : Math.max(190, width / 5)
                         cellHeight: root.compact ? 218 : 274
@@ -1114,7 +1127,11 @@ Item {
                         visible: root.visibleGames.length > 0 && root.libraryView === "list"
                         clip: true
                         Layout.fillWidth: true
-                        Layout.preferredHeight: root.compact ? 330 : 430
+                        Layout.preferredHeight: root.libraryView === "list"
+                            && root.visibleGames.length > 0 ? (root.compact ? 330 : 430) : 0
+                        Layout.minimumHeight: 0
+                        Layout.maximumHeight: root.libraryView === "list"
+                            && root.visibleGames.length > 0 ? (root.compact ? 330 : 430) : 0
                         model: root.visibleGames
                         spacing: 8
                         cacheBuffer: 480

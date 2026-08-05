@@ -11,6 +11,7 @@ Window {
     height: optionNumber("--capture-height=", 800)
     property int failures: 0
     property int phase: 0
+    property int viewLayoutCheck: 0
     property bool capturePending: false
     readonly property string captureOutput: {
         const args = Qt.application.arguments
@@ -186,40 +187,55 @@ Window {
                 return
             }
             if (phase === 1) {
-                check(library.view === "library", "sistema deve abrir biblioteca")
-                check(library.visibleGames.length === 2, "filtro Steam deve usar somente a fonte selecionada")
-                check(library.metadataValues("genre").length === 2
-                      && library.metadataValues("year").length === 2,
-                      "filtros de metadados devem usar somente valores publicados")
-                library.genreFilter = "Action"
-                check(library.visibleGames.length === 1 && library.selectedGame.genre === "Action",
-                      "gênero publicado deve filtrar a biblioteca sem criar categorias")
-                library.genreFilter = ""
-                library.yearFilter = "2002"
-                check(library.visibleGames.length === 1 && library.selectedGame.year === "2002",
-                      "ano publicado deve filtrar a biblioteca")
-                library.yearFilter = ""
-                library.developerFilter = "Fixture Studio"
-                check(library.visibleGames.length === 1 && library.selectedGame.developer === "Fixture Studio",
-                      "desenvolvedor publicado deve filtrar a biblioteca")
-                library.resetMetadataFilters()
-                library.collectionFilter = "pinned"
-                check(library.visibleGames.length === 1,
-                      "coleções devem filtrar o catálogo pela referência publicada")
-                library.collectionFilter = ""
-                library.libraryView = "grid"
-                check(library.gridControl.visible, "grade deve usar o mesmo catálogo filtrado")
-                library.libraryView = "list"
-                check(library.listControl.visible, "lista deve usar o mesmo catálogo filtrado")
-                library.libraryView = "carousel"
+                if (viewLayoutCheck === 0) {
+                    check(library.view === "library", "sistema deve abrir biblioteca")
+                    check(library.visibleGames.length === 2, "filtro Steam deve usar somente a fonte selecionada")
+                    check(library.metadataValues("genre").length === 2
+                          && library.metadataValues("year").length === 2,
+                          "filtros de metadados devem usar somente valores publicados")
+                    library.genreFilter = "Action"
+                    check(library.visibleGames.length === 1 && library.selectedGame.genre === "Action",
+                          "gênero publicado deve filtrar a biblioteca sem criar categorias")
+                    library.genreFilter = ""
+                    library.yearFilter = "2002"
+                    check(library.visibleGames.length === 1 && library.selectedGame.year === "2002",
+                          "ano publicado deve filtrar a biblioteca")
+                    library.yearFilter = ""
+                    library.developerFilter = "Fixture Studio"
+                    check(library.visibleGames.length === 1 && library.selectedGame.developer === "Fixture Studio",
+                          "desenvolvedor publicado deve filtrar a biblioteca")
+                    library.resetMetadataFilters()
+                    library.collectionFilter = "pinned"
+                    check(library.visibleGames.length === 1,
+                          "coleções devem filtrar o catálogo pela referência publicada")
+                    library.collectionFilter = ""
+                    library.libraryView = "grid"
+                    viewLayoutCheck = 1
+                    return
+                }
+                if (viewLayoutCheck === 1) {
+                    check(library.gridControl.visible
+                          && library.gridControl.y <= library.carouselControl.y + 24,
+                          "a grade não deve reservar o espaço do carrossel oculto")
+                    library.libraryView = "list"
+                    viewLayoutCheck = 2
+                    return
+                }
+                if (viewLayoutCheck === 2) {
+                    check(library.listControl.visible
+                          && library.listControl.y <= library.carouselControl.y + 24,
+                          "a lista não deve manter espaço das outras vistas ocultas")
+                    library.libraryView = "carousel"
+                    viewLayoutCheck = 3
+                    return
+                }
                 if (captureOutput !== "" && captureStage === "library") {
                     if (["carousel", "grid", "list"].indexOf(captureLibraryView) >= 0)
                         library.libraryView = captureLibraryView
-                    contentItem.grabToImage(function(result) {
-                        result.saveToFile(captureOutput)
-                        library.openDossier(0)
-                        phase = 2
-                    })
+                    // Wait for the next rendered frame after switching views, so
+                    // the capture reflects the active layout rather than stale
+                    // geometry retained by invisible Qt Quick controls.
+                    captureAndExit()
                     return
                 }
                 library.openDossier(0)
