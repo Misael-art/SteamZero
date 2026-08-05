@@ -114,6 +114,15 @@ class ThemeTypographyTokens:
     weightBody: int = 400
     weightStrong: int = 600
     weightHeading: int = 700
+    display: int = 36
+    heading: int = 24
+    title: int = 20
+    body: int = 16
+    metadata: int = 14
+    badge: int = 12
+    caption: int = 12
+    controlHint: int = 14
+    diagnostic: int = 14
     family: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -122,6 +131,15 @@ class ThemeTypographyTokens:
             "weightBody": self.weightBody,
             "weightStrong": self.weightStrong,
             "weightHeading": self.weightHeading,
+            "display": self.display,
+            "heading": self.heading,
+            "title": self.title,
+            "body": self.body,
+            "metadata": self.metadata,
+            "badge": self.badge,
+            "caption": self.caption,
+            "controlHint": self.controlHint,
+            "diagnostic": self.diagnostic,
         }
         if self.family is not None:
             result["family"] = self.family
@@ -134,6 +152,15 @@ class ThemeTypographyTokens:
             weightBody=data.get("weightBody", 400),
             weightStrong=data.get("weightStrong", 600),
             weightHeading=data.get("weightHeading", 700),
+            display=data.get("display", 36),
+            heading=data.get("heading", 24),
+            title=data.get("title", 20),
+            body=data.get("body", 16),
+            metadata=data.get("metadata", 14),
+            badge=data.get("badge", 12),
+            caption=data.get("caption", 12),
+            controlHint=data.get("controlHint", 14),
+            diagnostic=data.get("diagnostic", 14),
             family=data.get("family"),
         )
 

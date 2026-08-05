@@ -23,6 +23,7 @@ Item {
     property bool reducedMotion: false
     property bool highContrast: false
     property int themeMinimumTarget: 48
+    property var typography: ({})
     required property color backgroundColor
     required property color surfaceColor
     required property color raisedColor
@@ -125,6 +126,7 @@ Item {
     component EditorialButton: Button {
         property bool primaryAction: false
         padding: 14
+        font.pixelSize: root.typeSize("controlHint")
         contentItem: Label {
             text: parent.text
             color: !parent.enabled ? root.mutedColor
@@ -151,6 +153,17 @@ Item {
         return qsTr("%1 h %2 min").arg(Math.floor(minutes / 60)).arg(minutes % 60)
     }
 
+    function typeSize(role, compactFactor) {
+        const fallback = {
+            "display": 36, "heading": 24, "title": 20, "body": 16,
+            "metadata": 14, "badge": 12, "caption": 12,
+            "controlHint": 14, "diagnostic": 14
+        }
+        const base = Number(typography && typography[role]) || fallback[role] || fallback.body
+        const scale = Number(typography && typography.scale) || 1
+        return Math.round(base * scale * (compactFactor === undefined ? 1 : compactFactor))
+    }
+
     function stateColor(state) {
         if (state === "ready" || state === "installed")
             return greenColor
@@ -173,14 +186,14 @@ Item {
             Label {
                 text: qsTr("Início")
                 color: root.textColor
-                font.pixelSize: root.compact ? 26 : 36
+                font.pixelSize: root.typeSize("display", root.compact ? 0.72 : 1)
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
             }
             Label {
                 text: qsTr("%1 títulos publicados").arg(root.catalog.length)
                 color: root.mutedColor
-                font.pixelSize: 14
+                font.pixelSize: root.typeSize("metadata")
             }
         }
 
@@ -244,14 +257,14 @@ Item {
                         text: root.recent.length > 0 ? qsTr("Continuar jogando")
                             : root.featured ? qsTr("Em destaque") : qsTr("Sua biblioteca")
                         color: root.cyanDarkColor
-                        font.pixelSize: 14
+                        font.pixelSize: root.typeSize("controlHint")
                         font.weight: Font.DemiBold
                     }
                     Label {
                         text: root.featured ? String(root.featured.title || root.featured.name || qsTr("Jogo"))
                             : qsTr("Nenhum jogo publicado ainda")
                         color: root.textColor
-                        font.pixelSize: root.compact ? 23 : 32
+                        font.pixelSize: root.typeSize("display", root.compact ? 0.64 : 0.89)
                         font.weight: Font.DemiBold
                         maximumLineCount: 2
                         wrapMode: Text.WordWrap
@@ -307,7 +320,7 @@ Item {
                     anchors.margins: 16
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("Favoritos"); color: root.textColor; font.pixelSize: 19; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                        Label { text: qsTr("Favoritos"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
                         Label { text: String(root.favorites.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
                     }
                     Label {
@@ -338,7 +351,7 @@ Item {
                     anchors.margins: 16
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("Coleções"); color: root.textColor; font.pixelSize: 19; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                        Label { text: qsTr("Coleções"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
                         Label { text: String(root.collectionItems.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
                     }
                     Label {
@@ -375,7 +388,7 @@ Item {
                     anchors.margins: 16
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("Pendências"); color: root.textColor; font.pixelSize: 19; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                        Label { text: qsTr("Pendências"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
                         Label { text: root.needsAttention || root.attentionSystems.length > 0 ? qsTr("Revisar") : qsTr("Nenhuma"); color: root.needsAttention || root.attentionSystems.length > 0 ? root.amberColor : root.greenColor; font.weight: Font.DemiBold }
                     }
                     Label {
@@ -408,7 +421,7 @@ Item {
                     anchors.margins: 16
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: qsTr("Recentes"); color: root.textColor; font.pixelSize: 19; font.weight: Font.DemiBold; Layout.fillWidth: true }
+                        Label { text: qsTr("Recentes"); color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; Layout.fillWidth: true }
                         Label { text: String(root.recent.length); color: root.cyanDarkColor; font.weight: Font.DemiBold }
                     }
                     Label {
@@ -432,7 +445,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: qsTr("Sistemas"); color: root.textColor; font.pixelSize: 22; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: qsTr("Sistemas"); color: root.textColor; font.pixelSize: root.typeSize("heading", 0.92); font.weight: Font.DemiBold; Layout.fillWidth: true }
             EditorialButton {
                 text: qsTr("Todos os sistemas")
                 Layout.minimumHeight: root.minimumTarget
@@ -469,10 +482,10 @@ Item {
                         contentItem: ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 14
-                            Label { text: modelData.name; color: root.textColor; font.pixelSize: 19; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                            Label { text: qsTr("%1 jogo(s)").arg(modelData.gameCount); color: root.mutedColor; font.pixelSize: 13 }
+                            Label { text: modelData.name; color: root.textColor; font.pixelSize: root.typeSize("title", 0.95); font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                            Label { text: qsTr("%1 jogo(s)").arg(modelData.gameCount); color: root.mutedColor; font.pixelSize: root.typeSize("caption", 1.08) }
                             Item { Layout.fillHeight: true }
-                            Label { text: modelData.detail; color: root.stateColor(modelData.state); font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
+                            Label { text: modelData.detail; color: root.stateColor(modelData.state); font.pixelSize: root.typeSize("badge"); elide: Text.ElideRight; Layout.fillWidth: true }
                         }
                     }
                 }
@@ -482,7 +495,7 @@ Item {
         Label {
             text: qsTr("Sistema e manutenção")
             color: root.textColor
-            font.pixelSize: 22
+            font.pixelSize: root.typeSize("heading", 0.92)
             font.weight: Font.DemiBold
             Layout.topMargin: root.compact ? 4 : 10
         }

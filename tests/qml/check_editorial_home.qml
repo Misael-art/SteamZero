@@ -79,6 +79,9 @@ Window {
         cyanDarkColor: "#005471"
         greenColor: "#167a45"
         amberColor: "#a35d00"
+        typography: ({"scale": 1.5, "display": 36, "heading": 24, "title": 20,
+            "body": 16, "metadata": 14, "badge": 12, "caption": 12,
+            "controlHint": 14, "diagnostic": 14})
         onLibraryRequested: function(systemId) { harness.requestedSystem = systemId }
         onCollectionRequested: function(collectionId) { harness.requestedCollection = collectionId }
         onContinueRequested: function(game) { harness.continueWasRequested = game.gameId === "10" }
@@ -91,6 +94,8 @@ Window {
         repeat: true
         onTriggered: {
             if (phase === 0) {
+                check(home.typeSize("display") === 54 && home.typeSize("badge") === 18,
+                      "papéis tipográficos devem respeitar escala de 150%")
                 check(home.catalog.length === 3, "Home deve unificar Steam e emulação")
                 check(home.recent.length === 1, "Recentes deve usar somente sessões publicadas")
                 check(home.favorites.length === 1 && home.favorites[0].gameRef === "steam:20",

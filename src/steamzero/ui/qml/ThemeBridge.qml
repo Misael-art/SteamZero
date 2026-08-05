@@ -68,6 +68,18 @@ QtObject {
 
     // Tipografia
     readonly property real typographyScale: _get("typography", "scale", 1.0)
+    readonly property var typographyRoles: ({
+        "scale": typographyScale,
+        "display": _get("typography", "display", 36),
+        "heading": _get("typography", "heading", 24),
+        "title": _get("typography", "title", 20),
+        "body": _get("typography", "body", 16),
+        "metadata": _get("typography", "metadata", 14),
+        "badge": _get("typography", "badge", 12),
+        "caption": _get("typography", "caption", 12),
+        "controlHint": _get("typography", "controlHint", 14),
+        "diagnostic": _get("typography", "diagnostic", 14)
+    })
 
     // Movimento
     readonly property int motionDuration: reducedMotion ? 0

@@ -44,7 +44,16 @@
       "scale": 1.0,
       "weightBody": 400,
       "weightStrong": 600,
-      "weightHeading": 700
+      "weightHeading": 700,
+      "display": 36,
+      "heading": 24,
+      "title": 20,
+      "body": 16,
+      "metadata": 14,
+      "badge": 12,
+      "caption": 12,
+      "controlHint": 14,
+      "diagnostic": 14
     },
     "motion": {
       "durationFast": 120,

@@ -4747,3 +4747,25 @@ sem categoria ou jogo sintético.
 Validação dirigida: harness QML da Home, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Papéis tipográficos versionados
+
+O contrato de tema agora publica os tamanhos de `display`, `heading`, `title`,
+`body`, `metadata`, `badge`, `caption`, `controlHint` e `diagnostic`. A Home e
+a Biblioteca usam esses papéis via `ThemeBridge`, mantendo escala do tema e
+fonte do sistema; nenhuma fonte externa foi adicionada.
+
+Validação dirigida: 24 testes de Theme API/shell, runtime QML do shell,
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Escala tipográfica editorial a 150%
+
+O harness da Home passou a exercer tokens tipográficos em 150%, incluindo o
+papel `controlHint` dos botões. A captura offscreen 1280×800 foi inspecionada:
+título, card de retomada, painéis e ações refluem sem sobreposição; a rolagem da
+seção continua responsável por conteúdo que excede o viewport.
+
+Validação dirigida: 17 testes de Theme API, runtime QML da Home e captura
+offscreen, `ruff`, `mypy`, `make independence boundaries` e `git diff --check`
+verdes. Nenhuma ação de host, release ou push foi executada.

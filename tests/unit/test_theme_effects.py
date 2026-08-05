@@ -182,6 +182,22 @@ def test_editorial_library_accepts_semantic_navigation_without_raw_key_capture()
     assert "Keys." not in component
 
 
+def test_typography_roles_are_versioned_and_reach_the_theme_qml_payload() -> None:
+    manifest = ThemeManifest(
+        id="org.test.typography",
+        name="Typography",
+        version="1.0.0",
+        author="Test",
+        license="MIT",
+        tokens={"typography": {"display": 40, "caption": 13, "diagnostic": 15}},
+    )
+    resolved = ThemeResolver({manifest.id: manifest}).resolve(manifest.id)
+    typography = resolved.to_theme_qml_object()["resolved"]["typography"]
+    assert typography["display"] == 40
+    assert typography["caption"] == 13
+    assert typography["diagnostic"] == 15
+
+
 def test_media_recipe_selects_one_published_source_without_io() -> None:
     recipe = MediaRecipe(
         role=MediaRole.CONTEXTUAL_BACKDROP,

@@ -38,12 +38,24 @@ Item {
     property int themeMinimumTarget: 48
     property real themeFocusedScale: 1.05
     property real themePeripheralOpacity: 0.58
+    property var typography: ({})
 
     signal launchSteamRequested(string gameId)
     signal openSteamConfigurationRequested(string gameId)
 
     function mediaRecipe(role) {
         return mediaRecipes && mediaRecipes[role] ? mediaRecipes[role] : ({})
+    }
+
+    function typeSize(role, compactFactor) {
+        const fallback = {
+            "display": 36, "heading": 24, "title": 20, "body": 16,
+            "metadata": 14, "badge": 12, "caption": 12,
+            "controlHint": 14, "diagnostic": 14
+        }
+        const base = Number(typography && typography[role]) || fallback[role] || fallback.body
+        const scale = Number(typography && typography.scale) || 1
+        return Math.round(base * scale * (compactFactor === undefined ? 1 : compactFactor))
     }
 
     function recipeFillMode(role) {
@@ -225,7 +237,7 @@ Item {
     component EditorialButton: Button {
         property bool primaryAction: false
         padding: 14
-        font.pixelSize: 14
+        font.pixelSize: root.typeSize("controlHint")
         contentItem: Label {
             text: parent.text
             color: !parent.enabled ? root.mutedColor
@@ -580,7 +592,7 @@ Item {
                         : root.view === "library" ? qsTr("Biblioteca")
                         : root.view === "dossier" ? qsTr("Dossiê") : qsTr("Preparar para jogar")
                     color: root.textColor
-                    font.pixelSize: root.compact ? 25 : 36
+                    font.pixelSize: root.typeSize("display", root.compact ? 0.70 : 1)
                     font.weight: Font.DemiBold
                     Layout.fillWidth: true
                 }
@@ -594,7 +606,7 @@ Item {
                                 ? qsTr("Todos os sistemas") : root.selectedSystemName()).arg(root.visibleGames.length)
                             : root.selectedGame.systemName || qsTr("Informação publicada")
                     color: root.mutedColor
-                    font.pixelSize: root.compact ? 13 : 15
+                    font.pixelSize: root.typeSize("metadata", root.compact ? 0.93 : 1.07)
                     Layout.fillWidth: true
                 }
             }
@@ -656,7 +668,7 @@ Item {
                                 Label {
                                     text: modelData.name
                                     color: root.textColor
-                                    font.pixelSize: root.compact ? 20 : 24
+                                    font.pixelSize: root.typeSize("heading", root.compact ? 0.83 : 1)
                                     font.weight: Font.DemiBold
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -664,7 +676,7 @@ Item {
                                 Label {
                                     text: qsTr("%1 jogo(s)").arg(modelData.gameCount)
                                     color: root.mutedColor
-                                    font.pixelSize: 14
+                                    font.pixelSize: root.typeSize("metadata")
                                 }
                                 Item { Layout.fillHeight: true }
                                 RowLayout {
@@ -672,14 +684,14 @@ Item {
                                     Label {
                                         text: modelData.statusLabel
                                         color: root.stateColor(modelData.state)
-                                        font.pixelSize: 12
+                                        font.pixelSize: root.typeSize("badge")
                                         Layout.fillWidth: true
                                         elide: Text.ElideRight
                                     }
                                     Label {
                                         text: modelData.gameCount > 0 ? "›" : "—"
                                         color: root.cyanColor
-                                        font.pixelSize: 24
+                                        font.pixelSize: root.typeSize("heading")
                                     }
                                 }
                             }
@@ -717,7 +729,7 @@ Item {
                             Label {
                                 text: root.selectedSystem.name || qsTr("Sistema")
                                 color: root.textColor
-                                font.pixelSize: root.compact ? 25 : 34
+                                font.pixelSize: root.typeSize("display", root.compact ? 0.70 : 0.94)
                                 font.weight: Font.DemiBold
                                 Layout.fillWidth: true
                             }
@@ -740,7 +752,7 @@ Item {
                     Label {
                         text: qsTr("Requisitos da plataforma")
                         color: root.textColor
-                        font.pixelSize: 21
+                        font.pixelSize: root.typeSize("title")
                         font.weight: Font.DemiBold
                     }
                     GridLayout {
@@ -777,7 +789,7 @@ Item {
                     Label {
                         text: qsTr("Subsistemas e variantes")
                         color: root.textColor
-                        font.pixelSize: 21
+                        font.pixelSize: root.typeSize("title")
                         font.weight: Font.DemiBold
                     }
                     Rectangle {
@@ -1031,7 +1043,7 @@ Item {
                             Label {
                                 text: qsTr("Nenhum jogo publicado nesta biblioteca")
                                 color: root.textColor
-                                font.pixelSize: 20
+                                font.pixelSize: root.typeSize("title")
                                 font.weight: Font.DemiBold
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
@@ -1134,7 +1146,7 @@ Item {
                                     anchors.margins: 12
                                     text: modelData.name
                                     color: "#ffffff"
-                                    font.pixelSize: index === root.selectedIndex ? 18 : 14
+                                    font.pixelSize: root.typeSize(index === root.selectedIndex ? "body" : "metadata")
                                     font.weight: Font.DemiBold
                                     maximumLineCount: 2
                                     wrapMode: Text.WordWrap
@@ -1247,9 +1259,9 @@ Item {
                                     Layout.fillWidth: true
                                     spacing: 0
                                     Label { text: modelData.name; color: root.textColor; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                                    Label { text: modelData.systemName; color: root.mutedColor; font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
+                                    Label { text: modelData.systemName; color: root.mutedColor; font.pixelSize: root.typeSize("badge"); elide: Text.ElideRight; Layout.fillWidth: true }
                                 }
-                                Label { text: modelData.launchable ? qsTr("Disponível") : qsTr("Sem launcher"); color: modelData.launchable ? root.greenColor : root.mutedColor; font.pixelSize: 12 }
+                                Label { text: modelData.launchable ? qsTr("Disponível") : qsTr("Sem launcher"); color: modelData.launchable ? root.greenColor : root.mutedColor; font.pixelSize: root.typeSize("badge") }
                             }
                             background: Rectangle {
                                 color: root.surfaceColor
@@ -1266,7 +1278,7 @@ Item {
                         Label {
                             text: root.selectedGame.name || ""
                             color: root.textColor
-                            font.pixelSize: root.compact ? 21 : 28
+                            font.pixelSize: root.typeSize("title", root.compact ? 1.05 : 1.40)
                             font.weight: Font.DemiBold
                             elide: Text.ElideRight
                             Layout.fillWidth: true
@@ -1274,7 +1286,7 @@ Item {
                         Label {
                             text: root.selectedGame.systemName || ""
                             color: root.mutedColor
-                            font.pixelSize: 14
+                            font.pixelSize: root.typeSize("metadata")
                         }
                         EditorialButton {
                             text: qsTr("Ver dossiê")
@@ -1327,7 +1339,7 @@ Item {
                             Label {
                                 text: root.selectedGame.name || qsTr("Jogo")
                                 color: root.textColor
-                                font.pixelSize: root.compact ? 25 : 36
+                                font.pixelSize: root.typeSize("display", root.compact ? 0.70 : 1)
                                 font.weight: Font.DemiBold
                                 wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
@@ -1335,7 +1347,7 @@ Item {
                             Label {
                                 text: root.selectedGame.systemName || ""
                                 color: root.cyanDarkColor
-                                font.pixelSize: 15
+                                font.pixelSize: root.typeSize("metadata", 1.07)
                                 font.weight: Font.DemiBold
                             }
                             RowLayout {
@@ -1378,7 +1390,7 @@ Item {
                         }
                     }
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.borderColor }
-                    Label { text: qsTr("Informação publicada"); color: root.textColor; font.pixelSize: 20; font.weight: Font.DemiBold }
+                    Label { text: qsTr("Informação publicada"); color: root.textColor; font.pixelSize: root.typeSize("title"); font.weight: Font.DemiBold }
                     GridLayout {
                         columns: root.compact ? 1 : 3
                         Layout.fillWidth: true
@@ -1410,7 +1422,7 @@ Item {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     anchors.margins: 12
-                                    Label { text: modelData.label; color: root.mutedColor; font.pixelSize: 12 }
+                                    Label { text: modelData.label; color: root.mutedColor; font.pixelSize: root.typeSize("badge") }
                                     Label { text: modelData.value; color: root.textColor; font.weight: Font.DemiBold; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                 }
                             }
@@ -1428,7 +1440,7 @@ Item {
                     Label {
                         text: root.selectedGame.name || qsTr("Jogo")
                         color: root.textColor
-                        font.pixelSize: root.compact ? 26 : 36
+                        font.pixelSize: root.typeSize("display", root.compact ? 0.72 : 1)
                         font.weight: Font.DemiBold
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
@@ -1443,7 +1455,7 @@ Item {
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 16
-                            Label { text: qsTr("Revisão de lançamento"); color: root.textColor; font.weight: Font.DemiBold; font.pixelSize: 18 }
+                            Label { text: qsTr("Revisão de lançamento"); color: root.textColor; font.weight: Font.DemiBold; font.pixelSize: root.typeSize("body", 1.13) }
                             Label {
                                 text: root.selectedGame.source === "steam"
                                     ? qsTr("O Steam abrirá o jogo identificado por sua biblioteca local. Nenhuma opção de lançamento será modificada.")
@@ -1463,7 +1475,7 @@ Item {
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 16
-                            Label { text: qsTr("Disponibilidade"); color: root.textColor; font.weight: Font.DemiBold; font.pixelSize: 18 }
+                            Label { text: qsTr("Disponibilidade"); color: root.textColor; font.weight: Font.DemiBold; font.pixelSize: root.typeSize("body", 1.13) }
                             Label {
                                 text: root.selectedGame.source === "steam"
                                     ? qsTr("O launcher Steam foi publicado. FPS, resolução e controles abaixo refletem o perfil atual quando disponível.")
@@ -1502,7 +1514,7 @@ Item {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     anchors.margins: 12
-                                    Label { text: modelData.label; color: root.mutedColor; font.pixelSize: 12 }
+                                    Label { text: modelData.label; color: root.mutedColor; font.pixelSize: root.typeSize("badge") }
                                     Label { text: modelData.value; color: root.textColor; font.weight: Font.DemiBold; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                 }
                             }
@@ -1514,7 +1526,7 @@ Item {
                         enabled: root.selectedGame.launchable === true
                         Layout.fillWidth: true
                         Layout.minimumHeight: 56
-                        font.pixelSize: 18
+                        font.pixelSize: root.typeSize("body", 1.13)
                         Accessible.description: qsTr("Abre o launcher publicado; não altera configurações")
                         onClicked: root.launchSteamRequested(String(root.selectedGame.id || ""))
                     }

@@ -28,6 +28,9 @@ Papéis tipográficos: `display`, `heading`, `title`, `body`, `metadata`, `badge
 `caption`, `controlHint`, `diagnostic`. A fonte padrão continua a do sistema
 enquanto não houver uma fonte distribuível com licença registrada. Escalas 100,
 135, 150 e 200% refluem; truncamento sempre conserva acesso ao texto integral.
+Os tamanhos desses papéis são tokens versionados de `typography` e a Home e a
+Biblioteca os consomem pelo `ThemeBridge`; a composição não depende mais de
+tamanhos literais espalhados nessas superfícies.
 
 Foco responde em 120 ms; item muda em 180 ms; vista muda em 300 ms. O movimento
 reduzido elimina zoom/parallax/reflexo e preserva a informação com corte ou fade

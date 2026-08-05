@@ -3169,6 +3169,7 @@ ApplicationWindow {
                                     reducedMotion: root.reducedMotion
                                     highContrast: root.highContrast
                                     themeMinimumTarget: root._themeBridge.minimumTarget
+                                    typography: root._themeBridge.typographyRoles
                                     backgroundColor: root.backgroundColor
                                     surfaceColor: root.surfaceColor
                                     raisedColor: root.raisedColor
@@ -5166,6 +5167,7 @@ ApplicationWindow {
                             themeMinimumTarget: root._themeBridge.minimumTarget
                             themeFocusedScale: root._themeBridge.focusedScale
                             themePeripheralOpacity: root._themeBridge.peripheralOpacity
+                            typography: root._themeBridge.typographyRoles
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             onLaunchSteamRequested: function(gameId) {
