@@ -17,8 +17,9 @@ from pathlib import Path
 
 import pytest
 
+from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
 from steamzero.adapters.flatpak import FlatpakState
-from steamzero.adapters.lifecycle import ComponentLifecycle
+from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
 from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
@@ -138,6 +139,14 @@ def bundled_with_fake(flatpak: FakeFlatpak, store: state.StateStore) -> Componen
     )
 
 
+def eol_with_fake(flatpak: FakeFlatpak, store: state.StateStore) -> ComponentLifecycle:
+    return ComponentLifecycle(
+        store,
+        eol_registry(),
+        flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+    )
+
+
 class TestRoutingMatrix:
     """AppImage/Flatpak x missing/installed/degraded/EOL sem colapso de estado."""
 
@@ -213,10 +222,8 @@ class TestRoutingMatrix:
         assert status["origin"] == "flatpak"
 
     def test_bundled_eol_source_not_installed_stays_honest(self, store: state.StateStore) -> None:
-        lifecycle = bundled_with_fake(
-            FakeFlatpak(FlatpakState(False, "org.duckstation.DuckStation")), store
-        )
-        status = lifecycle.status("duckstation")
+        lifecycle = eol_with_fake(FakeFlatpak(FlatpakState(False, EOL_REF)), store)
+        status = lifecycle.status(EOL_ID)
         assert status["state"] == "missing"
         assert status["endOfLife"] is True
         assert status["installable"] is False
@@ -225,11 +232,10 @@ class TestRoutingMatrix:
     def test_bundled_eol_source_installed_preserves_observed_truth(
         self, store: state.StateStore
     ) -> None:
-        duckstation = AdapterRegistry.bundled().get("duckstation")
-        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        source = eol_registry().get(EOL_ID).preferred_source("flatpak", allow_eol=True)
         fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
-        lifecycle = bundled_with_fake(fake, store)
-        status = lifecycle.status("duckstation")
+        lifecycle = eol_with_fake(fake, store)
+        status = lifecycle.status(EOL_ID)
         assert status["state"] == "installed"
         assert status["version"] == source.version
         assert status["origin"] == "flatpak"
@@ -245,12 +251,26 @@ class TestRoutingMatrix:
         assert status["version"] == "b" * 64, "commit do drift precisa ser preservado"
 
     def test_eol_source_not_installed_is_missing_with_reason(self, store: state.StateStore) -> None:
-        lifecycle = bundled_with_fake(FakeFlatpak(), store)
-        status = lifecycle.status("duckstation")
+        lifecycle = eol_with_fake(FakeFlatpak(), store)
+        status = lifecycle.status(EOL_ID)
         assert status["state"] == "missing"
         assert status["endOfLife"] is True
         assert status["installable"] is False
         assert "fim de vida" in (status["detail"] or "")
+
+    def test_no_bundled_emulator_ships_an_eol_source(self) -> None:
+        """Nenhum emulador ativo pode depender de fonte descontinuada.
+
+        É o critério de conclusão da Etapa 1 virado gate: se um manifesto voltar
+        a apontar para fonte EOL, o adapter cai em ``executor=none`` e a ação
+        aparece na UI como possível quando não é.
+        """
+        eol = [
+            manifest.id
+            for manifest in AdapterRegistry.bundled().list()
+            if manifest.kind == "emulator" and route_for(manifest).end_of_life
+        ]
+        assert eol == [], f"emuladores com fonte EOL: {eol}"
 
 
 class TestFailureAggregation:
@@ -469,27 +489,25 @@ class TestLaunchRouting:
     """launch roteia pela família da fonte, inclusive EOL instalado."""
 
     def test_flatpak_eol_installed_launches_through_flatpak(self, store: state.StateStore) -> None:
-        duckstation = AdapterRegistry.bundled().get("duckstation")
-        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        source = eol_registry().get(EOL_ID).preferred_source("flatpak", allow_eol=True)
         fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
         spawned: list[tuple[object, ...]] = []
         lifecycle = ComponentLifecycle(
             store,
-            AdapterRegistry.bundled(),
+            eol_registry(),
             flatpak_factory=lambda: fake,  # type: ignore[arg-type]
             which=lambda _name: "/usr/bin/flatpak",
             spawn=lambda argv: spawned.append(tuple(argv)) or 0,  # type: ignore[return-value]
         )
-        result = lifecycle.launch("duckstation")
+        result = lifecycle.launch(EOL_ID)
         assert result["status"] == "started"
         assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)]
 
     def test_stop_flatpak_eol_is_not_supported(self, store: state.StateStore) -> None:
-        duckstation = AdapterRegistry.bundled().get("duckstation")
-        source = duckstation.preferred_source("flatpak", allow_eol=True)
+        source = eol_registry().get(EOL_ID).preferred_source("flatpak", allow_eol=True)
         fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
-        lifecycle = bundled_with_fake(fake, store)
-        result = lifecycle.stop("duckstation")
+        lifecycle = eol_with_fake(fake, store)
+        result = lifecycle.stop(EOL_ID)
         assert result["status"] == "not-supported"
         assert "Flatpak" in result["detail"]
 

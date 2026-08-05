@@ -105,7 +105,16 @@ def test_bundled_registry_loads_verified_emulation_adapters() -> None:
         "xenia-canary",
     ]
     assert all({"detect", "status", "install", "verify"} <= item.capabilities for item in emulators)
-    assert registry.get("duckstation").sources[0].end_of_life is True
+
+    # Etapa 1: nenhum emulador ativo depende de fonte descontinuada, e toda
+    # fonte é fixada — commit para Flatpak, SHA-256 para portátil. Esta linha
+    # afirmava o oposto sobre o DuckStation, então o único EOL empacotado; ele
+    # migrou para o AppImage oficial fixado por hash.
+    for item in emulators:
+        source = item.sources[0]
+        assert source.end_of_life is False, f"{item.id} depende de fonte EOL"
+        pinned = source.sha256 if source.type in {"appimage", "native"} else source.version
+        assert pinned, f"{item.id} não fixa a fonte"
 
 
 def test_bundled_registry_is_locked_without_manifest_drift() -> None:

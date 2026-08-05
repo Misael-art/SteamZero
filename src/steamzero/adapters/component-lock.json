@@ -47,14 +47,13 @@
     },
     {
       "id": "duckstation",
-      "manifestHash": "ea96c56204e1475fd112eef55d2887fdcb8cd404479a80386938301529f59897",
+      "manifestHash": "d97858b2287fd41ec95d03c67e4c473a4610d852cf4ca0b2886d951e8bc463bc",
       "source": {
-        "type": "flatpak",
-        "version": "d2a630c4f30df1c221a9bae52b8897f5e8e7cca95cb7c8e4b7363ed5ebc2d4cd",
+        "type": "appimage",
+        "version": "v0.1-11580",
         "priority": 1,
-        "ref": "org.duckstation.DuckStation",
-        "remote": "flathub",
-        "endOfLife": true
+        "url": "https://github.com/stenzek/duckstation/releases/download/v0.1-11580/DuckStation-x64.AppImage",
+        "sha256": "1c48f2a478ab0e587909a68c4e47a50ca5b7dd9321013076d5171551b6acae3f"
       }
     },
     {

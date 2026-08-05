@@ -16,9 +16,9 @@ host, que vive nos relatórios de certificação.
 | dimensão | valor |
 |---|---|
 | adapters declarados | 16 |
-| adapters instaláveis pelo lifecycle | 15 de 16 |
+| adapters instaláveis pelo lifecycle | 16 de 16 |
 | plataformas declaradas | 36 |
-| plataformas com bloqueio | 25 de 36 |
+| plataformas com bloqueio | 24 de 36 |
 | cores libretro exigidos | 17 |
 | adapters que entregam core | 0 |
 | ações de UI publicadas | 93 |
@@ -35,7 +35,7 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | cemu | emulator | flatpak | não | flatpak | sim | 9 | — |
 | citron | emulator | appimage | não | engine | sim | 10 | — |
 | dolphin | emulator | flatpak | não | flatpak | sim | 9 | — |
-| duckstation | emulator | flatpak | sim | none | **não** | 5 | a fonte fixada deste componente está marcada como fim de vida |
+| duckstation | emulator | appimage | não | engine | sim | 10 | — |
 | eden | emulator | appimage | não | engine | sim | 10 | — |
 | flycast | emulator | flatpak | não | flatpak | sim | 9 | — |
 | melonds | emulator | flatpak | não | flatpak | sim | 9 | — |
@@ -58,7 +58,7 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | snes | retroarch | flatpak | snes9x | — | core `snes9x` sem instalador |
 | mega-drive | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
 | arcade | retroarch | flatpak | fbneo | — | core `fbneo` sem instalador |
-| playstation | duckstation | none | — | — | emulador não instalável |
+| playstation | duckstation | engine | — | — | nenhum |
 | geforce-now | — | — | — | — | **nenhum emulador declarado** |
 | xbox-cloud-gaming | — | — | — | — | **nenhum emulador declarado** |
 | amazon-luna | — | — | — | — | **nenhum emulador declarado** |

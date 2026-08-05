@@ -242,6 +242,26 @@ class BrokenFlatpak(FakeFlatpak):
         raise SteamZeroError("E-COMPONENT-DEGRADED", detail="probe quebrada")
 
 
+def _registry_with_eol_duckstation() -> AdapterRegistry:
+    """Registry real com a fonte do DuckStation forçada a EOL.
+
+    O dashboard exibe uma lista fixa de três componentes, então o EOL precisa
+    recair sobre um deles. Antes o DuckStation era EOL de verdade e o teste lia
+    o manifesto empacotado; ele migrou para o AppImage oficial na Etapa 1, e o
+    contrato verificado aqui — componente descontinuado aparece `unsupported`,
+    com a ação desabilitada — continua valendo e passa a ser sintetizado.
+    """
+    import dataclasses
+
+    manifests = []
+    for manifest in AdapterRegistry.bundled().list():
+        if manifest.id == "duckstation":
+            source = dataclasses.replace(manifest.sources[0], end_of_life=True)
+            manifest = dataclasses.replace(manifest, sources=(source,))
+        manifests.append(manifest)
+    return AdapterRegistry(manifests)
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -264,6 +284,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
         spawn=lambda _argv: None,
         reduced_motion_probe=lambda: True,
         high_contrast_probe=lambda: True,
+        registry_factory=_registry_with_eol_duckstation,
     )
 
     snapshot = dashboard.snapshot(_status())
