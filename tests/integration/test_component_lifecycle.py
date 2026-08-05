@@ -541,3 +541,85 @@ def store_paths_component_root(tmp_path: Path) -> Path:
     from steamzero.core import paths
 
     return paths.data_home() / "components"
+
+
+class TestVerifyAndRepair:
+    """Etapa 1: verify é leitura; repair só existe para o que já reprovou."""
+
+    def _installed(self, store: state.StateStore, tmp_path: Path) -> ComponentLifecycle:
+        payload = executable_payload()
+        registry = portable_registry("1.0.0", payload)
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-1.0.0.AppImage": payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        return lifecycle
+
+    def test_verify_is_read_only_and_confirms_intact_deployment(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._installed(store, tmp_path)
+        before = lifecycle.status("demo-emulator")
+        report = lifecycle.verify("demo-emulator")
+        assert report["verified"] is True
+        assert report["repairable"] is False
+        assert report["state"] == "installed"
+        # Verificar não pode mudar nada.
+        assert lifecycle.status("demo-emulator") == before
+
+    def test_verify_refuses_to_call_a_drifted_payload_intact(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._installed(store, tmp_path)
+        root = store_paths_component_root(tmp_path)
+        payload = root / "demo-emulator" / "releases" / "1.0.0" / "payload"
+        payload.write_bytes(b"corrompido")
+
+        report = lifecycle.verify("demo-emulator")
+        assert report["verified"] is False
+        assert report["state"] == "degraded"
+        assert report["repairable"] is True
+        assert report["detail"]
+
+    def test_repair_is_refused_on_an_intact_component(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        """Botão que rebaixa artefato íntegro e não conserta nada não existe."""
+        lifecycle = self._installed(store, tmp_path)
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.plan("demo-emulator", "repair")
+        assert error.value.code == "E-API-SCHEMA"
+        assert "installed" in (error.value.detail or "")
+
+    def test_repair_restores_a_drifted_payload_and_marks_repairing(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._installed(store, tmp_path)
+        root = store_paths_component_root(tmp_path)
+        payload = root / "demo-emulator" / "releases" / "1.0.0" / "payload"
+        payload.write_bytes(b"corrompido")
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+        envelope = lifecycle.plan("demo-emulator", "repair")
+        assert envelope.action == "repair"
+
+        # `repairing` precisa estar persistido ANTES do efeito: uma interrupção
+        # no meio tem de ser distinguível de corrupção nova.
+        marked: list[str] = []
+        original = store.save_component
+
+        def spy(component: dict[str, object]) -> None:
+            marked.append(str(component["state"]))
+            original(component)
+
+        store.save_component = spy  # type: ignore[method-assign]
+        try:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            store.save_component = original  # type: ignore[method-assign]
+
+        assert "repairing" in marked, "reparo precisa declarar-se em curso antes de mutar"
+        assert lifecycle.status("demo-emulator")["state"] == "installed"

@@ -173,6 +173,29 @@ def route_for(manifest: AdapterManifest) -> LifecycleRoute:
     )
 
 
+#: Vocabulário público de estado do componente (migração m0017).
+#:
+#: ``missing`` não instalado, mas instalável · ``installed`` íntegro na fonte
+#: fixada · ``outdated`` íntegro, porém a fonte fixada avançou · ``degraded``
+#: artefato ou metadados não conferem · ``repairing`` reparo em curso ·
+#: ``unavailable`` sem executor ou probe falhou, com motivo · ``retired``
+#: adapter fora do conjunto suportado por decisão registrada.
+LIFECYCLE_STATES = frozenset(
+    {
+        "missing",
+        "installed",
+        "outdated",
+        "degraded",
+        "repairing",
+        "unavailable",
+        "retired",
+    }
+)
+
+#: Só faz sentido reparar o que a observação já reprovou.
+_REPAIRABLE_STATES = frozenset({"degraded", "outdated"})
+
+
 def routes_for(registry: AdapterRegistry) -> dict[str, LifecycleRoute]:
     """Rota de cada adapter declarado, para o read model publicar aplicabilidade."""
     return {manifest.id: route_for(manifest) for manifest in registry.list()}
@@ -361,6 +384,44 @@ class ComponentLifecycle:
         except Exception as exc:
             return failed_status(route, exc)
 
+    def _mark_repairing(self, manifest: AdapterManifest) -> None:
+        """Registra reparo em curso; falha aqui não pode abortar o reparo."""
+        with suppress(Exception):
+            self._store.save_component(
+                {
+                    "id": manifest.id,
+                    "adapter_id": manifest.id,
+                    "kind": manifest.kind,
+                    "version": None,
+                    "origin": None,
+                    "state": "repairing",
+                    "manifest_hash": manifest.manifest_hash,
+                }
+            )
+
+    def verify(self, adapter_id: str) -> dict[str, Any]:
+        """Confere o deployment contra a fonte fixada. Não muta nada.
+
+        Deliberadamente **fora** do fluxo plan/apply: verificação não muda
+        estado, e exigir token de confirmação para uma leitura treinaria o
+        operador a confirmar sem ler — o que corrói o valor da confirmação
+        justamente onde ela importa, que é no reparo e na desinstalação.
+
+        A conferência é a que cada executor já sabe fazer: o engine reidrata o
+        SHA-256 do payload em disco, o Flatpak compara o commit implantado com
+        o pinado. ``verified`` é verdadeiro somente em ``installed`` — nem
+        ``outdated`` conta, porque o artefato não é o que o manifesto fixa.
+        """
+        status = self.status(adapter_id)
+        state = str(status["state"])
+        status["verified"] = state == "installed"
+        status["repairable"] = state in _REPAIRABLE_STATES
+        if status["verified"]:
+            status.setdefault("detail", None)
+        elif not status.get("detail"):
+            status["detail"] = f"componente em '{state}'"
+        return status
+
     def status_all(self) -> list[dict[str, Any]]:
         """Status de todos os adapters, com falha agregada por componente.
 
@@ -404,8 +465,21 @@ class ComponentLifecycle:
                 "E-COMPONENT-DEGRADED",
                 detail=route.reason or "componente sem executor de lifecycle",
             )
-        if action not in {"install", "update", "uninstall"}:
+        if action not in {"install", "update", "uninstall", "repair"}:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de componente não permitida")
+        if action == "repair":
+            # Reparo só existe para deployment que a observação já reprovou.
+            # Oferecer "reparar" sobre um componente íntegro seria um botão que
+            # rebaixa o artefato e não conserta nada.
+            observed = str(self.status(adapter_id)["state"])
+            if observed not in _REPAIRABLE_STATES:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=(
+                        f"{adapter_id} está em '{observed}'; reparo só se aplica a "
+                        f"{sorted(_REPAIRABLE_STATES)}"
+                    ),
+                )
         if route.executor == "flatpak":
             if action == "uninstall":
                 raise SteamZeroError(
@@ -413,7 +487,10 @@ class ComponentLifecycle:
                     detail="desinstalação Flatpak ainda não é oferecida; o deployment é preservado",
                 )
             delegated_plan = self._flatpak().plan_install(adapter_id)
-            effective = str(delegated_plan.action)
+            # Reparo reimplanta o MESMO commit fixado; o executor delegado
+            # chama isso de install/update, mas a intenção revisada pelo
+            # operador foi reparar, e é ela que o envelope precisa nomear.
+            effective = "repair" if action == "repair" else str(delegated_plan.action)
             delegated: dict[str, Any] = {"flatpakPlanId": delegated_plan.plan_id}
             fingerprint = self._source_fingerprint(manifest, route)
             preview = delegated_plan.preview
@@ -425,6 +502,12 @@ class ComponentLifecycle:
             if action == "uninstall":
                 prepared = engine.plan_uninstall(adapter_id)
                 effective = "uninstall"
+            elif action == "repair":
+                # Reparo reimplanta a fonte fixada por cima do deployment
+                # observado como quebrado. Nunca produz "noop": um plano de
+                # reparo que não faz nada esconderia que o defeito continua.
+                prepared = engine.plan_install(adapter_id, force=True)
+                effective = "repair"
             else:
                 prepared = engine.plan_install(adapter_id)
                 if current["state"] == "installed":
@@ -495,6 +578,12 @@ class ComponentLifecycle:
         fingerprint = self._source_fingerprint(manifest, route)
         if fingerprint != envelope.source_fingerprint:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
+        if envelope.action == "repair":
+            # `repairing` é persistido ANTES de tocar no deployment. Se o
+            # processo morrer no meio, o recovery encontra um componente que
+            # declara reparo em curso, em vez de um `degraded` indistinguível
+            # de corrupção nova — que foi o que tornou o G25 difícil de ler.
+            self._mark_repairing(manifest)
         if envelope.executor == "flatpak":
             delegated_id = str(envelope.delegated["flatpakPlanId"])
             result = self._flatpak().apply(delegated_id, confirm_token)

@@ -156,10 +156,26 @@ class AdapterEngine:
 
         if payload.exists() or payload.is_symlink():
             if self._sha256_file(payload) != source.sha256:
-                raise SteamZeroError(
-                    "E-COMPONENT-DEGRADED",
-                    detail="payload existente diverge; remova o deployment antes de reinstalar",
+                if not force:
+                    # Instalar por cima de payload divergente apagaria evidência
+                    # de adulteração sem que ninguém decidisse isso. O reparo é
+                    # a decisão explícita de refazer, e chega com force=True.
+                    raise SteamZeroError(
+                        "E-COMPONENT-DEGRADED",
+                        detail="payload existente diverge; remova o deployment antes de reinstalar",
+                    )
+                # Reparo: o payload divergente é substituído pelo artefato
+                # fixado. A cópia entra na mesma transação, então uma falha no
+                # meio restaura o estado anterior em vez de deixar o componente
+                # sem payload nenhum.
+                plan = transaction.plan_copy_files(
+                    {cached_artifact: payload},
+                    root=self._root,
+                    kind=f"component.{operation}",
+                    writes={current: current_bytes},
+                    replace_existing=True,
                 )
+                return PreparedComponent(manifest, source, plan)
             plan = transaction.plan_write_files(
                 {current: current_bytes}, root=self._root, kind=f"component.{operation}"
             )
