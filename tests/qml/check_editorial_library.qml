@@ -178,7 +178,11 @@ Window {
                       && library.stateLabel("unverified") === "Não verificado",
                       "estados técnicos conhecidos devem usar rótulos PT-BR")
                 check(library.view === "systems", "a jornada inicia em sistemas")
-                library.openSystemDetails(1)
+                check(library.handleNavigationIntent("next")
+                      && library.selectedSystem.id === "switch",
+                      "intent semântico deve mover o foco entre sistemas")
+                check(library.handleNavigationIntent("confirm"),
+                      "intent de confirmação deve abrir o sistema focado")
                 check(library.view === "system" && library.selectedSystem.id === "switch",
                       "sistema deve possuir uma vista própria antes da biblioteca")
                 check(library.requirementState("keys") === "blocked"
@@ -249,7 +253,11 @@ Window {
                     captureAndExit()
                     return
                 }
-                library.openDossier(0)
+                check(library.handleNavigationIntent("next") && library.selectedIndex === 1
+                      && library.handleNavigationIntent("previous") && library.selectedIndex === 0,
+                      "intents devem navegar pelo catálogo com retorno previsível")
+                check(library.handleNavigationIntent("confirm") && library.view === "dossier",
+                      "confirmação na biblioteca deve abrir o dossiê do jogo focado")
                 phase = 2
                 return
             }
@@ -259,15 +267,21 @@ Window {
                     return
                 }
                 check(library.selectedGame.launchable, "Steam com app id numérico deve poder ser preparado")
-                library.openLaunchReview()
+                check(library.handleNavigationIntent("confirm"),
+                      "confirmação no dossiê deve abrir a revisão de lançamento")
                 phase = 3
                 return
             }
             if (phase === 3) {
                 check(library.view === "launch", "dossiê deve abrir revisão de lançamento")
+                check(library.handleNavigationIntent("back") && library.view === "dossier",
+                      "voltar deve preservar a seleção ao sair da revisão")
+                library.goBack()
                 library.openSystem(library.systems[1])
                 check(library.visibleGames.length === 1 && !library.visibleGames[0].launchable,
                       "emulação sem launcher publicado deve permanecer honesta")
+                check(!library.handleNavigationIntent("confirm"),
+                      "confirmação não deve abrir lançamento sem contrato seguro")
                 width = 800
                 height = 1280
                 phase = 4

@@ -432,6 +432,90 @@ Item {
         view = "launch"
     }
 
+    function wrappedIndex(current, delta, length) {
+        if (length <= 0)
+            return -1
+        return ((current + delta) % length + length) % length
+    }
+
+    function selectLibraryGame(delta) {
+        if (visibleGames.length === 0)
+            return false
+        selectedIndex = wrappedIndex(selectedIndex, delta, visibleGames.length)
+        if (libraryView === "carousel")
+            carousel.positionViewAtIndex(selectedIndex, ListView.Contain)
+        return true
+    }
+
+    // Entrada controller-first: a camada que conhece controle, teclado ou
+    // touch traduz para estes intents. O tema não captura códigos de teclas e
+    // preserva a mesma jornada para qualquer dispositivo de entrada.
+    function handleNavigationIntent(intent) {
+        const action = String(intent || "").toLowerCase()
+        if (action === "back") {
+            if (view === "systems")
+                return false
+            goBack()
+            return true
+        }
+
+        if (view === "systems") {
+            if (action === "previous" || action === "left" || action === "up") {
+                selectedSystemIndex = wrappedIndex(selectedSystemIndex, -1, systems.length)
+                return true
+            }
+            if (action === "next" || action === "right" || action === "down") {
+                selectedSystemIndex = wrappedIndex(selectedSystemIndex, 1, systems.length)
+                return true
+            }
+            if (action === "confirm" && selectedSystemIndex >= 0) {
+                openSystemDetails(selectedSystemIndex)
+                return true
+            }
+            return false
+        }
+
+        if (view === "system") {
+            if (action === "confirm" && selectedSystem.id) {
+                openSystem(selectedSystem)
+                return true
+            }
+            return false
+        }
+
+        if (view === "library") {
+            if (action === "previous" || action === "left")
+                return selectLibraryGame(-1)
+            if (action === "next" || action === "right")
+                return selectLibraryGame(1)
+            const rowStep = libraryView === "grid" ? (compact ? 2 : 5) : 1
+            if (action === "up")
+                return selectLibraryGame(-rowStep)
+            if (action === "down")
+                return selectLibraryGame(rowStep)
+            if (action === "confirm" && selectedIndex >= 0 && selectedIndex < visibleGames.length) {
+                openDossier(selectedIndex)
+                return true
+            }
+            return false
+        }
+
+        if (view === "dossier") {
+            if (action === "confirm" && selectedGame.launchable === true) {
+                openLaunchReview()
+                return true
+            }
+            return false
+        }
+
+        if (view === "launch" && action === "confirm"
+                && selectedGame.source === "steam" && selectedGame.launchable === true) {
+            launchSteamRequested(String(selectedGame.id || ""))
+            return true
+        }
+        return false
+    }
+
     function goBack() {
         if (view === "launch")
             view = "dossier"

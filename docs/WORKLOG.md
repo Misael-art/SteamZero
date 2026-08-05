@@ -4691,3 +4691,15 @@ Validação dirigida: 15 testes de Theme API, harness QML dedicado de efeitos,
 captura offscreen inspecionada com mídia sintética e `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Navegação editorial por intents semânticos
+
+`EditorialLibrary` passou a expor um contrato controller-first de intents para
+movimento, confirmação e retorno. A travessia preserva seleção, faz wrap-around
+na biblioteca e só confirma lançamento quando existe launcher publicado; o tema
+não captura códigos de tecla. O harness cobre sistemas, catálogo, dossiê,
+revisão, retorno e a recusa honesta de jogo emulado sem contrato seguro.
+
+Validação dirigida: runtime QML offscreen e harness editorial, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
