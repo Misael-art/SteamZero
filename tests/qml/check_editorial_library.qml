@@ -78,6 +78,37 @@ Window {
         captureDelay.restart()
     }
 
+    // Captura uma vista já composta sem percorrer a jornada pelo timer. A
+    // jornada completa continua sendo exercida quando não há captura; isolar
+    // o frame evita que um artefato visual dependa de timers ou de uma troca
+    // de vista que ainda esteja em andamento no Qt Quick.
+    function captureRequestedStage() {
+        if (captureOutput === "")
+            return false
+        if (captureStage === "systems") {
+            captureAndExit()
+            return true
+        }
+        if (captureStage === "system") {
+            library.view = "system"
+            captureAndExit()
+            return true
+        }
+        if (["library", "dossier", "launch"].indexOf(captureStage) < 0)
+            return false
+        library.systemFilter = "steam"
+        library.collectionFilter = ""
+        library.initialFilter = ""
+        library.resetMetadataFilters()
+        library.selectedIndex = 0
+        if (captureStage === "library"
+                && ["carousel", "grid", "list"].indexOf(captureLibraryView) >= 0)
+            library.libraryView = captureLibraryView
+        library.view = captureStage
+        captureAndExit()
+        return true
+    }
+
     Timer {
         id: captureDelay
         interval: 120
@@ -146,18 +177,24 @@ Window {
         repeat: true
         onTriggered: {
             if (phase === 0) {
-                if (captureOutput !== "" && captureStage === "systems") {
-                    captureAndExit()
+                if (captureRequestedStage())
                     return
+                // REATRIBUI o objeto inteiro em vez de mutar uma chave interna.
+                // `systems` é um binding sobre `emulation`; mutar
+                // `emulation.editorialPlatforms` não troca a referência de
+                // `emulation`, então o QML não reavalia e o harness comparava
+                // contra a lista antiga — 898 falhas em laço, sem sair.
+                library.emulation = {
+                    "platforms": library.emulation.platforms,
+                    "editorialPlatforms": [
+                        library.emulation.platforms[0],
+                        {
+                            "id": "playstation", "name": "Fixture PlayStation", "state": "unverified",
+                            "statusLabel": "Nenhum jogo inventariado", "readiness": {"percent": 0},
+                            "requirements": {}, "subsystems": [], "games": []
+                        }
+                    ]
                 }
-                library.emulation.editorialPlatforms = [
-                    library.emulation.platforms[0],
-                    {
-                        "id": "playstation", "name": "Fixture PlayStation", "state": "unverified",
-                        "statusLabel": "Nenhum jogo inventariado", "readiness": {"percent": 0},
-                        "requirements": {}, "subsystems": [], "games": []
-                    }
-                ]
                 check(library.systems.length === 3,
                       "a jornada deve incluir Steam e as plataformas editoriais publicadas")
                 check(library.systems[2].id === "playstation" && library.systems[2].gameCount === 0,
@@ -194,10 +231,6 @@ Window {
                 check(library.requirementState("firmware") === "attention",
                       "firmware desatualizado deve preservar atenção, não virar bloqueio ou dado ausente")
                 library.emulation.platforms[0].requirements.firmware.status = "ok"
-                if (captureOutput !== "" && captureStage === "system") {
-                    captureAndExit()
-                    return
-                }
                 library.goBack()
                 library.openSystem(library.systems[0])
                 phase = 1
@@ -246,15 +279,6 @@ Window {
                     viewLayoutCheck = 3
                     return
                 }
-                if (captureOutput !== "" && captureStage === "library") {
-                    if (["carousel", "grid", "list"].indexOf(captureLibraryView) >= 0)
-                        library.libraryView = captureLibraryView
-                    // Wait for the next rendered frame after switching views, so
-                    // the capture reflects the active layout rather than stale
-                    // geometry retained by invisible Qt Quick controls.
-                    captureAndExit()
-                    return
-                }
                 check(library.handleNavigationIntent("next") && library.selectedIndex === 1
                       && library.handleNavigationIntent("previous") && library.selectedIndex === 0,
                       "intents devem navegar pelo catálogo com retorno previsível")
@@ -264,10 +288,6 @@ Window {
                 return
             }
             if (phase === 2) {
-                if (captureOutput !== "" && captureStage === "dossier") {
-                    captureAndExit()
-                    return
-                }
                 check(library.selectedGame.launchable, "Steam com app id numérico deve poder ser preparado")
                 check(library.handleNavigationIntent("confirm"),
                       "confirmação no dossiê deve abrir a revisão de lançamento")
