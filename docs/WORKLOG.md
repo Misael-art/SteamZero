@@ -4321,3 +4321,12 @@ A closure só vale **quando #49 e #50 forem mergeadas**. Enquanto abertas, a
 `verify/g34-pr49-50` (`05f2f0b` = `main`+#49+#50) fica como artefato da medição.
 
 Ações de host: **nenhuma**.
+
+## 2026-08-05 — Jornada de BIOS centralizada
+
+Implementado o catálogo BIOS v2, scanner seguro para arquivo/diretório/ZIP e
+store endereçado por SHA-256. Objetos agora vivem em `bios/objects/sha256` e
+as visões por plataforma são symlinks; o adaptador legado mantém apenas uma
+projeção compatível, sem segunda cópia física. A migração `0017` cria as
+entidades para objetos, identidades, variantes e projeções. Nenhuma ação de
+host, download de conteúdo ou push foi executado.

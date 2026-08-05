@@ -163,7 +163,11 @@ class BiosScanner:
         total = 0
         for member, value in entries:
             declared_size = self._entry_size(value)
-            if declared_size == 0 or declared_size > MAX_FILE_BYTES:
+            if (
+                declared_size == 0
+                or declared_size > MAX_FILE_BYTES
+                or self._zip_ratio_unsafe(value)
+            ):
                 total += declared_size
                 candidates.append(ScanCandidate(member, "", declared_size, None, "unknown-ignored"))
                 continue
@@ -232,10 +236,6 @@ class BiosScanner:
             total += info.file_size
             if total > MAX_TOTAL_BYTES:
                 raise SteamZeroError("E-CONTENT-LIMIT", detail="pack de BIOS excede o limite")
-            if info.compress_size and info.file_size > info.compress_size * MAX_RATIO:
-                raise SteamZeroError(
-                    "E-CONTENT-UNSAFE-ARCHIVE", detail="razão de expansão insegura"
-                )
             entries.append((info.filename, info))
         return entries
 
@@ -244,6 +244,14 @@ class BiosScanner:
         if isinstance(value, Path):
             return value.stat(follow_symlinks=False).st_size
         return value.file_size
+
+    @staticmethod
+    def _zip_ratio_unsafe(value: Path | zipfile.ZipInfo) -> bool:
+        return (
+            isinstance(value, zipfile.ZipInfo)
+            and bool(value.compress_size)
+            and (value.file_size > value.compress_size * MAX_RATIO)
+        )
 
     @staticmethod
     def _validate_zip_info(info: zipfile.ZipInfo) -> None:
