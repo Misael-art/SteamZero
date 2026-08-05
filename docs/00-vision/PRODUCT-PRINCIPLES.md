@@ -23,3 +23,5 @@ P10. **Evidência antes de afirmação.** Status "instalado/válido/sincronizado
 P11. **Sem barra de progresso falsa.** Progresso reportado = progresso medido (bytes, itens, etapas). Se não é mensurável, mostrar etapa + spinner honesto.
 
 P12. **Dados do usuário são sagrados.** Saves, ROMs, BIOS e mídias nunca são sobrescritos sem plano, preview, backup e confirmação. Conflito de save divergente mantém ambas as versões por padrão.
+
+P13. **Uma fonte de verdade por conteúdo.** Todo conteúdo gerenciado possui uma única fonte de verdade. Diretórios de plataformas, emuladores e interfaces são projeções dessa fonte central, não cópias independentes. Duplicação física só é permitida quando uma limitação técnica comprovada impedir referência segura ao conteúdo central. O princípio vale para BIOS, firmware, keys, ROMs, mídias, saves e assets compartilhados.
