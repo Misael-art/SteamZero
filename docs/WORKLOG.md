@@ -4714,3 +4714,14 @@ teclado bruto.
 Validação dirigida: runtime e captura QML offscreen, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Contrato editorial atualizado
+
+A Design Bible foi atualizada para descrever a implementação real de reflexão,
+máscara gradiente, vinheta, índice canônico de plataformas e intents de
+navegação. Um teste de fonte garante que a Biblioteca editorial preserva o
+contrato semântico e não passe a capturar `Keys` diretamente.
+
+Validação dirigida: 16 testes de Theme API, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

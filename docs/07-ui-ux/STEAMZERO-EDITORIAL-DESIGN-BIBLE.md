@@ -41,13 +41,16 @@ opacity, shadow, glow, reflection, gradientMask e vignette. Cada efeito é
 validado no schema e no domínio, possui valores padrão, limites, capability,
 custo e fallback determinístico. Temas não carregam QML, JavaScript ou shaders.
 
-O renderer recebe a source uma vez e aplica `QtQuick.Effects.MultiEffect` em
-runtime. A capability realmente anunciada é menor que a lista declarativa até
-que uma primitiva confiável exista para máscara, reflexão e vinheta; esses casos
-produzem diagnóstico e aplicam o fallback, sem quebrar a cena ou alegar
-fidelidade completa. `cinematic` usa a pilha inteira suportada; `balanced` reduz
-parâmetros caros; `economy` remove blur/glow/reflection/vignette; `accessible`
-remove tratamento visual para priorizar contraste.
+O renderer captura a source uma vez e reaproveita essa textura em
+`QtQuick.Effects.MultiEffect`, `ReflectionLayer` e `VignetteLayer`. Reflexo
+espelhado, máscara alpha gradiente e vinheta são primitives locais confiáveis;
+por isso `graphics.effect.reflection` e `graphics.mask.gradient` são anunciadas
+somente no runtime que as implementa. Cada uma continua negociada por
+capability e produz diagnóstico/fallback determinístico quando indisponível,
+sem quebrar a cena ou alegar fidelidade completa. `cinematic` usa a pilha inteira
+suportada; `balanced` reduz parâmetros caros; `economy` remove
+blur/glow/reflection/vignette; `accessible` remove tratamento visual para
+priorizar contraste.
 
 Além de cor/geometria/tipo/movimento, `tokens` publica namespaces fechados de
 `stateVariants`, `interaction`, `accessibility` e `performance`. Eles definem
@@ -94,8 +97,9 @@ e concluídos são uma grade responsiva com estado explícito, enquanto provider
 detalhes e rollback continuam nas rotas operacionais já existentes.
 
 `EditorialLibrary.qml` implementa **Sistemas → Sistema → Biblioteca → Dossiê →
-Preparar para jogar** com `steamGameplay.games` e
-`emulation.platforms[].games`. A vista de sistema mostra estado e ação real;
+Preparar para jogar** com `steamGameplay.games` e o índice canônico
+`emulation.editorialPlatforms` (com fallback para `emulation.platforms`). A
+vista de sistema mostra estado e ação real;
 subsistemas/regiões/variantes permanecem em posição `planned` até que a fonte os
 publique. Steam publica IDs numéricos e usa o contrato `steam.game.launch`; o
 botão abre a revisão e não muda opções de lançamento. Jogos emulados sem
@@ -124,8 +128,11 @@ ou no alto contraste, ela comunica o estado sem renderizar uma imagem substituta
 vídeo continua fora da UI até haver um contrato de reprodução segura.
 
 A árvore visível é pequena e reutilizável: `EditorialHome` e
-`EditorialLibrary` consomem `MediaEffectLayer`, `NavigationIcon` e os tokens
-resolvidos pelo `ThemeBridge`. A biblioteca é a última seção da navegação sem
+`EditorialLibrary` consomem `MediaEffectLayer`, `ReflectionLayer`,
+`VignetteLayer`, `NavigationIcon` e os tokens resolvidos pelo `ThemeBridge`.
+`EditorialLibrary.handleNavigationIntent()` recebe intents semânticos de
+movimento, confirmação e retorno; adaptadores de controle, touch, mouse e
+teclado ficam fora do tema. A biblioteca é a última seção da navegação sem
 mudar os índices das áreas operacionais existentes. Os harnesses QML percorrem
 os dois caminhos de origem, retrato 800×1280, 4K lógico a 200%, alto contraste,
 movimento reduzido e uma fixture de 1.200 títulos virtualizada.

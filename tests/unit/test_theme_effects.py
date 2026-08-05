@@ -176,6 +176,12 @@ def test_default_renderer_negotiates_trusted_reflection_and_gradient_mask() -> N
     ]
 
 
+def test_editorial_library_accepts_semantic_navigation_without_raw_key_capture() -> None:
+    component = Path("src/steamzero/ui/qml/EditorialLibrary.qml").read_text(encoding="utf-8")
+    assert "function handleNavigationIntent(intent)" in component
+    assert "Keys." not in component
+
+
 def test_media_recipe_selects_one_published_source_without_io() -> None:
     recipe = MediaRecipe(
         role=MediaRole.CONTEXTUAL_BACKDROP,
