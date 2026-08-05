@@ -136,6 +136,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_steam_gameplay_responsive.qml",
             "check_editorial_home.qml",
             "check_editorial_library.qml",
+            "check_editorial_canonical_systems.qml",
             "check_media_effect_layer.qml",
             "check_operational_metric_card.qml",
         "check_handheld_layout_focus.qml",

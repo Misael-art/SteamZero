@@ -4789,3 +4789,15 @@ Validação dirigida: captura QML offscreen em alto contraste/movimento reduzido
 14 testes de índice, workspace e CLI (exceto um cenário independente bloqueado
 por espaço livre em `/run`), `ruff`, `mypy`, `make independence boundaries` e
 `git diff --check` verdes. Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Travessia das plataformas canônicas no runtime QML
+
+Um harness QML dedicado passou a publicar Steam e 36 plataformas canônicas na
+composição editorial em 800×1280, alto contraste e movimento reduzido. Ele
+verifica que cada destino chega ao repeater, que o card compacto reserva a
+altura acessível e que intents semânticos alcançam a última plataforma; não há
+categoria sintética nem jogos de fixture dentro do produto.
+
+Validação dirigida: harness QML canônico offscreen, `ruff`, `mypy`, `make
+independence boundaries` e `git diff --check` verdes. Nenhuma ação de host,
+release ou push foi executada.
