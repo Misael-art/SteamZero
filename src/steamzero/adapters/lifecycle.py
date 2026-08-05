@@ -62,6 +62,8 @@ from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, Adapte
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.lock import ResourceLock
+from steamzero.core.log import get_logger
 from steamzero.core.state import StateStore
 
 #: Famílias de fonte com executor real. Fonte fora daqui não tem lifecycle e
@@ -73,6 +75,24 @@ FLATPAK_SOURCES = frozenset({"flatpak"})
 _PLAN_SCHEMA_V2 = "component-plan-v2.schema.json"
 _PLAN_SCHEMA_V1 = "component-plan-v1.schema.json"
 _DEFAULT_TTL_S = 3600
+
+#: Marcadores de estado do arquivo de operação de reparo (schemaVersion 2).
+#: v1 é consumido pelo executor Flatpak no mesmo diretório; o v2 só existe no
+#: caminho de reparo do lifecycle.
+_REPAIR_OP_SCHEMA = 2
+_REPAIR_ACTION = "repair"
+_REPAIR_OP_APPLYING = "applying"
+_REPAIR_OP_COMMITTED = "committed"
+_REPAIR_OP_ROLLED_BACK = "rolled-back"
+_REPAIR_OP_RECOVERY_REQUIRED = "recovery-required"
+_REPAIR_OP_STATES = frozenset(
+    {
+        _REPAIR_OP_APPLYING,
+        _REPAIR_OP_COMMITTED,
+        _REPAIR_OP_ROLLED_BACK,
+        _REPAIR_OP_RECOVERY_REQUIRED,
+    }
+)
 
 Spawn = Callable[[Sequence[str]], int | None]
 
@@ -336,6 +356,56 @@ class ComponentPlan:
         )
 
 
+@dataclass(frozen=True)
+class RepairOperation:
+    """Operação de reparo durável (schemaVersion 2, Etapa 1).
+
+    Nasce em ``applying`` ANTES de qualquer efeito no deployment e é o que
+    permite distinguir reparo interrompido de corrupção nova. ``previous_state``
+    preserva o estado observado antes da mutação para restauração no rollback.
+    """
+
+    operation_id: str
+    plan_id: str
+    adapter_id: str
+    action: str
+    state: str
+    manifest_hash: str
+    previous_state: str
+    started_at: str
+    error: str | None = None
+    schema_version: int = _REPAIR_OP_SCHEMA
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schemaVersion": self.schema_version,
+            "operationId": self.operation_id,
+            "planId": self.plan_id,
+            "adapterId": self.adapter_id,
+            "action": self.action,
+            "state": self.state,
+            "manifestHash": self.manifest_hash,
+            "previousState": self.previous_state,
+            "startedAt": self.started_at,
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> RepairOperation:
+        return cls(
+            operation_id=str(data["operationId"]),
+            plan_id=str(data["planId"]),
+            adapter_id=str(data["adapterId"]),
+            action=str(data["action"]),
+            state=str(data["state"]),
+            manifest_hash=str(data["manifestHash"]),
+            previous_state=str(data["previousState"]),
+            started_at=str(data["startedAt"]),
+            error=str(data["error"]) if data.get("error") is not None else None,
+            schema_version=int(data["schemaVersion"]),
+        )
+
+
 class ComponentLifecycle:
     """Fachada de lifecycle usada por CLI, dashboard e central de emulação.
 
@@ -366,7 +436,16 @@ class ComponentLifecycle:
 
     # ------------------------------------------------------------------ status
     def status(self, adapter_id: str) -> dict[str, Any]:
-        """Status normalizado do componente, roteado pela família da fonte."""
+        """Status normalizado do componente, roteado pela família da fonte.
+
+        Depois de observar o deployment real, o marcador ``repairing`` é
+        reconciliado: só é exposto enquanto existir operação de reparo válida em
+        curso; um marcador órfão volta ao estado observado com diagnóstico.
+        """
+        return self._reconcile_repairing(adapter_id, self._observe_state(adapter_id))
+
+    def _observe_state(self, adapter_id: str) -> dict[str, Any]:
+        """Estado observado pelo executor, sem leitura/escrita de marcadores."""
         manifest = self._registry.get(adapter_id)
         route = route_for(manifest)
         try:
@@ -384,20 +463,122 @@ class ComponentLifecycle:
         except Exception as exc:
             return failed_status(route, exc)
 
-    def _mark_repairing(self, manifest: AdapterManifest) -> None:
-        """Registra reparo em curso; falha aqui não pode abortar o reparo."""
+    def _reconcile_repairing(self, adapter_id: str, observed: dict[str, Any]) -> dict[str, Any]:
+        """Expõe ``repairing`` só com operação válida ativa; órfão reconcilia.
+
+        Um marcador ``repairing`` sem arquivo de operação válido em ``applying``
+        é órfão (operação vencida, apagada ou decreto de crash antes da
+        persistência). Nada além do marcador existe para corrigi-lo: o estado
+        verdadeiro é o que o executor observa no deployment. Reconcilia e emite
+        diagnóstico auditável (evento + log estruturado).
+        """
+        try:
+            row = self._store.get_component(adapter_id)
+        except Exception:
+            return observed
+        if row is None or str(row.get("state")) != "repairing":
+            return observed
+        operation_id = row.get("operation_id")
+        active: RepairOperation | None = None
+        if isinstance(operation_id, str):
+            active = self._try_load_repair_operation(operation_id)
+        if active is not None and active.state == _REPAIR_OP_APPLYING:
+            repairing = dict(observed)
+            repairing["state"] = "repairing"
+            repairing["installed"] = False
+            repairing.setdefault("detail", "reparo em curso")
+            return repairing
+        reason = (
+            "componente marcado repairing sem operation_id"
+            if not isinstance(operation_id, str)
+            else (
+                "arquivo de operação de reparo ausente"
+                if active is None
+                else f"operação de reparo não está em applying ({active.state})"
+            )
+        )
+        manifest = self._registry.get(adapter_id)
+        # Reconciliar um marcador não pode derrubar uma leitura de status: a
+        # persistência e o evento são best-effort (o estado real vem do proxy).
         with suppress(Exception):
+            self._store.save_component(
+                {
+                    "id": adapter_id,
+                    "adapter_id": adapter_id,
+                    "kind": manifest.kind,
+                    "version": observed.get("version"),
+                    "origin": observed.get("origin"),
+                    "state": str(observed["state"]),
+                    "manifest_hash": manifest.manifest_hash,
+                    "operation_id": None,
+                }
+            )
+            self._store.append_event(
+                "component.state",
+                entity=f"component:{adapter_id}",
+                payload={
+                    "from": "repairing",
+                    "to": observed["state"],
+                    "reconciled": True,
+                    "reason": reason,
+                },
+            )
+        with suppress(Exception):
+            get_logger().warning(
+                "component.repair.reconciled",
+                componentId=adapter_id,
+                operationId=operation_id,
+                reason=reason,
+                observedState=observed["state"],
+            )
+        return observed
+
+    def _mark_repairing(
+        self, manifest: AdapterManifest, observed: dict[str, Any], plan_id: str
+    ) -> str:
+        """Registra o reparo durável ANTES de qualquer efeito no deployment.
+
+        O arquivo de operação (schemaVersion 2) nasce em ``applying`` no mesmo
+        diretório das operações Flatpak e é quem permite ao recovery distinguir
+        reparo interrompido de corrupção nova. Falha de persistência AQUI aborta
+        o apply com ``E-STATE-INTEGRITY`` — reparar sem intent durável não começa.
+        Se já houver uma operação de reparo em ``applying`` para o mesmo adapter
+        (restart/reaplicação de plano), reusa-a mantendo a idempotência.
+        """
+        existing = self._active_repair_operation(manifest.id)
+        if existing is not None:
+            return existing.operation_id
+        operation_id = ids.new_ulid()
+        operation = RepairOperation(
+            operation_id=operation_id,
+            plan_id=plan_id,
+            adapter_id=manifest.id,
+            action=_REPAIR_ACTION,
+            state=_REPAIR_OP_APPLYING,
+            manifest_hash=manifest.manifest_hash,
+            previous_state=str(observed["state"]),
+            started_at=self._utc_now().isoformat(),
+        )
+        try:
+            self._save_repair_operation(operation)
             self._store.save_component(
                 {
                     "id": manifest.id,
                     "adapter_id": manifest.id,
                     "kind": manifest.kind,
-                    "version": None,
-                    "origin": None,
+                    "version": observed.get("version"),
+                    "origin": observed.get("origin"),
                     "state": "repairing",
                     "manifest_hash": manifest.manifest_hash,
+                    "operation_id": operation_id,
                 }
             )
+        except Exception as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY",
+                detail=f"falha ao registrar reparo de {manifest.id}: {exc}",
+            ) from exc
+        return operation_id
 
     def verify(self, adapter_id: str) -> dict[str, Any]:
         """Confere o deployment contra a fonte fixada. Não muta nada.
@@ -578,15 +759,21 @@ class ComponentLifecycle:
         fingerprint = self._source_fingerprint(manifest, route)
         if fingerprint != envelope.source_fingerprint:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
-        if envelope.action == "repair":
-            # `repairing` é persistido ANTES de tocar no deployment. Se o
-            # processo morrer no meio, o recovery encontra um componente que
-            # declara reparo em curso, em vez de um `degraded` indistinguível
-            # de corrupção nova — que foi o que tornou o G25 difícil de ler.
-            self._mark_repairing(manifest)
+        repair_op_id: str | None = None
+        repair_observed: dict[str, Any] | None = None
         if envelope.executor == "flatpak":
+            if envelope.action == "repair":
+                repair_observed = self._observe_state(envelope.adapter_id)
+                repair_op_id = self._mark_repairing(manifest, repair_observed, envelope.plan_id)
             delegated_id = str(envelope.delegated["flatpakPlanId"])
-            result = self._flatpak().apply(delegated_id, confirm_token)
+            try:
+                result = self._flatpak().apply(delegated_id, confirm_token)
+            except Exception:
+                if repair_op_id is not None:
+                    self._finish_failed_repair(repair_op_id, manifest, repair_observed)
+                raise
+            if repair_op_id is not None:
+                self._commit_repair_operation(repair_op_id)
             self._mark_applied(envelope)
             return {
                 "status": result.status,
@@ -603,11 +790,29 @@ class ComponentLifecycle:
         def smoke() -> None:
             self._engine_smoke(engine, manifest)
 
-        applied = engine.apply(
-            prepared,
-            confirm_token,
-            smoke=None if envelope.action == "uninstall" else smoke,
-        )
+        # Revalida plano e deployment sob lock (padrão do executor Flatpak):
+        # efeito só começa com o contexto que autorizou o plano ainda verdadeiro.
+        with ResourceLock(
+            f"component:engine:{envelope.adapter_id}",
+            job_id=ids.new_ulid(),
+            lease_seconds=3600,
+        ):
+            self._revalidate_engine_apply(envelope, engine)
+            if envelope.action == "repair":
+                repair_observed = self._observe_state(envelope.adapter_id)
+                repair_op_id = self._mark_repairing(manifest, repair_observed, envelope.plan_id)
+            try:
+                applied = engine.apply(
+                    prepared,
+                    confirm_token,
+                    smoke=None if envelope.action == "uninstall" else smoke,
+                )
+            except Exception:
+                if repair_op_id is not None:
+                    self._finish_failed_repair(repair_op_id, manifest, repair_observed)
+                raise
+        if repair_op_id is not None:
+            self._commit_repair_operation(repair_op_id)
         self._mark_applied(envelope)
         return {
             "status": applied.status,
@@ -619,9 +824,28 @@ class ComponentLifecycle:
 
     # --------------------------------------------------------------- rollback
     def rollback(self, operation_id: str) -> dict[str, Any]:
-        """Reverte operação Flatpak (arquivo próprio) ou transacional do engine."""
+        """Reverte operação Flatpak (arquivo próprio), transacional do engine
+        ou, no caso de reparo em curso, reconcilia o marcador para o estado
+        observado."""
         operation_path = paths.component_operation_path(operation_id)
         if operation_path.is_file() and not operation_path.is_symlink():
+            repair = self._repair_operation_from_file(operation_path)
+            if repair is not None:
+                if repair.state != _REPAIR_OP_APPLYING:
+                    raise SteamZeroError(
+                        "E-TX-STALE-PLAN",
+                        detail=f"operação de reparo não está em applying ({repair.state})",
+                    )
+                observed = self._observe_state(repair.adapter_id)
+                manifest = self._registry.get(repair.adapter_id)
+                self._finish_failed_repair(operation_id, manifest, observed)
+                return {
+                    "status": "rolled-back",
+                    "operationId": operation_id,
+                    "adapterId": repair.adapter_id,
+                    "executor": "repair",
+                    "observedState": observed["state"],
+                }
             flatpak_result = self._flatpak().rollback(operation_id)
             return {
                 "status": flatpak_result.status,
@@ -695,8 +919,15 @@ class ComponentLifecycle:
         }
 
     def recover(self) -> list[dict[str, Any]]:
-        """Recupera operações Flatpak interrompidas (delegação ao executor)."""
-        return [
+        """Recupera operações interrompidas (Flatpak delegado + reparos).
+
+        Operações de reparo em ``applying`` viram fatos observados: se o
+        deployment já está íntegro, o reparo terminou antes do crash e a
+        operação é ``committed``; senão, o marcador ``repairing`` volta ao
+        estado real do executor com a operação ``rolled-back``. Idempotente:
+        uma operação já encerrada não é processada de novo.
+        """
+        recovered: list[dict[str, Any]] = [
             {
                 "status": result.status,
                 "operationId": result.operation_id,
@@ -705,6 +936,52 @@ class ComponentLifecycle:
             }
             for result in self._flatpak().recover()
         ]
+        fs.ensure_dir(paths.component_operations_dir())
+        for entry in sorted(paths.component_operations_dir().glob("*.json")):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            operation = self._repair_operation_from_file(entry)
+            if operation is None:
+                continue
+            if operation.state not in {_REPAIR_OP_APPLYING, _REPAIR_OP_RECOVERY_REQUIRED}:
+                continue
+            try:
+                obs = self._observe_state(operation.adapter_id)
+                final = (
+                    _REPAIR_OP_COMMITTED if obs["state"] == "installed" else _REPAIR_OP_ROLLED_BACK
+                )
+                manifest = self._registry.get(operation.adapter_id)
+                self._store.save_component(
+                    {
+                        "id": operation.adapter_id,
+                        "adapter_id": operation.adapter_id,
+                        "kind": manifest.kind,
+                        "version": obs.get("version"),
+                        "origin": obs.get("origin"),
+                        "state": obs["state"],
+                        "manifest_hash": manifest.manifest_hash,
+                        "operation_id": None,
+                    }
+                )
+                self._save_repair_operation(replace(operation, state=final))
+                recovered.append(
+                    {
+                        "status": "reconciled",
+                        "operationId": operation.operation_id,
+                        "adapterId": operation.adapter_id,
+                        "executor": "repair",
+                        "state": final,
+                        "observedState": obs["state"],
+                    }
+                )
+            except Exception as exc:
+                self._save_repair_operation(replace(operation, state=_REPAIR_OP_RECOVERY_REQUIRED))
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN",
+                    operation_id=operation.operation_id,
+                    detail=f"recuperação de reparo órfão falhou: {exc}",
+                ) from exc
+        return recovered
 
     # ------------------------------------------------------------- internals
     def _engine(self) -> AdapterEngine:
@@ -760,6 +1037,162 @@ class ComponentLifecycle:
                 "E-COMPONENT-DEGRADED",
                 detail=f"smoke test retornou código {result.returncode}",
             )
+
+    def _revalidate_engine_apply(self, envelope: ComponentPlan, engine: AdapterEngine) -> None:
+        """Revalida plano e deployment sob lock, como o executor Flatpak faz.
+
+        Copia o padrão de flatpak.py: o plano é carregado DE NOVO sob o lock, o
+        fingerprint da fonte é recalculado contra o manifesto ATUAL e o estado
+        do deployment é conferido contra a ação do envelope. Qualquer divergência
+        aborta com ``E-TX-STALE-PLAN`` antes de efeito.
+        """
+        plan = transaction.load_plan(str(envelope.delegated["transactionPlanId"]))
+        if plan.status != "pending":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="plano transacional não está mais pendente"
+            )
+        manifest = self._registry.get(envelope.adapter_id)
+        route = route_for(manifest)
+        if route.executor != envelope.executor:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="executor do componente mudou após o plano"
+            )
+        if self._source_fingerprint(manifest, route) != envelope.source_fingerprint:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
+        current = engine.status(envelope.adapter_id)
+        if envelope.action == "uninstall" and current["state"] == "missing":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="deployment já foi removido após o plano"
+            )
+        if envelope.action == "repair" and current["state"] not in _REPAIRABLE_STATES:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"estado do componente mudou após o plano ({current['state']})",
+            )
+
+    def _finish_failed_repair(
+        self,
+        operation_id: str,
+        manifest: AdapterManifest,
+        observed: dict[str, Any] | None,
+    ) -> None:
+        """Encerra um reparo que falhou: restaura o estado observado.
+
+        O deployment já voltou ao que o executor observa (rollback do próprio
+        executor ou transação que não chegou a vigorar). Aqui apenas o marcador
+        ``repairing`` e a operação são encerrados, preservando versão/origem
+        observados. Falha na restauração vira ``recovery-required`` (o recovery
+        fará a reconciliação depois).
+        """
+        try:
+            if observed is not None:
+                self._store.save_component(
+                    {
+                        "id": manifest.id,
+                        "adapter_id": manifest.id,
+                        "kind": manifest.kind,
+                        "version": observed.get("version"),
+                        "origin": observed.get("origin"),
+                        "state": str(observed["state"]),
+                        "manifest_hash": manifest.manifest_hash,
+                        "operation_id": None,
+                    }
+                )
+        except Exception as exc:
+            self._mark_repair_recovery(operation_id, f"estado não restaurado: {exc}")
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                operation_id=operation_id,
+                detail=f"reparo falhou e o estado não pôde ser restaurado: {exc}",
+            ) from exc
+        self._mark_repair_rolled_back(operation_id)
+
+    def _commit_repair_operation(self, operation_id: str) -> None:
+        self._save_repair_operation(
+            replace(self._load_repair_operation(operation_id), state=_REPAIR_OP_COMMITTED)
+        )
+
+    def _mark_repair_rolled_back(self, operation_id: str) -> None:
+        self._save_repair_operation(
+            replace(self._load_repair_operation(operation_id), state=_REPAIR_OP_ROLLED_BACK)
+        )
+
+    def _mark_repair_recovery(self, operation_id: str, error: str) -> None:
+        try:
+            operation = self._load_repair_operation(operation_id)
+        except SteamZeroError:
+            return
+        self._save_repair_operation(
+            replace(operation, state=_REPAIR_OP_RECOVERY_REQUIRED, error=error)
+        )
+
+    def _save_repair_operation(self, operation: RepairOperation) -> None:
+        fs.ensure_dir(paths.component_operations_dir())
+        fs.write_atomic_text(
+            paths.component_operation_path(operation.operation_id),
+            json.dumps(operation.to_dict(), ensure_ascii=False, sort_keys=True),
+        )
+        self._store.save_operation(
+            operation.operation_id,
+            journal_path=str(paths.component_operation_path(operation.operation_id)),
+            state=operation.state,
+        )
+
+    def _try_load_repair_operation(self, operation_id: str) -> RepairOperation | None:
+        if not ids.is_ulid(operation_id):
+            return None
+        return self._repair_operation_from_file(paths.component_operation_path(operation_id))
+
+    def _load_repair_operation(self, operation_id: str) -> RepairOperation:
+        operation = self._try_load_repair_operation(operation_id)
+        if operation is None:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"operação de reparo não encontrada: {operation_id}"
+            )
+        return operation
+
+    def _active_repair_operation(self, adapter_id: str) -> RepairOperation | None:
+        """Operação de reparo em curso para o adapter, se houver (idempotência).
+
+        Permite reaplicar um plano sobre um reparo já registrado sem criar uma
+        operação nova: o restart encontra o arquivo em ``applying`` e segue.
+        """
+        try:
+            row = self._store.get_component(adapter_id)
+        except Exception:
+            return None
+        if row is None or row.get("state") != "repairing":
+            return None
+        operation_id = row.get("operation_id")
+        if not isinstance(operation_id, str) or not operation_id:
+            return None
+        operation = self._try_load_repair_operation(operation_id)
+        if operation is None or operation.state != _REPAIR_OP_APPLYING:
+            return None
+        return operation
+
+    @staticmethod
+    def _repair_operation_from_file(path: Path) -> RepairOperation | None:
+        if path.is_symlink() or not path.is_file():
+            return None
+        try:
+            data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        try:
+            operation = RepairOperation.from_dict(data)
+        except (KeyError, TypeError, ValueError):
+            return None
+        if (
+            operation.schema_version != _REPAIR_OP_SCHEMA
+            or operation.action != _REPAIR_ACTION
+            or operation.operation_id != path.stem
+            or not ids.is_ulid(operation.operation_id)
+        ):
+            return None
+        if operation.state not in _REPAIR_OP_STATES:
+            return None
+        return operation
 
     def _validate_pending(self, envelope: ComponentPlan, confirm_token: str) -> None:
         if envelope.status != "pending":

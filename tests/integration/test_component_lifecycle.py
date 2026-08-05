@@ -23,6 +23,7 @@ from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
 from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.transaction import SimulatedKill, set_crash_hook
 
 TARGET = "a" * 64
 
@@ -35,6 +36,7 @@ class FakeFlatpak:
         self.available = {TARGET}
         self.blocked: set[str] = set()
         self.fail_status: Exception | None = None
+        self.smoke_error: Exception | None = None
         self.calls: list[tuple[object, ...]] = []
 
     def status(self, ref: str) -> FlatpakState:
@@ -65,6 +67,8 @@ class FakeFlatpak:
 
     def smoke(self, ref: str, arguments: Sequence[str]) -> None:
         self.calls.append(("smoke", ref, *arguments))
+        if self.smoke_error is not None:
+            raise self.smoke_error
 
 
 class FakeArtifacts:
@@ -623,3 +627,238 @@ class TestVerifyAndRepair:
 
         assert "repairing" in marked, "reparo precisa declarar-se em curso antes de mutar"
         assert lifecycle.status("demo-emulator")["state"] == "installed"
+
+
+class TestRepairTransactionality:
+    """Commit 1: `repairing` durável, reversível e recuperável após crash.
+
+    O marcador repairing nasce com um arquivo de operação (schemaVersion 2) em
+    applying ANTES do efeito; falha de persistência aborta; interrupção em
+    qualquer etapa é reconciliada pelo estado observado; reaplicar o mesmo
+    plano reusa a operação existente (idempotência).
+    """
+
+    URL = "https://fixtures.invalid/demo-1.0.0.AppImage"
+
+    @staticmethod
+    def _payload_path(tmp_path: Path) -> Path:
+        root = store_paths_component_root(tmp_path)
+        return root / "demo-emulator" / "releases" / "1.0.0" / "payload"
+
+    def _corrupted(self, store: state.StateStore, tmp_path: Path) -> ComponentLifecycle:
+        payload = executable_payload()
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({self.URL: payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        self._payload_path(tmp_path).write_bytes(b"corrompido")
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+        return lifecycle
+
+    def _repair_plan(self, lifecycle: ComponentLifecycle):
+        envelope = lifecycle.plan("demo-emulator", "repair")
+        assert envelope.action == "repair"
+        return envelope
+
+    def _crash_at(self, stage: str) -> None:
+        def hook(current: str) -> None:
+            if current == stage:
+                raise SimulatedKill(current)
+
+        set_crash_hook(hook)
+
+    def test_persistence_failure_of_repairing_aborts_before_effect(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        corrupted = self._payload_path(tmp_path).read_bytes()
+
+        original = store.save_component
+
+        def failing(component: dict[str, object]) -> None:
+            if component.get("state") == "repairing":
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="banco indisponível")
+            original(component)
+
+        store.save_component = failing  # type: ignore[method-assign]
+        try:
+            with pytest.raises(SteamZeroError) as error:
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            store.save_component = original  # type: ignore[method-assign]
+
+        assert error.value.code == "E-STATE-INTEGRITY"
+        assert self._payload_path(tmp_path).read_bytes() == corrupted, (
+            "efeito não pode começar sem intent durável"
+        )
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+    def test_interruption_before_effect_is_reconciled_to_real_state(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.begin")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        row = store.get_component("demo-emulator")
+        assert row is not None and row["state"] == "repairing"
+        operation_id = row["operation_id"]
+        assert operation_id
+        assert lifecycle.status("demo-emulator")["state"] == "repairing", (
+            "marcador com operação válida em applying é exposto"
+        )
+
+        recovered = lifecycle.recover()
+        assert any(item["executor"] == "repair" for item in recovered)
+        repair = next(item for item in recovered if item["executor"] == "repair")
+        assert repair["state"] == "rolled-back"
+        assert repair["observedState"] == "degraded"
+        row = store.get_component("demo-emulator")
+        assert row is not None and row["state"] == "degraded"
+        assert row["operation_id"] is None
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+    def test_interruption_after_effect_is_committed_and_idempotent(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.commit")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        assert lifecycle.status("demo-emulator")["state"] == "repairing"
+        recovered = lifecycle.recover()
+        repair = next(item for item in recovered if item["executor"] == "repair")
+        assert repair["state"] == "committed"
+        assert repair["observedState"] == "installed"
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+        assert lifecycle.recover() == [], "recovery é idempotente"
+
+    def test_restart_reuses_existing_repair_operation(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.begin")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        first_id = str(store.get_component("demo-emulator")["operation_id"])  # type: ignore[index]
+
+        # Reaplicar o mesmo plano (ainda pendente) reusa a operação em curso.
+        result = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert result["status"] == "ok"
+
+        operation_files = sorted(paths.component_operations_dir().glob("*.json"))
+        assert [p.stem for p in operation_files] == [first_id], (
+            "restart não pode criar operação nova"
+        )
+        assert json.loads(operation_files[0].read_text(encoding="utf-8"))["state"] == "committed"
+        row = store.get_component("demo-emulator")
+        assert row is not None and row["state"] == "installed"
+        assert row["operation_id"] is None
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+
+    def test_orphan_marker_without_operation_file_is_reconciled_by_status(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.begin")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        operation_id = str(store.get_component("demo-emulator")["operation_id"])  # type: ignore[index]
+        paths.component_operation_path(operation_id).unlink()
+
+        status = lifecycle.status("demo-emulator")
+        assert status["state"] == "degraded", "marcador órfão volta ao estado observado"
+        row = store.get_component("demo-emulator")
+        assert row is not None and row["state"] == "degraded"
+        assert row["operation_id"] is None
+
+    def test_orphan_marker_without_db_row_is_recovered_by_scan(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.begin")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        operation_id = str(store.get_component("demo-emulator")["operation_id"])  # type: ignore[index]
+        store.save_component(
+            {
+                "id": "demo-emulator",
+                "adapter_id": "demo-emulator",
+                "kind": "emulator",
+                "version": None,
+                "origin": None,
+                "state": "degraded",
+                "manifest_hash": lifecycle._registry.get("demo-emulator").manifest_hash,  # type: ignore[attr-defined]
+                "operation_id": None,
+            }
+        )
+
+        recovered = lifecycle.recover()
+        repair = next(item for item in recovered if item["executor"] == "repair")
+        assert repair["state"] == "rolled-back"
+        operation_file = paths.component_operation_path(operation_id)
+        assert json.loads(operation_file.read_text(encoding="utf-8"))["state"] == "rolled-back"
+
+    def test_flatpak_repair_is_transactional_and_commits(self, store: state.StateStore) -> None:
+        expected = AdapterRegistry.bundled().get("retroarch").preferred_source("flatpak").version
+        fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
+        lifecycle = bundled_with_fake(fake, store)
+        assert lifecycle.status("retroarch")["state"] == "degraded"
+
+        envelope = lifecycle.plan("retroarch", "repair")
+        assert envelope.action == "repair"
+        result = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert result["status"] == "ok"
+
+        row = store.get_component("retroarch")
+        assert row is not None and row["state"] == "installed"
+        assert row["operation_id"] is None
+        assert lifecycle.status("retroarch")["state"] == "installed"
+        assert lifecycle.status("retroarch")["version"] == expected
+        assert lifecycle.recover() == []
+
+    def test_flatpak_repair_failure_restores_previous_state(self, store: state.StateStore) -> None:
+        fake = FakeFlatpak(FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * 64))
+        fake.smoke_error = RuntimeError("não iniciou")
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "repair")
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert error.value.code == "E-COMPONENT-UPDATE-ROLLEDBACK"
+
+        row = store.get_component("retroarch")
+        assert row is not None and row["state"] == "degraded", (
+            "falha do reparo restaura o estado observado antes da mutação"
+        )
+        assert row["operation_id"] is None
+        assert lifecycle.status("retroarch")["state"] == "degraded"

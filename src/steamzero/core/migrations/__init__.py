@@ -29,6 +29,7 @@ from steamzero.core.migrations import (
     m0015_provider_health,
     m0016_session_start_ticks,
     m0017_component_lifecycle_states,
+    m0018_component_operation,
 )
 
 Migration = Callable[[sqlite3.Connection], None]
@@ -52,6 +53,7 @@ MIGRATIONS: list[tuple[int, Migration]] = [
     (15, m0015_provider_health.up),
     (16, m0016_session_start_ticks.up),
     (17, m0017_component_lifecycle_states.up),
+    (18, m0018_component_operation.up),
 ]
 
 LATEST = max(v for v, _ in MIGRATIONS)

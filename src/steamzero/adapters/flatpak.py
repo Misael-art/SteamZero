@@ -541,6 +541,14 @@ class FlatpakExecutor:
         for entry in sorted(paths.component_operations_dir().glob("*.json")):
             if entry.is_symlink() or not entry.is_file():
                 continue
+            # Operações de reparo (schemaVersion 2) vivem no MESMO diretório,
+            # mas são reconciliadas pelo lifecycle, não por este executor.
+            try:
+                raw = json.loads(entry.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if raw.get("schemaVersion") != 1:
+                continue
             operation = self._load_operation_file(entry)
             if operation.status not in {"applying", "rolling-back", "recovery-required"}:
                 continue
