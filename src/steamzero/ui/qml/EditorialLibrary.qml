@@ -207,6 +207,11 @@ Item {
     readonly property int focusDuration: reducedMotion ? 0 : 140
     readonly property int viewDuration: reducedMotion ? 0 : 280
     readonly property int minimumTarget: Math.max(48, themeMinimumTarget)
+    // Um card compacto ainda precisa acomodar ícone, título, contagem e estado
+    // sem encostar o último rótulo na borda. Três alvos mínimos preservam essa
+    // hierarquia quando o tema aumenta a área de toque.
+    readonly property int systemCardHeight: compact
+        ? Math.max(152, minimumTarget * 3) : Math.max(182, minimumTarget * 4)
     readonly property bool contextualBackdropVisible: contextualBackdrop.visible
 
     property string view: "systems"
@@ -639,7 +644,7 @@ Item {
                             required property var modelData
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            Layout.preferredHeight: root.compact ? 126 : 182
+                            Layout.preferredHeight: root.systemCardHeight
                             Layout.columnSpan: root.compact ? 1 : 1
                             Accessible.name: qsTr("%1, %2 jogos, %3")
                                 .arg(modelData.name).arg(modelData.gameCount).arg(modelData.statusLabel)

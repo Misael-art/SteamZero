@@ -60,9 +60,82 @@
       "items": {
         "$ref": "#/$defs/platform"
       }
+    },
+    "editorialPlatforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/editorialPlatform"
+      }
     }
   },
   "$defs": {
+    "editorialPlatform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "shortName",
+        "games",
+        "state",
+        "statusLabel",
+        "readiness",
+        "requirements",
+        "subsystems"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "shortName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "games": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "state": {
+          "$ref": "#/$defs/state"
+        },
+        "statusLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "readiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["percent"],
+          "properties": {
+            "percent": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "subsystems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
     "job": {
       "type": "object",
       "additionalProperties": false,

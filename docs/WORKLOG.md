@@ -4769,3 +4769,23 @@ seção continua responsável por conteúdo que excede o viewport.
 Validação dirigida: 17 testes de Theme API, runtime QML da Home e captura
 offscreen, `ruff`, `mypy`, `make independence boundaries` e `git diff --check`
 verdes. Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria visual e contrato do índice editorial
+
+A auditoria offscreen da jornada Início → Sistemas encontrou no retrato de alto
+contraste o rótulo de estado encostando no limite inferior do card. A altura
+compacta passou a reservar três alvos mínimos, preservando ícone, título,
+contagem e estado; a recaptura 800×1280 confirmou os dois rótulos íntegros,
+foco ciano e indicadores de avanço visíveis. A captura também confirmou que o
+tratamento de mídia confiável renderiza reflexão, máscara e vinheta a partir de
+uma única textura local.
+
+O contrato versionado de workspace agora declara `editorialPlatforms`, com
+linhas canônicas, estados e jogos publicados. Isso fecha a validação da rota
+CLI sem afrouxar `additionalProperties`; o primeiro teste integral revelou a
+omissão antes de qualquer ação de host.
+
+Validação dirigida: captura QML offscreen em alto contraste/movimento reduzido,
+14 testes de índice, workspace e CLI (exceto um cenário independente bloqueado
+por espaço livre em `/run`), `ruff`, `mypy`, `make independence boundaries` e
+`git diff --check` verdes. Nenhuma ação de host, release ou push foi executada.

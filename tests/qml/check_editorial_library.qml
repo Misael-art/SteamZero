@@ -178,6 +178,8 @@ Window {
                       && library.stateLabel("unverified") === "Não verificado",
                       "estados técnicos conhecidos devem usar rótulos PT-BR")
                 check(library.view === "systems", "a jornada inicia em sistemas")
+                check(library.systemRepeaterControl.itemAt(0).height >= library.systemCardHeight,
+                      "card de sistema deve reservar altura para o estado sem sobrepor a borda")
                 check(library.handleNavigationIntent("next")
                       && library.selectedSystem.id === "switch",
                       "intent semântico deve mover o foco entre sistemas")
