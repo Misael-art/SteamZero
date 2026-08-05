@@ -4564,3 +4564,16 @@ credenciais nunca foram exibidos ou persistidos.
 Validação dirigida: 47 testes de adapters/credenciais verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria de acervo visual externo
+
+Adicionada ferramenta somente leitura para catalogar dimensões, alpha, SHA-256,
+assinatura perceptual, formato e categoria sem copiar nem importar imagens. Sem
+proveniência e licença verificáveis, o resultado é conservadoramente
+`C_REFERENCE_UNVERIFIED`; arquivos inválidos ou duplicados são `D`. A ferramenta
+aceita amostra determinística para validar o fluxo e execução integral para o
+relatório completo, que requer tempo proporcional ao acervo.
+
+Validação: amostra real de 50 arquivos processada, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
