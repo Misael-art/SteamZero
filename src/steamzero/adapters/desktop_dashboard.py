@@ -1254,8 +1254,16 @@ class DesktopDashboard:
             }
             for e in catalog
         ]
+        high_contrast = False
+        reduced_motion = False
+        with contextlib.suppress(Exception):
+            high_contrast = self._high_contrast_probe()
+        with contextlib.suppress(Exception):
+            reduced_motion = self._reduced_motion_probe()
         try:
-            resolved = self._theme_catalog.resolve(active_id)
+            resolved = self._theme_catalog.resolve(
+                active_id, high_contrast=high_contrast, reduced_motion=reduced_motion
+            )
         except Exception:
             qml_object = None
             return {
@@ -1266,13 +1274,6 @@ class DesktopDashboard:
                 "state": "ready",
                 "detail": None,
             }
-        high_contrast = False
-        reduced_motion = False
-        with contextlib.suppress(Exception):
-            high_contrast = self._high_contrast_probe()
-        with contextlib.suppress(Exception):
-            reduced_motion = self._reduced_motion_probe()
-        resolved = resolved.apply_accessibility(high_contrast, reduced_motion)
         qml_object = resolved.to_theme_qml_object()
         return {
             "activeId": active_id,

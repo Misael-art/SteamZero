@@ -134,6 +134,8 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_main_emulation.qml",
         "check_emulation.qml",
         "check_steam_gameplay_responsive.qml",
+        "check_editorial_home.qml",
+        "check_editorial_library.qml",
         "check_handheld_layout_focus.qml",
         "check_main_handheld_sections.qml",
         "check_credentials.qml",
@@ -154,6 +156,23 @@ def test_qml_handheld_harness_offscreen(harness: str) -> None:
         check=False,
     )
     _assert_qml_clean(completed, harness)
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+def test_editorial_library_renders_at_logical_scale_200() -> None:
+    """A composição editorial continua utilizável em 4K físico a 200% lógico."""
+    env = _qml_environment()
+    env["QT_SCALE_FACTOR"] = "2"
+    completed = subprocess.run(
+        [str(QML), "tests/qml/check_editorial_library.qml"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    _assert_qml_clean(completed, "check_editorial_library.qml 200%")
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")

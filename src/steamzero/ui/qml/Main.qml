@@ -86,7 +86,8 @@ ApplicationWindow {
         {"id": "sync", "label": qsTr("Saves e Sync"), "icon": "folder-sync"},
         {"id": "cast", "label": qsTr("Transmissão"), "icon": "video-display"},
         {"id": "system", "label": qsTr("Sistema"), "icon": "configure"},
-        {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"}
+        {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"},
+        {"id": "library", "label": qsTr("Biblioteca"), "icon": "applications-games"}
     ]
 
     function sectionIndexOf(sectionId) {
@@ -283,7 +284,10 @@ ApplicationWindow {
     readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
         ? desktopStatus.current.profile.touchMode : false
 
-    property int sectionIndex: 1
+    // A primeira experiência deve ser jogar e descobrir, não administrar.
+    // Argumentos explícitos e ações internas continuam selecionando as demais
+    // seções pela fonte única `navigationSections`.
+    property int sectionIndex: 0
     property int emulatorFilter: 0
     property int steamFilter: 0
     property string steamArea: "performance"
@@ -348,11 +352,8 @@ ApplicationWindow {
     property bool keyboardVisible: false
 
     function sectionLabel(index) {
-        return [
-            qsTr("Visão geral"), qsTr("Emulação"), qsTr("Steam"),
-            qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Transmissão"),
-            qsTr("Sistema")
-        ][index] || qsTr("Central")
+        const section = navigationSections[index]
+        return section ? section.label : qsTr("Central")
     }
 
     function activeTaskCount() {
@@ -3150,6 +3151,61 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: root.compactLayout ? 12 : 18
                                 anchors.margins: 28
+                                // A entrada editorial fica isolada do shell:
+                                // Home só recebe projeções já publicadas e
+                                // delega a navegação à fonte única de seções.
+                                EditorialHome {
+                                    steamGames: root.steamGameplayData.games || []
+                                    emulation: root.emulationData
+                                    playtime: root.playtimeData
+                                    collections: root.collectionData
+                                    components: root.emulatorItems
+                                    sync: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                        ? root.desktopStatus.dashboard.sync : ({})
+                                    doctor: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
+                                        ? root.desktopStatus.dashboard.doctor : ({})
+                                    libraryHealth: root.libraryHealthData
+                                    needsAttention: root.needsAttention
+                                    reducedMotion: root.reducedMotion
+                                    highContrast: root.highContrast
+                                    themeMinimumTarget: root._themeBridge.minimumTarget
+                                    backgroundColor: root.backgroundColor
+                                    surfaceColor: root.surfaceColor
+                                    raisedColor: root.raisedColor
+                                    borderColor: root.borderColor
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    cyanColor: root.cyanColor
+                                    cyanDarkColor: root.cyanDarkColor
+                                    greenColor: root.greenColor
+                                    amberColor: root.amberColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    onLibraryRequested: function(systemId) {
+                                        editorialLibraryPage.systemFilter = systemId
+                                        editorialLibraryPage.collectionFilter = ""
+                                        editorialLibraryPage.initialFilter = ""
+                                        editorialLibraryPage.resetMetadataFilters()
+                                        editorialLibraryPage.selectedIndex = 0
+                                        editorialLibraryPage.view = "library"
+                                        root.sectionIndex = root.sectionIndexOf("library")
+                                    }
+                                    onCollectionRequested: function(collectionId) {
+                                        editorialLibraryPage.systemFilter = "all"
+                                        editorialLibraryPage.collectionFilter = collectionId
+                                        editorialLibraryPage.initialFilter = ""
+                                        editorialLibraryPage.resetMetadataFilters()
+                                        editorialLibraryPage.selectedIndex = 0
+                                        editorialLibraryPage.view = "library"
+                                        root.sectionIndex = root.sectionIndexOf("library")
+                                    }
+                                    onSystemRequested: root.sectionIndex = root.sectionIndexOf("system")
+                                    onContinueRequested: function(game) { root.performContinueGame(game) }
+                                    onMaintenanceRequested: function(area) {
+                                        root.sectionIndex = root.sectionIndexOf(area)
+                                    }
+                                }
                                 Label {
                                     text: qsTr("Visão geral")
                                     color: root.textColor
@@ -5069,6 +5125,54 @@ ApplicationWindow {
                                 compactLayout: root.compactLayout
                                 requestAction: root.requestAction
                                 request: root.request
+                            }
+                        }
+                        // Biblioteca editorial: usa somente os read models já
+                        // publicados. O botão Jogar resolve o contrato seguro
+                        // `steam.game.launch`; emulação sem contrato permanece
+                        // explicitamente indisponível no dossiê.
+                        EditorialLibrary {
+                            id: editorialLibraryPage
+                            steamGames: root.steamGameplayData.games || []
+                            emulation: root.emulationData
+                            playtime: root.playtimeData
+                            collections: root.collectionData
+                            steamGameplay: root.steamGameplayData
+                            sync: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                ? root.desktopStatus.dashboard.sync : ({})
+                            effectStacks: root._themeBridge.effectStacks
+                            backgroundColor: root.backgroundColor
+                            surfaceColor: root.surfaceColor
+                            raisedColor: root.raisedColor
+                            borderColor: root.borderColor
+                            textColor: root.textColor
+                            mutedColor: root.mutedColor
+                            cyanColor: root.cyanColor
+                            cyanDarkColor: root.cyanDarkColor
+                            greenColor: root.greenColor
+                            amberColor: root.amberColor
+                            redColor: root.redColor
+                            reducedMotion: root.reducedMotion
+                            highContrast: root.highContrast
+                            themeMinimumTarget: root._themeBridge.minimumTarget
+                            themeFocusedScale: root._themeBridge.focusedScale
+                            themePeripheralOpacity: root._themeBridge.peripheralOpacity
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            onLaunchSteamRequested: function(gameId) {
+                                root.requestAction("steam.game.launch", {"gameId": gameId}, function() {
+                                    root.notify(qsTr("%1 foi iniciado").arg(editorialLibraryPage.selectedGame.name), false)
+                                    root.refreshStatus("")
+                                })
+                            }
+                            onOpenSteamConfigurationRequested: function(gameId) {
+                                const gameIndex = root.steamGameplayData.games.findIndex(function(game) {
+                                    return String(game.id) === gameId
+                                })
+                                root.steamArea = "performance"
+                                root.sectionIndex = root.sectionIndexOf("steam")
+                                if (gameIndex >= 0)
+                                    steamGameplayPage.gameIndex = gameIndex
                             }
                         }
                     }

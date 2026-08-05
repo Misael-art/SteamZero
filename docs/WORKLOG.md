@@ -4330,3 +4330,198 @@ as visões por plataforma são symlinks; o adaptador legado mantém apenas uma
 projeção compatível, sem segunda cópia física. A migração `0017` cria as
 entidades para objetos, identidades, variantes e projeções. Nenhuma ação de
 host, download de conteúdo ou push foi executado.
+
+## 2026-08-05 — Effect Stack declarativa para o tema Editorial
+
+Adicionado o namespace versionado `effects` ao manifesto de tema: stack
+allowlisted, schema fechado e negociação determinística por capability, tier de
+performance, alto contraste e movimento reduzido. O renderer confiável
+`MediaEffectLayer.qml` aplica a fonte única com `QtQuick.Effects.MultiEffect`;
+capabilities sem primitiva implementada são recusadas com diagnóstico, em vez de
+simular fidelidade. O builtin default declara backdrop, capa em foco e capas
+periféricas sem adicionar qualquer asset de jogo ou referência externa.
+
+Validação dirigida: 58 testes de tema/effects verdes, `ruff`, `mypy` e
+`make independence boundaries` verdes. A suíte completa teve 3.904 testes
+verdes e 7 falhas pré-existentes em `tests/integration/test_state.py`, que ainda
+esperam schema de banco 16 na base que já declara 17. Nenhuma ação de host,
+release ou push foi executada.
+
+## 2026-08-05 — Biblioteca Editorial: vertical slice real
+
+Adicionada a jornada **Sistema → Biblioteca → Dossiê → Preparar para jogar**
+como `EditorialLibrary.qml`, ligada aos read models de Steam e emulação. A
+revisão Steam usa o novo contrato publicado `steam.game.launch`; plataformas
+emuladas sem launcher seguro seguem desabilitadas e explicadas. Capa focal,
+vizinhos atenuados, índice alfabético, fallback sem mídia, alto contraste e
+movimento reduzido foram validados offscreen. A captura de fixture 1280×800 foi
+inspecionada durante a sessão e levou ao ajuste da altura focal e do metadata
+strip.
+
+Validação dirigida: 83 testes verdes (incluindo todos os harnesses QML),
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Requisitos publicados por sistema
+
+A vista de Sistema passou a expor BIOS, keys e firmware como requisitos
+publicados da plataforma. Estados prontos, bloqueantes e não publicados são
+distintos: sem um contrato de BIOS, a UI diz “não publicado”; keys ausentes só
+bloqueiam quando o read model declara esse limite. O harness cobre tanto um
+requisito bloqueante quanto um pronto, sem inventar diagnóstico local.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Tokens de experiência e base Mineral Mist
+
+O tema builtin passou para `1.1.0` com a paleta clara mineral mist. A Theme API
+agora resolve os namespaces `stateVariants`, `interaction`, `accessibility` e
+`performance`, preservando foco visível, alvos de no mínimo 48 px e precedência
+de alto contraste/movimento reduzido. A biblioteca consome escala de foco,
+opacidade periférica e alvo do tema, enquanto a dashboard negocia acessibilidade
+antes de publicar a pilha de efeitos, preservando diagnósticos de fallback.
+
+Validação dirigida: 85 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Biblioteca editorial integrada e auditada
+
+O vertical slice editorial foi conectado à navegação principal e ao contrato
+publicado de lançamento Steam. A biblioteca agora reúne as fontes Steam e
+emulação preservando `gameRef`, sistema, estado e limites de launcher; mostra
+coleções publicadas pelo domínio, filtro alfabético funcional em telas largas,
+dossiê honesto para mídia/estado e revisão antes de abrir o launcher. Controles
+da jornada usam a superfície Mineral Mist em vez do estilo nativo claro. O
+rótulo do cabeçalho também passou a consumir a fonte única de navegação, para
+que Temas e Biblioteca sejam anunciados corretamente.
+
+Validação dirigida: 89 testes verdes (incluindo os harnesses QML), `ruff`,
+`mypy`, `make independence boundaries` e `git diff --check` verdes. A suíte
+completa produziu **3.899 verdes e 20 falhas preexistentes**: sete expectativas
+de schema 16 em `tests/integration/test_state.py` enquanto a base declara 17,
+e treze testes de socket que colidem com sockets já existentes em `/tmp`.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Home, sistema e escala editorial
+
+Acrescentada `EditorialHome.qml` usando somente playtime, coleções, Steam e
+plataformas de emulação publicados. A ação primária retoma a sessão apenas se o
+read model já oferece launcher seguro; sem esse contrato ela abre a biblioteca.
+`EditorialLibrary.qml` ganhou a etapa Sistema, posição explícita para
+subsistemas/variantes ainda não publicados, e dossiê/revisão com as sessões e
+configurações efetivamente disponíveis. O carrossel foi migrado de `Repeater`
+para `ListView` virtualizado com reutilização e cache limitado.
+
+Foram auditadas seis referências visuais somente leitura; nenhum asset, fonte,
+logo ou mídia externa foi copiado. Capturas offscreen foram inspecionadas em
+1280×800, Full HD, ultrawide e 4K com alto contraste/movimento reduzido e escala
+lógica de 200%. O harness agora prova reflow em retrato, alto contraste,
+movimento reduzido, escala 200% e uma fixture de 1.200 títulos sem materializar
+a biblioteca inteira.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. A suíte completa
+teve 3.901 verdes e as mesmas 20 falhas externas já registradas (schema 16 e
+sockets preexistentes em `/tmp`). Nenhuma ação de host, release ou push foi
+executada.
+
+## 2026-08-05 — Vistas virtualizadas da biblioteca
+
+`EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o
+mesmo catálogo filtrado por sistema, coleção e alfabeto. Grade e lista também
+usam views Qt virtualizadas; o harness cobre a troca das três vistas e a
+virtualização de 1.200 títulos. A captura de grade 1280×800 foi inspecionada:
+foco, títulos e estados sem mídia continuam legíveis, sem inserir arte falsa.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Home como rota inicial e manutenção conectada
+
+A Central agora inicia na Home editorial, não em Emulação. A Home exibe também
+Recentes e um resumo secundário, factual e navegável de emuladores, saves/sync,
+saúde da biblioteca e diagnóstico. Cada cartão delega à seção operacional já
+existente; não cria mutação, launcher ou dado alternativo. O harness do shell
+fixa a Home como destino inicial e o harness editorial cobre as contagens e os
+destinos de manutenção.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Semântica de requisito compatível
+
+A camada editorial agora reconhece o estado `ok` efetivamente publicado pelo
+workspace como requisito pronto, preserva `outdated` como atenção e mantém
+`missing` bloqueante. O ajuste impede que firmware/keys compatíveis apareçam
+indevidamente como “não verificados” no detalhe do Sistema.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Captura e contraste do detalhe de Sistema
+
+O harness editorial ganhou captura manual das etapas Sistemas, Sistema e
+Biblioteca. A inspeção offscreen de 1280×800 confirmou requisitos legíveis:
+BIOS não publicado neutro, keys bloqueantes em âmbar e firmware compatível em
+verde. A camada de legibilidade passou a receber `backgroundColor` do tema em
+vez de mineral claro fixo, evitando texto claro sobre superfície clara em temas
+escuros.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Coleções na Home editorial
+
+A Home agora apresenta coleções publicadas com contagem de membros e rota
+direta para a Biblioteca filtrada pelo `collectionId` real. Quando não existe
+coleção no read model, a posição permanece informativa e a ação fica
+indisponível, sem criar uma coleção ou um filtro fictício. A captura offscreen
+1280×800 foi revisada com Favoritos, Coleções, Pendências e Recentes na mesma
+hierarquia.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Filtros editoriais por metadados publicados
+
+Biblioteca e dossiê passaram a preservar gênero, ano e desenvolvedor quando o
+jogo realmente os publica. Os controles alternam somente valores presentes no
+catálogo filtrado e mostram “não publicado” desabilitado na ausência de cada
+campo; não há taxonomia criada pelo cliente. A captura Full HD foi revisada com
+coleção, índice alfabético, metadados e grade virtualizada simultaneamente.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Política de mídia contextual publicada
+
+`EditorialLibrary` agora preserva hero/fanart, capa, screenshot e banner que
+venham nos itens dos read models e seleciona a fonte contextual em ordem fixa:
+hero/fanart, capa, screenshot, banner. O componente não pesquisa arquivos nem
+gera cópias; sem qualquer campo, mantém a composição sem mídia. O harness cobre
+a ordem de fallback com dados sintéticos restritos ao teste.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Faixa de capturas e estados legíveis no dossiê
+
+Criado `ScreenshotRail.qml`: a galeria usa `ListView` com reutilização,
+deduplica fontes publicadas e limita a 24 itens, sem varrer mídia local nem
+simular vídeo. Sem captura — ou em alto contraste — preserva uma explicação
+textual. A inspeção do dossiê em 1280×800 também encontrou e corrigiu o rótulo
+técnico `installed`, agora apresentado como “Instalado”.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.

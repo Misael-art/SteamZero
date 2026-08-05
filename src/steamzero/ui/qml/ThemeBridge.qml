@@ -27,22 +27,29 @@ QtObject {
         ? resolved.reducedMotion
         : _fallbackAccessibility && _fallbackAccessibility.reducedMotion === true
 
+    // Pilhas já negociadas pelo domínio. Componentes QML apenas as aplicam;
+    // não escolhem capability, tier nem fallback.
+    readonly property var effectStacks: resolved && resolved.effects
+        ? resolved.effects : ({})
+    readonly property var effectDiagnostics: resolved && resolved.effectDiagnostics
+        ? resolved.effectDiagnostics : ([])
+
     // Cores — alto contraste sobrepõe quando ativo
-    readonly property color background: highContrast ? "#000000" : _get("color", "background", "#071019")
-    readonly property color sidebar: highContrast ? "#000000" : _get("color", "sidebar", "#09131d")
-    readonly property color surface: highContrast ? "#000000" : _get("color", "surface", "#0d1924")
-    readonly property color surfaceRaised: highContrast ? "#1a1a1a" : _get("color", "surfaceRaised", "#122131")
-    readonly property color surfaceSelected: highContrast ? "#2a2a2a" : _get("color", "surfaceSelected", "#1a2b3c")
-    readonly property color border: highContrast ? "#ffffff" : _get("color", "border", "#2a3a49")
-    readonly property color text: highContrast ? "#ffffff" : _get("color", "text", "#f2f6fb")
-    readonly property color textMuted: highContrast ? "#e8e8e8" : _get("color", "textMuted", "#9eabba")
-    readonly property color textDisabled: highContrast ? "#aaaaaa" : _get("color", "textDisabled", "#667481")
-    readonly property color accent: highContrast ? "#00e5ff" : _get("color", "accent", "#13bdf2")
-    readonly property color accentStrong: highContrast ? "#003d4d" : _get("color", "accentStrong", "#0a5f85")
-    readonly property color success: highContrast ? "#5eff62" : _get("color", "success", "#59d35d")
-    readonly property color warning: highContrast ? "#ffc400" : _get("color", "warning", "#ff9f1a")
-    readonly property color danger: highContrast ? "#ff8a90" : _get("color", "danger", "#ff6b73")
-    readonly property color focus: highContrast ? "#00e5ff" : _get("color", "focus", "#13bdf2")
+    readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")
+    readonly property color sidebar: highContrast ? "#000000" : _get("color", "sidebar", "#d8dfdf")
+    readonly property color surface: highContrast ? "#000000" : _get("color", "surface", "#f4f7f5")
+    readonly property color surfaceRaised: highContrast ? "#1a1a1a" : _get("color", "surfaceRaised", "#ffffff")
+    readonly property color surfaceSelected: highContrast ? "#2a2a2a" : _get("color", "surfaceSelected", "#dce8e8")
+    readonly property color border: highContrast ? "#ffffff" : _get("color", "border", "#aebdbe")
+    readonly property color text: highContrast ? "#ffffff" : _get("color", "text", "#16212a")
+    readonly property color textMuted: highContrast ? "#e8e8e8" : _get("color", "textMuted", "#53616b")
+    readonly property color textDisabled: highContrast ? "#aaaaaa" : _get("color", "textDisabled", "#7a878b")
+    readonly property color accent: highContrast ? "#00e5ff" : _get("color", "accent", "#006f99")
+    readonly property color accentStrong: highContrast ? "#003d4d" : _get("color", "accentStrong", "#005471")
+    readonly property color success: highContrast ? "#5eff62" : _get("color", "success", "#167a45")
+    readonly property color warning: highContrast ? "#ffc400" : _get("color", "warning", "#9a5a00")
+    readonly property color danger: highContrast ? "#ff8a90" : _get("color", "danger", "#ae2634")
+    readonly property color focus: highContrast ? "#00e5ff" : _get("color", "focus", "#006f99")
 
     // Geometria
     readonly property int radiusSmall: _get("geometry", "radiusSmall", 6)
@@ -51,6 +58,10 @@ QtObject {
     readonly property int spacingSmall: _get("geometry", "spacingSmall", 8)
     readonly property int spacingMedium: _get("geometry", "spacingMedium", 16)
     readonly property int spacingLarge: _get("geometry", "spacingLarge", 24)
+    readonly property int minimumTarget: _get("interaction", "minimumTarget", 48)
+    readonly property real focusedScale: _get("stateVariants", "focusedScale", 1.05)
+    readonly property real peripheralOpacity: _get("stateVariants", "peripheralOpacity", 0.58)
+    readonly property string performanceTier: _getStr("performance", "defaultTier", "cinematic")
 
     // Tipografia
     readonly property real typographyScale: _get("typography", "scale", 1.0)
@@ -89,21 +100,21 @@ QtObject {
 
     readonly property var _FALLBACK_TOKENS: ({
         "color": {
-            "background": "#071019",
-            "sidebar": "#09131d",
-            "surface": "#0d1924",
-            "surfaceRaised": "#122131",
-            "surfaceSelected": "#1a2b3c",
-            "border": "#2a3a49",
-            "text": "#f2f6fb",
-            "textMuted": "#9eabba",
-            "textDisabled": "#667481",
-            "accent": "#13bdf2",
-            "accentStrong": "#0a5f85",
-            "success": "#59d35d",
-            "warning": "#ff9f1a",
-            "danger": "#ff6b73",
-            "focus": "#13bdf2"
+            "background": "#e7eceb",
+            "sidebar": "#d8dfdf",
+            "surface": "#f4f7f5",
+            "surfaceRaised": "#ffffff",
+            "surfaceSelected": "#dce8e8",
+            "border": "#aebdbe",
+            "text": "#16212a",
+            "textMuted": "#53616b",
+            "textDisabled": "#7a878b",
+            "accent": "#006f99",
+            "accentStrong": "#005471",
+            "success": "#167a45",
+            "warning": "#9a5a00",
+            "danger": "#ae2634",
+            "focus": "#006f99"
         },
         "geometry": {
             "radiusSmall": 6,
@@ -121,6 +132,21 @@ QtObject {
             "durationFast": 120,
             "durationNormal": 180,
             "durationLong": 300
+        },
+        "stateVariants": {
+            "focusedScale": 1.05,
+            "peripheralOpacity": 0.58,
+            "selectedOpacity": 1.0
+        },
+        "interaction": {
+            "focusVisible": true,
+            "minimumTarget": 48
+        },
+        "accessibility": {
+            "systemOverrides": true
+        },
+        "performance": {
+            "defaultTier": "cinematic"
         }
     })
 }

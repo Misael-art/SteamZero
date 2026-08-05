@@ -9,6 +9,7 @@ from typing import Any
 import jsonschema
 
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.theme_effects import PerformanceTier
 from steamzero.domain.themes import (
     THEME_API_VERSION,
     ResolvedTheme,
@@ -302,7 +303,15 @@ class ThemeCatalog:
                     )
         return entries
 
-    def resolve(self, theme_id: str) -> ResolvedTheme:
+    def resolve(
+        self,
+        theme_id: str,
+        *,
+        effect_capabilities: frozenset[str] | None = None,
+        performance_tier: PerformanceTier | None = None,
+        high_contrast: bool = False,
+        reduced_motion: bool = False,
+    ) -> ResolvedTheme:
         manifests: dict[str, ThemeManifest] = {}
         for tid in list_builtin_theme_ids():
             with contextlib.suppress(SteamZeroError):
@@ -315,4 +324,10 @@ class ThemeCatalog:
                 with contextlib.suppress(SteamZeroError):
                     manifests[tid] = validate_theme_directory(entry)
         resolver = ThemeResolver(manifests)
-        return resolver.resolve(theme_id)
+        return resolver.resolve(
+            theme_id,
+            effect_capabilities=effect_capabilities,
+            performance_tier=performance_tier,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
+        )

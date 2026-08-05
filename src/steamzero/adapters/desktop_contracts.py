@@ -357,6 +357,15 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("target", target="string"),
         ),
         _action(
+            "steam.game.launch",
+            "Jogar jogo Steam",
+            "/steam/game/launch",
+            service="library",
+            screen="library",
+            control="game-primary",
+            schema=_schema("gameId", gameId="string"),
+        ),
+        _action(
             "playtime.continue.steam",
             "Continuar jogo Steam",
             "/steam/game/launch",

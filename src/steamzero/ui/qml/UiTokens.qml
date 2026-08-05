@@ -32,16 +32,16 @@ QtObject {
     readonly property int labelSize: Math.round((television ? 18 : 13) * visualScale)
     readonly property int metadataSize: Math.round((television ? 15 : 12) * visualScale)
 
-    readonly property color background: highContrast ? "#03080c" : "#071019"
-    readonly property color sidebar: highContrast ? "#050b11" : "#09131d"
-    readonly property color surface: highContrast ? "#0a141d" : "#0d1924"
-    readonly property color raised: highContrast ? "#122638" : "#122131"
-    readonly property color border: highContrast ? "#68839b" : "#2a3a49"
-    readonly property color text: "#f2f6fb"
-    readonly property color muted: highContrast ? "#c6d0db" : "#9eabba"
-    readonly property color cyan: highContrast ? "#55d8ff" : "#13bdf2"
-    readonly property color cyanDark: highContrast ? "#0b6387" : "#0a5f85"
-    readonly property color amber: highContrast ? "#ffc14d" : "#ff9f1a"
-    readonly property color green: highContrast ? "#7be47f" : "#59d35d"
-    readonly property color red: highContrast ? "#ff8e94" : "#ff6b73"
+    readonly property color background: highContrast ? "#03080c" : "#e7eceb"
+    readonly property color sidebar: highContrast ? "#050b11" : "#d8dfdf"
+    readonly property color surface: highContrast ? "#0a141d" : "#f4f7f5"
+    readonly property color raised: highContrast ? "#122638" : "#ffffff"
+    readonly property color border: highContrast ? "#68839b" : "#aebdbe"
+    readonly property color text: highContrast ? "#ffffff" : "#16212a"
+    readonly property color muted: highContrast ? "#c6d0db" : "#53616b"
+    readonly property color cyan: highContrast ? "#55d8ff" : "#006f99"
+    readonly property color cyanDark: highContrast ? "#0b6387" : "#005471"
+    readonly property color amber: highContrast ? "#ffc14d" : "#9a5a00"
+    readonly property color green: highContrast ? "#7be47f" : "#167a45"
+    readonly property color red: highContrast ? "#ff8e94" : "#ae2634"
 }
