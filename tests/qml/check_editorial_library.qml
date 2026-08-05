@@ -115,6 +115,15 @@ Window {
             "collections": [{"id": "pinned", "name": "Fixados", "members": ["steam:10"]}]
         })
         effectStacks: ({})
+        mediaRecipes: ({
+            "contextualBackdrop": {
+                "sourceOrder": ["banner", "cover"],
+                "fit": "contain",
+                "effectStack": "contextualBackdrop"
+            },
+            "focusedCover": {"sourceOrder": ["cover"], "fit": "contain"},
+            "peripheralCover": {"sourceOrder": ["cover"], "fit": "crop"}
+        })
         backgroundColor: "#071019"
         surfaceColor: "#0d1924"
         raisedColor: "#122131"
@@ -146,6 +155,10 @@ Window {
                       && library.contextualMediaSource({"coverUrl": "cover", "screenshotUrl": "shot"}) === "cover"
                       && library.contextualMediaSource({"screenshotUrl": "shot", "bannerUrl": "banner"}) === "shot",
                       "mídia contextual deve respeitar a ordem publicada sem varrer fontes locais")
+                check(library.recipeMediaSource({"coverUrl": "cover", "bannerUrl": "banner"}, "contextualBackdrop") === "banner"
+                      && library.recipeFillMode("contextualBackdrop") === Image.PreserveAspectFit
+                      && library.recipeFillMode("peripheralCover") === Image.PreserveAspectCrop,
+                      "receita deve escolher apenas fontes publicadas e preservar o fit declarado")
                 check(library.screenshotSources({"screenshotUrls": ["one", "one", "two"]}).length === 2
                       && library.screenshotSources({"screenshotUrl": "fallback"})[0] === "fallback",
                       "capturas devem usar somente fontes publicadas, deduplicadas e sem descoberta local")

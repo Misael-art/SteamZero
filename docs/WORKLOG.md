@@ -4613,3 +4613,16 @@ rede/disco e continua usando uma única source por camada.
 Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
 `make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
 host, release ou push foi executada.
+
+## 2026-08-05 — Verificação visual de receitas editoriais
+
+O harness QML passou a provar a ordem de source e `fit` de uma receita sem
+consultar rede ou disco. Uma captura offscreen Full HD da Biblioteca foi
+inspecionada: foco central, controles e metadados mantêm hierarquia com a
+fixture sem arte; o vazio não é preenchido por placeholder. A inspeção com
+mídia real continua pendente de execução física/controlada, pois fixtures não
+podem carregar conteúdo do usuário.
+
+Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
