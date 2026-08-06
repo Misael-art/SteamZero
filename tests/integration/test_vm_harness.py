@@ -394,7 +394,8 @@ def test_provision_orchestrates_only_disposable_resources(
 
     assert provision_module.provision(config, runner=runner) == evidence
     assert events == ["preflight", "copy-source", "restore", "destroy"]
-    assert any(command[0] == "qemu-img" for command in calls)
+    qemu_img = next(command for command in calls if command[0] == "qemu-img")
+    assert str(config.base_image.resolve()) in qemu_img
     assert any(command[0] in {"cloud-localds", "xorriso", "genisoimage"} for command in calls)
     assert any(command[0] == "virt-install" for command in calls)
     assert any(command[:2] == ("virsh", "ttyconsole") for command in calls)

@@ -5253,3 +5253,29 @@ três builders. Validação: suíte isolada **4200 passaram, 10 skipados** em tm
 no disco interno (a tmpfs de 5 GB gerara `ENOSPC`, não regressões); Ruff,
 mypy, boundaries, independence e matrix verdes. Nenhuma VM, host, release ou
 push foi executado durante esta correção.
+
+## 2026-08-06 — Item 4 (VM M10) — correção de backing path iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `3488c3f`. A primeira
+execução autorizada passou preflight, validou a imagem e criou o diretório
+gerenciado, mas parou antes de `virt-install`: `qemu-img` resolve um backing
+file relativo a partir do diretório da overlay e não encontrou a imagem cloud.
+Escopo: resolver explicitamente o backing file para caminho absoluto, cobrir a
+regressão no harness e revalidar os gates antes da nova tentativa. Nenhuma VM
+foi criada e nenhuma ação de host/release/push foi executada.
+
+## 2026-08-06 — Item 4 (VM M10) — correção de backing path concluída
+
+O commit atômico `fix(vm-harness): resolve imagem-base da overlay` passa o
+backing file da imagem QCOW2 como caminho absoluto para `qemu-img create`.
+Isso evita que QEMU o interprete relativamente ao diretório da overlay
+descartável. A regressão agora executa a orquestração com base-image relativa e
+exige que o argv efetivo carregue seu caminho resolvido.
+
+Decisão de bancada: não mudar o contrato público da CLI para exigir paths
+absolutos; o harness normaliza internamente, preservando um plano simples e
+evitando a armadilha de semântica específica do QEMU. Validação: 17 testes do
+harness; suíte isolada **4200 passaram, 10 skipados** em tmp do disco interno;
+Ruff, mypy, boundaries, independence e matrix verdes. A tentativa anterior
+não passou de `qemu-img`; nenhuma VM, host, release ou push foi executado
+durante esta correção.

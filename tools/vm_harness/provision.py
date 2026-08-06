@@ -476,7 +476,7 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
                     "-F",
                     "qcow2",
                     "-b",
-                    str(config.base_image),
+                    str(config.base_image.resolve()),
                     str(overlay),
                     f"{config.disk_size_gb}G",
                 ),
