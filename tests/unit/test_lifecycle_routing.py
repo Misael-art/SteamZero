@@ -61,8 +61,14 @@ class TestFailsClosed:
         return dataclasses.replace(manifest, sources=(source,))
 
     def test_end_of_life_source_is_refused(self, registry: AdapterRegistry) -> None:
-        """duckstation tem fonte marcada como fim de vida no manifesto real."""
-        route = lifecycle.route_for(registry.get("duckstation"))
+        """A fonte EOL é sintetizada: o contrato é do roteamento, não do adapter.
+
+        Antes o teste lia o DuckStation, então o único adapter EOL empacotado.
+        Quando a fonte dele migrou para o AppImage oficial, o teste caiu sem que
+        o contrato tivesse mudado — ele se amarrara ao exemplar, não ao
+        comportamento.
+        """
+        route = lifecycle.route_for(self._manifest(registry, "retroarch", end_of_life=True))
         assert route.installable is False
         assert "fim de vida" in (route.reason or "")
 
@@ -125,7 +131,11 @@ class TestNormalizedStatus:
         assert set(engine) == set(flatpak)
 
     def test_unavailable_status_carries_the_reason(self, registry: AdapterRegistry) -> None:
-        route = lifecycle.route_for(registry.get("duckstation"))
+        import dataclasses
+
+        manifest = registry.get("retroarch")
+        source = dataclasses.replace(manifest.sources[0], end_of_life=True)
+        route = lifecycle.route_for(dataclasses.replace(manifest, sources=(source,)))
         payload = lifecycle.unavailable_status(route)
         assert payload["installable"] is False
         assert payload["detail"]  # G27: motivo dizível, sob a chave normalizada

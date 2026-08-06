@@ -502,3 +502,40 @@ class TestTheMigrationChainIsWellFormed:
             assert store.user_version == state.LATEST
         finally:
             store.close()
+
+    def test_v16_migrates_through_bios_lifecycle_and_operation(
+        self, db_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """17--19 coexistem: BIOS primeiro, depois estados e operação de componente."""
+        full_migrations = state.MIGRATIONS
+        with monkeypatch.context() as legacy:
+            legacy.setattr(state, "MIGRATIONS", full_migrations[:16])
+            legacy.setattr(state, "LATEST", 16)
+            old = state.open_state(db_path)
+            old.close()
+
+        migrated = state.open_state(db_path)
+        try:
+            assert migrated.user_version == 19 == state.LATEST
+            tables = {
+                row["name"]
+                for row in migrated.adapter_connection()
+                .execute("SELECT name FROM sqlite_master WHERE type='table'")
+                .fetchall()
+            }
+            assert {
+                "bios_object",
+                "bios_identity",
+                "bios_variant",
+                "bios_projection",
+                "component",
+            } <= tables
+            component_columns = {
+                row["name"]
+                for row in migrated.adapter_connection()
+                .execute("PRAGMA table_info(component)")
+                .fetchall()
+            }
+            assert "operation_id" in component_columns
+        finally:
+            migrated.close()

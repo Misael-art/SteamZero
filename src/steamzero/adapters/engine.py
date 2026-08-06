@@ -156,10 +156,26 @@ class AdapterEngine:
 
         if payload.exists() or payload.is_symlink():
             if self._sha256_file(payload) != source.sha256:
-                raise SteamZeroError(
-                    "E-COMPONENT-DEGRADED",
-                    detail="payload existente diverge; remova o deployment antes de reinstalar",
+                if not force:
+                    # Instalar por cima de payload divergente apagaria evidência
+                    # de adulteração sem que ninguém decidisse isso. O reparo é
+                    # a decisão explícita de refazer, e chega com force=True.
+                    raise SteamZeroError(
+                        "E-COMPONENT-DEGRADED",
+                        detail="payload existente diverge; remova o deployment antes de reinstalar",
+                    )
+                # Reparo: o payload divergente é substituído pelo artefato
+                # fixado. A cópia entra na mesma transação, então uma falha no
+                # meio restaura o estado anterior em vez de deixar o componente
+                # sem payload nenhum.
+                plan = transaction.plan_copy_files(
+                    {cached_artifact: payload},
+                    root=self._root,
+                    kind=f"component.{operation}",
+                    writes={current: current_bytes},
+                    replace_existing=True,
                 )
+                return PreparedComponent(manifest, source, plan)
             plan = transaction.plan_write_files(
                 {current: current_bytes}, root=self._root, kind=f"component.{operation}"
             )
@@ -279,13 +295,32 @@ class AdapterEngine:
                 "detail": "payload ausente ou checksum divergente",
             }
         if manifest_drift:
+            # Divergência de manifesto tem duas causas opostas, e colapsá-las em
+            # `degraded` fez o Citron aparecer quebrado no host quando o que
+            # havia mudado era só o pin. Se a fonte fixada AGORA difere da que
+            # foi implantada, o deployment está íntegro e apenas velho —
+            # `outdated`, que se resolve com update. Se a fonte fixada é a mesma
+            # e ainda assim o manifesto mudou, o artefato não explica a
+            # diferença: isso permanece `degraded`, porque é o sinal de supply
+            # chain que a checagem existe para dar.
+            pinned = self._pinned_source(manifest)
+            if pinned is not None and (version, expected) != pinned:
+                return {
+                    "id": adapter_id,
+                    "state": "outdated",
+                    "version": version,
+                    "origin": origin,
+                    "sha256": expected,
+                    "targetVersion": pinned[0],
+                    "detail": f"implantado {version}; a fonte fixada agora é {pinned[0]}",
+                }
             return {
                 "id": adapter_id,
                 "state": "degraded",
                 "version": version,
                 "origin": origin,
                 "sha256": expected,
-                "detail": "manifesto do deployment divergiu",
+                "detail": "manifesto do deployment divergiu sem mudança na fonte fixada",
             }
         return {
             "id": adapter_id,
@@ -294,6 +329,17 @@ class AdapterEngine:
             "origin": origin,
             "sha256": expected,
         }
+
+    @staticmethod
+    def _pinned_source(manifest: AdapterManifest) -> tuple[str, str] | None:
+        """(versão, sha256) da fonte portátil fixada, ou None se indisponível."""
+        try:
+            source = manifest.preferred_source(allow_eol=True)
+        except SteamZeroError:
+            return None
+        if source.sha256 is None:
+            return None
+        return str(source.version), str(source.sha256)
 
     def persist_status(self, adapter_id: str) -> None:
         manifest = self._registry.get(adapter_id)

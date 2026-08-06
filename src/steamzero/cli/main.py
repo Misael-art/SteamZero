@@ -67,6 +67,10 @@ Domínios (Fase 1):
   component status      mostra um componente (--id ADAPTER)
   component plan        planeja install/update/uninstall (--id ADAPTER [--action A])
   component apply       aplica plano v2 ou v1 (--plan-id ID --confirm TOKEN)
+  component verify      confere o deployment contra a fonte fixada (--id ADAPTER)
+  component launch      inicia o componente instalado (--id ADAPTER)
+  component stop        encerra o componente portátil (--id ADAPTER)
+  component open-config abre a configuração nativa (--id ADAPTER)
   component rollback    restaura deployment anterior (--operation-id ID)
   component recover     recupera operações Flatpak interrompidas
   admin health          verifica helper e autorização Polkit (read-only)
@@ -744,6 +748,72 @@ def _cmd_component_plan(args: list[str], correlation_id: str) -> tuple[dict[str,
             status="noop" if plan.action == "noop" else "ok",
             data={"plan": plan.to_dict()},
             correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_verify(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # Leitura pura: sem plano e sem token. Exigir confirmação para verificar
+    # treinaria o operador a confirmar sem ler, justamente onde a confirmação
+    # precisa significar algo — no reparo e na desinstalação.
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        report = _component_lifecycle(store).verify(adapter_id)
+    return (
+        build_envelope(
+            "component",
+            "verify",
+            status="ok" if report["verified"] else "degraded",
+            data=report,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_launch(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).launch(adapter_id)
+    return (
+        build_envelope(
+            "component", "launch", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_stop(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).stop(adapter_id)
+    # `not-supported` é resposta honesta, não erro: o Flatpak gerencia o ciclo
+    # do próprio processo, e sinalizá-lo daqui seria agir sobre PID alheio.
+    supported = data.get("status") != "not-supported"
+    return (
+        build_envelope(
+            "component",
+            "stop",
+            status="ok" if supported else "degraded",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_open_config(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).open_config(adapter_id)
+    return (
+        build_envelope(
+            "component", "open-config", status="ok", data=data, correlation_id=correlation_id
         ),
         EXIT_OK,
     )
@@ -1801,6 +1871,10 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("component", "status"): _cmd_component_status,
     ("component", "plan"): _cmd_component_plan,
     ("component", "apply"): _cmd_component_apply,
+    ("component", "verify"): _cmd_component_verify,
+    ("component", "launch"): _cmd_component_launch,
+    ("component", "stop"): _cmd_component_stop,
+    ("component", "open-config"): _cmd_component_open_config,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
     ("admin", "health"): _cmd_admin_health,

@@ -3,7 +3,7 @@
   "components": [
     {
       "id": "azahar",
-      "manifestHash": "751d6cc5776a93e2843349c2717a26f8cff19bd7dcf8207a426d07d0adde59dc",
+      "manifestHash": "96913a02c545f7526fe9afe532cb9e2503ba126ef548e8629ca072f77a78f21d",
       "source": {
         "type": "flatpak",
         "version": "fd0b3050e4da6a7df8915f63fb8c1d551c7ca8c684568dc62c1681fd316a288c",
@@ -14,7 +14,7 @@
     },
     {
       "id": "cemu",
-      "manifestHash": "cd89895bb04720c2c805e36f85593de838f07e49e5e543e176e453d3fe12de85",
+      "manifestHash": "730549afde41a38af8cb154a37ee21cbb8b7c4ed7af985d39938283b8dd18359",
       "source": {
         "type": "flatpak",
         "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f",
@@ -36,7 +36,7 @@
     },
     {
       "id": "dolphin",
-      "manifestHash": "6837b287381cff063e31f60cefee89874240ba1de9620b2a6d20438367fb1646",
+      "manifestHash": "1c36eedccfdfeecb8f6babd4590f33b0b746ffa1cc0928d42d9f4e89ee2b1469",
       "source": {
         "type": "flatpak",
         "version": "377c3e63506ebc51c6eb8ae717f216514f3fdbdd634d69c00c4c0173fb0629e5",
@@ -47,14 +47,13 @@
     },
     {
       "id": "duckstation",
-      "manifestHash": "ea96c56204e1475fd112eef55d2887fdcb8cd404479a80386938301529f59897",
+      "manifestHash": "d97858b2287fd41ec95d03c67e4c473a4610d852cf4ca0b2886d951e8bc463bc",
       "source": {
-        "type": "flatpak",
-        "version": "d2a630c4f30df1c221a9bae52b8897f5e8e7cca95cb7c8e4b7363ed5ebc2d4cd",
+        "type": "appimage",
+        "version": "v0.1-11580",
         "priority": 1,
-        "ref": "org.duckstation.DuckStation",
-        "remote": "flathub",
-        "endOfLife": true
+        "url": "https://github.com/stenzek/duckstation/releases/download/v0.1-11580/DuckStation-x64.AppImage",
+        "sha256": "1c48f2a478ab0e587909a68c4e47a50ca5b7dd9321013076d5171551b6acae3f"
       }
     },
     {
@@ -70,7 +69,7 @@
     },
     {
       "id": "flycast",
-      "manifestHash": "7fe21aaab0bdddc792f779671a651cddc70d0da277625e47299abfa6f9e3b437",
+      "manifestHash": "89e4a4ea6c8cec02f512bd98d24d46e0fe6fb81f3c8d932886cbbef97dd9d3c2",
       "source": {
         "type": "flatpak",
         "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",
@@ -81,7 +80,7 @@
     },
     {
       "id": "melonds",
-      "manifestHash": "08ce94b643c809ebc0fc8eb6d43f9c3bfb88435624606d3155d80700cbb6b6ab",
+      "manifestHash": "8c6f94b55d7ce9fa87d74e21a55cb5197aae490546865a0bab339e917479daa9",
       "source": {
         "type": "flatpak",
         "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
@@ -92,7 +91,7 @@
     },
     {
       "id": "pcsx2",
-      "manifestHash": "13b49b3f13077826fa2f9fd65e637680cbf57aa92d9078223b9a14cb748bb83b",
+      "manifestHash": "cf9e8a194a89cec1db8f29f6db3570738f65e1585daa0678175ba109c1f8f419",
       "source": {
         "type": "flatpak",
         "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
@@ -103,7 +102,7 @@
     },
     {
       "id": "ppsspp",
-      "manifestHash": "23341c3fe186881b7cc830bdb8b0908922298e0321fc24d6ce85cfc7299ad4ad",
+      "manifestHash": "b6c07885c2145b16f6b9eaf44f66f766771addcf9b282a78b019cbec24309c52",
       "source": {
         "type": "flatpak",
         "version": "193bbe95656ed696c8e5a5e42831ee8017d53514e9e0e0acaa3e1235e22089d3",
@@ -114,7 +113,7 @@
     },
     {
       "id": "retroarch",
-      "manifestHash": "c39e82ffb3b31f7a8088aef06fe977ad94f8934c976ee1b45508e1ee5f5dfa04",
+      "manifestHash": "c90162e30e57da61b51013abb3c3e6c3c7cc661fcc315383bf273777228f7406",
       "source": {
         "type": "flatpak",
         "version": "56fdd2ed2f5ae5d7bb887f38858c68757e27afcc8e86e830e338e14cd4988522",
@@ -125,7 +124,7 @@
     },
     {
       "id": "rpcs3",
-      "manifestHash": "a539847c0e2de8e4ee6e44ab9afca6536c3699829fd04691ff0abb5a3688e071",
+      "manifestHash": "34223a61d701f355978c136da4ed68fffa5b16fb1b3555bd08f57481238641a7",
       "source": {
         "type": "flatpak",
         "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4",
@@ -158,7 +157,7 @@
     },
     {
       "id": "xemu",
-      "manifestHash": "ea71e6cc10f6225110ef8a83cb106a51f6abba6b7c8b06f773e011ccaa65e301",
+      "manifestHash": "91a3a57c39b2f035323fd2d749cd4f44280da4f4c3985228fd1bf302d435865a",
       "source": {
         "type": "flatpak",
         "version": "2f8b8889edcf69fb2ba2a8691371a7bb49febeba360e9c87555379c50ba946e9",
@@ -169,7 +168,7 @@
     },
     {
       "id": "xenia-canary",
-      "manifestHash": "fbdf92fa2342c9837edc828a3bbe4dc2462f40f0f11cfe1e292ba94151188207",
+      "manifestHash": "edfc179ea64550edda0490594ff35d92314250a78c7a3fab83c7c0b09d739aaf",
       "source": {
         "type": "appimage",
         "version": "8f55b4a",

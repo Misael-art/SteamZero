@@ -270,7 +270,12 @@ class StateStore:
 
     # -- components / adapters --------------------------------------------
     def save_component(self, component: dict[str, Any]) -> None:
-        """Persiste o estado detectado de um componente (upsert por id)."""
+        """Persiste o estado detectado de um componente (upsert por id).
+
+        ``operation_id`` vincula o marcador ``repairing`` à operação de reparo
+        durável (m0018); ausente em chamadas que não são de reparo, limpa o
+        vínculo anterior.
+        """
         cols = (
             "id",
             "adapter_id",
@@ -280,6 +285,7 @@ class StateStore:
             "state",
             "verified_at",
             "manifest_hash",
+            "operation_id",
         )
         row = {col: component.get(col) for col in cols}
         row["verified_at"] = row["verified_at"] or _now_iso()
