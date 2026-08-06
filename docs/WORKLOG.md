@@ -5110,3 +5110,52 @@ exceção não crashe), `ruff check`, `ruff format --check`, `mypy src`,
 `make independence boundaries`, `capability-matrix --check` verdes; isolamento
 XDG intacto (before/after idênticos). Nenhuma ação de host, release ou push foi
 executada.
+
+## 2026-08-06 — Item 4 (harness de VM descartável para M10) — iniciado
+
+Escopo: fechar DEBT-A7 ("M10 sem mutação em VM"). Construir automação de VM
+descartável (Arch base + SDDM + flatpak via virt-install/cloud-init) que drive
+`component plan/apply/rollback` reais contra `flatpak` real para RetroArch +
+PCSX2 + PPSSPP, 3 ciclos completos cada (install→update→rollback→roll-forward),
+com o protocolo de 8 passos do OPERATIONAL-TRUST-GATES embutido. Driver
+testável com fakes (a VM real roda fora da suíte, sob autorização). Entrega:
+evidência `docs/diagnostics/<data>-m10-vm-evidence.md` e fecha a lacuna
+"adapters não certificados".
+
+## 2026-08-06 — Item 4 (harness de VM para M10) — concluído
+
+Construído o harness de VM descartável para certificar o M10 (DEBT-A7), separando
+a lógica testável da execução real:
+
+- `tools/vm_harness/driver.py` — driver puro: recebe um `ComponentClient`
+  injetável (abstração sobre `component plan/apply/rollback/status`) e orquestra
+  os ciclos install→update→rollback→roll-forward para cada emulador, um por vez,
+  validando o estado observado contra o esperado. Divergência interrompe o ciclo
+  com `failure` e nenhum estado falso persistido (AGENTS.md §8). Emuladores:
+  RetroArch + PCSX2 + PPSSPP (DuckStation EOL sai; Switch keys+firmware fica
+  para a43+). Inclui `render_evidence_report` que vincula commit+data+veredito.
+- `tools/vm_harness/protocol.py` — os 8 passos do OPERATIONAL-TRUST-GATES como
+  referência canônica citável pelos relatórios de evidência.
+- `tools/vm_harness/provision.py` — provisionamento da VM real
+  (virt-install/cloud-init). **Não roda na suíte**: exige autorização explícita
+  do operador (AGENTS.md §1) e o lab KVM/libvirt do host. Tem preflight dos
+  binários, emite o plano para revisão, cria esqueleto de evidência e recusa
+  execução sem autorização.
+- `tests/integration/test_vm_harness.py` — 8 testes do driver com
+  `FakeComponentClient` em memória: happy-path, evidence sink, falha no
+  baseline/install/rollback, agregação M10, render do relatório.
+
+Decisão de bancada: o driver é puro e injetável para que a suíte prove a lógica
+de orquestração/validação sem VM real (a VM não existe no CI). A peça de
+provisionamento fica deliberadamente como place-holder até autorização —
+construir a VM real fora de pedido explícito violaria AGENTS.md §4. O import é
+`from vm_harness.driver import ...` (não `tools.vm_harness`) porque o
+`pythonpath` do pyproject inclui `tools` como top-level.
+
+Validação dirigida: 8 testes do driver, `ruff check`, `ruff format --check`,
+`mypy src`, `make independence boundaries`, `capability-matrix --check` verdes;
+suíte isolada integral **4191 passaram, 10 skipados** (15 a mais que a baseline
+de 4176: 8 do driver + 5 do doctor do Item 5a + 2 de formato); isolamento XDG
+intacto (before/after idênticos, zero mutação do state real). `provision.py` e
+`protocol.py` carregam sem erro de sintaxe/import. Nenhuma ação de host, release
+ou push foi executada.
