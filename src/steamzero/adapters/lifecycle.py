@@ -1106,6 +1106,40 @@ class ComponentLifecycle:
                 ) from exc
         return recovered
 
+    def recovery_inspect(self) -> list[dict[str, Any]]:
+        """Lista recovery pendente sem chamar executor ou modificar estado."""
+        pending: list[dict[str, Any]] = []
+        fs.ensure_dir(paths.component_operations_dir())
+        for entry in sorted(paths.component_operations_dir().glob("*.json")):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            try:
+                raw = json.loads(entry.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(raw, dict):
+                continue
+            operation_id = raw.get("operationId")
+            adapter_id = raw.get("adapterId")
+            status = raw.get("status", raw.get("state"))
+            if (
+                not isinstance(operation_id, str)
+                or not isinstance(adapter_id, str)
+                or status not in {"applying", "rolling-back", "recovery-required"}
+            ):
+                continue
+            pending.append(
+                {
+                    "operationId": operation_id,
+                    "adapterId": adapter_id,
+                    "executor": "repair"
+                    if raw.get("schemaVersion") == _REPAIR_OP_SCHEMA
+                    else "flatpak",
+                    "state": status,
+                }
+            )
+        return pending
+
     # ------------------------------------------------------------- internals
     def _engine(self) -> AdapterEngine:
         return AdapterEngine(self._store, self._registry, self._artifacts)

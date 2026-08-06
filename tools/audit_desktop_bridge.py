@@ -68,6 +68,9 @@ LIFECYCLE_SURFACES: dict[str, SurfaceDecision] = {
         ("component.recovery.inspect", "component.recovery.apply"),
         "inspeção antes de recuperação idempotente",
     ),
+    "recovery_inspect": SurfaceDecision(
+        "read-only", ("component.recovery.inspect",), "operações pendentes sanitizadas"
+    ),
 }
 
 

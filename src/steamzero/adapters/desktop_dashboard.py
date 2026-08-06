@@ -1041,6 +1041,13 @@ class DesktopDashboard:
             )
         return {"decisions": rows, "count": len(rows)}
 
+    def component_recovery_inspect(self) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(store, self._registry_factory())
+            operations = lifecycle.recovery_inspect()
+        return {"operations": operations, "count": len(operations)}
+
     def plan_component(self, adapter_id: str, action: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()

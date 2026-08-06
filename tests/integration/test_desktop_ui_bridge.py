@@ -200,6 +200,10 @@ class FakeDashboard:
         self.calls.append(("component-open-config-matrix",))
         return {"decisions": [{"componentId": "dolphin", "strategy": "main-ui"}], "count": 1}
 
+    def component_recovery_inspect(self) -> dict[str, object]:
+        self.calls.append(("component-recovery-inspect",))
+        return {"operations": [], "count": 0}
+
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
         return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
@@ -792,12 +796,17 @@ def test_bridge_exposes_read_only_component_lifecycle_surface(
         "decisions": [{"componentId": "dolphin", "strategy": "main-ui"}],
         "count": 1,
     }
+    assert request_json(base, token, "/component/recovery/inspect") == {
+        "operations": [],
+        "count": 0,
+    }
     assert dashboard.calls == [
         ("component-list",),
         ("component-matrix",),
         ("component-status", "dolphin"),
         ("component-verify", "dolphin"),
         ("component-open-config-matrix",),
+        ("component-recovery-inspect",),
     ]
 
 

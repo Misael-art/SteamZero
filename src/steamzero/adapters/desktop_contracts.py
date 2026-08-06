@@ -244,6 +244,15 @@ def handheld_ui_contracts() -> dict[str, Any]:
             method="GET",
         ),
         _action(
+            "component.recovery.inspect",
+            "Inspecionar recuperação de componentes",
+            "/component/recovery/inspect",
+            service="components",
+            screen="system",
+            control="component-recovery",
+            method="GET",
+        ),
+        _action(
             "component.stop",
             "Revisar parada do componente",
             "/component/plan",

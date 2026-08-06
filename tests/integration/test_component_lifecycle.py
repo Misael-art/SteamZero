@@ -542,6 +542,11 @@ class TestLaunchRouting:
             lifecycle.plan("retroarch", "stop")
         assert error.value.code == "E-COMPONENT-DEGRADED"
 
+    def test_recovery_inspection_is_empty_and_read_only(self, store: state.StateStore) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+
+        assert lifecycle.recovery_inspect() == []
+
 
 class TestRollbackRouting:
     def test_flatpak_rollback_uses_operation_file(self, store: state.StateStore) -> None:
