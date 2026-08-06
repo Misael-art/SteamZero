@@ -96,3 +96,66 @@ def test_doctor_warns_on_orphan_staging(tmp_path: Path, monkeypatch: pytest.Monk
     c = next(c for c in checks if c["name"] == "staging.orphan")
     assert c["status"] == "warn"
     assert data["orphanStaging"] >= 1
+
+
+def test_doctor_reports_boot_direct_check(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # boot.direct existe no envelope e publica o estado lido de steam_boot.status.
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    with patch("steamzero.diagnostics.doctor.boot_status") as mock:
+        mock.return_value = {
+            "state": "ready",
+            "configured": True,
+            "permissionDenied": False,
+            "reason": "Entrada SteamZero pronta; falha retorna ao greeter/Plasma.",
+            "backoff": False,
+        }
+        data, checks = run_doctor()
+    c = next(c for c in checks if c["name"] == "boot.direct")
+    assert c["status"] == "pass"
+    assert data["bootDirect"] == "ready"
+    assert data["bootBackoff"] is False
+
+
+@pytest.mark.parametrize(
+    ("state", "backoff", "permission_denied", "expected"),
+    [
+        ("ready", False, False, "pass"),  # ativado e saudável
+        ("available", False, False, "pass"),  # não ativado, estado legítimo
+        ("backoff", True, False, "warn"),  # autologin suspenso após falhas
+        ("degraded", False, False, "warn"),  # erro de health; causa visível
+        ("unknown", False, True, "warn"),  # permissionDenied: nunca falso negativo
+    ],
+)
+def test_doctor_boot_direct_status_mapping(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+    backoff: bool,
+    permission_denied: bool,
+    expected: str,
+) -> None:
+    # boot.direct nunca dá falso verde (backoff/degraded warn) nem falso negativo
+    # (permissionDenied vira warn explícito, não fail). ADR-0020 / AGENTS.md §8.
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    with patch("steamzero.diagnostics.doctor.boot_status") as mock:
+        mock.return_value = {
+            "state": state,
+            "configured": state == "ready",
+            "permissionDenied": permission_denied,
+            "reason": "motivo de teste",
+            "backoff": backoff,
+        }
+        _data, checks = run_doctor()
+    c = next(c for c in checks if c["name"] == "boot.direct")
+    assert c["status"] == expected
+
+
+def test_doctor_boot_direct_never_crashes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # doctor nunca crashe: se steam_boot.status levantar, o check vira warn.
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    with patch("steamzero.diagnostics.doctor.boot_status") as mock:
+        mock.side_effect = RuntimeError("boom")
+        _data, checks = run_doctor()
+    c = next(c for c in checks if c["name"] == "boot.direct")
+    assert c["status"] == "warn"
+    assert "boom" in c["message"]

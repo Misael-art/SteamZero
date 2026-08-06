@@ -15,6 +15,7 @@ from typing import Any
 from steamzero import __version__
 from steamzero.adapters.desktop_kde import detect_deck_input_keys
 from steamzero.adapters.service_activation import read_quarantine
+from steamzero.adapters.steam_boot import status as boot_status
 from steamzero.core import fs as corefs
 from steamzero.core import journal, paths
 from steamzero.core.identity import runtime_identity
@@ -173,12 +174,35 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
         deck_keys = False
         checks.append(_check("deck.input.keys", "warn", f"não foi possível detectar: {exc}"))
 
+    # Boot direto Game Mode: cadeia GRUB→SDDM→sessão. ``steam_boot.status`` é
+    # read-only (lê config/state) e nunca exige root; devolve ``unknown`` com
+    # ``permissionDenied`` quando não pode inspecionar — nunca falso verde nem
+    # falso negativo (ADR-0020). O doctor só fotografa: não habilita nem remove.
+    boot_state = "unknown"
+    boot_reason = "não foi possível inspecionar o boot direto"
+    boot_backoff = False
+    try:
+        boot = boot_status()
+        boot_state = str(boot.get("state", "unknown"))
+        boot_backoff = bool(boot.get("backoff"))
+        boot_reason = str(boot.get("reason", boot_reason))
+        if boot.get("permissionDenied") or boot_state in {"backoff", "degraded"}:
+            boot_level = "warn"
+        else:  # ready (ativado e saudável) ou available (não ativado, legítimo)
+            boot_level = "pass"
+    except Exception as exc:  # doctor nunca deve crashar
+        boot_level = "warn"
+        boot_reason = f"não foi possível inspecionar o boot direto: {exc}"
+    checks.append(_check("boot.direct", boot_level, f"{boot_state}: {boot_reason}"))
+
     data: dict[str, Any] = {
         "version": __version__,
         "stateHome": str(paths.state_home()),
         "schemaVersion": schema_version,
         "pendingOperations": pending,
         "deckInputKeys": deck_keys,
+        "bootDirect": boot_state,
+        "bootBackoff": boot_backoff,
         "staleJobs": stale_count,
         "orphanStaging": orphan_staging,
         "orphanBackups": orphan_backups,
