@@ -168,6 +168,18 @@ class FakeDashboard:
         self.calls.append(("launch", component_id))
         return {"status": "started"}
 
+    def component_operation_history(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-history", component_id))
+        return {"componentId": component_id, "operations": [], "count": 0}
+
+    def plan_component_rollback(self, component_id: str, operation_id: str) -> dict[str, object]:
+        self.calls.append(("component-rollback-plan", component_id, operation_id))
+        return {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}
+
+    def apply_component_rollback(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("component-rollback-apply", plan_id, confirm_token))
+        return {"status": "rolled-back"}
+
     def list_components(self) -> list[dict[str, object]]:
         self.calls.append(("component-list",))
         return [{"id": "dolphin", "state": "installed"}]
@@ -802,6 +814,24 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "component-plan", "confirmToken": "confirm"},
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
+    assert request_json(base, token, "/component/history", {"componentId": "dolphin"}) == {
+        "componentId": "dolphin",
+        "operations": [],
+        "count": 0,
+    }
+    rollback = request_json(
+        base,
+        token,
+        "/component/rollback/plan",
+        {"componentId": "dolphin", "operationId": "component-operation"},
+    )
+    assert rollback["plan"] == {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}
+    request_json(
+        base,
+        token,
+        "/component/rollback/apply",
+        {"planId": "rollback-plan", "confirmToken": "rollback-confirm"},
+    )
     emulator_plan = request_json(
         base,
         token,
@@ -969,6 +999,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("plan", "dolphin", "install"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
+        ("component-history", "dolphin"),
+        ("component-rollback-plan", "dolphin", "component-operation"),
+        ("component-rollback-apply", "rollback-plan", "rollback-confirm"),
         ("emulation-emulator-plan", "eden", "install"),
         ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
         ("emulation-emulator-launch", "eden"),
@@ -1013,6 +1046,28 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("library-health-apply", "health-plan", "health-confirm"),
         ("admin-health",),
     ]
+
+
+def test_component_routes_reject_extra_properties(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, _dashboard = dashboard_bridge
+
+    with pytest.raises(urllib.error.HTTPError) as response:
+        request_json(
+            base,
+            token,
+            "/component/rollback/plan",
+            {
+                "componentId": "dolphin",
+                "operationId": "component-operation",
+                "unexpected": "rejected",
+            },
+        )
+
+    assert response.value.code == 400
+    assert "E-API-SCHEMA" in response.value.read().decode("utf-8")
+    response.value.close()
 
 
 def test_bridge_exposes_cast_endpoints(

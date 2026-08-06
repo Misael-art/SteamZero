@@ -1040,6 +1040,55 @@ class DesktopDashboard:
             )
             return lifecycle.launch(adapter_id)
 
+    def component_operation_history(self, adapter_id: str) -> dict[str, Any]:
+        """Histórico limitado a operações cujo dono é o componente solicitado."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            lifecycle.status(adapter_id)  # valida o id pelo registro, sem mutação
+            history = self._operation_history.list(limit=100)
+            items: list[dict[str, Any]] = []
+            for item in history["items"]:
+                try:
+                    owner = lifecycle._operation_adapter_id(str(item["operationId"]))
+                except SteamZeroError:
+                    # Histórico corrompido não é evidência de pertencimento.
+                    # A tela continua útil e o item permanece acessível apenas
+                    # pelo diagnóstico global que mostra sua integridade.
+                    continue
+                if owner == adapter_id:
+                    items.append(item)
+        return {"componentId": adapter_id, "operations": items, "count": len(items)}
+
+    def plan_component_rollback(self, adapter_id: str, operation_id: str) -> dict[str, Any]:
+        """Planeja rollback somente da operação auditável do componente pedido."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            owner = lifecycle._operation_adapter_id(operation_id)
+        if owner != adapter_id:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="operationId não pertence ao componente solicitado",
+                operation_id=operation_id,
+            )
+        return self._operation_history.plan_rollback(operation_id)
+
+    def apply_component_rollback(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._operation_history.apply_rollback(plan_id, confirm_token)
+
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
 

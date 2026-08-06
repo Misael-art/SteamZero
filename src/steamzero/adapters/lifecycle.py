@@ -871,6 +871,33 @@ class ComponentLifecycle:
             "adapterId": adapter_id,
         }
 
+    def _operation_adapter_id(self, operation_id: str) -> str | None:
+        """Retorna o dono verificável de uma operação de componente.
+
+        A bridge usa este fato antes de gerar um plano de rollback.  Assim um
+        ``operationId`` copiado de outro componente nunca atravessa a fronteira
+        de autorização apenas por ser um ULID válido.
+        """
+        if not ids.is_ulid(operation_id):
+            raise SteamZeroError("E-API-SCHEMA", detail="operationId inválido")
+        operation_path = paths.component_operation_path(operation_id)
+        if operation_path.is_file() and not operation_path.is_symlink():
+            repair = self._repair_operation_from_file(operation_path)
+            if repair is not None:
+                return repair.adapter_id
+            try:
+                raw = json.loads(operation_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY", detail="operação de componente corrompida"
+                ) from exc
+            adapter_id = raw.get("adapterId") if isinstance(raw, dict) else None
+            if not isinstance(adapter_id, str):
+                raise SteamZeroError("E-STATE-INTEGRITY", detail="operação sem componente")
+            self._registry.get(adapter_id)
+            return adapter_id
+        return self._engine_operation_adapter(operation_id)
+
     # ---------------------------------------------------------- launch / stop
     def launch(self, adapter_id: str) -> dict[str, Any]:
         """Inicia o componente instalado, roteado pela família da fonte."""

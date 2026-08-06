@@ -235,9 +235,11 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
             return {"plan": coordinator.plan(requested).to_dict()}
         if path == "/component/status":
-            return self._dashboard().component_status(self._required_string(payload, "componentId"))
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().component_status(component_id)
         if path == "/component/verify":
-            return self._dashboard().verify_component(self._required_string(payload, "componentId"))
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().verify_component(component_id)
         if path == "/conflict/plan":
             return {
                 "plan": coordinator.plan_conflict_release(
@@ -250,20 +252,45 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "confirmToken"),
             )
         if path == "/component/plan":
+            component_id, component_action = self._required_exact_strings(
+                payload, "componentId", "action"
+            )
             return {
                 "plan": self._dashboard().plan_component(
-                    self._required_string(payload, "componentId"),
-                    self._required_string(payload, "action"),
+                    component_id,
+                    component_action,
                 )
             }
         if path == "/component/apply":
             self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
             return self._dashboard().apply_component(
-                self._required_string(payload, "planId"),
-                self._required_string(payload, "confirmToken"),
+                plan_id,
+                confirm_token,
             )
         if path == "/component/launch":
-            return self._dashboard().launch_component(self._required_string(payload, "componentId"))
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().launch_component(component_id)
+        if path == "/component/history":
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().component_operation_history(component_id)
+        if path == "/component/rollback/plan":
+            component_id, operation_id = self._required_exact_strings(
+                payload, "componentId", "operationId"
+            )
+            return {
+                "plan": self._dashboard().plan_component_rollback(
+                    component_id,
+                    operation_id,
+                )
+            }
+        if path == "/component/rollback/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().apply_component_rollback(
+                plan_id,
+                confirm_token,
+            )
         if path == "/emulation/emulator/plan":
             return {
                 "plan": self._dashboard().plan_emulation_emulator(
@@ -694,6 +721,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if not isinstance(value, str) or not value:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value
+
+    def _required_exact_strings(self, payload: dict[str, Any], *keys: str) -> tuple[str, ...]:
+        """Valida o schema fechado das rotas do lifecycle de componentes."""
+        if set(payload) != set(keys):
+            raise SteamZeroError("E-API-SCHEMA", detail="propriedades do componente inválidas")
+        return tuple(self._required_string(payload, key) for key in keys)
 
     def _required_dict(self, payload: dict[str, Any], key: str) -> dict[str, Any]:
         value = payload.get(key)

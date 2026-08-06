@@ -522,6 +522,7 @@ class TestRollbackRouting:
         lifecycle = bundled_with_fake(fake, store)
         envelope = lifecycle.plan("retroarch", "install")
         applied = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert lifecycle._operation_adapter_id(str(applied["operationId"])) == "retroarch"
         rolled = lifecycle.rollback(str(applied["operationId"]))
         assert rolled["executor"] == "flatpak"
         assert rolled["status"] == "rolled-back"
@@ -534,6 +535,7 @@ class TestRollbackRouting:
         )
         envelope = lifecycle.plan("demo-emulator", "install")
         applied = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert lifecycle._operation_adapter_id(str(applied["operationId"])) == "demo-emulator"
         rolled = lifecycle.rollback(str(applied["operationId"]))
         assert rolled["executor"] == "engine"
         assert rolled["status"] == "rolled-back"

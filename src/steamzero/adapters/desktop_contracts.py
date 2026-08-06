@@ -209,18 +209,45 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("componentId", componentId="string"),
         ),
         _action(
-            "component.rollback",
-            "Desfazer componente",
-            None,
+            "component.history",
+            "Consultar histórico do componente",
+            "/component/history",
             service="components",
             screen="system",
             control="component-history",
-            enabled=False,
-            reason=(
-                "O engine possui rollback interno, mas a bridge Desktop não expõe "
-                "seleção auditável de operação por componente."
+            schema=_schema("componentId", componentId="string"),
+        ),
+        _action(
+            "component.rollback.plan",
+            "Revisar reversão do componente",
+            "/component/rollback/plan",
+            service="components",
+            screen="system",
+            control="component-history",
+            schema=_schema(
+                "componentId", "operationId", componentId="string", operationId="string"
             ),
+        ),
+        _action(
+            "component.rollback.apply",
+            "Confirmar reversão do componente",
+            "/component/rollback/apply",
+            service="components",
+            screen="system",
+            control="component-history-confirm",
+            schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
+            confirmation="token",
+        ),
+        _action(
+            "component.rollback",
+            "Desfazer componente (legado)",
+            None,
+            service="components",
+            screen="system",
+            control="component-history-legacy",
+            enabled=False,
             applicable=False,
+            reason="Use o fluxo de revisão e confirmação de rollback do componente.",
         ),
         _action(
             "component.recover",
