@@ -244,6 +244,16 @@ def handheld_ui_contracts() -> dict[str, Any]:
             method="GET",
         ),
         _action(
+            "component.stop",
+            "Revisar parada do componente",
+            "/component/plan",
+            service="components",
+            screen="emulators",
+            control="component-stop",
+            schema=_schema("componentId", "action", componentId="string", action="string"),
+            confirmation="dialog",
+        ),
+        _action(
             "component.history",
             "Consultar histórico do componente",
             "/component/history",

@@ -646,8 +646,19 @@ class ComponentLifecycle:
                 "E-COMPONENT-DEGRADED",
                 detail=route.reason or "componente sem executor de lifecycle",
             )
-        if action not in {"install", "update", "uninstall", "repair"}:
+        if action not in {"install", "update", "uninstall", "repair", "stop"}:
             raise SteamZeroError("E-API-SCHEMA", detail="ação de componente não permitida")
+        if action == "stop":
+            if route.executor != "engine":
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED",
+                    detail="parada só é gerenciada para payload portátil do SteamZero",
+                )
+            observed = str(self.status(adapter_id)["state"])
+            if observed not in {"installed", "outdated"}:
+                raise SteamZeroError(
+                    "E-COMPONENT-DEGRADED", detail="componente não está em execução gerenciável"
+                )
         if action == "repair":
             # Reparo só existe para deployment que a observação já reprovou.
             # Oferecer "reparar" sobre um componente íntegro seria um botão que
@@ -678,7 +689,17 @@ class ComponentLifecycle:
         else:
             engine = self._engine()
             current = engine.status(adapter_id)
-            if action == "uninstall":
+            if action == "stop":
+                stop_plan = transaction.plan_write_files(
+                    {}, root=paths.data_home(), kind="component.stop"
+                )
+                delegated = {"transactionPlanId": stop_plan.plan_id}
+                fingerprint = self._source_fingerprint(manifest, route)
+                preview = "Encerra somente grupos de processo do payload gerenciado."
+                rollback_guarantee = "G-NONE"
+                confirm_token = stop_plan.confirm_token
+                effective = "stop"
+            elif action == "uninstall":
                 prepared = engine.plan_uninstall(adapter_id)
                 effective = "uninstall"
             elif action == "repair":
@@ -698,11 +719,12 @@ class ComponentLifecycle:
                     effective = "noop" if not prepared.plan.actions else "update"
                 else:
                     effective = "install"
-            delegated = {"transactionPlanId": prepared.plan.plan_id}
-            fingerprint = self._source_fingerprint(manifest, route)
-            preview = prepared.plan.preview
-            rollback_guarantee = prepared.plan.rollback_guarantee
-            confirm_token = prepared.plan.confirm_token
+            if action != "stop":
+                delegated = {"transactionPlanId": prepared.plan.plan_id}
+                fingerprint = self._source_fingerprint(manifest, route)
+                preview = prepared.plan.preview
+                rollback_guarantee = prepared.plan.rollback_guarantee
+                confirm_token = prepared.plan.confirm_token
         now = self._utc_now()
         envelope = ComponentPlan(
             plan_id=ids.new_ulid(),
@@ -762,6 +784,12 @@ class ComponentLifecycle:
         fingerprint = self._source_fingerprint(manifest, route)
         if fingerprint != envelope.source_fingerprint:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
+        if envelope.action == "stop":
+            if envelope.executor != "engine":
+                raise SteamZeroError("E-TX-STALE-PLAN", detail="executor de parada mudou")
+            self._mark_applied(envelope)
+            stop_result = self.stop(envelope.adapter_id)
+            return {**stop_result, "executor": "engine", "planVersion": 2}
         repair_op_id: str | None = None
         repair_observed: dict[str, Any] | None = None
         if envelope.executor == "flatpak":

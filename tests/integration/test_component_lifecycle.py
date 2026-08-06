@@ -515,6 +515,33 @@ class TestLaunchRouting:
         assert result["status"] == "not-supported"
         assert "Flatpak" in result["detail"]
 
+    def test_stop_requires_component_plan_and_confirmation(self, store: state.StateStore) -> None:
+        payload = executable_payload()
+        url = "https://fixtures.invalid/demo-1.0.0.AppImage"
+        lifecycle = ComponentLifecycle(
+            store, portable_registry("1.0.0", payload), artifacts=FakeArtifacts({url: payload})
+        )
+        install = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(install.plan_id, install.confirm_token)
+
+        planned = lifecycle.plan("demo-emulator", "stop")
+        assert planned.action == "stop"
+        assert planned.rollback_guarantee == "G-NONE"
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply(planned.plan_id, "token-incorreto")
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+
+        stopped = lifecycle.apply(planned.plan_id, planned.confirm_token)
+        assert stopped["status"] == "not-running"
+        assert stopped["executor"] == "engine"
+
+    def test_stop_plan_refuses_flatpak_ownership(self, store: state.StateStore) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.plan("retroarch", "stop")
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+
 
 class TestRollbackRouting:
     def test_flatpak_rollback_uses_operation_file(self, store: state.StateStore) -> None:

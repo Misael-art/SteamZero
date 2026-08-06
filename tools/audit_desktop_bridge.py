@@ -62,9 +62,7 @@ LIFECYCLE_SURFACES: dict[str, SurfaceDecision] = {
         ("component.open-config",),
         "nenhum argumento direto comprovado para os emuladores ativos",
     ),
-    "stop": SurfaceDecision(
-        "bridge-now", ("component.stop",), "somente grupo de processo gerenciado"
-    ),
+    "stop": SurfaceDecision("plan-apply", ("component.stop",), "somente payload Engine gerenciado"),
     "recover": SurfaceDecision(
         "plan-apply",
         ("component.recovery.inspect", "component.recovery.apply"),
