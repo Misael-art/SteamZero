@@ -862,3 +862,61 @@ class TestRepairTransactionality:
         )
         assert row["operation_id"] is None
         assert lifecycle.status("retroarch")["state"] == "degraded"
+
+
+class TestAdversarialLifecycleClosure:
+    """Cenários 13--15: contratos adversos comuns aos dois executores."""
+
+    @staticmethod
+    def _degraded(
+        executor: str, store: state.StateStore, tmp_path: Path
+    ) -> tuple[ComponentLifecycle, str, Path]:
+        """Cria drift real e uma configuração deliberadamente fora do payload."""
+        config = tmp_path / "config" / executor / "sentinel.ini"
+        config.parent.mkdir(parents=True)
+        sentinel = b"user-setting=preserve-byte-for-byte\n"
+        config.write_bytes(sentinel)
+        if executor == "engine":
+            payload = executable_payload()
+            lifecycle = ComponentLifecycle(
+                store,
+                portable_registry("1.0.0", payload),
+                artifacts=FakeArtifacts({"https://fixtures.invalid/demo-1.0.0.AppImage": payload}),
+            )
+            install = lifecycle.plan("demo-emulator", "install")
+            lifecycle.apply(install.plan_id, install.confirm_token)
+            root = store_paths_component_root(tmp_path)
+            (root / "demo-emulator" / "releases" / "1.0.0" / "payload").write_bytes(
+                b"deployment-drift"
+            )
+            adapter_id = "demo-emulator"
+        else:
+            target = AdapterRegistry.bundled().get("retroarch").preferred_source("flatpak").version
+            fake = FakeFlatpak(
+                FlatpakState(True, "org.libretro.RetroArch", "flathub", "b" * len(target))
+            )
+            lifecycle = bundled_with_fake(fake, store)
+            adapter_id = "retroarch"
+        assert lifecycle.status(adapter_id)["state"] in {"degraded", "outdated"}
+        return lifecycle, adapter_id, config
+
+    @pytest.mark.parametrize("executor", ("engine", "flatpak"))
+    def test_scenario_13_repair_preserves_external_configuration(
+        self, executor: str, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle, adapter_id, config = self._degraded(executor, store, tmp_path)
+        before = config.read_bytes()
+
+        plan = lifecycle.plan(adapter_id, "repair")
+        result = lifecycle.apply(plan.plan_id, plan.confirm_token)
+
+        assert result["operationId"]
+        assert config.read_bytes() == before
+        assert lifecycle.status(adapter_id)["state"] == "installed"
+        row = store.get_component(adapter_id)
+        assert row is not None and row["state"] == "installed"
+        saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+        assert saved_plan["status"] == "applied"
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.plan(adapter_id, "repair")
+        assert error.value.code == "E-API-SCHEMA"
