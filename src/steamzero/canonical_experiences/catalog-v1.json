@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "groups": [
+    {
+      "id": "nintendo", "name": "Nintendo", "experiences": [
+        {"id":"game-boy","name":"Game Boy","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-handheld","parentId":null,"runtimes":["retroarch:mgba"]},
+        {"id":"game-boy-color","name":"Game Boy Color","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-handheld","parentId":null,"runtimes":["retroarch:mgba"]},
+        {"id":"game-boy-advance","name":"Game Boy Advance","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-handheld","parentId":null,"runtimes":["retroarch:mgba"]},
+        {"id":"famicom","name":"Nintendo Family Computer","kind":"hardware","status":"supported","technicalPlatformId":"nes-famicom","parentId":null,"runtimes":["retroarch:mesen"]},
+        {"id":"famicom-disk-system","name":"Famicom Disk System","kind":"expansion","status":"planned","technicalPlatformId":"nes-famicom","parentId":"famicom","runtimes":["retroarch:mesen"]},
+        {"id":"nes","name":"Nintendo Entertainment System","kind":"hardware","status":"supported","technicalPlatformId":"nes-famicom","parentId":null,"runtimes":["retroarch:mesen"]},
+        {"id":"super-famicom","name":"Super Famicom","kind":"hardware","status":"supported","technicalPlatformId":"snes","parentId":null,"runtimes":["retroarch:snes9x"]},
+        {"id":"snes","name":"Super Nintendo Entertainment System","kind":"hardware","status":"supported","technicalPlatformId":"snes","parentId":null,"runtimes":["retroarch:snes9x"]},
+        {"id":"super-famicom-msu1","name":"Super Famicom MSU-1","kind":"enhancement","status":"planned","technicalPlatformId":"snes","parentId":"super-famicom","runtimes":["retroarch:snes9x","retroarch:bsnes"]},
+        {"id":"snes-msu1","name":"Super Nintendo MSU-1","kind":"enhancement","status":"planned","technicalPlatformId":"snes","parentId":"snes","runtimes":["retroarch:snes9x","retroarch:bsnes"]},
+        {"id":"satellaview","name":"Satellaview","kind":"expansion","status":"planned","technicalPlatformId":"snes","parentId":"super-famicom","runtimes":["retroarch:snes9x","retroarch:bsnes"]},
+        {"id":"sufami-turbo","name":"Sufami Turbo","kind":"expansion","status":"planned","technicalPlatformId":"snes","parentId":"super-famicom","runtimes":["retroarch:snes9x","retroarch:bsnes"]},
+        {"id":"super-game-boy","name":"Super Game Boy","kind":"expansion","status":"planned","technicalPlatformId":"nintendo-handheld","parentId":"snes","runtimes":["ares","retroarch:mesen-s"]},
+        {"id":"virtual-boy","name":"Virtual Boy","kind":"hardware","status":"supported","technicalPlatformId":"virtual-boy","parentId":null,"runtimes":["retroarch:beetle-vb"]},
+        {"id":"pokemon-mini","name":"Pokémon Mini","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:pokemini"]},
+        {"id":"nintendo-64","name":"Nintendo 64","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-64","parentId":null,"runtimes":["retroarch:mupen64plus-next"]},
+        {"id":"nintendo-64dd","name":"Nintendo 64DD","kind":"expansion","status":"planned","technicalPlatformId":"nintendo-64","parentId":"nintendo-64","runtimes":["retroarch:mupen64plus-next","ares"]},
+        {"id":"gamecube","name":"Nintendo GameCube","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-console","parentId":null,"runtimes":["dolphin"]},
+        {"id":"wii","name":"Nintendo Wii","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-console","parentId":null,"runtimes":["dolphin"]},
+        {"id":"nintendo-ds","name":"Nintendo DS","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-ds","parentId":null,"runtimes":["melonds","retroarch:melonds"]},
+        {"id":"nintendo-3ds","name":"Nintendo 3DS","kind":"hardware","status":"supported","technicalPlatformId":"nintendo-3ds","parentId":null,"runtimes":["azahar"]},
+        {"id":"wii-u","name":"Nintendo Wii U","kind":"hardware","status":"supported","technicalPlatformId":"wii-u","parentId":null,"runtimes":["cemu"]},
+        {"id":"switch","name":"Nintendo Switch","kind":"hardware","status":"supported","technicalPlatformId":"switch","parentId":null,"runtimes":["eden","citron","ryubing"]}
+      ]
+    },
+    {
+      "id": "sega", "name": "Sega", "experiences": [
+        {"id":"sg-1000","name":"Sega SG-1000","kind":"hardware","status":"planned","technicalPlatformId":"master-system","parentId":null,"runtimes":["retroarch:gearsystem"]},
+        {"id":"master-system","name":"Sega Master System","kind":"hardware","status":"supported","technicalPlatformId":"master-system","parentId":null,"runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"game-gear","name":"Sega Game Gear","kind":"hardware","status":"supported","technicalPlatformId":"game-gear","parentId":null,"runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"sega-pico","name":"Sega Pico","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:picodrive"]},
+        {"id":"mega-drive","name":"Sega Mega Drive","kind":"hardware","status":"supported","technicalPlatformId":"mega-drive","parentId":null,"runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"genesis","name":"Sega Genesis","kind":"hardware","status":"supported","technicalPlatformId":"mega-drive","parentId":null,"runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"mega-drive-enhanced","name":"Mega Drive MD+ / MSU-MD","kind":"enhancement","status":"planned","technicalPlatformId":"mega-drive","parentId":"mega-drive","runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"genesis-enhanced","name":"Genesis MD+ / MSU-MD","kind":"enhancement","status":"planned","technicalPlatformId":"mega-drive","parentId":"genesis","runtimes":["retroarch:genesis-plus-gx"]},
+        {"id":"sega-cd","name":"Sega CD / Mega-CD","kind":"expansion","status":"supported","technicalPlatformId":"sega-cd-32x","parentId":"mega-drive","runtimes":["retroarch:genesis-plus-gx","retroarch:picodrive"]},
+        {"id":"sega-32x","name":"Sega 32X","kind":"expansion","status":"supported","technicalPlatformId":"sega-cd-32x","parentId":"mega-drive","runtimes":["retroarch:picodrive"]},
+        {"id":"sega-cd-32x","name":"Sega CD 32X","kind":"expansion","status":"experimental","technicalPlatformId":"sega-cd-32x","parentId":"sega-32x","runtimes":["retroarch:picodrive","ares"]},
+        {"id":"sega-saturn","name":"Sega Saturn","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:beetle-saturn","retroarch:kronos"]},
+        {"id":"dreamcast","name":"Sega Dreamcast","kind":"hardware","status":"supported","technicalPlatformId":"dreamcast","parentId":null,"runtimes":["flycast"]}
+      ]
+    },
+    {
+      "id": "sony", "name": "Sony", "experiences": [
+        {"id":"playstation","name":"Sony PlayStation","kind":"hardware","status":"supported","technicalPlatformId":"playstation","parentId":null,"runtimes":["duckstation","retroarch:swanstation"]},
+        {"id":"playstation-2","name":"Sony PlayStation 2","kind":"hardware","status":"supported","technicalPlatformId":"playstation-2","parentId":null,"runtimes":["pcsx2"]},
+        {"id":"psp","name":"Sony PlayStation Portable","kind":"hardware","status":"supported","technicalPlatformId":"playstation-portable","parentId":null,"runtimes":["ppsspp"]},
+        {"id":"playstation-3","name":"Sony PlayStation 3","kind":"hardware","status":"supported","technicalPlatformId":"playstation-3","parentId":null,"runtimes":["rpcs3"]},
+        {"id":"playstation-4","name":"Sony PlayStation 4","kind":"hardware","status":"experimental","technicalPlatformId":null,"parentId":null,"runtimes":["shadps4"]}
+      ]
+    },
+    {
+      "id": "microsoft", "name": "Microsoft", "experiences": [
+        {"id":"xbox","name":"Microsoft Xbox","kind":"hardware","status":"supported","technicalPlatformId":"xbox","parentId":null,"runtimes":["xemu"]},
+        {"id":"xbox-360","name":"Microsoft Xbox 360","kind":"hardware","status":"supported","technicalPlatformId":"xbox-360","parentId":null,"runtimes":["xenia-canary"]}
+      ]
+    },
+    {
+      "id": "nec", "name": "NEC", "experiences": [
+        {"id":"pc-engine","name":"NEC PC Engine","kind":"hardware","status":"supported","technicalPlatformId":"pc-engine-turbografx","parentId":null,"runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"turbografx-16","name":"NEC TurboGrafx-16","kind":"hardware","status":"supported","technicalPlatformId":"pc-engine-turbografx","parentId":null,"runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"pc-engine-cd","name":"PC Engine CD-ROM²","kind":"expansion","status":"supported","technicalPlatformId":"pc-engine-turbografx","parentId":"pc-engine","runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"pc-engine-super-cd","name":"PC Engine Super CD-ROM²","kind":"expansion","status":"planned","technicalPlatformId":"pc-engine-turbografx","parentId":"pc-engine-cd","runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"turbografx-cd","name":"TurboGrafx-CD","kind":"expansion","status":"supported","technicalPlatformId":"pc-engine-turbografx","parentId":"turbografx-16","runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"turboduo","name":"TurboDuo","kind":"hardware","status":"planned","technicalPlatformId":"pc-engine-turbografx","parentId":"turbografx-cd","runtimes":["retroarch:beetle-pce-fast"]},
+        {"id":"supergrafx","name":"NEC SuperGrafx","kind":"hardware","status":"planned","technicalPlatformId":"pc-engine-turbografx","parentId":"pc-engine","runtimes":["retroarch:beetle-supergrafx"]},
+        {"id":"pc-fx","name":"NEC PC-FX","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:beetle-pcfx"]}
+      ]
+    },
+    {
+      "id": "atari", "name": "Atari", "experiences": [
+        {"id":"atari-2600","name":"Atari 2600","kind":"hardware","status":"supported","technicalPlatformId":"atari-classics","parentId":null,"runtimes":["retroarch:stella"]},
+        {"id":"atari-5200","name":"Atari 5200","kind":"hardware","status":"supported","technicalPlatformId":"atari-classics","parentId":null,"runtimes":["retroarch:atari800"]},
+        {"id":"atari-7800","name":"Atari 7800","kind":"hardware","status":"supported","technicalPlatformId":"atari-classics","parentId":null,"runtimes":["retroarch:prosystem"]},
+        {"id":"atari-lynx","name":"Atari Lynx","kind":"hardware","status":"supported","technicalPlatformId":"atari-classics","parentId":null,"runtimes":["retroarch:beetle-lynx"]},
+        {"id":"atari-jaguar","name":"Atari Jaguar","kind":"hardware","status":"supported","technicalPlatformId":"atari-classics","parentId":null,"runtimes":["retroarch:virtual-jaguar","bigpemu"]},
+        {"id":"atari-jaguar-cd","name":"Atari Jaguar CD","kind":"expansion","status":"experimental","technicalPlatformId":"atari-classics","parentId":"atari-jaguar","runtimes":["bigpemu"]},
+        {"id":"atari-800","name":"Atari 800","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:atari800"]},
+        {"id":"atari-xl-xe","name":"Atari XL / XE","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:atari800"]},
+        {"id":"atari-xegs","name":"Atari XEGS","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":"atari-xl-xe","runtimes":["retroarch:atari800"]},
+        {"id":"atari-st","name":"Atari ST","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:hatari"]}
+      ]
+    },
+    {
+      "id": "snk", "name": "SNK", "experiences": [
+        {"id":"neo-geo-aes","name":"SNK Neo Geo AES","kind":"hardware","status":"planned","technicalPlatformId":"arcade","parentId":null,"runtimes":["retroarch:fbneo","retroarch:geolith"]},
+        {"id":"neo-geo-mvs","name":"SNK Neo Geo MVS","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":null,"runtimes":["retroarch:fbneo","retroarch:geolith"]},
+        {"id":"neo-geo-cd","name":"SNK Neo Geo CD","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":"neo-geo-aes","runtimes":["retroarch:neocd"]},
+        {"id":"neo-geo-pocket","name":"SNK Neo Geo Pocket","kind":"hardware","status":"supported","technicalPlatformId":"neo-geo-pocket","parentId":null,"runtimes":["retroarch:beetle-neopop"]},
+        {"id":"neo-geo-pocket-color","name":"SNK Neo Geo Pocket Color","kind":"hardware","status":"supported","technicalPlatformId":"neo-geo-pocket","parentId":null,"runtimes":["retroarch:beetle-neopop"]}
+      ]
+    },
+    {
+      "id": "bandai", "name": "Bandai", "experiences": [
+        {"id":"wonderswan","name":"Bandai WonderSwan","kind":"hardware","status":"supported","technicalPlatformId":"wonderswan","parentId":null,"runtimes":["retroarch:beetle-cygne"]},
+        {"id":"wonderswan-color","name":"Bandai WonderSwan Color","kind":"hardware","status":"supported","technicalPlatformId":"wonderswan","parentId":null,"runtimes":["retroarch:beetle-cygne"]}
+      ]
+    },
+    {
+      "id": "computers", "name": "Computadores clássicos", "experiences": [
+        {"id":"msx","name":"MSX","kind":"computer","status":"supported","technicalPlatformId":"msx","parentId":null,"runtimes":["retroarch:fmsx"]},
+        {"id":"msx2","name":"MSX2","kind":"computer","status":"supported","technicalPlatformId":"msx","parentId":"msx","runtimes":["retroarch:fmsx"]},
+        {"id":"zx-spectrum","name":"Sinclair ZX Spectrum","kind":"computer","status":"supported","technicalPlatformId":"zx-spectrum","parentId":null,"runtimes":["retroarch:fuse"]},
+        {"id":"commodore-64","name":"Commodore 64","kind":"computer","status":"supported","technicalPlatformId":"commodore-64","parentId":null,"runtimes":["retroarch:vice-x64"]},
+        {"id":"amiga","name":"Commodore Amiga","kind":"computer","status":"supported","technicalPlatformId":"amiga","parentId":null,"runtimes":["retroarch:puae"]},
+        {"id":"amiga-cd32","name":"Commodore Amiga CD32","kind":"hardware","status":"supported","technicalPlatformId":"amiga","parentId":"amiga","runtimes":["retroarch:puae"]},
+        {"id":"apple-ii","name":"Apple II","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:applewin","mame"]},
+        {"id":"amstrad-cpc","name":"Amstrad CPC","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:cap32"]},
+        {"id":"bbc-micro","name":"BBC Micro","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:b2"]},
+        {"id":"nec-pc-88","name":"NEC PC-88","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:quasi88"]},
+        {"id":"nec-pc-98","name":"NEC PC-98","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["np2kai"]},
+        {"id":"sharp-x68000","name":"Sharp X68000","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:px68k"]},
+        {"id":"fm-towns","name":"Fujitsu FM Towns","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["mame","tsugaru"]},
+        {"id":"ti-99-4a","name":"Texas Instruments TI-99/4A","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["mame"]},
+        {"id":"pc-dos","name":"IBM PC / MS-DOS","kind":"computer","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["dosbox-staging","retroarch:dosbox-pure"]},
+        {"id":"pc-windows-9x","name":"PC Windows 9x","kind":"computer","status":"experimental","technicalPlatformId":null,"parentId":null,"runtimes":["dosbox-x","wine"]},
+        {"id":"pc-windows-modern","name":"PC Windows moderno","kind":"computer","status":"supported","technicalPlatformId":null,"parentId":null,"runtimes":["proton","wine"]},
+        {"id":"pc-linux-native","name":"PC Linux nativo","kind":"computer","status":"supported","technicalPlatformId":null,"parentId":null,"runtimes":["linux-native"]}
+      ]
+    },
+    {
+      "id": "other-hardware", "name": "Outros sistemas", "experiences": [
+        {"id":"colecovision","name":"ColecoVision","kind":"hardware","status":"supported","technicalPlatformId":"colecovision","parentId":null,"runtimes":["retroarch:gearcoleco"]},
+        {"id":"intellivision","name":"Mattel Intellivision","kind":"hardware","status":"supported","technicalPlatformId":"intellivision","parentId":null,"runtimes":["retroarch:freeintv"]},
+        {"id":"three-do","name":"3DO Interactive Multiplayer","kind":"hardware","status":"supported","technicalPlatformId":"three-do","parentId":null,"runtimes":["retroarch:opera"]},
+        {"id":"vectrex","name":"GCE Vectrex","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:vecx"]},
+        {"id":"odyssey2-videopac","name":"Odyssey² / Philips Videopac","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:o2em"]},
+        {"id":"fairchild-channel-f","name":"Fairchild Channel F","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:freechaf"]},
+        {"id":"watara-supervision","name":"Watara Supervision","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:potator"]},
+        {"id":"mega-duck","name":"Mega Duck / Cougar Boy","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:sameduck"]},
+        {"id":"philips-cdi","name":"Philips CD-i","kind":"hardware","status":"experimental","technicalPlatformId":null,"parentId":null,"runtimes":["mame"]},
+        {"id":"super-cassette-vision","name":"Epoch Super Cassette Vision","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:emuscv"]},
+        {"id":"arduboy","name":"Arduboy","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:arduous"]},
+        {"id":"uzebox","name":"Uzebox","kind":"hardware","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:uzem"]}
+      ]
+    },
+    {
+      "id": "arcade", "name": "Arcade", "experiences": [
+        {"id":"arcade-classics","name":"Arcade Classics","kind":"arcade-board","status":"supported","technicalPlatformId":"arcade","parentId":null,"runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-cps1","name":"Capcom Play System","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-cps2","name":"Capcom Play System II","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-cps3","name":"Capcom Play System III","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-sega-system-16","name":"Sega System 16","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-sega-system-18","name":"Sega System 18","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-sega-system-32","name":"Sega System 32","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-sega-model-1","name":"Sega Model 1","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-sega-model-2","name":"Sega Model 2","kind":"arcade-board","status":"experimental","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["model2emu"]},
+        {"id":"arcade-sega-model-3","name":"Sega Model 3","kind":"arcade-board","status":"experimental","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["supermodel"]},
+        {"id":"arcade-sega-stv","name":"Sega ST-V","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"sega-saturn","runtimes":["retroarch:kronos","mame"]},
+        {"id":"arcade-sega-naomi","name":"Sega NAOMI","kind":"arcade-board","status":"planned","technicalPlatformId":"dreamcast","parentId":"dreamcast","runtimes":["flycast"]},
+        {"id":"arcade-sega-naomi-2","name":"Sega NAOMI 2","kind":"arcade-board","status":"planned","technicalPlatformId":"dreamcast","parentId":"arcade-sega-naomi","runtimes":["flycast"]},
+        {"id":"arcade-atomiswave","name":"Sammy Atomiswave","kind":"arcade-board","status":"planned","technicalPlatformId":"dreamcast","parentId":"dreamcast","runtimes":["flycast"]},
+        {"id":"arcade-sega-system-sp","name":"Sega System SP","kind":"arcade-board","status":"planned","technicalPlatformId":"dreamcast","parentId":"arcade-sega-naomi","runtimes":["flycast"]},
+        {"id":"arcade-namco-system-1","name":"Namco System 1","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-namco-system-2","name":"Namco System 2","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-namco-system-11-12","name":"Namco System 11 / 12","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"playstation","runtimes":["mame"]},
+        {"id":"arcade-namco-system-22","name":"Namco System 22","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-namco-system-23","name":"Namco System 23","kind":"arcade-board","status":"experimental","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-konami-classics","name":"Konami Arcade Classics","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-konami-gx","name":"Konami GX","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-taito-f2","name":"Taito F2","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-taito-f3","name":"Taito F3","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-cave","name":"Cave Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-toaplan","name":"Toaplan Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-psikyo","name":"Psikyo Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-igs-pgm","name":"IGS PolyGame Master","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-midway-williams","name":"Midway / Williams Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-data-east","name":"Data East Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-nintendo","name":"Nintendo Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["retroarch:fbneo","mame"]},
+        {"id":"arcade-atari-vector","name":"Atari Vector Arcade","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["mame"]},
+        {"id":"arcade-laserdisc","name":"Arcade LaserDisc","kind":"arcade-board","status":"planned","technicalPlatformId":"arcade","parentId":"arcade-classics","runtimes":["hypseus-singe"]}
+      ]
+    },
+    {
+      "id": "engines", "name": "Engines e ecossistemas", "experiences": [
+        {"id":"engine-mugen","name":"MUGEN / IKEMEN GO","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["ikemen-go"]},
+        {"id":"engine-scummvm","name":"ScummVM","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["scummvm"]},
+        {"id":"engine-openbor","name":"OpenBOR","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["openbor"]},
+        {"id":"engine-easyrpg","name":"EasyRPG / RPG Maker 2000-2003","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["easyrpg-player"]},
+        {"id":"engine-flash","name":"Adobe Flash","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["ruffle"]},
+        {"id":"engine-j2me","name":"Java ME / J2ME","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:freej2me"]},
+        {"id":"engine-doom","name":"Doom source ports","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["gzdoom","retroarch:prboom"]},
+        {"id":"engine-quake","name":"Quake source ports","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["vkquake","retroarch:tyrquake"]},
+        {"id":"engine-pico-8","name":"PICO-8","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["pico-8","retroarch:fake-08"]},
+        {"id":"engine-tic-80","name":"TIC-80","kind":"engine","status":"planned","technicalPlatformId":null,"parentId":null,"runtimes":["retroarch:tic-80"]}
+      ]
+    },
+    {
+      "id": "stores", "name": "Bibliotecas e lojas de PC", "experiences": [
+        {"id":"store-steam","name":"Steam","kind":"store","status":"supported","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["steam","proton"]},
+        {"id":"store-gog","name":"GOG","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["heroic","lutris"]},
+        {"id":"store-epic","name":"Epic Games Store","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["heroic","lutris"]},
+        {"id":"store-amazon-games","name":"Amazon Games","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["heroic"]},
+        {"id":"store-itch","name":"itch.io","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["itch","lutris"]},
+        {"id":"store-humble","name":"Humble Bundle","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["lutris"]},
+        {"id":"store-ea","name":"EA App","kind":"store","status":"experimental","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["lutris","wine"]},
+        {"id":"store-ubisoft","name":"Ubisoft Connect","kind":"store","status":"experimental","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["lutris","wine"]},
+        {"id":"store-battlenet","name":"Battle.net","kind":"store","status":"experimental","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":["lutris","wine"]},
+        {"id":"store-xbox-pc","name":"Xbox PC / Microsoft Store","kind":"store","status":"unavailable","technicalPlatformId":null,"parentId":"pc-windows-modern","runtimes":[]},
+        {"id":"store-local","name":"Jogos locais sem loja","kind":"store","status":"planned","technicalPlatformId":null,"parentId":"pc-linux-native","runtimes":["linux-native","wine","proton"]}
+      ]
+    },
+    {
+      "id": "cloud", "name": "Jogos em nuvem", "experiences": [
+        {"id":"geforce-now","name":"NVIDIA GeForce NOW","kind":"cloud","status":"supported","technicalPlatformId":"geforce-now","parentId":null,"runtimes":["browser"]},
+        {"id":"xbox-cloud-gaming","name":"Xbox Cloud Gaming","kind":"cloud","status":"supported","technicalPlatformId":"xbox-cloud-gaming","parentId":null,"runtimes":["browser"]},
+        {"id":"amazon-luna","name":"Amazon Luna","kind":"cloud","status":"supported","technicalPlatformId":"amazon-luna","parentId":null,"runtimes":["browser"]}
+      ]
+    }
+  ]
+}

@@ -67,6 +67,14 @@
       "items": {
         "$ref": "#/$defs/editorialPlatform"
       }
+    },
+    "canonicalExperiences": {
+      "description": "Identidades históricas do tema; plataformas operacionais continuam em platforms.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/canonicalExperience"
+      }
     }
   },
   "$defs": {
@@ -134,6 +142,47 @@
             "additionalProperties": true
           }
         }
+      }
+    },
+    "canonicalExperience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "kind", "groupId", "groupName", "status",
+        "technicalPlatformId", "parentId", "runtimes", "themeKey"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "kind": {
+          "enum": [
+            "hardware", "expansion", "enhancement", "arcade-board",
+            "computer", "engine", "store", "cloud"
+          ]
+        },
+        "groupId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+        "groupName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "status": {
+          "enum": ["certified", "supported", "experimental", "planned", "unavailable"]
+        },
+        "technicalPlatformId": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+            { "type": "null" }
+          ]
+        },
+        "parentId": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" },
+            { "type": "null" }
+          ]
+        },
+        "runtimes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._:+-]{0,95}$" }
+        },
+        "themeKey": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" }
       }
     },
     "job": {
