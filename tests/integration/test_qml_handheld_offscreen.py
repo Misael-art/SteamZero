@@ -60,6 +60,23 @@ def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -
     )
 
 
+def _run_qml(harness: str, *arguments: str, scale_factor: int | None = None) -> None:
+    """Executa um harness com os diagnósticos do Qt preservados."""
+    env = _qml_environment()
+    if scale_factor is not None:
+        env["QT_SCALE_FACTOR"] = str(scale_factor)
+    completed = subprocess.run(
+        [str(QML), f"tests/qml/{harness}", "--", *arguments],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    _assert_qml_clean(completed, " ".join((harness, *arguments)))
+
+
 class _ErrorServerHandler(BaseHTTPRequestHandler):
     """Retorna 200 em /status e 400 com error-v1 em /emulation/action/plan."""
 
@@ -164,18 +181,45 @@ def test_qml_handheld_harness_offscreen(harness: str) -> None:
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_editorial_library_renders_at_logical_scale_200() -> None:
     """A composição editorial continua utilizável em 4K físico a 200% lógico."""
-    env = _qml_environment()
-    env["QT_SCALE_FACTOR"] = "2"
-    completed = subprocess.run(
-        [str(QML), "tests/qml/check_editorial_library.qml"],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
+    _run_qml("check_editorial_library.qml", scale_factor=2)
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+@pytest.mark.parametrize(
+    ("arguments", "label"),
+    [
+        (("--system-count=37",), "37 sistemas em 1280x800"),
+        (
+            (
+                "--system-count=37",
+                "--long-system-status",
+                "--capture-width=800",
+                "--capture-height=1280",
+                "--capture-high-contrast",
+                "--geometry-only",
+            ),
+            "37 sistemas com rótulo longo em 800x1280 e alto contraste",
+        ),
+    ],
+)
+def test_editorial_system_cards_keep_the_minimum_geometry(
+    arguments: tuple[str, ...], label: str
+) -> None:
+    """G36 — a grade dá a todos os cards, inclusive o último, a altura contratada."""
+    _run_qml("check_editorial_library.qml", *arguments)
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+@pytest.mark.parametrize("stage", ("systems", "system", "library", "dossier", "launch"))
+def test_editorial_capture_requested_stage_is_independent(tmp_path: Path, stage: str) -> None:
+    """Cada etapa editorial captura o frame pedido sem depender do timer da jornada."""
+    output = tmp_path / f"editorial-{stage}.png"
+    _run_qml(
+        "check_editorial_library.qml",
+        f"--capture-stage={stage}",
+        f"--capture-output={output}",
     )
-    _assert_qml_clean(completed, "check_editorial_library.qml 200%")
+    assert output.is_file() and output.stat().st_size > 0
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")

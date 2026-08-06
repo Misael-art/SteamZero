@@ -25,6 +25,9 @@ Window {
     readonly property bool captureReducedMotion: hasArgument("--capture-reduced-motion")
     readonly property string captureLibraryView: optionValue("--capture-view=", "carousel")
     readonly property string captureStage: optionValue("--capture-stage=", "library")
+    readonly property int requestedSystemCount: optionNumber("--system-count=", 3)
+    readonly property bool longSystemStatus: hasArgument("--long-system-status")
+    readonly property bool geometryOnly: hasArgument("--geometry-only")
 
     function hasArgument(value) {
         return Qt.application.arguments.indexOf(value) >= 0
@@ -62,6 +65,48 @@ Window {
             })
         }
         return rows
+    }
+
+    function editorialSystemFixture() {
+        const rows = [library.emulation.platforms[0]]
+        const status = longSystemStatus
+            ? "Verificação pendente: firmware, chaves e configuração precisam de atenção"
+            : "Nenhum jogo inventariado"
+        for (let i = 2; i < requestedSystemCount; ++i) {
+            rows.push({
+                "id": "fixture-platform-" + i,
+                "name": "Fixture Platform " + i,
+                "state": "unverified",
+                "statusLabel": status,
+                "readiness": {"percent": 0},
+                "requirements": {},
+                "subsystems": [],
+                "games": []
+            })
+        }
+        return rows
+    }
+
+    function checkSystemCardGeometry() {
+        const count = library.systems.length
+        const columns = library.compact ? 1 : library.wide ? 4 : 3
+        const first = library.systemRepeaterControl.itemAt(0)
+        const last = library.systemRepeaterControl.itemAt(count - 1)
+        console.log("G36 geometry: systems=" + count + " viewport=" + width + "x" + height
+            + " first=" + first.height + "/" + first.implicitHeight
+            + " preferred=" + first.reportedLayoutPreferredHeight
+            + " minimum=" + first.reportedLayoutMinimumHeight
+            + " grid=" + library.systemGridControl.height + "/"
+            + library.systemGridControl.implicitHeight + " firstY=" + first.y
+            + " last=" + last.height + "/" + last.implicitHeight + " lastY=" + last.y)
+        check(first.height >= library.systemCardHeight
+              && first.implicitHeight >= library.systemCardHeight
+              && first.reportedLayoutPreferredHeight >= library.systemCardHeight
+              && first.reportedLayoutMinimumHeight >= library.systemCardHeight,
+              "card de sistema deve tornar a altura mínima efetiva no GridLayout")
+        check(last.height >= library.systemCardHeight
+              && last.y + last.height <= library.systemGridControl.implicitHeight,
+              "último sistema deve receber a mesma altura mínima do card")
     }
 
     function check(condition, message) {
@@ -186,18 +231,18 @@ Window {
                 // contra a lista antiga — 898 falhas em laço, sem sair.
                 library.emulation = {
                     "platforms": library.emulation.platforms,
-                    "editorialPlatforms": [
-                        library.emulation.platforms[0],
-                        {
-                            "id": "playstation", "name": "Fixture PlayStation", "state": "unverified",
-                            "statusLabel": "Nenhum jogo inventariado", "readiness": {"percent": 0},
-                            "requirements": {}, "subsystems": [], "games": []
-                        }
-                    ]
+                    "editorialPlatforms": editorialSystemFixture()
                 }
-                check(library.systems.length === 3,
+                // Repeater entrega os delegates neste turno; GridLayout só
+                // recalcula as linhas no próximo polish. Medir antes disso
+                // observaria 37 cards sobrepostos na primeira célula.
+                phase = -1
+                return
+            }
+            if (phase === -1) {
+                check(library.systems.length === requestedSystemCount,
                       "a jornada deve incluir Steam e as plataformas editoriais publicadas")
-                check(library.systems[2].id === "playstation" && library.systems[2].gameCount === 0,
+                check(library.systems[2].id === "fixture-platform-2" && library.systems[2].gameCount === 0,
                       "plataforma canônica sem ROM deve permanecer visível sem jogos inventados")
                 check(library.games.length === 3, "catálogo deve preservar jogos Steam e emulados")
                 check(library.contextualMediaSource({"heroUrl": "hero", "coverUrl": "cover"}) === "hero"
@@ -215,11 +260,24 @@ Window {
                       && library.stateLabel("unverified") === "Não verificado",
                       "estados técnicos conhecidos devem usar rótulos PT-BR")
                 check(library.view === "systems", "a jornada inicia em sistemas")
-                check(library.systemRepeaterControl.itemAt(0).height >= library.systemCardHeight,
-                      "card de sistema deve reservar altura para o estado sem sobrepor a borda")
+                checkSystemCardGeometry()
+                if (geometryOnly) {
+                    check(!library.contextualBackdropVisible === library.highContrast,
+                          "alto contraste deve preservar a geometria sem mostrar backdrop")
+                    Qt.exit(failures === 0 ? 0 : 1)
+                    return
+                }
                 check(library.handleNavigationIntent("next")
                       && library.selectedSystem.id === "switch",
                       "intent semântico deve mover o foco entre sistemas")
+                for (let i = 2; i < library.systems.length; ++i)
+                    check(library.handleNavigationIntent("next"),
+                          "navegação semântica deve alcançar o último sistema")
+                check(library.selectedSystemIndex === library.systems.length - 1,
+                      "navegação semântica deve alcançar o último sistema publicado")
+                for (let i = 2; i < library.systems.length; ++i)
+                    check(library.handleNavigationIntent("previous"),
+                          "navegação semântica deve retornar do último sistema")
                 check(library.handleNavigationIntent("confirm"),
                       "intent de confirmação deve abrir o sistema focado")
                 check(library.view === "system" && library.selectedSystem.id === "switch",

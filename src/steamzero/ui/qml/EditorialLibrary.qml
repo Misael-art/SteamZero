@@ -226,6 +226,7 @@ Item {
     property int systemIndex: 0
     property int selectedSystemIndex: 0
     property alias systemRepeaterControl: systemRepeater
+    property alias systemGridControl: systemsGrid
     property alias carouselControl: carousel
     property alias gridControl: gameGrid
     property alias listControl: gameList
@@ -642,8 +643,19 @@ Item {
                         delegate: Button {
                             required property int index
                             required property var modelData
+                            readonly property real reportedLayoutPreferredHeight: Layout.preferredHeight
+                            readonly property real reportedLayoutMinimumHeight: Layout.minimumHeight
+                            // G36: GridLayout conhece o preferredHeight, mas um
+                            // Button delegado publica o próprio tamanho intrínseco.
+                            // A altura contratada precisa entrar na geometria que
+                            // o controle entrega ao layout, inclusive para um
+                            // rótulo de estado que cresça com a tipografia.
+                            implicitHeight: Math.max(root.systemCardHeight,
+                                implicitContentHeight + topPadding + bottomPadding)
                             Layout.fillWidth: true
+                            Layout.fillHeight: true
                             Layout.minimumWidth: 0
+                            Layout.minimumHeight: root.systemCardHeight
                             Layout.preferredHeight: root.systemCardHeight
                             Layout.columnSpan: root.compact ? 1 : 1
                             Accessible.name: qsTr("%1, %2 jogos, %3")
