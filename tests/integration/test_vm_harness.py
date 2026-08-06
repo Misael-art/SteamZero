@@ -10,15 +10,30 @@ roda fora da suíte, sob autorização do operador.
 
 from __future__ import annotations
 
+import json
 import secrets
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+import vm_harness.provision as provision_module
 from vm_harness.driver import (
     CYCLE_STEPS,
     certify_emulator,
     certify_m10,
+    m10_pinned_commits,
     render_evidence_report,
+)
+from vm_harness.provision import (
+    CommandResult,
+    GuestComponentClient,
+    VmConfig,
+    build_virt_install_argv,
+    render_cloud_init,
+)
+from vm_harness.provision import (
+    main as provision_main,
 )
 
 
@@ -34,9 +49,15 @@ class FakeComponentClient:
         self._state: dict[str, str] = {}  # adapter_id -> "installed" | "missing"
         self._plans: dict[str, dict[str, Any]] = {}  # planId -> plan envelope
         self._counter = 0
+        self._pins = m10_pinned_commits()
 
     def status(self, adapter_id: str) -> dict[str, Any]:
-        return {"id": adapter_id, "state": self._state.get(adapter_id, "missing")}
+        state = self._state.get(adapter_id, "missing")
+        return {
+            "id": adapter_id,
+            "state": state,
+            "version": self._pins[adapter_id] if state == "installed" else None,
+        }
 
     def plan(self, adapter_id: str, action: str = "install") -> dict[str, Any]:
         current = self._state.get(adapter_id, "missing")
@@ -70,11 +91,15 @@ class FakeComponentClient:
         self._state[adapter_id] = "missing"
         return {"operationId": operation_id, "status": "rolled-back"}
 
+    def verify(self, adapter_id: str) -> dict[str, Any]:
+        status = self.status(adapter_id)
+        return {"verified": status["state"] == "installed", **status}
+
 
 def test_certify_emulator_happy_path() -> None:
     # Ciclo completo install->update(noop)->rollback->roll-forward fica verde.
     client = FakeComponentClient()
-    result = certify_emulator("pcsx2", client)
+    result = certify_emulator("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
     assert result.ok is True
     assert result.failure is None
     steps = [s["step"] for s in result.steps]
@@ -90,7 +115,10 @@ def test_certify_emulator_records_evidence_via_sink() -> None:
     client = FakeComponentClient()
     seen: list[tuple[str, str]] = []
     certify_emulator(
-        "ppsspp", client, evidence=lambda emu, step, _payload: seen.append((emu, step))
+        "ppsspp",
+        client,
+        expected_commit=m10_pinned_commits()["ppsspp"],
+        evidence=lambda emu, step, _payload: seen.append((emu, step)),
     )
     assert seen[0] == ("ppsspp", "baseline")
     assert ("ppsspp", "install") in seen
@@ -103,7 +131,9 @@ def test_certify_emulator_fails_when_not_absent_at_baseline() -> None:
     # Emulador já installed no baseline: divergência, ciclo interrompe, sem falso.
     client = FakeComponentClient()
     client._state["retroarch"] = "installed"  # simula estado sujo antes do ciclo
-    result = certify_emulator("retroarch", client)
+    result = certify_emulator(
+        "retroarch", client, expected_commit=m10_pinned_commits()["retroarch"]
+    )
     assert result.ok is False
     assert result.failure is not None
     assert "baseline" in result.failure
@@ -117,7 +147,7 @@ def test_certify_emulator_fails_when_install_does_not_reach_installed() -> None:
         return {"operationId": "op-x", "status": "committed"}  # não muda estado
 
     client.apply = _broken_apply  # type: ignore[method-assign]
-    result = certify_emulator("pcsx2", client)
+    result = certify_emulator("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
     assert result.ok is False
     assert "install" in (result.failure or "")
 
@@ -132,7 +162,7 @@ def test_certify_emulator_fails_when_rollback_does_not_restore_absent() -> None:
         return {"operationId": operation_id, "status": "rolled-back"}  # não restaura
 
     client.rollback = _noop_rollback  # type: ignore[method-assign]
-    result = certify_emulator("ppsspp", client)
+    result = certify_emulator("ppsspp", client, expected_commit=m10_pinned_commits()["ppsspp"])
     assert result.ok is False
     assert "rollback" in (result.failure or "")
     # restore para não vazar estado entre asserções
@@ -152,7 +182,9 @@ def test_certify_m10_aggregates_all_emulators() -> None:
 def test_certify_m10_reports_failure_when_one_emulator_breaks() -> None:
     # Um emulador quebrado reprova o geral, mas os outros ainda correm.
     client = FakeComponentClient()
-    result = certify_emulator("pcsx2", client)  # pré-instala para sujar baseline
+    result = certify_emulator(
+        "pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"]
+    )  # pré-instala para sujar baseline
     assert result.ok  # sanity: o ciclo happy-path deixa installed
     # Agora pcsx2 está installed; novo certify deve falhar no baseline.
     report = certify_m10(client)
@@ -173,3 +205,183 @@ def test_render_evidence_report_includes_commit_and_verdict(tmp_path: Path) -> N
         assert emu in md
     # Tabela de resultado por emulador presente.
     assert "| emulador | veredito" in md
+
+
+def test_certify_emulator_rejects_deployed_commit_different_from_manifest() -> None:
+    client = FakeComponentClient()
+    expected = m10_pinned_commits()["retroarch"]
+    original_status = client.status
+
+    def _drifted_status(adapter_id: str) -> dict[str, Any]:
+        status = original_status(adapter_id)
+        if status["state"] == "installed":
+            status["version"] = "0" * 64
+        return status
+
+    client.status = _drifted_status  # type: ignore[method-assign]
+    result = certify_emulator("retroarch", client, expected_commit=expected)
+    assert result.ok is False
+    assert "commit Flatpak diverge" in (result.failure or "")
+
+
+def test_provision_plan_is_non_mutating_and_does_not_require_kvm(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # --plan não chama preflight, não procura imagem/chave e não cria o stub antigo.
+    result = provision_main(["--source-commit", "a" * 40, "--plan"])
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "Plano de provisionamento" in captured.out
+    assert captured.err == ""
+
+
+def test_provision_rejects_execution_without_its_confirmation(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = provision_main(["--source-commit", "a" * 40])
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "recusa mutar" in captured.err
+
+
+def test_vm_config_rejects_execution_without_operator_inputs(tmp_path: Path) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "missing.qcow2",
+        ssh_public_key=tmp_path / "missing.pub",
+        work_dir=tmp_path / "work",
+    )
+    with pytest.raises(ValueError, match="base-image"):
+        config.validate(executing=True)
+
+
+def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: Path) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+    )
+    user_data, meta_data = render_cloud_init(config, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
+    assert "python-jsonschema" in user_data
+    assert "flatpak, remote-add, --user" in user_data
+    assert "steamzero-m10" in meta_data
+    argv = build_virt_install_argv(config, tmp_path / "overlay.qcow2", tmp_path / "seed.iso")
+    assert argv[:5] == ["virt-install", "--connect", "qemu:///system", "--name", "steamzero-m10"]
+    assert "network=default,model=virtio" in argv
+    assert "--noautoconsole" in argv
+
+
+def test_guest_component_client_unwraps_the_cli_envelope() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        remote = argv[-1]
+        if "'plan'" in remote:
+            data: dict[str, Any] = {
+                "plan": {"planId": "p1", "confirmToken": "token", "action": "install"}
+            }
+        else:
+            data = {"state": "missing"}
+        return CommandResult(0, json.dumps({"ok": True, "data": data}).encode())
+
+    client = GuestComponentClient("192.0.2.5", runner=runner)
+    assert client.status("retroarch") == {"state": "missing"}
+    assert client.plan("retroarch") == {
+        "planId": "p1",
+        "confirmToken": "token",
+        "action": "install",
+    }
+    assert all(call[0] == "ssh" for call in calls)
+
+
+def test_snapshot_is_bootable_and_records_its_subvolume_id() -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        stdout = b"Subvolume ID: 271\n" if "'show'" in argv[-1] else b""
+        return CommandResult(0, stdout)
+
+    snapshot_id = provision_module._snapshot_before("192.0.2.5", runner=runner)
+    assert snapshot_id == 271
+    snapshot = calls[1][-1]
+    assert "'snapshot'" in snapshot
+    assert "'-r'" not in snapshot, "o baseline precisa ser bootável para a prova pós-reboot"
+
+
+def test_provision_orchestrates_only_disposable_resources(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_commit = "a" * 40
+    config = VmConfig(
+        source_commit=source_commit,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+    )
+    config.base_image.write_bytes(b"qcow2")
+    config.ssh_public_key.write_text(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test\n", encoding="utf-8"
+    )
+    calls: list[tuple[str, ...]] = []
+    events: list[object] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        if argv[:2] == ("git", "rev-parse"):
+            return CommandResult(0, f"{source_commit}\n".encode())
+        return CommandResult(0)
+
+    class FakeGuest:
+        def __init__(self, _address: str, *, runner: object) -> None:
+            self.runner = runner
+
+        def status(self, _adapter_id: str) -> dict[str, str]:
+            return {"state": "missing"}
+
+    monkeypatch.setattr(provision_module, "_preflight", lambda: events.append("preflight"))
+    monkeypatch.setattr(provision_module, "_wait_for_guest", lambda *_a, **_k: "192.0.2.5")
+    monkeypatch.setattr(
+        provision_module,
+        "_copy_source",
+        lambda *_a, **_k: events.append("copy-source"),
+    )
+    monkeypatch.setattr(
+        provision_module,
+        "_snapshot_before",
+        lambda *_a, **_k: 271,
+    )
+    monkeypatch.setattr(
+        provision_module,
+        "_restore_snapshot",
+        lambda *_a, **_k: events.append("restore"),
+    )
+    monkeypatch.setattr(provision_module, "GuestComponentClient", FakeGuest)
+    monkeypatch.setattr(
+        provision_module,
+        "certify_m10",
+        lambda _client: {"ok": True, "emulators": [], "summary": {}, "pins": {}},
+    )
+    evidence = tmp_path / "evidence.md"
+    monkeypatch.setattr(
+        provision_module,
+        "_write_evidence",
+        lambda *_a, **_k: evidence,
+    )
+    monkeypatch.setattr(
+        provision_module,
+        "_destroy_vm",
+        lambda *_a, **_k: events.append("destroy"),
+    )
+
+    assert provision_module.provision(config, runner=runner) == evidence
+    assert events == ["preflight", "copy-source", "restore", "destroy"]
+    assert any(command[0] == "qemu-img" for command in calls)
+    assert any(command[0] == "cloud-localds" for command in calls)
+    assert any(command[0] == "virt-install" for command in calls)
+    assert any(command[:2] == ("virsh", "ttyconsole") for command in calls)

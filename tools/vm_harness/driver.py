@@ -30,6 +30,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from steamzero.adapters.registry import AdapterRegistry
+
 
 class ComponentClient(Protocol):
     """Abstração sobre ``component plan/apply/rollback/status``.
@@ -47,6 +49,8 @@ class ComponentClient(Protocol):
 
     def rollback(self, operation_id: str) -> dict[str, Any]: ...
 
+    def verify(self, adapter_id: str) -> dict[str, Any]: ...
+
 
 EvidenceSink = Callable[[str, str, dict[str, Any]], None]
 """Registra um checkpoint: (emulator, step, payload)."""
@@ -63,6 +67,23 @@ CYCLE_STEPS: tuple[str, ...] = (
     "rollback",
     "roll-forward",
 )
+
+
+def m10_pinned_commits(registry: AdapterRegistry | None = None) -> dict[str, str]:
+    """Deriva os commits Flatpak do contrato bundled, nunca de uma constante.
+
+    A evidência de VM tem que afirmar o pin que o commit em teste declara. Ler
+    os manifestos bundled evita uma segunda tabela que poderia ficar defasada
+    quando o lock de um emulador for atualizado.
+    """
+    bundled = registry or AdapterRegistry.bundled()
+    pins: dict[str, str] = {}
+    for adapter_id in M10_FLATPAK_EMULATORS:
+        source = bundled.get(adapter_id).preferred_source("flatpak", allow_eol=False)
+        if source.version is None:
+            raise ValueError(f"{adapter_id} não declara commit Flatpak")
+        pins[adapter_id] = source.version
+    return pins
 
 
 @dataclass
@@ -87,6 +108,7 @@ def certify_emulator(
     emulator: str,
     client: ComponentClient,
     *,
+    expected_commit: str,
     evidence: EvidenceSink | None = None,
 ) -> CycleResult:
     """Roda um ciclo install->update->rollback->roll-forward para ``emulator``.
@@ -105,6 +127,32 @@ def certify_emulator(
         record(step, {**payload, "ok": False, "detail": detail})
         result.ok = False
         result.failure = f"{step}: {detail}"
+
+    def installed(step: str, observed: dict[str, Any], operation_id: str | None = None) -> bool:
+        payload: dict[str, Any] = {
+            "status": observed.get("state"),
+            "commit": observed.get("version"),
+            "expectedCommit": expected_commit,
+            "ok": True,
+        }
+        if operation_id is not None:
+            payload["operationId"] = operation_id
+        record(step, payload)
+        if observed.get("state") != "installed":
+            fail(step, f"estado não é installed: {observed.get('state')}", observed)
+            return False
+        if observed.get("version") != expected_commit:
+            fail(
+                step,
+                f"commit Flatpak diverge: {observed.get('version')} != {expected_commit}",
+                observed,
+            )
+            return False
+        verified = client.verify(emulator)
+        if verified.get("verified") is not True:
+            fail(step, "component verify não confirmou o deployment pinado", verified)
+            return False
+        return True
 
     # Baseline read-only: o emulador começa ausente antes do primeiro install.
     before = client.status(emulator)
@@ -129,13 +177,7 @@ def certify_emulator(
         fail("install", "apply não devolveu operationId", install_op)
         return result
     after_install = client.status(emulator)
-    record("install", {"operationId": install_op_id, "status": after_install.get("state")})
-    if after_install.get("state") != "installed":
-        fail(
-            "install",
-            f"estado após install não é installed: {after_install.get('state')}",
-            after_install,
-        )
+    if not installed("install", after_install, str(install_op_id)):
         return result
 
     # 2. Update: plan update deve ser noop (fonte já pinada no commit) ou
@@ -143,28 +185,29 @@ def certify_emulator(
     #    o pinado pelo manifesto.
     update_plan = client.plan(emulator, "update")
     if update_plan.get("action") == "noop":
-        record("update", {"action": "noop", "status": after_install.get("state")})
+        if not installed("update", after_install):
+            return result
     else:
         upd_plan_id = update_plan.get("planId")
         upd_confirm = update_plan.get("confirmToken")
+        if not upd_plan_id or not upd_confirm:
+            fail("update", "plan de update não devolveu planId/confirmToken", update_plan)
+            return result
         upd_op = client.apply(upd_plan_id, upd_confirm)
+        if not upd_op.get("operationId"):
+            fail("update", "apply de update não devolveu operationId", upd_op)
+            return result
         after_update = client.status(emulator)
-        record(
-            "update",
-            {"operationId": upd_op.get("operationId"), "status": after_update.get("state")},
-        )
-        if after_update.get("state") != "installed":
-            fail(
-                "update",
-                f"estado após update não é installed: {after_update.get('state')}",
-                after_update,
-            )
+        if not installed("update", after_update, str(upd_op["operationId"])):
             return result
 
     # 3. Rollback do install: restaura o baseline ausente.
     client.rollback(install_op_id)
     after_rollback = client.status(emulator)
-    record("rollback", {"operationId": install_op_id, "status": after_rollback.get("state")})
+    record(
+        "rollback",
+        {"operationId": install_op_id, "status": after_rollback.get("state"), "ok": True},
+    )
     if after_rollback.get("state") not in {"missing", "unavailable"}:
         fail(
             "rollback",
@@ -177,11 +220,15 @@ def certify_emulator(
     rf_plan = client.plan(emulator, "install")
     rf_plan_id = rf_plan.get("planId")
     rf_confirm = rf_plan.get("confirmToken")
-    client.apply(rf_plan_id, rf_confirm)
+    if not rf_plan_id or not rf_confirm:
+        fail("roll-forward", "plan não devolveu planId/confirmToken", rf_plan)
+        return result
+    rf_op = client.apply(rf_plan_id, rf_confirm)
+    if not rf_op.get("operationId"):
+        fail("roll-forward", "apply não devolveu operationId", rf_op)
+        return result
     after_rf = client.status(emulator)
-    record("roll-forward", {"status": after_rf.get("state")})
-    if after_rf.get("state") != "installed":
-        fail("roll-forward", f"estado final não é installed: {after_rf.get('state')}", after_rf)
+    if not installed("roll-forward", after_rf, str(rf_op["operationId"])):
         return result
 
     return result
@@ -198,10 +245,18 @@ def certify_m10(
     O relatório é a evidência que fecha DEBT-A7: um emulador por vez, sem
     agrupamento, com o veredito por etapa e o veredito geral.
     """
-    results = [certify_emulator(emu, client, evidence=evidence) for emu in emulators]
+    pins = m10_pinned_commits()
+    missing_pins = set(emulators).difference(pins)
+    if missing_pins:
+        raise ValueError(f"emulador M10 sem pin Flatpak: {sorted(missing_pins)}")
+    results = [
+        certify_emulator(emu, client, expected_commit=pins[emu], evidence=evidence)
+        for emu in emulators
+    ]
     all_ok = all(r.ok for r in results)
     return {
         "ok": all_ok,
+        "pins": pins,
         "emulators": [r.to_dict() for r in results],
         "summary": {
             emu: ("ok" if r.ok else "fail") for emu, r in zip(emulators, results, strict=True)

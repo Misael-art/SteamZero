@@ -5159,3 +5159,46 @@ de 4176: 8 do driver + 5 do doctor do Item 5a + 2 de formato); isolamento XDG
 intacto (before/after idênticos, zero mutação do state real). `provision.py` e
 `protocol.py` carregam sem erro de sintaxe/import. Nenhuma ação de host, release
 ou push foi executada.
+
+## 2026-08-06 — Item 4 (harness de VM para M10) — retomado
+
+Branch base: `codex/fase1-cores-laco-primario` em `fd690fb`. Escopo: auditar a
+entrega contra o plano integral, completar apenas a automação versionada e os
+testes que provam seu comportamento. Dependências: `virt-install`, `virsh`,
+`cloud-localds`, `qemu-img`, uma imagem cloud Arch fornecida pelo operador e
+autorização explícita antes de qualquer execução. Entrega esperada: um
+provisionador efetivo (não placeholder) para VM descartável e um driver que
+prove o commit Flatpak pinado; não provisionar, não executar VM, não criar
+release nem tocar o host.
+
+## 2026-08-06 — Item 4 (harness de VM para M10) — fechamento do código
+
+O audit encontrou que o `provision.py` anterior era um placeholder que escrevia
+um esqueleto de evidência e sempre recusava executar; por isso ele não cumpria
+a entrega de automação versionada, embora os testes do driver estivessem verdes.
+O provisionador foi completado no commit atômico
+`feat(vm-harness): completa certificação M10 descartável`:
+
+- `--plan` agora é estritamente não mutável (nem preflight, nem arquivo de
+  evidência); a execução só aceita `--execute --confirm EXECUTAR-VM-M10` e uma
+  imagem cloud Arch + chave SSH informadas pelo operador.
+- A execução valida o commit inteiro, cria overlay qcow2 e seed cloud-init,
+  sobe Arch com Python/SDDM/Flatpak/SSH/btrfs, prova console serial e SSH,
+  transmite apenas `git archive <commit>` para a VM e chama a CLI `component`
+  real via SSH para RetroArch, PCSX2 e PPSSPP.
+- O driver deriva os três pins dos manifestos bundled e exige em cada etapa
+  `installed` + commit observado igual ao manifesto + `component verify`; drift
+  de commit deixa evidência `fail`, nunca aprovação implícita.
+- Antes dos ciclos há snapshot Btrfs bootável. Ao fim, o snapshot vira o
+  default, a VM reinicia e os três adapters precisam voltar a
+  `missing`/`unavailable`; só então a VM/overlay próprios são descartados.
+
+Decisão de bancada: a imagem cloud e a chave SSH são entradas explícitas, não
+URL/hash inventados pela automação. Assim, o comando é reprodutível a partir de
+artefatos que o operador possa revisar, e o plano seco continua seguro em uma
+máquina sem KVM. `docs/KNOWN-GAPS.md` não foi alterado: DEBT-A7 e G11 continuam
+abertos até a evidência de uma VM real e a certificação física. Validação:
+16 testes dedicados do harness; suíte isolada integral; `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Nenhuma ação de VM, host, release ou push
+foi executada.
