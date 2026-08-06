@@ -5202,3 +5202,29 @@ abertos até a evidência de uma VM real e a certificação física. Validação
 `ruff format --check`, `mypy src`, `make independence boundaries` e
 `capability_matrix --check` verdes. Nenhuma ação de VM, host, release ou push
 foi executada.
+
+## 2026-08-06 — Item 4 (VM M10) — correção de bootstrap iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `a3cc63c`. Durante o
+preflight autorizado da VM, a invocação documentada
+`python tools/vm_harness/provision.py --plan` falhou antes de mutar qualquer
+estado: o entry point não adicionava `tools/` ao `sys.path` e portanto não
+encontrava `vm_harness`. Escopo: corrigir apenas o bootstrap, provar a
+invocação direta e rodar os gates antes de iniciar `virt-install`. Dependências
+operacionais já observadas em leitura: KVM/libvirt/virt-install prontos; imagem
+cloud Arch e chave efêmera ainda serão materializadas sob a autorização atual.
+
+## 2026-08-06 — Item 4 (VM M10) — correção de bootstrap concluída
+
+Corrigido o entry point no commit atômico
+`fix(vm-harness): permite invocação direta do provisionador`: ele resolve
+`tools/` antes de importar `vm_harness`, preservando a execução como módulo nos
+testes e a invocação direta documentada para o operador. A causa raiz foi a
+diferença entre o `pythonpath` configurado pelo pytest e o `sys.path` de um
+script executado por caminho; depender do primeiro deixava o comando
+operacional inutilizável apesar da suíte verde.
+
+Validação: a invocação direta com `--plan` passou sem criar arquivo; 16 testes
+do harness, suíte isolada integral, `ruff check`, `ruff format --check`,
+`mypy src`, `make independence boundaries` e `capability_matrix --check`
+verdes. Nenhuma VM, host, release ou push foi executado durante esta correção.

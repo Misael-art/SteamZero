@@ -37,9 +37,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from vm_harness.driver import ComponentClient, certify_m10, render_evidence_report
-
 ROOT = Path(__file__).resolve().parent.parent.parent
+TOOLS_ROOT = ROOT / "tools"
+if str(TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(TOOLS_ROOT))
+
+from vm_harness.driver import (  # noqa: E402 - sys.path precisa incluir tools no entry point direto
+    ComponentClient,
+    certify_m10,
+    render_evidence_report,
+)
+
 _NAME_RE = re.compile(r"^[a-z][a-z0-9-]{2,62}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40,64}$")
 _KEY_PREFIXES = ("ssh-ed25519 ", "ssh-rsa ", "ecdsa-sha2-", "sk-ssh-ed25519@")
