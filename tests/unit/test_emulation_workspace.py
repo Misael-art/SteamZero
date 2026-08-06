@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from steamzero.api import contracts
-from steamzero.domain.emulation_workspace import build_switch_workspace
+from steamzero.domain.emulation_workspace import build_global_management, build_switch_workspace
 from steamzero.domain.keys_firmware import RequirementCheck
 
 
@@ -70,6 +70,31 @@ def test_switch_workspace_matches_versioned_contract() -> None:
     ]
     assert len(retroarch_artwork) == 16
     assert len({item["fallbackArtworkAsset"] for item in payload["platforms"]}) == 21
+
+
+def test_global_management_keeps_technical_and_editorial_counts_distinct() -> None:
+    payload = build_switch_workspace()
+    global_management = build_global_management(
+        platforms=payload["platforms"],
+        editorial_platforms=[
+            {"id": "switch", "games": [{"id": "game-one"}]},
+            {"id": "nintendo-handheld", "games": []},
+        ],
+        canonical_experiences=payload["canonicalExperiences"],
+        truth_state=payload["truthState"],
+        emulators=payload["platforms"][0]["emulators"],
+        directories=[],
+        media_providers=[],
+    )
+
+    assert global_management["technicalPlatformCount"] == 36
+    assert global_management["editorialDestinationCount"] == 37
+    assert global_management["editorialExperienceCount"] == 155
+    assert global_management["editorialSource"]["id"] == "steam"
+    assert global_management["platformCards"][0]["gameCount"] == 1
+    assert global_management["platformCards"][0]["action"]["id"] == "platform.open"
+    payload["globalManagement"] = global_management
+    contracts.validate(payload, "emulation-workspace-v1.schema.json")
 
 
 def test_workspace_accepts_visible_game_with_unverified_identity() -> None:

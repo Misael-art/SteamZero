@@ -66,6 +66,7 @@ from steamzero.domain.bios_catalog import BiosLibrary
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import (
+    build_global_management,
     build_switch_workspace,
     compute_readiness,
 )
@@ -715,6 +716,17 @@ class EmulationController:
                 "storage": str(integrity["state"]),
                 "advanced": "Ferramentas locais",
             }[area_id]
+        media_area = platform["areaData"]["media"]
+        media_area["providerCredentials"] = self.credential_status()["providers"]
+        workspace["globalManagement"] = build_global_management(
+            platforms=workspace["platforms"],
+            editorial_platforms=workspace["editorialPlatforms"],
+            canonical_experiences=workspace["canonicalExperiences"],
+            truth_state=truth_state,
+            emulators=emulator_rows,
+            directories=media_area.get("libraryRoots", []),
+            media_providers=media_area["providerCredentials"],
+        )
         workspace["jobs"] = self.list_jobs()
         contracts.validate(workspace, "emulation-workspace-v1.schema.json")
         return workspace
@@ -3262,6 +3274,24 @@ class EmulationController:
                 "errorCount": health.error_count if health else 0,
                 "consecutiveFailures": health.consecutive_failures if health else 0,
                 "totalRequests": health.total_requests if health else 0,
+            }
+        # A falha pode sobreviver ao jogo que a originou (por exemplo, após uma
+        # nova varredura). O diagnóstico persistido ainda precisa aparecer: a
+        # ausência de jogos com erro não é prova de que a quota voltou.
+        for provider, health in health_by_provider.items():
+            if provider in provider_details or not (
+                health.last_error_code or health.last_error_category
+            ):
+                continue
+            provider_details[provider] = {
+                "gamesAffected": 0,
+                "code": health.last_error_code,
+                "category": health.last_error_category,
+                "state": health.state,
+                "lastErrorAt": health.last_error,
+                "errorCount": health.error_count,
+                "consecutiveFailures": health.consecutive_failures,
+                "totalRequests": health.total_requests,
             }
 
         last_scan: str | None = None

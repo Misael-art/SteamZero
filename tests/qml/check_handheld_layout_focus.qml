@@ -360,6 +360,7 @@ Window {
         anchors.fill: parent
         visible: true
         reducedMotion: true
+        globalManagementActive: false
         emulation: ({
             "platforms": [{
                 "id": "switch",

@@ -26,6 +26,7 @@ Item {
     signal componentActionRequested(var component)
     signal systemRequested()
 
+    property bool globalManagementActive: true
     property int platformIndex: 0
     property int scopeIndex: 0
     property int areaIndex: 0
@@ -54,7 +55,7 @@ Item {
     readonly property int bottomSafeInset: minimumTouchTarget + responsiveGutter
     readonly property int motionDuration: reducedMotion ? 0 : 180
     readonly property int contentMaxWidth: ultrawideLayout ? 1400 : 1800
-    readonly property bool showAreaSidebar: !isGameLibrary() && !compactLayout
+    readonly property bool showAreaSidebar: !globalManagementActive && !isGameLibrary() && !compactLayout
     readonly property bool showContextPanel: isGameLibrary()
         ? gameDetailsOpen && !compactLayout && width >= 900
         : !compactLayout && width >= 1500
@@ -100,6 +101,28 @@ Item {
     ]
     readonly property var platforms: emulation && emulation.platforms
         && emulation.platforms.length > 0 ? emulation.platforms : []
+    readonly property var globalManagement: emulation && emulation.globalManagement
+        ? emulation.globalManagement : ({
+            "id": "emulation-global",
+            "name": qsTr("Gestão geral"),
+            "iconKey": "applications-games",
+            "state": platforms.length > 0 ? "unverified" : "unavailable",
+            "statusLabel": qsTr("Visão consolidada das plataformas"),
+            "technicalPlatformCount": platforms.length,
+            "editorialDestinationCount": platforms.length > 0 ? platforms.length + 1 : 0,
+            "editorialExperienceCount": canonicalExperiences.length,
+            "editorialSource": {"id": "steam", "name": "Steam",
+                "detail": qsTr("Origem editorial adicional; não é plataforma técnica.")},
+            "platformCards": [],
+            "emulators": [],
+            "directories": [],
+            "mediaProviders": []
+        })
+    readonly property var platformChoices: [{
+        "id": "emulation-global",
+        "name": globalManagement.name,
+        "iconKey": globalManagement.iconKey
+    }].concat(platforms)
     // Fonte canônica para navegação e identidade do tema. `platforms` permanece
     // o read model operacional até cada experiência concluir sua certificação.
     readonly property var canonicalExperiences: emulation && emulation.canonicalExperiences
@@ -125,6 +148,8 @@ Item {
             "emulators": [],
             "games": []
         })
+    readonly property var headerContext: globalManagementActive
+        ? globalManagement : selectedPlatform
     readonly property var scopes: selectedPlatform.scopes && selectedPlatform.scopes.length > 0
         ? selectedPlatform.scopes : defaultScopes
     readonly property var areas: selectedPlatform.areas && selectedPlatform.areas.length > 0
@@ -231,6 +256,17 @@ Item {
         gameIndex = normalizedIndex(gameIndex, games)
         synchronizedPlatformId = platformId
         syncGameSelection()
+    }
+
+    function openPlatformFromGlobal(platformId) {
+        const index = platforms.findIndex(function(item) {
+            return String(item.id || "") === String(platformId || "")
+        })
+        if (index < 0)
+            return
+        platformIndex = index
+        globalManagementActive = false
+        resetContext()
     }
 
     function syncGameSelection() {
@@ -1361,7 +1397,7 @@ Item {
                     Layout.preferredHeight: page.compactLayout ? 60 : 84
                     radius: page.compactLayout ? 13 : 18
                     color: page.raisedColor
-                    border.color: page.selectedPlatform.state === "ready"
+                    border.color: page.headerContext.state === "ready"
                         ? page.greenColor : page.cyanColor
                     border.width: 2
 
@@ -1369,7 +1405,7 @@ Item {
                         anchors.centerIn: parent
                         width: page.compactLayout ? 34 : 44
                         height: page.compactLayout ? 34 : 44
-                        iconName: page.selectedPlatform.iconKey || "applications-games"
+                        iconName: page.headerContext.iconKey || "applications-games"
                         iconColor: page.cyanColor
                     }
                 }
@@ -1386,7 +1422,7 @@ Item {
                         font.letterSpacing: 1.2
                     }
                     Label {
-                        text: page.selectedPlatform.name || qsTr("Plataforma")
+                        text: page.headerContext.name || qsTr("Plataforma")
                         color: page.textColor
                         font.pixelSize: page.compactLayout ? 23 : 29
                         font.bold: true
@@ -1401,7 +1437,9 @@ Item {
                     }
                     Label {
                         visible: !page.compactLayout
-                        text: page.emulation && page.emulation.contextLabel
+                        text: page.globalManagementActive
+                            ? qsTr("Recursos, diretórios e componentes compartilhados")
+                            : page.emulation && page.emulation.contextLabel
                             ? page.emulation.contextLabel : qsTr("Dados locais • sem downloads automáticos de conteúdo")
                         color: page.mutedColor
                         font.pixelSize: 11
@@ -1417,10 +1455,10 @@ Item {
                     }
                     SteamComboBox {
                         id: platformPicker
-                        model: page.platforms
+                        model: page.platformChoices
                         textRole: "name"
-                        currentIndex: page.platformIndex
-                        enabled: page.platforms.length > 1
+                        currentIndex: page.globalManagementActive ? 0 : page.platformIndex + 1
+                        enabled: page.platformChoices.length > 1
                         palette.button: page.raisedColor
                         palette.buttonText: page.textColor
                         palette.base: page.raisedColor
@@ -1431,7 +1469,12 @@ Item {
                         Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Selecionar plataforma de emulação")
                         onActivated: {
-                            page.platformIndex = currentIndex
+                            if (currentIndex === 0) {
+                                page.globalManagementActive = true
+                                return
+                            }
+                            page.platformIndex = currentIndex - 1
+                            page.globalManagementActive = false
                             page.resetContext()
                         }
                     }
@@ -1441,22 +1484,26 @@ Item {
                     Layout.preferredWidth: page.compactLayout ? 112 : 150
                     Layout.preferredHeight: page.compactLayout ? 62 : 72
                     radius: 10
-                    color: page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
-                    border.color: page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+                    color: page.globalManagementActive ? page.raisedColor
+                        : page.readinessPercent() >= 80 ? "#0c2a21" : "#24180b"
+                    border.color: page.globalManagementActive ? page.cyanColor
+                        : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
 
                     Column {
                         anchors.centerIn: parent
                         spacing: 2
                         Label {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: page.readinessPercent() + "%"
-                            color: page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
+                            text: page.globalManagementActive
+                                ? page.globalManagement.technicalPlatformCount : page.readinessPercent() + "%"
+                            color: page.globalManagementActive ? page.cyanColor
+                                : page.readinessPercent() >= 80 ? page.greenColor : page.amberColor
                             font.pixelSize: page.compactLayout ? 20 : 24
                             font.bold: true
                         }
                         Label {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: qsTr("prontidão")
+                            text: page.globalManagementActive ? qsTr("técnicas") : qsTr("prontidão")
                             color: page.mutedColor
                             font.pixelSize: 11
                         }
@@ -1468,6 +1515,7 @@ Item {
         Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
 
         Rectangle {
+            visible: !page.globalManagementActive
             Layout.fillWidth: true
             Layout.preferredHeight: page.compactLayout ? 58 : 68
             color: page.surfaceColor
@@ -1556,10 +1604,15 @@ Item {
             }
         }
 
-        Rectangle { color: page.borderColor; Layout.fillWidth: true; Layout.preferredHeight: 1 }
+        Rectangle {
+            visible: !page.globalManagementActive
+            color: page.borderColor
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+        }
 
         RowLayout {
-            visible: page.compactLayout && !page.isGameLibrary()
+            visible: !page.globalManagementActive && page.compactLayout && !page.isGameLibrary()
             Layout.fillWidth: true
             Layout.leftMargin: 12
             Layout.rightMargin: 12
@@ -1591,7 +1644,7 @@ Item {
         }
 
         Rectangle {
-            visible: page.compactLayout && !page.isGameLibrary()
+            visible: !page.globalManagementActive && page.compactLayout && !page.isGameLibrary()
             color: page.borderColor
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -1677,8 +1730,271 @@ Item {
             }
 
             ScrollView {
+                id: globalManagementScroll
+                visible: page.globalManagementActive
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
+                bottomPadding: page.bottomSafeInset
+                background: Rectangle { color: page.backgroundColor }
+
+                ColumnLayout {
+                    width: Math.min(globalManagementScroll.availableWidth, page.contentMaxWidth)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 16
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        Layout.topMargin: page.responsiveGutter
+                        spacing: 4
+
+                        Label {
+                            text: qsTr("Gestão de emulação")
+                            color: page.textColor
+                            font.pixelSize: page.compactLayout ? 22 : 28
+                            font.bold: true
+                        }
+                        Label {
+                            text: qsTr("%1 plataformas técnicas • %2 destinos editoriais • %3 experiências históricas")
+                                .arg(page.globalManagement.technicalPlatformCount || 0)
+                                .arg(page.globalManagement.editorialDestinationCount || 0)
+                                .arg(page.globalManagement.editorialExperienceCount || 0)
+                            color: page.mutedColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: page.globalManagement.editorialSource
+                                ? page.globalManagement.editorialSource.detail : ""
+                            color: page.mutedColor
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        columns: page.width >= 1900 ? 3 : page.width >= 1050 ? 2 : 1
+                        columnSpacing: 12
+                        rowSpacing: 12
+
+                        Repeater {
+                            model: page.globalManagement.platformCards || []
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: globalCardContent.implicitHeight + 24
+                                color: page.surfaceColor
+                                border.color: page.stateColor(modelData.state)
+                                border.width: 1
+                                radius: 10
+
+                                ColumnLayout {
+                                    id: globalCardContent
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 7
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: modelData.name
+                                            color: page.textColor
+                                            font.bold: true
+                                            font.pixelSize: 16
+                                            elide: Text.ElideRight
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: modelData.readiness.percent + "%"
+                                            color: page.stateColor(modelData.state)
+                                            font.bold: true
+                                        }
+                                    }
+                                    Label {
+                                        text: qsTr("%1 • %2 jogo(s) reais").arg(modelData.identity).arg(modelData.gameCount)
+                                        color: page.mutedColor
+                                        font.pixelSize: 11
+                                    }
+                                    Label {
+                                        text: qsTr("Runtime: %1").arg(modelData.runtime)
+                                        color: page.textColor
+                                        font.pixelSize: 12
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        text: modelData.coreRequired.length > 0
+                                            ? qsTr("Core: %1").arg(modelData.coreRequired.join(", "))
+                                            : qsTr("Core: não requerido")
+                                        color: page.mutedColor
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        text: qsTr("Keys: %1 • Firmware: %2 • BIOS: %3")
+                                            .arg(modelData.keysStatus.status || qsTr("não aplicável"))
+                                            .arg(modelData.firmwareStatus.status || qsTr("não aplicável"))
+                                            .arg(modelData.biosStatus ? modelData.biosStatus.status : qsTr("não requerida"))
+                                        color: page.mutedColor
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        visible: !!modelData.blocker
+                                        text: qsTr("Bloqueador: %1").arg(modelData.blocker || "")
+                                        color: page.amberColor
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                    Button {
+                                        text: modelData.action.label
+                                        enabled: modelData.action.enabled !== false
+                                        Layout.fillWidth: true
+                                        Layout.minimumHeight: page.minimumTouchTarget
+                                        Accessible.description: modelData.action.reason || modelData.blocker || ""
+                                        onClicked: page.openPlatformFromGlobal(modelData.id)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        columns: page.width >= 1300 ? 3 : 1
+                        columnSpacing: 12
+                        rowSpacing: 12
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: globalComponents.implicitHeight + 24
+                            color: page.surfaceColor
+                            border.color: page.borderColor
+                            radius: 10
+                            ColumnLayout {
+                                id: globalComponents
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                Label { text: qsTr("Componentes e emuladores"); color: page.textColor; font.bold: true }
+                                Repeater {
+                                    model: page.globalManagement.emulators || []
+                                    delegate: ColumnLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 3
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Label { text: modelData.name; color: page.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
+                                            Label { text: modelData.statusLabel; color: page.stateColor(modelData.state); font.pixelSize: 11 }
+                                        }
+                                        RowLayout {
+                                            visible: !!modelData.action
+                                            Layout.fillWidth: true
+                                            Label {
+                                                text: modelData.action && modelData.action.reason
+                                                    ? modelData.action.reason : ""
+                                                color: page.mutedColor
+                                                font.pixelSize: 11
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                            }
+                                            Button {
+                                                text: modelData.action ? modelData.action.label : ""
+                                                enabled: modelData.action && modelData.action.enabled !== false
+                                                Layout.minimumHeight: page.minimumTouchTarget
+                                                Accessible.description: modelData.action ? modelData.action.reason || "" : ""
+                                                onClicked: page.componentActionRequested(modelData)
+                                            }
+                                        }
+                                    }
+                                }
+                                Label {
+                                    visible: (page.globalManagement.emulators || []).length === 0
+                                    text: qsTr("Nenhum componente verificado ainda.")
+                                    color: page.mutedColor
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: globalDirectories.implicitHeight + 24
+                            color: page.surfaceColor
+                            border.color: page.borderColor
+                            radius: 10
+                            ColumnLayout {
+                                id: globalDirectories
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                Label { text: qsTr("Diretórios monitorados"); color: page.textColor; font.bold: true }
+                                Repeater {
+                                    model: page.globalManagement.directories || []
+                                    delegate: Label {
+                                        required property var modelData
+                                        text: modelData.path || modelData.label || qsTr("Diretório sem caminho publicado")
+                                        color: page.mutedColor
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WrapAnywhere
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                                Label {
+                                    visible: (page.globalManagement.directories || []).length === 0
+                                    text: qsTr("Nenhum diretório monitorado.")
+                                    color: page.mutedColor
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: globalProviders.implicitHeight + 24
+                            color: page.surfaceColor
+                            border.color: page.borderColor
+                            radius: 10
+                            ColumnLayout {
+                                id: globalProviders
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                Label { text: qsTr("Mídia e credenciais"); color: page.textColor; font.bold: true }
+                                Repeater {
+                                    model: page.globalManagement.mediaProviders || []
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Label { text: modelData.name || modelData.id; color: page.textColor; Layout.fillWidth: true }
+                                        Label { text: modelData.healthStatus || modelData.credentialState || qsTr("desconhecido"); color: page.mutedColor; font.pixelSize: 11 }
+                                    }
+                                }
+                                Label {
+                                    visible: (page.globalManagement.mediaProviders || []).length === 0
+                                    text: qsTr("A saúde dos provedores será exibida após a verificação.")
+                                    color: page.mutedColor
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                            }
+                        }
+                    }
+                    Item { Layout.preferredHeight: page.bottomSafeInset }
+                }
+            }
+
+            ScrollView {
                 id: contentScroll
-                visible: !(page.compactLayout && page.isGameLibrary()
+                visible: !page.globalManagementActive && !(page.compactLayout && page.isGameLibrary()
                     && page.gameDetailsOpen)
                 Layout.fillWidth: true
                 Layout.fillHeight: true

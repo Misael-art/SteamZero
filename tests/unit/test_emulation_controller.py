@@ -95,6 +95,28 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
     assert by_id["ryubing"]["libraryRootCount"] == 0
 
 
+def test_snapshot_publishes_global_management_without_a_synthetic_platform(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path)
+
+    workspace = controller.snapshot({"context": {}})
+    global_management = workspace["globalManagement"]
+
+    assert len(workspace["platforms"]) == 36
+    assert global_management["id"] == "emulation-global"
+    assert global_management["technicalPlatformCount"] == 36
+    assert global_management["editorialDestinationCount"] == 37
+    assert global_management["editorialExperienceCount"] == 155
+    assert global_management["editorialSource"]["id"] == "steam"
+    assert len(global_management["platformCards"]) == 36
+    switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
+    assert switch["action"]["id"] == "platform.open"
+    assert switch["keysStatus"]["kind"] == "keys"
+    assert len(global_management["emulators"]) == 13
+    assert all("apiKey" not in provider for provider in global_management["mediaProviders"])
+
+
 def _plant_portable_deployment(
     tmp_path: Path, adapter_id: str, version: str, payload: bytes
 ) -> None:

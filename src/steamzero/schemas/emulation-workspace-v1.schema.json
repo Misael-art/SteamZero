@@ -75,9 +75,77 @@
       "items": {
         "$ref": "#/$defs/canonicalExperience"
       }
+    },
+    "globalManagement": {
+      "$ref": "#/$defs/globalManagement"
     }
   },
   "$defs": {
+    "globalManagement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "iconKey", "state", "statusLabel",
+        "technicalPlatformCount", "editorialDestinationCount",
+        "editorialExperienceCount", "editorialSource", "platformCards",
+        "emulators", "directories", "mediaProviders"
+      ],
+      "properties": {
+        "id": { "const": "emulation-global" },
+        "name": { "type": "string", "minLength": 1 },
+        "iconKey": { "type": "string", "minLength": 1 },
+        "state": { "$ref": "#/$defs/state" },
+        "statusLabel": { "type": "string", "minLength": 1 },
+        "technicalPlatformCount": { "type": "integer", "minimum": 1 },
+        "editorialDestinationCount": { "type": "integer", "minimum": 1 },
+        "editorialExperienceCount": { "type": "integer", "minimum": 1 },
+        "editorialSource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name", "detail"],
+          "properties": {
+            "id": { "const": "steam" },
+            "name": { "const": "Steam" },
+            "detail": { "type": "string", "minLength": 1 }
+          }
+        },
+        "platformCards": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/globalPlatformCard" }
+        },
+        "emulators": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/emulator" }
+        },
+        "directories": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "mediaProviders": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+      }
+    },
+    "globalPlatformCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "identity", "gameCount", "state", "readiness",
+        "runtime", "coreRequired", "keysStatus", "firmwareStatus", "biosStatus",
+        "blocker", "action"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "identity": { "type": "string", "minLength": 1 },
+        "gameCount": { "type": "integer", "minimum": 0 },
+        "state": { "$ref": "#/$defs/state" },
+        "readiness": { "$ref": "#/$defs/readiness" },
+        "runtime": { "type": "string", "minLength": 1 },
+        "coreRequired": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "keysStatus": { "$ref": "#/$defs/requirement" },
+        "firmwareStatus": { "$ref": "#/$defs/requirement" },
+        "biosStatus": { "oneOf": [{ "$ref": "#/$defs/requirement" }, { "type": "null" }] },
+        "blocker": { "type": ["string", "null"] },
+        "action": { "$ref": "#/$defs/action" }
+      }
+    },
     "editorialPlatform": {
       "type": "object",
       "additionalProperties": false,
@@ -924,6 +992,13 @@
           "additionalProperties": true
         },
         "libraryRoots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "providerCredentials": {
           "type": "array",
           "items": {
             "type": "object",
