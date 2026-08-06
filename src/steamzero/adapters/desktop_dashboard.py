@@ -1001,7 +1001,7 @@ class DesktopDashboard:
             ]
         }
 
-    def plan_component(self, adapter_id: str, action: str = "install") -> dict[str, Any]:
+    def plan_component(self, adapter_id: str, action: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
@@ -1216,6 +1216,7 @@ class DesktopDashboard:
                     else "Verificar"
                 ),
                 "enabled": not conflicts and installable,
+                "operation": "repair" if raw_state == "degraded" else "install",
             }
             blocked_reason = (
                 "Resolva o conflito de controle antes de alterar o componente."

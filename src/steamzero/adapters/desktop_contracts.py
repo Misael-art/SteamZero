@@ -187,7 +187,7 @@ def handheld_ui_contracts() -> dict[str, Any]:
             service="components",
             screen="emulators",
             control="component-menu",
-            schema=_schema("componentId", componentId="string"),
+            schema=_schema("componentId", "action", componentId="string", action="string"),
         ),
         _action(
             "component.apply",

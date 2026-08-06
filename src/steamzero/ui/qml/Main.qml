@@ -928,9 +928,19 @@ ApplicationWindow {
             return
         const kind = row.action.kind
         if (kind === "component-plan") {
-            requestAction("component.plan", {"componentId": row.id}, function(response) {
+            requestAction("component.plan", {
+                "componentId": row.id,
+                "action": row.action.operation || "install"
+            }, function(response) {
                 componentPlan = response.plan
                 componentDialog.open()
+            })
+        } else if (kind === "component-verify") {
+            requestAction("component.verify", {"componentId": row.id}, function(response) {
+                notify(response.verified
+                    ? qsTr("%1 está íntegro").arg(row.name)
+                    : qsTr("%1 exige atenção").arg(row.name), !response.verified)
+                refreshStatus("")
             })
         } else if (kind === "component-launch") {
             requestAction("component.launch", {"componentId": row.id}, function(response) {

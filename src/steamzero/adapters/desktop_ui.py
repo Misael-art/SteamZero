@@ -252,7 +252,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if path == "/component/plan":
             return {
                 "plan": self._dashboard().plan_component(
-                    self._required_string(payload, "componentId")
+                    self._required_string(payload, "componentId"),
+                    self._required_string(payload, "action"),
                 )
             }
         if path == "/component/apply":

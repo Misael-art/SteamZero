@@ -156,8 +156,8 @@ class FakeDashboard:
             "steamGameplay": {"games": [{"id": "10"}]},
         }
 
-    def plan_component(self, component_id: str) -> dict[str, object]:
-        self.calls.append(("plan", component_id))
+    def plan_component(self, component_id: str, action: str) -> dict[str, object]:
+        self.calls.append(("plan", component_id, action))
         return {"planId": "component-plan", "confirmToken": "confirm"}
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, object]:
@@ -791,7 +791,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "steamGameplay": {"games": [{"id": "10"}]},
     }
 
-    planned = request_json(base, token, "/component/plan", {"componentId": "dolphin"})
+    planned = request_json(
+        base, token, "/component/plan", {"componentId": "dolphin", "action": "install"}
+    )
     assert planned["plan"] == {"planId": "component-plan", "confirmToken": "confirm"}
     request_json(
         base,
@@ -964,7 +966,7 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "state": "healthy",
     }
     assert dashboard.calls == [
-        ("plan", "dolphin"),
+        ("plan", "dolphin", "install"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
         ("emulation-emulator-plan", "eden", "install"),
