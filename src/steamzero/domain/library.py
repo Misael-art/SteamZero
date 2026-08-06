@@ -16,6 +16,7 @@ Conteúdo é sempre do usuário (CONTENT-POLICY): nada é obtido, sugerido ou ba
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -166,12 +167,11 @@ class PlatformRomScanner:
         results: list[RomCandidate] = []
         for path in self._iter_files(root):
             siblings = self._siblings(root, path)
-            plat, kind, ev = classify_rom(
+            plat, kind, ev = self.classify(
                 path.name,
                 siblings,
-                self._ext_map,
                 root_platform=root_platform,
-                header_platform=self._header_platform(path, root_platform=root_platform),
+                path=path,
             )
             fmt = _FORMAT_BY_EXT.get(path.suffix.lower(), "unknown")
             results.append(
@@ -184,6 +184,27 @@ class PlatformRomScanner:
                 )
             )
         return results
+
+    def classify(
+        self,
+        name: str,
+        siblings: set[str],
+        *,
+        root_platform: str | None = None,
+        path: Path | None = None,
+    ) -> tuple[str | None, str, str]:
+        """Classifica sem expor o mapa mutável de extensões do scanner."""
+        return classify_rom(
+            name,
+            siblings,
+            self._ext_map,
+            root_platform=root_platform,
+            header_platform=(
+                self._header_platform(path, root_platform=root_platform)
+                if path is not None
+                else None
+            ),
+        )
 
     def _header_platform(self, path: Path, *, root_platform: str | None) -> str | None:
         """Lê a assinatura só quando ela pode mudar a decisão.
@@ -223,6 +244,252 @@ class PlatformRomScanner:
         if not root.is_dir():
             return {path.name}
         return {p.name for p in root.iterdir() if p.is_file()}
+
+
+# Diretórios auxiliares nunca são coleções de jogos. A lista é aplicada tanto
+# na raiz informada quanto em seus descendentes: uma pasta ``updates`` dentro
+# de uma plataforma não pode fazer um update aparecer como jogo base.
+_NON_GAME_DIRECTORY_NAMES = frozenset(
+    {
+        ".directory",
+        "_backup",
+        "backup",
+        "backups",
+        "bios",
+        "cache",
+        "cheat",
+        "cheats",
+        "dlc",
+        "dlcs",
+        "firmware",
+        "key",
+        "keys",
+        "media",
+        "medias",
+        "mod",
+        "mods",
+        "nand",
+        "patch",
+        "patches",
+        "save",
+        "saves",
+        "screenshot",
+        "screenshots",
+        "shader",
+        "shaders",
+        "system",
+        "systeminfo",
+        "update",
+        "updates",
+    }
+)
+
+
+def _directory_key(name: str) -> str:
+    """Normaliza um nome de diretório sem transformar texto em código."""
+    return re.sub(r"[^a-z0-9]+", "", name.casefold())
+
+
+def _is_non_game_directory(name: str) -> bool:
+    return name.casefold() in _NON_GAME_DIRECTORY_NAMES
+
+
+# Os manifestos são a fonte de verdade. Estes aliases apenas acomodam grafias
+# usuais em árvores locais; todos apontam a um ID canônico do próprio registry.
+_DIRECTORY_PLATFORM_ALIASES = {
+    "amiga600": "amiga",
+    "amiga1200": "amiga",
+    "amigacd32": "amiga",
+    "atari800": "atari-classics",
+    "atari800xl": "atari-classics",
+    "cps1": "arcade",
+    "cps2": "arcade",
+    "cps3": "arcade",
+    "famicom": "nes-famicom",
+    "gameboy": "nintendo-handheld",
+    "gameboyadvance": "nintendo-handheld",
+    "gameboycolor": "nintendo-handheld",
+    "gb": "nintendo-handheld",
+    "gba": "nintendo-handheld",
+    "gbc": "nintendo-handheld",
+    "megadrive": "mega-drive",
+    "n3ds": "nintendo-3ds",
+    "n64": "nintendo-64",
+    "nds": "nintendo-ds",
+    "neogeo": "arcade",
+    "pce": "pc-engine-turbografx",
+    "ps1": "playstation",
+    "ps2": "playstation-2",
+    "ps3": "playstation-3",
+    "psp": "playstation-portable",
+    "psx": "playstation",
+    "sega32x": "sega-cd-32x",
+    "segacd": "sega-cd-32x",
+    "sfc": "snes",
+    "sms": "master-system",
+    "superfamicom": "snes",
+    "tg16": "pc-engine-turbografx",
+    "turbografx16": "pc-engine-turbografx",
+    "wiiu": "wii-u",
+    "xbox360": "xbox-360",
+}
+
+
+@dataclass(frozen=True)
+class PlatformDirectory:
+    """Resultado somente leitura de uma pasta irmã na coleção de ROMs."""
+
+    path: Path
+    disposition: str  # matched | excluded | unmatched
+    platform_id: str | None
+    game_count: int
+    selected_games: tuple[RomCandidate, ...]
+    skipped_symlinks: int
+
+
+class PlatformDirectoryInventory:
+    """Indexa uma árvore de ROMs estruturada por diretórios de plataforma.
+
+    A classe nunca escreve no conteúdo do usuário. Diretórios que não têm
+    correspondência inequívoca permanecem ``unmatched`` para revisão humana;
+    em especial, uma extensão não é usada para adivinhar a plataforma de uma
+    pasta desconhecida.
+    """
+
+    def __init__(self, scanner: PlatformRomScanner, aliases: dict[str, str]) -> None:
+        self._scanner = scanner
+        self._aliases = dict(aliases)
+
+    @classmethod
+    def from_registry(cls, registry: Any) -> PlatformDirectoryInventory:
+        manifests = list(registry.list())
+        manifest_dicts = [{"id": m.id, "media": dict(m.media)} for m in manifests]
+        known_ids = {manifest.id for manifest in manifests}
+        aliases: dict[str, str] = {}
+        for manifest in manifests:
+            for name in (manifest.id, *manifest.systems):
+                key = _directory_key(name)
+                previous = aliases.get(key)
+                if previous is None:
+                    aliases[key] = manifest.id
+                elif previous != manifest.id:
+                    # Um alias ambíguo não é um vínculo seguro.
+                    aliases.pop(key, None)
+        for alias, platform_id in _DIRECTORY_PLATFORM_ALIASES.items():
+            if platform_id in known_ids:
+                aliases[_directory_key(alias)] = platform_id
+        return cls(PlatformRomScanner.from_manifests(manifest_dicts), aliases)
+
+    def inventory(self, root: Path, *, max_games_per_platform: int = 10) -> list[PlatformDirectory]:
+        """Lista filhas de ``root`` em ordem estável, sem seguir symlinks."""
+        if max_games_per_platform < 1:
+            raise ValueError("max_games_per_platform precisa ser positivo")
+        try:
+            children = sorted(root.iterdir(), key=lambda item: item.name.casefold())
+        except OSError:
+            return []
+
+        results: list[PlatformDirectory] = []
+        for child in children:
+            if child.is_symlink() or not child.is_dir():
+                continue
+            if _is_non_game_directory(child.name):
+                results.append(PlatformDirectory(child, "excluded", None, 0, (), 0))
+                continue
+            platform_id = self._aliases.get(_directory_key(child.name))
+            if platform_id is None:
+                results.append(PlatformDirectory(child, "unmatched", None, 0, (), 0))
+                continue
+            candidates, skipped = self._inventory_tree(child, platform_id)
+            selected = self._select_unique_games(candidates, child, max_games_per_platform)
+            results.append(
+                PlatformDirectory(
+                    child,
+                    "matched",
+                    platform_id,
+                    self._unique_game_count(candidates, child),
+                    selected,
+                    skipped,
+                )
+            )
+        return results
+
+    def _inventory_tree(self, root: Path, platform_id: str) -> tuple[list[RomCandidate], int]:
+        candidates: list[RomCandidate] = []
+        skipped_symlinks = 0
+        try:
+            for directory, child_dirs, files in os.walk(root, followlinks=False):
+                safe_dirs: list[str] = []
+                for child_dir in child_dirs:
+                    candidate = Path(directory) / child_dir
+                    if candidate.is_symlink():
+                        skipped_symlinks += 1
+                    elif not _is_non_game_directory(child_dir):
+                        safe_dirs.append(child_dir)
+                child_dirs[:] = safe_dirs
+                siblings = set(files)
+                for filename in sorted(files, key=str.casefold):
+                    path = Path(directory) / filename
+                    if path.is_symlink():
+                        skipped_symlinks += 1
+                        continue
+                    platform, kind, evidence = self._scanner.classify(
+                        filename,
+                        siblings,
+                        root_platform=platform_id,
+                    )
+                    candidates.append(
+                        RomCandidate(
+                            path=path,
+                            format=detect_format(filename),
+                            platform=platform,
+                            content_kind=kind,
+                            evidence=evidence,
+                        )
+                    )
+        except OSError:
+            # Inventário é diagnóstico: uma pasta sem permissão não impede que
+            # as demais sejam exibidas. O resultado parcial continua verdadeiro.
+            pass
+        return candidates, skipped_symlinks
+
+    @staticmethod
+    def _game_key(candidate: RomCandidate, root: Path) -> str:
+        base_title, disc_number = disc_group(candidate.path.stem)
+        if disc_number is not None:
+            # Discos em subpastas diferentes ainda pertencem ao mesmo título.
+            return f"disc:{base_title.casefold()}"
+        parent = candidate.path.parent.relative_to(root).as_posix().casefold()
+        return f"{parent}:{base_title.casefold()}"
+
+    @classmethod
+    def _unique_games(cls, candidates: list[RomCandidate], root: Path) -> list[RomCandidate]:
+        chosen: dict[str, RomCandidate] = {}
+        # CUE/M3U descrevem o conjunto; BIN é só um membro e nunca deve ocupar
+        # uma posição extra no carrossel. A ordem posterior mantém o resultado
+        # determinístico quando não há descritor preferido.
+        priority = {"m3u": 0, "cue": 1, "chd": 2, "iso": 3, "bin": 9}
+        for candidate in candidates:
+            if candidate.content_kind != "base" or candidate.platform is None:
+                continue
+            key = cls._game_key(candidate, root)
+            current = chosen.get(key)
+            if current is None or (
+                priority.get(candidate.format, 5),
+                candidate.path.name.casefold(),
+            ) < (priority.get(current.format, 5), current.path.name.casefold()):
+                chosen[key] = candidate
+        return [chosen[key] for key in sorted(chosen)]
+
+    @classmethod
+    def _unique_game_count(cls, candidates: list[RomCandidate], root: Path) -> int:
+        return len(cls._unique_games(candidates, root))
+
+    @classmethod
+    def _select_unique_games(
+        cls, candidates: list[RomCandidate], root: Path, limit: int
+    ) -> tuple[RomCandidate, ...]:
+        return tuple(cls._unique_games(candidates, root)[:limit])
 
 
 def disc_group(title: str) -> tuple[str, int | None]:

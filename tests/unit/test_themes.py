@@ -15,6 +15,7 @@ from steamzero.adapters.theme_catalog import (
     validate_theme_directory,
 )
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.theme_effects import EffectSpec, EffectType
 from steamzero.domain.themes import (
     MAX_EXTENDS_DEPTH,
     THEME_API_VERSION,
@@ -22,8 +23,10 @@ from steamzero.domain.themes import (
     ResolvedTheme,
     ThemeColorTokens,
     ThemeGeometryTokens,
+    ThemeInteractionTokens,
     ThemeManifest,
     ThemeMotionTokens,
+    ThemePerformanceTokens,
     ThemeResolver,
     ThemeTypographyTokens,
 )
@@ -129,8 +132,8 @@ def test_manifest_roundtrip() -> None:
 
 def test_color_defaults() -> None:
     c = ThemeColorTokens()
-    assert c.background == "#071019"
-    assert c.text == "#f2f6fb"
+    assert c.background == "#e7eceb"
+    assert c.text == "#16212a"
     assert len(c.to_dict()) == 18
 
 
@@ -147,6 +150,13 @@ def test_typography_defaults() -> None:
 def test_motion_defaults() -> None:
     m = ThemeMotionTokens()
     assert m.durationFast == 120
+
+
+def test_experience_namespace_defaults_preserve_focus_and_touch_target() -> None:
+    interaction = ThemeInteractionTokens()
+    assert interaction.focusVisible is True
+    assert interaction.minimumTarget == 48
+    assert ThemePerformanceTokens().defaultTier.value == "cinematic"
 
 
 def test_resolved_theme_to_dict() -> None:
@@ -166,6 +176,8 @@ def test_resolved_theme_qml_object() -> None:
     assert obj["schemaVersion"] == 1
     assert obj["themeId"] == "a.b"
     assert "resolved" in obj
+    assert obj["effects"] == {}
+    assert obj["effectDiagnostics"] == []
 
 
 def test_high_contrast_override() -> None:
@@ -206,7 +218,7 @@ class TestResolution:
         }
         r = ThemeResolver(m).resolve(THEME_DEFAULT_ID)
         assert r.id == THEME_DEFAULT_ID
-        assert r.color.background == "#071019"
+        assert r.color.background == "#e7eceb"
 
     def test_resolve_extends(self) -> None:
         m = {
@@ -229,7 +241,7 @@ class TestResolution:
         }
         r = ThemeResolver(m).resolve("org.t.child")
         assert r.color.accent == "#ff0000"
-        assert r.color.background == "#071019"
+        assert r.color.background == "#e7eceb"
 
     def test_cycle_detected(self) -> None:
         m = {
@@ -292,6 +304,26 @@ class TestResolution:
         assert r.color.background == "#000000"
         assert r.color.accent == "#ff0000"
 
+    def test_experience_tokens_merge_and_drive_default_effect_tier(self) -> None:
+        manifest = ThemeManifest(
+            id=THEME_DEFAULT_ID,
+            name="Default",
+            version="1.0.0",
+            author="SZ",
+            license="GPL-3.0-or-later",
+            tokens={
+                "stateVariants": {"focusedScale": 1.1, "peripheralOpacity": 0.4},
+                "interaction": {"focusVisible": True, "minimumTarget": 56},
+                "accessibility": {"systemOverrides": True},
+                "performance": {"defaultTier": "economy"},
+            },
+            effects={"backdrop": (EffectSpec.from_dict({"type": "blur", "radius": 20}),)},
+        )
+        resolved = ThemeResolver({manifest.id: manifest}).resolve(manifest.id)
+        assert resolved.state_variants.focusedScale == 1.1
+        assert resolved.interaction.minimumTarget == 56
+        assert resolved.effects["backdrop"] == ()
+
     def test_nonexistent(self) -> None:
         m = {
             THEME_DEFAULT_ID: ThemeManifest(
@@ -316,7 +348,7 @@ class TestBuiltinThemes:
     def test_default_builtin_reads(self) -> None:
         manifest = read_builtin_manifest(THEME_DEFAULT_ID)
         assert manifest.id == THEME_DEFAULT_ID
-        assert manifest.version == "1.0.0"
+        assert manifest.version == "1.1.0"
         assert manifest.name == "SteamZero"
 
     def test_second_builtin_exists(self) -> None:
@@ -345,7 +377,13 @@ class TestBuiltinThemes:
         catalog = ThemeCatalog()
         resolved = catalog.resolve(THEME_DEFAULT_ID)
         assert resolved.id == THEME_DEFAULT_ID
-        assert resolved.color.background == "#071019"
+        assert resolved.color.background == "#e7eceb"
+
+    def test_catalog_records_effect_fallbacks_for_high_contrast(self) -> None:
+        resolved = ThemeCatalog().resolve(THEME_DEFAULT_ID, high_contrast=True)
+        assert resolved.high_contrast is True
+        assert resolved.effects["contextualBackdrop"] == ()
+        assert {item.effect for item in resolved.effect_diagnostics} >= {EffectType.BLUR}
 
 
 class TestUserThemeValidation:

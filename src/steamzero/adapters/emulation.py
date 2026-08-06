@@ -62,6 +62,7 @@ from steamzero.core.net import NetworkFailure, fetch_bytes
 from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
+from steamzero.domain.bios_catalog import BiosLibrary
 from steamzero.domain.bitrot import BitrotManager, BitrotTarget
 from steamzero.domain.cloud_platforms import CloudPlatformService
 from steamzero.domain.emulation_workspace import (
@@ -70,7 +71,7 @@ from steamzero.domain.emulation_workspace import (
 )
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
-from steamzero.domain.library import PlatformRomScanner
+from steamzero.domain.library import PlatformDirectoryInventory, PlatformRomScanner
 from steamzero.domain.media_pipeline import MediaPipeline
 from steamzero.domain.platform_composer import EmulatorFacts
 from steamzero.domain.platforms import PlatformRegistry
@@ -110,6 +111,43 @@ RegistryFactory = Callable[[], AdapterRegistry]
 _log = logging.getLogger(__name__)
 Spawn = Callable[[Sequence[str]], int | None]
 ProcessWaiter = Callable[[int], int]
+
+
+def editorial_platform_index(
+    registry: PlatformRegistry, games: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """Projeta todos os manifestos para a navegação editorial, sem inferências.
+
+    A central técnica continua centrada no workspace Switch. Esta projeção
+    separada torna cada plataforma canônica navegável no tema, mesmo quando não
+    há ROM publicada, e só associa jogos cujo ``platform`` já foi determinado
+    pela varredura de biblioteca.
+    """
+    by_platform: dict[str, list[dict[str, Any]]] = {}
+    for game in games:
+        platform_id = game.get("platform")
+        if not isinstance(platform_id, str):
+            continue
+        by_platform.setdefault(platform_id, []).append(dict(game))
+
+    rows: list[dict[str, Any]] = []
+    for manifest in registry.list():
+        platform_games = by_platform.get(manifest.id, [])
+        has_games = bool(platform_games)
+        rows.append(
+            {
+                "id": manifest.id,
+                "name": manifest.name,
+                "shortName": manifest.short_name,
+                "games": platform_games,
+                "state": "ready" if has_games else "unverified",
+                "statusLabel": ("Jogos inventariados" if has_games else "Nenhum jogo inventariado"),
+                "readiness": {"percent": 100 if has_games else 0},
+                "requirements": {},
+                "subsystems": [],
+            }
+        )
+    return rows
 
 
 class SessionSecretStore:
@@ -402,6 +440,7 @@ class EmulationController:
         self._nsz = NszToolManager()
         self._prepared_emulators: dict[str, PreparedComponent] = {}
         self._pending: dict[str, _PendingMutation] = {}
+        self._bios_library = BiosLibrary()
         self._running_pids: dict[str, int] = {}
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
@@ -470,6 +509,30 @@ class EmulationController:
     def close(self) -> None:
         self.close_request_context()
 
+    # -- BIOS v2 -----------------------------------------------------------
+    # These endpoints are intentionally separate from ``plan_action``: scan is
+    # read-only and import plans carry their own source/catalog fingerprints.
+    def bios_scan(self, source: Path) -> dict[str, Any]:
+        return self._bios_library.scan(source)
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, Any]:
+        return self._bios_library.scan_status(scan_id)
+
+    def bios_import_plan(self, scan_id: str, selection: list[str] | None = None) -> dict[str, Any]:
+        return self._bios_library.import_plan(scan_id, selection)
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._bios_library.import_apply(plan_id, confirm_token)
+
+    def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._bios_library.import_rollback(operation_id)
+
+    def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
+        return self._bios_library.status(platform_id)
+
+    def bios_audit(self) -> dict[str, Any]:
+        return self._bios_library.audit()
+
     @property
     def _roots_path(self) -> Path:
         return paths.config_home() / "emulation-library-v1.json"
@@ -524,6 +587,12 @@ class EmulationController:
         workspace["platforms"] = [
             composed_cloud.get(str(row["id"]), row) for row in workspace["platforms"]
         ]
+        # O workspace técnico preserva a superfície Switch. A biblioteca
+        # editorial recebe em paralelo o índice completo de manifests e nunca
+        # precisa criar plataformas a partir dos nomes de diretórios locais.
+        workspace["editorialPlatforms"] = editorial_platform_index(
+            PlatformRegistry.bundled(), games
+        )
         global_settings = self._load_global_settings()
         platform = workspace["platforms"][0]
         platform["emulators"] = emulator_rows
@@ -1296,6 +1365,7 @@ class EmulationController:
         registry = PlatformRegistry.bundled()
         manifest_dicts = [{"id": m.id, "media": dict(m.media)} for m in registry.list()]
         platform_scanner = PlatformRomScanner.from_manifests(manifest_dicts)
+        directory_inventory = PlatformDirectoryInventory.from_registry(registry)
         emulator_cache = EmulatorCacheReader(paths.data_home())
         discovered: dict[str, dict[str, Any]] = {}
         auxiliary: list[Any] = []
@@ -1304,6 +1374,7 @@ class EmulationController:
         roots = self.library_roots()
         scanned_at = datetime.now(UTC).isoformat()
         root_stats: dict[str, dict[str, Any]] = {}
+        directory_report: list[dict[str, Any]] = []
         if ctx is not None:
             ctx.set_progress("scan", current=0, total=len(roots), unit="roots")
         for root_index, raw_root in enumerate(roots):
@@ -1328,6 +1399,25 @@ class EmulationController:
             switch_base_count = sum(1 for m in matches if m.content_kind == "base")
             if switch_base_count == 0:
                 plat_matches = platform_scanner.inventory(root)
+                if not any(match.content_kind == "base" for match in plat_matches):
+                    directory_rows = directory_inventory.inventory(root)
+                    directory_report.extend(
+                        {
+                            "root": str(row.path),
+                            "disposition": row.disposition,
+                            "platformId": row.platform_id,
+                            "gameCount": row.game_count,
+                            "selectedCount": len(row.selected_games),
+                            "skippedSymlinks": row.skipped_symlinks,
+                        }
+                        for row in directory_rows
+                    )
+                    plat_matches = [
+                        game
+                        for row in directory_rows
+                        if row.disposition == "matched"
+                        for game in row.selected_games
+                    ]
                 for pm in plat_matches:
                     if pm.content_kind != "base":
                         continue
@@ -1491,6 +1581,7 @@ class EmulationController:
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
             "rootStats": root_stats,
+            "directoryInventory": directory_report,
             "scannedAt": scanned_at,
         }
         fs.write_atomic_text(
@@ -5222,6 +5313,7 @@ class EmulationController:
         game_id = params["game_id"]
         title_id = params["title_id"]
         title = params["title"]
+        platform_slug = str(params.get("platform_slug") or "switch")
         media_kinds = params.get("media_kinds")
         kinds = media_kinds or [
             "grid",
@@ -5248,7 +5340,7 @@ class EmulationController:
         identity = GameIdentity(
             game_id=game_id,
             title=title,
-            platform_slug="switch",
+            platform_slug=platform_slug,
             title_id=title_id,
         )
         all_candidates: list[MediaCandidate] = []
@@ -5464,6 +5556,7 @@ class EmulationController:
                             "game_id": game_id,
                             "title_id": title_id,
                             "title": title,
+                            "platform_slug": str(game.get("platform") or "switch"),
                             "media_kinds": None,
                             "local_media_source": str(game.get("mediaSource") or "fallback"),
                             "local_media_url": local_url,

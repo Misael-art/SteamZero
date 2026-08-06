@@ -140,6 +140,19 @@ def test_gameplay_profile_apply_points_to_real_rollback_contract() -> None:
     assert matrix["steam.gameplay.rollback"]["inputSchema"]["required"] == ["operationId"]
 
 
+def test_editorial_library_launch_uses_the_published_steam_contract() -> None:
+    action = handheld_ui_contracts()["byId"]["steam.game.launch"]
+    assert action["endpoint"] == "/steam/game/launch"
+    assert action["screen"] == "library"
+    assert action["control"] == "game-primary"
+    assert action["inputSchema"] == {
+        "type": "object",
+        "required": ["gameId"],
+        "properties": {"gameId": {"type": "string"}},
+        "additionalProperties": False,
+    }
+
+
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
     qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     direct_routes = re.findall(r'request\("(?:GET|POST)",\s*"([^"]+)"', qml)
@@ -163,6 +176,7 @@ def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
         "collections.apply",
         "library.health.plan",
         "library.health.apply",
+        "steam.game.launch",
     } <= static_action_ids
 
 
