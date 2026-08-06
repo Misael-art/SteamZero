@@ -4853,6 +4853,13 @@ auditoria de bridge, matriz de capabilities, independência, boundaries e
 `git diff --check` passaram. Nenhuma ação de host, release ou push foi
 executada.
 
+## 2026-08-06 — Bloqueio explícito das mutações de BIOS
+
+O catálogo Desktop declara scan, importação e rollback de BIOS como não
+aplicáveis enquanto não existe seleção confiável de origem por handle. Isso
+impede que uma futura UI converta paths arbitrários do host em endpoint e
+mantém os fatos read-only disponíveis.
+
 ## 2026-08-06 — Recovery manual de componentes fechado por plano
 
 O recovery de componentes agora começa por inspeção sanitizada, gera plano

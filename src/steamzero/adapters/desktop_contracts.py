@@ -271,6 +271,48 @@ def handheld_ui_contracts() -> dict[str, Any]:
             method="GET",
         ),
         _action(
+            "bios.scan",
+            "Selecionar e varrer BIOS",
+            None,
+            service="emulation",
+            screen="emulators",
+            control="bios-scan",
+            enabled=False,
+            applicable=False,
+            reason=(
+                "A bridge ainda não possui seletor de origem confiável por handle; "
+                "paths arbitrários são recusados."
+            ),
+        ),
+        _action(
+            "bios.import",
+            "Importar BIOS",
+            None,
+            service="emulation",
+            screen="emulators",
+            control="bios-import",
+            enabled=False,
+            applicable=False,
+            reason=(
+                "A importação será publicada somente após scan por origem aprovada e "
+                "plano transacional confirmado."
+            ),
+        ),
+        _action(
+            "bios.rollback",
+            "Reverter importação de BIOS",
+            None,
+            service="emulation",
+            screen="emulators",
+            control="bios-rollback",
+            enabled=False,
+            applicable=False,
+            reason=(
+                "Depende do fluxo auditável de importação de BIOS ainda não publicado "
+                "na bridge."
+            ),
+        ),
+        _action(
             "component.recovery.plan",
             "Revisar recovery",
             "/component/recovery/plan",
