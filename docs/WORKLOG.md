@@ -4840,6 +4840,19 @@ Ruff, mypy, auditoria de bridge, matriz de capabilities, independência,
 boundaries e `git diff --check` passaram. Nenhuma ação de host, release ou push
 foi executada.
 
+## 2026-08-06 — Status e auditoria de BIOS pela bridge Desktop
+
+Foram publicados os fatos read-only de BIOS na bridge existente: requisitos e
+presença por plataforma, além do diagnóstico agregado do store. As respostas
+não expõem paths de origem, hashes, conteúdo, keys ou firmware. Importação e
+scan permanecem fora desta etapa até haver seleção de origem aprovada e fluxo
+transacional igualmente sanitizado.
+
+Validação dirigida: 34 testes de bridge e contratos passaram; Ruff, mypy,
+auditoria de bridge, matriz de capabilities, independência, boundaries e
+`git diff --check` passaram. Nenhuma ação de host, release ou push foi
+executada.
+
 ## 2026-08-06 — Recovery manual de componentes fechado por plano
 
 O recovery de componentes agora começa por inspeção sanitizada, gera plano

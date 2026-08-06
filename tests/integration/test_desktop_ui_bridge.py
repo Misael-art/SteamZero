@@ -212,6 +212,17 @@ class FakeDashboard:
         self.calls.append(("component-recovery-apply", plan_id, confirm_token))
         return {"status": "ok", "operations": []}
 
+    def bios_status(self, platform_id: str | None = None) -> dict[str, object]:
+        assert platform_id is None
+        self.calls.append(("bios-status",))
+        return {
+            "entries": [{"id": "ps2-rom", "platformId": "ps2", "required": True, "present": False}]
+        }
+
+    def bios_audit(self) -> dict[str, object]:
+        self.calls.append(("bios-audit",))
+        return {"status": "ok", "issues": []}
+
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
         return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
@@ -808,6 +819,10 @@ def test_bridge_exposes_read_only_component_lifecycle_surface(
         "operations": [],
         "count": 0,
     }
+    assert request_json(base, token, "/bios/status") == {
+        "entries": [{"id": "ps2-rom", "platformId": "ps2", "required": True, "present": False}]
+    }
+    assert request_json(base, token, "/bios/audit") == {"status": "ok", "issues": []}
     assert dashboard.calls == [
         ("component-list",),
         ("component-matrix",),
@@ -815,6 +830,8 @@ def test_bridge_exposes_read_only_component_lifecycle_surface(
         ("component-verify", "dolphin"),
         ("component-open-config-matrix",),
         ("component-recovery-inspect",),
+        ("bios-status",),
+        ("bios-audit",),
     ]
 
 
