@@ -4825,6 +4825,21 @@ longo da aplicação; o arquivo afetado passou 39/39 e a suíte integral passou
 Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
 executado**.
 
+## 2026-08-06 — Tombstones explícitos para adapters retirados
+
+O catálogo versionado de tombstones separa retirada deliberada de manifesto
+ausente. Cada registro preserva o manifesto histórico verificável, a última
+versão, motivo, substituto e políticas de deployment/dados. Um adapter retirado
+continua visível com motivo e deployment observado, mas recusa instalar,
+atualizar, reparar, iniciar, configurar e parar; somente a desinstalação do
+deployment remanescente segue pelo fluxo plan/apply. A Dashboard e a matriz de
+capabilities recebem a mesma linha `retired`, sem criar botão de retirada.
+
+Validação dirigida: 119 testes de lifecycle, dashboard e contratos passaram;
+Ruff, mypy, auditoria de bridge, matriz de capabilities, independência,
+boundaries e `git diff --check` passaram. Nenhuma ação de host, release ou push
+foi executada.
+
 ## 2026-08-06 — Recovery manual de componentes fechado por plano
 
 O recovery de componentes agora começa por inspeção sanitizada, gera plano

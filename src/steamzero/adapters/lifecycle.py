@@ -443,7 +443,21 @@ class ComponentLifecycle:
         reconciliado: só é exposto enquanto existir operação de reparo válida em
         curso; um marcador órfão volta ao estado observado com diagnóstico.
         """
-        return self._reconcile_repairing(adapter_id, self._observe_state(adapter_id))
+        observed = self._observe_state(adapter_id)
+        tombstone = self._registry.retired(adapter_id)
+        if tombstone is not None:
+            return {
+                **observed,
+                "state": "retired",
+                "installable": False,
+                "detail": tombstone.reason,
+                "retiredAt": tombstone.retired_at,
+                "replacementAdapterId": tombstone.replacement_adapter_id,
+                "deploymentPolicy": tombstone.deployment_policy,
+                "dataPolicy": tombstone.data_policy,
+                "deploymentState": observed["state"],
+            }
+        return self._reconcile_repairing(adapter_id, observed)
 
     def _observe_state(self, adapter_id: str) -> dict[str, Any]:
         """Estado observado pelo executor, sem leitura/escrita de marcadores."""
@@ -611,7 +625,7 @@ class ComponentLifecycle:
         motivo — nunca derruba a lista nem o workspace inteiro (G27).
         """
         rows: list[dict[str, Any]] = []
-        for manifest in self._registry.list():
+        for manifest in self._registry.list_including_retired():
             try:
                 rows.append(self.status(manifest.id))
             except Exception as exc:
@@ -641,8 +655,14 @@ class ComponentLifecycle:
         aplicar o envelope pelo ``planId``.
         """
         manifest = self._registry.get(adapter_id)
+        tombstone = self._registry.retired(adapter_id)
         route = route_for(manifest)
-        if not route.installable:
+        if tombstone is not None and action != "uninstall":
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"{adapter_id} foi retirado: {tombstone.reason}",
+            )
+        if not route.installable and action != "uninstall":
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
                 detail=route.reason or "componente sem executor de lifecycle",
@@ -777,6 +797,12 @@ class ComponentLifecycle:
         envelope = ComponentPlan.from_dict(raw)
         self._validate_pending(envelope, confirm_token)
         manifest = self._registry.get(envelope.adapter_id)
+        tombstone = self._registry.retired(envelope.adapter_id)
+        if tombstone is not None and envelope.action != "uninstall":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"{envelope.adapter_id} foi retirado após o plano",
+            )
         route = route_for(manifest)
         if route.executor != envelope.executor:
             raise SteamZeroError(
@@ -1017,6 +1043,12 @@ class ComponentLifecycle:
 
     def stop(self, adapter_id: str) -> dict[str, Any]:
         """Encerra os grupos de processo do componente portátil (SIGTERM)."""
+        tombstone = self._registry.retired(adapter_id)
+        if tombstone is not None:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"{adapter_id} foi retirado: {tombstone.reason}",
+            )
         route = route_for(self._registry.get(adapter_id))
         if route.executor == "flatpak" or (
             route.end_of_life and route.source_type in FLATPAK_SOURCES

@@ -20,7 +20,12 @@ import pytest
 from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
 from steamzero.adapters.flatpak import FlatpakState
 from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
-from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
+from steamzero.adapters.registry import (
+    AdapterRegistry,
+    AdapterSource,
+    load_manifest,
+    load_retired_catalog,
+)
 from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.transaction import SimulatedKill, set_crash_hook
@@ -134,6 +139,27 @@ def portable_registry(
     )
 
 
+def retired_registry(version: str, payload: bytes) -> AdapterRegistry:
+    legacy = portable_manifest(version, payload)
+    tombstones = load_retired_catalog(
+        {
+            "schemaVersion": 1,
+            "tombstones": [
+                {
+                    "adapterId": "demo-emulator",
+                    "retiredAt": "2026-08-06",
+                    "lastSupportedVersion": version,
+                    "reason": "fixture de retirada explícita",
+                    "deploymentPolicy": "uninstall-only",
+                    "dataPolicy": "preserve",
+                    "legacyManifest": legacy,
+                }
+            ],
+        }
+    )
+    return AdapterRegistry([], retired=tombstones)
+
+
 def bundled_with_fake(flatpak: FakeFlatpak, store: state.StateStore) -> ComponentLifecycle:
     registry = AdapterRegistry.bundled()
     return ComponentLifecycle(
@@ -163,6 +189,72 @@ class TestRoutingMatrix:
         assert status["executor"] == "engine"
         assert status["sourceType"] == "appimage"
         assert status["targetVersion"] == "1.0.0"
+
+
+class TestRetiredAdapters:
+    def test_explicit_tombstone_preserves_deployment_for_safe_uninstall(
+        self, store: state.StateStore
+    ) -> None:
+        payload = executable_payload()
+        active = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-1.0.0.AppImage": payload}),
+        )
+        install = active.plan("demo-emulator", "install")
+        active.apply(install.plan_id, install.confirm_token)
+        preserved = paths.config_home() / "demo-emulator" / "preferences.json"
+        preserved.parent.mkdir(parents=True, exist_ok=True)
+        preserved.write_text("{}", encoding="utf-8")
+
+        lifecycle = ComponentLifecycle(store, retired_registry("1.0.0", payload))
+        status = lifecycle.status("demo-emulator")
+        assert status["state"] == "retired"
+        assert status["deploymentState"] == "installed"
+        assert status["replacementAdapterId"] is None
+        assert [row["id"] for row in lifecycle.status_all()] == ["demo-emulator"]
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.plan("demo-emulator", "install")
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+
+        uninstall = lifecycle.plan("demo-emulator", "uninstall")
+        result = lifecycle.apply(uninstall.plan_id, uninstall.confirm_token)
+        assert result["status"] == "ok"
+        assert lifecycle.status("demo-emulator")["deploymentState"] == "missing"
+        assert preserved.read_text(encoding="utf-8") == "{}"
+
+    def test_absent_manifest_without_explicit_tombstone_is_not_retired(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = ComponentLifecycle(store, AdapterRegistry([]))
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.status("demo-emulator")
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+
+    def test_tombstone_catalog_rejects_duplicate_and_unknown_replacement(self) -> None:
+        payload = executable_payload()
+        tombstone = {
+            "adapterId": "demo-emulator",
+            "retiredAt": "2026-08-06",
+            "lastSupportedVersion": "1.0.0",
+            "reason": "fixture de retirada explícita",
+            "deploymentPolicy": "uninstall-only",
+            "dataPolicy": "preserve",
+            "legacyManifest": portable_manifest("1.0.0", payload),
+        }
+        duplicate = load_retired_catalog({"schemaVersion": 1, "tombstones": [tombstone, tombstone]})
+        with pytest.raises(SteamZeroError) as duplicate_error:
+            AdapterRegistry([], retired=duplicate)
+        assert duplicate_error.value.code == "E-API-SCHEMA"
+
+        unknown = {**tombstone, "replacementAdapterId": "missing-adapter"}
+        with pytest.raises(SteamZeroError) as replacement_error:
+            AdapterRegistry(
+                [], retired=load_retired_catalog({"schemaVersion": 1, "tombstones": [unknown]})
+            )
+        assert replacement_error.value.code == "E-API-SCHEMA"
 
     def test_portable_installed(self, store: state.StateStore, tmp_path: Path) -> None:
         payload = executable_payload()

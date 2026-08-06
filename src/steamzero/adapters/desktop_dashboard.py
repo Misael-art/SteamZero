@@ -420,7 +420,7 @@ class DesktopDashboard:
                 )
                 components = [
                     self._component_row(manifest, lifecycle, conflicts=bool(conflicts))
-                    for manifest in registry.list()
+                    for manifest in registry.list_including_retired()
                     if manifest.id in _COMPONENT_LABELS
                 ]
                 queue = store.list_sync_queue()
@@ -464,7 +464,7 @@ class DesktopDashboard:
         except Exception as exc:
             components = [
                 self._degraded_component_row(manifest, exc)
-                for manifest in registry.list()
+                for manifest in registry.list_including_retired()
                 if manifest.id in _COMPONENT_LABELS
             ]
             sync["detail"] = "Não foi possível ler a fila de sincronização."
@@ -997,7 +997,7 @@ class DesktopDashboard:
                     "capabilities": list(manifest.capabilities),
                     "status": statuses.get(manifest.id, {"state": "unavailable"}),
                 }
-                for manifest in registry.list()
+                for manifest in registry.list_including_retired()
             ]
         }
 
@@ -1011,7 +1011,7 @@ class DesktopDashboard:
         manifesto; a evidência aponta somente ao upstream público.
         """
         rows: list[dict[str, Any]] = []
-        for manifest in self._registry_factory().list():
+        for manifest in self._registry_factory().list_including_retired():
             if manifest.kind != "emulator":
                 continue
             source = manifest.preferred_source(None, allow_eol=True)
@@ -1292,7 +1292,10 @@ class DesktopDashboard:
         pinned = bool(version and version == target_version)
         end_of_life = bool(status.get("endOfLife"))
 
-        if end_of_life and not installed:
+        if raw_state == "retired":
+            state = "unsupported"
+            status_label = "Retirado"
+        elif end_of_life and not installed:
             state = "unsupported"
             status_label = "Fonte descontinuada"
         elif raw_state == "missing":
@@ -1310,7 +1313,10 @@ class DesktopDashboard:
 
         installable = bool(status.get("installable"))
 
-        if state == "unsupported":
+        if raw_state == "retired":
+            action = {"kind": "detail", "label": "Retirado", "enabled": False}
+            blocked_reason = str(status.get("detail") or "Componente retirado.")
+        elif state == "unsupported":
             action = {"kind": "detail", "label": "Indisponível", "enabled": False}
             blocked_reason = "A origem pinada está end-of-life e não será promovida."
         elif state in {"missing", "attention"}:
@@ -1361,11 +1367,15 @@ class DesktopDashboard:
             "pinned": pinned,
             "endOfLife": end_of_life,
             "detail": (
-                "A configuração e os dados do emulador são preservados durante rollback."
-                if not end_of_life
+                str(status.get("detail") or "Componente retirado; dados preservados.")
+                if raw_state == "retired"
                 else (
-                    "A fonte atual está descontinuada; o SteamZero não instala versões "
-                    "sem origem validada."
+                    "A configuração e os dados do emulador são preservados durante rollback."
+                    if not end_of_life
+                    else (
+                        "A fonte atual está descontinuada; o SteamZero não instala versões "
+                        "sem origem validada."
+                    )
                 )
             ),
             "blockedReason": blocked_reason,

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retired-adapter-catalog-v1.schema.json",
+  "title": "SteamZero retired adapter catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tombstones"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "tombstones": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/tombstone"}
+    }
+  },
+  "$defs": {
+    "tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterId",
+        "retiredAt",
+        "lastSupportedVersion",
+        "reason",
+        "deploymentPolicy",
+        "dataPolicy",
+        "legacyManifest"
+      ],
+      "properties": {
+        "adapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+        "retiredAt": {"type": "string", "format": "date"},
+        "lastSupportedVersion": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "replacementAdapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+        "deploymentPolicy": {"const": "uninstall-only"},
+        "dataPolicy": {"const": "preserve"},
+        "legacyManifest": {"$ref": "adapter-v1.schema.json"}
+      }
+    }
+  }
+}
