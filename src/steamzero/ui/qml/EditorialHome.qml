@@ -122,6 +122,10 @@ Item {
         && libraryHealth.counts.error || 0)
     readonly property var featured: recent.length > 0 ? recent[0]
         : favorites.length > 0 ? favorites[0] : catalog.length > 0 ? catalog[0] : null
+    // EditorialHome é filho de um ColumnLayout no overview. Ancorar a coluna
+    // nos quatro lados sem publicar implicitHeight fazia o layout pai reservar
+    // altura zero e os blocos seguintes eram desenhados por cima dela.
+    implicitHeight: homeContent.implicitHeight
 
     component EditorialButton: Button {
         property bool primaryAction: false
@@ -178,7 +182,11 @@ Item {
     }
 
     ColumnLayout {
-        anchors.fill: parent
+        id: homeContent
+        width: parent.width
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         spacing: root.compact ? 12 : 20
 
         RowLayout {

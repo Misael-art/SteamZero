@@ -420,6 +420,10 @@ def test_global_job_result_persists_and_rebuilds_workspace_after_restart(
     assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["category"] == "quota"
     assert workspace["mediaPipeline"]["providerDetails"]["screenscraper"]["gamesAffected"] == 1
 
+    retained = restarted._media_pipeline_summary([])  # type: ignore[attr-defined]
+    assert retained["providerDetails"]["screenscraper"]["category"] == "quota"
+    assert retained["providerDetails"]["screenscraper"]["gamesAffected"] == 0
+
 
 def test_later_successful_search_clears_persisted_error_and_health(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

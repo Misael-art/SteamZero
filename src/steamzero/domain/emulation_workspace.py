@@ -59,6 +59,88 @@ def _project_platform(
     )
 
 
+def build_global_management(
+    *,
+    platforms: Sequence[Mapping[str, Any]],
+    editorial_platforms: Sequence[Mapping[str, Any]],
+    canonical_experiences: Sequence[Mapping[str, Any]],
+    truth_state: str,
+    emulators: Sequence[Mapping[str, Any]],
+    directories: Sequence[Mapping[str, Any]],
+    media_providers: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Resume a gestão transversal sem transformá-la em uma plataforma.
+
+    A central abre nesta superfície. Ela não reutiliza a primeira plataforma do
+    registry como um atalho visual: cada card conserva o contrato técnico da
+    própria plataforma e as experiências editoriais continuam uma dimensão
+    separada. Steam é publicado como origem editorial adicional, não como uma
+    trigésima-sétima plataforma técnica.
+    """
+    games_by_platform = {
+        str(item.get("id")): len(item.get("games", ())) for item in editorial_platforms
+    }
+    cards: list[dict[str, Any]] = []
+    for platform in platforms:
+        requirements = platform.get("requirements", {})
+        emulator_rows = platform.get("emulators", ())
+        runtimes = [
+            str(row.get("name") or row.get("displayName"))
+            for row in emulator_rows
+            if row.get("name") or row.get("displayName")
+        ]
+        cores = [
+            str((row.get("launch") or {}).get("core"))
+            for row in emulator_rows
+            if (row.get("launch") or {}).get("core")
+        ]
+        blockers = list((platform.get("readiness") or {}).get("blockers") or ())
+        blocker = str(platform.get("launchReason") or (blockers[0] if blockers else ""))
+        cards.append(
+            {
+                "id": str(platform["id"]),
+                "name": str(platform["name"]),
+                "identity": str(platform.get("kind") or "emulated"),
+                "gameCount": games_by_platform.get(str(platform["id"]), 0),
+                "state": str(platform["state"]),
+                "readiness": dict(platform["readiness"]),
+                "runtime": ", ".join(runtimes) or "Nenhum runtime declarado",
+                "coreRequired": cores,
+                "keysStatus": dict(requirements.get("keys") or {}),
+                "firmwareStatus": dict(requirements.get("firmware") or {}),
+                "biosStatus": (dict(requirements["bios"]) if requirements.get("bios") else None),
+                "blocker": blocker or None,
+                "action": {
+                    "id": "platform.open",
+                    "label": "Abrir plataforma",
+                    "enabled": True,
+                    "reason": None,
+                    "requiresConfirmation": False,
+                },
+            }
+        )
+    technical_count = len(platforms)
+    return {
+        "id": "emulation-global",
+        "name": "Gestão geral",
+        "iconKey": "applications-games",
+        "state": truth_state,
+        "statusLabel": "Estado consolidado das plataformas e componentes",
+        "technicalPlatformCount": technical_count,
+        "editorialDestinationCount": technical_count + 1,
+        "editorialExperienceCount": len(canonical_experiences),
+        "editorialSource": {
+            "id": "steam",
+            "name": "Steam",
+            "detail": "Origem editorial adicional; não integra a contagem técnica.",
+        },
+        "platformCards": cards,
+        "emulators": [dict(item) for item in emulators],
+        "directories": [dict(item) for item in directories],
+        "mediaProviders": [dict(item) for item in media_providers],
+    }
+
+
 def build_switch_workspace(
     *,
     catalog: SwitchEmulatorCatalog | None = None,

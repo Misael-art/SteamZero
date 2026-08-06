@@ -22,9 +22,11 @@ Window {
         console.error("FAIL: " + message)
     }
 
-    function makePage(payload) {
+    function makePage(payload, preserveInitialContext) {
         const object = pageComponent.createObject(harness, {"emulation": payload})
         check(object !== null, "Emulation.qml deve ser instanciável")
+        if (object && preserveInitialContext !== true)
+            object.globalManagementActive = false
         return object
     }
 
@@ -61,10 +63,15 @@ Window {
                     }
                 }
             }]
-        })
+        }, true)
         if (!object)
             return
-        check(object.selectedPlatform.id === "switch", "Switch deve ser a plataforma inicial")
+        check(object.globalManagementActive,
+              "a central deve abrir na gestão global, não em uma plataforma")
+        check(object.headerContext.id === "emulation-global",
+              "o cabeçalho inicial deve representar a gestão global")
+        check(object.selectedPlatform.id === "switch",
+              "a seleção técnica preserva a primeira plataforma sem torná-la contexto inicial")
         check(object.readinessPercent() === 75, "prontidão deve ser normalizada")
         check(object.scopes.length === 5, "devem existir cinco escopos")
         check(object.areas.length === 11, "devem existir onze áreas especializadas")
@@ -179,6 +186,49 @@ Window {
               "ação indisponível deve preservar a causa publicada")
         check(object.platformContentFilters()[0].indexOf("*.chd") >= 0,
               "filtro de conteúdo deve vir das extensões da plataforma")
+        object.destroy()
+    }
+
+    function testGlobalManagementOpensPlatformWithoutCreatingAnotherTechnicalId() {
+        const object = makePage({
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "attention",
+                "technicalPlatformCount": 36,
+                "editorialDestinationCount": 37,
+                "editorialExperienceCount": 155,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": "Origem adicional"},
+                "platformCards": [{
+                    "id": "arcade", "name": "Arcade", "identity": "emulated",
+                    "gameCount": 2, "state": "attention",
+                    "readiness": {"percent": 45, "title": "Revisar", "detail": "Core ausente", "blockers": ["Core ausente"]},
+                    "runtime": "RetroArch", "coreRequired": ["fbneo"],
+                    "keysStatus": {"kind": "keys", "status": "not-required", "required": null, "installed": null, "detail": "Não requer", "blocksPlay": false},
+                    "firmwareStatus": {"kind": "firmware", "status": "not-required", "required": null, "installed": null, "detail": "Não requer", "blocksPlay": false},
+                    "biosStatus": null, "blocker": "Core ausente",
+                    "action": {"id": "platform.open", "label": "Abrir plataforma", "enabled": true, "reason": null, "requiresConfirmation": false}
+                }],
+                "emulators": [], "directories": [], "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "arcade", "name": "Arcade", "shortName": "Arcade",
+                "iconKey": "applications-games", "state": "attention", "statusLabel": "Revisar",
+                "readiness": {"percent": 45, "title": "Revisar", "blockers": ["Core ausente"]},
+                "emulators": [], "games": []
+            }]
+        }, true)
+        if (!object)
+            return
+        check(object.platformChoices.length === 2,
+              "gestão global deve ser seletor separado das plataformas técnicas")
+        check(object.globalManagement.technicalPlatformCount === 36
+              && object.globalManagement.editorialDestinationCount === 37,
+              "contagens técnica e editorial devem permanecer distintas")
+        object.openPlatformFromGlobal("arcade")
+        check(!object.globalManagementActive && object.selectedPlatform.id === "arcade",
+              "abrir card global deve entrar apenas no escopo da plataforma")
         object.destroy()
     }
 
@@ -632,6 +682,7 @@ Window {
             testHierarchy()
             testSafeFallback()
             testManifestDrivenPlatformSelection()
+            testGlobalManagementOpensPlatformWithoutCreatingAnotherTechnicalId()
             testPublishedPrimaryAndPlatformArtwork()
             testBackendArea()
             testGameLibraryJourney()

@@ -108,6 +108,8 @@ Window {
                 check(home.attentionSystems.length === 2, "pendência deve refletir estado da plataforma")
                 check(home.componentAttention === 1 && home.syncAttention === 2 && home.libraryAttention === 1,
                       "Home deve resumir somente pendências operacionais publicadas")
+                check(home.implicitHeight > home.height,
+                      "Home deve publicar sua altura de conteúdo ao layout pai")
                 home.libraryRequested("switch")
                 check(requestedSystem === "switch", "ação de sistema deve preservar o destino")
                 home.collectionRequested(home.primaryCollection.id)
