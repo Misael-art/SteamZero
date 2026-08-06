@@ -42,6 +42,9 @@ class HttpsArtifactPort:
             "github.com",
             "objects.githubusercontent.com",
             "github-releases.githubusercontent.com",
+            # GitHub pode redirecionar assets de release pinados para este CDN.
+            # O digest do manifesto continua obrigatório; não há wildcard.
+            "release-assets.githubusercontent.com",
         }
         if source.type == "archive":
             # A família archive é exclusiva dos cores Libretro, sempre
