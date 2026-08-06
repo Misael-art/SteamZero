@@ -920,3 +920,28 @@ class TestAdversarialLifecycleClosure:
         with pytest.raises(SteamZeroError) as error:
             lifecycle.plan(adapter_id, "repair")
         assert error.value.code == "E-API-SCHEMA"
+
+    @pytest.mark.parametrize("executor", ("engine", "flatpak"))
+    def test_scenario_14_rollback_is_auditable_and_preserves_configuration(
+        self, executor: str, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle, adapter_id, config = self._degraded(executor, store, tmp_path)
+        before_config = config.read_bytes()
+        plan = lifecycle.plan(adapter_id, "repair")
+        applied = lifecycle.apply(plan.plan_id, plan.confirm_token)
+        operation_id = str(applied["operationId"])
+
+        rolled = lifecycle.rollback(operation_id)
+
+        assert rolled["status"] == "rolled-back"
+        assert rolled["operationId"] == operation_id
+        assert config.read_bytes() == before_config
+        assert lifecycle.status(adapter_id)["state"] in {"degraded", "missing"}
+        row = store.get_component(adapter_id)
+        assert row is not None and row["state"] == lifecycle.status(adapter_id)["state"]
+        # A mesma operação tem semântica explícita e estável, nunca best-effort.
+        again = lifecycle.rollback(operation_id)
+        assert again["status"] == "rolled-back"
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.rollback("01J000000000000000000000ZZ")
+        assert error.value.code == "E-TX-STALE-PLAN"
