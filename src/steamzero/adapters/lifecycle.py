@@ -889,6 +889,67 @@ class ComponentLifecycle:
             pid = self._spawn([str(self._engine().payload_path(adapter_id))])
         return {"status": "started", "componentId": adapter_id, "pid": pid}
 
+    def open_config(self, adapter_id: str) -> dict[str, Any]:
+        """Abre a configuração nativa do emulador, com argv allowlisted.
+
+        Emuladores não compartilham uma forma de "abrir configuração": alguns
+        têm flag própria, outros só o menu da GUI. Adivinhar um argv produziria
+        um botão que abre a coisa errada — ou nada — e o usuário não teria como
+        saber qual dos dois aconteceu.
+
+        Por isso o argv vem do manifesto (``openConfig.arguments``). Adapter que
+        não declara recebe recusa com motivo dizível, e a bridge publica a ação
+        como não aplicável em vez de oferecer um botão que termina em stub.
+        """
+        manifest = self._registry.get(adapter_id)
+        route = route_for(manifest)
+        arguments = self._open_config_arguments(manifest)
+        if arguments is None:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"{adapter_id} não declara como abrir a configuração nativa",
+            )
+        current = self.status(adapter_id)
+        if current["state"] not in {"installed", "outdated"}:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=current.get("detail") or f"{adapter_id} não está instalado",
+            )
+        if route.executor == "flatpak" or (
+            route.end_of_life and route.source_type in FLATPAK_SOURCES
+        ):
+            source = manifest.preferred_source("flatpak", allow_eol=True)
+            executable = self._which("flatpak")
+            if executable is None or source.ref is None:
+                raise SteamZeroError("E-COMPONENT-DEGRADED", detail="runtime Flatpak indisponível")
+            argv = [executable, "run", "--user", source.ref, *arguments]
+        else:
+            argv = [str(self._engine().payload_path(adapter_id)), *arguments]
+        pid = self._spawn(argv)
+        return {"status": "started", "componentId": adapter_id, "pid": pid, "argv": argv}
+
+    @staticmethod
+    def _open_config_arguments(manifest: AdapterManifest) -> list[str] | None:
+        """Argumentos declarados para abrir a configuração, validados.
+
+        Cada item é atômico: nada de string única que o shell fatiaria, e nada
+        de NUL ou tamanho absurdo chegando a um ``Popen``.
+        """
+        raw = manifest.raw.get("openConfig")
+        if not isinstance(raw, dict):
+            return None
+        arguments = raw.get("arguments")
+        if not isinstance(arguments, list) or not arguments:
+            return None
+        validated: list[str] = []
+        for item in arguments:
+            if not isinstance(item, str) or not item or "\x00" in item or len(item) > 256:
+                raise SteamZeroError(
+                    "E-API-SCHEMA", detail=f"argumento de openConfig inválido em {manifest.id}"
+                )
+            validated.append(item)
+        return validated
+
     def stop(self, adapter_id: str) -> dict[str, Any]:
         """Encerra os grupos de processo do componente portátil (SIGTERM)."""
         route = route_for(self._registry.get(adapter_id))
