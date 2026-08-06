@@ -15,7 +15,7 @@ import pytest
 from steamzero.adapters.libretro_cores import LibretroCoreExecutor
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry, AdapterSource, load_manifest
-from steamzero.core import fs, state
+from steamzero.core import fs, paths, state, transaction
 from steamzero.core.errors import SteamZeroError
 
 _PREFIX = "RetroArch-Linux-x86_64/RetroArch-Linux-x86_64.AppImage.home/.config/retroarch/cores/"
@@ -117,3 +117,24 @@ def test_component_lifecycle_keeps_plan_apply_and_rollback_for_a_core(
     rolled = lifecycle.rollback(str(applied["operationId"]))
     assert rolled["executor"] == "libretro"
     assert lifecycle.status("libretro-mgba")["state"] == "missing"
+
+
+def test_component_lifecycle_refuses_a_substituted_core_delegate(
+    store: state.StateStore, tmp_path: Path
+) -> None:
+    payload = b"delegate-core"
+    archive = _archive(tmp_path, "mgba", payload)
+    lifecycle = ComponentLifecycle(
+        store,
+        _registry(archive, payload),
+        artifacts=Artifacts(archive),
+        libretro_core_root=tmp_path / "cores",
+    )
+    planned = lifecycle.plan("libretro-mgba")
+    alien = transaction.plan_write_files({}, root=tmp_path / "not-cores", kind="component.install")
+    forged = planned.to_dict()
+    forged["delegated"] = {"transactionPlanId": alien.plan_id}
+    fs.write_atomic_text(paths.plan_path(planned.plan_id), json.dumps(forged))
+
+    with pytest.raises(SteamZeroError, match="plano não pertence a um core Libretro"):
+        lifecycle.apply(planned.plan_id, planned.confirm_token)

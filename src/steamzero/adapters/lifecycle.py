@@ -883,6 +883,7 @@ class ComponentLifecycle:
                 job_id=ids.new_ulid(),
                 lease_seconds=3600,
             ):
+                self._revalidate_libretro_apply(envelope, cores, prepared_core)
                 core_result = cores.apply(prepared_core, confirm_token)
             self._mark_applied(envelope)
             return {
@@ -1395,6 +1396,29 @@ class ComponentLifecycle:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
                 detail=f"estado do componente mudou após o plano ({current['state']})",
+            )
+
+    def _revalidate_libretro_apply(
+        self,
+        envelope: ComponentPlan,
+        cores: LibretroCoreExecutor,
+        prepared: PreparedLibretroCore,
+    ) -> None:
+        """Equivalente ao preflight Engine para o plano de extração de core."""
+        manifest = self._registry.get(envelope.adapter_id)
+        route = route_for(manifest)
+        if route.executor != "libretro" or route.executor != envelope.executor:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="executor do core mudou após o plano")
+        if self._source_fingerprint(manifest, route) != envelope.source_fingerprint:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto do core mudou após o plano")
+        cores.validate_plan(prepared)
+        observed = cores.status(envelope.adapter_id)
+        if envelope.action == "uninstall" and observed["state"] == "missing":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="core já foi removido após o plano")
+        if envelope.action == "repair" and observed["state"] not in _REPAIRABLE_STATES:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"estado do core mudou após o plano ({observed['state']})",
             )
 
     def _finish_failed_repair(

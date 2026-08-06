@@ -156,6 +156,27 @@ class LibretroCoreExecutor:
             raise
         return result
 
+    def validate_plan(self, prepared: PreparedLibretroCore) -> None:
+        """Recusa um plano delegado trocado antes de qualquer efeito.
+
+        O envelope de lifecycle aponta para um ``transactionPlanId``. A leitura
+        desse arquivo deve provar que ainda é o plano pendente deste adapter,
+        dentro da raiz de cores gerenciada, e que não carrega alvo adicional.
+        """
+        manifest, _source, core_id, _digest = self._details(prepared.manifest.id)
+        plan = prepared.plan
+        if plan.status != "pending":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano de core não está pendente")
+        if plan.kind not in {"libretro.install", "libretro.uninstall"}:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence a um core Libretro")
+        if Path(plan.root) != self._root:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano de core aponta para outra raiz")
+        allowed = {self._target(core_id), self._metadata_path(manifest.id)}
+        if any(Path(action.target) not in allowed for action in plan.actions):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="plano de core contém alvo não permitido"
+            )
+
     def rollback(self, adapter_id: str, operation_id: str) -> transaction.RollbackResult:
         result = transaction.rollback(operation_id, reason="libretro-manual")
         self.persist_status(adapter_id)
