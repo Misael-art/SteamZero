@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-stella", "kind": "core", "presentation": {"displayName": "Libretro: Stella", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["atari-classics"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "stella", "sha256": "d171bb44c891bb6127ebc6ed35cc43fb4b6d5a26199dc687bf1c6cc011fb6ccc"}, "requires": ["retroarch"], "license": "GPL-2.0-only", "upstream": "https://stella-emu.github.io/", "verify": {"smokeTest": ["core-present"]}
+}

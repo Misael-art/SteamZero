@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-freeintv", "kind": "core", "presentation": {"displayName": "Libretro: FreeIntv", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["intellivision"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "freeintv", "sha256": "878600d936970a36c0802f9fe062a3761a0d338f38716e3608f8a89c3657eaa4"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

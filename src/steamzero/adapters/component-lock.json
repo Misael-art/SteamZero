@@ -79,6 +79,193 @@
       }
     },
     {
+      "id": "libretro-bluemsx",
+      "manifestHash": "0a65acd544999b29b8773a44ead3fb7e425382fa6e589dd70af8f41e80b21ad4",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-fbneo",
+      "manifestHash": "1aaa9d56840ecd4108ae63255a40e0cf8907e7b29e43afa71f2e462f1c3cf9a4",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-freeintv",
+      "manifestHash": "8c4fc3e8ad2962bf8611bd460b0921a607c03daffcafa377c3e9e7bb6c8f7fe5",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-fuse",
+      "manifestHash": "1aae7c1212a34cce46ddaf7b01b51f56da51e4c283311c8119727b1827963e3b",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-genesis-plus-gx",
+      "manifestHash": "55d5e63c8951d9de5dc0d147e5cf90c604d937771d19dd313b214ce352134c8a",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mednafen-ngp",
+      "manifestHash": "0eb207c183e5f82fa8a8c3993aa655224d8c5f25254e8c7bf1705d1addc54ef7",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mednafen-pce",
+      "manifestHash": "d249b35f5843448f45bb865b8ef2aa07ed0194dbdea3f29c155809486a783b79",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mednafen-vb",
+      "manifestHash": "f6b68490c26fbc716bb5d4412f231ba59155c3b4192ebe01d1ac8b2c8d4f0f81",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mednafen-wswan",
+      "manifestHash": "cc3ad3940c22ecbe2d6240c65a9afd4389a9694276596d39b114b975b54aab98",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mesen",
+      "manifestHash": "42a8f5612bda54e55d764fa9f39d9de3c51e3076a7315dca73bd897dde7d081c",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mgba",
+      "manifestHash": "7ca5216f43e95a1ae4f9148cecc931ff641bf9fc5e48403981402701067da48f",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-mupen64plus-next",
+      "manifestHash": "27555db59b1880063d0efb2c466bba20d8d1ec0b8aff73e87a82997d7bcb4229",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-opera",
+      "manifestHash": "bceb2e98c4aab6ec690c39df247335e8a10574bb2865aa9c2a5109d361bc0875",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-puae",
+      "manifestHash": "ba66d2967bb2374418dd6aa0cd314a18feb55efcf5ac3c1aca122bc3b5eca898",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-snes9x",
+      "manifestHash": "5361ac9c7c76f92c8bdd9acf7a641facbd6bd1dee9a525ffd02bfece3314ea7d",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-stella",
+      "manifestHash": "0eb2b801d5ce48186008d287686608f2237a00e25b21cd4ceee753087fc02bbe",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
+      "id": "libretro-vice-x64",
+      "manifestHash": "6df7fd81170715f92f036d6256e0cd12dce5a1481763c8824d53e5c60eb34579",
+      "source": {
+        "type": "archive",
+        "version": "1.22.2",
+        "priority": 1,
+        "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z",
+        "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"
+      }
+    },
+    {
       "id": "melonds",
       "manifestHash": "8c6f94b55d7ce9fa87d74e21a55cb5197aae490546865a0bab339e917479daa9",
       "source": {

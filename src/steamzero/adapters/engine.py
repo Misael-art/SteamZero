@@ -37,17 +37,29 @@ class HttpsArtifactPort:
     def fetch(self, source: AdapterSource) -> bytes:
         if source.url is None or urlparse(source.url).scheme != "https":
             raise SteamZeroError("E-SUPPLY-REMOTE-FAILED", detail="fonte portátil exige URL HTTPS")
+        parsed = urlparse(source.url)
+        allowed_hosts = {
+            "github.com",
+            "objects.githubusercontent.com",
+            "github-releases.githubusercontent.com",
+        }
+        if source.type == "archive":
+            # A família archive é exclusiva dos cores Libretro, sempre
+            # coberta pelo checksum do manifesto/lock. Não amplia a allowlist
+            # de AppImage ou binários portáteis arbitrários.
+            if parsed.hostname != "buildbot.libretro.com":
+                raise SteamZeroError(
+                    "E-SUPPLY-REMOTE-FAILED",
+                    detail="arquivo de core exige o Buildbot Libretro pinado",
+                )
+            allowed_hosts.add("buildbot.libretro.com")
         try:
             return fetch_bytes(
                 source.url,
                 max_bytes=self._max_bytes,
                 timeout_seconds=60.0,
                 headers={"User-Agent": "SteamZero/0.1 (+https://github.com/Misael-art/SteamZero)"},
-                allowed_redirect_hosts={
-                    "github.com",
-                    "objects.githubusercontent.com",
-                    "github-releases.githubusercontent.com",
-                },
+                allowed_redirect_hosts=allowed_hosts,
             )
         except NetworkFailure as exc:
             raise SteamZeroError(

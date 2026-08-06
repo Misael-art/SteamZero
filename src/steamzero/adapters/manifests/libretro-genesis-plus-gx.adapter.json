@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-genesis-plus-gx", "kind": "core", "presentation": {"displayName": "Libretro: Genesis Plus GX", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["mega-drive", "master-system", "game-gear", "sega-cd-32x"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "genesis_plus_gx", "sha256": "07c104765dcfe1f588d637c0fda1ab3987f86b94835d43b6506b0236948310b1"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

@@ -26,7 +26,8 @@
       "enum": [
         "emulator",
         "frontend",
-        "tool"
+        "tool",
+        "core"
       ]
     },
     "platforms": {
@@ -61,6 +62,24 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/source"
+      }
+    },
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_]*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
       }
     },
     "paths": {
@@ -215,7 +234,8 @@
           "enum": [
             "flatpak",
             "appimage",
-            "native"
+            "native",
+            "archive"
           ]
         },
         "version": {

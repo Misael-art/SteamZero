@@ -69,6 +69,14 @@ class AdapterPresentation:
 
 
 @dataclass(frozen=True)
+class CoreProvision:
+    """Core Libretro materializado por um adapter de tipo ``core``."""
+
+    id: str
+    sha256: str
+
+
+@dataclass(frozen=True)
 class AdapterTombstone:
     """Decisão explícita de retirada com manifesto histórico verificável."""
 
@@ -100,6 +108,7 @@ class AdapterManifest:
     requires_keys: KeyRequirement | None = None
     requires_firmware: FirmwareRequirement | None = None
     presentation: AdapterPresentation | None = None
+    core: CoreProvision | None = None
 
     def preferred_source(
         self, source_type: str | None = None, *, allow_eol: bool = True
@@ -192,6 +201,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             )
 
     platforms = tuple(data["platforms"])
+    core = _parse_core(data.get("core"), data["id"], data["kind"], sources)
     requires_keys = _parse_key_requirement(data.get("requiresKeys"), data["id"], platforms)
     requires_firmware = _parse_firmware_requirement(
         data.get("requiresFirmware"), data["id"], platforms
@@ -215,6 +225,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         requires_keys=requires_keys,
         requires_firmware=requires_firmware,
         presentation=_parse_presentation(data.get("presentation")),
+        core=core,
     )
 
 
@@ -273,6 +284,26 @@ def _parse_presentation(value: Any) -> AdapterPresentation | None:
     if not isinstance(name, str) or not isinstance(icon, str) or not name or not icon:
         return None
     return AdapterPresentation(display_name=name, icon_asset=icon)
+
+
+def _parse_core(
+    value: Any, adapter_id: str, kind: str, sources: tuple[AdapterSource, ...]
+) -> CoreProvision | None:
+    """Impõe que adapter de core seja uma promessa executável, não decorativa."""
+    if kind != "core":
+        if value is not None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"adapter {adapter_id} não-core declara core"
+            )
+        return None
+    if not isinstance(value, dict):
+        raise SteamZeroError("E-API-SCHEMA", detail=f"adapter core {adapter_id} sem core")
+    if len(sources) != 1 or sources[0].type != "archive":
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=f"adapter core {adapter_id} exige uma fonte archive pinada",
+        )
+    return CoreProvision(id=str(value["id"]), sha256=str(value["sha256"]))
 
 
 def _parse_key_requirement(

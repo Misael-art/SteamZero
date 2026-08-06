@@ -59,6 +59,7 @@ from jsonschema import ValidationError
 
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
+from steamzero.adapters.libretro_cores import LibretroCoreExecutor, PreparedLibretroCore
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, transaction
@@ -183,6 +184,15 @@ def route_for(manifest: AdapterManifest) -> LifecycleRoute:
             )
         return LifecycleRoute(
             manifest.id, source.type, "engine", True, target_version=source.version
+        )
+
+    if source.type == "archive" and manifest.kind == "core" and manifest.core is not None:
+        if source.sha256 is None:
+            return LifecycleRoute(
+                manifest.id, source.type, "none", False, "arquivo de core sem sha256"
+            )
+        return LifecycleRoute(
+            manifest.id, source.type, "libretro", True, target_version=source.version
         )
 
     return LifecycleRoute(
@@ -426,6 +436,7 @@ class ComponentLifecycle:
         which: Callable[[str], str | None] = shutil.which,
         spawn: Spawn = spawn_detached,
         now: Callable[[], datetime] | None = None,
+        libretro_core_root: Path | None = None,
     ) -> None:
         self._store = store
         self._registry = registry
@@ -434,6 +445,7 @@ class ComponentLifecycle:
         self._which = which
         self._spawn = spawn
         self._now = now or (lambda: datetime.now(UTC))
+        self._libretro_core_root = libretro_core_root
 
     # ------------------------------------------------------------------ status
     def status(self, adapter_id: str) -> dict[str, Any]:
@@ -468,6 +480,8 @@ class ComponentLifecycle:
                 return normalize_status(self._flatpak().status(adapter_id), route)
             if route.executor == "engine":
                 return normalize_status(self._engine().status(adapter_id), route)
+            if route.executor == "libretro":
+                return normalize_status(self._libretro().status(adapter_id), route)
             if route.end_of_life and route.source_type in FLATPAK_SOURCES:
                 # EOL não é ausência: o executor ainda observa o deployment.
                 # Consultá-lo preserva versão/origem/existência instalada.
@@ -707,6 +721,25 @@ class ComponentLifecycle:
             preview = delegated_plan.preview
             rollback_guarantee = delegated_plan.rollback_guarantee
             confirm_token = delegated_plan.confirm_token
+        elif route.executor == "libretro":
+            cores = self._libretro()
+            current = cores.status(adapter_id)
+            if action == "uninstall":
+                prepared_core = cores.plan_uninstall(adapter_id)
+                effective = "uninstall"
+            elif action == "repair":
+                prepared_core = cores.plan_install(adapter_id, force=True)
+                effective = "repair"
+            else:
+                prepared_core = cores.plan_install(adapter_id)
+                effective = "update" if current["state"] in {"installed", "outdated"} else "install"
+                if not prepared_core.plan.actions:
+                    effective = "noop"
+            delegated = {"transactionPlanId": prepared_core.plan.plan_id}
+            fingerprint = self._source_fingerprint(manifest, route)
+            preview = prepared_core.plan.preview
+            rollback_guarantee = prepared_core.plan.rollback_guarantee
+            confirm_token = prepared_core.plan.confirm_token
         else:
             engine = self._engine()
             current = engine.status(adapter_id)
@@ -840,6 +873,25 @@ class ComponentLifecycle:
                 "executor": "flatpak",
                 "planVersion": 2,
             }
+        if envelope.executor == "libretro":
+            cores = self._libretro()
+            source = manifest.preferred_source("archive", allow_eol=False)
+            plan = transaction.load_plan(str(envelope.delegated["transactionPlanId"]))
+            prepared_core = PreparedLibretroCore(manifest, source, plan)
+            with ResourceLock(
+                f"component:libretro:{envelope.adapter_id}",
+                job_id=ids.new_ulid(),
+                lease_seconds=3600,
+            ):
+                core_result = cores.apply(prepared_core, confirm_token)
+            self._mark_applied(envelope)
+            return {
+                "status": core_result.status,
+                "operationId": core_result.operation_id,
+                "adapterId": envelope.adapter_id,
+                "executor": "libretro",
+                "planVersion": 2,
+            }
         engine = self._engine()
         source = manifest.preferred_source(route.source_type, allow_eol=False)
         plan = transaction.load_plan(str(envelope.delegated["transactionPlanId"]))
@@ -912,16 +964,26 @@ class ComponentLifecycle:
                 "executor": "flatpak",
             }
         rolled = transaction.rollback(operation_id, reason="component-manual")
-        adapter_id = self._engine_operation_adapter(operation_id)
+        adapter_id = self._transaction_operation_adapter(operation_id)
         if adapter_id is not None:
             # O rollback já restaurou os arquivos; a persistência no banco
             # é apenas o espelho — falha aqui não invalida a operação.
             with suppress(Exception):
-                self._engine().persist_status(adapter_id)
+                route = route_for(self._registry.get(adapter_id))
+                if route.executor == "libretro":
+                    self._libretro().persist_status(adapter_id)
+                else:
+                    self._engine().persist_status(adapter_id)
+        executor = "engine"
+        if (
+            adapter_id is not None
+            and route_for(self._registry.get(adapter_id)).executor == "libretro"
+        ):
+            executor = "libretro"
         return {
             "status": rolled.status,
             "operationId": rolled.operation_id,
-            "executor": "engine",
+            "executor": executor,
             "restored": list(rolled.restored),
             "adapterId": adapter_id,
         }
@@ -951,13 +1013,18 @@ class ComponentLifecycle:
                 raise SteamZeroError("E-STATE-INTEGRITY", detail="operação sem componente")
             self._registry.get(adapter_id)
             return adapter_id
-        return self._engine_operation_adapter(operation_id)
+        return self._transaction_operation_adapter(operation_id)
 
     # ---------------------------------------------------------- launch / stop
     def launch(self, adapter_id: str) -> dict[str, Any]:
         """Inicia o componente instalado, roteado pela família da fonte."""
         manifest = self._registry.get(adapter_id)
         route = route_for(manifest)
+        if route.executor == "libretro":
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail="core Libretro é carregado pelo RetroArch e não possui launch próprio",
+            )
         current = self.status(adapter_id)
         if current["state"] not in {"installed", "outdated"}:
             raise SteamZeroError(
@@ -990,6 +1057,11 @@ class ComponentLifecycle:
         """
         manifest = self._registry.get(adapter_id)
         route = route_for(manifest)
+        if route.executor == "libretro":
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail="core Libretro não possui configuração executável própria",
+            )
         arguments = self._open_config_arguments(manifest)
         if arguments is None:
             raise SteamZeroError(
@@ -1050,6 +1122,12 @@ class ComponentLifecycle:
                 detail=f"{adapter_id} foi retirado: {tombstone.reason}",
             )
         route = route_for(self._registry.get(adapter_id))
+        if route.executor == "libretro":
+            return {
+                "status": "not-supported",
+                "componentId": adapter_id,
+                "detail": "core Libretro é encerrado junto do RetroArch",
+            }
         if route.executor == "flatpak" or (
             route.end_of_life and route.source_type in FLATPAK_SOURCES
         ):
@@ -1216,6 +1294,14 @@ class ComponentLifecycle:
     def _engine(self) -> AdapterEngine:
         return AdapterEngine(self._store, self._registry, self._artifacts)
 
+    def _libretro(self) -> LibretroCoreExecutor:
+        return LibretroCoreExecutor(
+            self._store,
+            self._registry,
+            self._artifacts,
+            core_root=self._libretro_core_root,
+        )
+
     def _flatpak(self) -> FlatpakExecutor:
         return FlatpakExecutor(self._store, self._registry, self._flatpak_factory())
 
@@ -1230,6 +1316,18 @@ class ComponentLifecycle:
                     "ref": source.ref,
                     "remote": source.remote,
                     "targetCommit": source.version,
+                }
+            if route.executor == "libretro":
+                source = manifest.preferred_source("archive", allow_eol=False)
+                if manifest.core is None:
+                    raise SteamZeroError("E-API-SCHEMA", detail="core sem declaração de conteúdo")
+                return {
+                    "type": "libretro-archive",
+                    "version": source.version,
+                    "archiveSha256": source.sha256,
+                    "coreId": manifest.core.id,
+                    "coreSha256": manifest.core.sha256,
+                    "manifestHash": manifest.manifest_hash,
                 }
             source = manifest.preferred_source(route.source_type, allow_eol=False)
             return {
@@ -1478,8 +1576,7 @@ class ComponentLifecycle:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de componente")
         return data
 
-    @staticmethod
-    def _engine_operation_adapter(operation_id: str) -> str | None:
+    def _transaction_operation_adapter(self, operation_id: str) -> str | None:
         """Deriva o adapter de uma operação transacional a partir do journal.
 
         Best-effort: falha em derivar devolve ``None`` e o rollback continua
@@ -1489,9 +1586,17 @@ class ComponentLifecycle:
             records = journal.read_records(operation_id)
             begin = next(record for record in records if record.get("type") == "operation.begin")
             plan = transaction.load_plan(str(begin["planId"]))
-            if not plan.kind.startswith("component."):
+            if not plan.kind.startswith(("component.", "libretro.")):
                 return None
             root = Path(plan.root)
+            if plan.kind.startswith("libretro."):
+                for manifest in self._registry.list():
+                    if manifest.kind != "core" or manifest.core is None:
+                        continue
+                    target = root / f"{manifest.core.id}_libretro.so"
+                    if any(Path(action.target) == target for action in plan.actions):
+                        return manifest.id
+                return None
             for action in plan.actions:
                 try:
                     relative = Path(action.target).relative_to(root)

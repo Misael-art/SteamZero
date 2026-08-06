@@ -47,13 +47,18 @@ def test_matrix_does_not_read_the_host() -> None:
             os.environ["XDG_STATE_HOME"] = original
 
 
-def test_core_providers_are_derived_not_asserted() -> None:
-    """Se algum dia um adapter entregar core, a matriz precisa refletir sozinha."""
+def test_core_providers_require_a_pinned_executor() -> None:
+    """Cobertura vem do core declarado pelo executor, nunca de texto solto."""
     from steamzero.adapters.registry import AdapterRegistry
 
-    manifests = AdapterRegistry.bundled().list()
-    assert capability_matrix._core_providers(manifests) == {
-        manifest.id for manifest in manifests if manifest.kind == "core"
+    registry = AdapterRegistry.bundled()
+    manifests = registry.list()
+    routes = capability_matrix.lifecycle.routes_for(registry)
+    assert len([manifest for manifest in manifests if manifest.kind == "core"]) == 17
+    assert capability_matrix._core_providers(manifests, routes) == {
+        manifest.core.id
+        for manifest in manifests
+        if manifest.kind == "core" and manifest.core is not None
     }
 
 

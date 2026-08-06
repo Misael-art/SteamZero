@@ -15,12 +15,12 @@ host, que vive nos relatórios de certificação.
 
 | dimensão | valor |
 |---|---|
-| adapters declarados | 16 |
-| adapters instaláveis pelo lifecycle | 16 de 16 |
+| adapters declarados | 33 |
+| adapters instaláveis pelo lifecycle | 33 de 33 |
 | plataformas declaradas | 36 |
-| plataformas com bloqueio | 21 de 36 |
+| plataformas com bloqueio | 0 de 36 |
 | cores libretro exigidos | 17 |
-| adapters que entregam core | 0 |
+| cores libretro com instalador | 17 |
 | ações de UI publicadas | 116 |
 | ações declaradas indisponíveis | 6 |
 
@@ -38,6 +38,23 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | duckstation | emulator | appimage | não | engine | sim | 10 | — |
 | eden | emulator | appimage | não | engine | sim | 10 | — |
 | flycast | emulator | flatpak | não | flatpak | sim | 10 | — |
+| libretro-bluemsx | core | archive | não | libretro | sim | 7 | — |
+| libretro-fbneo | core | archive | não | libretro | sim | 7 | — |
+| libretro-freeintv | core | archive | não | libretro | sim | 7 | — |
+| libretro-fuse | core | archive | não | libretro | sim | 7 | — |
+| libretro-genesis-plus-gx | core | archive | não | libretro | sim | 7 | — |
+| libretro-mednafen-ngp | core | archive | não | libretro | sim | 7 | — |
+| libretro-mednafen-pce | core | archive | não | libretro | sim | 7 | — |
+| libretro-mednafen-vb | core | archive | não | libretro | sim | 7 | — |
+| libretro-mednafen-wswan | core | archive | não | libretro | sim | 7 | — |
+| libretro-mesen | core | archive | não | libretro | sim | 7 | — |
+| libretro-mgba | core | archive | não | libretro | sim | 7 | — |
+| libretro-mupen64plus-next | core | archive | não | libretro | sim | 7 | — |
+| libretro-opera | core | archive | não | libretro | sim | 7 | — |
+| libretro-puae | core | archive | não | libretro | sim | 7 | — |
+| libretro-snes9x | core | archive | não | libretro | sim | 7 | — |
+| libretro-stella | core | archive | não | libretro | sim | 7 | — |
+| libretro-vice-x64 | core | archive | não | libretro | sim | 7 | — |
 | melonds | emulator | flatpak | não | flatpak | sim | 10 | — |
 | pcsx2 | emulator | flatpak | não | flatpak | sim | 10 | — |
 | ppsspp | emulator | flatpak | não | flatpak | sim | 10 | — |
@@ -81,32 +98,32 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | plataforma | emulador primário | executor | core exigido | BIOS declarada | bloqueio |
 |---|---|---|---|---|---|
 | switch | eden | engine | — | — | nenhum |
-| nintendo-handheld | retroarch | flatpak | mgba | — | core `mgba` sem instalador |
-| nes-famicom | retroarch | flatpak | mesen | — | core `mesen` sem instalador |
-| snes | retroarch | flatpak | snes9x | — | core `snes9x` sem instalador |
-| mega-drive | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
-| arcade | retroarch | flatpak | fbneo | — | core `fbneo` sem instalador |
+| nintendo-handheld | retroarch | flatpak | mgba | — | nenhum |
+| nes-famicom | retroarch | flatpak | mesen | — | nenhum |
+| snes | retroarch | flatpak | snes9x | — | nenhum |
+| mega-drive | retroarch | flatpak | genesis_plus_gx | — | nenhum |
+| arcade | retroarch | flatpak | fbneo | — | nenhum |
 | playstation | duckstation | engine | — | — | nenhum |
 | geforce-now | serviço cloud | browser | — | — | nenhum |
 | xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |
 | amazon-luna | serviço cloud | browser | — | — | nenhum |
 | nintendo-console | dolphin | flatpak | — | — | nenhum |
-| master-system | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
-| game-gear | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
-| pc-engine-turbografx | retroarch | flatpak | mednafen_pce | — | core `mednafen_pce` sem instalador |
-| atari-classics | retroarch | flatpak | stella | — | core `stella` sem instalador |
-| neo-geo-pocket | retroarch | flatpak | mednafen_ngp | — | core `mednafen_ngp` sem instalador |
-| wonderswan | retroarch | flatpak | mednafen_wswan | — | core `mednafen_wswan` sem instalador |
-| msx | retroarch | flatpak | bluemsx | — | core `bluemsx` sem instalador |
-| zx-spectrum | retroarch | flatpak | fuse | — | core `fuse` sem instalador |
-| commodore-64 | retroarch | flatpak | vice_x64 | — | core `vice_x64` sem instalador |
-| amiga | retroarch | flatpak | puae | kick34005.A500, kick40068.A1200 | core `puae` sem instalador |
-| colecovision | retroarch | flatpak | bluemsx | — | core `bluemsx` sem instalador |
-| intellivision | retroarch | flatpak | freeintv | — | core `freeintv` sem instalador |
-| virtual-boy | retroarch | flatpak | mednafen_vb | — | core `mednafen_vb` sem instalador |
-| three-do | retroarch | flatpak | opera | panafz1.bin | core `opera` sem instalador |
-| sega-cd-32x | retroarch | flatpak | genesis_plus_gx | bios_CD_E.bin, bios_CD_U.bin, bios_CD_J.bin | core `genesis_plus_gx` sem instalador |
-| nintendo-64 | retroarch | flatpak | mupen64plus_next | — | core `mupen64plus_next` sem instalador |
+| master-system | retroarch | flatpak | genesis_plus_gx | — | nenhum |
+| game-gear | retroarch | flatpak | genesis_plus_gx | — | nenhum |
+| pc-engine-turbografx | retroarch | flatpak | mednafen_pce | — | nenhum |
+| atari-classics | retroarch | flatpak | stella | — | nenhum |
+| neo-geo-pocket | retroarch | flatpak | mednafen_ngp | — | nenhum |
+| wonderswan | retroarch | flatpak | mednafen_wswan | — | nenhum |
+| msx | retroarch | flatpak | bluemsx | — | nenhum |
+| zx-spectrum | retroarch | flatpak | fuse | — | nenhum |
+| commodore-64 | retroarch | flatpak | vice_x64 | — | nenhum |
+| amiga | retroarch | flatpak | puae | kick34005.A500, kick40068.A1200 | nenhum |
+| colecovision | retroarch | flatpak | bluemsx | — | nenhum |
+| intellivision | retroarch | flatpak | freeintv | — | nenhum |
+| virtual-boy | retroarch | flatpak | mednafen_vb | — | nenhum |
+| three-do | retroarch | flatpak | opera | panafz1.bin | nenhum |
+| sega-cd-32x | retroarch | flatpak | genesis_plus_gx | bios_CD_E.bin, bios_CD_U.bin, bios_CD_J.bin | nenhum |
+| nintendo-64 | retroarch | flatpak | mupen64plus_next | — | nenhum |
 | playstation-2 | pcsx2 | flatpak | — | — | nenhum |
 | playstation-portable | ppsspp | flatpak | — | — | nenhum |
 | dreamcast | flycast | flatpak | — | — | nenhum |
@@ -119,7 +136,7 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 
 ## Cores libretro exigidos
 
-17 cores são exigidos pelos perfis de lançamento e 0 adapter(s) declaram `kind: core`. Enquanto esse número for zero, nenhuma plataforma que dependa de core é jogável pelo produto: o core precisa ser instalado por fora.
+17 cores são exigidos pelos perfis de lançamento e 17 têm adapter, hash de conteúdo e executor.
 
 `bluemsx`, `fbneo`, `freeintv`, `fuse`, `genesis_plus_gx`, `mednafen_ngp`, `mednafen_pce`, `mednafen_vb`, `mednafen_wswan`, `mesen`, `mgba`, `mupen64plus_next`, `opera`, `puae`, `snes9x`, `stella`, `vice_x64`
 

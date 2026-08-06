@@ -503,10 +503,10 @@ class TestTheMigrationChainIsWellFormed:
         finally:
             store.close()
 
-    def test_v16_migrates_through_bios_lifecycle_and_operation(
+    def test_v16_migrates_through_bios_lifecycle_operation_and_cores(
         self, db_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """17--19 coexistem: BIOS primeiro, depois estados e operação de componente."""
+        """17--20 coexistem: BIOS, lifecycle, operação e cores de componente."""
         full_migrations = state.MIGRATIONS
         with monkeypatch.context() as legacy:
             legacy.setattr(state, "MIGRATIONS", full_migrations[:16])
@@ -516,7 +516,7 @@ class TestTheMigrationChainIsWellFormed:
 
         migrated = state.open_state(db_path)
         try:
-            assert migrated.user_version == 19 == state.LATEST
+            assert migrated.user_version == 20 == state.LATEST
             tables = {
                 row["name"]
                 for row in migrated.adapter_connection()

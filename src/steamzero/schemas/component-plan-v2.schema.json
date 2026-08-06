@@ -24,7 +24,7 @@
     "planId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
     "confirmToken": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
     "adapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
-    "executor": {"enum": ["engine", "flatpak"]},
+    "executor": {"enum": ["engine", "flatpak", "libretro"]},
     "action": {"enum": ["install", "update", "uninstall", "noop", "repair", "stop"]},
     "status": {"enum": ["pending", "applied", "aborted"]},
     "createdAt": {
@@ -41,7 +41,7 @@
       "additionalProperties": true,
       "required": ["type"],
       "properties": {
-        "type": {"enum": ["portable", "flatpak"]}
+        "type": {"enum": ["portable", "flatpak", "libretro-archive"]}
       }
     },
     "delegated": {
@@ -71,6 +71,17 @@
     {
       "if": {
         "properties": {"executor": {"const": "engine"}},
+        "required": ["executor"]
+      },
+      "then": {
+        "properties": {
+          "delegated": {"required": ["transactionPlanId"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"executor": {"const": "libretro"}},
         "required": ["executor"]
       },
       "then": {

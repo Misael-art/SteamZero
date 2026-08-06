@@ -45,7 +45,7 @@ class TestRouteSelection:
         routes = lifecycle.routes_for(registry)
         assert set(routes) == {m.id for m in registry.list()}
         for adapter_id, route in routes.items():
-            assert route.executor in {"engine", "flatpak", "none"}
+            assert route.executor in {"engine", "flatpak", "libretro", "none"}
             if not route.installable:
                 assert route.reason, f"{adapter_id} não instalável sem motivo dizível"
 

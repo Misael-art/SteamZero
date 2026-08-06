@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-mgba", "kind": "core", "presentation": {"displayName": "Libretro: mGBA", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["nintendo-handheld"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "mgba", "sha256": "564c32a7214fe52f7d3b7ead5fbe70a7e45b5ccb3b52da2c07bc1b6149de75a5"}, "requires": ["retroarch"], "license": "MPL-2.0", "upstream": "https://mgba.io/", "verify": {"smokeTest": ["core-present"]}
+}

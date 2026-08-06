@@ -64,14 +64,24 @@ def _table(headers: Iterable[str], rows: Iterable[Iterable[object]]) -> str:
     return "\n".join(lines)
 
 
-def _core_providers(manifests: Iterable[AdapterManifest]) -> set[str]:
-    """Adapters que entregam core de emulação, por declaração de ``kind``.
+def _core_providers(
+    manifests: Iterable[AdapterManifest], routes: dict[str, lifecycle.LifecycleRoute]
+) -> set[str]:
+    """Nomes de cores com adapter, hash do binário e executor instalável.
 
-    Derivado, não afirmado: se nenhum adapter declara ``kind: core``, o produto
-    não tem por onde instalar um core, e a matriz precisa dizer isso em vez de
-    exibir a plataforma como jogável.
+    Um manifesto sem executor ainda é apenas uma intenção. Contá-lo aqui
+    liberaria plataformas que o produto não consegue preparar, exatamente o
+    tipo de bloqueio falso (ou promessa falsa) que a matriz precisa impedir.
     """
-    return {manifest.id for manifest in manifests if manifest.kind == "core"}
+    return {
+        manifest.core.id
+        for manifest in manifests
+        if manifest.kind == "core"
+        and manifest.core is not None
+        and (route := routes.get(manifest.id)) is not None
+        and route.executor == "libretro"
+        and route.installable
+    }
 
 
 def _emulator_section(registry: AdapterRegistry) -> tuple[str, dict[str, lifecycle.LifecycleRoute]]:
@@ -143,7 +153,7 @@ def _platform_section(
         blockers = []
         if route is None or not route.installable:
             blockers.append("emulador não instalável")
-        if core and not core_providers:
+        if core and core not in core_providers:
             blockers.append(f"core `{core}` sem instalador")
         if blockers:
             blocked += 1
@@ -268,9 +278,8 @@ def render() -> str:
     registry = AdapterRegistry.bundled()
     platforms = PlatformRegistry.bundled()
     manifests = registry.list()
-    core_providers = _core_providers(manifests)
-
     emulators, routes = _emulator_section(registry)
+    core_providers = _core_providers(manifests, routes)
     action_table, _violations, active_emulators, with_open_config = _action_matrix(registry, routes)
     platform_table, cores_needed, blocked_platforms = _platform_section(
         platforms, routes, core_providers
@@ -291,7 +300,7 @@ def render() -> str:
                 ("plataformas declaradas", len(platforms.list())),
                 ("plataformas com bloqueio", f"{blocked_platforms} de {len(platforms.list())}"),
                 ("cores libretro exigidos", len(cores_needed)),
-                ("adapters que entregam core", len(core_providers)),
+                ("cores libretro com instalador", len(core_providers)),
                 ("ações de UI publicadas", total_actions),
                 ("ações declaradas indisponíveis", blocked_actions),
             ),
@@ -335,7 +344,7 @@ def render() -> str:
         "",
         (
             f"{len(cores_needed)} cores são exigidos pelos perfis de lançamento e "
-            f"{len(core_providers)} adapter(s) declaram `kind: core`."
+            f"{len(core_providers)} têm adapter, hash de conteúdo e executor."
             + (
                 " Enquanto esse número for zero, nenhuma plataforma que dependa de core"
                 " é jogável pelo produto: o core precisa ser instalado por fora."
