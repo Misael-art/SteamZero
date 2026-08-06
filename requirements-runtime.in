@@ -1,4 +1,3 @@
 # Runtime mínimo do núcleo. O lock correspondente é usado pelo instalador host.
 jsonschema==4.26.0
 Pillow==12.3.0
-py7zr==1.0.0

@@ -9,7 +9,6 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 
-import py7zr
 import pytest
 
 from steamzero.adapters.libretro_cores import LibretroCoreExecutor
@@ -40,13 +39,17 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[state.Sta
     opened.close()
 
 
-def _archive(tmp_path: Path, core_id: str, payload: bytes) -> bytes:
-    source = tmp_path / "input.so"
-    fs.write_atomic(source, payload)
-    archive_path = tmp_path / "cores.7z"
-    with py7zr.SevenZipFile(archive_path, mode="w") as archive:
-        archive.write(source, arcname=_PREFIX + f"{core_id}_libretro.so")
-    return archive_path.read_bytes()
+def _archive_reader(payload: bytes, core_id: str):
+    expected = _PREFIX + f"{core_id}_libretro.so"
+
+    def read_member(_archive: bytes, target: str) -> bytes:
+        if target != expected:
+            raise SteamZeroError(
+                "E-SUPPLY-REMOTE-FAILED", detail="arquivo não contém exatamente o core declarado"
+            )
+        return payload
+
+    return read_member
 
 
 def _registry(archive: bytes, payload: bytes) -> AdapterRegistry:
@@ -62,10 +65,14 @@ def test_install_verify_rollback_and_refuse_unowned_overwrite(
     store: state.StateStore, tmp_path: Path
 ) -> None:
     payload = b"real-libretro-core"
-    archive = _archive(tmp_path, "mgba", payload)
+    archive = b"pinned-archive"
     root = tmp_path / "cores"
     executor = LibretroCoreExecutor(
-        store, _registry(archive, payload), Artifacts(archive), core_root=root
+        store,
+        _registry(archive, payload),
+        Artifacts(archive),
+        core_root=root,
+        archive_reader=_archive_reader(payload, "mgba"),
     )
 
     prepared = executor.plan_install("libretro-mgba")
@@ -85,12 +92,13 @@ def test_install_verify_rollback_and_refuse_unowned_overwrite(
 def test_refuses_archive_without_the_exact_declared_member(
     store: state.StateStore, tmp_path: Path
 ) -> None:
-    archive = _archive(tmp_path, "other", b"not-mgba")
+    archive = b"pinned-archive-with-other-core"
     executor = LibretroCoreExecutor(
         store,
         _registry(archive, b"not-mgba"),
         Artifacts(archive),
         core_root=tmp_path / "cores",
+        archive_reader=_archive_reader(b"not-mgba", "other"),
     )
 
     with pytest.raises(SteamZeroError, match="não contém exatamente o core declarado"):
@@ -101,12 +109,13 @@ def test_component_lifecycle_keeps_plan_apply_and_rollback_for_a_core(
     store: state.StateStore, tmp_path: Path
 ) -> None:
     payload = b"lifecycle-core"
-    archive = _archive(tmp_path, "mgba", payload)
+    archive = b"pinned-archive"
     lifecycle = ComponentLifecycle(
         store,
         _registry(archive, payload),
         artifacts=Artifacts(archive),
         libretro_core_root=tmp_path / "cores",
+        libretro_archive_reader=_archive_reader(payload, "mgba"),
     )
 
     planned = lifecycle.plan("libretro-mgba")
@@ -123,12 +132,13 @@ def test_component_lifecycle_refuses_a_substituted_core_delegate(
     store: state.StateStore, tmp_path: Path
 ) -> None:
     payload = b"delegate-core"
-    archive = _archive(tmp_path, "mgba", payload)
+    archive = b"pinned-archive"
     lifecycle = ComponentLifecycle(
         store,
         _registry(archive, payload),
         artifacts=Artifacts(archive),
         libretro_core_root=tmp_path / "cores",
+        libretro_archive_reader=_archive_reader(payload, "mgba"),
     )
     planned = lifecycle.plan("libretro-mgba")
     alien = transaction.plan_write_files({}, root=tmp_path / "not-cores", kind="component.install")

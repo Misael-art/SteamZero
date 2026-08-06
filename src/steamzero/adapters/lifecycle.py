@@ -59,7 +59,11 @@ from jsonschema import ValidationError
 
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
-from steamzero.adapters.libretro_cores import LibretroCoreExecutor, PreparedLibretroCore
+from steamzero.adapters.libretro_cores import (
+    ArchiveReader,
+    LibretroCoreExecutor,
+    PreparedLibretroCore,
+)
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
 from steamzero.api import contracts
 from steamzero.core import fs, ids, journal, paths, transaction
@@ -437,6 +441,7 @@ class ComponentLifecycle:
         spawn: Spawn = spawn_detached,
         now: Callable[[], datetime] | None = None,
         libretro_core_root: Path | None = None,
+        libretro_archive_reader: ArchiveReader | None = None,
     ) -> None:
         self._store = store
         self._registry = registry
@@ -446,6 +451,7 @@ class ComponentLifecycle:
         self._spawn = spawn
         self._now = now or (lambda: datetime.now(UTC))
         self._libretro_core_root = libretro_core_root
+        self._libretro_archive_reader = libretro_archive_reader
 
     # ------------------------------------------------------------------ status
     def status(self, adapter_id: str) -> dict[str, Any]:
@@ -1301,6 +1307,7 @@ class ComponentLifecycle:
             self._registry,
             self._artifacts,
             core_root=self._libretro_core_root,
+            archive_reader=self._libretro_archive_reader,
         )
 
     def _flatpak(self) -> FlatpakExecutor:

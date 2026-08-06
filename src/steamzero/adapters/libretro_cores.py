@@ -11,12 +11,13 @@ confirmável. Arquivo de terceiro no destino não é sobrescrito.
 
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-import py7zr
 
 from steamzero.adapters.engine import ArtifactPort
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry, AdapterSource
@@ -29,6 +30,11 @@ _ARCHIVE_PREFIX = (
 )
 _MAX_CORE_BYTES = 128 * 1024 * 1024
 _METADATA_DIR = ".steamzero-managed"
+_ARCHIVE_OK = 0
+_ARCHIVE_EOF = 1
+_READ_CHUNK = 1024 * 1024
+
+ArchiveReader = Callable[[bytes, str], bytes]
 
 
 @dataclass(frozen=True)
@@ -48,11 +54,13 @@ class LibretroCoreExecutor:
         artifacts: ArtifactPort,
         *,
         core_root: Path | None = None,
+        archive_reader: ArchiveReader | None = None,
     ) -> None:
         self._store = store
         self._registry = registry
         self._artifacts = artifacts
         self._root = core_root or _default_core_root()
+        self._archive_reader = archive_reader or _extract_7z_member
         fs.ensure_dir(self._root)
 
     def status(self, adapter_id: str) -> dict[str, object]:
@@ -205,31 +213,19 @@ class LibretroCoreExecutor:
         artifact = self._artifacts.fetch(source)
         if crypto.digest_bytes(artifact).hexdigest != source.sha256:
             raise SteamZeroError("E-SUPPLY-CHECKSUM", detail="arquivo de cores diverge do pin")
-        cache = paths.data_home() / "downloads" / "libretro" / source.sha256
-        if cache.exists() or cache.is_symlink():
-            if (
-                cache.is_symlink()
-                or not cache.is_file()
-                or fs.hash_file(cache, algo="sha256") != source.sha256
-            ):
-                raise SteamZeroError("E-SUPPLY-CHECKSUM", detail="cache de cores diverge do pin")
-        else:
-            fs.write_atomic(cache, artifact, mode=0o600)
-
         expected_name = _ARCHIVE_PREFIX + f"{core_id}_libretro.so"
         stage = paths.staging_dir() / "libretro" / source.sha256 / manifest.id
         fs.ensure_dir(stage)
         try:
-            with py7zr.SevenZipFile(cache, mode="r") as archive:
-                names = archive.getnames()
-                if names.count(expected_name) != 1:
-                    raise ValueError("arquivo não contém exatamente o core declarado")
-                archive.extract(path=stage, targets=[expected_name])
-        except (OSError, ValueError, py7zr.Bad7zFile) as exc:
+            payload = self._archive_reader(artifact, expected_name)
+        except SteamZeroError:
+            raise
+        except (OSError, ValueError) as exc:
             raise SteamZeroError(
                 "E-SUPPLY-REMOTE-FAILED", detail=f"arquivo de cores inválido: {exc}"
             ) from exc
-        extracted = stage / expected_name
+        extracted = stage / "payload.so"
+        fs.write_atomic(extracted, payload, mode=0o600)
         try:
             if (
                 not fs.is_within(stage, extracted)
@@ -296,3 +292,113 @@ class LibretroCoreExecutor:
 
 def _default_core_root() -> Path:
     return Path.home() / ".var/app/org.libretro.RetroArch/config/retroarch/cores"
+
+
+def _extract_7z_member(artifact: bytes, expected_name: str) -> bytes:
+    """Lê uma única entrada 7z usando a libarchive do sistema.
+
+    A dependência fica no host, em vez de introduzir uma cadeia de extensões
+    Python no wheel. A API só recebe bytes já pinados e um nome canônico criado
+    pelo executor; nunca materializa nem publica outras entradas do arquivo.
+    """
+    library_name = ctypes.util.find_library("archive")
+    if library_name is None:
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail="libarchive não está disponível para ler cores 7z"
+        )
+    try:
+        library = ctypes.CDLL(library_name)
+        _configure_libarchive(library)
+    except (AttributeError, OSError) as exc:
+        raise SteamZeroError(
+            "E-COMPONENT-DEGRADED", detail=f"libarchive indisponível: {exc}"
+        ) from exc
+
+    archive = library.archive_read_new()
+    if not archive:
+        raise SteamZeroError("E-SUPPLY-REMOTE-FAILED", detail="não criou leitor de arquivo 7z")
+    buffer = ctypes.create_string_buffer(artifact)
+    payload: bytes | None = None
+    try:
+        _archive_ok(library, archive, library.archive_read_support_filter_all(archive))
+        _archive_ok(library, archive, library.archive_read_support_format_7zip(archive))
+        _archive_ok(
+            library,
+            archive,
+            library.archive_read_open_memory(
+                archive, ctypes.cast(buffer, ctypes.c_void_p), len(artifact)
+            ),
+        )
+        while True:
+            entry = ctypes.c_void_p()
+            result = library.archive_read_next_header(archive, ctypes.byref(entry))
+            if result == _ARCHIVE_EOF:
+                break
+            _archive_ok(library, archive, result)
+            raw_name = library.archive_entry_pathname(entry)
+            if raw_name is None:
+                raise ValueError("entrada 7z sem nome")
+            name = raw_name.decode("utf-8", errors="strict")
+            if name != expected_name:
+                _archive_ok(library, archive, library.archive_read_data_skip(archive))
+                continue
+            if payload is not None:
+                raise ValueError("arquivo contém exatamente o core declarado mais de uma vez")
+            payload = _archive_member_data(library, archive)
+        if payload is None:
+            raise ValueError("arquivo não contém exatamente o core declarado")
+        return payload
+    except SteamZeroError:
+        raise
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise SteamZeroError(
+            "E-SUPPLY-REMOTE-FAILED", detail=f"arquivo de cores inválido: {exc}"
+        ) from exc
+    finally:
+        library.archive_read_free(archive)
+
+
+def _configure_libarchive(library: ctypes.CDLL) -> None:
+    archive_p = ctypes.c_void_p
+    library.archive_read_new.argtypes = []
+    library.archive_read_new.restype = archive_p
+    for name in ("archive_read_support_filter_all", "archive_read_support_format_7zip"):
+        function = getattr(library, name)
+        function.argtypes = [archive_p]
+        function.restype = ctypes.c_int
+    library.archive_read_open_memory.argtypes = [archive_p, ctypes.c_void_p, ctypes.c_size_t]
+    library.archive_read_open_memory.restype = ctypes.c_int
+    library.archive_read_next_header.argtypes = [archive_p, ctypes.POINTER(archive_p)]
+    library.archive_read_next_header.restype = ctypes.c_int
+    library.archive_entry_pathname.argtypes = [archive_p]
+    library.archive_entry_pathname.restype = ctypes.c_char_p
+    library.archive_read_data.argtypes = [archive_p, ctypes.c_void_p, ctypes.c_size_t]
+    library.archive_read_data.restype = ctypes.c_ssize_t
+    library.archive_read_data_skip.argtypes = [archive_p]
+    library.archive_read_data_skip.restype = ctypes.c_int
+    library.archive_error_string.argtypes = [archive_p]
+    library.archive_error_string.restype = ctypes.c_char_p
+    library.archive_read_free.argtypes = [archive_p]
+    library.archive_read_free.restype = ctypes.c_int
+
+
+def _archive_member_data(library: ctypes.CDLL, archive: ctypes.c_void_p) -> bytes:
+    data = bytearray()
+    chunk = ctypes.create_string_buffer(_READ_CHUNK)
+    while True:
+        size = library.archive_read_data(archive, chunk, len(chunk))
+        if size < 0:
+            _archive_ok(library, archive, int(size))
+        if size == 0:
+            return bytes(data)
+        if len(data) + size > _MAX_CORE_BYTES:
+            raise ValueError("core excede o limite de tamanho")
+        data.extend(chunk.raw[:size])
+
+
+def _archive_ok(library: ctypes.CDLL, archive: ctypes.c_void_p, result: int) -> None:
+    if result == _ARCHIVE_OK:
+        return
+    detail = library.archive_error_string(archive)
+    message = detail.decode("utf-8", errors="replace") if detail else f"código {result}"
+    raise SteamZeroError("E-SUPPLY-REMOTE-FAILED", detail=f"libarchive: {message}")

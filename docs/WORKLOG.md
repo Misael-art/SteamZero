@@ -4893,3 +4893,19 @@ catálogo passaram; o catálogo publica 155 experiências e 36 plataformas
 técnicas. Ruff, format-check, mypy, independência, boundaries, capability
 matrix e `git diff --check` também passaram. Nenhuma ação de host, release,
 push ou PR foi executada.
+
+## 2026-08-06 — Leitor seguro de cores Libretro sem cadeia Python vulnerável
+
+O executor de cores Libretro passou a ler exclusivamente a entrada canônica do
+arquivo 7z pinado por meio da `libarchive` do sistema. A extração continua
+limitada a 128 MiB, recusa entrada ausente ou duplicada, só publica um arquivo
+de staging fixo e confere o digest do arquivo e do core antes do plano
+confirmável. A ausência da biblioteca degrada o componente com causa explícita.
+A remoção de `py7zr` também elimina suas extensões transitivas da dependência de
+runtime, que falhavam no Python 3.14 e na auditoria de supply chain.
+
+Validação: o arquivo oficial pinado foi lido localmente e o core mGBA conferiu
+o checksum publicado; 4172 testes passaram (10 skips de checksum Flatpak já
+documentados), Ruff check e format-check, mypy, independência, boundaries,
+component lock, matriz de capabilities, auditoria da bridge e `git diff --check`
+passaram. Ações de host e release: **nenhuma**.
