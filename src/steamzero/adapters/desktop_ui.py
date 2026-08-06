@@ -42,6 +42,10 @@ from steamzero.domain.desktop import (
 from steamzero.ports import CaptureConsent
 
 _MAX_BODY = 64 * 1024
+# A central QML precisa continuar disponível mesmo quando o driver gráfico do
+# host falha. O backend software é o mesmo caminho certificado pelo gate visual
+# e evita que um SIGSEGV do renderer encerre a unidade transitória do Plasma.
+_QT_QUICK_BACKEND = "software"
 
 # Status HTTP por código do catálogo. O default é CONFLICT: erro de domínio que
 # recusa a operação no estado atual. Só o que é de fato malformado vira 400 e só
@@ -877,7 +881,11 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
                     token,
                 ],
                 stdin=subprocess.DEVNULL,
-                env={**os.environ, "STEAMZERO_CLASS": "ui"},
+                env={
+                    **os.environ,
+                    "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
+                    "STEAMZERO_CLASS": "ui",
+                },
             )
             while process.poll() is None:
                 server.handle_request()
