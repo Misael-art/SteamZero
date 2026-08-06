@@ -4824,3 +4824,19 @@ longo da aplicação; o arquivo afetado passou 39/39 e a suíte integral passou
 
 Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
 executado**.
+
+## 2026-08-05 — Harmonização controlada: Editorial, Lifecycle e Catálogo
+
+Foram preservadas por merges não-squash as frentes editorial, lifecycle e
+catálogo canônico. O fechamento editorial renomeia o defeito visual para G36
+sem alterar o G25 histórico; o lifecycle passa a cobrir preservação de
+configuração, rollback auditável e recovery idempotente. A cadeia de migrações
+foi resolvida semanticamente: 17 `bios_catalog_v2`, 18 estados do lifecycle e
+19 vínculo de operação. O workspace mantém simultaneamente
+`editorialPlatforms` e `canonicalExperiences`.
+
+Validação dirigida: migrações, lifecycle/transações, bridge, workspace e
+catálogo passaram; o catálogo publica 155 experiências e 36 plataformas
+técnicas. Ruff, format-check, mypy, independência, boundaries, capability
+matrix e `git diff --check` também passaram. Nenhuma ação de host, release,
+push ou PR foi executada.
