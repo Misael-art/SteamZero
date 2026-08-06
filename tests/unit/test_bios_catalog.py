@@ -106,3 +106,42 @@ def test_changed_source_invalidates_plan(monkeypatch: pytest.MonkeyPatch, tmp_pa
     with pytest.raises(SteamZeroError) as error:
         library.import_apply(str(plan["planId"]), str(plan["confirmToken"]))
     assert error.value.code == "E-TX-STALE-PLAN"
+
+
+def test_bios_rollback_is_plan_confirmed_and_idempotent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    payload = b"synthetic bios bytes"
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    source = tmp_path / "input.bin"
+    source.write_bytes(payload)
+    library = BiosLibrary(_catalog(payload))
+
+    scan = library.scan(source)
+    imported = library.import_plan(str(scan["scanId"]))
+    assert len(imported["preview"]) == 1
+    assert library.import_apply(str(imported["planId"]), str(imported["confirmToken"])) == {
+        "operationId": imported["planId"],
+        "status": "applied",
+        "imported": 1,
+        "addedBytes": len(payload),
+    }
+    rollback = library.rollback_plan(str(imported["planId"]))
+    assert rollback["operationId"] == imported["planId"]
+    assert rollback["sourceFingerprint"]
+    assert library.rollback_apply(str(rollback["planId"]), str(rollback["confirmToken"])) == {
+        "operationId": imported["planId"],
+        "status": "rolled-back",
+    }
+    assert not (
+        tmp_path / "data" / "steamzero" / "bios" / "platforms" / "synthetic" / "canonical.bin"
+    ).exists()
+    assert not any(
+        path.is_file()
+        for path in (tmp_path / "data" / "steamzero" / "bios" / "objects" / "sha256").rglob("*")
+    )
+    assert library.rollback_plan(str(imported["planId"])) == {
+        "operationId": imported["planId"],
+        "status": "already-rolled-back",
+        "idempotent": True,
+    }

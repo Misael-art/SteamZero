@@ -39,6 +39,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
@@ -715,6 +716,20 @@ class DesktopDashboard:
     def bios_scan(self, source: str) -> dict[str, Any]:
         return self._emulation.bios_scan(Path(source))
 
+    def bios_source_selector(self) -> dict[str, Any]:
+        return {
+            "sources": [
+                {"sourceId": source.source_id, "label": source.label}
+                for source in approved_bios_sources()
+            ]
+        }
+
+    def bios_scan_selected(self, source_id: str) -> dict[str, Any]:
+        source = resolve_approved_bios_source(source_id)
+        if source is not None:
+            return self._emulation.bios_scan(source)
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem de BIOS não aprovada")
+
     def bios_scan_status(self, scan_id: str) -> dict[str, Any]:
         return self._emulation.bios_scan_status(scan_id)
 
@@ -726,6 +741,12 @@ class DesktopDashboard:
 
     def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
         return self._emulation.bios_import_rollback(operation_id)
+
+    def plan_bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback_plan(operation_id)
+
+    def apply_bios_import_rollback(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback_apply(plan_id, confirm_token)
 
     def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
         return self._emulation.bios_status(platform_id)

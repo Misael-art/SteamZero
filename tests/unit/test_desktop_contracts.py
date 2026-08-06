@@ -30,6 +30,33 @@ def test_every_bridge_route_is_declared_by_backend_contract() -> None:
     )
 
 
+def test_every_contract_route_uses_its_declared_http_method() -> None:
+    source = Path("src/steamzero/adapters/desktop_ui.py").read_text(encoding="utf-8")
+    get_handler = source.split("    def do_GET(self) -> None:", 1)[1].split(
+        "    def do_POST(self) -> None:", 1
+    )[0]
+    post_dispatch = source.split("    def _dispatch(self, path: str, payload: dict[str, Any])", 1)[
+        1
+    ]
+
+    def routes(handler: str) -> set[str]:
+        return set(re.findall(r'path == "([^"]+)"', handler)) | set(
+            re.findall(r'path\.startswith\("([^"]+)"\)', handler)
+        )
+
+    by_method = {"GET": routes(get_handler), "POST": routes(post_dispatch)}
+    for action in handheld_ui_contracts()["actions"]:
+        endpoint = action["endpoint"]
+        if endpoint is None:
+            continue
+        method = str(action["method"])
+        assert method in by_method
+        static = str(endpoint).split("/{", 1)[0]
+        assert static in by_method[method] or any(
+            static.startswith(prefix) for prefix in by_method[method]
+        ), f"{action['id']} declara {method} {endpoint}, mas a bridge diverge"
+
+
 def test_contract_matrix_has_handheld_control_semantics() -> None:
     matrix = handheld_ui_contracts()
     required_states = {"ready", "empty", "degraded", "pending", "failed", "offline"}

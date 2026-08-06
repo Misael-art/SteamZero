@@ -271,46 +271,76 @@ def handheld_ui_contracts() -> dict[str, Any]:
             method="GET",
         ),
         _action(
+            "bios.sources",
+            "Listar origens aprovadas de BIOS",
+            "/bios/sources",
+            service="emulation",
+            screen="emulators",
+            control="bios-source-selector",
+            method="GET",
+        ),
+        _action(
             "bios.scan",
             "Selecionar e varrer BIOS",
-            None,
+            "/bios/scan",
             service="emulation",
             screen="emulators",
             control="bios-scan",
-            enabled=False,
-            applicable=False,
-            reason=(
-                "A bridge ainda não possui seletor de origem confiável por handle; "
-                "paths arbitrários são recusados."
+            schema=_schema("sourceId", sourceId="string"),
+        ),
+        _action(
+            "bios.scan.status",
+            "Consultar varredura de BIOS",
+            "/bios/scan/status",
+            service="emulation",
+            screen="emulators",
+            control="bios-scan-status",
+            schema=_schema("scanId", scanId="string"),
+        ),
+        _action(
+            "bios.import.plan",
+            "Revisar importação de BIOS",
+            "/bios/import/plan",
+            service="emulation",
+            screen="emulators",
+            control="bios-import-plan",
+            schema=_closed_schema(
+                ("scanId",),
+                {
+                    "scanId": {"type": "string"},
+                    "selection": {"type": "array", "items": {"type": "string"}},
+                },
             ),
         ),
         _action(
-            "bios.import",
-            "Importar BIOS",
-            None,
+            "bios.import.apply",
+            "Confirmar importação de BIOS",
+            "/bios/import/apply",
             service="emulation",
             screen="emulators",
-            control="bios-import",
-            enabled=False,
-            applicable=False,
-            reason=(
-                "A importação será publicada somente após scan por origem aprovada e "
-                "plano transacional confirmado."
-            ),
+            control="bios-import-confirm",
+            schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
+            confirmation="token",
+            rollback_endpoint="/bios/rollback/plan",
         ),
         _action(
-            "bios.rollback",
-            "Reverter importação de BIOS",
-            None,
+            "bios.rollback.plan",
+            "Revisar rollback de BIOS",
+            "/bios/rollback/plan",
             service="emulation",
             screen="emulators",
-            control="bios-rollback",
-            enabled=False,
-            applicable=False,
-            reason=(
-                "Depende do fluxo auditável de importação de BIOS ainda não publicado "
-                "na bridge."
-            ),
+            control="bios-rollback-plan",
+            schema=_schema("operationId", operationId="string"),
+        ),
+        _action(
+            "bios.rollback.apply",
+            "Confirmar rollback de BIOS",
+            "/bios/rollback/apply",
+            service="emulation",
+            screen="emulators",
+            control="bios-rollback-confirm",
+            schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
+            confirmation="token",
         ),
         _action(
             "component.recovery.plan",

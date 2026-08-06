@@ -527,6 +527,12 @@ class EmulationController:
     def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
         return self._bios_library.import_rollback(operation_id)
 
+    def bios_import_rollback_plan(self, operation_id: str) -> dict[str, Any]:
+        return self._bios_library.rollback_plan(operation_id)
+
+    def bios_import_rollback_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._bios_library.rollback_apply(plan_id, confirm_token)
+
     def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
         return self._bios_library.status(platform_id)
 

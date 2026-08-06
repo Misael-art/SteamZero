@@ -223,6 +223,39 @@ class FakeDashboard:
         self.calls.append(("bios-audit",))
         return {"status": "ok", "issues": []}
 
+    def bios_source_selector(self) -> dict[str, object]:
+        self.calls.append(("bios-sources",))
+        # Este identificador é interno ao dashboard. A bridge deve substituí-lo
+        # por um handle efêmero antes de devolvê-lo ao cliente.
+        return {"sources": [{"sourceId": "dashboard-source", "label": "~/Emulation/bios"}]}
+
+    def bios_scan_selected(self, source_id: str) -> dict[str, object]:
+        self.calls.append(("bios-scan", source_id))
+        assert source_id == "dashboard-source"
+        return {"scanId": "bios-scan-1", "examined": 1, "candidates": []}
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, object]:
+        self.calls.append(("bios-scan-status", scan_id))
+        return {"scanId": scan_id, "examined": 1, "candidates": []}
+
+    def bios_import_plan(
+        self, scan_id: str, selection: list[str] | None = None
+    ) -> dict[str, object]:
+        self.calls.append(("bios-import-plan", scan_id, *(selection or [])))
+        return {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("bios-import-apply", plan_id, confirm_token))
+        return {"operationId": "bios-operation", "status": "applied"}
+
+    def plan_bios_import_rollback(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("bios-rollback-plan", operation_id))
+        return {"planId": "bios-rollback-plan", "confirmToken": "bios-rollback-confirm"}
+
+    def apply_bios_import_rollback(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("bios-rollback-apply", plan_id, confirm_token))
+        return {"operationId": "bios-operation", "status": "rolled-back"}
+
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
         return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
@@ -833,6 +866,121 @@ def test_bridge_exposes_read_only_component_lifecycle_surface(
         ("bios-status",),
         ("bios-audit",),
     ]
+
+
+def test_bridge_bios_selector_issues_session_handles_and_refuses_unapproved_source(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    sources = request_json(base, token, "/bios/sources")
+    rows = cast(list[dict[str, object]], sources["sources"])
+    assert len(rows) == 1
+    assert rows[0]["label"] == "~/Emulation/bios"
+    handle = rows[0]["sourceId"]
+    assert isinstance(handle, str)
+    assert handle != "dashboard-source"
+    assert "/home/" not in json.dumps(sources)
+
+    scan = request_json(base, token, "/bios/scan", {"sourceId": handle})
+    assert scan == {"scanId": "bios-scan-1", "examined": 1, "candidates": []}
+    assert dashboard.calls == [
+        ("bios-sources",),
+        ("bios-scan", "dashboard-source"),
+    ]
+
+    with pytest.raises(urllib.error.HTTPError) as unknown:
+        request_json(base, token, "/bios/scan", {"sourceId": "inventado"})
+    assert unknown.value.code == 409
+    assert json.loads(unknown.value.read())["error"]["code"] == "E-CONTENT-UNSAFE-PATH"
+    unknown.value.close()
+
+    # Renovar a lista revoga os handles anteriores no mesmo servidor.
+    request_json(base, token, "/bios/sources")
+    with pytest.raises(urllib.error.HTTPError) as expired:
+        request_json(base, token, "/bios/scan", {"sourceId": handle})
+    assert expired.value.code == 409
+    assert json.loads(expired.value.read())["error"]["code"] == "E-CONTENT-UNSAFE-PATH"
+    expired.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as bad_schema:
+        request_json(base, token, "/bios/scan", {"sourceId": "extra", "path": "untrusted-path"})
+    assert bad_schema.value.code == 400
+    assert json.loads(bad_schema.value.read())["error"]["code"] == "E-API-SCHEMA"
+    bad_schema.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as unauthorized:
+        request_json(base, "wrong", "/bios/sources")
+    assert unauthorized.value.code == 403
+    unauthorized.value.close()
+
+
+def test_bridge_bios_import_and_rollback_are_plan_confirmed(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    assert request_json(base, token, "/bios/scan/status", {"scanId": "bios-scan-1"}) == {
+        "scanId": "bios-scan-1",
+        "examined": 1,
+        "candidates": [],
+    }
+    planned = request_json(
+        base,
+        token,
+        "/bios/import/plan",
+        {"scanId": "bios-scan-1", "selection": ["a" * 64]},
+    )
+    assert planned["plan"] == {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+    imported = request_json(
+        base,
+        token,
+        "/bios/import/apply",
+        {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"},
+    )
+    assert imported == {"operationId": "bios-operation", "status": "applied"}
+    rollback = request_json(
+        base,
+        token,
+        "/bios/rollback/plan",
+        {"operationId": "bios-operation"},
+    )
+    assert rollback["plan"] == {
+        "planId": "bios-rollback-plan",
+        "confirmToken": "bios-rollback-confirm",
+    }
+    assert request_json(
+        base,
+        token,
+        "/bios/rollback/apply",
+        {"planId": "bios-rollback-plan", "confirmToken": "bios-rollback-confirm"},
+    ) == {"operationId": "bios-operation", "status": "rolled-back"}
+    assert dashboard.calls == [
+        ("bios-scan-status", "bios-scan-1"),
+        ("bios-import-plan", "bios-scan-1", "a" * 64),
+        ("bios-import-apply", "bios-import-plan", "bios-import-confirm"),
+        ("bios-rollback-plan", "bios-operation"),
+        ("bios-rollback-apply", "bios-rollback-plan", "bios-rollback-confirm"),
+    ]
+
+    empty = request_json(
+        base, token, "/bios/import/plan", {"scanId": "bios-scan-1", "selection": []}
+    )
+    # Lista vazia representa "não importar nenhum candidato"; não pode cair
+    # silenciosamente no comportamento histórico de importar todos.
+    assert empty["plan"] == {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+    assert dashboard.calls[-1] == ("bios-import-plan", "bios-scan-1")
+
+    with pytest.raises(urllib.error.HTTPError) as bad_schema:
+        request_json(
+            base,
+            token,
+            "/bios/import/plan",
+            {"scanId": "bios-scan-1", "path": "untrusted-path"},
+        )
+    assert bad_schema.value.code == 400
+    assert json.loads(bad_schema.value.read())["error"]["code"] == "E-API-SCHEMA"
+    bad_schema.value.close()
 
 
 def test_bridge_exposes_dashboard_component_and_steam_actions(

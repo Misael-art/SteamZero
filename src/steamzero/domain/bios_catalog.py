@@ -340,6 +340,28 @@ class BiosImportPlan:
         }
 
 
+@dataclass
+class BiosRollbackPlan:
+    """Revisão efêmera e confirmável de uma importação já aplicada."""
+
+    plan_id: str
+    confirm_token: str
+    operation_id: str
+    source_fingerprint: str
+    expires_at: datetime
+    status: str = "pending"
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "planId": self.plan_id,
+            "confirmToken": self.confirm_token,
+            "operationId": self.operation_id,
+            "sourceFingerprint": self.source_fingerprint,
+            "rollbackGuarantee": "objects and views created by this operation",
+            "expiresAt": self.expires_at.isoformat(),
+        }
+
+
 class BiosLibrary:
     """CAS store and scan/plan/apply facade used by UI, bridge and CLI."""
 
@@ -348,6 +370,7 @@ class BiosLibrary:
         self.scanner = BiosScanner(self.catalog)
         self._scans: dict[str, BiosScan] = {}
         self._plans: dict[str, BiosImportPlan] = {}
+        self._rollback_plans: dict[str, BiosRollbackPlan] = {}
 
     def scan(self, source: Path) -> dict[str, Any]:
         result = self.scanner.scan(source)
@@ -384,7 +407,11 @@ class BiosLibrary:
         scan = self._scans.get(scan_id)
         if scan is None:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="varredura de BIOS expirada")
-        allowed = set(selection or [candidate.sha256 for candidate in scan.candidates])
+        allowed = set(
+            selection
+            if selection is not None
+            else [candidate.sha256 for candidate in scan.candidates]
+        )
         selected = tuple(
             candidate
             for candidate in scan.candidates
@@ -477,6 +504,45 @@ class BiosLibrary:
         plan.created_objects.clear()
         plan.status = "rolled-back"
         return {"operationId": operation_id, "status": "rolled-back"}
+
+    def rollback_plan(self, operation_id: str) -> dict[str, Any]:
+        """Congela a operação de importação antes de permitir a reversão."""
+        operation = self._plans.get(operation_id)
+        if operation is None:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="operação de BIOS não encontrada")
+        if operation.status == "rolled-back":
+            return {
+                "operationId": operation_id,
+                "status": "already-rolled-back",
+                "idempotent": True,
+            }
+        if operation.status != "applied":
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="operação de BIOS não está aplicada")
+        plan = BiosRollbackPlan(
+            plan_id=ids.new_ulid(),
+            confirm_token=secrets.token_urlsafe(24),
+            operation_id=operation_id,
+            source_fingerprint=operation.scan.fingerprint,
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        self._rollback_plans[plan.plan_id] = plan
+        return plan.public()
+
+    def rollback_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        plan = self._rollback_plans.get(plan_id)
+        if plan is None or plan.status != "pending" or plan.confirm_token != confirm_token:
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmação de rollback inválida")
+        if datetime.now(UTC) > plan.expires_at:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano de rollback de BIOS expirou")
+        operation = self._plans.get(plan.operation_id)
+        if operation is None or operation.status != "applied":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="operação de BIOS mudou antes do rollback"
+            )
+        result = self.import_rollback(plan.operation_id)
+        plan.status = "applied"
+        plan.confirm_token = ""
+        return result
 
     def status(self, platform_id: str | None = None) -> dict[str, Any]:
         entries = []

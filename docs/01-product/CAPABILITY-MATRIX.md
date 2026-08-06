@@ -21,8 +21,8 @@ host, que vive nos relatórios de certificação.
 | plataformas com bloqueio | 24 de 36 |
 | cores libretro exigidos | 17 |
 | adapters que entregam core | 0 |
-| ações de UI publicadas | 112 |
-| ações declaradas indisponíveis | 9 |
+| ações de UI publicadas | 116 |
+| ações declaradas indisponíveis | 6 |
 
 ## Adapters e roteamento de lifecycle
 
@@ -132,9 +132,6 @@ verificado, apenas que o contrato não se declara indisponível.
 | ação | endpoint | aplicabilidade | motivo declarado |
 |---|---|---|---|
 | component.open-config | — | not-applicable | Nenhum emulador ativo possui argumento oficial comprovado para abrir diretamente a configuração; consulte a matriz e abra a UI principal. |
-| bios.scan | — | not-applicable | A bridge ainda não possui seletor de origem confiável por handle; paths arbitrários são recusados. |
-| bios.import | — | not-applicable | A importação será publicada somente após scan por origem aprovada e plano transacional confirmado. |
-| bios.rollback | — | not-applicable | Depende do fluxo auditável de importação de BIOS ainda não publicado na bridge. |
 | component.rollback | — | not-applicable | Use o fluxo de revisão e confirmação de rollback do componente. |
 | component.recover | — | not-applicable | Use Inspecionar recuperação, depois Revisar recovery e Confirmar recovery. |
 | sync.status | — | not-applicable | A fila é somente leitura no snapshot atual; retry/cancel ainda não possuem rota da bridge. |
