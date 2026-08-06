@@ -264,7 +264,7 @@ def render() -> str:
     core_providers = _core_providers(manifests)
 
     emulators, routes = _emulator_section(registry)
-    action_table, violations, active_emulators, with_open_config = _action_matrix(registry, routes)
+    action_table, _violations, active_emulators, with_open_config = _action_matrix(registry, routes)
     platform_table, cores_needed, blocked_platforms = _platform_section(
         platforms, routes, core_providers
     )

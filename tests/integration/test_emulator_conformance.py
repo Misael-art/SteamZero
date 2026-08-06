@@ -205,7 +205,7 @@ class TestEmulatorLifecycleConformance:
         lifecycle, _ = _lifecycle(store, derived(adapter_id))
         envelope = lifecycle.plan(adapter_id, "install")
         expirado = dataclass_replace(envelope, expires_at="2020-01-01T00:00:00+00:00")
-        lifecycle._save_plan(expirado)  # noqa: SLF001 - fixar o instante sem esperar
+        lifecycle._save_plan(expirado)
         with pytest.raises(SteamZeroError) as error:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
         # O código é E-TX-CONFIRM-REQUIRED, não STALE-PLAN: o que expira é a
@@ -236,7 +236,7 @@ class TestEmulatorLifecycleConformance:
         # dois deixaria metade dos adapters com manifesto idêntico e o teste
         # passaria sem exercitar nada.
         mudado = derived(adapter_id, version="9.9.9", sha=UPDATED_SHA, commit="b" * 64)
-        lifecycle._registry = AdapterRegistry([load_manifest(mudado)])  # noqa: SLF001
+        lifecycle._registry = AdapterRegistry([load_manifest(mudado)])
 
         with pytest.raises(SteamZeroError) as error:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
@@ -250,9 +250,9 @@ class TestEmulatorLifecycleConformance:
 
         novo = derived(adapter_id, version="2.0.0", sha=UPDATED_SHA, commit="c" * 64)
         registry = AdapterRegistry([load_manifest(novo)])
-        lifecycle._registry = registry  # noqa: SLF001
+        lifecycle._registry = registry
         if fake is None:
-            lifecycle._artifacts = FakeArtifacts({URL: UPDATED})  # noqa: SLF001
+            lifecycle._artifacts = FakeArtifacts({URL: UPDATED})
 
         envelope = lifecycle.plan(adapter_id, "update")
         assert envelope.action == "update"
