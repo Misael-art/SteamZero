@@ -1048,6 +1048,18 @@ class DesktopDashboard:
             operations = lifecycle.recovery_inspect()
         return {"operations": operations, "count": len(operations)}
 
+    def plan_component_recovery(self) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            return ComponentLifecycle(store, self._registry_factory()).plan_recovery()
+
+    def apply_component_recovery(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            return ComponentLifecycle(store, self._registry_factory()).apply_recovery(
+                plan_id, confirm_token
+            )
+
     def plan_component(self, adapter_id: str, action: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()

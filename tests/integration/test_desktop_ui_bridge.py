@@ -204,6 +204,14 @@ class FakeDashboard:
         self.calls.append(("component-recovery-inspect",))
         return {"operations": [], "count": 0}
 
+    def plan_component_recovery(self) -> dict[str, object]:
+        self.calls.append(("component-recovery-plan",))
+        return {"planId": "recovery-plan", "confirmToken": "recovery-confirm"}
+
+    def apply_component_recovery(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("component-recovery-apply", plan_id, confirm_token))
+        return {"status": "ok", "operations": []}
+
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
         return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
@@ -850,6 +858,17 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "/component/rollback/apply",
         {"planId": "rollback-plan", "confirmToken": "rollback-confirm"},
     )
+    recovery_plan = request_json(base, token, "/component/recovery/plan", {})
+    assert recovery_plan["plan"] == {
+        "planId": "recovery-plan",
+        "confirmToken": "recovery-confirm",
+    }
+    assert request_json(
+        base,
+        token,
+        "/component/recovery/apply",
+        {"planId": "recovery-plan", "confirmToken": "recovery-confirm"},
+    ) == {"status": "ok", "operations": []}
     emulator_plan = request_json(
         base,
         token,
@@ -1020,6 +1039,8 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("component-history", "dolphin"),
         ("component-rollback-plan", "dolphin", "component-operation"),
         ("component-rollback-apply", "rollback-plan", "rollback-confirm"),
+        ("component-recovery-plan",),
+        ("component-recovery-apply", "recovery-plan", "recovery-confirm"),
         ("emulation-emulator-plan", "eden", "install"),
         ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
         ("emulation-emulator-launch", "eden"),

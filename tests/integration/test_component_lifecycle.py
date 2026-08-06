@@ -547,6 +547,41 @@ class TestLaunchRouting:
 
         assert lifecycle.recovery_inspect() == []
 
+    def test_recovery_requires_a_confirmed_current_plan(self, store: state.StateStore) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan_recovery()
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply_recovery(plan["planId"], "token-incorreto")
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+
+        result = lifecycle.apply_recovery(plan["planId"], plan["confirmToken"])
+        assert result["status"] == "ok"
+        assert result["operations"] == []
+
+    def test_recovery_refuses_plan_when_pending_operations_change(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan_recovery()
+        operation_path = paths.component_operations_dir() / "pending.json"
+        operation_path.parent.mkdir(parents=True, exist_ok=True)
+        operation_path.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "operationId": "pending-operation",
+                    "adapterId": "retroarch",
+                    "state": "recovery-required",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.apply_recovery(plan["planId"], plan["confirmToken"])
+        assert error.value.code == "E-TX-STALE-PLAN"
+
 
 class TestRollbackRouting:
     def test_flatpak_rollback_uses_operation_file(self, store: state.StateStore) -> None:

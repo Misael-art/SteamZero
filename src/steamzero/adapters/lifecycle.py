@@ -41,6 +41,7 @@ família falha fechado, aqui como antes.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import secrets
@@ -1139,6 +1140,45 @@ class ComponentLifecycle:
                 }
             )
         return pending
+
+    def plan_recovery(self) -> dict[str, Any]:
+        plan = transaction.plan_write_files(
+            {},
+            root=paths.state_home(),
+            kind="component.recovery",
+            requirements_extra={"recoveryFingerprint": self._recovery_fingerprint()},
+        )
+        return plan.to_dict()
+
+    def apply_recovery(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        plan = transaction.load_plan(plan_id)
+        expected = plan.requirements.get("recoveryFingerprint")
+        if (
+            plan.kind != "component.recovery"
+            or Path(plan.root) != paths.state_home()
+            or not isinstance(expected, str)
+        ):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="plano não pertence à recuperação de componentes"
+            )
+        if expected != self._recovery_fingerprint():
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="operações pendentes mudaram desde o plano"
+            )
+        applied = transaction.apply(plan_id, confirm_token)
+        recovered = self.recover()
+        return {
+            "status": applied.status,
+            "operationId": applied.operation_id,
+            "operations": recovered,
+        }
+
+    def _recovery_fingerprint(self) -> str:
+        """Congela a seleção sanitizada que o recovery poderá reconciliar."""
+        encoded = json.dumps(
+            self.recovery_inspect(), sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
 
     # ------------------------------------------------------------- internals
     def _engine(self) -> AdapterEngine:

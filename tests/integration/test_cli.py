@@ -730,6 +730,7 @@ def test_desktop_status_surfaces_generic_owner_blocker(
 class _FakeComponentLifecycle:
     def __init__(self) -> None:
         self.applied: tuple[str, str] | None = None
+        self.recovery_applied: tuple[str, str] | None = None
 
     def verify(self, adapter_id: str) -> dict[str, object]:
         self.verified = adapter_id
@@ -791,6 +792,16 @@ class _FakeComponentLifecycle:
             "commit": "a" * 64,
         }
 
+    def recovery_inspect(self) -> list[dict[str, object]]:
+        return [{"operationId": "pending", "adapterId": "demo-flatpak", "state": "applying"}]
+
+    def plan_recovery(self) -> dict[str, object]:
+        return {"planId": "recovery-plan", "confirmToken": "recovery-confirm"}
+
+    def apply_recovery(self, plan_id: str, confirm: str) -> dict[str, object]:
+        self.recovery_applied = (plan_id, confirm)
+        return {"status": "ok", "operationId": "recovery-operation", "operations": []}
+
 
 def test_component_list_and_plan_use_contract_envelopes(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -806,6 +817,42 @@ def test_component_list_and_plan_use_contract_envelopes(
     assert cli.main(["component", "plan", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
     planned = json.loads(capsys.readouterr().out)
     contracts.validate(planned["data"]["plan"], "component-plan-v2.schema.json")
+
+
+def test_component_recover_requires_an_explicit_plan_confirmation(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
+
+    assert cli.main(["component", "recover", "--json"]) == cli.EXIT_OK
+    reviewed = json.loads(capsys.readouterr().out)
+    assert reviewed["data"] == {
+        "operations": [
+            {"operationId": "pending", "adapterId": "demo-flatpak", "state": "applying"}
+        ],
+        "count": 1,
+        "plan": {"planId": "recovery-plan", "confirmToken": "recovery-confirm"},
+    }
+    assert fake.recovery_applied is None
+
+    assert (
+        cli.main(
+            [
+                "component",
+                "recover",
+                "--plan-id",
+                "recovery-plan",
+                "--confirm",
+                "recovery-confirm",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    applied = json.loads(capsys.readouterr().out)
+    assert applied["data"]["operationId"] == "recovery-operation"
+    assert fake.recovery_applied == ("recovery-plan", "recovery-confirm")
 
 
 def test_component_lifecycle_builder_imports_adapter_registry_at_runtime(

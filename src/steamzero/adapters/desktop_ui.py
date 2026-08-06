@@ -295,6 +295,15 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 plan_id,
                 confirm_token,
             )
+        if path == "/component/recovery/plan":
+            return {"plan": self._dashboard().plan_component_recovery()}
+        if path == "/component/recovery/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().apply_component_recovery(
+                plan_id,
+                confirm_token,
+            )
         if path == "/emulation/emulator/plan":
             return {
                 "plan": self._dashboard().plan_emulation_emulator(

@@ -72,7 +72,7 @@ Domínios (Fase 1):
   component stop        encerra o componente portátil (--id ADAPTER)
   component open-config abre a configuração nativa (--id ADAPTER)
   component rollback    restaura deployment anterior (--operation-id ID)
-  component recover     recupera operações Flatpak interrompidas
+  component recover     revisa recovery; aplica somente com --plan-id e --confirm
   admin health          verifica helper e autorização Polkit (read-only)
   session environment    observa sessão, energia, rede, DRM e volumes (read-only)
   session status         mostra lifecycle persistido (--game-id APPID)
@@ -858,17 +858,37 @@ def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[
     )
 
 
-def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+def _cmd_component_recover(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _flag_value(args, "--plan-id")
+    confirm_token = _flag_value(args, "--confirm")
+    if bool(plan_id) != bool(confirm_token):
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="component recover exige --plan-id e --confirm juntos"
+        )
     with StateStore() as store:
         store.migrate()
         lifecycle = _component_lifecycle(store)
-        recovered = lifecycle.recover()
-    data = {"operations": recovered, "count": len(recovered)}
+        if plan_id and confirm_token:
+            result = lifecycle.apply_recovery(plan_id, confirm_token)
+            return (
+                build_envelope(
+                    "component",
+                    "recover",
+                    status=str(result["status"]),
+                    data=result,
+                    operation_id=str(result["operationId"]),
+                    correlation_id=correlation_id,
+                ),
+                EXIT_OK,
+            )
+        operations = lifecycle.recovery_inspect()
+        plan = lifecycle.plan_recovery()
+    data = {"operations": operations, "count": len(operations), "plan": plan}
     return (
         build_envelope(
             "component",
             "recover",
-            status="ok" if recovered else "noop",
+            status="ok" if operations else "noop",
             data=data,
             correlation_id=correlation_id,
         ),

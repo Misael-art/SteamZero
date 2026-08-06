@@ -71,6 +71,12 @@ LIFECYCLE_SURFACES: dict[str, SurfaceDecision] = {
     "recovery_inspect": SurfaceDecision(
         "read-only", ("component.recovery.inspect",), "operações pendentes sanitizadas"
     ),
+    "plan_recovery": SurfaceDecision(
+        "plan-apply", ("component.recovery.plan",), "plano persistido"
+    ),
+    "apply_recovery": SurfaceDecision(
+        "plan-apply", ("component.recovery.apply",), "token confirmado"
+    ),
 }
 
 

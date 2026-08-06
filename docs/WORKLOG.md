@@ -4825,6 +4825,24 @@ longo da aplicação; o arquivo afetado passou 39/39 e a suíte integral passou
 Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
 executado**.
 
+## 2026-08-06 — Recovery manual de componentes fechado por plano
+
+O recovery de componentes agora começa por inspeção sanitizada, gera plano
+persistido com token e congela a seleção de operações por fingerprint. O apply
+recusa token inválido, plano de outro domínio e estado alterado antes de tocar
+qualquer executor. A bridge Desktop publica as rotas de revisão e confirmação;
+a CLI deixou de executar recovery diretamente e passa a revisar primeiro,
+aplicando somente com `--plan-id` e `--confirm`.
+
+Validação dirigida: 138 testes de CLI, lifecycle, bridge e contratos passaram;
+Ruff, mypy, auditoria de bridge, matriz de capacidades, independência,
+boundaries e `git diff --check` passaram. O runner isolado completo foi
+iniciado com `TMPDIR` curto, mas terminou sem resumo/exit code conclusivo;
+não foi considerado evidência de suíte integral verde.
+
+Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
+executado**.
+
 ## 2026-08-05 — Harmonização controlada: Editorial, Lifecycle e Catálogo
 
 Foram preservadas por merges não-squash as frentes editorial, lifecycle e

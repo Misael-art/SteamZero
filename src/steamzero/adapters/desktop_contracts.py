@@ -253,6 +253,24 @@ def handheld_ui_contracts() -> dict[str, Any]:
             method="GET",
         ),
         _action(
+            "component.recovery.plan",
+            "Revisar recovery",
+            "/component/recovery/plan",
+            service="components",
+            screen="system",
+            control="component-recovery",
+        ),
+        _action(
+            "component.recovery.apply",
+            "Confirmar recovery",
+            "/component/recovery/apply",
+            service="components",
+            screen="system",
+            control="component-recovery-confirm",
+            schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
+            confirmation="token",
+        ),
+        _action(
             "component.stop",
             "Revisar parada do componente",
             "/component/plan",
@@ -311,10 +329,7 @@ def handheld_ui_contracts() -> dict[str, Any]:
             screen="system",
             control="component-recovery",
             enabled=False,
-            reason=(
-                "A recuperação automática ocorre no engine; não há endpoint Desktop "
-                "para uma recuperação manual isolada."
-            ),
+            reason=("Use Inspecionar recuperação, depois Revisar recovery e Confirmar recovery."),
             applicable=False,
         ),
         _action(
