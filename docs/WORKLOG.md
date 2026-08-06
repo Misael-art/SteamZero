@@ -4975,4 +4975,138 @@ e 25 harnesses QML offscreen passaram; Ruff check e format-check, mypy,
 independência, boundaries e `git diff --check` passaram. O runner isolado
 integral foi iniciado sem processos residuais, mas a sessão não devolveu resumo
 ou exit code conclusivo; a CI da PR será o gate autoritativo. Ações de host,
-release e tag: **nenhuma**.
+
+## 2026-08-06 — Merge da gestão global de emulação e instalação da release no host
+
+Merge do PR #61 (`feat(emulation): gestão global e layout coeso`) em `main`
+via `gh pr merge --merge --delete-branch=false --match-head-commit`, com o
+run push do merge commit `39bd325` 100% verde antes de qualquer passo de
+release. A release `0.1.0a42-39bd325cee60` foi preparada, verificada e
+instalada no host pelo fluxo canônico `tools/release_host.py`, com
+autorização explícita do operador na thread:
+
+- `inspect` limpo (único mismatch esperado: host ainda na release anterior);
+- `prepare --commit 39bd325… --output /tmp/opencode/release/39bd325` baixou o
+  wheel do artifact CI do run push `31110147929`, com provenance
+  (sourceCommit completo, refs/heads/main, tree clean), sbom, pip-audit e
+  `SHA256SUMS` conferidos;
+- `verify-bundle` ok; wheel `steamzero-0.1.0a42-py3-none-any.whl`
+  (sha256 `e725aa6bd473…`) com entry points de boot íntegros
+  (`steamzero-gamemode-boot`, `steamzero-gamemode-session`,
+  `steamos-session-select` etc.);
+- `install --bundle … --rollback-release 0.1.0a42-9dc6d6f0232c` convergiu na
+  primeira tentativa (daemon reiniciado, estado `converged`) e confirmou
+  idempotência no segundo ciclo; validação pós-instalação read-only:
+  `service status` converged na release ativada, `doctor ok=true` (único warn
+  pré-existente `backup.orphan`, não relacionado à release).
+
+Rollback disponível: `0.1.0a42-9dc6d6f0232c`. `publish` (tag/release
+canônica) NÃO foi executado — aguarda certificação física de boot pelo
+operador. Trabalho feito em worktree dedicado `/tmp/opencode/release-61`;
+nenhuma alteração em árvore de outro agente foi tocada.
+
+## 2026-08-06 — Plano da Fase 1 (laço primário) registrado
+
+Diagnóstico completo dos gaps de experiência do cliente, lacunas funcionais e
+oportunidades do tema concluído. A constatação central: a fundação de
+engenharia está sólida e bem governada (release, state store, lifecycle, jobs,
+IR de tema, shell editorial), mas o **laço primário nunca foi provado no host**
+— "ligar → boot em Game Mode → instalar emulador → jogar uma ROM". Zero
+emuladores instalados via produto, zero cores libretro entregues (0 de 17),
+boot direto não certificado fisicamente.
+
+Definida a Fase 1 como prioridade: provar o laço primário. Plano integral
+gravado em `.zcode/plans/plan-fase1-laco-primario.md` (fonte de verdade e ponto
+de retomada). Decisões de arquitetura justificadas na bancada:
+
+- **BE-2 (cores):** estender o enum `kind` do schema para `core` (caminho já
+  previsto pelo gate `_core_providers` em `tools/capability_matrix.py`) + novo
+  source type `libretro-core` + `CoreExecutor` que reusa a camada de transação
+  (`steamzero.core.transaction`); destino = dir de cores do RetroArch resolvido
+  por `find_core`. O contrato "core exigido" já existe ponta-a-ponta
+  (manifesto → `launch.core` → `PLATFORM_CORES` sancionado → probe → recusa
+  jogar); falta só o caminho de instalação.
+- **BE-1 (M10):** RetroArch + PCSX2 + PPSSPP (flatpak, sem keys/firmware),
+  certificados em VM descartável (fecha DEBT-A7) depois no host. Switch
+  (keys+firmware) e BIOS vão para a43+. DuckStation (EOL) sai.
+- **CX-2 (boot direto):** majoritariamente ação do operador; de código, fecho
+  o gap secundário de o `doctor` não checar boot (check `boot.direct`
+  read-only).
+
+Sequência: Entrega 0 (registrar plano + WORKLOG) → Item 1 (kind:core no
+contrato) → Item 2 (CoreExecutor) → Item 3 (17 manifestos de core) → Item 4
+(harness VM M10) → Item 5a (doctor boot.direct) → merge + CI → **PARAR e pedir
+autorização de host** → 5b–5h (certificação física no host).
+
+Nenhuma ação de host, release ou push foi executada. Registro apenas
+documental: gravação do plano e deste bloco.
+
+## 2026-08-06 — Itens 1/2/3 da Fase 1 (entrega de cores) — já implementados
+
+Ao criar a branch `codex/fase1-cores-laco-primario` a partir de
+`origin/main@39bd325` e examinar o estado real (não o documento versionado, que
+estava defasado), constatei que a entrega de cores libretro **já estava
+implementada**:
+
+- **Item 1 (contrato):** `adapter-v1.schema.json` já tem `kind: core` no enum
+  (linhas 25-32) + bloco `core` top-level com `id`+`sha256` (linhas 67-84);
+  `registry.py:289-306` (`_parse_core`) impõe o invariante "adapter core exige
+  exatamente uma fonte `archive` pinada" e proíbe adapter não-core declarar
+  `core`. Source type `archive` (não `libretro-core` como o plano original
+  supunha — a modelagem real é mais limpa).
+- **Item 2 (executor):** `libretro_cores.py` (404 linhas) — `LibretroCoreExecutor`
+  com extração 7z via libarchive (ctypes), validação de nome canônico e digest
+  do core, verify por re-hash no `apply` (linha 154-157), ownership markers
+  (`.steamzero-managed/`), recusa de sobrescrever arquivo de terceiro (linha
+  117-121), rollback transacional. Roteado no `lifecycle.py` (linhas 193-196,
+  731-748, 883-886).
+- **Item 3 (manifestos):** 17 `libretro-*.adapter.json` com hashes oficiais do
+  buildbot libretro (buildbot.libretro.com/stable/1.22.2); lockfile com as 17
+  entradas; matrix reporta **33/33 adapters instaláveis, 0/36 plataformas
+  bloqueadas, 17 cores com instalador**.
+
+Validação: 4 gates verdes (ruff, mypy, independence, boundaries,
+capability-matrix --check OK); suíte isolada integral **4176 passaram, 10
+skipados** (skip documentado: Flatpak fixa commit, checksum é garantia do
+executor portátil); 21 testes dedicados a cores; isolamento XDG intacto
+(before/after idênticos, zero mutação do state real).
+
+Decisão de bancada: o plano original modelava cores como `source type:
+libretro-core` + `CoreExecutor` dedicado; a implementação real escolheu
+`source type: archive` (reusável) + bloco `core` no manifesto (core id + digest
+separados do digest do archive) + `LibretroCoreExecutor`. É mais limpa: o
+archive é uma fonte genérica pinada, e o `core` é a promessa executável que
+distingue um adapter de core. Esta escolha prevalece; o plano registrado em
+`.zcode/plans/plan-fase1-laco-primario.md` deve ser lido com este adendo.
+
+Nenhuma ação de host, release ou push foi executada. Registro apenas
+documental: verificação do estado real + este adendo.
+
+## 2026-08-06 — Item 5a (doctor boot.direct) — concluído
+
+Adicionado check `boot.direct` ao doctor (`src/steamzero/diagnostics/doctor.py`):
+consulta `steam_boot.status()` (read-only, sem root) e publica o estado da
+cadeia GRUB→SDDM→Game Mode no envelope. O doctor só fotografa — não habilita nem
+remove boot. Mapeamento honesto (AGENTS.md §8, ADR-0020):
+
+- `ready` (ativado e saudável) e `available` (não ativado, legítimo) → `pass`;
+- `backoff` (autologin suspenso após falhas) e `degraded` (erro de health) →
+  `warn` com a causa visível;
+- `unknown` + `permissionDenied` (sem permissão de inspeção) → `warn`, nunca
+  falso negativo.
+
+O envelope `data` ganhou `bootDirect` (estado) e `bootBackoff` (bool). Este era
+um gap secundário que identifiquei no diagnóstico: o doctor ficava verde sem
+chechar a saúde do boot direto, justamente o caminho cuja certificação física
+ainda falta (G11).
+
+Decisão de bancada: o `else` final do check mantém comentário documentando os
+estados `ready`/`available` mesmo com ruff RET505 sugerindo removê-lo — o
+comentário é a memória de quais estados viram `pass` e por quê.
+
+Validação dirigida: 13 testes do doctor (5 novos de `boot.direct`: existência
+no envelope, mapeamento parametrizado ready/available/backoff/degraded/unknown,
+exceção não crashe), `ruff check`, `ruff format --check`, `mypy src`,
+`make independence boundaries`, `capability-matrix --check` verdes; isolamento
+XDG intacto (before/after idênticos). Nenhuma ação de host, release ou push foi
+executada.
