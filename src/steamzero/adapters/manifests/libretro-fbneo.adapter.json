@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-fbneo", "kind": "core", "presentation": {"displayName": "Libretro: FBNeo", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["arcade"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "fbneo", "sha256": "d735207c7b0acff80556edaea84d911315b3231f53669f48d5a8913e9b597595"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

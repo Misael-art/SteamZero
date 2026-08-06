@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-mednafen-pce", "kind": "core", "presentation": {"displayName": "Libretro: Mednafen PCE", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["pc-engine-turbografx"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "mednafen_pce", "sha256": "61b2df2421c6a6dcc0f3497a7967fe20cf0efe47be73709fa60492c6461d5b71"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

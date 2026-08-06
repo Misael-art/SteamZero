@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-mesen", "kind": "core", "presentation": {"displayName": "Libretro: Mesen", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["nes-famicom"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "mesen", "sha256": "552f8ab6ac1fd08bd555f589eb999be73a469c79ccfa929f884adb2cf3366b43"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

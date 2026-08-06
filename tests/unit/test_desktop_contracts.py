@@ -30,6 +30,33 @@ def test_every_bridge_route_is_declared_by_backend_contract() -> None:
     )
 
 
+def test_every_contract_route_uses_its_declared_http_method() -> None:
+    source = Path("src/steamzero/adapters/desktop_ui.py").read_text(encoding="utf-8")
+    get_handler = source.split("    def do_GET(self) -> None:", 1)[1].split(
+        "    def do_POST(self) -> None:", 1
+    )[0]
+    post_dispatch = source.split("    def _dispatch(self, path: str, payload: dict[str, Any])", 1)[
+        1
+    ]
+
+    def routes(handler: str) -> set[str]:
+        return set(re.findall(r'path == "([^"]+)"', handler)) | set(
+            re.findall(r'path\.startswith\("([^"]+)"\)', handler)
+        )
+
+    by_method = {"GET": routes(get_handler), "POST": routes(post_dispatch)}
+    for action in handheld_ui_contracts()["actions"]:
+        endpoint = action["endpoint"]
+        if endpoint is None:
+            continue
+        method = str(action["method"])
+        assert method in by_method
+        static = str(endpoint).split("/{", 1)[0]
+        assert static in by_method[method] or any(
+            static.startswith(prefix) for prefix in by_method[method]
+        ), f"{action['id']} declara {method} {endpoint}, mas a bridge diverge"
+
+
 def test_contract_matrix_has_handheld_control_semantics() -> None:
     matrix = handheld_ui_contracts()
     required_states = {"ready", "empty", "degraded", "pending", "failed", "offline"}
@@ -140,6 +167,19 @@ def test_gameplay_profile_apply_points_to_real_rollback_contract() -> None:
     assert matrix["steam.gameplay.rollback"]["inputSchema"]["required"] == ["operationId"]
 
 
+def test_editorial_library_launch_uses_the_published_steam_contract() -> None:
+    action = handheld_ui_contracts()["byId"]["steam.game.launch"]
+    assert action["endpoint"] == "/steam/game/launch"
+    assert action["screen"] == "library"
+    assert action["control"] == "game-primary"
+    assert action["inputSchema"] == {
+        "type": "object",
+        "required": ["gameId"],
+        "properties": {"gameId": {"type": "string"}},
+        "additionalProperties": False,
+    }
+
+
 def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
     qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
     direct_routes = re.findall(r'request\("(?:GET|POST)",\s*"([^"]+)"', qml)
@@ -163,6 +203,7 @@ def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
         "collections.apply",
         "library.health.plan",
         "library.health.apply",
+        "steam.game.launch",
     } <= static_action_ids
 
 

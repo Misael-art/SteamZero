@@ -86,7 +86,8 @@ ApplicationWindow {
         {"id": "sync", "label": qsTr("Saves e Sync"), "icon": "folder-sync"},
         {"id": "cast", "label": qsTr("Transmissão"), "icon": "video-display"},
         {"id": "system", "label": qsTr("Sistema"), "icon": "configure"},
-        {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"}
+        {"id": "themes", "label": qsTr("Temas"), "icon": "preferences-desktop-theme"},
+        {"id": "library", "label": qsTr("Biblioteca"), "icon": "applications-games"}
     ]
 
     function sectionIndexOf(sectionId) {
@@ -283,7 +284,10 @@ ApplicationWindow {
     readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
         ? desktopStatus.current.profile.touchMode : false
 
-    property int sectionIndex: 1
+    // A primeira experiência deve ser jogar e descobrir, não administrar.
+    // Argumentos explícitos e ações internas continuam selecionando as demais
+    // seções pela fonte única `navigationSections`.
+    property int sectionIndex: 0
     property int emulatorFilter: 0
     property int steamFilter: 0
     property string steamArea: "performance"
@@ -348,11 +352,8 @@ ApplicationWindow {
     property bool keyboardVisible: false
 
     function sectionLabel(index) {
-        return [
-            qsTr("Visão geral"), qsTr("Emulação"), qsTr("Steam"),
-            qsTr("Perfis"), qsTr("Saves e Sync"), qsTr("Transmissão"),
-            qsTr("Sistema")
-        ][index] || qsTr("Central")
+        const section = navigationSections[index]
+        return section ? section.label : qsTr("Central")
     }
 
     function activeTaskCount() {
@@ -927,9 +928,19 @@ ApplicationWindow {
             return
         const kind = row.action.kind
         if (kind === "component-plan") {
-            requestAction("component.plan", {"componentId": row.id}, function(response) {
+            requestAction("component.plan", {
+                "componentId": row.id,
+                "action": row.action.operation || "install"
+            }, function(response) {
                 componentPlan = response.plan
                 componentDialog.open()
+            })
+        } else if (kind === "component-verify") {
+            requestAction("component.verify", {"componentId": row.id}, function(response) {
+                notify(response.verified
+                    ? qsTr("%1 está íntegro").arg(row.name)
+                    : qsTr("%1 exige atenção").arg(row.name), !response.verified)
+                refreshStatus("")
             })
         } else if (kind === "component-launch") {
             requestAction("component.launch", {"componentId": row.id}, function(response) {
@@ -3150,6 +3161,62 @@ ApplicationWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: root.compactLayout ? 12 : 18
                                 anchors.margins: 28
+                                // A entrada editorial fica isolada do shell:
+                                // Home só recebe projeções já publicadas e
+                                // delega a navegação à fonte única de seções.
+                                EditorialHome {
+                                    steamGames: root.steamGameplayData.games || []
+                                    emulation: root.emulationData
+                                    playtime: root.playtimeData
+                                    collections: root.collectionData
+                                    components: root.emulatorItems
+                                    sync: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                        ? root.desktopStatus.dashboard.sync : ({})
+                                    doctor: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
+                                        ? root.desktopStatus.dashboard.doctor : ({})
+                                    libraryHealth: root.libraryHealthData
+                                    needsAttention: root.needsAttention
+                                    reducedMotion: root.reducedMotion
+                                    highContrast: root.highContrast
+                                    themeMinimumTarget: root._themeBridge.minimumTarget
+                                    typography: root._themeBridge.typographyRoles
+                                    backgroundColor: root.backgroundColor
+                                    surfaceColor: root.surfaceColor
+                                    raisedColor: root.raisedColor
+                                    borderColor: root.borderColor
+                                    textColor: root.textColor
+                                    mutedColor: root.mutedColor
+                                    cyanColor: root.cyanColor
+                                    cyanDarkColor: root.cyanDarkColor
+                                    greenColor: root.greenColor
+                                    amberColor: root.amberColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: root.responsiveGutter
+                                    Layout.rightMargin: root.responsiveGutter
+                                    onLibraryRequested: function(systemId) {
+                                        editorialLibraryPage.systemFilter = systemId
+                                        editorialLibraryPage.collectionFilter = ""
+                                        editorialLibraryPage.initialFilter = ""
+                                        editorialLibraryPage.resetMetadataFilters()
+                                        editorialLibraryPage.selectedIndex = 0
+                                        editorialLibraryPage.view = "library"
+                                        root.sectionIndex = root.sectionIndexOf("library")
+                                    }
+                                    onCollectionRequested: function(collectionId) {
+                                        editorialLibraryPage.systemFilter = "all"
+                                        editorialLibraryPage.collectionFilter = collectionId
+                                        editorialLibraryPage.initialFilter = ""
+                                        editorialLibraryPage.resetMetadataFilters()
+                                        editorialLibraryPage.selectedIndex = 0
+                                        editorialLibraryPage.view = "library"
+                                        root.sectionIndex = root.sectionIndexOf("library")
+                                    }
+                                    onSystemRequested: root.sectionIndex = root.sectionIndexOf("system")
+                                    onContinueRequested: function(game) { root.performContinueGame(game) }
+                                    onMaintenanceRequested: function(area) {
+                                        root.sectionIndex = root.sectionIndexOf(area)
+                                    }
+                                }
                                 Label {
                                     text: qsTr("Visão geral")
                                     color: root.textColor
@@ -4257,27 +4324,35 @@ ApplicationWindow {
                                 spacing: 16
                                 Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
                                 Label { text: qsTr("Somente leitura: a bridge ainda não publicou provider nem mutações seguras."); color: root.amberColor; Layout.leftMargin: 28 }
-                                Repeater {
-                                    model: [
-                                        {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh"},
-                                        {"label": qsTr("Conflitos preservados"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.conflicted || 0 : 0, "icon": "dialog-warning"},
-                                        {"label": qsTr("Concluídos"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.done || 0 : 0, "icon": "dialog-ok-apply"}
-                                    ]
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        color: root.surfaceColor
-                                        radius: 8
-                                        border.color: root.borderColor
-                                        Layout.fillWidth: true
-                                        Layout.leftMargin: 28
-                                        Layout.rightMargin: 28
-                                        Layout.minimumHeight: 64
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 16
-                                            ToolButton { enabled: false; icon.name: modelData.icon; icon.color: root.cyanColor; background: Item {} }
-                                            Label { text: modelData.label; color: root.textColor; Layout.fillWidth: true }
-                                            Label { text: String(modelData.value); color: root.textColor; font.pixelSize: 20; font.bold: true }
+                                GridLayout {
+                                    columns: root.compactLayout ? 1 : 3
+                                    columnSpacing: 12
+                                    rowSpacing: 12
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Repeater {
+                                        model: [
+                                            {"label": qsTr("Pendentes"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.pending || 0 : 0, "icon": "view-refresh", "state": "pending"},
+                                            {"label": qsTr("Conflitos preservados"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.conflicted || 0 : 0, "icon": "dialog-warning", "state": "conflicted"},
+                                            {"label": qsTr("Concluídos"), "value": root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync ? root.desktopStatus.dashboard.sync.done || 0 : 0, "icon": "dialog-ok-apply", "state": "done"}
+                                        ]
+                                        delegate: OperationalMetricCard {
+                                            required property var modelData
+                                            title: modelData.label
+                                            value: String(modelData.value)
+                                            iconName: modelData.icon
+                                            state: modelData.state
+                                            surfaceColor: root.surfaceColor
+                                            raisedColor: root.raisedColor
+                                            borderColor: root.borderColor
+                                            textColor: root.textColor
+                                            mutedColor: root.mutedColor
+                                            cyanColor: root.cyanColor
+                                            greenColor: root.greenColor
+                                            amberColor: root.amberColor
+                                            redColor: root.redColor
+                                            Layout.fillWidth: true
                                         }
                                     }
                                 }
@@ -5069,6 +5144,56 @@ ApplicationWindow {
                                 compactLayout: root.compactLayout
                                 requestAction: root.requestAction
                                 request: root.request
+                            }
+                        }
+                        // Biblioteca editorial: usa somente os read models já
+                        // publicados. O botão Jogar resolve o contrato seguro
+                        // `steam.game.launch`; emulação sem contrato permanece
+                        // explicitamente indisponível no dossiê.
+                        EditorialLibrary {
+                            id: editorialLibraryPage
+                            steamGames: root.steamGameplayData.games || []
+                            emulation: root.emulationData
+                            playtime: root.playtimeData
+                            collections: root.collectionData
+                            steamGameplay: root.steamGameplayData
+                            sync: root.desktopStatus.dashboard && root.desktopStatus.dashboard.sync
+                                ? root.desktopStatus.dashboard.sync : ({})
+                            effectStacks: root._themeBridge.effectStacks
+                            mediaRecipes: root._themeBridge.mediaRecipes
+                            backgroundColor: root.backgroundColor
+                            surfaceColor: root.surfaceColor
+                            raisedColor: root.raisedColor
+                            borderColor: root.borderColor
+                            textColor: root.textColor
+                            mutedColor: root.mutedColor
+                            cyanColor: root.cyanColor
+                            cyanDarkColor: root.cyanDarkColor
+                            greenColor: root.greenColor
+                            amberColor: root.amberColor
+                            redColor: root.redColor
+                            reducedMotion: root.reducedMotion
+                            highContrast: root.highContrast
+                            themeMinimumTarget: root._themeBridge.minimumTarget
+                            themeFocusedScale: root._themeBridge.focusedScale
+                            themePeripheralOpacity: root._themeBridge.peripheralOpacity
+                            typography: root._themeBridge.typographyRoles
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            onLaunchSteamRequested: function(gameId) {
+                                root.requestAction("steam.game.launch", {"gameId": gameId}, function() {
+                                    root.notify(qsTr("%1 foi iniciado").arg(editorialLibraryPage.selectedGame.name), false)
+                                    root.refreshStatus("")
+                                })
+                            }
+                            onOpenSteamConfigurationRequested: function(gameId) {
+                                const gameIndex = root.steamGameplayData.games.findIndex(function(game) {
+                                    return String(game.id) === gameId
+                                })
+                                root.steamArea = "performance"
+                                root.sectionIndex = root.sectionIndexOf("steam")
+                                if (gameIndex >= 0)
+                                    steamGameplayPage.gameIndex = gameIndex
                             }
                         }
                     }

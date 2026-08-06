@@ -59,6 +59,8 @@ class DesktopControlServer(ThreadingHTTPServer):
     token: str
     dashboard: DesktopDashboard | None
     session_plans: dict[str, tuple[str, str]]
+    bios_source_handles: dict[str, str]
+    bios_source_lock: threading.Lock
 
     def __init__(
         self,
@@ -71,6 +73,11 @@ class DesktopControlServer(ThreadingHTTPServer):
         self.token = token
         self.dashboard = dashboard
         self.session_plans = {}
+        # Handles de origem pertencem a esta instância efêmera da bridge. Eles
+        # não são paths, não sobrevivem a uma nova lista e não são reutilizáveis
+        # por outra sessão Desktop.
+        self.bios_source_handles = {}
+        self.bios_source_lock = threading.Lock()
         super().__init__(("127.0.0.1", 0), DesktopControlHandler)
 
     @property
@@ -123,6 +130,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, status)
         elif path == "/emulation/jobs":
             self._send(HTTPStatus.OK, {"jobs": self._dashboard().list_emulation_jobs()})
+        elif path == "/component/list":
+            self._send(HTTPStatus.OK, {"components": self._dashboard().list_components()})
+        elif path == "/component/matrix":
+            self._send(HTTPStatus.OK, self._dashboard().component_capability_matrix())
+        elif path == "/component/open-config/matrix":
+            self._send(HTTPStatus.OK, self._dashboard().component_open_config_matrix())
+        elif path == "/component/recovery/inspect":
+            self._send(HTTPStatus.OK, self._dashboard().component_recovery_inspect())
+        elif path == "/bios/status":
+            self._send(HTTPStatus.OK, self._dashboard().bios_status())
+        elif path == "/bios/audit":
+            self._send(HTTPStatus.OK, self._dashboard().bios_audit())
+        elif path == "/bios/sources":
+            self._send(HTTPStatus.OK, self._issue_bios_source_handles())
         elif path.startswith("/emulation/job/status/"):
             job_id = path.removeprefix("/emulation/job/status/")
             if not job_id:
@@ -230,6 +251,12 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if not isinstance(requested, str):
                 raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
             return {"plan": coordinator.plan(requested).to_dict()}
+        if path == "/component/status":
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().component_status(component_id)
+        if path == "/component/verify":
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().verify_component(component_id)
         if path == "/conflict/plan":
             return {
                 "plan": coordinator.plan_conflict_release(
@@ -242,19 +269,74 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
                 self._required_string(payload, "confirmToken"),
             )
         if path == "/component/plan":
+            component_id, component_action = self._required_exact_strings(
+                payload, "componentId", "action"
+            )
             return {
                 "plan": self._dashboard().plan_component(
-                    self._required_string(payload, "componentId")
+                    component_id,
+                    component_action,
                 )
             }
         if path == "/component/apply":
             self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
             return self._dashboard().apply_component(
-                self._required_string(payload, "planId"),
-                self._required_string(payload, "confirmToken"),
+                plan_id,
+                confirm_token,
             )
         if path == "/component/launch":
-            return self._dashboard().launch_component(self._required_string(payload, "componentId"))
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().launch_component(component_id)
+        if path == "/component/history":
+            (component_id,) = self._required_exact_strings(payload, "componentId")
+            return self._dashboard().component_operation_history(component_id)
+        if path == "/component/rollback/plan":
+            component_id, operation_id = self._required_exact_strings(
+                payload, "componentId", "operationId"
+            )
+            return {
+                "plan": self._dashboard().plan_component_rollback(
+                    component_id,
+                    operation_id,
+                )
+            }
+        if path == "/component/rollback/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().apply_component_rollback(
+                plan_id,
+                confirm_token,
+            )
+        if path == "/component/recovery/plan":
+            return {"plan": self._dashboard().plan_component_recovery()}
+        if path == "/component/recovery/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().apply_component_recovery(
+                plan_id,
+                confirm_token,
+            )
+        if path == "/bios/scan":
+            (source_id,) = self._required_exact_strings(payload, "sourceId")
+            return self._dashboard().bios_scan_selected(self._bios_source_handle(source_id))
+        if path == "/bios/scan/status":
+            (scan_id,) = self._required_exact_strings(payload, "scanId")
+            return self._dashboard().bios_scan_status(scan_id)
+        if path == "/bios/import/plan":
+            scan_id, selection = self._bios_import_payload(payload)
+            return {"plan": self._dashboard().bios_import_plan(scan_id, selection)}
+        if path == "/bios/import/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().bios_import_apply(plan_id, confirm_token)
+        if path == "/bios/rollback/plan":
+            (operation_id,) = self._required_exact_strings(payload, "operationId")
+            return {"plan": self._dashboard().plan_bios_import_rollback(operation_id)}
+        if path == "/bios/rollback/apply":
+            self._require_desktop_without_conflicts()
+            plan_id, confirm_token = self._required_exact_strings(payload, "planId", "confirmToken")
+            return self._dashboard().apply_bios_import_rollback(plan_id, confirm_token)
         if path == "/emulation/emulator/plan":
             return {
                 "plan": self._dashboard().plan_emulation_emulator(
@@ -670,6 +752,40 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             raise SteamZeroError("E-COMPONENT-DEGRADED", detail="dashboard Desktop indisponível")
         return dashboard
 
+    def _issue_bios_source_handles(self) -> dict[str, list[dict[str, str]]]:
+        """Publica capabilities efêmeras sem expor a identidade interna da origem."""
+        payload = self._dashboard().bios_source_selector()
+        raw_sources = payload.get("sources")
+        if not isinstance(raw_sources, list):
+            raise SteamZeroError("E-API-SCHEMA", detail="seletor de BIOS inválido")
+        sources: list[dict[str, str]] = []
+        handles: dict[str, str] = {}
+        for item in raw_sources:
+            if not isinstance(item, dict):
+                raise SteamZeroError("E-API-SCHEMA", detail="origem de BIOS inválida")
+            internal_id = item.get("sourceId")
+            label = item.get("label")
+            if not isinstance(internal_id, str) or not internal_id:
+                raise SteamZeroError("E-API-SCHEMA", detail="identidade de origem inválida")
+            if not isinstance(label, str) or not label:
+                raise SteamZeroError("E-API-SCHEMA", detail="rótulo de origem inválido")
+            handle = secrets.token_urlsafe(24)
+            while handle in handles:
+                handle = secrets.token_urlsafe(24)
+            handles[handle] = internal_id
+            sources.append({"sourceId": handle, "label": label})
+        with self._control_server.bios_source_lock:
+            self._control_server.bios_source_handles = handles
+        return {"sources": sources}
+
+    def _bios_source_handle(self, source_id: str) -> str:
+        """Resolve um handle somente na sessão que o emitiu."""
+        with self._control_server.bios_source_lock:
+            internal_id = self._control_server.bios_source_handles.get(source_id)
+        if internal_id is None:
+            raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem de BIOS não aprovada")
+        return internal_id
+
     def _require_desktop_without_conflicts(self) -> None:
         status = self._control_server.coordinator.status()
         context = status.get("context")
@@ -685,6 +801,31 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         if not isinstance(value, str) or not value:
             raise SteamZeroError("E-API-SCHEMA", detail=f"campo obrigatório: {key}")
         return value
+
+    def _required_exact_strings(self, payload: dict[str, Any], *keys: str) -> tuple[str, ...]:
+        """Valida o schema fechado das rotas do lifecycle de componentes."""
+        if set(payload) != set(keys):
+            raise SteamZeroError("E-API-SCHEMA", detail="propriedades do componente inválidas")
+        return tuple(self._required_string(payload, key) for key in keys)
+
+    def _bios_import_payload(self, payload: dict[str, Any]) -> tuple[str, list[str] | None]:
+        if set(payload) - {"scanId", "selection"} or "scanId" not in payload:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="propriedades de importação de BIOS inválidas"
+            )
+        scan_id = self._required_string(payload, "scanId")
+        selection = payload.get("selection")
+        if selection is None:
+            return scan_id, None
+        if not isinstance(selection, list) or not all(
+            isinstance(item, str) and item for item in selection
+        ):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="selection de BIOS precisa ser lista de strings"
+            )
+        if len(selection) != len(set(selection)):
+            raise SteamZeroError("E-API-SCHEMA", detail="selection de BIOS contém duplicatas")
+        return scan_id, selection
 
     def _required_dict(self, payload: dict[str, Any], key: str) -> dict[str, Any]:
         value = payload.get(key)

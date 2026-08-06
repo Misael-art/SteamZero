@@ -962,6 +962,12 @@ def rollback(operation_id: str, *, reason: str = "manual") -> RollbackResult:
 
 def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
     records = journal.read_records(operation_id)
+    if not journal.has_type(records, "operation.begin"):
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN",
+            operation_id=operation_id,
+            detail="operação não encontrada para rollback",
+        )
     if journal.has_type(records, journal.ROLLBACK):
         return RollbackResult(operation_id, "rolled-back")  # idempotente (RB-3)
 

@@ -730,6 +730,23 @@ def test_desktop_status_surfaces_generic_owner_blocker(
 class _FakeComponentLifecycle:
     def __init__(self) -> None:
         self.applied: tuple[str, str] | None = None
+        self.recovery_applied: tuple[str, str] | None = None
+
+    def verify(self, adapter_id: str) -> dict[str, object]:
+        self.verified = adapter_id
+        return {"id": adapter_id, "state": "degraded", "verified": False, "repairable": True}
+
+    def launch(self, adapter_id: str) -> dict[str, object]:
+        self.launched = adapter_id
+        return {"status": "started", "componentId": adapter_id, "pid": 4242}
+
+    def stop(self, adapter_id: str) -> dict[str, object]:
+        self.stopped = adapter_id
+        return {"status": "not-supported", "componentId": adapter_id}
+
+    def open_config(self, adapter_id: str) -> dict[str, object]:
+        self.configured = adapter_id
+        return {"status": "started", "componentId": adapter_id, "pid": 77}
 
     def status_all(self) -> list[dict[str, object]]:
         return [
@@ -775,6 +792,16 @@ class _FakeComponentLifecycle:
             "commit": "a" * 64,
         }
 
+    def recovery_inspect(self) -> list[dict[str, object]]:
+        return [{"operationId": "pending", "adapterId": "demo-flatpak", "state": "applying"}]
+
+    def plan_recovery(self) -> dict[str, object]:
+        return {"planId": "recovery-plan", "confirmToken": "recovery-confirm"}
+
+    def apply_recovery(self, plan_id: str, confirm: str) -> dict[str, object]:
+        self.recovery_applied = (plan_id, confirm)
+        return {"status": "ok", "operationId": "recovery-operation", "operations": []}
+
 
 def test_component_list_and_plan_use_contract_envelopes(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
@@ -790,6 +817,42 @@ def test_component_list_and_plan_use_contract_envelopes(
     assert cli.main(["component", "plan", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
     planned = json.loads(capsys.readouterr().out)
     contracts.validate(planned["data"]["plan"], "component-plan-v2.schema.json")
+
+
+def test_component_recover_requires_an_explicit_plan_confirmation(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
+
+    assert cli.main(["component", "recover", "--json"]) == cli.EXIT_OK
+    reviewed = json.loads(capsys.readouterr().out)
+    assert reviewed["data"] == {
+        "operations": [
+            {"operationId": "pending", "adapterId": "demo-flatpak", "state": "applying"}
+        ],
+        "count": 1,
+        "plan": {"planId": "recovery-plan", "confirmToken": "recovery-confirm"},
+    }
+    assert fake.recovery_applied is None
+
+    assert (
+        cli.main(
+            [
+                "component",
+                "recover",
+                "--plan-id",
+                "recovery-plan",
+                "--confirm",
+                "recovery-confirm",
+                "--json",
+            ]
+        )
+        == cli.EXIT_OK
+    )
+    applied = json.loads(capsys.readouterr().out)
+    assert applied["data"]["operationId"] == "recovery-operation"
+    assert fake.recovery_applied == ("recovery-plan", "recovery-confirm")
 
 
 def test_component_lifecycle_builder_imports_adapter_registry_at_runtime(
@@ -910,3 +973,54 @@ def test_state_cleanup_apply_rejects_wrong_token(capsys: pytest.CaptureFixture[s
         ]
     )
     assert code == cli.EXIT_FAILURE
+
+
+def test_component_verify_is_read_only_and_reports_degraded_without_failing(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verificar não pede token e não é erro quando encontra problema.
+
+    O envelope sai `degraded` com exit 0: o comando cumpriu seu papel — dizer a
+    verdade sobre o deployment. Sair diferente de zero faria script de operador
+    tratar "verifiquei e está ruim" como "não consegui verificar".
+    """
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
+
+    code = cli.main(["component", "verify", "--id", "demo-flatpak", "--json"])
+    env = json.loads(capsys.readouterr().out)
+
+    assert code == cli.EXIT_OK
+    contracts.validate(env, "envelope-v2.schema.json")
+    assert env["status"] == "degraded"
+    assert env["data"]["verified"] is False
+    assert fake.verified == "demo-flatpak"
+
+
+def test_component_launch_stop_and_open_config_are_reachable_from_the_cli(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _FakeComponentLifecycle()
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: fake)
+
+    assert cli.main(["component", "launch", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
+    launched = json.loads(capsys.readouterr().out)
+    contracts.validate(launched, "envelope-v2.schema.json")
+    assert launched["data"]["pid"] == 4242
+
+    # Flatpak gerencia o próprio processo: `not-supported` é resposta honesta,
+    # publicada como degraded, e não uma falha do comando.
+    assert cli.main(["component", "stop", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
+    stopped = json.loads(capsys.readouterr().out)
+    assert stopped["status"] == "degraded"
+    assert stopped["data"]["status"] == "not-supported"
+
+    assert cli.main(["component", "open-config", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
+    opened = json.loads(capsys.readouterr().out)
+    assert opened["data"] == {"status": "started", "componentId": "demo-flatpak", "pid": 77}
+
+    assert (fake.launched, fake.stopped, fake.configured) == (
+        "demo-flatpak",
+        "demo-flatpak",
+        "demo-flatpak",
+    )

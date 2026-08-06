@@ -96,10 +96,15 @@ de wheel. Se um wheel aparecer em `dist/` no seu diff, remova-o do commit.
 
 Após CADA item (não só no final):
 `.venv/bin/python tools/run_tests_isolated.py tests -q`,
-`.venv/bin/ruff check src tools tests`, `.venv/bin/mypy src`,
+`.venv/bin/ruff check src tools tests`,
+`.venv/bin/ruff format --check src tools tests`, `.venv/bin/mypy src`,
 `make independence boundaries`. Cobertura não regride. Nunca enfraqueça ou
 delete um teste para passar; se um contrato mudou de verdade, documente no
 commit qual e por quê.
+
+> Incidente 2026-08-03: o CI aplicou `ruff format` por conta própria no PR #46
+> (CONTROLS-E2E) porque o gate de formatação rodou só lá. `ruff check` não cobre
+> formatação; rode `ruff format --check` antes de commitar.
 
 ## 7. Independência de projetos de referência (ADR-0019)
 

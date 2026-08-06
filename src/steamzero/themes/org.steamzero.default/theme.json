@@ -3,31 +3,31 @@
   "kind": "steamzero-theme-v1",
   "id": "org.steamzero.default",
   "name": "SteamZero",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "SteamZero contributors",
   "license": "GPL-3.0-or-later",
-  "description": "Tema padrão do SteamZero — preserva o visual original pixel a pixel.",
+  "description": "Tema editorial SteamZero: superfícies mineral mist e mídia contextual resolvida em runtime.",
   "compatibility": { "themeApi": 1 },
   "tokens": {
     "color": {
-      "background": "#071019",
-      "sidebar": "#09131d",
-      "surface": "#0d1924",
-      "surfaceRaised": "#122131",
-      "surfaceSelected": "#1a2b3c",
-      "border": "#2a3a49",
-      "text": "#f2f6fb",
-      "textMuted": "#9eabba",
-      "textDisabled": "#667481",
-      "accent": "#13bdf2",
-      "accentStrong": "#0a5f85",
-      "success": "#59d35d",
-      "successSurface": "#1a3a1e",
-      "warning": "#ff9f1a",
-      "warningSurface": "#3a2a0a",
-      "danger": "#ff6b73",
-      "dangerSurface": "#3a1518",
-      "focus": "#13bdf2"
+      "background": "#e7eceb",
+      "sidebar": "#d8dfdf",
+      "surface": "#f4f7f5",
+      "surfaceRaised": "#ffffff",
+      "surfaceSelected": "#dce8e8",
+      "border": "#aebdbe",
+      "text": "#16212a",
+      "textMuted": "#53616b",
+      "textDisabled": "#7a878b",
+      "accent": "#006f99",
+      "accentStrong": "#005471",
+      "success": "#167a45",
+      "successSurface": "#dff3e7",
+      "warning": "#9a5a00",
+      "warningSurface": "#fff0d5",
+      "danger": "#ae2634",
+      "dangerSurface": "#fbe2e5",
+      "focus": "#006f99"
     },
     "geometry": {
       "radiusSmall": 6,
@@ -44,7 +44,16 @@
       "scale": 1.0,
       "weightBody": 400,
       "weightStrong": 600,
-      "weightHeading": 700
+      "weightHeading": 700,
+      "display": 36,
+      "heading": 24,
+      "title": 20,
+      "body": 16,
+      "metadata": 14,
+      "badge": 12,
+      "caption": 12,
+      "controlHint": 14,
+      "diagnostic": 14
     },
     "motion": {
       "durationFast": 120,
@@ -52,6 +61,65 @@
       "durationLong": 300,
       "hoverIntensity": 0.05,
       "focusIntensity": 0.1
+    },
+    "stateVariants": {
+      "focusedScale": 1.05,
+      "peripheralOpacity": 0.58,
+      "selectedOpacity": 1.0
+    },
+    "interaction": {
+      "focusVisible": true,
+      "minimumTarget": 48
+    },
+    "accessibility": {
+      "systemOverrides": true
+    },
+    "performance": {
+      "defaultTier": "cinematic"
+    }
+  },
+  "effects": {
+    "schemaVersion": 1,
+    "stacks": {
+      "contextualBackdrop": [
+        { "type": "blur", "radius": 28, "fallback": "omit" },
+        { "type": "saturation", "amount": -0.38, "fallback": "minimal" },
+        { "type": "colorize", "color": "#10212c", "strength": 0.28, "fallback": "omit" },
+        { "type": "vignette", "color": "#071019", "strength": 0.22, "fallback": "omit" }
+      ],
+      "focusedCover": [
+        { "type": "shadow", "color": "#071019", "opacity": 0.42, "blur": 18, "offsetY": 6, "fallback": "minimal" },
+        { "type": "glow", "color": "#13bdf2", "strength": 0.12, "blur": 12, "fallback": "omit" }
+      ],
+      "peripheralCover": [
+        { "type": "saturation", "amount": -0.58, "fallback": "minimal" },
+        { "type": "opacity", "amount": 0.58, "fallback": "minimal" }
+      ]
+    }
+  },
+  "mediaRecipes": {
+    "schemaVersion": 1,
+    "recipes": {
+      "contextualBackdrop": {
+        "sourceOrder": ["hero", "fanart", "cover", "screenshot", "banner", "platformArt", "geometric"],
+        "fit": "crop",
+        "focalX": 0.5,
+        "focalY": 0.5,
+        "effectStack": "contextualBackdrop",
+        "maxDecodeWidth": 1920
+      },
+      "focusedCover": {
+        "sourceOrder": ["cover", "hero", "screenshot", "platformArt", "geometric"],
+        "fit": "contain",
+        "effectStack": "focusedCover",
+        "maxDecodeWidth": 1024
+      },
+      "peripheralCover": {
+        "sourceOrder": ["cover", "hero", "screenshot", "platformArt", "geometric"],
+        "fit": "contain",
+        "effectStack": "peripheralCover",
+        "maxDecodeWidth": 512
+      }
     }
   },
   "assets": {}

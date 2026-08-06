@@ -127,6 +127,25 @@ def test_steam_rows_do_not_claim_a_specific_distribution() -> None:
     assert "BigLinux" not in str(rows)
 
 
+def test_open_config_matrix_covers_each_active_emulator_without_exposing_argv() -> None:
+    matrix = DesktopDashboard(
+        registry_factory=AdapterRegistry.bundled
+    ).component_open_config_matrix()
+
+    assert matrix["count"] == 15
+    assert {item["componentId"] for item in matrix["decisions"]} == {
+        manifest.id for manifest in AdapterRegistry.bundled().list() if manifest.kind == "emulator"
+    }
+    for decision in matrix["decisions"]:
+        assert decision["strategy"] == "main-ui"
+        assert decision["action"] == "component.launch"
+        assert decision["applicableStates"] == ["installed", "outdated"]
+        assert set(decision["evidence"]) == {"upstream", "version"}
+        assert decision["evidence"]["upstream"].startswith("https://")
+        assert "argv" not in str(decision)
+        assert "/home/" not in str(decision)
+
+
 def test_steam_open_uses_only_allowlisted_uri() -> None:
     calls: list[tuple[str, ...]] = []
     controller = SteamDesktopController(
@@ -242,6 +261,26 @@ class BrokenFlatpak(FakeFlatpak):
         raise SteamZeroError("E-COMPONENT-DEGRADED", detail="probe quebrada")
 
 
+def _registry_with_eol_duckstation() -> AdapterRegistry:
+    """Registry real com a fonte do DuckStation forçada a EOL.
+
+    O dashboard exibe uma lista fixa de três componentes, então o EOL precisa
+    recair sobre um deles. Antes o DuckStation era EOL de verdade e o teste lia
+    o manifesto empacotado; ele migrou para o AppImage oficial na Etapa 1, e o
+    contrato verificado aqui — componente descontinuado aparece `unsupported`,
+    com a ação desabilitada — continua valendo e passa a ser sintetizado.
+    """
+    import dataclasses
+
+    manifests = []
+    for manifest in AdapterRegistry.bundled().list():
+        if manifest.id == "duckstation":
+            source = dataclasses.replace(manifest.sources[0], end_of_life=True)
+            manifest = dataclasses.replace(manifest, sources=(source,))
+        manifests.append(manifest)
+    return AdapterRegistry(manifests)
+
+
 def test_dashboard_snapshot_keeps_eol_component_honest(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -264,6 +303,7 @@ def test_dashboard_snapshot_keeps_eol_component_honest(
         spawn=lambda _argv: None,
         reduced_motion_probe=lambda: True,
         high_contrast_probe=lambda: True,
+        registry_factory=_registry_with_eol_duckstation,
     )
 
     snapshot = dashboard.snapshot(_status())

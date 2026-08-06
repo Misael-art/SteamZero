@@ -28,7 +28,7 @@ def db_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_migrate_fresh_to_latest(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.user_version == state.LATEST == 16
+    assert store.user_version == state.LATEST
     tables = {
         r["name"]
         for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -54,7 +54,7 @@ def test_migrate_fresh_to_latest(db_path: Path) -> None:
 
 def test_migrate_idempotent(db_path: Path) -> None:
     store = state.open_state(db_path)
-    assert store.migrate() == 16  # 2ª vez: no-op
+    assert store.migrate() == state.LATEST  # 2ª vez: no-op
     store.close()
 
 
@@ -71,7 +71,7 @@ def test_migrate_v1_profile_to_desktop_capable_v2(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 16
+    assert store.user_version == state.LATEST
     assert store.get_profile("legacy-profile") is not None
     store.save_profile(
         {
@@ -129,7 +129,7 @@ def test_migration_v3_to_v4_preserves_legacy_runtime(db_path: Path) -> None:
     connection.close()
 
     store = state.open_state(db_path)
-    assert store.user_version == 16
+    assert store.user_version == state.LATEST
     assert store.get_profile("steam-runtime:game:10") is not None
     assert store.latest_game_session("10") is None
     store.close()
@@ -164,7 +164,7 @@ def test_migration_v12_backfills_legacy_session_duration(db_path: Path) -> None:
 
     store = state.open_state(db_path)
     session = store.latest_game_session("10")
-    assert store.user_version == 16
+    assert store.user_version == state.LATEST
     assert session is not None
     assert 1799 <= session["played_seconds"] <= 1800
     assert session["duration_source"] == "legacy-wall-clock"
@@ -409,7 +409,7 @@ def test_export_json(db_path: Path) -> None:
     store = state.open_state(db_path)
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     export = store.export_json()
-    assert export["schemaVersion"] == 16
+    assert export["schemaVersion"] == state.LATEST
     assert "job" in export["tables"]
     assert export["tables"]["job"][0]["id"] == "J1"
     store.close()
@@ -438,18 +438,25 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
     store.save_job({"id": "J1", "type": "t", "priority": "background", "state": "queued"})
     store.close()
 
+    # A migração falsa entra SEMPRE uma versão acima da última real. Fixar o
+    # número colidia com a v17 assim que ela passou a existir de verdade — o
+    # teste passou a injetar em cima de uma migração legítima e reprovou por
+    # colisão, não por defeito.
+    broken_version = state.LATEST + 1
+
     def bad(conn: object) -> None:
         conn.execute("CREATE TABLE t_novo (x)")  # type: ignore[attr-defined]
-        raise RuntimeError("migração v16 quebrada")
+        raise RuntimeError(f"migração v{broken_version} quebrada")
 
-    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (17, bad)])
-    monkeypatch.setattr(state, "LATEST", 17)
+    previous_version = state.LATEST
+    monkeypatch.setattr(state, "MIGRATIONS", [*state.MIGRATIONS, (broken_version, bad)])
+    monkeypatch.setattr(state, "LATEST", broken_version)
 
     store2 = state.StateStore(db_path)
     with pytest.raises(SteamZeroError) as ei:
         store2.migrate()
     assert ei.value.code == "E-STATE-MIGRATION"
-    assert store2.user_version == 16  # não avançou além da v16 atual
+    assert store2.user_version == previous_version  # não avançou além da última real
     tables = {
         r["name"]
         for r in store2._conn.execute(
@@ -459,3 +466,76 @@ def test_migration_failure_restores_backup(db_path: Path, monkeypatch: pytest.Mo
     assert "t_novo" not in tables  # migração revertida
     assert store2.get_job("J1") is not None  # dados preservados
     store2.close()
+
+
+class TestTheMigrationChainIsWellFormed:
+    """Invariantes que substituem o número fixo removido dos testes acima.
+
+    As asserções antigas fixavam `== 16` e reprovavam a cada migração
+    legítima — sete testes caíram quando a v17 do catálogo de BIOS entrou.
+    Trocar por `state.LATEST` resolveu o falso vermelho, mas sozinho perderia o
+    sinal de "alguém acrescentou uma migração sem perceber".
+
+    Estes invariantes recuperam esse sinal e valem mais que o literal: eles
+    pegam duplicata, buraco e desordem — que o número sozinho nunca pegaria.
+    """
+
+    def test_latest_matches_the_number_of_migrations(self) -> None:
+        assert len(state.MIGRATIONS) == state.LATEST, (
+            "LATEST e a quantidade de migrações divergiram; uma migração foi "
+            "registrada sem avançar LATEST, ou o contrário"
+        )
+
+    def test_versions_are_contiguous_from_one(self) -> None:
+        """Buraco na sequência deixa um banco parado numa versão inexistente."""
+        versions = [version for version, _up in state.MIGRATIONS]
+        assert versions == list(range(1, state.LATEST + 1)), f"sequência quebrada: {versions}"
+
+    def test_no_version_is_claimed_twice(self) -> None:
+        """Duas migrações na mesma versão: uma delas nunca roda, em silêncio."""
+        versions = [version for version, _up in state.MIGRATIONS]
+        assert len(versions) == len(set(versions))
+
+    def test_a_fresh_database_reaches_latest(self, db_path: Path) -> None:
+        store = state.open_state(db_path)
+        try:
+            assert store.user_version == state.LATEST
+        finally:
+            store.close()
+
+    def test_v16_migrates_through_bios_lifecycle_operation_and_cores(
+        self, db_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """17--20 coexistem: BIOS, lifecycle, operação e cores de componente."""
+        full_migrations = state.MIGRATIONS
+        with monkeypatch.context() as legacy:
+            legacy.setattr(state, "MIGRATIONS", full_migrations[:16])
+            legacy.setattr(state, "LATEST", 16)
+            old = state.open_state(db_path)
+            old.close()
+
+        migrated = state.open_state(db_path)
+        try:
+            assert migrated.user_version == 20 == state.LATEST
+            tables = {
+                row["name"]
+                for row in migrated.adapter_connection()
+                .execute("SELECT name FROM sqlite_master WHERE type='table'")
+                .fetchall()
+            }
+            assert {
+                "bios_object",
+                "bios_identity",
+                "bios_variant",
+                "bios_projection",
+                "component",
+            } <= tables
+            component_columns = {
+                row["name"]
+                for row in migrated.adapter_connection()
+                .execute("PRAGMA table_info(component)")
+                .fetchall()
+            }
+            assert "operation_id" in component_columns
+        finally:
+            migrated.close()

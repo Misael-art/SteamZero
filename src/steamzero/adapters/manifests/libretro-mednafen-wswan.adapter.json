@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-mednafen-wswan", "kind": "core", "presentation": {"displayName": "Libretro: Mednafen WSWAN", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["wonderswan"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "mednafen_wswan", "sha256": "128be5e5cca210b3bffd98ffdd43a92893aa7018d765665bbaedd4a9e4d38fa4"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

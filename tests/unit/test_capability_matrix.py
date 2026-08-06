@@ -47,11 +47,67 @@ def test_matrix_does_not_read_the_host() -> None:
             os.environ["XDG_STATE_HOME"] = original
 
 
-def test_core_providers_are_derived_not_asserted() -> None:
-    """Se algum dia um adapter entregar core, a matriz precisa refletir sozinha."""
+def test_core_providers_require_a_pinned_executor() -> None:
+    """Cobertura vem do core declarado pelo executor, nunca de texto solto."""
     from steamzero.adapters.registry import AdapterRegistry
 
-    manifests = AdapterRegistry.bundled().list()
-    assert capability_matrix._core_providers(manifests) == {
-        manifest.id for manifest in manifests if manifest.kind == "core"
+    registry = AdapterRegistry.bundled()
+    manifests = registry.list()
+    routes = capability_matrix.lifecycle.routes_for(registry)
+    assert len([manifest for manifest in manifests if manifest.kind == "core"]) == 17
+    assert capability_matrix._core_providers(manifests, routes) == {
+        manifest.core.id
+        for manifest in manifests
+        if manifest.kind == "core" and manifest.core is not None
     }
+
+
+def test_cloud_platforms_are_not_false_blocked_for_lacking_an_emulator() -> None:
+    from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.domain.platforms import PlatformRegistry
+
+    table, _cores, blocked = capability_matrix._platform_section(
+        PlatformRegistry.bundled(),
+        capability_matrix.lifecycle.routes_for(AdapterRegistry.bundled()),
+        set(),
+    )
+
+    assert "| geforce-now | serviço cloud | browser | — | — | nenhum |" in table
+    assert "| xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |" in table
+    assert "| amazon-luna | serviço cloud | browser | — | — | nenhum |" in table
+    assert blocked == 21
+
+
+def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:
+    """O contrato só vale se faltar capacidade reprovar, não só aparecer na tabela."""
+    from steamzero.adapters.registry import AdapterRegistry
+
+    registry = AdapterRegistry.bundled()
+    routes = capability_matrix.lifecycle.routes_for(registry)
+    _table, violations, active, _config = capability_matrix._action_matrix(registry, routes)
+    assert violations == [], f"emulador ativo com ciclo incompleto: {violations}"
+    assert active == 15, "o denominador mudou; revise a matriz antes de seguir"
+
+
+def test_the_gate_refuses_an_active_emulator_missing_a_mandatory_capability() -> None:
+    """Regressão: remover `repair` de um manifesto precisa reprovar o gate.
+
+    Sem esta prova, a tabela publicaria a lacuna e o CI seguiria verde — que é
+    exatamente o padrão de "documento bonito, gate inerte" que a matriz existe
+    para impedir.
+    """
+    from steamzero.adapters.registry import AdapterRegistry, load_manifest
+
+    registry = AdapterRegistry.bundled()
+    quebrado = []
+    for manifest in registry.list():
+        raw = dict(manifest.raw)
+        if manifest.id == "dolphin":
+            raw["capabilities"] = [c for c in raw["capabilities"] if c != "repair"]
+        quebrado.append(load_manifest(raw))
+
+    mutilado = AdapterRegistry(quebrado)
+    routes = capability_matrix.lifecycle.routes_for(mutilado)
+    _table, violations, _active, _config = capability_matrix._action_matrix(mutilado, routes)
+
+    assert any("dolphin" in item and "repair" in item for item in violations)

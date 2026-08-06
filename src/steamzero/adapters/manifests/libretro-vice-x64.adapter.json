@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-vice-x64", "kind": "core", "presentation": {"displayName": "Libretro: VICE x64", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["commodore-64"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "vice_x64", "sha256": "3df503d65afe46bef869b44f5b2799a63175afb357d39e36f42beb522aaf6058"}, "requires": ["retroarch"], "license": "GPL-2.0-only", "upstream": "https://vice-emu.sourceforge.io/", "verify": {"smokeTest": ["core-present"]}
+}
