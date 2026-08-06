@@ -57,6 +57,22 @@ def test_core_providers_are_derived_not_asserted() -> None:
     }
 
 
+def test_cloud_platforms_are_not_false_blocked_for_lacking_an_emulator() -> None:
+    from steamzero.adapters.registry import AdapterRegistry
+    from steamzero.domain.platforms import PlatformRegistry
+
+    table, _cores, blocked = capability_matrix._platform_section(
+        PlatformRegistry.bundled(),
+        capability_matrix.lifecycle.routes_for(AdapterRegistry.bundled()),
+        set(),
+    )
+
+    assert "| geforce-now | serviço cloud | browser | — | — | nenhum |" in table
+    assert "| xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |" in table
+    assert "| amazon-luna | serviço cloud | browser | — | — | nenhum |" in table
+    assert blocked == 21
+
+
 def test_every_active_emulator_declares_the_mandatory_lifecycle() -> None:
     """O contrato só vale se faltar capacidade reprovar, não só aparecer na tabela."""
     from steamzero.adapters.registry import AdapterRegistry

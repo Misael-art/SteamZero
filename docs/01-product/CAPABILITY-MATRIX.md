@@ -18,7 +18,7 @@ host, que vive nos relatórios de certificação.
 | adapters declarados | 16 |
 | adapters instaláveis pelo lifecycle | 16 de 16 |
 | plataformas declaradas | 36 |
-| plataformas com bloqueio | 24 de 36 |
+| plataformas com bloqueio | 21 de 36 |
 | cores libretro exigidos | 17 |
 | adapters que entregam core | 0 |
 | ações de UI publicadas | 116 |
@@ -87,9 +87,9 @@ obrigatória, fica sem executor ou mantém fonte EOL.
 | mega-drive | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
 | arcade | retroarch | flatpak | fbneo | — | core `fbneo` sem instalador |
 | playstation | duckstation | engine | — | — | nenhum |
-| geforce-now | — | — | — | — | **nenhum emulador declarado** |
-| xbox-cloud-gaming | — | — | — | — | **nenhum emulador declarado** |
-| amazon-luna | — | — | — | — | **nenhum emulador declarado** |
+| geforce-now | serviço cloud | browser | — | — | nenhum |
+| xbox-cloud-gaming | serviço cloud | browser | — | — | nenhum |
+| amazon-luna | serviço cloud | browser | — | — | nenhum |
 | nintendo-console | dolphin | flatpak | — | — | nenhum |
 | master-system | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |
 | game-gear | retroarch | flatpak | genesis_plus_gx | — | core `genesis_plus_gx` sem instalador |

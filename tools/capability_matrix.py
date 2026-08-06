@@ -117,6 +117,13 @@ def _platform_section(
     cores_needed: set[str] = set()
     blocked = 0
     for platform in platforms.list():
+        if platform.kind == "cloud":
+            # Cloud é uma família de execução própria: a URL allowlisted é
+            # aberta pelo serviço CloudPlatformService, não por um emulador.
+            # Contar sua ausência de emulador como bloqueio inventaria uma
+            # limitação que o manifesto deliberadamente não declara.
+            rows.append((platform.id, "serviço cloud", "browser", "—", "—", "nenhum"))
+            continue
         primary = next(
             (item for item in platform.emulators if item.get("role") == "primary"),
             None,
