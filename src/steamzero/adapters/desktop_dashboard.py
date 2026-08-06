@@ -947,6 +947,60 @@ class DesktopDashboard:
     def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
         return self._gameplay.rollback_lsfg_install(operation_id)
 
+    def list_components(self) -> list[dict[str, Any]]:
+        """Publica somente os fatos de lifecycle que já são seguros de ler."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.status_all()
+
+    def component_status(self, component_id: str) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.status(component_id)
+
+    def verify_component(self, component_id: str) -> dict[str, Any]:
+        """Verificação é leitura: não pede token nem produz uma operação."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.verify(component_id)
+
+    def component_capability_matrix(self) -> dict[str, Any]:
+        """Matriz sanitizada; capabilities vêm dos manifests, não da UI."""
+        registry = self._registry_factory()
+        statuses = {item["id"]: item for item in self.list_components()}
+        return {
+            "components": [
+                {
+                    "componentId": manifest.id,
+                    "kind": manifest.kind,
+                    "capabilities": list(manifest.capabilities),
+                    "status": statuses.get(manifest.id, {"state": "unavailable"}),
+                }
+                for manifest in registry.list()
+            ]
+        }
+
     def plan_component(self, adapter_id: str, action: str = "install") -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()

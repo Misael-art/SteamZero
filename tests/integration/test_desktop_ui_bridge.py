@@ -168,6 +168,22 @@ class FakeDashboard:
         self.calls.append(("launch", component_id))
         return {"status": "started"}
 
+    def list_components(self) -> list[dict[str, object]]:
+        self.calls.append(("component-list",))
+        return [{"id": "dolphin", "state": "installed"}]
+
+    def component_status(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-status", component_id))
+        return {"id": component_id, "state": "installed"}
+
+    def verify_component(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-verify", component_id))
+        return {"id": component_id, "state": "installed", "verified": True}
+
+    def component_capability_matrix(self) -> dict[str, object]:
+        self.calls.append(("component-matrix",))
+        return {"components": [{"componentId": "dolphin", "capabilities": ["verify"]}]}
+
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
         return {"planId": "emulator-plan", "confirmToken": "emulator-confirm"}
@@ -734,6 +750,34 @@ def test_bridge_returns_structured_error_instead_of_closing_connection(
     payload = json.loads(error.value.read())
     assert payload["error"]["code"] == "E-INTERNAL-UNEXPECTED"
     error.value.close()
+
+
+def test_bridge_exposes_read_only_component_lifecycle_surface(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    assert request_json(base, token, "/component/list") == {
+        "components": [{"id": "dolphin", "state": "installed"}]
+    }
+    assert request_json(base, token, "/component/matrix") == {
+        "components": [{"componentId": "dolphin", "capabilities": ["verify"]}]
+    }
+    assert request_json(base, token, "/component/status", {"componentId": "dolphin"}) == {
+        "id": "dolphin",
+        "state": "installed",
+    }
+    assert request_json(base, token, "/component/verify", {"componentId": "dolphin"}) == {
+        "id": "dolphin",
+        "state": "installed",
+        "verified": True,
+    }
+    assert dashboard.calls == [
+        ("component-list",),
+        ("component-matrix",),
+        ("component-status", "dolphin"),
+        ("component-verify", "dolphin"),
+    ]
 
 
 def test_bridge_exposes_dashboard_component_and_steam_actions(

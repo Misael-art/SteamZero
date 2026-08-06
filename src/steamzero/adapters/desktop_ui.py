@@ -123,6 +123,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, status)
         elif path == "/emulation/jobs":
             self._send(HTTPStatus.OK, {"jobs": self._dashboard().list_emulation_jobs()})
+        elif path == "/component/list":
+            self._send(HTTPStatus.OK, {"components": self._dashboard().list_components()})
+        elif path == "/component/matrix":
+            self._send(HTTPStatus.OK, self._dashboard().component_capability_matrix())
         elif path.startswith("/emulation/job/status/"):
             job_id = path.removeprefix("/emulation/job/status/")
             if not job_id:
@@ -230,6 +234,10 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             if not isinstance(requested, str):
                 raise SteamZeroError("E-API-SCHEMA", detail="profile precisa ser string")
             return {"plan": coordinator.plan(requested).to_dict()}
+        if path == "/component/status":
+            return self._dashboard().component_status(self._required_string(payload, "componentId"))
+        if path == "/component/verify":
+            return self._dashboard().verify_component(self._required_string(payload, "componentId"))
         if path == "/conflict/plan":
             return {
                 "plan": coordinator.plan_conflict_release(

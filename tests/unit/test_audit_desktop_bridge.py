@@ -18,18 +18,11 @@ def test_lifecycle_inventory_classifies_every_public_method() -> None:
     assert set(LIFECYCLE_SURFACES) == set(report["lifecycleMethods"])
 
 
-def test_audit_reports_unpublished_lifecycle_actions_without_exposing_host_data() -> None:
+def test_audit_reports_only_the_remaining_unpublished_lifecycle_actions() -> None:
     report = audit()
     missing = {item["subject"] for item in report["issues"] if item["kind"] == "missing-contract"}
-    assert {
-        "status",
-        "status_all",
-        "verify",
-        "open_config",
-        "rollback",
-        "recover",
-        "stop",
-    } <= missing
+    assert {"open_config", "rollback", "recover", "stop"} <= missing
+    assert not {"status", "status_all", "verify"} & missing
     serialized = str(report)
     assert "/home/" not in serialized
     assert "confirmToken" not in serialized
