@@ -302,7 +302,17 @@ Window {
                 library.openSystem(library.systems[1])
                 check(library.visibleGames.length === 1 && !library.visibleGames[0].launchable,
                       "emulação sem launcher publicado deve permanecer honesta")
-                check(!library.handleNavigationIntent("confirm"),
+                // A guarda mora no DOSSIÊ, não na biblioteca. Inspecionar um
+                // jogo sem launcher é legítimo — é assim que o usuário vê o
+                // rótulo "Sem launcher". Barrar já na biblioteca esconderia a
+                // informação em vez de proteger o lançamento.
+                //
+                // A asserção anterior exigia `false` já na biblioteca e, por
+                // nunca chegar ao dossiê, teria passado mesmo se a guarda real
+                // não existisse.
+                check(library.handleNavigationIntent("confirm") && library.view === "dossier",
+                      "jogo sem launcher deve poder ser inspecionado no dossiê")
+                check(!library.handleNavigationIntent("confirm") && library.view === "dossier",
                       "confirmação não deve abrir lançamento sem contrato seguro")
                 width = 800
                 height = 1280
