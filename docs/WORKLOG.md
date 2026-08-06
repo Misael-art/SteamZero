@@ -4937,3 +4937,18 @@ confere que um valor hostil herdado é substituído antes do `qml6` iniciar.
 Validação dirigida: 25 testes da bridge Desktop passaram; Ruff check e
 format-check, mypy, independência, boundaries e `git diff --check` passaram.
 Nenhuma ação de host, release, push ou tag foi executada por esta correção.
+
+## 2026-08-06 — CDN oficial de assets GitHub permitido para lifecycle
+
+O download transacional de componentes agora reconhece
+`release-assets.githubusercontent.com`, CDN oficial para o qual o GitHub
+redireciona releases pinadas. A allowlist continua exata — sem wildcard — e a
+verificação de SHA-256 do manifesto permanece obrigatória. Isso corrige o
+diagnóstico observado no reparo do Citron antes de qualquer mutação: o plano
+falhava em `E-SUPPLY-REMOTE-FAILED` ao seguir esse redirecionamento legítimo.
+
+Validação dirigida: teste de redirect permitido e negativo para host parecido,
+Ruff check e format-check, mypy, independência, boundaries e
+`git diff --check` passaram. O runner isolado integral foi iniciado, mas a
+sessão não devolveu um resumo/exit code conclusivo; a CI da PR permanece o gate
+autoritativo antes de integrar. Ações de host, release e tag: **nenhuma**.
