@@ -29,6 +29,7 @@ from vm_harness.provision import (
     CommandResult,
     GuestComponentClient,
     VmConfig,
+    _seed_argv,
     build_virt_install_argv,
     render_cloud_init,
 )
@@ -274,6 +275,18 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     assert "--noautoconsole" in argv
 
 
+def test_seed_iso_uses_xorriso_when_cloud_localds_is_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def which(name: str) -> str | None:
+        return "/usr/bin/xorriso" if name == "xorriso" else None
+
+    monkeypatch.setattr(provision_module.shutil, "which", which)
+    argv = _seed_argv(tmp_path / "seed.iso", tmp_path / "user-data", tmp_path / "meta-data")
+    assert argv[:5] == ("xorriso", "-as", "mkisofs", "-output", str(tmp_path / "seed.iso"))
+    assert "cidata" in argv
+
+
 def test_guest_component_client_unwraps_the_cli_envelope() -> None:
     calls: list[tuple[str, ...]] = []
 
@@ -382,6 +395,6 @@ def test_provision_orchestrates_only_disposable_resources(
     assert provision_module.provision(config, runner=runner) == evidence
     assert events == ["preflight", "copy-source", "restore", "destroy"]
     assert any(command[0] == "qemu-img" for command in calls)
-    assert any(command[0] == "cloud-localds" for command in calls)
+    assert any(command[0] in {"cloud-localds", "xorriso", "genisoimage"} for command in calls)
     assert any(command[0] == "virt-install" for command in calls)
     assert any(command[:2] == ("virsh", "ttyconsole") for command in calls)

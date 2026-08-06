@@ -59,11 +59,11 @@ _CONFIRM = "EXECUTAR-VM-M10"
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
     "virsh",
-    "cloud-localds",
     "qemu-img",
     "ssh",
     "git",
 )
+SEED_BUILDERS: tuple[str, ...] = ("cloud-localds", "xorriso", "genisoimage")
 
 
 @dataclass(frozen=True)
@@ -131,6 +131,43 @@ def _preflight() -> None:
     missing = [name for name in REQUIRED_BINARIES if shutil.which(name) is None]
     if missing:
         raise RuntimeError("lab KVM/libvirt incompleto; faltam: " + ", ".join(missing))
+    if not any(shutil.which(name) is not None for name in SEED_BUILDERS):
+        raise RuntimeError(
+            "lab KVM/libvirt incompleto; falta cloud-localds, xorriso ou genisoimage"
+        )
+
+
+def _seed_argv(seed: Path, user_data: Path, meta_data: Path) -> tuple[str, ...]:
+    """Cria uma ISO ``cidata`` com ferramenta presente, sem instalar no host."""
+    if shutil.which("cloud-localds") is not None:
+        return ("cloud-localds", str(seed), str(user_data), str(meta_data))
+    if shutil.which("xorriso") is not None:
+        return (
+            "xorriso",
+            "-as",
+            "mkisofs",
+            "-output",
+            str(seed),
+            "-volid",
+            "cidata",
+            "-joliet",
+            "-rock",
+            str(user_data),
+            str(meta_data),
+        )
+    if shutil.which("genisoimage") is not None:
+        return (
+            "genisoimage",
+            "-output",
+            str(seed),
+            "-volid",
+            "cidata",
+            "-joliet",
+            "-rock",
+            str(user_data),
+            str(meta_data),
+        )
+    raise RuntimeError("não há gerador de ISO cloud-init disponível")
 
 
 def _public_key(path: Path) -> str:
@@ -448,13 +485,8 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
             ),
             "criação da overlay qcow2",
         )
-        cloud_localds = (
-            "cloud-localds",
-            str(seed),
-            str(config.run_dir / "user-data"),
-            str(config.run_dir / "meta-data"),
-        )
-        _required(runner(cloud_localds, None, 120.0), "criação da seed cloud-init")
+        seed_argv = _seed_argv(seed, config.run_dir / "user-data", config.run_dir / "meta-data")
+        _required(runner(seed_argv, None, 120.0), "criação da seed cloud-init")
         _required(
             runner(build_virt_install_argv(config, overlay, seed), None, 180.0), "virt-install"
         )

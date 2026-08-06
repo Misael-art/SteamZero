@@ -5228,3 +5228,28 @@ Validação: a invocação direta com `--plan` passou sem criar arquivo; 16 test
 do harness, suíte isolada integral, `ruff check`, `ruff format --check`,
 `mypy src`, `make independence boundaries` e `capability_matrix --check`
 verdes. Nenhuma VM, host, release ou push foi executado durante esta correção.
+
+## 2026-08-06 — Item 4 (VM M10) — fallback de seed ISO iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `6f54969`. O preflight da
+VM autorizada provou que KVM/libvirt estão prontos, mas `cloud-localds` não
+está instalado. Escopo: usar somente ferramentas já presentes (`xorriso` ou
+`genisoimage`) para gerar ISO `cidata`, sem instalar pacote no host; cobrir a
+seleção com teste e só então reiniciar o provisionamento autorizado.
+
+## 2026-08-06 — Item 4 (VM M10) — fallback de seed ISO concluído
+
+O commit atômico `fix(vm-harness): aceita gerador ISO já presente` elimina a
+dependência rígida de `cloud-localds`: o harness prefere-o quando existe e usa
+`xorriso` ou `genisoimage` para produzir a mesma ISO `cidata` quando não existe.
+O host observado já tem `xorriso`/`genisoimage`; portanto não foi instalado
+nenhum pacote de host e o preflight volta a refletir a capacidade real do lab.
+
+Decisão de bancada: não preparar o host com `cloud-image-utils` só para uma
+ISO de duas entradas quando os geradores já instalados têm contrato equivalente
+(`volume id=cidata`, Joliet e Rock Ridge). O teste força a ausência de
+`cloud-localds` e prova o argv de `xorriso`; a orquestração aceita qualquer dos
+três builders. Validação: suíte isolada **4200 passaram, 10 skipados** em tmp
+no disco interno (a tmpfs de 5 GB gerara `ENOSPC`, não regressões); Ruff,
+mypy, boundaries, independence e matrix verdes. Nenhuma VM, host, release ou
+push foi executado durante esta correção.
