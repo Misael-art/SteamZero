@@ -721,6 +721,14 @@ class FlatpakExecutor:
             raise SteamZeroError("E-SUPPLY-UPSTREAM-GONE", detail=f"commit {commit} não confirmado")
 
     def _persist(self, manifest: AdapterManifest, state: FlatpakState) -> None:
+        source = manifest.preferred_source("flatpak", allow_eol=True)
+        lifecycle_state = (
+            "missing"
+            if not state.installed
+            else "installed"
+            if state.commit == source.version
+            else "degraded"
+        )
         self._store.save_component(
             {
                 "id": manifest.id,
@@ -728,7 +736,7 @@ class FlatpakExecutor:
                 "kind": manifest.kind,
                 "version": state.commit,
                 "origin": "flatpak" if state.installed else None,
-                "state": "installed" if state.installed else "missing",
+                "state": lifecycle_state,
                 "manifest_hash": manifest.manifest_hash,
             }
         )
