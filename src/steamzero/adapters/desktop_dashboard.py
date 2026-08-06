@@ -28,7 +28,7 @@ from steamzero.adapters.desktop_kde import (
 from steamzero.adapters.diagnostics import DiagnosticsService
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI
-from steamzero.adapters.lifecycle import ComponentLifecycle
+from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
@@ -39,6 +39,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
@@ -420,7 +421,7 @@ class DesktopDashboard:
                 )
                 components = [
                     self._component_row(manifest, lifecycle, conflicts=bool(conflicts))
-                    for manifest in registry.list()
+                    for manifest in registry.list_including_retired()
                     if manifest.id in _COMPONENT_LABELS
                 ]
                 queue = store.list_sync_queue()
@@ -464,7 +465,7 @@ class DesktopDashboard:
         except Exception as exc:
             components = [
                 self._degraded_component_row(manifest, exc)
-                for manifest in registry.list()
+                for manifest in registry.list_including_retired()
                 if manifest.id in _COMPONENT_LABELS
             ]
             sync["detail"] = "Não foi possível ler a fila de sincronização."
@@ -712,6 +713,47 @@ class DesktopDashboard:
     def rollback_emulation_action(self, operation_id: str) -> dict[str, Any]:
         return self._emulation.rollback_action(operation_id)
 
+    def bios_scan(self, source: str) -> dict[str, Any]:
+        return self._emulation.bios_scan(Path(source))
+
+    def bios_source_selector(self) -> dict[str, Any]:
+        return {
+            "sources": [
+                {"sourceId": source.source_id, "label": source.label}
+                for source in approved_bios_sources()
+            ]
+        }
+
+    def bios_scan_selected(self, source_id: str) -> dict[str, Any]:
+        source = resolve_approved_bios_source(source_id)
+        if source is not None:
+            return self._emulation.bios_scan(source)
+        raise SteamZeroError("E-CONTENT-UNSAFE-PATH", detail="origem de BIOS não aprovada")
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, Any]:
+        return self._emulation.bios_scan_status(scan_id)
+
+    def bios_import_plan(self, scan_id: str, selection: list[str] | None = None) -> dict[str, Any]:
+        return self._emulation.bios_import_plan(scan_id, selection)
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.bios_import_apply(plan_id, confirm_token)
+
+    def bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback(operation_id)
+
+    def plan_bios_import_rollback(self, operation_id: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback_plan(operation_id)
+
+    def apply_bios_import_rollback(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._emulation.bios_import_rollback_apply(plan_id, confirm_token)
+
+    def bios_status(self, platform_id: str | None = None) -> dict[str, Any]:
+        return self._emulation.bios_status(platform_id)
+
+    def bios_audit(self) -> dict[str, Any]:
+        return self._emulation.bios_audit()
+
     def scan_emulation_library(self) -> dict[str, Any]:
         return self._emulation.scan_library()
 
@@ -926,7 +968,120 @@ class DesktopDashboard:
     def rollback_lsfg_install(self, operation_id: str) -> dict[str, Any]:
         return self._gameplay.rollback_lsfg_install(operation_id)
 
-    def plan_component(self, adapter_id: str, action: str = "install") -> dict[str, Any]:
+    def list_components(self) -> list[dict[str, Any]]:
+        """Publica somente os fatos de lifecycle que já são seguros de ler."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.status_all()
+
+    def component_status(self, component_id: str) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.status(component_id)
+
+    def verify_component(self, component_id: str) -> dict[str, Any]:
+        """Verificação é leitura: não pede token nem produz uma operação."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            return lifecycle.verify(component_id)
+
+    def component_capability_matrix(self) -> dict[str, Any]:
+        """Matriz sanitizada; capabilities vêm dos manifests, não da UI."""
+        registry = self._registry_factory()
+        statuses = {item["id"]: item for item in self.list_components()}
+        return {
+            "components": [
+                {
+                    "componentId": manifest.id,
+                    "kind": manifest.kind,
+                    "capabilities": list(manifest.capabilities),
+                    "status": statuses.get(manifest.id, {"state": "unavailable"}),
+                }
+                for manifest in registry.list_including_retired()
+            ]
+        }
+
+    def component_open_config_matrix(self) -> dict[str, Any]:
+        """Decisão comprovável de configuração sem revelar argv ou paths.
+
+        Nenhum dos emuladores ativos declara hoje um argumento upstream para
+        abrir diretamente a tela de configuração.  A matriz deixa isso claro:
+        a UI pode oferecer o lançamento normal como ``main-ui``, mas jamais
+        rotulá-lo como ``open-config``.  A versão é a fonte já pinada pelo
+        manifesto; a evidência aponta somente ao upstream público.
+        """
+        rows: list[dict[str, Any]] = []
+        for manifest in self._registry_factory().list_including_retired():
+            if manifest.kind != "emulator":
+                continue
+            source = manifest.preferred_source(None, allow_eol=True)
+            declared = manifest.raw.get("openConfig")
+            arguments = declared.get("arguments") if isinstance(declared, dict) else None
+            direct = isinstance(arguments, list) and bool(arguments)
+            rows.append(
+                {
+                    "componentId": manifest.id,
+                    "strategy": "direct" if direct else "main-ui",
+                    "applicableStates": ["installed", "outdated"],
+                    "action": "component.open-config" if direct else "component.launch",
+                    "executor": route_for(manifest).executor,
+                    "evidence": {
+                        "upstream": manifest.upstream,
+                        "version": source.version,
+                    },
+                    "reason": (
+                        "O manifesto declara argumento atômico validado pelo upstream."
+                        if direct
+                        else (
+                            "Nenhum argumento direto foi comprovado para a fonte pinada; "
+                            "abra a UI principal."
+                        )
+                    ),
+                }
+            )
+        return {"decisions": rows, "count": len(rows)}
+
+    def component_recovery_inspect(self) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(store, self._registry_factory())
+            operations = lifecycle.recovery_inspect()
+        return {"operations": operations, "count": len(operations)}
+
+    def plan_component_recovery(self) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            return ComponentLifecycle(store, self._registry_factory()).plan_recovery()
+
+    def apply_component_recovery(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        with self._store_factory() as store:
+            store.migrate()
+            return ComponentLifecycle(store, self._registry_factory()).apply_recovery(
+                plan_id, confirm_token
+            )
+
+    def plan_component(self, adapter_id: str, action: str) -> dict[str, Any]:
         with self._store_factory() as store:
             store.migrate()
             registry = self._registry_factory()
@@ -964,6 +1119,55 @@ class DesktopDashboard:
                 spawn=self._spawn,
             )
             return lifecycle.launch(adapter_id)
+
+    def component_operation_history(self, adapter_id: str) -> dict[str, Any]:
+        """Histórico limitado a operações cujo dono é o componente solicitado."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            lifecycle.status(adapter_id)  # valida o id pelo registro, sem mutação
+            history = self._operation_history.list(limit=100)
+            items: list[dict[str, Any]] = []
+            for item in history["items"]:
+                try:
+                    owner = lifecycle._operation_adapter_id(str(item["operationId"]))
+                except SteamZeroError:
+                    # Histórico corrompido não é evidência de pertencimento.
+                    # A tela continua útil e o item permanece acessível apenas
+                    # pelo diagnóstico global que mostra sua integridade.
+                    continue
+                if owner == adapter_id:
+                    items.append(item)
+        return {"componentId": adapter_id, "operations": items, "count": len(items)}
+
+    def plan_component_rollback(self, adapter_id: str, operation_id: str) -> dict[str, Any]:
+        """Planeja rollback somente da operação auditável do componente pedido."""
+        with self._store_factory() as store:
+            store.migrate()
+            lifecycle = ComponentLifecycle(
+                store,
+                self._registry_factory(),
+                flatpak_factory=self._flatpak_factory,
+                which=self._which,
+                spawn=self._spawn,
+            )
+            owner = lifecycle._operation_adapter_id(operation_id)
+        if owner != adapter_id:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail="operationId não pertence ao componente solicitado",
+                operation_id=operation_id,
+            )
+        return self._operation_history.plan_rollback(operation_id)
+
+    def apply_component_rollback(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        return self._operation_history.apply_rollback(plan_id, confirm_token)
 
     def open_steam(self, target: str) -> dict[str, Any]:
         return self._steam.open(target)
@@ -1109,7 +1313,10 @@ class DesktopDashboard:
         pinned = bool(version and version == target_version)
         end_of_life = bool(status.get("endOfLife"))
 
-        if end_of_life and not installed:
+        if raw_state == "retired":
+            state = "unsupported"
+            status_label = "Retirado"
+        elif end_of_life and not installed:
             state = "unsupported"
             status_label = "Fonte descontinuada"
         elif raw_state == "missing":
@@ -1127,7 +1334,10 @@ class DesktopDashboard:
 
         installable = bool(status.get("installable"))
 
-        if state == "unsupported":
+        if raw_state == "retired":
+            action = {"kind": "detail", "label": "Retirado", "enabled": False}
+            blocked_reason = str(status.get("detail") or "Componente retirado.")
+        elif state == "unsupported":
             action = {"kind": "detail", "label": "Indisponível", "enabled": False}
             blocked_reason = "A origem pinada está end-of-life e não será promovida."
         elif state in {"missing", "attention"}:
@@ -1141,6 +1351,7 @@ class DesktopDashboard:
                     else "Verificar"
                 ),
                 "enabled": not conflicts and installable,
+                "operation": "repair" if raw_state == "degraded" else "install",
             }
             blocked_reason = (
                 "Resolva o conflito de controle antes de alterar o componente."
@@ -1177,11 +1388,15 @@ class DesktopDashboard:
             "pinned": pinned,
             "endOfLife": end_of_life,
             "detail": (
-                "A configuração e os dados do emulador são preservados durante rollback."
-                if not end_of_life
+                str(status.get("detail") or "Componente retirado; dados preservados.")
+                if raw_state == "retired"
                 else (
-                    "A fonte atual está descontinuada; o SteamZero não instala versões "
-                    "sem origem validada."
+                    "A configuração e os dados do emulador são preservados durante rollback."
+                    if not end_of_life
+                    else (
+                        "A fonte atual está descontinuada; o SteamZero não instala versões "
+                        "sem origem validada."
+                    )
                 )
             ),
             "blockedReason": blocked_reason,
@@ -1233,8 +1448,16 @@ class DesktopDashboard:
             }
             for e in catalog
         ]
+        high_contrast = False
+        reduced_motion = False
+        with contextlib.suppress(Exception):
+            high_contrast = self._high_contrast_probe()
+        with contextlib.suppress(Exception):
+            reduced_motion = self._reduced_motion_probe()
         try:
-            resolved = self._theme_catalog.resolve(active_id)
+            resolved = self._theme_catalog.resolve(
+                active_id, high_contrast=high_contrast, reduced_motion=reduced_motion
+            )
         except Exception:
             qml_object = None
             return {
@@ -1245,13 +1468,6 @@ class DesktopDashboard:
                 "state": "ready",
                 "detail": None,
             }
-        high_contrast = False
-        reduced_motion = False
-        with contextlib.suppress(Exception):
-            high_contrast = self._high_contrast_probe()
-        with contextlib.suppress(Exception):
-            reduced_motion = self._reduced_motion_probe()
-        resolved = resolved.apply_accessibility(high_contrast, reduced_motion)
         qml_object = resolved.to_theme_qml_object()
         return {
             "activeId": active_id,

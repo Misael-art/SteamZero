@@ -3967,3 +3967,929 @@ verde isolado); mypy 202 arquivos; fronteiras e independência 0 violações.
 
 **Pendências do operador:** revisar e commitar/pushar o PR 2 da Etapa 7
 (`feat/emulation-controls-e2e`); depois merge.
+
+## 2026-08-03 — Sessão 55: PR 2 tema default — tema renderizável (branch codex/theme-default-pr2)
+
+Segunda PR da linha de tema default, sobre `origin/main` (`87cf493`): o tema
+default renderizável consumindo a fundação de cena. Nenhuma ação de host;
+trabalho apenas em worktree próprio.
+
+Quatro commits, todos com os gates da seção 6 verdes:
+
+- `ad72bd9` — **imagem/mídia no pipeline**: `imageContent` no contrato
+  (tabela 45 entradas), `ResolvedImageNode` + `ImageFillMode` (CROP/STRETCH/
+  FIT/ORIGINAL), `build_image_node` (percentuais via `LayoutBox`, recusa
+  elemento sem `imageContent`), `QmlImageRenderModel` + `to_image_render_model`
+  (`_MEDIA` fechada em `assets/...`, recusa de caminho de host e de valor
+  pendente) e `SceneImage.qml` burro. Fallback de asset degrada com
+  diagnóstico emitido pelo resolver (`DIAG_MISSING_ASSET`); fixtures de mídia
+  (320x180) sob `tests/fixtures/scene-media/`.
+- `0a14670` — **harnesses VS-03 de imagem/cena + navegação de grid**:
+  `CaptureImageHarness.qml` (imagem única) e `CaptureSceneHarness.qml`
+  (composição texto+imagem via `Loader.setSource` com propriedades iniciais —
+  `setSourceComponent` não existe no Qt 6.11); runner ganhou `HarnessKind` e
+  o test-double do mapeamento de assets do shell (`mediaFiles`); cada nó
+  publica geometria (painted vs caixa prova o crop em números);
+  `grid_navigation.py` (`move_focus`, `Direction`, `GridSpec` com
+  wrap/clamp documentados).
+- `f5028dc` — **tema default renderizável**: `default_theme.py` — primeiro
+  consumidor real da fundação — com paleta Aura, `DefaultGridMetrics`
+  (geometria derivada 6x4 em 1920x1080), `build_default_scene` (cabeçalho +
+  24 células capa/título validado por `validate_tree`), resolução com tokens/
+  bindings/fallbacks e `focus_target` delegando a `move_focus`.
+- `fe20c65` — **WORKLOG + handoff**: este registro e a seção nova do P0-03.
+
+Descobertas registradas:
+
+- `Loader.setSourceComponent(component, props)` não existe no QML Qt 6.11 —
+  `ReferenceError`; o caminho é `setSource(url, props)` com a URL do
+  componente do produto (ver commit 2).
+- `paintedWidth/Height` refletem a ESCALA coberta (crop escala a fonte e a
+  caixa clipe); a prova numérica do crop é painted > caixa.
+- `Alignment` não tem `MIDDLE`/`TOP`: o contrato mapeia START/CENTER/END →
+  TOP/MIDDLE/BOTTOM no construtor de nós.
+- C1 saiu sem os fixtures de mídia (criados na sessão, referenciados pelo
+  teste do C2); como C1 não tinha sido pushado, os fixtures entraram por
+  amend do C1 — história local, sem force push.
+- onAfterRendering do runtime offscreen entrega 2 frames; o harness de cena
+  esperava 3 e travava em "layout não estabilizou" com stderr vazio.
+
+Validação física pendente (operador): revisão da PR, merge e teste físico
+de boot da linha de tema. Suíte completa: 3808 passed; cobertura 86.42%;
+mypy 203 arquivos; fronteiras e independência 0 violações.
+
+## 2026-08-03 — Sessão 56: PR 3 tema default — shell de entrada + ponte shell→tema→QML (branch codex/theme-default-pr3)
+
+Terceira PR da linha de tema default, sobre `origin/main` (`017c4c7`, merge da
+PR #47). Entrega o shell de entrada: eventos de controle viram movimento de
+foco no domínio, e o anel de foco — primeiro consumidor real do token
+`color.focusRing` — é desenhado no QML sobre a célula focada. Nenhuma ação de
+host; trabalho apenas em worktree próprio.
+
+Três commits, todos com os gates da seção 6 verdes:
+
+- `e32ed64` — **shell de entrada no domínio**: `theme_shell.py` —
+  `ControlEvent` (vocabulário mínimo: as quatro direções), `map_control`
+  (recusa evento desconhecido; desconhecido não vira direção adivinhada) e
+  `apply_control` delegando a `move_focus` (`current=None` foca o primeiro
+  item). `default_theme.py` ganhou a geometria do anel: `focus_ring_geometry`
+  (capa expandida pela margem) e as constantes `FOCUS_RING_INSET`/`FOCUS_RING_WIDTH`.
+- `f55f02a` — **ponte shell→tema→QML**: `SceneFocusRing.qml` (renderizador
+  burro do anel: atribui o modelo, não decide nada), `CaptureShellHarness.qml`
+  (nós de texto/imagem + `kind: "focus"`, reporta geometria de todos) e
+  `HarnessKind.SHELL` no runner; `shell_bridge.py` monta o payload do shell —
+  cena resolvida e traduzida (adapter) + anel da célula focada.
+- docs — WORKLOG + handoff P0-03 (este registro e a seção nova do P0-03).
+
+Provas de que a ponte funciona no runtime real:
+
+- integração (`test_qml_theme_shell.py`, fatia 3x3 em 800x480): anel em foco 0
+  e foco 5 nas coordenadas exatas de `focus_ring_geometry`; o pixel `#22d3ee`
+  é desenhado na tela e é a ÚNICA fonte da cor (cena sem o nó focus não tem
+  nenhum pixel dele); duas capturas do mesmo foco são idênticas byte a byte.
+- unidade (`test_theme_shell.py`, `test_shell_bridge.py`): mapeamento
+  controle→direção, wrap/clamp, foco inicial, geometria do anel e payload da
+  ponte (cena + anel por último, recusa de foco fora do grid).
+- sem goldens novos: a prova é a geometria do anel + contagem de pixels, não
+  uma imagem congelada — o mesmo critério de `test_qml_default_theme.py`.
+
+Descobertas registradas:
+
+- Adicionar a MESMA margem aos dois lados de uma caixa 16:9 NÃO preserva a
+  razão — o teste inicial do anel assumia o contrário e reprovou (correto); a
+  propriedade honesta é "o anel envolve a capa", não "o anel é 16:9".
+- `Image.getdata` do Pillow está deprecado (remoção prevista para Pillow 14);
+  a contagem de pixels usa `getcolors`, o mesmo mecanismo do runner.
+- Defesas de invariante interno (ramo "impossível") seguem o precedente do
+  repo com `# pragma: no cover` — `gamemode.py:190`, `net.py:253`.
+
+Fora de escopo (decisões conscientes): read model da biblioteca (títulos
+seguem no fallback `Jogo sem título` — caminho de degradação real), migração
+de capas reais do corpus, eventos de confirm/back (A/B chegam com o controle
+de seleção) e persistência do foco entre sessões.
+
+Validação física pendente (operador): revisão da PR, merge e teste físico de
+boot da linha de tema. Suíte completa: 3842 passed; cobertura 86.42% (sem
+regressão); mypy 205 arquivos; fronteiras e independência 0 violações.
+
+## 2026-08-03 — PR #52: latência real do coordinator Desktop (status 12,07 s → 1,29 s)
+
+Sessão (branch `codex/fix-desktop-coordinator-latency`, base `1d23cbf`).
+Causa raiz: `status()` pagava 4 subprocessos `kscreen-doctor -o` (1 do
+`LinuxDesktopContext.snapshot` + 3 das `verify` dos perfis), cada um batendo
+o timeout de 3,0 s no host (o comando nunca retorna em `WAYLAND_DISPLAY=wayland-0`).
+
+Mudanças:
+
+- `domain/desktop.py`: protocolo `DesktopEffectPort` separa `matches_observed`
+  (compara contra o estado JÁ observado no `context`, nunca toca o host) de
+  `verify` (relê o host, obrigatório depois do `apply`). `_observe_profile`
+  usa `matches_observed`; `_apply_locked` continua com `verify`. Novo campo
+  `DesktopContext.display_probe_error` (fora do `to_dict` — não muda o schema).
+- `adapters/desktop_kde.py`: `KDEDisplayEffect.matches_observed` decide só do
+  `context.displays` (zero subprocesso); sonda com memória de indisponibilidade
+  (cooldown 10 s por instância, timeout reduzido 3,0 → 1,25 s) e causa
+  publicada quando rc ∈ {124, 126, 127} → `observedProfile: null` com erro em
+  `observation.errors` (antes: silêncio com `errors=[]`). Demais efeitos
+  ganham `matches_observed` delegando a `verify` (leitura barata).
+- `core/errors.py` + `i18n/messages_pt_br.py`: registro de `E-DESKTOP-OBSERVE`
+  no catálogo. Sem ele o código levantado pela sonda não passava por
+  `build_error`, e a primeira linha publicada em `observation.errors` era
+  `"código de erro não registrado no catálogo: 'E-DESKTOP-OBSERVE'"` — o
+  meta-erro no lugar do motivo. Os quatro gates não pegavam: o teste da etapa
+  afirmava apenas que a causa aparecia em ALGUM item da lista, e ela aparecia,
+  no segundo. Mesma reincidência do GAP-G19.
+- Testes novos: sonda única por `status()`; falha de sonda publica causa **e não
+  vaza meta-erro de catálogo**; cooldown evita re-sondagem; trap do apply que
+  confia em observação pré-mutação (falso verde) reprova `E-DESKTOP-VERIFY`.
+
+Medição no host, com o código do checkout (venv editable — medir NÃO exige
+instalar release; só certificar exige):
+
+| | antes | depois |
+|---|---:|---:|
+| `_desktop_coordinator().status()` | 12,07 s | 1,29 s |
+| handler `emulation workspace` | 13,31 s | 4,00 s |
+
+Três execuções cada. O ganho vem da sonda única mais o timeout reduzido; o
+cooldown de 10 s **não chega a atuar** no caminho CLI/daemon, porque
+`build_desktop_coordinator()` cria efeitos novos a cada chamada e a memória
+vive na instância — três `status()` no mesmo processo custaram 1,29 / 1,30 /
+1,29 s. Mantido por ser correto para consumidores de instância longa, mas não
+é ele que produz o número acima.
+
+Gates: ruff, `ruff format --check`, mypy (206 arquivos), independência e
+fronteiras 0 violações.
+
+Fora de escopo: não mexi no `verify` do apply (relê com 3,0 s de propósito),
+nem na sondagem quando `kscreen-doctor` está ausente (sem capacidade). Por que
+`kscreen-doctor -o` pendura neste host é anomalia do KDE, não do SteamZero.
+
+Pendente: esta branch parte de `1d23cbf` e **não** contém as PRs #49 (timeout
+por método) nem #50 (cache de registries), ambas abertas. Sozinha, ela deixa o
+handler em 4,00 s — ainda acima do timeout default de 2,0 s de `invoke()` em
+`origin/main`, ou seja, o sintoma pelo daemon só fecha com as três juntas, e
+as três ainda não foram medidas em conjunto. Instalação no host e validação
+física seguem pendentes de autorização do operador (§1 do AGENTS.md).
+## 2026-08-04 — Sessão: gate canônico saindo 86 na `main` (atribuição do state real)
+
+Branch `codex/fix-state-guard-attribution`, base `origin/main`
+`1d23cbf598940e376b82e2905979901e93645c52`.
+
+### A premissa da tarefa estava errada
+
+A investigação anterior tratava o exit 86 como vazamento intermitente da suíte e
+já tinha descartado, por bissecção, arquivo único, metades, `test_core_service`
+e `test_fi04_sigkill_subprocess`. Nenhum culpado dentro da suíte existia.
+
+**O autor é o daemon instalado do host** (`steamzero-core --systemd`, pid 135687,
+release `0.1.0a41-d0e45da1fd2d`), que roda com `HOME=/home/misael` e sem
+`XDG_STATE_HOME` — resolvendo para o MESMO state home que o guard fotografa. O
+reconciliador (`service/reconciler.py:101`) grava `session.environment.changed` a
+cada flap de rede/energia (`state.db` + `logs/core.jsonl`), e o `ensure_dir` do
+`AppendWriter` (`core/fs.py:43`) faz `chmod` incondicional que bumpa o **ctime**
+do diretório `logs`. Uma única amostra do daemon muda exatamente as três entradas
+da assinatura relatada.
+
+A intermitência é a irregularidade dos flaps, que vêm em rajadas: 6 mutações em
+6 min de uma janela, depois ~50 min sem nenhuma (incluindo 5 suítes completas com
+o state intocado).
+
+**Prova decisiva:** a própria lógica de snapshot do guard, rodada por 25 min
+**sem pytest algum**, deu `IDLE_MUTATIONS=6` e `GUARD_VERDICT=EXIT=86`.
+
+### O defeito real
+
+O guard media *presença temporal* na janela e reportava *autoria* ("pytest
+alterou o state home original"). As duas coisas divergem sempre que outro dono
+legítimo do state home está ativo — que é o caso permanente num host com a
+release instalada. Por isso o CI sempre foi verde: lá não há daemon.
+
+### Entregue
+
+| Item | Commit | Testes que provam |
+|---|---|---|
+| Guard atribui a mutação: varre `/proc` por processos steamzero fora do isolamento que resolvam para o mesmo state home; dono anterior à janela → `W-TEST-REAL-STATE-EXTERNAL-WRITER` (não reprova), nascido na janela → 86 | `f3e4914` | `test_external_writer_predating_window_does_not_fail_the_gate`, `test_process_born_during_window_is_blamed_as_suite_leak`, `test_suspect_wins_over_external_writer`, `test_external_writer_preserves_pytest_failure` |
+| Amostra explícita no fechamento da janela (o `__exit__` do watcher roda depois da decisão) | `f3e4914` | `test_writer_appearing_only_at_window_close_is_still_observed` (verificada reprovando sem a correção) |
+| Match restrito ao executável/script (argv[0:2]): mencionar "steamzero" não faz de um shell ou grep um dono do state home | `f3e4914` | `test_scan_ignores_process_that_only_mentions_steamzero`, `test_scan_accepts_interpreter_running_a_steamzero_script` |
+| Mensagem do 86 nomeia suspeitos e abre pelas hipóteses acionáveis, começando pelo falso positivo do operador | `f3e4914` | `test_mutation_without_writers_still_fails_and_names_operator_command` |
+| G33 em `KNOWN-GAPS.md`, com o limite da atribuição degradada | `f3e4914` | — |
+
+Nenhum caminho entrou em lista de exceções e nenhuma escrita foi tolerada por
+path. Zero mudança em `src/` (`git diff origin/main -- src/` vazio).
+
+### Limite conhecido (G33)
+
+Com um dono externo ativo, a atribuição é **degradada**: uma escrita da própria
+suíte ficaria encoberta por ele. O guard diz isso na própria mensagem e recomenda
+rodar com o daemon parado para rigor total. Comando `steamzero` curto do operador
+pode terminar entre duas amostragens (poll de 2 s) e não ser nomeado — por isso a
+mensagem do 86 lista esse falso positivo como primeira hipótese.
+
+### Gates
+
+Cinco execuções consecutivas da suíte completa: `EXIT=0` nas cinco, 3855 passed
+cada. `ruff check`, `ruff format --check`, `mypy src` (206 arquivos) e
+`make independence boundaries`: exit 0. Honestidade sobre o alcance dessa
+evidência: o daemon ficou quieto durante as cinco execuções (state real byte a
+byte idêntico), então elas provam que o gate está verde, **não** que o caminho do
+dono externo funciona em produção. Isso é provado separadamente pelo ensaio ponta
+a ponta com o scan real de `/proc` (dono externo nomeado por pid e argv,
+`GATE_EXIT=0`, state sintético mutado durante a janela) e pelos testes acima.
+
+### Fora de escopo, registrado
+
+- `desktop_kde.py:47` fixa `phasezero-steamdeck-mode-watcher.service` — referência
+  a projeto de pesquisa que o gate de independência não pega (AGENTS.md §7).
+- `test_desktop_ui_bridge.py::test_status_keeps_full_emulation_model_across_http_thread`
+  reprovou uma vez sob carga (timeout de 3 s do cliente em loopback) numa bateria
+  anterior; flakiness pré-existente já registrada neste WORKLOG (linha 3901).
+- State home real com ~1,1 GB de resíduo histórico: **nada foi removido**.
+
+Ações de host executadas: **nenhuma**. Nenhuma instalação, rollback ou mutação de
+release. O daemon foi deixado rodando de propósito, por ser a condição que
+reprovava.
+
+### Adendo da mesma sessão — CI e footprint do watcher
+
+Primeira execução de CI da branch reprovou no Python 3.11 em
+`test_desktop_ui_bridge.py::test_status_keeps_full_emulation_model_across_http_thread`
+(`TimeoutError` no timeout de parede de 3 s do cliente em loopback). Reexecutada,
+a mesma CI ficou **verde nos oito jobs**, incluindo 3.11. A `main` foi verde em
+duas execuções. O mesmo teste flakeou 1 vez em 10 suítes completas locais.
+
+Ou seja: teste flaky sob carga, sem prova de relação com esta mudança (o diff não
+toca `src/`). Mas como não dá para **excluir** que o polling de `/proc` a cada 2 s
+somasse carga, o watcher passou a só rodar onde pode achar algo: se o state home
+real não existe — o caso do CI, que roda em home limpo — não há dono externo
+possível e a thread não sobe. As amostras de abertura e fechamento continuam
+sempre, então nenhuma atribuição se perde (`6e9ee19`).
+
+Validação final, com o daemon do host rodando: cinco execuções consecutivas da
+suíte completa, `EXIT=0` nas cinco, 3857 passed cada. `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries`: exit 0.
+
+### Adendo 2 — o flake do bridge é da `main`, não desta branch
+
+Caracterizado por dispatch repetido de CI em 2026-08-04:
+
+| Ref | Execuções | Python 3.11 |
+|---|---|---|
+| `main` | 3 | 2 verdes, 1 vermelha |
+| `codex/fix-state-guard-attribution` | 3 | 1 verde, 2 vermelhas |
+
+Sempre o mesmo teste e o mesmo erro
+(`test_status_keeps_full_emulation_model_across_http_thread`, `TimeoutError` no
+timeout de 3 s do cliente). **A `main` reproduz.** Além disso, no CI o state home
+real não existe (`real-state before: exists=False`), então a thread do watcher
+nem sobe — a mudança é inerte em tempo de execução justamente no job que reprova.
+Somado ao diff sem nenhuma linha de `src/`, a branch está descartada como causa.
+
+Registrado como **G34** em `KNOWN-GAPS.md`: CI ~1 em 3 no 3.11 por teto de parede
+absoluto em runner compartilhado — mesma classe do já fechado G22. Fora do escopo
+desta sessão; não corrigido aqui.
+
+## 2026-08-04 — Sessão: G34 verificada antes de corrigida (já estava fechada)
+
+Tarefa de verificação. **Nenhuma correção foi escrita**, porque o defeito não
+existe mais.
+
+### O que estava errado no registro da G34
+
+A G34 foi medida sobre `origin/main` e `codex/fix-state-guard-attribution` — e
+**nenhuma das duas contém as PRs #49/#50**. A correção já existia nas PRs
+abertas; as amostras é que foram tiradas de branches sem elas.
+
+A causa nunca foi o teste. `/status` compõe o snapshot inteiro da dashboard e
+custava 3,3–3,75 s contra um teto de 3 s: **margem negativa**. O teste passava
+por sorte, e o CI 3.11 (runner compartilhado, mais lento) simplesmente perdia a
+sorte ~1 em 3.
+
+### Medição própria (não herdada do prompt)
+
+| ref | teto | custo da chamada | resultado local |
+|---|---|---|---|
+| `origin/main` | 3 s | 3,01 s (bate no teto) | **reprova, sem carga alguma** |
+| `main`+#49+#50 (`05f2f0b`) | 10 s | 1,58 s | passa, ~6,3× de margem |
+
+Que `origin/main` reprove localmente **sem carga** é mais forte que o registro
+original sugeria: não era só flakiness de runner, era margem negativa.
+
+### CI — 10 execuções serializadas sobre `05f2f0b`
+
+| # | run | Python 3.11 | duração |
+|---|---|---|---|
+| 1 | 30892569708 | success | 291 s |
+| 2 | 30892960248 | success | 309 s |
+| 3 | 30893358083 | success | 273 s |
+| 4 | 30893785407 | success | 288 s |
+| 5 | 30894184615 | success | 264 s |
+| 6 | 30894558905 | success | 613 s |
+| 7 | 30896242288 | success | 299 s |
+| 8 | 30896755389 | success | 304 s |
+| 9 | 30897145962 | success | 302 s |
+| 10 | 30897585693 | success | 285 s |
+
+**10/10 verdes, zero reprovações.** Se a taxa de ~1 em 3 ainda valesse, isso
+teria ~1,7 % de chance de sair por acaso (`(2/3)^10`). Job 3.11 caiu de ~10 min
+para ~4,8 min (efeito da #50).
+
+Serialização foi obrigatória: `ci.yml` tem `concurrency` com
+`cancel-in-progress`, então disparo concorrente vira cancelamento, não amostra.
+Duas execuções (30896101133, 30896134478) foram canceladas por disparo duplo
+após erro de rede da API e **não foram contadas como verdes** — foram repostas.
+
+Armadilha que quase virou relatório errado: falhas de leitura da API do GitHub
+produziram campos vazios que o script classificou como "FALHA REAL" em dois
+momentos. Consultado o registro autoritativo (`gh run list`), os dois runs eram
+`success`. Campo vazio não é reprovação — conferir antes de reportar.
+
+### Entregue
+
+| Item | Commit | Evidência |
+|---|---|---|
+| G34 fechada em `KNOWN-GAPS.md`, com causa real e as 10 execuções | este | tabela acima |
+| G35 registrada (P3): `timeout=10` ainda é teto de parede absoluto em runner compartilhado — mesma classe da G22 | este | — |
+
+**Não** foi alterada nenhuma linha de teste para fechar a G34, e o teto não foi
+aumentado de novo: a lacuna fechou por correção de custo em produção (#50).
+
+### Ressalva
+
+A closure só vale **quando #49 e #50 forem mergeadas**. Enquanto abertas, a
+`main` segue com teto de 3 s e com o flake. A branch de verificação
+`verify/g34-pr49-50` (`05f2f0b` = `main`+#49+#50) fica como artefato da medição.
+
+Ações de host: **nenhuma**.
+
+## 2026-08-05 — Jornada de BIOS centralizada
+
+Implementado o catálogo BIOS v2, scanner seguro para arquivo/diretório/ZIP e
+store endereçado por SHA-256. Objetos agora vivem em `bios/objects/sha256` e
+as visões por plataforma são symlinks; o adaptador legado mantém apenas uma
+projeção compatível, sem segunda cópia física. A migração `0017` cria as
+entidades para objetos, identidades, variantes e projeções. Nenhuma ação de
+host, download de conteúdo ou push foi executado.
+
+## 2026-08-05 — Effect Stack declarativa para o tema Editorial
+
+Adicionado o namespace versionado `effects` ao manifesto de tema: stack
+allowlisted, schema fechado e negociação determinística por capability, tier de
+performance, alto contraste e movimento reduzido. O renderer confiável
+`MediaEffectLayer.qml` aplica a fonte única com `QtQuick.Effects.MultiEffect`;
+capabilities sem primitiva implementada são recusadas com diagnóstico, em vez de
+simular fidelidade. O builtin default declara backdrop, capa em foco e capas
+periféricas sem adicionar qualquer asset de jogo ou referência externa.
+
+Validação dirigida: 58 testes de tema/effects verdes, `ruff`, `mypy` e
+`make independence boundaries` verdes. A suíte completa teve 3.904 testes
+verdes e 7 falhas pré-existentes em `tests/integration/test_state.py`, que ainda
+esperam schema de banco 16 na base que já declara 17. Nenhuma ação de host,
+release ou push foi executada.
+
+## 2026-08-05 — Biblioteca Editorial: vertical slice real
+
+Adicionada a jornada **Sistema → Biblioteca → Dossiê → Preparar para jogar**
+como `EditorialLibrary.qml`, ligada aos read models de Steam e emulação. A
+revisão Steam usa o novo contrato publicado `steam.game.launch`; plataformas
+emuladas sem launcher seguro seguem desabilitadas e explicadas. Capa focal,
+vizinhos atenuados, índice alfabético, fallback sem mídia, alto contraste e
+movimento reduzido foram validados offscreen. A captura de fixture 1280×800 foi
+inspecionada durante a sessão e levou ao ajuste da altura focal e do metadata
+strip.
+
+Validação dirigida: 83 testes verdes (incluindo todos os harnesses QML),
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Requisitos publicados por sistema
+
+A vista de Sistema passou a expor BIOS, keys e firmware como requisitos
+publicados da plataforma. Estados prontos, bloqueantes e não publicados são
+distintos: sem um contrato de BIOS, a UI diz “não publicado”; keys ausentes só
+bloqueiam quando o read model declara esse limite. O harness cobre tanto um
+requisito bloqueante quanto um pronto, sem inventar diagnóstico local.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Tokens de experiência e base Mineral Mist
+
+O tema builtin passou para `1.1.0` com a paleta clara mineral mist. A Theme API
+agora resolve os namespaces `stateVariants`, `interaction`, `accessibility` e
+`performance`, preservando foco visível, alvos de no mínimo 48 px e precedência
+de alto contraste/movimento reduzido. A biblioteca consome escala de foco,
+opacidade periférica e alvo do tema, enquanto a dashboard negocia acessibilidade
+antes de publicar a pilha de efeitos, preservando diagnósticos de fallback.
+
+Validação dirigida: 85 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Biblioteca editorial integrada e auditada
+
+O vertical slice editorial foi conectado à navegação principal e ao contrato
+publicado de lançamento Steam. A biblioteca agora reúne as fontes Steam e
+emulação preservando `gameRef`, sistema, estado e limites de launcher; mostra
+coleções publicadas pelo domínio, filtro alfabético funcional em telas largas,
+dossiê honesto para mídia/estado e revisão antes de abrir o launcher. Controles
+da jornada usam a superfície Mineral Mist em vez do estilo nativo claro. O
+rótulo do cabeçalho também passou a consumir a fonte única de navegação, para
+que Temas e Biblioteca sejam anunciados corretamente.
+
+Validação dirigida: 89 testes verdes (incluindo os harnesses QML), `ruff`,
+`mypy`, `make independence boundaries` e `git diff --check` verdes. A suíte
+completa produziu **3.899 verdes e 20 falhas preexistentes**: sete expectativas
+de schema 16 em `tests/integration/test_state.py` enquanto a base declara 17,
+e treze testes de socket que colidem com sockets já existentes em `/tmp`.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Home, sistema e escala editorial
+
+Acrescentada `EditorialHome.qml` usando somente playtime, coleções, Steam e
+plataformas de emulação publicados. A ação primária retoma a sessão apenas se o
+read model já oferece launcher seguro; sem esse contrato ela abre a biblioteca.
+`EditorialLibrary.qml` ganhou a etapa Sistema, posição explícita para
+subsistemas/variantes ainda não publicados, e dossiê/revisão com as sessões e
+configurações efetivamente disponíveis. O carrossel foi migrado de `Repeater`
+para `ListView` virtualizado com reutilização e cache limitado.
+
+Foram auditadas seis referências visuais somente leitura; nenhum asset, fonte,
+logo ou mídia externa foi copiado. Capturas offscreen foram inspecionadas em
+1280×800, Full HD, ultrawide e 4K com alto contraste/movimento reduzido e escala
+lógica de 200%. O harness agora prova reflow em retrato, alto contraste,
+movimento reduzido, escala 200% e uma fixture de 1.200 títulos sem materializar
+a biblioteca inteira.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. A suíte completa
+teve 3.901 verdes e as mesmas 20 falhas externas já registradas (schema 16 e
+sockets preexistentes em `/tmp`). Nenhuma ação de host, release ou push foi
+executada.
+
+## 2026-08-05 — Vistas virtualizadas da biblioteca
+
+`EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o
+mesmo catálogo filtrado por sistema, coleção e alfabeto. Grade e lista também
+usam views Qt virtualizadas; o harness cobre a troca das três vistas e a
+virtualização de 1.200 títulos. A captura de grade 1280×800 foi inspecionada:
+foco, títulos e estados sem mídia continuam legíveis, sem inserir arte falsa.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Home como rota inicial e manutenção conectada
+
+A Central agora inicia na Home editorial, não em Emulação. A Home exibe também
+Recentes e um resumo secundário, factual e navegável de emuladores, saves/sync,
+saúde da biblioteca e diagnóstico. Cada cartão delega à seção operacional já
+existente; não cria mutação, launcher ou dado alternativo. O harness do shell
+fixa a Home como destino inicial e o harness editorial cobre as contagens e os
+destinos de manutenção.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Semântica de requisito compatível
+
+A camada editorial agora reconhece o estado `ok` efetivamente publicado pelo
+workspace como requisito pronto, preserva `outdated` como atenção e mantém
+`missing` bloqueante. O ajuste impede que firmware/keys compatíveis apareçam
+indevidamente como “não verificados” no detalhe do Sistema.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Captura e contraste do detalhe de Sistema
+
+O harness editorial ganhou captura manual das etapas Sistemas, Sistema e
+Biblioteca. A inspeção offscreen de 1280×800 confirmou requisitos legíveis:
+BIOS não publicado neutro, keys bloqueantes em âmbar e firmware compatível em
+verde. A camada de legibilidade passou a receber `backgroundColor` do tema em
+vez de mineral claro fixo, evitando texto claro sobre superfície clara em temas
+escuros.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Coleções na Home editorial
+
+A Home agora apresenta coleções publicadas com contagem de membros e rota
+direta para a Biblioteca filtrada pelo `collectionId` real. Quando não existe
+coleção no read model, a posição permanece informativa e a ação fica
+indisponível, sem criar uma coleção ou um filtro fictício. A captura offscreen
+1280×800 foi revisada com Favoritos, Coleções, Pendências e Recentes na mesma
+hierarquia.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Filtros editoriais por metadados publicados
+
+Biblioteca e dossiê passaram a preservar gênero, ano e desenvolvedor quando o
+jogo realmente os publica. Os controles alternam somente valores presentes no
+catálogo filtrado e mostram “não publicado” desabilitado na ausência de cada
+campo; não há taxonomia criada pelo cliente. A captura Full HD foi revisada com
+coleção, índice alfabético, metadados e grade virtualizada simultaneamente.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Política de mídia contextual publicada
+
+`EditorialLibrary` agora preserva hero/fanart, capa, screenshot e banner que
+venham nos itens dos read models e seleciona a fonte contextual em ordem fixa:
+hero/fanart, capa, screenshot, banner. O componente não pesquisa arquivos nem
+gera cópias; sem qualquer campo, mantém a composição sem mídia. O harness cobre
+a ordem de fallback com dados sintéticos restritos ao teste.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Faixa de capturas e estados legíveis no dossiê
+
+Criado `ScreenshotRail.qml`: a galeria usa `ListView` com reutilização,
+deduplica fontes publicadas e limita a 24 itens, sem varrer mídia local nem
+simular vídeo. Sem captura — ou em alto contraste — preserva uma explicação
+textual. A inspeção do dossiê em 1280×800 também encontrou e corrigiu o rótulo
+técnico `installed`, agora apresentado como “Instalado”.
+
+Validação dirigida: 91 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Métricas editoriais de Saves e Sync
+
+`OperationalMetricCard.qml` passa a compor Pendentes, Conflitos preservados e
+Concluídos como uma grade responsiva, factual e menos dramática que descoberta
+de jogos. Provider, detalhes e rollback continuam nas ações operacionais já
+publicadas; nenhum fluxo mutável foi criado ou alterado.
+
+Validação dirigida: 92 testes verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Inventário canônico de diretórios de ROMs
+
+O scan de biblioteca agora reconhece diretórios de plataforma a partir dos
+manifestos canônicos e aliases locais explícitos. Pastas de BIOS, keys,
+firmware, atualizações, DLC, mods, mídia, cache, backups e metadados são
+excluídas; links simbólicos não são seguidos. Itens sem vínculo inequívoco
+permanecem no relatório como `unmatched`, e cada plataforma publica no máximo
+dez jogos únicos, agrupando discos e priorizando descritores `.m3u`/`.cue`.
+Nenhuma ROM, BIOS ou mídia foi criada, copiada, movida ou removida.
+
+Validação dirigida: 48 testes verdes (`test_library_rom_classify` e o fluxo do
+controller), `ruff`, `mypy`, `make independence boundaries` e
+`git diff --check` verdes. A suíte integral foi iniciada fora do `tmpfs`
+saturado, mas interrompida após erros preexistentes de integração; nenhuma ação
+de host, release ou push foi executada.
+
+## 2026-08-05 — Probe real de provedores de mídia
+
+O teste autenticado do SteamGridDB passou depois de trocar o App ID inexistente
+do probe por um jogo Steam estável. A credencial do ScreenScraper existe, mas o
+probe oficial recebeu cota indisponível (HTTP 403); o provider permanece em
+fallback e nenhum download ou publicação de mídia foi iniciado. Valores de
+credenciais nunca foram exibidos ou persistidos.
+
+Validação dirigida: 47 testes de adapters/credenciais verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria de acervo visual externo
+
+Adicionada ferramenta somente leitura para catalogar dimensões, alpha, SHA-256,
+assinatura perceptual, formato e categoria sem copiar nem importar imagens. Sem
+proveniência e licença verificáveis, o resultado é conservadoramente
+`C_REFERENCE_UNVERIFIED`; arquivos inválidos ou duplicados são `D`. A ferramenta
+aceita amostra determinística para validar o fluxo e execução integral para o
+relatório completo, que requer tempo proporcional ao acervo.
+
+Validação: amostra real de 50 arquivos processada, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Fila de mídia por plataforma inventariada
+
+O job global de mídia passou a propagar o `platform` factual de cada jogo
+inventariado para a identidade de busca. O fallback para Switch permanece só
+para caches legados sem esse campo. Assim, uma pesquisa real não reclassifica
+um jogo de outra plataforma como Switch; renderização continua sem rede e a
+execução permanece no job persistente/cancelável existente.
+
+Validação dirigida: 16 testes de mídia multiprovider verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Receitas declarativas de apresentação de mídia
+
+O Theme API ganhou `mediaRecipes` v1. Cada papel visual declara apenas ordem de
+fontes publicadas, crop/contain, ponto focal, stack de efeitos allowlisted e
+largura máxima de decode. A receita não carrega URL, arquivo, shader ou código;
+o renderer continua aplicando uma única source no runtime. O tema padrão define
+backdrop contextual e capas focada/periférica com fallbacks determinísticos.
+
+Validação dirigida: 63 testes de temas/effects verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Runtime editorial das receitas de mídia
+
+`EditorialLibrary` agora consome as receitas resolvidas pelo Theme API para
+escolher uma source já publicada, o `fillMode` e a pilha de efeitos por papel
+visual. Backdrop contextual, capa focada e capa periférica preservam os
+fallbacks anteriores quando o tema não declara receitas. O QML não consulta
+rede/disco e continua usando uma única source por camada.
+
+Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria externa retomável
+
+A auditoria de mídia externa agora aceita checkpoint JSONL fora do repositório.
+Cada registro é reutilizado somente quando tamanho e `mtime_ns` conferem,
+permitindo retomar SHA-256 e assinatura perceptual após uma interrupção sem
+reler imagens já verificadas. O checkpoint contém somente o catálogo local do
+operador e não é versionado; o acervo continua estritamente read-only.
+
+Validação: amostra real retomada sem reprocessar os 50 arquivos já registrados,
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Matriz integral do acervo visual externo
+
+A auditoria integral terminou no cache privado do operador: 16.191 arquivos,
+14.142 PNG, 1.802 JPEG, 14 WEBP e 233 itens não suportados; 13.883 imagens
+possuem alpha. Foram identificados 2.377 grupos de hash exato e 2.271 grupos
+perceptuais. A matriz conserva 5.641 itens como referência sem proveniência
+verificada e marca 10.550 como duplicados ou inválidos; A/B permanecem zero.
+O auditor recusa decodificar imagens acima de 64 milhões de pixels para evitar
+expansão de memória. Relatórios e checkpoints permanecem fora do repositório.
+
+Validação: execução integral retomável, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Verificação visual de receitas editoriais
+
+O harness QML passou a provar a ordem de source e `fit` de uma receita sem
+consultar rede ou disco. Uma captura offscreen Full HD da Biblioteca foi
+inspecionada: foco central, controles e metadados mantêm hierarquia com a
+fixture sem arte; o vazio não é preenchido por placeholder. A inspeção com
+mídia real continua pendente de execução física/controlada, pois fixtures não
+podem carregar conteúdo do usuário.
+
+Validação dirigida: 30 testes QML offscreen/tema verdes, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Fluxo compacto da Biblioteca editorial
+
+As visualizações de carrossel, grade e lista passaram a reservar altura somente
+quando ativas. O estado vazio só preenche a área da Biblioteca quando é de fato
+exibido. O harness QML troca as visualizações em frames distintos, prova que a
+vista ativa não herda o espaço da anterior e espera um frame antes de gravar
+capturas; assim a evidência offscreen não registra geometria obsoleta do Qt
+Quick.
+
+Validação dirigida: 16 testes QML handheld/offscreen verdes e inspeção visual
+em 800×1280 com alto contraste e movimento reduzido. Nenhuma ação de host,
+release ou push foi executada.
+
+## 2026-08-05 — Índice editorial de plataformas canônicas
+
+O read model editorial agora projeta todos os manifests canônicos, inclusive
+plataformas sem ROM inventariada. Jogos só entram na plataforma cujo ID já foi
+determinado pela varredura; itens sem classificação permanecem fora da jornada
+em vez de serem associados por nome de diretório. O workspace técnico de Switch
+não foi alterado.
+
+Validação dirigida: 17 testes de índice editorial e QML handheld/offscreen,
+`ruff`, `mypy` e `make independence boundaries` verdes. Nenhuma ação de host,
+release ou push foi executada.
+
+## 2026-08-05 — Reflexo, máscara e vinheta no renderer confiável
+
+O `MediaEffectLayer` agora reaproveita uma única textura capturada da mídia para
+renderizar reflexão espelhada com máscara de alpha gradiente e vinheta
+procedural. `graphics.effect.reflection` e `graphics.mask.gradient` passaram a
+ser capabilities anunciadas somente porque há implementação local confiável;
+nenhum manifesto pode fornecer shader, path adicional ou código. A cor do glow
+também passa a ser aplicada pela própria entrada de glow, não pela sombra.
+
+Validação dirigida: 15 testes de Theme API, harness QML dedicado de efeitos,
+captura offscreen inspecionada com mídia sintética e `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Navegação editorial por intents semânticos
+
+`EditorialLibrary` passou a expor um contrato controller-first de intents para
+movimento, confirmação e retorno. A travessia preserva seleção, faz wrap-around
+na biblioteca e só confirma lançamento quando existe launcher publicado; o tema
+não captura códigos de tecla. O harness cobre sistemas, catálogo, dossiê,
+revisão, retorno e a recusa honesta de jogo emulado sem contrato seguro.
+
+Validação dirigida: runtime QML offscreen e harness editorial, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Foco visual da navegação editorial
+
+O foco semântico agora também governa a moldura visual dos sistemas, da grade e
+da lista. A captura offscreen 1280×800 confirmou o card Steam dominante com
+contorno ciano e o sistema vizinho atenuado, sem depender de hover ou foco de
+teclado bruto.
+
+Validação dirigida: runtime e captura QML offscreen, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Contrato editorial atualizado
+
+A Design Bible foi atualizada para descrever a implementação real de reflexão,
+máscara gradiente, vinheta, índice canônico de plataformas e intents de
+navegação. Um teste de fonte garante que a Biblioteca editorial preserva o
+contrato semântico e não passe a capturar `Keys` diretamente.
+
+Validação dirigida: 16 testes de Theme API, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria das referências editoriais
+
+As seis referências visuais locais foram abertas somente para leitura. A análise
+reteve foco central, periferia atenuada, metadados próximos e trilho alfabético;
+descartou qualquer marca, arte de jogo, textura, relógio, data ou diagrama de
+controle de terceiros. A Design Bible agora registra essas decisões e confirma
+que nenhuma referência foi importada.
+
+Validação: inspeção visual read-only e `git diff --check`. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Índice canônico também na Home
+
+`EditorialHome` passou a consumir `editorialPlatforms`, com fallback compatível
+ao read model técnico anterior. Assim, Home e Biblioteca mostram as mesmas
+plataformas canônicas; plataforma sem ROM permanece visível com contagem zero,
+sem categoria ou jogo sintético.
+
+Validação dirigida: harness QML da Home, `ruff`, `mypy`,
+`make independence boundaries` e `git diff --check` verdes. Nenhuma ação de
+host, release ou push foi executada.
+
+## 2026-08-05 — Papéis tipográficos versionados
+
+O contrato de tema agora publica os tamanhos de `display`, `heading`, `title`,
+`body`, `metadata`, `badge`, `caption`, `controlHint` e `diagnostic`. A Home e
+a Biblioteca usam esses papéis via `ThemeBridge`, mantendo escala do tema e
+fonte do sistema; nenhuma fonte externa foi adicionada.
+
+Validação dirigida: 24 testes de Theme API/shell, runtime QML do shell,
+`ruff`, `mypy`, `make independence boundaries` e `git diff --check` verdes.
+Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Escala tipográfica editorial a 150%
+
+O harness da Home passou a exercer tokens tipográficos em 150%, incluindo o
+papel `controlHint` dos botões. A captura offscreen 1280×800 foi inspecionada:
+título, card de retomada, painéis e ações refluem sem sobreposição; a rolagem da
+seção continua responsável por conteúdo que excede o viewport.
+
+Validação dirigida: 17 testes de Theme API, runtime QML da Home e captura
+offscreen, `ruff`, `mypy`, `make independence boundaries` e `git diff --check`
+verdes. Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Auditoria visual e contrato do índice editorial
+
+A auditoria offscreen da jornada Início → Sistemas encontrou no retrato de alto
+contraste o rótulo de estado encostando no limite inferior do card. A altura
+compacta passou a reservar três alvos mínimos, preservando ícone, título,
+contagem e estado; a recaptura 800×1280 confirmou os dois rótulos íntegros,
+foco ciano e indicadores de avanço visíveis. A captura também confirmou que o
+tratamento de mídia confiável renderiza reflexão, máscara e vinheta a partir de
+uma única textura local.
+
+O contrato versionado de workspace agora declara `editorialPlatforms`, com
+linhas canônicas, estados e jogos publicados. Isso fecha a validação da rota
+CLI sem afrouxar `additionalProperties`; o primeiro teste integral revelou a
+omissão antes de qualquer ação de host.
+
+Validação dirigida: captura QML offscreen em alto contraste/movimento reduzido,
+14 testes de índice, workspace e CLI (exceto um cenário independente bloqueado
+por espaço livre em `/run`), `ruff`, `mypy`, `make independence boundaries` e
+`git diff --check` verdes. Nenhuma ação de host, release ou push foi executada.
+
+## 2026-08-05 — Travessia das plataformas canônicas no runtime QML
+
+Um harness QML dedicado passou a publicar Steam e 36 plataformas canônicas na
+composição editorial em 800×1280, alto contraste e movimento reduzido. Ele
+verifica que cada destino chega ao repeater, que o card compacto reserva a
+altura acessível e que intents semânticos alcançam a última plataforma; não há
+categoria sintética nem jogos de fixture dentro do produto.
+
+Validação dirigida: harness QML canônico offscreen, `ruff`, `mypy`, `make
+independence boundaries` e `git diff --check` verdes. Nenhuma ação de host,
+release ou push foi executada.
+## 2026-08-05 — Sessão: catálogo canônico básico de experiências
+
+Separada a identidade histórica apresentada pelo tema da plataforma técnica que
+executa o conteúdo. Os 36 manifests operacionais permanecem compatíveis; o novo
+catálogo versionado publica 155 experiências com tipo, grupo, runtime, relação
+pai, plataforma técnica e estado honesto (`supported`, `experimental`,
+`planned` ou `unavailable`). Nenhuma experiência foi marcada `certified` sem
+certificação física.
+
+| Item | Commit | Evidência |
+|---|---|---|
+| Schema e registry fechados do catálogo canônico | este | testes de unicidade, pais e referências técnicas |
+| N64DD, Sega CD 32X, Jaguar CD, PS4, MSU-1, MD+/MSU-MD, arcade, PC, engines e lojas | este | 155 entradas validadas pelo schema |
+| Catálogo publicado no workspace e exposto ao tema | este | `test_emulation_workspace.py` e contrato JSON |
+
+Gates: 3916 testes passaram; Ruff check e format-check, mypy (210 módulos),
+independência, boundaries e matriz de capabilities limpos. A primeira execução
+integral encontrou 14 colisões de socket UNIX causadas pelo caminho temporário
+longo da aplicação; o arquivo afetado passou 39/39 e a suíte integral passou
+3916/3916 com `TMPDIR=/tmp/szcan-tests`, sem alteração dos testes envolvidos.
+
+Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
+executado**.
+
+## 2026-08-06 — Tombstones explícitos para adapters retirados
+
+O catálogo versionado de tombstones separa retirada deliberada de manifesto
+ausente. Cada registro preserva o manifesto histórico verificável, a última
+versão, motivo, substituto e políticas de deployment/dados. Um adapter retirado
+continua visível com motivo e deployment observado, mas recusa instalar,
+atualizar, reparar, iniciar, configurar e parar; somente a desinstalação do
+deployment remanescente segue pelo fluxo plan/apply. A Dashboard e a matriz de
+capabilities recebem a mesma linha `retired`, sem criar botão de retirada.
+
+Validação dirigida: 119 testes de lifecycle, dashboard e contratos passaram;
+Ruff, mypy, auditoria de bridge, matriz de capabilities, independência,
+boundaries e `git diff --check` passaram. Nenhuma ação de host, release ou push
+foi executada.
+
+## 2026-08-06 — Status e auditoria de BIOS pela bridge Desktop
+
+Foram publicados os fatos read-only de BIOS na bridge existente: requisitos e
+presença por plataforma, além do diagnóstico agregado do store. As respostas
+não expõem paths de origem, hashes, conteúdo, keys ou firmware. Importação e
+scan permanecem fora desta etapa até haver seleção de origem aprovada e fluxo
+transacional igualmente sanitizado.
+
+Validação dirigida: 34 testes de bridge e contratos passaram; Ruff, mypy,
+auditoria de bridge, matriz de capabilities, independência, boundaries e
+`git diff --check` passaram. Nenhuma ação de host, release ou push foi
+executada.
+
+## 2026-08-06 — Bloqueio explícito das mutações de BIOS
+
+O catálogo Desktop declara scan, importação e rollback de BIOS como não
+aplicáveis enquanto não existe seleção confiável de origem por handle. Isso
+impede que uma futura UI converta paths arbitrários do host em endpoint e
+mantém os fatos read-only disponíveis.
+
+## 2026-08-06 — Recovery manual de componentes fechado por plano
+
+O recovery de componentes agora começa por inspeção sanitizada, gera plano
+persistido com token e congela a seleção de operações por fingerprint. O apply
+recusa token inválido, plano de outro domínio e estado alterado antes de tocar
+qualquer executor. A bridge Desktop publica as rotas de revisão e confirmação;
+a CLI deixou de executar recovery diretamente e passa a revisar primeiro,
+aplicando somente com `--plan-id` e `--confirm`.
+
+Validação dirigida: 138 testes de CLI, lifecycle, bridge e contratos passaram;
+Ruff, mypy, auditoria de bridge, matriz de capacidades, independência,
+boundaries e `git diff --check` passaram. O runner isolado completo foi
+iniciado com `TMPDIR` curto, mas terminou sem resumo/exit code conclusivo;
+não foi considerado evidência de suíte integral verde.
+
+Ações de host: **nenhuma**. Release ativa: **não alterada**. Push: **não
+executado**.
+
+## 2026-08-05 — Harmonização controlada: Editorial, Lifecycle e Catálogo
+
+Foram preservadas por merges não-squash as frentes editorial, lifecycle e
+catálogo canônico. O fechamento editorial renomeia o defeito visual para G36
+sem alterar o G25 histórico; o lifecycle passa a cobrir preservação de
+configuração, rollback auditável e recovery idempotente. A cadeia de migrações
+foi resolvida semanticamente: 17 `bios_catalog_v2`, 18 estados do lifecycle e
+19 vínculo de operação. O workspace mantém simultaneamente
+`editorialPlatforms` e `canonicalExperiences`.
+
+Validação dirigida: migrações, lifecycle/transações, bridge, workspace e
+catálogo passaram; o catálogo publica 155 experiências e 36 plataformas
+técnicas. Ruff, format-check, mypy, independência, boundaries, capability
+matrix e `git diff --check` também passaram. Nenhuma ação de host, release,
+push ou PR foi executada.

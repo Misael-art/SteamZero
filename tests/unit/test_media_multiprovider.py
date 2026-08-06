@@ -24,12 +24,14 @@ class FakeProvider:
         *,
         failures: int = 0,
         error_code: str | None = None,
+        identities: list[GameIdentity] | None = None,
     ) -> None:
         self._name = name
         self._kinds = frozenset(kinds)
         self._calls = calls
         self._failures = failures
         self._error_code = error_code
+        self._identities = identities
 
     @property
     def name(self) -> str:
@@ -43,11 +45,13 @@ class FakeProvider:
 
     def search(
         self,
-        _identity: GameIdentity,
+        identity: GameIdentity,
         media_kinds: list[str],
         _region_priority: list[str] | None = None,
     ) -> list[MediaCandidate]:
         self._calls.append(self.name)
+        if self._identities is not None:
+            self._identities.append(identity)
         if self._error_code is not None:
             raise SteamZeroError(self._error_code, detail="secret-in-detail")
         if self._failures > 0:
@@ -156,6 +160,25 @@ def _run_search(
     assert completed.state == "completed"
     assert isinstance(completed.result, dict)
     return completed.result
+
+
+def test_global_media_search_uses_the_inventory_platform(tmp_path: Path) -> None:
+    calls: list[str] = []
+    identities: list[GameIdentity] = []
+    controller = _controller(
+        tmp_path,
+        [FakeProvider("screenscraper", {"boxart"}, calls, identities=identities)],
+    )
+    _plant_library(controller, tmp_path, 1)
+    cache = controller._library_cache_path  # type: ignore[attr-defined]
+    payload = json.loads(cache.read_text(encoding="utf-8"))
+    payload["games"][0]["platform"] = "playstation"
+    cache.write_text(json.dumps(payload), encoding="utf-8")
+
+    _run_global(controller)
+
+    assert calls == ["screenscraper"]
+    assert identities[0].platform_slug == "playstation"
 
 
 @pytest.mark.parametrize(

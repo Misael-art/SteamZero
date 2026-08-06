@@ -14,16 +14,20 @@
     "status",
     "install",
     "update",
-    "verify"
+    "configure",
+    "verify",
+    "repair",
+    "uninstall",
+    "backup",
+    "restore"
   ],
   "sources": [
     {
-      "type": "flatpak",
-      "ref": "org.duckstation.DuckStation",
-      "remote": "flathub",
-      "version": "d2a630c4f30df1c221a9bae52b8897f5e8e7cca95cb7c8e4b7363ed5ebc2d4cd",
+      "type": "appimage",
+      "version": "v0.1-11580",
       "priority": 1,
-      "endOfLife": true
+      "url": "https://github.com/stenzek/duckstation/releases/download/v0.1-11580/DuckStation-x64.AppImage",
+      "sha256": "1c48f2a478ab0e587909a68c4e47a50ca5b7dd9321013076d5171551b6acae3f"
     }
   ],
   "paths": {
@@ -32,7 +36,7 @@
   "configFormat": "ini",
   "verify": {
     "smokeTest": [
-      "--version"
+      "--appimage-version"
     ]
   },
   "compat": [
@@ -42,5 +46,5 @@
   ],
   "license": "CC-BY-NC-ND-4.0",
   "upstream": "https://github.com/stenzek/duckstation",
-  "notes": "O ref Flathub está marcado end-of-life desde 2025-08-13; não promover sem nova fonte validada."
+  "notes": "Fonte migrada do Flatpak EOL para o AppImage oficial. O upstream descontinuou o ref Flathub em 2025-07-26 e a aplicação saiu do Flathub; manter aquela fonte deixava o adapter permanentemente em executor=none. A licença é CC-BY-NC-ND-4.0 desde 2024, e a LICENSE-MATRIX do projeto é explícita: instalar do upstream é permitido, redistribuir o binário no lockfile não — o engine baixa da URL oficial no install e nunca reempacota. A tag é versionada de propósito: o upstream também publica um 'latest' rolante, que serviria bytes diferentes sob a mesma URL e quebraria a fixação por SHA-256."
 }

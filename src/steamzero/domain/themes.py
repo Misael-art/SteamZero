@@ -4,6 +4,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from steamzero.domain.media_recipes import (
+    MediaRecipe,
+    media_recipes_to_dict,
+    parse_media_recipes,
+    validate_recipe_effect_stacks,
+)
+from steamzero.domain.theme_effects import (
+    EffectDiagnostic,
+    EffectSpec,
+    PerformanceTier,
+    ResolvedEffect,
+    effect_stacks_to_dict,
+    parse_effect_stacks,
+    resolve_effect_stacks,
+)
+
 THEME_MANIFEST_SCHEMA_VERSION = 1
 THEME_API_VERSION = 1
 THEME_DEFAULT_ID = "org.steamzero.default"
@@ -14,24 +30,24 @@ ASSET_SLOTS_ALLOWED = frozenset({"background", "logo", "sidebar"})
 
 @dataclass(frozen=True)
 class ThemeColorTokens:
-    background: str = "#071019"
-    sidebar: str = "#09131d"
-    surface: str = "#0d1924"
-    surfaceRaised: str = "#122131"
-    surfaceSelected: str = "#1a2b3c"
-    border: str = "#2a3a49"
-    text: str = "#f2f6fb"
-    textMuted: str = "#9eabba"
-    textDisabled: str = "#667481"
-    accent: str = "#13bdf2"
-    accentStrong: str = "#0a5f85"
-    success: str = "#59d35d"
-    successSurface: str = "#1a3a1e"
-    warning: str = "#ff9f1a"
-    warningSurface: str = "#3a2a0a"
-    danger: str = "#ff6b73"
-    dangerSurface: str = "#3a1518"
-    focus: str = "#13bdf2"
+    background: str = "#e7eceb"
+    sidebar: str = "#d8dfdf"
+    surface: str = "#f4f7f5"
+    surfaceRaised: str = "#ffffff"
+    surfaceSelected: str = "#dce8e8"
+    border: str = "#aebdbe"
+    text: str = "#16212a"
+    textMuted: str = "#53616b"
+    textDisabled: str = "#7a878b"
+    accent: str = "#006f99"
+    accentStrong: str = "#005471"
+    success: str = "#167a45"
+    successSurface: str = "#dff3e7"
+    warning: str = "#9a5a00"
+    warningSurface: str = "#fff0d5"
+    danger: str = "#ae2634"
+    dangerSurface: str = "#fbe2e5"
+    focus: str = "#006f99"
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -98,6 +114,15 @@ class ThemeTypographyTokens:
     weightBody: int = 400
     weightStrong: int = 600
     weightHeading: int = 700
+    display: int = 36
+    heading: int = 24
+    title: int = 20
+    body: int = 16
+    metadata: int = 14
+    badge: int = 12
+    caption: int = 12
+    controlHint: int = 14
+    diagnostic: int = 14
     family: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -106,6 +131,15 @@ class ThemeTypographyTokens:
             "weightBody": self.weightBody,
             "weightStrong": self.weightStrong,
             "weightHeading": self.weightHeading,
+            "display": self.display,
+            "heading": self.heading,
+            "title": self.title,
+            "body": self.body,
+            "metadata": self.metadata,
+            "badge": self.badge,
+            "caption": self.caption,
+            "controlHint": self.controlHint,
+            "diagnostic": self.diagnostic,
         }
         if self.family is not None:
             result["family"] = self.family
@@ -118,6 +152,15 @@ class ThemeTypographyTokens:
             weightBody=data.get("weightBody", 400),
             weightStrong=data.get("weightStrong", 600),
             weightHeading=data.get("weightHeading", 700),
+            display=data.get("display", 36),
+            heading=data.get("heading", 24),
+            title=data.get("title", 20),
+            body=data.get("body", 16),
+            metadata=data.get("metadata", 14),
+            badge=data.get("badge", 12),
+            caption=data.get("caption", 12),
+            controlHint=data.get("controlHint", 14),
+            diagnostic=data.get("diagnostic", 14),
             family=data.get("family"),
         )
 
@@ -146,6 +189,76 @@ class ThemeMotionTokens:
 
 
 @dataclass(frozen=True)
+class ThemeStateVariantTokens:
+    """Estados visuais estáveis; o renderer anima somente sua transição."""
+
+    focusedScale: float = 1.05
+    peripheralOpacity: float = 0.58
+    selectedOpacity: float = 1.0
+
+    def to_dict(self) -> dict[str, float]:
+        return {
+            "focusedScale": self.focusedScale,
+            "peripheralOpacity": self.peripheralOpacity,
+            "selectedOpacity": self.selectedOpacity,
+        }
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> ThemeStateVariantTokens:
+        fields = ThemeStateVariantTokens.__dataclass_fields__
+        return ThemeStateVariantTokens(**{k: v for k, v in data.items() if k in fields})
+
+
+@dataclass(frozen=True)
+class ThemeInteractionTokens:
+    """Contrato controller-first que um tema pode aprimorar, não remover."""
+
+    focusVisible: bool = True
+    minimumTarget: int = 48
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"focusVisible": self.focusVisible, "minimumTarget": self.minimumTarget}
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> ThemeInteractionTokens:
+        return ThemeInteractionTokens(
+            focusVisible=bool(data.get("focusVisible", True)),
+            minimumTarget=int(data.get("minimumTarget", 48)),
+        )
+
+
+@dataclass(frozen=True)
+class ThemeAccessibilityTokens:
+    """Políticas que preservam a precedência da preferência do sistema."""
+
+    systemOverrides: bool = True
+
+    def to_dict(self) -> dict[str, bool]:
+        return {"systemOverrides": self.systemOverrides}
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> ThemeAccessibilityTokens:
+        # Um tema não pode ignorar o sistema: false é normalizado para true.
+        return ThemeAccessibilityTokens(systemOverrides=True)
+
+
+@dataclass(frozen=True)
+class ThemePerformanceTokens:
+    defaultTier: PerformanceTier = PerformanceTier.CINEMATIC
+
+    def to_dict(self) -> dict[str, str]:
+        return {"defaultTier": self.defaultTier.value}
+
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> ThemePerformanceTokens:
+        try:
+            tier = PerformanceTier(str(data.get("defaultTier", PerformanceTier.CINEMATIC.value)))
+        except ValueError as exc:
+            raise ValueError("defaultTier de performance inválido") from exc
+        return ThemePerformanceTokens(defaultTier=tier)
+
+
+@dataclass(frozen=True)
 class ThemeAsset:
     slot: str
     path: str
@@ -170,6 +283,8 @@ class ThemeManifest:
     extends: str | None = None
     tokens: dict[str, Any] = field(default_factory=dict)
     assets: dict[str, str] = field(default_factory=dict)
+    effects: dict[str, tuple[EffectSpec, ...]] = field(default_factory=dict)
+    media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -192,10 +307,20 @@ class ThemeManifest:
             result["tokens"] = self.tokens
         if self.assets:
             result["assets"] = self.assets
+        if self.effects:
+            result["effects"] = effect_stacks_to_dict(self.effects)
+        if self.media_recipes:
+            result["mediaRecipes"] = media_recipes_to_dict(self.media_recipes)
         return result
 
     @staticmethod
     def from_dict(data: dict[str, Any]) -> ThemeManifest:
+        raw_effects = data.get("effects")
+        raw_media_recipes = data.get("mediaRecipes")
+        if raw_effects is not None and not isinstance(raw_effects, dict):
+            raise ValueError("effects precisa ser objeto")
+        if raw_media_recipes is not None and not isinstance(raw_media_recipes, dict):
+            raise ValueError("mediaRecipes precisa ser objeto")
         return ThemeManifest(
             schemaVersion=data.get("schemaVersion", THEME_MANIFEST_SCHEMA_VERSION),
             kind=data.get("kind", "steamzero-theme-v1"),
@@ -210,6 +335,8 @@ class ThemeManifest:
             extends=data.get("extends"),
             tokens=data.get("tokens", {}),
             assets=data.get("assets", {}),
+            effects=parse_effect_stacks(raw_effects),
+            media_recipes=parse_media_recipes(raw_media_recipes),
         )
 
 
@@ -225,7 +352,14 @@ class ResolvedTheme:
     geometry: ThemeGeometryTokens = field(default_factory=ThemeGeometryTokens)
     typography: ThemeTypographyTokens = field(default_factory=ThemeTypographyTokens)
     motion: ThemeMotionTokens = field(default_factory=ThemeMotionTokens)
+    state_variants: ThemeStateVariantTokens = field(default_factory=ThemeStateVariantTokens)
+    interaction: ThemeInteractionTokens = field(default_factory=ThemeInteractionTokens)
+    accessibility: ThemeAccessibilityTokens = field(default_factory=ThemeAccessibilityTokens)
+    performance: ThemePerformanceTokens = field(default_factory=ThemePerformanceTokens)
     assets: dict[str, ThemeAsset] = field(default_factory=dict)
+    effects: dict[str, tuple[ResolvedEffect, ...]] = field(default_factory=dict)
+    media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
+    effect_diagnostics: tuple[EffectDiagnostic, ...] = ()
     high_contrast: bool = False
     reduced_motion: bool = False
 
@@ -274,7 +408,21 @@ class ResolvedTheme:
             geometry=self.geometry,
             typography=self.typography,
             motion=motion,
+            state_variants=self.state_variants,
+            interaction=self.interaction,
+            accessibility=self.accessibility,
+            performance=self.performance,
             assets=self.assets,
+            effects={
+                stack: tuple(
+                    effect
+                    for effect in entries
+                    if not (high_contrast or (reduced_motion and effect.type.value == "reflection"))
+                )
+                for stack, entries in self.effects.items()
+            },
+            media_recipes=self.media_recipes,
+            effect_diagnostics=self.effect_diagnostics,
             high_contrast=high_contrast,
             reduced_motion=reduced_motion,
         )
@@ -294,8 +442,18 @@ class ResolvedTheme:
                 "geometry": self.geometry.to_dict(),
                 "typography": self.typography.to_dict(),
                 "motion": self.motion.to_dict(),
+                "stateVariants": self.state_variants.to_dict(),
+                "interaction": self.interaction.to_dict(),
+                "accessibility": self.accessibility.to_dict(),
+                "performance": self.performance.to_dict(),
             },
             "assets": {slot: asset.to_dict() for slot, asset in self.assets.items()},
+            "effects": {
+                stack: [effect.to_dict() for effect in entries]
+                for stack, entries in self.effects.items()
+            },
+            "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
+            "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
 
     def to_theme_qml_object(self) -> dict[str, Any]:
@@ -307,6 +465,12 @@ class ResolvedTheme:
             "highContrast": self.high_contrast,
             "reducedMotion": self.reduced_motion,
             "resolved": tokens,
+            "effects": {
+                stack: [effect.to_dict() for effect in entries]
+                for stack, entries in self.effects.items()
+            },
+            "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
+            "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
         }
 
 
@@ -316,12 +480,26 @@ class ThemeResolver:
     def __init__(self, manifests: dict[str, ThemeManifest]) -> None:
         self._manifests = manifests
 
-    def resolve(self, theme_id: str) -> ResolvedTheme:
+    def resolve(
+        self,
+        theme_id: str,
+        *,
+        effect_capabilities: frozenset[str] | None = None,
+        performance_tier: PerformanceTier | None = None,
+        high_contrast: bool = False,
+        reduced_motion: bool = False,
+    ) -> ResolvedTheme:
         manifest = self._manifests.get(theme_id)
         if manifest is None:
             raise ValueError(f"tema não encontrado: {theme_id}")
         chain = self._build_chain(theme_id)
-        return self._merge_chain(chain)
+        return self._merge_chain(
+            chain,
+            effect_capabilities=effect_capabilities,
+            performance_tier=performance_tier,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
+        )
 
     def _build_chain(self, theme_id: str, depth: int = 0) -> list[ThemeManifest]:
         if depth > MAX_EXTENDS_DEPTH:
@@ -342,12 +520,26 @@ class ThemeResolver:
         finally:
             self._visiting.discard(theme_id)
 
-    def _merge_chain(self, chain: list[ThemeManifest]) -> ResolvedTheme:
+    def _merge_chain(
+        self,
+        chain: list[ThemeManifest],
+        *,
+        effect_capabilities: frozenset[str] | None,
+        performance_tier: PerformanceTier | None,
+        high_contrast: bool,
+        reduced_motion: bool,
+    ) -> ResolvedTheme:
         color = ThemeColorTokens()
         geometry = ThemeGeometryTokens()
         typography = ThemeTypographyTokens()
         motion = ThemeMotionTokens()
+        state_variants = ThemeStateVariantTokens()
+        interaction = ThemeInteractionTokens()
+        accessibility = ThemeAccessibilityTokens()
+        performance = ThemePerformanceTokens()
         assets: dict[str, str] = {}
+        effects: dict[str, tuple[EffectSpec, ...]] = {}
+        media_recipes: dict[str, MediaRecipe] = {}
         name = ""
         version = ""
         author = ""
@@ -378,12 +570,42 @@ class ThemeResolver:
                 m = motion.to_dict()
                 m.update(tokens["motion"])
                 motion = ThemeMotionTokens.from_dict(m)
+            if "stateVariants" in tokens:
+                v = state_variants.to_dict()
+                v.update(tokens["stateVariants"])
+                state_variants = ThemeStateVariantTokens.from_dict(v)
+            if "interaction" in tokens:
+                i = interaction.to_dict()
+                i.update(tokens["interaction"])
+                interaction = ThemeInteractionTokens.from_dict(i)
+            if "accessibility" in tokens:
+                a = accessibility.to_dict()
+                a.update(tokens["accessibility"])
+                accessibility = ThemeAccessibilityTokens.from_dict(a)
+            if "performance" in tokens:
+                p = performance.to_dict()
+                p.update(tokens["performance"])
+                performance = ThemePerformanceTokens.from_dict(p)
             if manifest.assets:
                 assets.update(manifest.assets)
+            if manifest.effects:
+                effects.update(manifest.effects)
+            if manifest.media_recipes:
+                media_recipes.update(manifest.media_recipes)
+
+        validate_recipe_effect_stacks(tuple(media_recipes.values()), effects)
 
         resolved_assets = {slot: ThemeAsset(slot=slot, path=path) for slot, path in assets.items()}
+        effect_kwargs: dict[str, Any] = {
+            "tier": performance_tier or performance.defaultTier,
+            "high_contrast": high_contrast,
+            "reduced_motion": reduced_motion,
+        }
+        if effect_capabilities is not None:
+            effect_kwargs["capabilities"] = effect_capabilities
+        resolved_effects, effect_diagnostics = resolve_effect_stacks(effects, **effect_kwargs)
         top = chain[-1]
-        return ResolvedTheme(
+        resolved = ResolvedTheme(
             id=top.id,
             name=name,
             version=version,
@@ -394,8 +616,16 @@ class ThemeResolver:
             geometry=geometry,
             typography=typography,
             motion=motion,
+            state_variants=state_variants,
+            interaction=interaction,
+            accessibility=accessibility,
+            performance=performance,
             assets=resolved_assets,
+            effects=resolved_effects,
+            media_recipes=media_recipes,
+            effect_diagnostics=effect_diagnostics,
         )
+        return resolved.apply_accessibility(high_contrast, reduced_motion)
 
     @property
     def _visiting(self) -> set[str]:

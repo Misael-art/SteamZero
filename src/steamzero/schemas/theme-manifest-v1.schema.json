@@ -136,6 +136,15 @@
             "weightBody": { "type": "integer", "minimum": 100, "maximum": 900 },
             "weightStrong": { "type": "integer", "minimum": 100, "maximum": 900 },
             "weightHeading": { "type": "integer", "minimum": 100, "maximum": 900 },
+            "display": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "heading": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "title": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "body": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "metadata": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "badge": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "caption": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "controlHint": { "type": "integer", "minimum": 8, "maximum": 64 },
+            "diagnostic": { "type": "integer", "minimum": 8, "maximum": 64 },
             "family": { "type": "string", "maxLength": 128 }
           },
           "additionalProperties": false,
@@ -149,6 +158,41 @@
             "durationLong": { "type": "integer", "minimum": 0 },
             "hoverIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
             "focusIntensity": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "stateVariants": {
+          "type": "object",
+          "properties": {
+            "focusedScale": { "type": "number", "minimum": 1, "maximum": 1.2 },
+            "peripheralOpacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "selectedOpacity": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "interaction": {
+          "type": "object",
+          "properties": {
+            "focusVisible": { "const": true },
+            "minimumTarget": { "type": "integer", "minimum": 48, "maximum": 128 }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "systemOverrides": { "const": true }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "performance": {
+          "type": "object",
+          "properties": {
+            "defaultTier": { "enum": ["cinematic", "balanced", "economy", "accessible"] }
           },
           "additionalProperties": false,
           "minProperties": 1
@@ -169,6 +213,59 @@
         "pattern": "^[a-zA-Z][a-zA-Z0-9]*$"
       },
       "maxProperties": 8
+    },
+    "effects": {
+      "type": "object",
+      "description": "Pilha declarativa allowlisted. Não aceita QML, JavaScript, shader ou referências de arquivo.",
+      "required": ["schemaVersion", "stacks"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "stacks": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": { "$ref": "#/$defs/effect" }
+          },
+          "maxProperties": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "mediaRecipes": {
+      "type": "object",
+      "description": "Receitas de mídia sem caminhos, bytes, shaders ou código executável.",
+      "required": ["schemaVersion", "recipes"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recipes": {
+          "type": "object",
+          "propertyNames": { "enum": ["contextualBackdrop", "focusedCover", "peripheralCover", "screenshot"] },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["sourceOrder"],
+            "properties": {
+              "sourceOrder": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 7,
+                "uniqueItems": true,
+                "items": { "enum": ["hero", "fanart", "cover", "screenshot", "banner", "platformArt", "geometric"] }
+              },
+              "fit": { "enum": ["crop", "contain"] },
+              "focalX": { "type": "number", "minimum": 0, "maximum": 1 },
+              "focalY": { "type": "number", "minimum": 0, "maximum": 1 },
+              "effectStack": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+              "maxDecodeWidth": { "type": "integer", "minimum": 64, "maximum": 4096 }
+            },
+            "additionalProperties": false
+          },
+          "maxProperties": 4
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
@@ -188,6 +285,68 @@
       "pattern": "^assets/[a-zA-Z0-9_./-]+\\.(png|jpg|jpeg|webp|svg)$",
       "maxLength": 256,
       "description": "Caminho relativo a um asset dentro do pacote, sob assets/."
+    },
+    "effectFallback": {
+      "type": "string",
+      "enum": ["omit", "minimal"]
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "blur" }, "radius": { "type": "number", "minimum": 0, "maximum": 64 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "enum": ["saturation", "brightness", "contrast"] }, "amount": { "type": "number", "minimum": -1, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "colorize" }, "color": { "$ref": "#/$defs/colorHex" }, "strength": { "type": "number", "minimum": 0, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "opacity" }, "amount": { "type": "number", "minimum": 0, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "shadow" }, "color": { "$ref": "#/$defs/colorHex" }, "opacity": { "type": "number", "minimum": 0, "maximum": 1 }, "blur": { "type": "number", "minimum": 0, "maximum": 48 }, "offsetX": { "type": "number", "minimum": -48, "maximum": 48 }, "offsetY": { "type": "number", "minimum": -48, "maximum": 48 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "glow" }, "color": { "$ref": "#/$defs/colorHex" }, "strength": { "type": "number", "minimum": 0, "maximum": 1 }, "blur": { "type": "number", "minimum": 0, "maximum": 48 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "reflection" }, "opacity": { "type": "number", "minimum": 0, "maximum": 1 }, "scale": { "type": "number", "minimum": 0, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "gradientMask" }, "start": { "type": "number", "minimum": 0, "maximum": 1 }, "end": { "type": "number", "minimum": 0, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "vignette" }, "color": { "$ref": "#/$defs/colorHex" }, "strength": { "type": "number", "minimum": 0, "maximum": 1 }, "fallback": { "$ref": "#/$defs/effectFallback" } },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

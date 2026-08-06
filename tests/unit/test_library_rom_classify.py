@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from steamzero.domain.library import (
+    PlatformDirectoryInventory,
     PlatformRomScanner,
     RomCandidate,
     build_ext_map,
@@ -291,6 +292,50 @@ class TestPlatformRomScanner:
         assert by_name["game.iso"].evidence == "root-wins"
         assert by_name["readme.txt"].platform is None
         assert by_name["readme.txt"].evidence == "no-ext-match"
+
+
+class TestPlatformDirectoryInventory:
+    def test_maps_manifest_aliases_excludes_auxiliary_and_limits_unique_games(
+        self, tmp_path: Path
+    ) -> None:
+        psx = tmp_path / "PSX"
+        psx.mkdir()
+        (psx / "Racing (Disc 1).cue").write_bytes(b"")
+        (psx / "Racing (Disc 1).bin").write_bytes(b"")
+        (psx / "Racing (Disc 2).cue").write_bytes(b"")
+        (psx / "Racing (Disc 2).bin").write_bytes(b"")
+        for index in range(12):
+            (psx / f"Title {index:02}.chd").write_bytes(b"")
+        (psx / "updates").mkdir()
+        (psx / "updates" / "not-a-game.chd").write_bytes(b"")
+        (tmp_path / "bios").mkdir()
+        (tmp_path / "mystery-console").mkdir()
+
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        rows = {row.path.name: row for row in inventory.inventory(tmp_path)}
+
+        assert rows["PSX"].disposition == "matched"
+        assert rows["PSX"].platform_id == "playstation"
+        assert rows["PSX"].game_count == 13
+        assert len(rows["PSX"].selected_games) == 10
+        assert all("not-a-game" not in item.path.name for item in rows["PSX"].selected_games)
+        assert rows["bios"].disposition == "excluded"
+        assert rows["mystery-console"].disposition == "unmatched"
+
+    def test_does_not_follow_symlinked_content(self, tmp_path: Path) -> None:
+        platform_root = tmp_path / "n64"
+        platform_root.mkdir()
+        target = tmp_path / "outside"
+        target.mkdir()
+        (target / "game.z64").write_bytes(b"")
+        (platform_root / "outside").symlink_to(target, target_is_directory=True)
+
+        inventory = PlatformDirectoryInventory.from_registry(PlatformRegistry.bundled())
+        row = inventory.inventory(tmp_path)[0]
+
+        assert row.platform_id == "nintendo-64"
+        assert row.game_count == 0
+        assert row.skipped_symlinks == 1
 
 
 # ── Desambiguação por assinatura de cabeçalho (D1 passo 2b) ──────────────────

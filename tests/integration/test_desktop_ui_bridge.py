@@ -156,8 +156,8 @@ class FakeDashboard:
             "steamGameplay": {"games": [{"id": "10"}]},
         }
 
-    def plan_component(self, component_id: str) -> dict[str, object]:
-        self.calls.append(("plan", component_id))
+    def plan_component(self, component_id: str, action: str) -> dict[str, object]:
+        self.calls.append(("plan", component_id, action))
         return {"planId": "component-plan", "confirmToken": "confirm"}
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, object]:
@@ -167,6 +167,94 @@ class FakeDashboard:
     def launch_component(self, component_id: str) -> dict[str, object]:
         self.calls.append(("launch", component_id))
         return {"status": "started"}
+
+    def component_operation_history(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-history", component_id))
+        return {"componentId": component_id, "operations": [], "count": 0}
+
+    def plan_component_rollback(self, component_id: str, operation_id: str) -> dict[str, object]:
+        self.calls.append(("component-rollback-plan", component_id, operation_id))
+        return {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}
+
+    def apply_component_rollback(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("component-rollback-apply", plan_id, confirm_token))
+        return {"status": "rolled-back"}
+
+    def list_components(self) -> list[dict[str, object]]:
+        self.calls.append(("component-list",))
+        return [{"id": "dolphin", "state": "installed"}]
+
+    def component_status(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-status", component_id))
+        return {"id": component_id, "state": "installed"}
+
+    def verify_component(self, component_id: str) -> dict[str, object]:
+        self.calls.append(("component-verify", component_id))
+        return {"id": component_id, "state": "installed", "verified": True}
+
+    def component_capability_matrix(self) -> dict[str, object]:
+        self.calls.append(("component-matrix",))
+        return {"components": [{"componentId": "dolphin", "capabilities": ["verify"]}]}
+
+    def component_open_config_matrix(self) -> dict[str, object]:
+        self.calls.append(("component-open-config-matrix",))
+        return {"decisions": [{"componentId": "dolphin", "strategy": "main-ui"}], "count": 1}
+
+    def component_recovery_inspect(self) -> dict[str, object]:
+        self.calls.append(("component-recovery-inspect",))
+        return {"operations": [], "count": 0}
+
+    def plan_component_recovery(self) -> dict[str, object]:
+        self.calls.append(("component-recovery-plan",))
+        return {"planId": "recovery-plan", "confirmToken": "recovery-confirm"}
+
+    def apply_component_recovery(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("component-recovery-apply", plan_id, confirm_token))
+        return {"status": "ok", "operations": []}
+
+    def bios_status(self, platform_id: str | None = None) -> dict[str, object]:
+        assert platform_id is None
+        self.calls.append(("bios-status",))
+        return {
+            "entries": [{"id": "ps2-rom", "platformId": "ps2", "required": True, "present": False}]
+        }
+
+    def bios_audit(self) -> dict[str, object]:
+        self.calls.append(("bios-audit",))
+        return {"status": "ok", "issues": []}
+
+    def bios_source_selector(self) -> dict[str, object]:
+        self.calls.append(("bios-sources",))
+        # Este identificador é interno ao dashboard. A bridge deve substituí-lo
+        # por um handle efêmero antes de devolvê-lo ao cliente.
+        return {"sources": [{"sourceId": "dashboard-source", "label": "~/Emulation/bios"}]}
+
+    def bios_scan_selected(self, source_id: str) -> dict[str, object]:
+        self.calls.append(("bios-scan", source_id))
+        assert source_id == "dashboard-source"
+        return {"scanId": "bios-scan-1", "examined": 1, "candidates": []}
+
+    def bios_scan_status(self, scan_id: str) -> dict[str, object]:
+        self.calls.append(("bios-scan-status", scan_id))
+        return {"scanId": scan_id, "examined": 1, "candidates": []}
+
+    def bios_import_plan(
+        self, scan_id: str, selection: list[str] | None = None
+    ) -> dict[str, object]:
+        self.calls.append(("bios-import-plan", scan_id, *(selection or [])))
+        return {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+
+    def bios_import_apply(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("bios-import-apply", plan_id, confirm_token))
+        return {"operationId": "bios-operation", "status": "applied"}
+
+    def plan_bios_import_rollback(self, operation_id: str) -> dict[str, object]:
+        self.calls.append(("bios-rollback-plan", operation_id))
+        return {"planId": "bios-rollback-plan", "confirmToken": "bios-rollback-confirm"}
+
+    def apply_bios_import_rollback(self, plan_id: str, confirm_token: str) -> dict[str, object]:
+        self.calls.append(("bios-rollback-apply", plan_id, confirm_token))
+        return {"operationId": "bios-operation", "status": "rolled-back"}
 
     def plan_emulation_emulator(self, emulator_id: str, action: str) -> dict[str, object]:
         self.calls.append(("emulation-emulator-plan", emulator_id, action))
@@ -540,7 +628,11 @@ def request_json(
         method="GET" if payload is None else "POST",
         headers={"X-SteamZero-Token": token, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=3) as response:  # noqa: S310 - loopback fixture
+    # BUG-01: /status compõe o snapshot inteiro da dashboard (emulação + jogos +
+    # recursos); medido em 3,3-3,75 s em máquina de dev sem carga e o timeout de
+    # 3 s estourava no CI (Python 3.11, runner compartilhado) - a Manifestação B.
+    # 10 s = pior caso medido (~3,8 s) x ~2,5 de margem para CI compartilhado.
+    with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - loopback fixture
         loaded: dict[str, object] = json.loads(response.read())
         return loaded
 
@@ -732,6 +824,165 @@ def test_bridge_returns_structured_error_instead_of_closing_connection(
     error.value.close()
 
 
+def test_bridge_exposes_read_only_component_lifecycle_surface(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    assert request_json(base, token, "/component/list") == {
+        "components": [{"id": "dolphin", "state": "installed"}]
+    }
+    assert request_json(base, token, "/component/matrix") == {
+        "components": [{"componentId": "dolphin", "capabilities": ["verify"]}]
+    }
+    assert request_json(base, token, "/component/status", {"componentId": "dolphin"}) == {
+        "id": "dolphin",
+        "state": "installed",
+    }
+    assert request_json(base, token, "/component/verify", {"componentId": "dolphin"}) == {
+        "id": "dolphin",
+        "state": "installed",
+        "verified": True,
+    }
+    assert request_json(base, token, "/component/open-config/matrix") == {
+        "decisions": [{"componentId": "dolphin", "strategy": "main-ui"}],
+        "count": 1,
+    }
+    assert request_json(base, token, "/component/recovery/inspect") == {
+        "operations": [],
+        "count": 0,
+    }
+    assert request_json(base, token, "/bios/status") == {
+        "entries": [{"id": "ps2-rom", "platformId": "ps2", "required": True, "present": False}]
+    }
+    assert request_json(base, token, "/bios/audit") == {"status": "ok", "issues": []}
+    assert dashboard.calls == [
+        ("component-list",),
+        ("component-matrix",),
+        ("component-status", "dolphin"),
+        ("component-verify", "dolphin"),
+        ("component-open-config-matrix",),
+        ("component-recovery-inspect",),
+        ("bios-status",),
+        ("bios-audit",),
+    ]
+
+
+def test_bridge_bios_selector_issues_session_handles_and_refuses_unapproved_source(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    sources = request_json(base, token, "/bios/sources")
+    rows = cast(list[dict[str, object]], sources["sources"])
+    assert len(rows) == 1
+    assert rows[0]["label"] == "~/Emulation/bios"
+    handle = rows[0]["sourceId"]
+    assert isinstance(handle, str)
+    assert handle != "dashboard-source"
+    assert "/home/" not in json.dumps(sources)
+
+    scan = request_json(base, token, "/bios/scan", {"sourceId": handle})
+    assert scan == {"scanId": "bios-scan-1", "examined": 1, "candidates": []}
+    assert dashboard.calls == [
+        ("bios-sources",),
+        ("bios-scan", "dashboard-source"),
+    ]
+
+    with pytest.raises(urllib.error.HTTPError) as unknown:
+        request_json(base, token, "/bios/scan", {"sourceId": "inventado"})
+    assert unknown.value.code == 409
+    assert json.loads(unknown.value.read())["error"]["code"] == "E-CONTENT-UNSAFE-PATH"
+    unknown.value.close()
+
+    # Renovar a lista revoga os handles anteriores no mesmo servidor.
+    request_json(base, token, "/bios/sources")
+    with pytest.raises(urllib.error.HTTPError) as expired:
+        request_json(base, token, "/bios/scan", {"sourceId": handle})
+    assert expired.value.code == 409
+    assert json.loads(expired.value.read())["error"]["code"] == "E-CONTENT-UNSAFE-PATH"
+    expired.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as bad_schema:
+        request_json(base, token, "/bios/scan", {"sourceId": "extra", "path": "untrusted-path"})
+    assert bad_schema.value.code == 400
+    assert json.loads(bad_schema.value.read())["error"]["code"] == "E-API-SCHEMA"
+    bad_schema.value.close()
+
+    with pytest.raises(urllib.error.HTTPError) as unauthorized:
+        request_json(base, "wrong", "/bios/sources")
+    assert unauthorized.value.code == 403
+    unauthorized.value.close()
+
+
+def test_bridge_bios_import_and_rollback_are_plan_confirmed(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, dashboard = dashboard_bridge
+
+    assert request_json(base, token, "/bios/scan/status", {"scanId": "bios-scan-1"}) == {
+        "scanId": "bios-scan-1",
+        "examined": 1,
+        "candidates": [],
+    }
+    planned = request_json(
+        base,
+        token,
+        "/bios/import/plan",
+        {"scanId": "bios-scan-1", "selection": ["a" * 64]},
+    )
+    assert planned["plan"] == {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+    imported = request_json(
+        base,
+        token,
+        "/bios/import/apply",
+        {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"},
+    )
+    assert imported == {"operationId": "bios-operation", "status": "applied"}
+    rollback = request_json(
+        base,
+        token,
+        "/bios/rollback/plan",
+        {"operationId": "bios-operation"},
+    )
+    assert rollback["plan"] == {
+        "planId": "bios-rollback-plan",
+        "confirmToken": "bios-rollback-confirm",
+    }
+    assert request_json(
+        base,
+        token,
+        "/bios/rollback/apply",
+        {"planId": "bios-rollback-plan", "confirmToken": "bios-rollback-confirm"},
+    ) == {"operationId": "bios-operation", "status": "rolled-back"}
+    assert dashboard.calls == [
+        ("bios-scan-status", "bios-scan-1"),
+        ("bios-import-plan", "bios-scan-1", "a" * 64),
+        ("bios-import-apply", "bios-import-plan", "bios-import-confirm"),
+        ("bios-rollback-plan", "bios-operation"),
+        ("bios-rollback-apply", "bios-rollback-plan", "bios-rollback-confirm"),
+    ]
+
+    empty = request_json(
+        base, token, "/bios/import/plan", {"scanId": "bios-scan-1", "selection": []}
+    )
+    # Lista vazia representa "não importar nenhum candidato"; não pode cair
+    # silenciosamente no comportamento histórico de importar todos.
+    assert empty["plan"] == {"planId": "bios-import-plan", "confirmToken": "bios-import-confirm"}
+    assert dashboard.calls[-1] == ("bios-import-plan", "bios-scan-1")
+
+    with pytest.raises(urllib.error.HTTPError) as bad_schema:
+        request_json(
+            base,
+            token,
+            "/bios/import/plan",
+            {"scanId": "bios-scan-1", "path": "untrusted-path"},
+        )
+    assert bad_schema.value.code == 400
+    assert json.loads(bad_schema.value.read())["error"]["code"] == "E-API-SCHEMA"
+    bad_schema.value.close()
+
+
 def test_bridge_exposes_dashboard_component_and_steam_actions(
     dashboard_bridge: tuple[str, str, FakeDashboard],
 ) -> None:
@@ -743,7 +994,9 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "steamGameplay": {"games": [{"id": "10"}]},
     }
 
-    planned = request_json(base, token, "/component/plan", {"componentId": "dolphin"})
+    planned = request_json(
+        base, token, "/component/plan", {"componentId": "dolphin", "action": "install"}
+    )
     assert planned["plan"] == {"planId": "component-plan", "confirmToken": "confirm"}
     request_json(
         base,
@@ -752,6 +1005,35 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         {"planId": "component-plan", "confirmToken": "confirm"},
     )
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
+    assert request_json(base, token, "/component/history", {"componentId": "dolphin"}) == {
+        "componentId": "dolphin",
+        "operations": [],
+        "count": 0,
+    }
+    rollback = request_json(
+        base,
+        token,
+        "/component/rollback/plan",
+        {"componentId": "dolphin", "operationId": "component-operation"},
+    )
+    assert rollback["plan"] == {"planId": "rollback-plan", "confirmToken": "rollback-confirm"}
+    request_json(
+        base,
+        token,
+        "/component/rollback/apply",
+        {"planId": "rollback-plan", "confirmToken": "rollback-confirm"},
+    )
+    recovery_plan = request_json(base, token, "/component/recovery/plan", {})
+    assert recovery_plan["plan"] == {
+        "planId": "recovery-plan",
+        "confirmToken": "recovery-confirm",
+    }
+    assert request_json(
+        base,
+        token,
+        "/component/recovery/apply",
+        {"planId": "recovery-plan", "confirmToken": "recovery-confirm"},
+    ) == {"status": "ok", "operations": []}
     emulator_plan = request_json(
         base,
         token,
@@ -916,9 +1198,14 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         "state": "healthy",
     }
     assert dashboard.calls == [
-        ("plan", "dolphin"),
+        ("plan", "dolphin", "install"),
         ("apply", "component-plan", "confirm"),
         ("launch", "dolphin"),
+        ("component-history", "dolphin"),
+        ("component-rollback-plan", "dolphin", "component-operation"),
+        ("component-rollback-apply", "rollback-plan", "rollback-confirm"),
+        ("component-recovery-plan",),
+        ("component-recovery-apply", "recovery-plan", "recovery-confirm"),
         ("emulation-emulator-plan", "eden", "install"),
         ("emulation-emulator-apply", "emulator-plan", "emulator-confirm"),
         ("emulation-emulator-launch", "eden"),
@@ -963,6 +1250,28 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         ("library-health-apply", "health-plan", "health-confirm"),
         ("admin-health",),
     ]
+
+
+def test_component_routes_reject_extra_properties(
+    dashboard_bridge: tuple[str, str, FakeDashboard],
+) -> None:
+    base, token, _dashboard = dashboard_bridge
+
+    with pytest.raises(urllib.error.HTTPError) as response:
+        request_json(
+            base,
+            token,
+            "/component/rollback/plan",
+            {
+                "componentId": "dolphin",
+                "operationId": "component-operation",
+                "unexpected": "rejected",
+            },
+        )
+
+    assert response.value.code == 400
+    assert "E-API-SCHEMA" in response.value.read().decode("utf-8")
+    response.value.close()
 
 
 def test_bridge_exposes_cast_endpoints(

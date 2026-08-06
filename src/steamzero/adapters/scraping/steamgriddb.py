@@ -113,7 +113,9 @@ class SteamGridDbAdapter(BaseMediaProvider):
             )
         try:
             body = fetch_bytes(
-                f"{_API_BASE}/games/steam/1",
+                # App 730 é um jogo Steam estável; o App ID 1 devolve 404 e
+                # transformava uma chave válida em falso negativo no probe.
+                f"{_API_BASE}/games/steam/730",
                 headers={
                     "Authorization": f"Bearer {self._api_key}",
                     "Accept": "application/json",

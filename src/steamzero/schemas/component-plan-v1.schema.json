@@ -39,7 +39,7 @@
         "commit": {"type": ["string", "null"]}
       }
     },
-    "action": {"enum": ["install", "update", "noop"]},
+    "action": {"enum": ["install", "update", "uninstall", "noop"]},
     "status": {"enum": ["pending", "applied", "aborted"]},
     "createdAt": {"type": "string", "format": "date-time"},
     "expiresAt": {"type": "string", "format": "date-time"},

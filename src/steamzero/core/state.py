@@ -270,7 +270,12 @@ class StateStore:
 
     # -- components / adapters --------------------------------------------
     def save_component(self, component: dict[str, Any]) -> None:
-        """Persiste o estado detectado de um componente (upsert por id)."""
+        """Persiste o estado detectado de um componente (upsert por id).
+
+        ``operation_id`` vincula o marcador ``repairing`` à operação de reparo
+        durável (m0018); ausente em chamadas que não são de reparo, limpa o
+        vínculo anterior.
+        """
         cols = (
             "id",
             "adapter_id",
@@ -280,6 +285,7 @@ class StateStore:
             "state",
             "verified_at",
             "manifest_hash",
+            "operation_id",
         )
         row = {col: component.get(col) for col in cols}
         row["verified_at"] = row["verified_at"] or _now_iso()
@@ -714,6 +720,20 @@ class StateStore:
             "SELECT * FROM bios_item WHERE platform_id=? ORDER BY relpath", (platform_id,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def save_bios_object(self, item: dict[str, Any]) -> None:
+        """Upsert an immutable CAS object; its full hash never enters logs."""
+        self._conn.execute(
+            "INSERT INTO bios_object (sha256,size,state,last_validated,operation_id) "
+            "VALUES (:sha256,:size,:state,:last_validated,:operation_id) "
+            "ON CONFLICT(sha256) DO UPDATE SET size=excluded.size,state=excluded.state, "
+            "last_validated=excluded.last_validated,operation_id=excluded.operation_id",
+            item,
+        )
+
+    def list_bios_objects(self) -> list[dict[str, Any]]:
+        rows = self._conn.execute("SELECT * FROM bios_object ORDER BY sha256").fetchall()
+        return [dict(row) for row in rows]
 
     # -- keys/firmware (nunca hash completo; só hash_truncated — SR-14) ------
     def save_firmware_key_item(self, item: dict[str, Any]) -> None:

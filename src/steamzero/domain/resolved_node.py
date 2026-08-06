@@ -55,6 +55,21 @@ class TextVerticalAlignment(StrEnum):
     BOTTOM = "bottom"
 
 
+class ImageFillMode(StrEnum):
+    """Como a imagem ocupa a caixa. Nome canônico, converter no backend.
+
+    ``ORIGINAL`` é a imagem no tamanho natural, ancorada no canto da caixa —
+    nunca é redimensionamento: tamanho natural mais ``FIT`` continuariam
+    esticando dependendo da caixa, e a distinção precisa existir para temas que
+    querem uma marca exibida como foi empacotada.
+    """
+
+    CROP = "crop"
+    STRETCH = "stretch"
+    FIT = "fit"
+    ORIGINAL = "original"
+
+
 class FontWeight(StrEnum):
     """Pesos nomeados. Números crus dependeriam da convenção do backend."""
 
@@ -265,6 +280,76 @@ class ResolvedTextNode:
             font_style=FontStyle(payload.get("fontStyle", "normal")),
             horizontal_alignment=TextAlignment(payload.get("horizontalAlignment", "start")),
             vertical_alignment=TextVerticalAlignment(payload.get("verticalAlignment", "top")),
+            source_reference=(
+                SourceReference(
+                    file=str(reference["file"]),
+                    line=reference.get("line"),
+                    column=reference.get("column"),
+                    element=reference.get("element"),
+                )
+                if reference
+                else None
+            ),
+            resolution_diagnostics=tuple(payload.get("resolutionDiagnostics", ())),
+        )
+
+
+@dataclass(frozen=True)
+class ResolvedImageNode:
+    """Tudo que um renderizador precisa para desenhar uma imagem — e nada além.
+
+    ``source`` é o caminho relativo do PACOTE do tema (``assets/...``), validado
+    pelo resolver contra o inventário do pacote. Caminho do host não existe
+    aqui: quem entrega o arquivo ao renderizador é o shell, que conhece o
+    mapeamento do pacote — o mesmo contrato dos handles opacos de fonte.
+
+    ``fill_mode`` tem default declarado (``CROP``, o comportamento de capa) e
+    não é um default de "não sei traduzir": é o valor que o nó carrega e que o
+    adapter traduz fielmente, como a cor padrão do texto.
+    """
+
+    id: str
+    source: str = ""
+    geometry: ResolvedGeometry = field(default_factory=ResolvedGeometry)
+    visible: bool = True
+    opacity: float = 1.0
+    fill_mode: ImageFillMode = ImageFillMode.CROP
+
+    source_reference: SourceReference | None = None
+    resolution_diagnostics: tuple[dict[str, Any], ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialização determinística, na mesma forma de ``ResolvedTextNode``."""
+        payload: dict[str, Any] = {
+            "id": self.id,
+            "source": self.source,
+            "geometry": self.geometry.to_dict(),
+            "visible": self.visible,
+            "opacity": self.opacity,
+            "fillMode": self.fill_mode.value,
+        }
+        if self.source_reference is not None:
+            payload["sourceReference"] = self.source_reference.to_dict()
+        if self.resolution_diagnostics:
+            payload["resolutionDiagnostics"] = list(self.resolution_diagnostics)
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> ResolvedImageNode:
+        geometry = payload.get("geometry", {})
+        reference = payload.get("sourceReference")
+        return cls(
+            id=str(payload["id"]),
+            source=str(payload.get("source", "")),
+            geometry=ResolvedGeometry(
+                x=float(geometry.get("x", 0.0)),
+                y=float(geometry.get("y", 0.0)),
+                width=geometry.get("width"),
+                height=geometry.get("height"),
+            ),
+            visible=bool(payload.get("visible", True)),
+            opacity=float(payload.get("opacity", 1.0)),
+            fill_mode=ImageFillMode(payload.get("fillMode", "crop")),
             source_reference=(
                 SourceReference(
                     file=str(reference["file"]),

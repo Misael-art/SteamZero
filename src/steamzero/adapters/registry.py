@@ -7,7 +7,9 @@ from __future__ import annotations
 import importlib.resources
 import json
 import re
+from builtins import list as builtin_list
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from jsonschema import ValidationError
@@ -17,6 +19,7 @@ from steamzero.core import crypto
 from steamzero.core.errors import SteamZeroError
 
 _SCHEMA = "adapter-v1.schema.json"
+_RETIRED_SCHEMA = "retired-adapter-catalog-v1.schema.json"
 _FLATPAK_COMMIT_RE = re.compile(r"^[a-f0-9]{64}$")
 _FLATPAK_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,254}$")
 _FLATPAK_REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -66,6 +69,28 @@ class AdapterPresentation:
 
 
 @dataclass(frozen=True)
+class CoreProvision:
+    """Core Libretro materializado por um adapter de tipo ``core``."""
+
+    id: str
+    sha256: str
+
+
+@dataclass(frozen=True)
+class AdapterTombstone:
+    """Decisão explícita de retirada com manifesto histórico verificável."""
+
+    adapter_id: str
+    retired_at: str
+    last_supported_version: str
+    reason: str
+    replacement_adapter_id: str | None
+    deployment_policy: str
+    data_policy: str
+    legacy_manifest: AdapterManifest
+
+
+@dataclass(frozen=True)
 class AdapterManifest:
     schema_version: int
     id: str
@@ -83,6 +108,7 @@ class AdapterManifest:
     requires_keys: KeyRequirement | None = None
     requires_firmware: FirmwareRequirement | None = None
     presentation: AdapterPresentation | None = None
+    core: CoreProvision | None = None
 
     def preferred_source(
         self, source_type: str | None = None, *, allow_eol: bool = True
@@ -175,6 +201,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             )
 
     platforms = tuple(data["platforms"])
+    core = _parse_core(data.get("core"), data["id"], data["kind"], sources)
     requires_keys = _parse_key_requirement(data.get("requiresKeys"), data["id"], platforms)
     requires_firmware = _parse_firmware_requirement(
         data.get("requiresFirmware"), data["id"], platforms
@@ -198,7 +225,50 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         requires_keys=requires_keys,
         requires_firmware=requires_firmware,
         presentation=_parse_presentation(data.get("presentation")),
+        core=core,
     )
+
+
+def load_retired_catalog(data: dict[str, Any]) -> list[AdapterTombstone]:
+    """Carrega tombstones sem transformar ausência de manifesto em retirada.
+
+    O manifesto histórico é parte do tombstone para que um deployment já
+    instalado ainda possa ser observado e desinstalado, sem reabrir instalação,
+    atualização, reparo, launch ou configuração.
+    """
+    try:
+        contracts.validate(data, _RETIRED_SCHEMA)
+    except (ValidationError, KeyError, TypeError, ValueError) as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail=f"catálogo retired inválido: {exc}") from exc
+    tombstones: list[AdapterTombstone] = []
+    for item in data["tombstones"]:
+        legacy = load_manifest(item["legacyManifest"])
+        if legacy.id != item["adapterId"]:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="tombstone não confere com manifesto legado"
+            )
+        source = legacy.preferred_source(allow_eol=True)
+        if source.version != item["lastSupportedVersion"]:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"tombstone {legacy.id} não confere com última versão"
+            )
+        if "uninstall" not in legacy.capabilities:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"tombstone {legacy.id} não permite desinstalação segura"
+            )
+        tombstones.append(
+            AdapterTombstone(
+                adapter_id=item["adapterId"],
+                retired_at=item["retiredAt"],
+                last_supported_version=item["lastSupportedVersion"],
+                reason=item["reason"],
+                replacement_adapter_id=item.get("replacementAdapterId"),
+                deployment_policy=item["deploymentPolicy"],
+                data_policy=item["dataPolicy"],
+                legacy_manifest=legacy,
+            )
+        )
+    return tombstones
 
 
 def _parse_presentation(value: Any) -> AdapterPresentation | None:
@@ -214,6 +284,26 @@ def _parse_presentation(value: Any) -> AdapterPresentation | None:
     if not isinstance(name, str) or not isinstance(icon, str) or not name or not icon:
         return None
     return AdapterPresentation(display_name=name, icon_asset=icon)
+
+
+def _parse_core(
+    value: Any, adapter_id: str, kind: str, sources: tuple[AdapterSource, ...]
+) -> CoreProvision | None:
+    """Impõe que adapter de core seja uma promessa executável, não decorativa."""
+    if kind != "core":
+        if value is not None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"adapter {adapter_id} não-core declara core"
+            )
+        return None
+    if not isinstance(value, dict):
+        raise SteamZeroError("E-API-SCHEMA", detail=f"adapter core {adapter_id} sem core")
+    if len(sources) != 1 or sources[0].type != "archive":
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail=f"adapter core {adapter_id} exige uma fonte archive pinada",
+        )
+    return CoreProvision(id=str(value["id"]), sha256=str(value["sha256"]))
 
 
 def _parse_key_requirement(
@@ -254,12 +344,24 @@ def _require_declared_platform(
 class AdapterRegistry:
     """Registry fechado, sem duplicatas ou dependências inexistentes."""
 
-    def __init__(self, manifests: list[AdapterManifest]) -> None:
+    def __init__(
+        self, manifests: list[AdapterManifest], *, retired: list[AdapterTombstone] | None = None
+    ) -> None:
         self._items: dict[str, AdapterManifest] = {}
         for manifest in manifests:
             if manifest.id in self._items:
                 raise SteamZeroError("E-API-SCHEMA", detail=f"adapter duplicado: {manifest.id}")
             self._items[manifest.id] = manifest
+        self._retired = {item.adapter_id: item for item in retired or []}
+        overlap = set(self._items) & set(self._retired)
+        if overlap:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"adapter ativo e retired: {sorted(overlap)}"
+            )
+        if len(self._retired) != len(retired or []):
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="catálogo retired contém adapters duplicados"
+            )
         known = set(self._items)
         for manifest in manifests:
             unknown = (set(manifest.requires) | set(manifest.conflicts)) - known
@@ -268,8 +370,16 @@ class AdapterRegistry:
                     "E-API-SCHEMA",
                     detail=f"adapter {manifest.id} referencia IDs ausentes: {sorted(unknown)}",
                 )
+        for tombstone in self._retired.values():
+            replacement = tombstone.replacement_adapter_id
+            if replacement is not None and replacement not in self._items:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail=f"tombstone {tombstone.adapter_id} referencia substituto ausente",
+                )
 
     @classmethod
+    @lru_cache(maxsize=1)
     def bundled(cls) -> AdapterRegistry:
         directory = importlib.resources.files("steamzero.adapters").joinpath("manifests")
         manifests: list[AdapterManifest] = []
@@ -277,7 +387,11 @@ class AdapterRegistry:
             if entry.name.endswith(".adapter.json"):
                 data = json.loads(entry.read_text(encoding="utf-8"))
                 manifests.append(load_manifest(data))
-        registry = cls(manifests)
+        retired_entry = importlib.resources.files("steamzero.adapters").joinpath(
+            "retired-adapters.json"
+        )
+        retired = load_retired_catalog(json.loads(retired_entry.read_text(encoding="utf-8")))
+        registry = cls(manifests, retired=retired)
         from steamzero.adapters.lockfile import validate_registry_lock
 
         validate_registry_lock(registry.list())
@@ -287,9 +401,18 @@ class AdapterRegistry:
         try:
             return self._items[adapter_id]
         except KeyError as exc:
+            tombstone = self._retired.get(adapter_id)
+            if tombstone is not None:
+                return tombstone.legacy_manifest
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED", detail=f"adapter desconhecido: {adapter_id}"
             ) from exc
 
     def list(self) -> list[AdapterManifest]:
         return [self._items[key] for key in sorted(self._items)]
+
+    def list_including_retired(self) -> builtin_list[AdapterManifest]:
+        return [self.get(adapter_id) for adapter_id in sorted({*self._items, *self._retired})]
+
+    def retired(self, adapter_id: str) -> AdapterTombstone | None:
+        return self._retired.get(adapter_id)

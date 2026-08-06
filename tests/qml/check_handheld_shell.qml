@@ -45,8 +45,10 @@ Main {
               "drawer deve publicar todas as áreas principais")
         check(responsiveNavigation.count === navigationSections.length,
               "rail e drawer devem publicar as mesmas seções")
-        check(sectionIndexOf("themes") === navigationSections.length - 1,
+        check(sectionIndexOf("themes") >= 0,
               "a seção de temas precisa ser resolvível por id")
+        check(sectionIndexOf("library") === navigationSections.length - 1,
+              "biblioteca editorial deve ser o destino final do menu")
         check(sectionIndexOf("inexistente") === -1,
               "id de seção desconhecido não pode resolver para índice válido")
         check(responsiveTaskDrawer.width <= width * 0.94 + 0.5,

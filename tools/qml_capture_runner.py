@@ -70,6 +70,9 @@ DIAG_QT_RUNTIME = "QML-VISUAL-QT-RUNTIME-020"
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "qml_capture" / "CaptureHarness.qml"
+IMAGE_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureImageHarness.qml"
+SCENE_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureSceneHarness.qml"
+SHELL_HARNESS = ROOT / "tools" / "qml_capture" / "CaptureShellHarness.qml"
 
 #: Fixture de fonte determinística. Ver `SOURCE.md` no diretório.
 FONT_FIXTURE = ROOT / "tests" / "fixtures" / "fonts" / "liberation-sans-2.1.5"
@@ -115,6 +118,22 @@ class Backend(StrEnum):
 
     SOFTWARE = "software"
     RHI = "rhi"
+
+
+class HarnessKind(StrEnum):
+    """Qual cenário QML dirigir.
+
+    ``TEXT`` é o harness legado de um ``QmlTextRenderModel``. ``IMAGE`` dirige
+    ``SceneImage.qml`` com um modelo único. ``SCENE`` compõe vários nós —
+    texto e imagem — via ``SceneText.qml``/``SceneImage.qml`` e devolve um
+    relatório geométrico por nó. Todos compartilham o mesmo contrato: o
+    harness é cenário, o veredito é Python.
+    """
+
+    TEXT = "text"
+    IMAGE = "image"
+    SCENE = "scene"
+    SHELL = "shell"
 
 
 class CaptureError(RuntimeError):
@@ -560,7 +579,7 @@ def _extract(messages: Sequence[QmlMessage], prefix: str) -> str | None:
     return None
 
 
-def _reject_pending_payload(model: Mapping[str, Any]) -> None:
+def _reject_pending_payload(model: Mapping[str, Any], *, where: str = "model") -> None:
     """Defesa em profundidade na fronteira do harness.
 
     O adapter já impede que um resultado `failed` vire payload, e
@@ -575,21 +594,21 @@ def _reject_pending_payload(model: Mapping[str, Any]) -> None:
     """
     from steamzero.domain.scene_value import is_pending_value
 
-    def walk(node: Any, where: str) -> None:
+    def walk(node: Any, location: str) -> None:
         if isinstance(node, dict):
             if is_pending_value(node):
                 raise CaptureError(
                     DIAG_CAPTURE,
-                    f"valor não resolvido em {where}: {node!r}. O QML renderizaria "
+                    f"valor não resolvido em {location}: {node!r}. O QML renderizaria "
                     "'[object Object]' sem reclamar.",
                 )
             for key, item in node.items():
-                walk(item, f"{where}.{key}")
+                walk(item, f"{location}.{key}")
         elif isinstance(node, list):
             for index, item in enumerate(node):
-                walk(item, f"{where}[{index}]")
+                walk(item, f"{location}[{index}]")
 
-    walk(dict(model), "model")
+    walk(dict(model), where)
 
 
 def capture(
@@ -600,14 +619,29 @@ def capture(
     background: str = "#000000",
     environment: CanonicalEnvironment | None = None,
     timeout: float = 60.0,
+    harness: HarnessKind = HarnessKind.TEXT,
+    media_files: Mapping[str, str] | None = None,
 ) -> CaptureResult:
-    """Renderiza um ``QmlTextRenderModel`` e devolve o que foi produzido.
+    """Renderiza um modelo de cena e devolve o que foi produzido.
 
-    ``model`` é o payload de ``QmlTextRenderModel.to_dict()`` — já resolvido,
-    já traduzido. O harness não tem acesso a registry nenhum, e não teria como
-    ter: o que atravessa é um dicionário de escalares.
+    ``model`` é o payload de ``QmlTextRenderModel.to_dict()`` (ou de
+    ``QmlImageRenderModel.to_dict()`` quando ``harness`` é ``IMAGE``) — já
+    resolvido, já traduzido. O harness não tem acesso a registry nenhum, e não
+    teria como ter: o que atravessa é um dicionário de escalares.
+
+    ``harness`` escolhe o cenário. Em ``IMAGE``/``SCENE``/``SHELL``,
+    ``media_files`` mapeia cada ``source`` de asset do modelo para o arquivo
+    REAL no disco — o papel do shell na fronteira do QML; o harness é
+    explícito em recusar um nó de imagem cujo asset o runner não mapeou.
+    ``SHELL`` estende ``SCENE`` com o anel de foco: o payload traz um nó
+    ``kind: "focus"`` junto dos nós de texto/imagem, e o harness reporta a
+    geometria de todos — é assim que o teste prova ONDE o anel está.
     """
-    _reject_pending_payload(model)
+    if harness in (HarnessKind.SCENE, HarnessKind.SHELL):
+        for index, node in enumerate(model.get("nodes", [])):
+            _reject_pending_payload(dict(node), where=f"nodes[{index}]")
+    else:
+        _reject_pending_payload(model)
     env_spec = environment or CanonicalEnvironment()
     # Integridade ANTES de renderizar. Descobrir que o hash não confere depois
     # da captura significaria ter uma imagem que parece boa e não vale nada.
@@ -638,13 +672,36 @@ def capture(
     image = output / "actual.png"
     image.unlink(missing_ok=True)
 
-    config = {
-        "model": dict(model),
-        "canvasWidth": canvas[0],
-        "canvasHeight": canvas[1],
-        "background": background,
-        "imagePath": str(image),
-    }
+    if harness is HarnessKind.SHELL:
+        harness_file = SHELL_HARNESS
+        config = {
+            "nodes": [dict(node) for node in model.get("nodes", [])],
+            "mediaFiles": dict(media_files or {}),
+            "canvasWidth": canvas[0],
+            "canvasHeight": canvas[1],
+            "background": background,
+            "imagePath": str(image),
+        }
+    elif harness is HarnessKind.SCENE:
+        harness_file = SCENE_HARNESS
+        config = {
+            "nodes": [dict(node) for node in model.get("nodes", [])],
+            "mediaFiles": dict(media_files or {}),
+            "canvasWidth": canvas[0],
+            "canvasHeight": canvas[1],
+            "background": background,
+            "imagePath": str(image),
+        }
+    else:
+        harness_file = IMAGE_HARNESS if harness is HarnessKind.IMAGE else HARNESS
+        config = {
+            "model": dict(model),
+            "mediaFiles": dict(media_files or {}),
+            "canvasWidth": canvas[0],
+            "canvasHeight": canvas[1],
+            "background": background,
+            "imagePath": str(image),
+        }
 
     # G31: baseline de coredump ANTES de lançar o harness. O guard
     # baseline/delta detecta crash de processo filho que produziria um verde
@@ -654,7 +711,7 @@ def capture(
     crash_before = CrashSnapshot.collect()
     argv = [
         str(runtime),
-        str(HARNESS),
+        str(harness_file),
         "--",
         "--config-json",
         json.dumps(config, ensure_ascii=False),
@@ -740,6 +797,7 @@ def capture(
 
     env_record = {
         **env_spec.to_dict(),
+        "harness": harness.value,
         "qtRuntime": str(runtime),
         "qtVersion": ".".join(str(part) for part in version),
         "fontFamilyRequested": geometry.get("fontFamilyRequested", ""),

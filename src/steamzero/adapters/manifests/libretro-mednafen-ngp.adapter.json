@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1, "id": "libretro-mednafen-ngp", "kind": "core", "presentation": {"displayName": "Libretro: Mednafen NGP", "iconAsset": "../assets/retroarch.svg"}, "platforms": ["neo-geo-pocket"],
+  "capabilities": ["detect", "status", "install", "update", "verify", "repair", "uninstall"],
+  "sources": [{"type": "archive", "version": "1.22.2", "priority": 1, "url": "https://buildbot.libretro.com/stable/1.22.2/linux/x86_64/RetroArch_cores.7z", "sha256": "4b7ed8dc97d4bf035fce182c64b5658c7662e2e9e5d42129538afbd4b6096307"}],
+  "core": {"id": "mednafen_ngp", "sha256": "e493290298f0e9fb699e650da5c0663ccbed800f2fce946bdcb91271dab7a74d"}, "requires": ["retroarch"], "license": "Multiple licenses; see upstream", "upstream": "https://www.libretro.com/", "verify": {"smokeTest": ["core-present"]}
+}

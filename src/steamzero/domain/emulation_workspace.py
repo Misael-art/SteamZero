@@ -13,6 +13,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from steamzero.api import contracts
+from steamzero.domain.canonical_experiences import CanonicalExperienceRegistry
 from steamzero.domain.keys_firmware import RequirementCheck
 from steamzero.domain.platform_composer import EmulatorFacts, compose_platform
 from steamzero.domain.platforms import (
@@ -140,6 +141,7 @@ def build_switch_workspace(
         "truthState": state,
         "contextLabel": f"{switch_manifest.name} · {_scope_label(selected_scope)}",
         "retroExperience": preset_catalog(),
+        "canonicalExperiences": CanonicalExperienceRegistry.bundled().project(),
         "platforms": [
             switch_platform,
             *[

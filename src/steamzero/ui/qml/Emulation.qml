@@ -100,6 +100,10 @@ Item {
     ]
     readonly property var platforms: emulation && emulation.platforms
         && emulation.platforms.length > 0 ? emulation.platforms : []
+    // Fonte canônica para navegação e identidade do tema. `platforms` permanece
+    // o read model operacional até cada experiência concluir sua certificação.
+    readonly property var canonicalExperiences: emulation && emulation.canonicalExperiences
+        && emulation.canonicalExperiences.length > 0 ? emulation.canonicalExperiences : []
     readonly property var retroExperience: emulation && emulation.retroExperience
         ? emulation.retroExperience : ({"presets": []})
     readonly property var selectedPlatform: platforms.length > 0

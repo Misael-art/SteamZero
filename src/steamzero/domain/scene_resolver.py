@@ -1020,16 +1020,32 @@ class Resolver:
         dependencies.add(f"asset:{path}")
         if not self._context.assets or path in self._context.assets:
             return path, False, ResolutionPhase.LOAD_TIME
-        return self._fallback_or_fail(
-            value,
-            expected,
-            dependencies,
-            trail,
-            reference,
-            target,
-            DIAG_MISSING_ASSET,
-            f"asset ausente no pacote: {path}",
+        if value.get("fallback") is None:
+            raise ResolutionError(
+                DIAG_MISSING_ASSET,
+                f"asset ausente no pacote: {path}",
+                path=trail,
+                reference=reference,
+            )
+        # Degradação prevista — o autor declarou para onde cair. Mas PRECISA ser
+        # contabilizada como fallback, e o aviso sai uma vez por asset e
+        # inventário, nunca por frame. O mesmo caminho do texto sem tradução:
+        # sem isto, instalar o asset depois corrigiria a tela e o diagnóstico
+        # continuaria apontando para o problema.
+        self.diagnostics.emit(
+            Diagnostic(
+                DIAG_MISSING_ASSET,
+                f"asset ausente no pacote: {path}",
+                target=target,
+                reference=reference,
+                resolution="fallback",
+            ),
+            (self._context.generations.asset_registry,),
         )
+        resolved, _, phase = self._resolve(
+            value["fallback"], expected, dependencies, trail, reference, target
+        )
+        return resolved, True, phase
 
     def _resolve_translation(
         self,

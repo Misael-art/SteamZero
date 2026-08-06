@@ -61,6 +61,9 @@ Spawner = Callable[[Sequence[str]], bool]
 EnvSpawner = Callable[[Sequence[str], dict[str, str]], bool]
 Delay = Callable[[float], None]
 
+_DISPLAY_PROBE_TIMEOUT = 1.25
+_DISPLAY_PROBE_COOLDOWN = 10.0
+
 
 def run_command(argv: Sequence[str], timeout: float = 3.0) -> CommandResult:
     if not argv:
@@ -328,13 +331,27 @@ class LinuxDesktopContext:
     def __init__(self, *, runner: Runner = run_command, which: Which = shutil.which) -> None:
         self._runner = runner
         self._which = which
+        self._probe_until = 0.0
+        self._probe_error = ""
+        self._probe_cooldown = _DISPLAY_PROBE_COOLDOWN
 
     def snapshot(self) -> DesktopContext:
         displays: tuple[DisplayState, ...] = ()
+        probe_error = ""
         if self._which("kscreen-doctor"):
-            result = self._runner(("kscreen-doctor", "-o"), 3.0)
-            if result.returncode == 0:
-                displays = parse_kscreen_outputs(result.stdout)
+            now = time.monotonic()
+            if now < self._probe_until:
+                probe_error = self._probe_error
+            else:
+                result = self._runner(("kscreen-doctor", "-o"), _DISPLAY_PROBE_TIMEOUT)
+                if result.returncode == 0:
+                    displays = parse_kscreen_outputs(result.stdout)
+                    self._probe_until = 0.0
+                    self._probe_error = ""
+                elif result.returncode in (124, 126, 127):
+                    self._probe_until = now + self._probe_cooldown
+                    self._probe_error = self._probe_failure_detail(result)
+                    probe_error = self._probe_error
 
         capabilities = self._capabilities()
         external_keyboard, external_mouse = _external_input_state()
@@ -352,7 +369,12 @@ class LinuxDesktopContext:
             capabilities=capabilities,
             conflicts=conflicts,
             deck_input_keys=detect_deck_input_keys(),
+            display_probe_error=probe_error,
         )
+
+    def _probe_failure_detail(self, result: CommandResult) -> str:
+        detail = result.stderr.strip() or result.stdout.strip() or f"exit {result.returncode}"
+        return f"kscreen-doctor indisponível: {detail}"
 
     def _capabilities(self) -> frozenset[str]:
         available: set[str] = set()
@@ -406,6 +428,19 @@ class KDEDisplayEffect:
         scale = self._target_scale(profile, display)
         self._require_ok(("kscreen-doctor", f"output.{display.name}.enable"))
         self._require_ok(("kscreen-doctor", f"output.{display.name}.scale.{scale:g}"))
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Compara o alvo contra o estado já observado, sem tocar o host.
+
+        Uma única sonda (a do snapshot) alimenta os três perfis; este caminho
+        não executa subprocesso. Falha de sonda vira erro com causa.
+        """
+        if context.display_probe_error:
+            raise SteamZeroError("E-DESKTOP-OBSERVE", detail=context.display_probe_error)
+        display = self._target_display(profile, context)
+        if display is None or display.scale is None:
+            return False
+        return abs(display.scale - self._target_scale(profile, display)) <= 0.02
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         result = self._runner(("kscreen-doctor", "-o"), 3.0)
@@ -487,6 +522,10 @@ class KDEWindowEffect:
     def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
         value = "true" if profile.maximize_windows else "false"
         self._write(value)
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Estado da config: leitura barata e mesma semântica da verify."""
+        return self.verify(profile, context)
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         expected = "true" if profile.maximize_windows else "false"
@@ -865,6 +904,10 @@ class KDEInputMethodEffect:
         self._write_input_method(str(_maliit_desktop_file()))
         self._reconfigure_kwin()
 
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Estado da config: leitura barata e mesma semântica da verify."""
+        return self.verify(profile, context)
+
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         if _kwin_vk_available(self._runner, self._which):
             return True
@@ -1164,6 +1207,10 @@ for (var i = 0; i < panels.length; i++) {
         hiding = "autohide" if profile.panel_auto_hide else "none"
         self._set_hiding(hiding)
 
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Estado atual dos painéis: leitura barata, mesma semântica da verify."""
+        return self.verify(profile, context)
+
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         expected = "autohide" if profile.panel_auto_hide else "none"
         states = self._read_hiding_states()
@@ -1266,6 +1313,10 @@ class KDEShortcutEffect:
     def apply(self, profile: ExperienceProfile, context: DesktopContext) -> None:
         self._write_desktop_file()
         self._write_entry(self._DEFAULT_ENTRY)
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Estado do atalho: arquivos locais fast, mesma semântica da verify."""
+        return self.verify(profile, context)
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         target = self._apps_dir / self._SERVICE
@@ -1394,6 +1445,10 @@ class KDEEdgeGestureEffect:
         self._write_script()
         self._write_enabled("true")
         self._reconfigure()
+
+    def matches_observed(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
+        """Estado do script KWin: leitura rápida, mesma semântica da verify."""
+        return self.verify(profile, context)
 
     def verify(self, profile: ExperienceProfile, context: DesktopContext) -> bool:
         return self._metadata_path().is_file() and self._read_enabled() == "true"

@@ -55,12 +55,24 @@ Domínios (Fase 1):
   operations rollback-apply aplica rollback confirmado (--plan-id ID --confirm TOKEN)
   events page            lê eventos paginados (--cursor SEQ --limit N)
   state export [--out F] exporta o State Store (JSON)
+  state audit            audita jobs stalados e artefatos órfãos (read-only)
+  state cleanup-plan     planeja quarentena dos órfãos (digest, bytes, prazo 60min)
+  state cleanup-apply    move para quarentena isolada (--plan-id ID --confirm TOKEN)
+  state cleanup-status   inspeciona uma quarentena (--cleanup-id ID, read-only)
+  state cleanup-restore-plan  planeja devolver da quarentena (--cleanup-id ID)
+  state cleanup-restore-apply devolve confirmado (--plan-id ID --confirm TOKEN)
+  state cleanup-purge-plan    planeja expurgo; recusa antes de 7 dias (--cleanup-id ID)
+  state cleanup-purge-apply   expurga em definitivo (--plan-id ID --confirm TOKEN)
   component list         lista componentes roteados pela fonte (engine/Flatpak)
   component status      mostra um componente (--id ADAPTER)
   component plan        planeja install/update/uninstall (--id ADAPTER [--action A])
   component apply       aplica plano v2 ou v1 (--plan-id ID --confirm TOKEN)
+  component verify      confere o deployment contra a fonte fixada (--id ADAPTER)
+  component launch      inicia o componente instalado (--id ADAPTER)
+  component stop        encerra o componente portátil (--id ADAPTER)
+  component open-config abre a configuração nativa (--id ADAPTER)
   component rollback    restaura deployment anterior (--operation-id ID)
-  component recover     recupera operações Flatpak interrompidas
+  component recover     revisa recovery; aplica somente com --plan-id e --confirm
   admin health          verifica helper e autorização Polkit (read-only)
   session environment    observa sessão, energia, rede, DRM e volumes (read-only)
   session status         mostra lifecycle persistido (--game-id APPID)
@@ -562,14 +574,15 @@ def _cmd_state_audit(_args: list[str], correlation_id: str) -> tuple[dict[str, A
 
 
 def _cmd_state_cleanup_plan(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    # G25/A42 fase 1: plano de quarentena dos artefatos órfãos. Persiste plano
-    # com token; o operador revisa antes da fase 2. Não muta artefatos.
-    from steamzero.domain import state_audit
+    # A42 fase 1: plano de quarentena dos artefatos órfãos, com digest, bytes e
+    # prazo. Persiste plano com token; o operador revisa antes da fase 2. Não
+    # muta artefatos.
+    from steamzero.domain import state_audit, state_cleanup
 
     with StateStore() as store:
         store.migrate()
         report = state_audit.audit(store)
-    data = state_audit.plan_cleanup(report)
+    data = state_cleanup.plan(report)
     env = build_envelope(
         "state", "cleanup-plan", status="ok", data=data, correlation_id=correlation_id
     )
@@ -577,16 +590,89 @@ def _cmd_state_cleanup_plan(_args: list[str], correlation_id: str) -> tuple[dict
 
 
 def _cmd_state_cleanup_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
-    # G25/A42 fase 2: move artefatos órfãos para quarentena (recoverable, nunca
-    # deleta). Requer --plan-id + --confirm do plano revisado. Aplicação no host
-    # exige autorização humana (AGENTS.md §1).
-    from steamzero.domain import state_audit
+    # A42 fase 2: move artefatos órfãos para quarentena isolada por operação
+    # (recoverable, nunca deleta). Requer --plan-id + --confirm do plano
+    # revisado. Aplicação no host exige autorização humana (AGENTS.md §1).
+    from steamzero.domain import state_cleanup
 
     plan_id = _required_flag(args, "--plan-id")
     confirm_token = _required_flag(args, "--confirm")
-    data = state_audit.apply_cleanup(plan_id, confirm_token)
+    data = state_cleanup.apply(plan_id, confirm_token)
+    # Falha parcial cujo rollback também falhou não pode sair como sucesso.
+    failed = data.get("status") == "failed"
     env = build_envelope(
-        "state", "cleanup-apply", status="ok", data=data, correlation_id=correlation_id
+        "state",
+        "cleanup-apply",
+        status="failed" if failed else "ok",
+        ok=not failed,
+        data=data,
+        correlation_id=correlation_id,
+    )
+    return env, (EXIT_FAILURE if failed else EXIT_OK)
+
+
+def _cmd_state_cleanup_status(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # Read-only: inspeciona o manifesto da quarentena, ou o tombstone quando a
+    # operação já foi expurgada. Não muta nada.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.status(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-status", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_restore_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.plan_restore(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-restore-plan", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_restore_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.apply_restore(
+        _required_flag(args, "--plan-id"), _required_flag(args, "--confirm")
+    )
+    env = build_envelope(
+        "state", "cleanup-restore-apply", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_purge_plan(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    # Recusa antes dos sete dias de retenção. Não existe flag de bypass.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.plan_purge(_required_flag(args, "--cleanup-id"))
+    env = build_envelope(
+        "state", "cleanup-purge-plan", status="ok", data=data, correlation_id=correlation_id
+    )
+    return env, EXIT_OK
+
+
+def _cmd_state_cleanup_purge_apply(
+    args: list[str], correlation_id: str
+) -> tuple[dict[str, Any], int]:
+    # Irreversível: revalida cada digest e deixa só um tombstone sem conteúdo.
+    from steamzero.domain import state_cleanup
+
+    data = state_cleanup.apply_purge(
+        _required_flag(args, "--plan-id"), _required_flag(args, "--confirm")
+    )
+    env = build_envelope(
+        "state", "cleanup-purge-apply", status="ok", data=data, correlation_id=correlation_id
     )
     return env, EXIT_OK
 
@@ -667,6 +753,72 @@ def _cmd_component_plan(args: list[str], correlation_id: str) -> tuple[dict[str,
     )
 
 
+def _cmd_component_verify(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    # Leitura pura: sem plano e sem token. Exigir confirmação para verificar
+    # treinaria o operador a confirmar sem ler, justamente onde a confirmação
+    # precisa significar algo — no reparo e na desinstalação.
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        report = _component_lifecycle(store).verify(adapter_id)
+    return (
+        build_envelope(
+            "component",
+            "verify",
+            status="ok" if report["verified"] else "degraded",
+            data=report,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_launch(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).launch(adapter_id)
+    return (
+        build_envelope(
+            "component", "launch", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_stop(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).stop(adapter_id)
+    # `not-supported` é resposta honesta, não erro: o Flatpak gerencia o ciclo
+    # do próprio processo, e sinalizá-lo daqui seria agir sobre PID alheio.
+    supported = data.get("status") != "not-supported"
+    return (
+        build_envelope(
+            "component",
+            "stop",
+            status="ok" if supported else "degraded",
+            data=data,
+            correlation_id=correlation_id,
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_component_open_config(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    adapter_id = _required_flag(args, "--id")
+    with StateStore() as store:
+        store.migrate()
+        data = _component_lifecycle(store).open_config(adapter_id)
+    return (
+        build_envelope(
+            "component", "open-config", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_component_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     plan_id = _required_flag(args, "--plan-id")
     confirm_token = _required_flag(args, "--confirm")
@@ -706,17 +858,37 @@ def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[
     )
 
 
-def _cmd_component_recover(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+def _cmd_component_recover(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    plan_id = _flag_value(args, "--plan-id")
+    confirm_token = _flag_value(args, "--confirm")
+    if bool(plan_id) != bool(confirm_token):
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="component recover exige --plan-id e --confirm juntos"
+        )
     with StateStore() as store:
         store.migrate()
         lifecycle = _component_lifecycle(store)
-        recovered = lifecycle.recover()
-    data = {"operations": recovered, "count": len(recovered)}
+        if plan_id and confirm_token:
+            result = lifecycle.apply_recovery(plan_id, confirm_token)
+            return (
+                build_envelope(
+                    "component",
+                    "recover",
+                    status=str(result["status"]),
+                    data=result,
+                    operation_id=str(result["operationId"]),
+                    correlation_id=correlation_id,
+                ),
+                EXIT_OK,
+            )
+        operations = lifecycle.recovery_inspect()
+        plan = lifecycle.plan_recovery()
+    data = {"operations": operations, "count": len(operations), "plan": plan}
     return (
         build_envelope(
             "component",
             "recover",
-            status="ok" if recovered else "noop",
+            status="ok" if operations else "noop",
             data=data,
             correlation_id=correlation_id,
         ),
@@ -1710,10 +1882,19 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("state", "audit"): _cmd_state_audit,
     ("state", "cleanup-plan"): _cmd_state_cleanup_plan,
     ("state", "cleanup-apply"): _cmd_state_cleanup_apply,
+    ("state", "cleanup-status"): _cmd_state_cleanup_status,
+    ("state", "cleanup-restore-plan"): _cmd_state_cleanup_restore_plan,
+    ("state", "cleanup-restore-apply"): _cmd_state_cleanup_restore_apply,
+    ("state", "cleanup-purge-plan"): _cmd_state_cleanup_purge_plan,
+    ("state", "cleanup-purge-apply"): _cmd_state_cleanup_purge_apply,
     ("component", "list"): _cmd_component_list,
     ("component", "status"): _cmd_component_status,
     ("component", "plan"): _cmd_component_plan,
     ("component", "apply"): _cmd_component_apply,
+    ("component", "verify"): _cmd_component_verify,
+    ("component", "launch"): _cmd_component_launch,
+    ("component", "stop"): _cmd_component_stop,
+    ("component", "open-config"): _cmd_component_open_config,
     ("component", "rollback"): _cmd_component_rollback,
     ("component", "recover"): _cmd_component_recover,
     ("admin", "health"): _cmd_admin_health,
@@ -1892,12 +2073,19 @@ def main(argv: list[str] | None = None) -> int:
 def _try_daemon(
     domain: str, action: str | None, args: list[str], correlation_id: str
 ) -> tuple[dict[str, Any], int] | None:
-    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente."""
+    """Usa o daemon quando disponível; falha ambígua nunca repete mutação localmente.
+
+    Leitura pode degradar para o caminho local quando o transporte é ambíguo
+    (timeout/resposta sem resultado determinístico) ou a geração diverge;
+    recusa de segurança do socket nunca degrada.
+    """
     if os.environ.get("STEAMZERO_NO_DAEMON") == "1":
         return None
     from steamzero.service.client import (
+        CoreAmbiguousResult,
         CoreGenerationMismatch,
         CoreProtocolError,
+        CoreSecurityRefusal,
         CoreUnavailable,
         invoke,
         verify_generation,
@@ -1920,6 +2108,19 @@ def _try_daemon(
         verify_generation()
     except CoreUnavailable:
         return None
+    except CoreSecurityRefusal as exc:
+        # Socket inseguro não é ausência de daemon: nunca degrada, nem leitura.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
     except CoreProtocolError:
         return None
     except CoreGenerationMismatch as exc:
@@ -1942,9 +2143,41 @@ def _try_daemon(
         )
 
     try:
-        invocation = invoke(spec.method, params)
+        invocation = invoke(spec.method, params, timeout=spec.timeout)
     except CoreUnavailable:
         return None
+    except CoreSecurityRefusal as exc:
+        # Socket inseguro nunca degrada, nem leitura (mesma política do handshake).
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail=str(exc)),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
+    except CoreAmbiguousResult:
+        if not spec.mutation:
+            # Leitura interrompida no transporte: o daemon pode ter executado ou
+            # não, mas leitura não tem efeito — degradar é seguro, resposta
+            # correta vem do caminho local, código desta mesma geração.
+            return None
+        # Mutação NUNCA é repetida localmente quando o resultado é ambíguo —
+        # repetir é como se produz efeito duplicado.
+        return (
+            build_envelope(
+                domain,
+                action or "",
+                status="failed",
+                ok=False,
+                error=build_error("E-API-CONTRACT", detail="resultado da chamada é ambíguo"),
+                correlation_id=correlation_id,
+            ),
+            EXIT_FAILURE,
+        )
     except CoreProtocolError as exc:
         return (
             build_envelope(

@@ -162,6 +162,8 @@ Main {
 
     function runPhase() {
         if (phase === 0) {
+            check(window.sectionIndex === 0,
+                  "Home editorial deve ser a rota inicial da Central")
             check(window.compactLayout,
                   "viewport handheld deve usar shell compacto")
             check(window.reducedMotion && window.motionDuration === 0,

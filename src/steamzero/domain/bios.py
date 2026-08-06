@@ -98,13 +98,27 @@ class BiosStore:
                 "E-CONTENT-FW-INCOMPAT",
                 detail=f"arquivo não corresponde a nenhuma BIOS conhecida (hash {trunc}…)",
             )
-        dest = fs.resolve_within(
-            paths.bios_dir(), paths.bios_dir() / self._db.platform / entry["name"]
-        )
-        fs.copy_file_atomic(provided, dest)
-        if fs.hash_file(dest, algo="sha256") != sha:
-            fs.remove_file(dest)
+        # O objeto é a única cópia física.  As duas visões abaixo são links:
+        # a canônica v2 e a compatível com o layout v1 durante a migração.
+        object_path = paths.bios_dir() / "objects" / "sha256" / sha[:2] / sha
+        canonical = paths.bios_dir() / "platforms" / self._db.platform / entry["name"]
+        compat = paths.bios_dir() / self._db.platform / entry["name"]
+        if object_path.exists():
+            if object_path.is_symlink() or fs.hash_file(object_path, algo="sha256") != sha:
+                raise SteamZeroError(
+                    "E-CONTENT-INCOMPLETE", detail="objeto central de BIOS conflita"
+                )
+        else:
+            fs.copy_file_atomic(provided, object_path)
+        if fs.hash_file(object_path, algo="sha256") != sha:
+            fs.remove_file(object_path)
             raise SteamZeroError("E-STORAGE-IO", detail="cópia da BIOS divergiu da origem")
+        for target, source in ((canonical, object_path), (compat, canonical)):
+            if target.exists() or target.is_symlink():
+                if not target.is_symlink() or fs.hash_file(target, algo="sha256") != sha:
+                    raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="projeção de BIOS conflita")
+            else:
+                fs.symlink_atomic(source, target)
         self._store.save_bios_item(
             {
                 "id": ids.new_ulid(),
@@ -126,8 +140,10 @@ class BiosStore:
     ) -> transaction.Plan:
         """Planeja um link seguro do store central para um consumidor (F-BI-02)."""
         entry = next((item for item in self._db.entries if item["name"] == name), None)
-        source = paths.bios_dir() / self._db.platform / name
-        if entry is None or not source.is_file():
+        if entry is None:
+            raise SteamZeroError("E-CONTENT-BIOS-MISSING", detail="BIOS central ausente")
+        source = paths.bios_dir() / "objects" / "sha256" / entry["sha256"][:2] / entry["sha256"]
+        if not source.is_file():
             raise SteamZeroError("E-CONTENT-BIOS-MISSING", detail="BIOS central ausente")
         if fs.hash_file(source, algo="sha256") != entry["sha256"]:
             raise SteamZeroError("E-CONTENT-INCOMPLETE", detail="BIOS central corrompida")

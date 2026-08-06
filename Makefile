@@ -8,10 +8,10 @@ COVERAGE := $(VENV)/bin/coverage
 TEST_RUNNER := $(PY) tools/run_tests_isolated.py
 RELEASE_HOST := $(PY) tools/release_host.py
 
-.PHONY: help venv lint format format-check typecheck boundaries independence test cov check clean release-inspect release-verify
+.PHONY: help venv lint format format-check typecheck boundaries independence component-lock update-component-lock capability-matrix update-capability-matrix test cov check clean release-inspect release-verify
 
 help:
-	@echo "Alvos: venv lint format-check typecheck boundaries test cov check"
+	@echo "Alvos: venv lint format-check typecheck boundaries capability-matrix test cov check"
 	@echo "Visual: qml-visual check-qml-goldens update-qml-goldens"
 	@echo "Operação: release-inspect release-verify BUNDLE=/caminho"
 
@@ -39,6 +39,18 @@ boundaries:
 independence:
 	$(PY) tools/check_independence.py
 
+component-lock: ## Reprova quando os manifestos divergem do lockfile promovido
+	$(PY) tools/update_component_lock.py --check
+
+update-component-lock: ## Regrava o lockfile (exige revisão do diff no commit)
+	$(PY) tools/update_component_lock.py --write
+
+capability-matrix: ## Reprova quando o código diverge da matriz publicada
+	$(PY) tools/capability_matrix.py --check
+
+update-capability-matrix: ## Regrava a matriz (exige revisão do diff no commit)
+	$(PY) tools/capability_matrix.py --write
+
 test:
 	$(TEST_RUNNER)
 
@@ -47,7 +59,7 @@ cov:
 	$(TEST_RUNNER) --cov=steamzero --cov-report=term-missing
 
 # Gate completo: ordem barata->cara. Nenhum commit sem `make check` verde.
-check: format-check lint boundaries independence typecheck cov
+check: format-check lint boundaries independence component-lock capability-matrix typecheck cov
 
 clean:
 	rm -rf .mypy_cache .ruff_cache .pytest_cache .hypothesis htmlcov .coverage
