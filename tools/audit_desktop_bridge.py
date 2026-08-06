@@ -58,9 +58,9 @@ LIFECYCLE_SURFACES: dict[str, SurfaceDecision] = {
         "bridge-now", ("component.launch",), "spawn só de payload gerenciado"
     ),
     "open_config": SurfaceDecision(
-        "bridge-now",
+        "blocked",
         ("component.open-config",),
-        "argv allowlisted pelo manifesto",
+        "nenhum argumento direto comprovado para os emuladores ativos",
     ),
     "stop": SurfaceDecision(
         "bridge-now", ("component.stop",), "somente grupo de processo gerenciado"

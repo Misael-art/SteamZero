@@ -904,7 +904,7 @@ class ComponentLifecycle:
         manifest = self._registry.get(adapter_id)
         route = route_for(manifest)
         current = self.status(adapter_id)
-        if current["state"] != "installed":
+        if current["state"] not in {"installed", "outdated"}:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
                 detail=current.get("detail") or f"{adapter_id} não está instalado",
@@ -958,7 +958,11 @@ class ComponentLifecycle:
         else:
             argv = [str(self._engine().payload_path(adapter_id)), *arguments]
         pid = self._spawn(argv)
-        return {"status": "started", "componentId": adapter_id, "pid": pid, "argv": argv}
+        # ``argv`` é detalhe de execução, não contrato público: ele pode
+        # carregar paths de payload ou referências de runtime. A chamada
+        # continua sem shell e com argumentos allowlisted, mas só publica o
+        # resultado mínimo necessário para a UI/CLI.
+        return {"status": "started", "componentId": adapter_id, "pid": pid}
 
     @staticmethod
     def _open_config_arguments(manifest: AdapterManifest) -> list[str] | None:

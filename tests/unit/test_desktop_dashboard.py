@@ -127,6 +127,25 @@ def test_steam_rows_do_not_claim_a_specific_distribution() -> None:
     assert "BigLinux" not in str(rows)
 
 
+def test_open_config_matrix_covers_each_active_emulator_without_exposing_argv() -> None:
+    matrix = DesktopDashboard(
+        registry_factory=AdapterRegistry.bundled
+    ).component_open_config_matrix()
+
+    assert matrix["count"] == 15
+    assert {item["componentId"] for item in matrix["decisions"]} == {
+        manifest.id for manifest in AdapterRegistry.bundled().list() if manifest.kind == "emulator"
+    }
+    for decision in matrix["decisions"]:
+        assert decision["strategy"] == "main-ui"
+        assert decision["action"] == "component.launch"
+        assert decision["applicableStates"] == ["installed", "outdated"]
+        assert set(decision["evidence"]) == {"upstream", "version"}
+        assert decision["evidence"]["upstream"].startswith("https://")
+        assert "argv" not in str(decision)
+        assert "/home/" not in str(decision)
+
+
 def test_steam_open_uses_only_allowlisted_uri() -> None:
     calls: list[tuple[str, ...]] = []
     controller = SteamDesktopController(

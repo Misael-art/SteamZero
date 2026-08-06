@@ -21,8 +21,8 @@ host, que vive nos relatórios de certificação.
 | plataformas com bloqueio | 24 de 36 |
 | cores libretro exigidos | 17 |
 | adapters que entregam core | 0 |
-| ações de UI publicadas | 101 |
-| ações declaradas indisponíveis | 5 |
+| ações de UI publicadas | 103 |
+| ações declaradas indisponíveis | 6 |
 
 ## Adapters e roteamento de lifecycle
 
@@ -131,6 +131,7 @@ verificado, apenas que o contrato não se declara indisponível.
 
 | ação | endpoint | aplicabilidade | motivo declarado |
 |---|---|---|---|
+| component.open-config | — | not-applicable | Nenhum emulador ativo possui argumento oficial comprovado para abrir diretamente a configuração; consulte a matriz e abra a UI principal. |
 | component.rollback | — | not-applicable | Use o fluxo de revisão e confirmação de rollback do componente. |
 | component.recover | — | not-applicable | A recuperação automática ocorre no engine; não há endpoint Desktop para uma recuperação manual isolada. |
 | sync.status | — | not-applicable | A fila é somente leitura no snapshot atual; retry/cancel ainda não possuem rota da bridge. |

@@ -745,7 +745,7 @@ class _FakeComponentLifecycle:
 
     def open_config(self, adapter_id: str) -> dict[str, object]:
         self.configured = adapter_id
-        return {"status": "started", "componentId": adapter_id, "pid": 77, "argv": ["x", "-c"]}
+        return {"status": "started", "componentId": adapter_id, "pid": 77}
 
     def status_all(self) -> list[dict[str, object]]:
         return [
@@ -970,7 +970,7 @@ def test_component_launch_stop_and_open_config_are_reachable_from_the_cli(
 
     assert cli.main(["component", "open-config", "--id", "demo-flatpak", "--json"]) == cli.EXIT_OK
     opened = json.loads(capsys.readouterr().out)
-    assert opened["data"]["argv"] == ["x", "-c"]
+    assert opened["data"] == {"status": "started", "componentId": "demo-flatpak", "pid": 77}
 
     assert (fake.launched, fake.stopped, fake.configured) == (
         "demo-flatpak",

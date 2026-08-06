@@ -127,6 +127,8 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             self._send(HTTPStatus.OK, {"components": self._dashboard().list_components()})
         elif path == "/component/matrix":
             self._send(HTTPStatus.OK, self._dashboard().component_capability_matrix())
+        elif path == "/component/open-config/matrix":
+            self._send(HTTPStatus.OK, self._dashboard().component_open_config_matrix())
         elif path.startswith("/emulation/job/status/"):
             job_id = path.removeprefix("/emulation/job/status/")
             if not job_id:

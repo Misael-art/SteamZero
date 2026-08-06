@@ -209,6 +209,29 @@ def handheld_ui_contracts() -> dict[str, Any]:
             schema=_schema("componentId", componentId="string"),
         ),
         _action(
+            "component.open-config",
+            "Abrir configuração do componente",
+            None,
+            service="components",
+            screen="emulators",
+            control="component-open-config",
+            enabled=False,
+            applicable=False,
+            reason=(
+                "Nenhum emulador ativo possui argumento oficial comprovado para abrir "
+                "diretamente a configuração; consulte a matriz e abra a UI principal."
+            ),
+        ),
+        _action(
+            "component.open-config.matrix",
+            "Consultar decisões de configuração",
+            "/component/open-config/matrix",
+            service="components",
+            screen="emulators",
+            control="component-open-config-matrix",
+            method="GET",
+        ),
+        _action(
             "component.history",
             "Consultar histórico do componente",
             "/component/history",

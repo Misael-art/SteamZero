@@ -28,7 +28,7 @@ from steamzero.adapters.desktop_kde import (
 from steamzero.adapters.diagnostics import DiagnosticsService
 from steamzero.adapters.emulation import EmulationController
 from steamzero.adapters.flatpak import FlatpakCLI
-from steamzero.adapters.lifecycle import ComponentLifecycle
+from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
@@ -1000,6 +1000,46 @@ class DesktopDashboard:
                 for manifest in registry.list()
             ]
         }
+
+    def component_open_config_matrix(self) -> dict[str, Any]:
+        """Decisão comprovável de configuração sem revelar argv ou paths.
+
+        Nenhum dos emuladores ativos declara hoje um argumento upstream para
+        abrir diretamente a tela de configuração.  A matriz deixa isso claro:
+        a UI pode oferecer o lançamento normal como ``main-ui``, mas jamais
+        rotulá-lo como ``open-config``.  A versão é a fonte já pinada pelo
+        manifesto; a evidência aponta somente ao upstream público.
+        """
+        rows: list[dict[str, Any]] = []
+        for manifest in self._registry_factory().list():
+            if manifest.kind != "emulator":
+                continue
+            source = manifest.preferred_source(None, allow_eol=True)
+            declared = manifest.raw.get("openConfig")
+            arguments = declared.get("arguments") if isinstance(declared, dict) else None
+            direct = isinstance(arguments, list) and bool(arguments)
+            rows.append(
+                {
+                    "componentId": manifest.id,
+                    "strategy": "direct" if direct else "main-ui",
+                    "applicableStates": ["installed", "outdated"],
+                    "action": "component.open-config" if direct else "component.launch",
+                    "executor": route_for(manifest).executor,
+                    "evidence": {
+                        "upstream": manifest.upstream,
+                        "version": source.version,
+                    },
+                    "reason": (
+                        "O manifesto declara argumento atômico validado pelo upstream."
+                        if direct
+                        else (
+                            "Nenhum argumento direto foi comprovado para a fonte pinada; "
+                            "abra a UI principal."
+                        )
+                    ),
+                }
+            )
+        return {"decisions": rows, "count": len(rows)}
 
     def plan_component(self, adapter_id: str, action: str) -> dict[str, Any]:
         with self._store_factory() as store:
