@@ -48,6 +48,34 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 | xemu | emulator | flatpak | não | flatpak | sim | 10 | — |
 | xenia-canary | emulator | appimage | não | engine | sim | 10 | — |
 
+## Lifecycle por emulador e por ação
+
+Uma linha por emulador `kind=emulator`, uma coluna por ação do contrato.
+O gate reprova quando um emulador **ativo** não declara capacidade
+obrigatória, fica sem executor ou mantém fonte EOL.
+
+| emulador | suporte | executor | detect | status | install | update | verify | repair | uninstall | rollback/recovery | stop | open-config | EOL | motivo da recusa |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| azahar | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| cemu | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| citron | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| dolphin | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| duckstation | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| eden | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| flycast | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| melonds | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| pcsx2 | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| ppsspp | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| retroarch | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| rpcs3 | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| ryubing | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+| xemu | ativo | flatpak | sim | sim | sim | sim | sim | sim | sim | sim | n/d | **não** | não | — |
+| xenia-canary | ativo | engine | sim | sim | sim | sim | sim | sim | sim | sim | sim | **não** | não | — |
+
+**15 emuladores ativos** · obrigatórias: detect, status, install, update, verify, repair, uninstall · `open-config` declarado em **0 de 15**.
+
+`open-config` não é obrigatório ainda porque nenhum manifesto declara o argv: emuladores não compartilham forma de abrir configuração, e inventar um produziria botão que abre a coisa errada. A lacuna fica contada aqui até que o argv de cada upstream seja verificado.
+
 ## Plataformas e bloqueios de jogabilidade
 
 | plataforma | emulador primário | executor | core exigido | BIOS declarada | bloqueio |
