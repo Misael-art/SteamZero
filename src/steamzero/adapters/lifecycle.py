@@ -689,7 +689,12 @@ class ComponentLifecycle:
                 effective = "repair"
             else:
                 prepared = engine.plan_install(adapter_id)
-                if current["state"] == "installed":
+                # `outdated` também é deployment existente. Antes só `installed`
+                # contava, e mover um deployment velho para o pino novo saía
+                # rotulado "install" — o rótulo é o que a UI mostra e o que o
+                # rollback consulta, então chamar substituição de instalação
+                # esconderia que havia algo ali antes.
+                if current["state"] in {"installed", "outdated"}:
                     effective = "noop" if not prepared.plan.actions else "update"
                 else:
                     effective = "install"

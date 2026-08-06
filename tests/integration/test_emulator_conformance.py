@@ -120,16 +120,39 @@ def store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[state.Sta
         opened.close()
 
 
+class SpawnSpy:
+    """Captura o argv sem executar nada."""
+
+    def __init__(self) -> None:
+        self.argv: list[list[str]] = []
+
+    def __call__(self, argv: Sequence[str]) -> int:
+        self.argv.append(list(argv))
+        return 4242
+
+
 def _lifecycle(
-    store: state.StateStore, raw: dict[str, Any], *, artifacts: dict[str, bytes] | None = None
+    store: state.StateStore,
+    raw: dict[str, Any],
+    *,
+    artifacts: dict[str, bytes] | None = None,
+    spawn: Any = None,
 ) -> tuple[ComponentLifecycle, FakeFlatpak | None]:
     registry = AdapterRegistry([load_manifest(raw)])
     source = raw["sources"][0]
+    extra: dict[str, Any] = {}
+    if spawn is not None:
+        extra["spawn"] = spawn
+        extra["which"] = lambda name: f"/usr/bin/{name}"
     if source["type"] == "flatpak":
         fake = FakeFlatpak(source["ref"])
-        return ComponentLifecycle(store, registry, flatpak_factory=lambda: fake), fake
+        return ComponentLifecycle(store, registry, flatpak_factory=lambda: fake, **extra), fake
     port = FakeArtifacts(artifacts or {URL: PAYLOAD})
-    return ComponentLifecycle(store, registry, artifacts=port), None
+    return ComponentLifecycle(store, registry, artifacts=port, **extra), None
+
+
+def _is_flatpak(adapter_id: str) -> bool:
+    return AdapterRegistry.bundled().get(adapter_id).raw["sources"][0]["type"] == "flatpak"
 
 
 def _install(lifecycle: ComponentLifecycle, adapter_id: str) -> None:
@@ -218,3 +241,97 @@ class TestEmulatorLifecycleConformance:
         with pytest.raises(SteamZeroError) as error:
             lifecycle.apply(envelope.plan_id, envelope.confirm_token)
         assert error.value.code == "E-TX-STALE-PLAN"
+
+    def test_update_moves_the_deployment_to_the_new_pin(
+        self, adapter_id: str, store: state.StateStore
+    ) -> None:
+        lifecycle, fake = _lifecycle(store, derived(adapter_id))
+        _install(lifecycle, adapter_id)
+
+        novo = derived(adapter_id, version="2.0.0", sha=UPDATED_SHA, commit="c" * 64)
+        registry = AdapterRegistry([load_manifest(novo)])
+        lifecycle._registry = registry  # noqa: SLF001
+        if fake is None:
+            lifecycle._artifacts = FakeArtifacts({URL: UPDATED})  # noqa: SLF001
+
+        envelope = lifecycle.plan(adapter_id, "update")
+        assert envelope.action == "update"
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+        depois = lifecycle.status(adapter_id)
+        assert depois["state"] == "installed"
+        assert depois["version"] == ("c" * 64 if fake is not None else "2.0.0")
+
+    def test_drift_is_detected_and_never_reported_as_missing(
+        self, adapter_id: str, store: state.StateStore
+    ) -> None:
+        """Deployment adulterado ou fora do pino jamais vira "não instalado".
+
+        Colapsar drift em `missing` foi o defeito que fazia a central oferecer
+        "Instalar" para algo que estava lá e quebrado.
+        """
+        lifecycle, fake = _lifecycle(store, derived(adapter_id))
+        _install(lifecycle, adapter_id)
+
+        if fake is not None:
+            fake.current = FlatpakState(True, fake.ref, "flathub", "d" * 64)
+        else:
+            from steamzero.core import paths as core_paths
+
+            payload = core_paths.data_home() / "components" / adapter_id / "releases"
+            alvo = next(payload.rglob("payload"))
+            alvo.write_bytes(b"adulterado")
+
+        estado = lifecycle.status(adapter_id)
+        assert estado["state"] != "missing"
+        assert estado["state"] in {"degraded", "outdated"}
+        assert lifecycle.verify(adapter_id)["verified"] is False
+
+    def test_checksum_mismatch_refuses_without_deploying(
+        self, adapter_id: str, store: state.StateStore
+    ) -> None:
+        if _is_flatpak(adapter_id):
+            pytest.skip("Flatpak fixa commit; o checksum é garantia do executor portátil")
+        # Artefato que não corresponde ao sha256 pinado: a recusa precisa vir
+        # ANTES de qualquer escrita no deployment.
+        lifecycle, _ = _lifecycle(store, derived(adapter_id), artifacts={URL: b"bytes-errados"})
+        with pytest.raises(SteamZeroError) as error:
+            _install(lifecycle, adapter_id)
+        assert error.value.code in {"E-SUPPLY-CHECKSUM", "E-TX-VERIFY-FAILED"}
+        assert lifecycle.status(adapter_id)["state"] == "missing"
+
+    def test_launch_builds_an_atomic_argv_without_shell(
+        self, adapter_id: str, store: state.StateStore
+    ) -> None:
+        """Cada argumento é um item da lista — nada que um shell fatiaria."""
+        spy = SpawnSpy()
+        lifecycle, _ = _lifecycle(store, derived(adapter_id), spawn=spy)
+        _install(lifecycle, adapter_id)
+
+        lifecycle.launch(adapter_id)
+
+        assert len(spy.argv) == 1
+        argv = spy.argv[0]
+        assert all(isinstance(item, str) for item in argv)
+        assert not any(" " in item and item.startswith("-") for item in argv)
+        if _is_flatpak(adapter_id):
+            assert argv[:3] == ["/usr/bin/flatpak", "run", "--user"]
+
+    def test_open_config_refuses_when_the_adapter_does_not_declare_it(
+        self, adapter_id: str, store: state.StateStore
+    ) -> None:
+        """Nenhum manifesto declara openConfig ainda; a recusa precisa ter causa.
+
+        Este teste vira o oposto quando o argv de cada upstream for verificado:
+        aí ele passa a exigir que a ação exista. Enquanto isso, ele garante que
+        a ausência é recusa explícita, não botão que abre coisa errada.
+        """
+        spy = SpawnSpy()
+        lifecycle, _ = _lifecycle(store, derived(adapter_id), spawn=spy)
+        _install(lifecycle, adapter_id)
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.open_config(adapter_id)
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+        assert "configuração" in (error.value.detail or "")
+        assert spy.argv == [], "recusa não pode ter iniciado processo"
