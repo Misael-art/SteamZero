@@ -104,6 +104,7 @@ def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     argv: list[str] = []
+    launch_env: dict[str, str] = {}
 
     class Coordinator:
         def status(self) -> dict[str, object]:
@@ -128,10 +129,14 @@ def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
         def poll(self) -> int:
             return 0
 
-    def popen(command: list[str], **_kwargs: object) -> Process:
+    def popen(command: list[str], **kwargs: object) -> Process:
         argv.extend(command)
+        environment = kwargs.get("env")
+        assert isinstance(environment, dict)
+        launch_env.update({str(key): str(value) for key, value in environment.items()})
         return Process()
 
+    monkeypatch.setenv("QT_QUICK_BACKEND", "hostile-host-default")
     monkeypatch.setattr(desktop_ui.shutil, "which", lambda _name: "/usr/bin/qml6")
     monkeypatch.setattr(desktop_ui, "DesktopDashboard", lambda: object())
     monkeypatch.setattr(desktop_ui, "DesktopControlServer", Server)
@@ -143,6 +148,7 @@ def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
     assert "--steamzero-api" in argv
     assert "--steamzero-token" in argv
     assert sum(len(value) for value in argv) < 4096
+    assert launch_env["QT_QUICK_BACKEND"] == "software"
 
 
 class FakeDashboard:

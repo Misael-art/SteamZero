@@ -4925,3 +4925,15 @@ o checksum publicado; 4172 testes passaram (10 skips de checksum Flatpak já
 documentados), Ruff check e format-check, mypy, independência, boundaries,
 component lock, matriz de capabilities, auditoria da bridge e `git diff --check`
 passaram. Ações de host e release: **nenhuma**.
+
+## 2026-08-06 — UI Desktop resiliente ao renderer gráfico do host
+
+O lançamento QML agora fixa `QT_QUICK_BACKEND=software` somente no processo da
+central Desktop. A decisão preserva o ambiente da sessão e do daemon, segue o
+backend já certificado pelo gate visual e evita que uma falha de renderer da
+GPU encerre a unidade transitória criada pelo Plasma. O teste de bootstrap
+confere que um valor hostil herdado é substituído antes do `qml6` iniciar.
+
+Validação dirigida: 25 testes da bridge Desktop passaram; Ruff check e
+format-check, mypy, independência, boundaries e `git diff --check` passaram.
+Nenhuma ação de host, release, push ou tag foi executada por esta correção.
