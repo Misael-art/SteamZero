@@ -192,6 +192,34 @@ def test_v2_manifest_requires_matching_release_provenance(tmp_path: Path) -> Non
         install_host._verify_release(release)
 
 
+def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Um TMPDIR cheio da sessão não pode impedir a certificação da release."""
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    captured: dict[str, object] = {}
+
+    class SmokeDirectory:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            captured["args"] = args
+            captured["dir"] = kwargs.get("dir")
+            self.path = tmp_path / "smoke"
+
+        def __enter__(self) -> str:
+            self.path.mkdir()
+            return str(self.path)
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(install_host.tempfile, "TemporaryDirectory", SmokeDirectory)
+
+    install_host._verify_release(release)
+
+    assert captured["dir"] == install_host._SMOKE_TMPDIR
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")

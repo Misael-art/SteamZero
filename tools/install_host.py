@@ -42,6 +42,7 @@ _MAX_WHEELHOUSE_SIZE = 500 * 1024 * 1024
 _MANAGED_MARKER = "X-SteamZero-Managed=true"
 _MANAGER_MARKER = "# SteamZero-Host-Managed: true"
 _INSTALLER_NAME = "install_host.py"
+_SMOKE_TMPDIR = "/tmp"  # noqa: S108 - TemporaryDirectory creates a private 0700 child.
 _HOST_UNITS = ("steamzero-core.socket", "steamzero-core.service")
 _HOST_CONVERGENCE_ATTEMPTS = 10
 _HOST_CONVERGENCE_INTERVAL = 0.3
@@ -980,7 +981,14 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             if stat.st_uid != 0 or stat.st_mode & 0o022:
                 raise RuntimeError(f"permissões inseguras em {protected}")
 
-    with tempfile.TemporaryDirectory(prefix="steamzero-host-smoke-") as smoke_directory:
+    # O instalador pode herdar TMPDIR de uma sessão gráfica. Em particular,
+    # /run/user costuma ser um tmpfs pequeno e cheio por artefatos do desktop;
+    # uma verificação de release nunca pode falhar por esse estado efêmero.
+    # TemporaryDirectory cria 0700 e não segue nomes previsíveis, portanto o
+    # diretório compartilhado /tmp continua seguro para este smoke isolado.
+    with tempfile.TemporaryDirectory(
+        prefix="steamzero-host-smoke-", dir=_SMOKE_TMPDIR
+    ) as smoke_directory:
         smoke_root = Path(smoke_directory)
         environment = {
             "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin",

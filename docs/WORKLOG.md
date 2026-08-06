@@ -4894,6 +4894,22 @@ técnicas. Ruff, format-check, mypy, independência, boundaries, capability
 matrix e `git diff --check` também passaram. Nenhuma ação de host, release,
 push ou PR foi executada.
 
+## 2026-08-06 — Smoke de release independente do tmpfs da sessão
+
+O verificador de release agora cria seu estado temporário privado em `/tmp`,
+em vez de herdar o `TMPDIR` da sessão gráfica. Isso evita que um `/run/user`
+cheio por artefatos do desktop faça uma candidata íntegra parecer inválida
+durante a prova de instalação. O diretório continua sendo criado pelo
+`TemporaryDirectory` com permissões privadas; um teste de regressão fixa essa
+propriedade e a prova foi repetida com `TMPDIR` apontando para o tmpfs cheio.
+
+Validação: 4173 testes passaram (10 skips Flatpak documentados), incluindo 30
+testes do instalador; Ruff check e format-check, mypy, independência,
+boundaries, component lock, matriz de capabilities, auditoria da bridge e
+`git diff --check` passaram. A suíte registrou escritor externo legítimo no
+state home real, por isso a CI isolada permanece necessária antes de nova
+candidata. Nenhuma mutação adicional de host foi executada por esta correção.
+
 ## 2026-08-06 — Leitor seguro de cores Libretro sem cadeia Python vulnerável
 
 O executor de cores Libretro passou a ler exclusivamente a entrada canônica do
