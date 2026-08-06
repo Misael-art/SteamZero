@@ -21,8 +21,8 @@ def test_lifecycle_inventory_classifies_every_public_method() -> None:
 def test_audit_reports_only_the_remaining_unpublished_lifecycle_actions() -> None:
     report = audit()
     missing = {item["subject"] for item in report["issues"] if item["kind"] == "missing-contract"}
-    assert {"open_config", "recover", "stop"} <= missing
-    assert "rollback" not in missing
+    assert {"recover", "stop"} <= missing
+    assert not {"open_config", "rollback"} & missing
     assert not {"status", "status_all", "verify"} & missing
     serialized = str(report)
     assert "/home/" not in serialized
@@ -31,6 +31,4 @@ def test_audit_reports_only_the_remaining_unpublished_lifecycle_actions() -> Non
 
 def test_audit_rejects_contracts_with_open_input_schema() -> None:
     report = audit()
-    assert "emulation.action.plan" in {
-        item["subject"] for item in report["issues"] if item["kind"] == "open-schema"
-    }
+    assert not {item["subject"] for item in report["issues"] if item["kind"] == "open-schema"}

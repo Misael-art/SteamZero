@@ -24,6 +24,18 @@ def _schema(*required: str, **properties: str) -> dict[str, Any]:
     }
 
 
+def _closed_schema(
+    required: tuple[str, ...], properties: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Schema fechado quando a rota possui tipos JSON além de strings."""
+    return {
+        "type": "object",
+        "required": list(required),
+        "properties": properties,
+        "additionalProperties": False,
+    }
+
+
 def _action(
     action_id: str,
     label: str,
@@ -358,12 +370,23 @@ def handheld_ui_contracts() -> dict[str, Any]:
             service="emulation",
             screen="emulation",
             control="action-plan",
-            schema={
-                "type": "object",
-                "required": ["actionId"],
-                "properties": {"actionId": {"type": "string"}},
-                "additionalProperties": True,
-            },
+            schema=_closed_schema(
+                ("actionId",),
+                {
+                    "actionId": {"type": "string"},
+                    "path": {"type": "string"},
+                    "titleId": {"type": "string"},
+                    "emulatorId": {"type": "string"},
+                    "version": {"type": "string"},
+                    "gameId": {"type": "string"},
+                    "selected": {"type": "boolean"},
+                    "value": {"type": "boolean"},
+                    "overwrite": {"type": "boolean"},
+                    "approvedPaths": {"type": "array", "items": {"type": "string"}},
+                    "steamUserId": {"type": "string"},
+                    "mediaKinds": {"type": "array", "items": {"type": "string"}},
+                },
+            ),
         ),
         _action(
             "emulation.action.apply",
@@ -563,12 +586,40 @@ def handheld_ui_contracts() -> dict[str, Any]:
             service="steam",
             screen="steam",
             control="gameplay-plan",
-            schema={
-                "type": "object",
-                "required": ["gameId"],
-                "properties": {"gameId": {"type": "string"}},
-                "additionalProperties": True,
-            },
+            schema=_closed_schema(
+                (
+                    "gameId",
+                    "scope",
+                    "profile",
+                    "fps",
+                    "tdp",
+                    "gpuMode",
+                    "gpuClock",
+                    "gamescope",
+                    "gameMode",
+                    "mangoHud",
+                    "vkBasalt",
+                    "upscaling",
+                    "frameGeneration",
+                    "controllerLayout",
+                ),
+                {
+                    "gameId": {"type": "string"},
+                    "scope": {"type": "string"},
+                    "profile": {"type": "string"},
+                    "fps": {"type": "integer"},
+                    "tdp": {"type": ["integer", "null"]},
+                    "gpuMode": {"type": "string"},
+                    "gpuClock": {"type": ["integer", "null"]},
+                    "gamescope": {"type": "boolean"},
+                    "gameMode": {"type": "boolean"},
+                    "mangoHud": {"type": "string"},
+                    "vkBasalt": {"type": "string"},
+                    "upscaling": {"type": "string"},
+                    "frameGeneration": {"type": "string"},
+                    "controllerLayout": {"type": "string"},
+                },
+            ),
         ),
         _action(
             "steam.gameplay.apply",
