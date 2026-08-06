@@ -5279,3 +5279,33 @@ harness; suíte isolada **4200 passaram, 10 skipados** em tmp do disco interno;
 Ruff, mypy, boundaries, independence e matrix verdes. A tentativa anterior
 não passou de `qemu-img`; nenhuma VM, host, release ou push foi executado
 durante esta correção.
+
+## 2026-08-06 — Item 4 (VM M10) — identidade SSH e cleanup iniciados
+
+Branch base: `codex/fase1-cores-laco-primario` em `10da8fa`. A segunda
+tentativa autorizada chegou a iniciar a VM e obteve lease IPv4, mas o harness
+não encaminhava a chave privada efêmera usada para o cloud-init a todos os
+comandos SSH; ao encerrar a tentativa, a remoção recursiva de uma overlay em
+NTFS/FUSE também ocultou a causa original com `Directory not empty`. Escopo:
+adicionar identidade SSH explícita ao contrato de execução e preservar os
+artefatos da VM em falha, sempre destruindo apenas o domínio descartável
+nomeado. Nenhuma ação no host de produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — identidade SSH e cleanup concluídos
+
+O commit atômico `fix(vm-harness): autentica VM e preserva falhas` torna a
+chave privada efêmera uma entrada obrigatória de `--execute` e a transmite com
+`IdentitiesOnly=yes` a cada probe, cópia de fonte, snapshot, reboot e chamada
+`component`. Em falha, o domínio nomeado ainda é destruído, mas o diretório
+marcado da execução é preservado; a remoção recursiva só ocorre após
+certificação e escrita da evidência completas, portanto não mascara a causa
+raiz em NTFS/FUSE.
+
+Decisão de bancada: a identidade privada não ganha default nem é derivada do
+agente SSH do host; isto mantém o par de chaves descartável e impede sucesso
+acidental por credencial local. A próxima tentativa usa um nome novo para não
+reutilizar o diretório FUSE remanescente da tentativa interrompida. Validação:
+19 testes dedicados; suíte isolada **4202 passaram, 10 skipados**; `ruff
+check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Nenhuma ação de host, release ou push foi
+executada durante esta correção.

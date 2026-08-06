@@ -257,6 +257,22 @@ def test_vm_config_rejects_execution_without_operator_inputs(tmp_path: Path) -> 
         config.validate(executing=True)
 
 
+def test_vm_config_requires_the_private_identity_for_execution(tmp_path: Path) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+    )
+    config.base_image.write_bytes(b"qcow2")
+    config.ssh_public_key.write_text(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="ssh-private-key"):
+        config.validate(executing=True)
+
+
 def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: Path) -> None:
     config = VmConfig(
         source_commit="a" * 40,
@@ -287,7 +303,7 @@ def test_seed_iso_uses_xorriso_when_cloud_localds_is_absent(
     assert "cidata" in argv
 
 
-def test_guest_component_client_unwraps_the_cli_envelope() -> None:
+def test_guest_component_client_unwraps_the_cli_envelope(tmp_path: Path) -> None:
     calls: list[tuple[str, ...]] = []
 
     def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
@@ -301,7 +317,8 @@ def test_guest_component_client_unwraps_the_cli_envelope() -> None:
             data = {"state": "missing"}
         return CommandResult(0, json.dumps({"ok": True, "data": data}).encode())
 
-    client = GuestComponentClient("192.0.2.5", runner=runner)
+    identity = tmp_path / "steamzero-vm-key"
+    client = GuestComponentClient("192.0.2.5", identity_file=identity, runner=runner)
     assert client.status("retroarch") == {"state": "missing"}
     assert client.plan("retroarch") == {
         "planId": "p1",
@@ -309,9 +326,11 @@ def test_guest_component_client_unwraps_the_cli_envelope() -> None:
         "action": "install",
     }
     assert all(call[0] == "ssh" for call in calls)
+    assert all("-i" in call and str(identity) in call for call in calls)
+    assert all("IdentitiesOnly=yes" in call for call in calls)
 
 
-def test_snapshot_is_bootable_and_records_its_subvolume_id() -> None:
+def test_snapshot_is_bootable_and_records_its_subvolume_id(tmp_path: Path) -> None:
     calls: list[tuple[str, ...]] = []
 
     def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
@@ -319,11 +338,37 @@ def test_snapshot_is_bootable_and_records_its_subvolume_id() -> None:
         stdout = b"Subvolume ID: 271\n" if "'show'" in argv[-1] else b""
         return CommandResult(0, stdout)
 
-    snapshot_id = provision_module._snapshot_before("192.0.2.5", runner=runner)
+    snapshot_id = provision_module._snapshot_before(
+        "192.0.2.5", identity_file=tmp_path / "steamzero-vm-key", runner=runner
+    )
     assert snapshot_id == 271
     snapshot = calls[1][-1]
     assert "'snapshot'" in snapshot
     assert "'-r'" not in snapshot, "o baseline precisa ser bootável para a prova pós-reboot"
+
+
+def test_destroy_vm_preserves_failure_artifacts_but_removes_named_domain(tmp_path: Path) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+    )
+    config.run_dir.mkdir(parents=True)
+    (config.run_dir / ".steamzero-m10-managed").write_text(config.source_commit, encoding="utf-8")
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        return CommandResult(0)
+
+    provision_module._destroy_vm(config, runner=runner, remove_run_dir=False)
+    assert config.run_dir.is_dir()
+    assert calls == [
+        ("virsh", "destroy", "steamzero-m10"),
+        ("virsh", "undefine", "steamzero-m10", "--nvram"),
+    ]
 
 
 def test_provision_orchestrates_only_disposable_resources(
@@ -336,11 +381,13 @@ def test_provision_orchestrates_only_disposable_resources(
         base_image=tmp_path / "arch.qcow2",
         ssh_public_key=tmp_path / "operator.pub",
         work_dir=tmp_path / "work",
+        ssh_private_key=tmp_path / "operator.key",
     )
     config.base_image.write_bytes(b"qcow2")
     config.ssh_public_key.write_text(
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test\n", encoding="utf-8"
     )
+    config.ssh_private_key.write_text("private", encoding="utf-8")
     calls: list[tuple[str, ...]] = []
     events: list[object] = []
 
@@ -351,7 +398,10 @@ def test_provision_orchestrates_only_disposable_resources(
         return CommandResult(0)
 
     class FakeGuest:
-        def __init__(self, _address: str, *, runner: object) -> None:
+        def __init__(
+            self, _address: str, *, identity_file: Path | None = None, runner: object
+        ) -> None:
+            self.identity_file = identity_file
             self.runner = runner
 
         def status(self, _adapter_id: str) -> dict[str, str]:

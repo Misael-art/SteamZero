@@ -75,6 +75,7 @@ class VmConfig:
     base_image: Path
     ssh_public_key: Path
     work_dir: Path
+    ssh_private_key: Path | None = None
     disk_size_gb: int = 40
     memory_mib: int = 4096
     cpus: int = 4
@@ -90,6 +91,8 @@ class VmConfig:
             raise ValueError("--base-image deve apontar para uma imagem cloud Arch regular")
         if executing and not self.ssh_public_key.is_file():
             raise ValueError("--ssh-public-key deve apontar para uma chave pública regular")
+        if executing and (self.ssh_private_key is None or not self.ssh_private_key.is_file()):
+            raise ValueError("--ssh-private-key deve apontar para a chave privada correspondente")
 
     @property
     def run_dir(self) -> Path:
@@ -175,6 +178,13 @@ def _public_key(path: Path) -> str:
     if "\n" in key or not key.startswith(_KEY_PREFIXES):
         raise ValueError("--ssh-public-key não contém uma chave OpenSSH de linha única")
     return key
+
+
+def _private_identity(config: VmConfig) -> Path:
+    """Devolve a chave privada já validada para não cair no agente SSH do host."""
+    if config.ssh_private_key is None:
+        raise RuntimeError("execução sem identidade SSH privada")
+    return config.ssh_private_key
 
 
 def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
@@ -263,27 +273,32 @@ def _emit_plan(config: VmConfig) -> str:
 class GuestComponentClient(ComponentClient):
     """Cliente da CLI real dentro da VM; normaliza envelopes JSON v2."""
 
-    def __init__(self, address: str, *, runner: Runner = _run) -> None:
+    def __init__(
+        self,
+        address: str,
+        *,
+        identity_file: Path | None = None,
+        runner: Runner = _run,
+    ) -> None:
         self._address = str(ipaddress.ip_address(address))
+        self._identity_file = identity_file
         self._runner = runner
 
     def _ssh(self, command: Sequence[str], *, timeout: float = 1800.0) -> bytes:
         remote = " ".join(_shell_quote(part) for part in command)
-        result = self._runner(
-            (
-                "ssh",
-                "-o",
-                "BatchMode=yes",
-                "-o",
-                "StrictHostKeyChecking=accept-new",
-                "-o",
-                "ConnectTimeout=10",
-                f"{_GUEST_USER}@{self._address}",
-                remote,
-            ),
-            None,
-            timeout,
-        )
+        argv = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=10",
+        ]
+        if self._identity_file is not None:
+            argv.extend(("-i", str(self._identity_file), "-o", "IdentitiesOnly=yes"))
+        argv.extend((f"{_GUEST_USER}@{self._address}", remote))
+        result = self._runner(tuple(argv), None, timeout)
         return _required(result, f"SSH guest ({command[0]})")
 
     def _component(self, action: str, *args: str) -> dict[str, Any]:
@@ -336,9 +351,16 @@ def _shell_quote(value: str) -> str:
 
 
 def _guest_ssh(
-    address: str, command: Sequence[str], *, runner: Runner, timeout: float = 1800.0
+    address: str,
+    command: Sequence[str],
+    *,
+    identity_file: Path,
+    runner: Runner,
+    timeout: float = 1800.0,
 ) -> bytes:
-    return GuestComponentClient(address, runner=runner)._ssh(command, timeout=timeout)
+    return GuestComponentClient(address, identity_file=identity_file, runner=runner)._ssh(
+        command, timeout=timeout
+    )
 
 
 def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> str:
@@ -354,7 +376,9 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
                 continue
             if address.version != 4:
                 continue
-            probe = GuestComponentClient(str(address), runner=runner)
+            probe = GuestComponentClient(
+                str(address), identity_file=_private_identity(config), runner=runner
+            )
             try:
                 probe._ssh(("true",), timeout=15.0)
             except RuntimeError:
@@ -365,11 +389,17 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
 
 
 def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
+    identity_file = _private_identity(config)
     archive = _required(
         runner(("git", "archive", "--format=tar", config.source_commit), None, 120.0),
         "git archive do commit de origem",
     )
-    _guest_ssh(address, ("mkdir", "-p", _GUEST_SOURCE), runner=runner)
+    _guest_ssh(
+        address,
+        ("mkdir", "-p", _GUEST_SOURCE),
+        identity_file=identity_file,
+        runner=runner,
+    )
     remote = f"tar -x -C {_GUEST_SOURCE}"
     result = runner(
         (
@@ -378,6 +408,10 @@ def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
             "BatchMode=yes",
             "-o",
             "StrictHostKeyChecking=accept-new",
+            "-i",
+            str(identity_file),
+            "-o",
+            "IdentitiesOnly=yes",
             f"{_GUEST_USER}@{address}",
             remote,
         ),
@@ -387,42 +421,55 @@ def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
     _required(result, "cópia da árvore commitada para a VM")
 
 
-def _snapshot_before(address: str, *, runner: Runner) -> int:
+def _snapshot_before(address: str, *, identity_file: Path, runner: Runner) -> int:
     """Cria snapshot Btrfs bootável e devolve seu subvolume id para restore."""
     commands = (
         ("sudo", "mkdir", "-p", _SNAPSHOT_ROOT),
         ("sudo", "btrfs", "subvolume", "snapshot", "/", f"{_SNAPSHOT_ROOT}/before-m10"),
         ("sudo", "btrfs", "subvolume", "show", f"{_SNAPSHOT_ROOT}/before-m10"),
     )
-    _guest_ssh(address, commands[0], runner=runner)
-    _guest_ssh(address, commands[1], runner=runner)
-    show = _guest_ssh(address, commands[2], runner=runner).decode("utf-8", errors="replace")
+    _guest_ssh(address, commands[0], identity_file=identity_file, runner=runner)
+    _guest_ssh(address, commands[1], identity_file=identity_file, runner=runner)
+    show = _guest_ssh(address, commands[2], identity_file=identity_file, runner=runner).decode(
+        "utf-8", errors="replace"
+    )
     match = re.search(r"Subvolume ID:\s*(\d+)", show)
     if match is None:
         raise RuntimeError("não foi possível obter o ID do snapshot Btrfs")
     return int(match.group(1))
 
 
-def _restore_snapshot(address: str, snapshot_id: int, *, runner: Runner) -> None:
+def _restore_snapshot(
+    address: str, snapshot_id: int, *, identity_file: Path, runner: Runner
+) -> None:
     """Seleciona o baseline para o próximo boot; a chamada seguinte prova-o."""
     _guest_ssh(
         address,
         ("sudo", "btrfs", "subvolume", "set-default", str(snapshot_id), "/"),
+        identity_file=identity_file,
         runner=runner,
     )
     # O SSH pode cair antes de systemctl devolver o status: a queda é esperada
     # aqui e o próximo _wait_for_guest é a prova de que o reboot realmente
     # voltou. Se o reboot não ocorrer, o baseline instalado faz essa prova falhar.
     with contextlib.suppress(RuntimeError):
-        _guest_ssh(address, ("sudo", "systemctl", "reboot"), runner=runner, timeout=30.0)
+        _guest_ssh(
+            address,
+            ("sudo", "systemctl", "reboot"),
+            identity_file=identity_file,
+            runner=runner,
+            timeout=30.0,
+        )
 
 
-def _destroy_vm(config: VmConfig, *, runner: Runner) -> None:
-    """Remove somente a VM nomeada e o diretório com marcador próprio."""
+def _destroy_vm(config: VmConfig, *, runner: Runner, remove_run_dir: bool) -> None:
+    """Remove o domínio nomeado; só limpa artefatos depois de certificação completa."""
     runner(("virsh", "destroy", config.vm_name), None, 60.0)
     runner(("virsh", "undefine", config.vm_name, "--nvram"), None, 60.0)
+    if not remove_run_dir:
+        return
     marker = config.run_dir / ".steamzero-m10-managed"
-    if marker.read_text(encoding="utf-8").strip() == config.source_commit:
+    if marker.is_file() and marker.read_text(encoding="utf-8").strip() == config.source_commit:
         shutil.rmtree(config.run_dir)
 
 
@@ -465,6 +512,7 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
     seed = config.run_dir / "seed.iso"
     baseline_restored = False
     report: dict[str, Any] = {"ok": False, "emulators": [], "summary": {}}
+    evidence: Path | None = None
     try:
         _required(
             runner(
@@ -496,14 +544,17 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
             "console serial independente",
         )
         _copy_source(config, address, runner=runner)
-        snapshot_id = _snapshot_before(address, runner=runner)
-        client = GuestComponentClient(address, runner=runner)
+        identity_file = _private_identity(config)
+        snapshot_id = _snapshot_before(address, identity_file=identity_file, runner=runner)
+        client = GuestComponentClient(address, identity_file=identity_file, runner=runner)
         report = certify_m10(client)
         if not report["ok"]:
             raise RuntimeError("certificação M10 reprovou; ver relatório de evidência")
-        _restore_snapshot(address, snapshot_id, runner=runner)
+        _restore_snapshot(address, snapshot_id, identity_file=identity_file, runner=runner)
         restored_address = _wait_for_guest(config, runner=runner)
-        restored = GuestComponentClient(restored_address, runner=runner)
+        restored = GuestComponentClient(
+            restored_address, identity_file=identity_file, runner=runner
+        )
         baseline_restored = all(
             restored.status(adapter)["state"] in {"missing", "unavailable"}
             for adapter in ("retroarch", "pcsx2", "ppsspp")
@@ -511,10 +562,20 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
         if not baseline_restored:
             raise RuntimeError("snapshot Btrfs não restaurou o baseline dos emuladores")
     finally:
-        evidence = _write_evidence(
-            config.source_commit, report, baseline_restored=baseline_restored
-        )
-        _destroy_vm(config, runner=runner)
+        evidence_written = False
+        try:
+            evidence = _write_evidence(
+                config.source_commit, report, baseline_restored=baseline_restored
+            )
+            evidence_written = True
+        finally:
+            _destroy_vm(
+                config,
+                runner=runner,
+                remove_run_dir=baseline_restored and evidence_written,
+            )
+    if evidence is None:
+        raise RuntimeError("a execução não produziu relatório de evidência")
     return evidence
 
 
@@ -524,6 +585,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--vm-name", default="steamzero-m10")
     parser.add_argument("--base-image", type=Path, default=Path("ARCH-CLOUD-IMAGE.qcow2"))
     parser.add_argument("--ssh-public-key", type=Path, default=Path("SSH-PUBLIC-KEY.pub"))
+    parser.add_argument("--ssh-private-key", type=Path)
     parser.add_argument("--work-dir", type=Path, default=ROOT / ".zcode" / "vm-harness")
     parser.add_argument("--disk-size-gb", type=int, default=40)
     parser.add_argument("--memory-mib", type=int, default=4096)
@@ -540,6 +602,7 @@ def main(argv: list[str] | None = None) -> int:
         base_image=args.base_image,
         ssh_public_key=args.ssh_public_key,
         work_dir=args.work_dir,
+        ssh_private_key=args.ssh_private_key,
         disk_size_gb=args.disk_size_gb,
         memory_mib=args.memory_mib,
         cpus=args.cpus,
