@@ -945,3 +945,41 @@ class TestAdversarialLifecycleClosure:
         with pytest.raises(SteamZeroError) as error:
             lifecycle.rollback("01J000000000000000000000ZZ")
         assert error.value.code == "E-TX-STALE-PLAN"
+
+    def test_scenario_15_interrupted_engine_recovery_is_idempotent(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle, adapter_id, config = self._degraded("engine", store, tmp_path)
+        before_config = config.read_bytes()
+        plan = lifecycle.plan(adapter_id, "repair")
+
+        def crash_after_durable_intent(stage: str) -> None:
+            if stage == "apply.begin":
+                raise SimulatedKill(stage)
+
+        set_crash_hook(crash_after_durable_intent)
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(plan.plan_id, plan.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        # Uma nova instância representa o próximo processo após o crash.
+        restarted = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", executable_payload()),
+            artifacts=FakeArtifacts(
+                {"https://fixtures.invalid/demo-1.0.0.AppImage": executable_payload()}
+            ),
+        )
+        first = restarted.recover()
+        second = restarted.recover()
+
+        assert any(item["executor"] == "repair" for item in first)
+        assert second == []
+        assert restarted.status(adapter_id)["state"] == "degraded"
+        assert config.read_bytes() == before_config
+        assert (
+            json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"]
+            == "pending"
+        )
