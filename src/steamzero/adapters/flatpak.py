@@ -445,6 +445,47 @@ class FlatpakExecutor:
         self._save_plan(plan)
         return plan
 
+    def plan_uninstall(self, adapter_id: str, *, ttl_s: int = _DEFAULT_TTL_S) -> FlatpakPlan:
+        """Planeja remover o deployment, preservando os dados da aplicação.
+
+        ``flatpak uninstall`` sem ``--delete-data`` mantém ``~/.var/app/<ref>``:
+        saves, configuração e estado do emulador sobrevivem. Isso é contrato, e
+        não detalhe de implementação — desinstalar não pode virar um caminho
+        para perder save.
+        """
+        manifest, source = self._flatpak_source(adapter_id)
+        ref = _source_ref(source)
+        remote = _source_remote(source)
+        if "uninstall" not in manifest.capabilities:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=f"adapter {adapter_id} não declara capability uninstall",
+            )
+        before = self._flatpak.status(ref)
+        if not before.installed:
+            raise SteamZeroError("E-COMPONENT-DEGRADED", detail=f"{adapter_id} não está instalado")
+        now = self._utc_now()
+        plan = FlatpakPlan(
+            plan_id=ids.new_ulid(),
+            confirm_token=secrets.token_urlsafe(24),
+            adapter_id=manifest.id,
+            ref=ref,
+            remote=remote,
+            target_commit=source.version,
+            before=before,
+            action="uninstall",
+            status="pending",
+            created_at=now.isoformat(),
+            expires_at=(now + timedelta(seconds=ttl_s)).isoformat(),
+            preview=(
+                f"remover {manifest.id} (Flatpak user-scoped)\n"
+                f"ref: {ref}\ncommit implantado: {before.commit}\n"
+                "dados da aplicação são PRESERVADOS; rollback reinstala o mesmo commit"
+            ),
+        )
+        self._save_plan(plan)
+        return plan
+
     def apply(self, plan_id: str, confirm_token: str) -> FlatpakApplyResult:
         # A leitura externa ao lock serve apenas para resolver o recurso. Toda
         # precondição que autoriza efeito é recarregada e revalidada sob o lock.
@@ -481,6 +522,18 @@ class FlatpakExecutor:
             )
             self._save_operation(operation)
             try:
+                if plan.action == "uninstall":
+                    self._flatpak.uninstall(plan.ref)
+                    final = self._flatpak.status(plan.ref)
+                    if final.installed:
+                        raise SteamZeroError(
+                            "E-TX-VERIFY-FAILED",
+                            detail=f"{plan.ref} continua implantado após a remoção",
+                        )
+                    self._persist(manifest, final)
+                    self._save_operation(replace(operation, status="committed"))
+                    self._save_plan(replace(plan, status="applied"))
+                    return FlatpakApplyResult(operation.operation_id, "ok", plan.adapter_id, None)
                 if not plan.before.installed:
                     self._flatpak.install(plan.remote, plan.ref)
                 self._flatpak.deploy(plan.ref, plan.target_commit)

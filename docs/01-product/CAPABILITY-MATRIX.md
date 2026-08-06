@@ -31,22 +31,22 @@ Capacidade declarada no manifesto não implica execução verificada: a coluna
 
 | adapter | kind | fonte | EOL | executor | instalável | capacidades declaradas | motivo da recusa |
 |---|---|---|---|---|---|---|---|
-| azahar | emulator | flatpak | não | flatpak | sim | 9 | — |
-| cemu | emulator | flatpak | não | flatpak | sim | 9 | — |
+| azahar | emulator | flatpak | não | flatpak | sim | 10 | — |
+| cemu | emulator | flatpak | não | flatpak | sim | 10 | — |
 | citron | emulator | appimage | não | engine | sim | 10 | — |
-| dolphin | emulator | flatpak | não | flatpak | sim | 9 | — |
+| dolphin | emulator | flatpak | não | flatpak | sim | 10 | — |
 | duckstation | emulator | appimage | não | engine | sim | 10 | — |
 | eden | emulator | appimage | não | engine | sim | 10 | — |
-| flycast | emulator | flatpak | não | flatpak | sim | 9 | — |
-| melonds | emulator | flatpak | não | flatpak | sim | 9 | — |
-| pcsx2 | emulator | flatpak | não | flatpak | sim | 9 | — |
-| ppsspp | emulator | flatpak | não | flatpak | sim | 9 | — |
-| retroarch | emulator | flatpak | não | flatpak | sim | 9 | — |
-| rpcs3 | emulator | flatpak | não | flatpak | sim | 9 | — |
+| flycast | emulator | flatpak | não | flatpak | sim | 10 | — |
+| melonds | emulator | flatpak | não | flatpak | sim | 10 | — |
+| pcsx2 | emulator | flatpak | não | flatpak | sim | 10 | — |
+| ppsspp | emulator | flatpak | não | flatpak | sim | 10 | — |
+| retroarch | emulator | flatpak | não | flatpak | sim | 10 | — |
+| rpcs3 | emulator | flatpak | não | flatpak | sim | 10 | — |
 | ryubing | emulator | appimage | não | engine | sim | 10 | — |
 | sunshine | tool | native | não | engine | sim | 2 | — |
-| xemu | emulator | flatpak | não | flatpak | sim | 9 | — |
-| xenia-canary | emulator | appimage | não | engine | sim | 9 | — |
+| xemu | emulator | flatpak | não | flatpak | sim | 10 | — |
+| xenia-canary | emulator | appimage | não | engine | sim | 10 | — |
 
 ## Plataformas e bloqueios de jogabilidade
 

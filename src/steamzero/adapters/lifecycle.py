@@ -663,11 +663,9 @@ class ComponentLifecycle:
                 )
         if route.executor == "flatpak":
             if action == "uninstall":
-                raise SteamZeroError(
-                    "E-API-SCHEMA",
-                    detail="desinstalação Flatpak ainda não é oferecida; o deployment é preservado",
-                )
-            delegated_plan = self._flatpak().plan_install(adapter_id)
+                delegated_plan = self._flatpak().plan_uninstall(adapter_id)
+            else:
+                delegated_plan = self._flatpak().plan_install(adapter_id)
             # Reparo reimplanta o MESMO commit fixado; o executor delegado
             # chama isso de install/update, mas a intenção revisada pelo
             # operador foi reparar, e é ela que o envelope precisa nomear.

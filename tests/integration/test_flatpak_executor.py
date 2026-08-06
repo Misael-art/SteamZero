@@ -374,3 +374,52 @@ def test_update_without_capability_is_blocked_before_mutation(store: state.State
 
     assert error.value.code == "E-COMPONENT-DEGRADED"
     assert not any(call[0] in {"install", "deploy", "uninstall"} for call in flatpak.calls)
+
+
+def _uninstall_executor(store: state.StateStore, flatpak: FakeFlatpak) -> FlatpakExecutor:
+    item = load_manifest(
+        manifest(capabilities=["detect", "status", "install", "update", "uninstall", "verify"])
+    )
+    return FlatpakExecutor(store, AdapterRegistry([item]), flatpak)
+
+
+def test_uninstall_removes_deployment_and_preserves_application_data(
+    store: state.StateStore,
+) -> None:
+    """Desinstalar não pode ser um caminho para perder save.
+
+    O contrato é o argv: `flatpak uninstall` SEM `--delete-data` mantém
+    `~/.var/app/<ref>`. O teste fixa a ausência da flag, porque é ela que
+    separa "removi o programa" de "apaguei os saves do usuário".
+    """
+    flatpak = FakeFlatpak(FlatpakState(True, REF, "flathub", TARGET))
+    executor = _uninstall_executor(store, flatpak)
+
+    plan = executor.plan_uninstall("demo-flatpak")
+    assert plan.action == "uninstall"
+    assert "PRESERVADOS" in plan.preview
+
+    result = executor.apply(plan.plan_id, plan.confirm_token)
+
+    assert result.status == "ok"
+    assert flatpak.current.installed is False
+    assert ("uninstall", REF) in flatpak.calls
+    assert not any("--delete-data" in str(call) for call in flatpak.calls)
+
+
+def test_uninstall_is_refused_without_the_declared_capability(
+    store: state.StateStore,
+) -> None:
+    flatpak = FakeFlatpak(FlatpakState(True, REF, "flathub", TARGET))
+    executor_sem_cap = executor(store, flatpak)
+    with pytest.raises(SteamZeroError) as error:
+        executor_sem_cap.plan_uninstall("demo-flatpak")
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    assert "uninstall" in (error.value.detail or "")
+
+
+def test_uninstall_is_refused_when_nothing_is_deployed(store: state.StateStore) -> None:
+    flatpak = FakeFlatpak()
+    with pytest.raises(SteamZeroError) as error:
+        _uninstall_executor(store, flatpak).plan_uninstall("demo-flatpak")
+    assert error.value.code == "E-COMPONENT-DEGRADED"
