@@ -404,6 +404,33 @@ def test_wait_for_guest_retries_a_timed_out_lease_query(
     ]
 
 
+def test_wait_for_guest_retries_a_timed_out_ssh_probe(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+        ssh_private_key=tmp_path / "operator.key",
+    )
+    lease = b"vnet0 52:54:00:00:00:01 ipv4 192.0.2.5/24\n"
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        if "domifaddr" in argv:
+            return CommandResult(0, lease)
+        raise subprocess.TimeoutExpired(list(argv), 15.0)
+
+    monkeypatch.setattr(provision_module.time, "sleep", lambda _seconds: None)
+    with pytest.raises(RuntimeError, match="não obteve IPv4/SSH"):
+        provision_module._wait_for_guest(config, runner=runner, retries=1)
+    assert len(calls) == 2
+    assert calls[1][0] == "ssh"
+
+
 def test_provision_orchestrates_only_disposable_resources(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

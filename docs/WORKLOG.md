@@ -5336,3 +5336,28 @@ skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
 independence boundaries` e `capability_matrix --check` verdes. A VM anterior
 foi apenas destruída/indefinida como recurso descartável autorizado; nenhuma
 ação de host de produção, release ou push foi executada.
+
+## 2026-08-06 — Item 4 (VM M10) — tolerância ao SSH de readiness iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `d9a7031`. A quarta
+execução autorizada passou da consulta de lease e encontrou o IPv4 do guest,
+mas a primeira conexão SSH durante cloud-init excedeu o timeout individual de
+15 segundos. O domínio foi removido pelo cleanup agora fixado em
+`qemu:///system`, e os artefatos/evidência da falha foram preservados. Escopo:
+tratar timeout do probe SSH como guest ainda não pronto, sem transformar o
+limite global de readiness em sucesso. Nenhum host de produção, release ou
+push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — tolerância ao SSH de readiness concluída
+
+O commit atômico `fix(vm-harness): tolera SSH lento no boot` trata
+`TimeoutExpired` do probe SSH como guest ainda em preparação, no mesmo loop
+de readiness já usado para lease. A conexão continua com chave efêmera e
+`IdentitiesOnly=yes`; esgotar as tentativas continua sendo falha explícita.
+
+Decisão de bancada: não aumentar silenciosamente o timeout de cada SSH, pois
+isso reduziria a observabilidade de um boot travado; repetir o probe preserva
+o orçamento total e a causa final. Validação: 21 testes dedicados; suíte
+isolada **4204 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
+`mypy src`, `make independence boundaries` e `capability_matrix --check`
+verdes. Nenhuma ação de host de produção, release ou push foi executada.

@@ -397,7 +397,7 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
             )
             try:
                 probe._ssh(("true",), timeout=15.0)
-            except RuntimeError:
+            except (RuntimeError, subprocess.TimeoutExpired):
                 break
             return str(address)
         time.sleep(2)
