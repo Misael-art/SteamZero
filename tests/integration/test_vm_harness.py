@@ -413,6 +413,26 @@ def test_write_evidence_keeps_complete_failed_component_payload(
     assert '"action": "rollback"' in content
 
 
+def test_write_evidence_preserves_an_existing_report(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(provision_module, "ROOT", tmp_path)
+    diagnostics = tmp_path / "docs" / "diagnostics"
+    diagnostics.mkdir(parents=True)
+    original = diagnostics / f"{provision_module.dt.date.today().isoformat()}-m10-vm-evidence.md"
+    original.write_text("evidência anterior", encoding="utf-8")
+
+    evidence = provision_module._write_evidence(
+        "a" * 40,
+        {"ok": False, "emulators": [], "summary": {}, "protocol": "minimal"},
+        baseline_restored=False,
+    )
+
+    assert original.read_text(encoding="utf-8") == "evidência anterior"
+    assert evidence != original
+    assert evidence.name.startswith(original.stem + "-")
+
+
 def test_snapshot_is_bootable_and_records_its_subvolume_id(tmp_path: Path) -> None:
     calls: list[tuple[str, ...]] = []
 

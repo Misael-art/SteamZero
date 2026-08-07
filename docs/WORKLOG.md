@@ -5582,3 +5582,24 @@ boundaries` e `capability_matrix --check` verdes. Não fecha Item 4, DEBT-A7
 nem qualquer gap: falta executar e aprovar o ciclo mínimo, depois os três
 ciclos completos de cada emulador e o restore Btrfs. Nenhuma ação de host de
 produção, release ou push foi executada.
+
+## 2026-08-07 — Item 4 (VM M10) — preservação de evidências iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `07e532e`. Há uma evidência
+M10 não versionada para a data corrente; o nome apenas por data do harness a
+sobrescreveria na próxima VM. Escopo: manter o nome canônico quando livre e
+criar um nome único quando já houver relatório, sem tocar os artefatos
+existentes. Nenhuma ação de host de produção, release ou push está no escopo.
+
+## 2026-08-07 — Item 4 (VM M10) — preservação de evidências concluída
+
+O harness mantém `YYYY-MM-DD-m10-vm-evidence.md` quando ele ainda não existe
+e, se já existir, grava a nova execução em
+`YYYY-MM-DD-m10-vm-evidence-HHMMSS.md`. Assim, a evidência do rollback que
+bloqueou Item 4 e o próximo payload completo permanecem auditáveis lado a
+lado. Teste dedicado prova que o primeiro arquivo não é alterado. Validação:
+28 testes dedicados; suíte isolada **4211 passaram, 10 skipados**; `ruff
+check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Não fecha Item 4, DEBT-A7 ou gaps; apenas
+protege a próxima tentativa diagnóstica. Nenhuma ação de host de produção,
+release ou push foi executada.

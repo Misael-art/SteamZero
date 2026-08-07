@@ -549,6 +549,9 @@ def _write_evidence(
 ) -> Path:
     date = dt.date.today().isoformat()
     target = ROOT / "docs" / "diagnostics" / f"{date}-m10-vm-evidence.md"
+    if target.exists():
+        stamp = dt.datetime.now().strftime("%H%M%S")
+        target = target.with_name(f"{date}-m10-vm-evidence-{stamp}.md")
     target.parent.mkdir(parents=True, exist_ok=True)
     body = render_evidence_report(report, source_commit=source_commit, date=date)
     restored = "SIM" if baseline_restored else "NÃO — execução interrompida"
