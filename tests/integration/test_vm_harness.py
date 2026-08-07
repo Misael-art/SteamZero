@@ -533,6 +533,39 @@ def test_wait_for_guest_retries_a_timed_out_ssh_probe(
     assert calls[1][0] == "ssh"
 
 
+def test_wait_for_guest_preserves_the_last_cloud_init_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+        ssh_private_key=tmp_path / "operator.key",
+    )
+    lease = b"vnet0 52:54:00:00:00:01 ipv4 192.0.2.5/24\n"
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        if "domifaddr" in argv:
+            return CommandResult(0, lease)
+        if "'cloud-init'" in argv[-1]:
+            return CommandResult(1, stderr=b"cloud-init ainda instalando pacotes")
+        return CommandResult(0)
+
+    monkeypatch.setattr(provision_module.time, "sleep", lambda _seconds: None)
+    with pytest.raises(provision_module.GuestReadinessError) as exc:
+        provision_module._wait_for_guest(config, runner=runner, retries=1)
+    assert exc.value.last_issue["phase"] == "cloud-init"
+    assert exc.value.last_issue["address"] == "192.0.2.5"
+    assert exc.value.last_issue["command"] == {
+        "label": "SSH guest (cloud-init)",
+        "returncode": 1,
+        "stdout": "",
+        "stderr": "cloud-init ainda instalando pacotes",
+    }
+
+
 def test_provision_orchestrates_only_disposable_resources(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

@@ -5603,3 +5603,28 @@ check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
 `capability_matrix --check` verdes. Não fecha Item 4, DEBT-A7 ou gaps; apenas
 protege a próxima tentativa diagnóstica. Nenhuma ação de host de produção,
 release ou push foi executada.
+
+## 2026-08-07 — Item 4 (VM M10) — diagnóstico de readiness iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `64676d1`. A tentativa
+focal `steamzero-m10-r13` não chegou ao RetroArch: recebeu IPv4, porém o
+harness terminou em `VM não obteve IPv4/SSH antes do prazo`. A nova evidência
+preservou o estágio, mas não a última falha interna de SSH ou de
+`cloud-init status --wait`; portanto ainda não há causa concreta para mudar o
+comportamento de readiness. Escopo: reter esse último payload estruturado,
+sem elevar tempos, sem trocar pacotes e sem tocar PCSX2/PPSSPP. Nenhuma ação
+de host de produção, release ou push foi executada.
+
+## 2026-08-07 — Item 4 (VM M10) — diagnóstico de readiness concluído
+
+`GuestReadinessError` passou a reter o último evento de lease, SSH ou
+`cloud-init`, incluindo endereço, tipo/mensagem da exceção e stdout/stderr/
+return code quando houver subprocesso. Esse objeto é incluído integralmente na
+seção de falha da evidência antes do cleanup; o relatório inicial também já
+declara o protocolo solicitado. Não alterei o orçamento de espera nem inferi
+uma correção de pacote/boot sem o payload real. Validação: 29 testes dedicados;
+suíte isolada **4212 passaram, 10 skipados**; `ruff check`, `ruff format
+--check`, `mypy src`, `make independence boundaries` e `capability_matrix
+--check` verdes. Item 4/DEBT-A7 continuam bloqueados; a próxima ação é repetir
+somente RetroArch/minimal. Nenhuma ação de host de produção, release ou push
+foi executada.

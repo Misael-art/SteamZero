@@ -138,6 +138,14 @@ class GuestComponentError(RuntimeError):
         super().__init__(f"component {action} falhou: {json.dumps(detail, sort_keys=True)}")
 
 
+class GuestReadinessError(RuntimeError):
+    """Readiness esgotado, com a última causa observada no guest."""
+
+    def __init__(self, last_issue: dict[str, Any]) -> None:
+        self.last_issue = last_issue
+        super().__init__("VM não obteve IPv4/SSH antes do prazo")
+
+
 def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> CommandResult:
     kwargs: dict[str, Any] = {
         "capture_output": True,
@@ -393,6 +401,7 @@ def _guest_ssh(
 
 def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> str:
     """Espera lease IPv4 e autenticação SSH; timeout não vira êxito implícito."""
+    last_issue: dict[str, Any] = {"phase": "lease", "detail": "nenhuma tentativa executada"}
     for _ in range(retries):
         try:
             lease = runner(
@@ -409,6 +418,10 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
                 20.0,
             )
         except subprocess.TimeoutExpired:
+            last_issue = {
+                "phase": "lease",
+                "exception": {"type": "TimeoutExpired", "message": "domifaddr excedeu 20s"},
+            }
             time.sleep(2)
             continue
         text = lease.stdout.decode("utf-8", errors="replace")
@@ -425,12 +438,24 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
             )
             try:
                 probe._ssh(("true",), timeout=15.0)
+            except (RuntimeError, subprocess.TimeoutExpired) as exc:
+                last_issue = _readiness_issue("ssh", str(address), exc)
+                break
+            try:
                 probe._ssh(("cloud-init", "status", "--wait"), timeout=300.0)
-            except (RuntimeError, subprocess.TimeoutExpired):
+            except (RuntimeError, subprocess.TimeoutExpired) as exc:
+                last_issue = _readiness_issue("cloud-init", str(address), exc)
                 break
             return str(address)
+        else:
+            last_issue = {
+                "phase": "lease",
+                "returncode": lease.returncode,
+                "stdout": text,
+                "detail": "nenhum IPv4 foi encontrado no lease",
+            }
         time.sleep(2)
-    raise RuntimeError("VM não obteve IPv4/SSH antes do prazo")
+    raise GuestReadinessError(last_issue)
 
 
 def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
@@ -537,6 +562,16 @@ def _failure_payload(stage: str, exc: BaseException) -> dict[str, Any]:
             "stdout": exc.result.stdout.decode("utf-8", errors="replace"),
             "stderr": exc.result.stderr.decode("utf-8", errors="replace"),
         }
+    if isinstance(exc, GuestReadinessError):
+        payload["readiness"] = exc.last_issue
+    return payload
+
+
+def _readiness_issue(phase: str, address: str, exc: BaseException) -> dict[str, Any]:
+    """Devolve o mesmo payload serializável que irá para a evidência final."""
+    payload = _failure_payload(f"readiness: {phase}", exc)
+    payload["phase"] = phase
+    payload["address"] = address
     return payload
 
 
@@ -620,7 +655,12 @@ def provision(
     overlay = config.run_dir / "disk.qcow2"
     seed = config.run_dir / "seed.iso"
     baseline_restored = False
-    report: dict[str, Any] = {"ok": False, "emulators": [], "summary": {}}
+    report: dict[str, Any] = {
+        "ok": False,
+        "emulators": [],
+        "summary": {},
+        "protocol": protocol,
+    }
     failure: dict[str, Any] | None = None
     evidence: Path | None = None
     stage = "preparação da overlay"
