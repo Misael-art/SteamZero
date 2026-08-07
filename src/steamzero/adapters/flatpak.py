@@ -169,9 +169,29 @@ class FlatpakCLI:
             30.0,
         )
         if result.returncode != 0:
+            current = self._runner(
+                (
+                    "flatpak",
+                    "remote-info",
+                    "--user",
+                    "--app",
+                    "--show-commit",
+                    remote,
+                    ref,
+                ),
+                30.0,
+            )
+            current_commit = current.stdout.strip()
+            current_detail = (
+                f"; commit atual do remoto: {current_commit}"
+                if current.returncode == 0 and _COMMIT_RE.fullmatch(current_commit)
+                else ""
+            )
             raise SteamZeroError(
                 "E-SUPPLY-REMOTE-FAILED",
-                detail=f"commit pinado indisponível para {ref}: {_detail(result)}",
+                detail=(
+                    f"commit pinado indisponível para {ref}: {_detail(result)}{current_detail}"
+                ),
             )
         resolved = result.stdout.strip()
         if resolved != commit:

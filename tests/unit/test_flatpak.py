@@ -56,12 +56,25 @@ def test_mutations_are_user_scoped_noninteractive_and_fixed_argv() -> None:
 
 
 def test_remote_failure_maps_to_stable_error() -> None:
-    runner = FakeRunner([CommandResult(1, "", "remote indisponível")])
+    current = "b" * 64
+    runner = FakeRunner(
+        [CommandResult(1, "", "remote indisponível"), CommandResult(0, f"{current}\n")]
+    )
 
     with pytest.raises(SteamZeroError) as error:
         FlatpakCLI(runner=runner).resolve("flathub", REF, COMMIT)
 
     assert error.value.code == "E-SUPPLY-REMOTE-FAILED"
+    assert current in error.value.detail
+    assert runner.calls[1][0] == (
+        "flatpak",
+        "remote-info",
+        "--user",
+        "--app",
+        "--show-commit",
+        "flathub",
+        REF,
+    )
 
 
 def test_invalid_ref_never_reaches_runner() -> None:

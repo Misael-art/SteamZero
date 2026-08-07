@@ -4498,6 +4498,29 @@ etapa física. Validação: 39 testes dirigidos; suíte isolada **4206 passaram,
 `capability_matrix --check` verdes. Nenhuma ação de host de produção, release
 ou push foi executada.
 
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de pin atual iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `9a98a73`. A VM real também
+reprovou o commit RetroArch obtido de resultado histórico de build; portanto
+histórico de build não é substituto para a ponta do remoto vivo. Escopo:
+quando a resolução de um pin falhar, consultar read-only o commit atual do
+mesmo ref e incluí-lo no diagnóstico, sem trocar pin automaticamente. Nenhum
+host de produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de pin atual concluído
+
+O commit atômico `fix(flatpak): expõe commit atual no drift` faz uma única
+consulta `remote-info --show-commit` quando o pin requisitado falha e anexa o
+commit atual válido ao erro. Ele não atualiza manifesto, não instala nada e
+preserva o mesmo código de erro de supply chain.
+
+Decisão de bancada: usar o remoto vivo como fonte de diagnóstico elimina a
+ambiguidade de commits históricos de build e mantém a aprovação dependente de
+uma alteração revisada do manifesto. Validação: 31 testes dirigidos; suíte
+isolada **4206 passaram, 10 skipados**; Ruff, mypy, `make independence
+boundaries component-lock` e `capability_matrix --check` verdes. Nenhuma ação
+de host de produção, release ou push foi executada.
+
 ## 2026-08-05 — Vistas virtualizadas da biblioteca
 
 `EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o
