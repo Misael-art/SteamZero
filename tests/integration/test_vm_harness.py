@@ -362,6 +362,17 @@ def test_guest_component_client_unwraps_the_cli_envelope(tmp_path: Path) -> None
     assert all("IdentitiesOnly=yes" in call for call in calls)
 
 
+def test_guest_component_client_preserves_failed_lifecycle_data() -> None:
+    def runner(_argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        return CommandResult(
+            0,
+            json.dumps({"ok": False, "error": None, "data": {"status": "failed"}}).encode(),
+        )
+
+    with pytest.raises(RuntimeError, match='"status": "failed"'):
+        GuestComponentClient("192.0.2.5", runner=runner).rollback("op-1")
+
+
 def test_snapshot_is_bootable_and_records_its_subvolume_id(tmp_path: Path) -> None:
     calls: list[tuple[str, ...]] = []
 

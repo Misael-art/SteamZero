@@ -2850,6 +2850,28 @@ ler origem por `flatpak list` e commit por `flatpak info --show-commit`, que é
 a fonte canônica para deployment instalado. Nenhum host de produção, release
 ou push está no escopo.
 
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de rollback iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `16b3f37`. A VM real
+avançou além de instalação e verificação, mas `component rollback` retornou
+`ok:false` com `error:null` e dados no campo `data`; o cliente de VM reduziu
+isso a `None`. Escopo: preservar o payload completo de lifecycle no erro para
+a próxima evidência. Nenhum host de produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de rollback concluído
+
+O commit atômico `fix(vm-harness): preserva payload de rollback` usa
+`error`, depois `data`, depois o envelope inteiro para explicar uma resposta
+`ok:false` da CLI. Isso preserva o resultado do lifecycle quando o handler
+marca `status=failed` sem preencher o objeto `error` do envelope.
+
+Decisão de bancada: não reinterpretar o resultado nem torná-lo sucesso; o
+cliente só melhora a observabilidade para que a VM revele a causa raiz.
+Validação: 24 testes do harness; suíte isolada **4207 passaram, 10 skipados**;
+Ruff, mypy, `make independence boundaries component-lock` e
+`capability_matrix --check` verdes. Nenhuma ação de host de produção, release
+ou push foi executada.
+
 ## 2026-08-06 — Item 4 (VM M10) — leitura de estado Flatpak concluída
 
 O commit atômico `fix(flatpak): lê commit do deployment` deixa `flatpak list`

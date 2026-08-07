@@ -325,7 +325,8 @@ class GuestComponentClient(ComponentClient):
         except json.JSONDecodeError as exc:
             raise RuntimeError("CLI da VM não devolveu JSON") from exc
         if envelope.get("ok") is False:
-            raise RuntimeError(f"component {action} falhou: {envelope.get('error')}")
+            detail = envelope.get("error") or envelope.get("data") or envelope
+            raise RuntimeError(f"component {action} falhou: {json.dumps(detail, sort_keys=True)}")
         data = envelope.get("data")
         if not isinstance(data, dict):
             raise RuntimeError(f"component {action} devolveu data inválido")
