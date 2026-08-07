@@ -300,10 +300,10 @@
     },
     {
       "id": "retroarch",
-      "manifestHash": "c90162e30e57da61b51013abb3c3e6c3c7cc661fcc315383bf273777228f7406",
+      "manifestHash": "17caffa009f6a30a81de463c79c3b337b2845c2c7a8c00a92569ebbb09b7ce42",
       "source": {
         "type": "flatpak",
-        "version": "56fdd2ed2f5ae5d7bb887f38858c68757e27afcc8e86e830e338e14cd4988522",
+        "version": "8654e66b8ee5f76f5fc488890fb41093f4bb12109a2bb94836549d844625f288",
         "priority": 1,
         "ref": "org.libretro.RetroArch",
         "remote": "flathub"

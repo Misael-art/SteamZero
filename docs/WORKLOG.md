@@ -4474,6 +4474,30 @@ cloud-init continua reprovando. Validação: 23 testes dedicados; suíte isolada
 src`, `make independence boundaries` e `capability_matrix --check` verdes.
 Nenhuma ação de host de produção, release ou push foi executada.
 
+## 2026-08-06 — Item 4 (VM M10) — renovação do pin RetroArch iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `6e3751a`. A VM real
+comprovou que o commit RetroArch promovido no manifesto já não existe no
+Flathub (HTTP 404). Escopo: renovar apenas esse pin pelo commit stable
+publicado pelo próprio Flathub, regenerar o lockfile e atualizar a
+documentação que expõe o hash. PCSX2 e PPSSPP ficam inalterados até serem
+observados pela mesma prova física. Nenhum host de produção, release ou push
+está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — renovação do pin RetroArch concluída
+
+O commit atômico `fix(adapters): renova pin do RetroArch` promove o commit
+stable `8654e66b…` do ref x86_64 do Flathub, atualiza o lockfile derivado e a
+documentação operacional. A alteração responde à evidência física de 404; não
+remove a exigência de commit exato.
+
+Decisão de bancada: renovar somente RetroArch, o primeiro adapter observado
+como indisponível, preserva a rastreabilidade de PCSX2/PPSSPP para a próxima
+etapa física. Validação: 39 testes dirigidos; suíte isolada **4206 passaram,
+10 skipados**; Ruff, mypy, `make independence boundaries component-lock` e
+`capability_matrix --check` verdes. Nenhuma ação de host de produção, release
+ou push foi executada.
+
 ## 2026-08-05 — Vistas virtualizadas da biblioteca
 
 `EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o
