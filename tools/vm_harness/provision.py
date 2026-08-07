@@ -127,7 +127,11 @@ def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> Comma
 
 def _required(value: CommandResult, label: str) -> bytes:
     if value.returncode != 0:
-        detail = value.stderr.decode("utf-8", errors="replace").strip() or "sem diagnóstico"
+        detail = (
+            value.stderr.decode("utf-8", errors="replace").strip()
+            or value.stdout.decode("utf-8", errors="replace").strip()
+            or "sem diagnóstico"
+        )
         raise RuntimeError(f"{label} falhou: {detail}")
     return value.stdout
 

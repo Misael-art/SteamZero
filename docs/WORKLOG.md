@@ -4428,6 +4428,29 @@ teve 3.901 verdes e as mesmas 20 falhas externas já registradas (schema 16 e
 sockets preexistentes em `/tmp`). Nenhuma ação de host, release ou push foi
 executada.
 
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de componente iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `d652c26`. A sexta execução
+autorizada obteve SSH, copiou a fonte e chegou à chamada real `component`, mas
+essa chamada retornou código de erro sem stderr; o harness registrou apenas
+"sem diagnóstico" antes de descartar o domínio. Escopo: preservar stdout como
+diagnóstico alternativo de subprocesso para a próxima evidência. Nenhum host
+de produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — diagnóstico de componente concluído
+
+O commit atômico `fix(vm-harness): preserva stdout de falhas` inclui stdout
+como diagnóstico alternativo quando um subprocesso falha sem stderr. Isso não
+altera código de retorno nem a política de reprovação; apenas torna a causa da
+próxima chamada real `component` auditável na evidência.
+
+Decisão de bancada: stdout só é exposto em caminho de erro, após stderr, para
+preservar a preferência por diagnósticos convencionais e evitar ocultar uma
+resposta JSON de falha. Validação: 23 testes dedicados; suíte isolada **4206
+passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
+`make independence boundaries` e `capability_matrix --check` verdes. Nenhuma
+ação de host de produção, release ou push foi executada.
+
 ## 2026-08-05 — Vistas virtualizadas da biblioteca
 
 `EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o

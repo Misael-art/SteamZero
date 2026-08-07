@@ -269,6 +269,13 @@ def test_process_runner_only_passes_input_when_copying_archive(
     assert "stdin" not in calls[1]
 
 
+def test_required_uses_stdout_when_a_process_has_no_stderr() -> None:
+    with pytest.raises(RuntimeError, match="diagnóstico do guest"):
+        provision_module._required(
+            CommandResult(1, stdout="diagnóstico do guest".encode()), "component status"
+        )
+
+
 def test_vm_config_rejects_execution_without_operator_inputs(tmp_path: Path) -> None:
     config = VmConfig(
         source_commit="a" * 40,
