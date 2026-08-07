@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -366,8 +367,40 @@ def test_destroy_vm_preserves_failure_artifacts_but_removes_named_domain(tmp_pat
     provision_module._destroy_vm(config, runner=runner, remove_run_dir=False)
     assert config.run_dir.is_dir()
     assert calls == [
-        ("virsh", "destroy", "steamzero-m10"),
-        ("virsh", "undefine", "steamzero-m10", "--nvram"),
+        ("virsh", "--connect", "qemu:///system", "destroy", "steamzero-m10"),
+        ("virsh", "--connect", "qemu:///system", "undefine", "steamzero-m10", "--nvram"),
+    ]
+
+
+def test_wait_for_guest_retries_a_timed_out_lease_query(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config = VmConfig(
+        source_commit="a" * 40,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        work_dir=tmp_path / "work",
+    )
+    calls: list[tuple[str, ...]] = []
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        calls.append(argv)
+        raise subprocess.TimeoutExpired(list(argv), 20.0)
+
+    monkeypatch.setattr(provision_module.time, "sleep", lambda _seconds: None)
+    with pytest.raises(RuntimeError, match="não obteve IPv4/SSH"):
+        provision_module._wait_for_guest(config, runner=runner, retries=1)
+    assert calls == [
+        (
+            "virsh",
+            "--connect",
+            "qemu:///system",
+            "domifaddr",
+            "steamzero-m10",
+            "--source",
+            "lease",
+        )
     ]
 
 
@@ -448,4 +481,4 @@ def test_provision_orchestrates_only_disposable_resources(
     assert str(config.base_image.resolve()) in qemu_img
     assert any(command[0] in {"cloud-localds", "xorriso", "genisoimage"} for command in calls)
     assert any(command[0] == "virt-install" for command in calls)
-    assert any(command[:2] == ("virsh", "ttyconsole") for command in calls)
+    assert any(command[0] == "virsh" and "ttyconsole" in command for command in calls)

@@ -5309,3 +5309,30 @@ reutilizar o diretório FUSE remanescente da tentativa interrompida. Validação
 check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
 `capability_matrix --check` verdes. Nenhuma ação de host, release ou push foi
 executada durante esta correção.
+
+## 2026-08-06 — Item 4 (VM M10) — tolerância ao lease libvirt iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `5b143f8`. A terceira
+execução autorizada criou a VM descartável e a overlay, mas a consulta
+`virsh domifaddr --source lease` excedeu o timeout de 20 segundos durante a
+sondagem inicial. O domínio próprio foi destruído e indefinido manualmente
+após a confirmação de que o cleanup não o tinha removido; os artefatos
+marcados foram preservados. Escopo: tratar timeout de consulta de lease como
+"ainda não pronto" e usar a conexão libvirt explícita em cada operação do
+harness. Nenhum host de produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — tolerância ao lease libvirt concluída
+
+O commit atômico `fix(vm-harness): tolera lease lento do libvirt` fixa cada
+operação `virsh` em `qemu:///system` e transforma `TimeoutExpired` na leitura
+de lease em nova tentativa de readiness. Assim, uma consulta transitória lenta
+não aborta a VM antes de cloud-init/sshd terminarem, mas o limite total de
+tentativas continua reprovando sem êxito implícito.
+
+Decisão de bancada: não elevar o timeout individual nem esconder o erro de
+libvirt; repetir mantém responsividade e produz falha explícita ao fim do
+orçamento. Validação: 20 testes dedicados; suíte isolada **4203 passaram, 10
+skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. A VM anterior
+foi apenas destruída/indefinida como recurso descartável autorizado; nenhuma
+ação de host de produção, release ou push foi executada.

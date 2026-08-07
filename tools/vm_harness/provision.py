@@ -366,7 +366,23 @@ def _guest_ssh(
 def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> str:
     """Espera lease IPv4 e autenticação SSH; timeout não vira êxito implícito."""
     for _ in range(retries):
-        lease = runner(("virsh", "domifaddr", config.vm_name, "--source", "lease"), None, 20.0)
+        try:
+            lease = runner(
+                (
+                    "virsh",
+                    "--connect",
+                    "qemu:///system",
+                    "domifaddr",
+                    config.vm_name,
+                    "--source",
+                    "lease",
+                ),
+                None,
+                20.0,
+            )
+        except subprocess.TimeoutExpired:
+            time.sleep(2)
+            continue
         text = lease.stdout.decode("utf-8", errors="replace")
         for token in text.split():
             candidate = token.split("/", 1)[0]
@@ -464,8 +480,12 @@ def _restore_snapshot(
 
 def _destroy_vm(config: VmConfig, *, runner: Runner, remove_run_dir: bool) -> None:
     """Remove o domínio nomeado; só limpa artefatos depois de certificação completa."""
-    runner(("virsh", "destroy", config.vm_name), None, 60.0)
-    runner(("virsh", "undefine", config.vm_name, "--nvram"), None, 60.0)
+    runner(("virsh", "--connect", "qemu:///system", "destroy", config.vm_name), None, 60.0)
+    runner(
+        ("virsh", "--connect", "qemu:///system", "undefine", config.vm_name, "--nvram"),
+        None,
+        60.0,
+    )
     if not remove_run_dir:
         return
     marker = config.run_dir / ".steamzero-m10-managed"
@@ -540,7 +560,11 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
         )
         address = _wait_for_guest(config, runner=runner)
         _required(
-            runner(("virsh", "ttyconsole", config.vm_name), None, 30.0),
+            runner(
+                ("virsh", "--connect", "qemu:///system", "ttyconsole", config.vm_name),
+                None,
+                30.0,
+            ),
             "console serial independente",
         )
         _copy_source(config, address, runner=runner)
