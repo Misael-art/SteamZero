@@ -2841,6 +2841,29 @@ dirigidos; suíte isolada **4206 passaram, 10 skipados**; Ruff, mypy, `make
 independence boundaries component-lock` e `capability_matrix --check` verdes.
 Nenhuma ação de host de produção, release ou push foi executada.
 
+## 2026-08-06 — Item 4 (VM M10) — leitura de estado Flatpak iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `77cd483`. A VM real
+resolveu o pin vivo e alcançou `apply`, mas o parser tratou a coluna Flatpak
+`active` como SHA de deployment e degradou/rollbackou o componente. Escopo:
+ler origem por `flatpak list` e commit por `flatpak info --show-commit`, que é
+a fonte canônica para deployment instalado. Nenhum host de produção, release
+ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — leitura de estado Flatpak concluída
+
+O commit atômico `fix(flatpak): lê commit do deployment` deixa `flatpak list`
+apenas para detectar origem e usa `flatpak info --show-commit` para obter o
+SHA instalado. Isso corrige a interpretação da coluna `active`, que não é o
+commit, e permite verificar/rollbackar o deployment real.
+
+Decisão de bancada: separar descoberta de origem e leitura de commit usa os
+dois contratos estáveis da CLI Flatpak e evita inferência de coluna de
+apresentação. Validação: 86 testes dirigidos; suíte isolada **4206 passaram,
+10 skipados**; Ruff, mypy, `make independence boundaries component-lock` e
+`capability_matrix --check` verdes. Nenhuma ação de host de produção, release
+ou push foi executada.
+
 **Host/release:** nenhuma instalação, build de wheel ou ação de host executada.
 
 ## 2026-07-26 — Revisão independente da correção de UI

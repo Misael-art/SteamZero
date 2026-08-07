@@ -26,7 +26,7 @@ class FakeRunner:
 
 
 def test_status_parses_machine_columns() -> None:
-    runner = FakeRunner([CommandResult(0, f"{REF}\t{COMMIT}\tflathub\n")])
+    runner = FakeRunner([CommandResult(0, f"{REF}\tflathub\n"), CommandResult(0, f"{COMMIT}\n")])
 
     assert FlatpakCLI(runner=runner).status(REF) == FlatpakState(True, REF, "flathub", COMMIT)
     assert runner.calls[0][0] == (
@@ -34,8 +34,9 @@ def test_status_parses_machine_columns() -> None:
         "list",
         "--user",
         "--app",
-        "--columns=application,active,origin",
+        "--columns=application,origin",
     )
+    assert runner.calls[1][0] == ("flatpak", "info", "--user", "--show-commit", REF)
 
 
 def test_mutations_are_user_scoped_noninteractive_and_fixed_argv() -> None:

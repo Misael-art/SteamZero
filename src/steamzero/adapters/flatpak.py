@@ -134,15 +134,20 @@ class FlatpakCLI:
     def status(self, ref: str) -> FlatpakState:
         _require_ref(ref)
         result = self._runner(
-            ("flatpak", "list", "--user", "--app", "--columns=application,active,origin"),
+            ("flatpak", "list", "--user", "--app", "--columns=application,origin"),
             10.0,
         )
         _require_command(result, "listar instalações Flatpak")
         for line in result.stdout.splitlines():
             columns = line.split("\t")
-            if len(columns) >= 3 and columns[0].strip() == ref:
-                commit = columns[1].strip()
-                origin = columns[2].strip()
+            if len(columns) >= 2 and columns[0].strip() == ref:
+                origin = columns[1].strip()
+                info = self._runner(
+                    ("flatpak", "info", "--user", "--show-commit", ref),
+                    10.0,
+                )
+                _require_command(info, f"ler commit Flatpak de {ref}")
+                commit = info.stdout.strip()
                 if not _COMMIT_RE.fullmatch(commit) or not _REMOTE_RE.fullmatch(origin):
                     raise SteamZeroError(
                         "E-COMPONENT-DEGRADED",
