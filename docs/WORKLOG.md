@@ -2828,6 +2828,19 @@ verdes. O `ruff check src tools tests` permanece bloqueado por cinco E501 em
 `tools/capture_screenscraper_payload.py`, arquivo pré-existente e fora deste
 escopo.
 
+## 2026-08-06 — Item 4 (VM M10) — pin vivo RetroArch concluído
+
+O commit atômico `fix(adapters): fixa pin vivo do RetroArch` promove o commit
+`d8644a97…` observado diretamente pelo remoto Flathub na VM descartável,
+atualiza lockfile e documentação. Ele substitui o hash histórico que também
+retornava HTTP 404, mantendo o contrato de deployment estritamente pinado.
+
+Decisão de bancada: o commit só foi promovido após a evidência do remoto vivo;
+nenhum valor foi inferido de versão ou página de build. Validação: 47 testes
+dirigidos; suíte isolada **4206 passaram, 10 skipados**; Ruff, mypy, `make
+independence boundaries component-lock` e `capability_matrix --check` verdes.
+Nenhuma ação de host de produção, release ou push foi executada.
+
 **Host/release:** nenhuma instalação, build de wheel ou ação de host executada.
 
 ## 2026-07-26 — Revisão independente da correção de UI
@@ -4520,6 +4533,15 @@ uma alteração revisada do manifesto. Validação: 31 testes dirigidos; suíte
 isolada **4206 passaram, 10 skipados**; Ruff, mypy, `make independence
 boundaries component-lock` e `capability_matrix --check` verdes. Nenhuma ação
 de host de produção, release ou push foi executada.
+
+## 2026-08-06 — Item 4 (VM M10) — pin vivo RetroArch iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `6f11799`. A VM autorizada
+consultou o remoto vivo após rejeitar o pin provisório e devolveu o commit
+x86_64 stable `d8644a97df3db3cdd46eff2f7aea7d429c40f7e1e7ed5788a191714cc29a74a8`.
+Escopo: promover esse valor observado, regenerar o lockfile e provar o ciclo
+até o próximo adapter. Nenhum host de produção, release ou push está no
+escopo.
 
 ## 2026-08-05 — Vistas virtualizadas da biblioteca
 

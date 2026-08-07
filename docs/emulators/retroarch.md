@@ -31,7 +31,7 @@ Flatpak `org.libretro.RetroArch`, `configFormat: ini`, licença `GPL-3.0-only`,
 A coleta (E2) afirma que "Flatpak e Steam auto-atualizam — incompatíveis com a
 premissa de versões pinadas". **Isso é verdade para Steam e falso para Flatpak
 como o usamos:** o nosso manifesto já pina o *commit* Flatpak
-(`8654e66b8ee5f76f5fc488890fb41093f4bb12109a2bb94836549d844625f288`), e commit
+(`d8644a97df3db3cdd46eff2f7aea7d429c40f7e1e7ed5788a191714cc29a74a8`), e commit
 Flatpak é um identificador imutável de conteúdo — é um pin legítimo, equivalente
 funcional ao SHA-256 de um arquivo.
 

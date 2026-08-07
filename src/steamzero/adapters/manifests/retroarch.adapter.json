@@ -26,7 +26,7 @@
       "type": "flatpak",
       "ref": "org.libretro.RetroArch",
       "remote": "flathub",
-      "version": "8654e66b8ee5f76f5fc488890fb41093f4bb12109a2bb94836549d844625f288",
+      "version": "d8644a97df3db3cdd46eff2f7aea7d429c40f7e1e7ed5788a191714cc29a74a8",
       "priority": 1
     }
   ],
