@@ -314,7 +314,8 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     )
     user_data, meta_data = render_cloud_init(config, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
     assert "python-jsonschema" in user_data
-    assert "flatpak, remote-add, --user" in user_data
+    assert "runuser, -l, steamzero" in user_data
+    assert "flatpak remote-add --user --if-not-exists flathub" in user_data
     assert "steamzero-m10" in meta_data
     argv = build_virt_install_argv(config, tmp_path / "overlay.qcow2", tmp_path / "seed.iso")
     assert argv[:5] == ["virt-install", "--connect", "qemu:///system", "--name", "steamzero-m10"]

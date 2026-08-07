@@ -215,7 +215,7 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
         packages: [python, python-jsonschema, flatpak, sddm, openssh, btrfs-progs, git]
         runcmd:
           - [systemctl, enable, --now, sshd.service]
-          - [runuser, -u, {_GUEST_USER}, --, flatpak, remote-add, --user, --if-not-exists, flathub, https://dl.flathub.org/repo/flathub.flatpakrepo]
+          - [runuser, -l, {_GUEST_USER}, -c, "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"]
         """
     )
     meta_data = (
@@ -403,6 +403,7 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
             )
             try:
                 probe._ssh(("true",), timeout=15.0)
+                probe._ssh(("cloud-init", "status", "--wait"), timeout=300.0)
             except (RuntimeError, subprocess.TimeoutExpired):
                 break
             return str(address)

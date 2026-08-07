@@ -4451,6 +4451,29 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
 `make independence boundaries` e `capability_matrix --check` verdes. Nenhuma
 ação de host de produção, release ou push foi executada.
 
+## 2026-08-06 — Item 4 (VM M10) — remoto Flatpak do guest iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `51d90af`. A sétima
+execução autorizada alcançou a CLI real e devolveu evidência concreta:
+`E-SUPPLY-REMOTE-FAILED`, porque `flathub` não existia na instalação de usuário
+do guest. Escopo: criar o remoto em sessão de login do usuário `steamzero` e
+não iniciar a certificação até a conclusão do cloud-init. Nenhum host de
+produção, release ou push está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — remoto Flatpak do guest concluído
+
+O commit atômico `fix(vm-harness): espera cloud-init do guest` cria Flathub
+com `runuser -l steamzero`, garantindo HOME da instalação Flatpak de usuário,
+e só deixa o readiness retornar após `cloud-init status --wait`. Assim, a CLI
+não disputa com o `runcmd` que instala o remoto.
+
+Decisão de bancada: esperar cloud-init em vez de inserir atraso fixo mantém a
+execução rápida em imagem pronta e determinística em imagem lenta; falha do
+cloud-init continua reprovando. Validação: 23 testes dedicados; suíte isolada
+**4206 passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy
+src`, `make independence boundaries` e `capability_matrix --check` verdes.
+Nenhuma ação de host de produção, release ou push foi executada.
+
 ## 2026-08-05 — Vistas virtualizadas da biblioteca
 
 `EditorialLibrary` agora alterna entre carrossel focal, grade e lista usando o
