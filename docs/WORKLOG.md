@@ -5361,3 +5361,28 @@ o orçamento total e a causa final. Validação: 21 testes dedicados; suíte
 isolada **4204 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
 `mypy src`, `make independence boundaries` e `capability_matrix --check`
 verdes. Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-06 — Item 4 (VM M10) — correção do executor SSH iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `d0d7fe1`. A quinta
+execução autorizada alcançou o lease e a rede do guest; ao executar o probe
+real, o Python recusou `stdin` junto com `input=None` no executor de processos.
+O domínio descartável foi removido pelo cleanup e a evidência foi preservada.
+Escopo: passar `input` somente para a cópia binária do `git archive`, mantendo
+stdin nulo para os demais comandos. Nenhum host de produção, release ou push
+está no escopo.
+
+## 2026-08-06 — Item 4 (VM M10) — correção do executor SSH concluída
+
+O commit atômico `fix(vm-harness): corrige stdin do executor` passa `stdin`
+em `DEVNULL` para comandos sem payload e só fornece `input` para a transmissão
+binária de `git archive`. Isso satisfaz o contrato de `subprocess.run` no
+Python atual e preserva a cópia segura da árvore commitada.
+
+Decisão de bancada: manter stdin fechado em todos os comandos sem dados evita
+prompt interativo e não depende de semântica de `input=None` que mudou no
+runtime. Validação: 22 testes dedicados; suíte isolada **4205 passaram, 10
+skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. A VM anterior
+foi descartada; nenhuma ação de host de produção, release ou push foi
+executada.

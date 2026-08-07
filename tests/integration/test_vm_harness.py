@@ -246,6 +246,29 @@ def test_provision_rejects_execution_without_its_confirmation(
     assert "recusa mutar" in captured.err
 
 
+def test_process_runner_only_passes_input_when_copying_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    class Completed:
+        returncode = 0
+        stdout = b"out"
+        stderr = b"err"
+
+    def run(_argv: list[str], **kwargs: Any) -> Completed:
+        calls.append(kwargs)
+        return Completed()
+
+    monkeypatch.setattr(provision_module.subprocess, "run", run)
+    assert provision_module._run(("ssh", "guest"), None, 10.0).stdout == b"out"
+    assert "input" not in calls[0]
+    assert calls[0]["stdin"] is provision_module.subprocess.DEVNULL
+    provision_module._run(("ssh", "guest"), b"archive", 10.0)
+    assert calls[1]["input"] == b"archive"
+    assert "stdin" not in calls[1]
+
+
 def test_vm_config_rejects_execution_without_operator_inputs(tmp_path: Path) -> None:
     config = VmConfig(
         source_commit="a" * 40,

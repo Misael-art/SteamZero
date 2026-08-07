@@ -112,14 +112,16 @@ Runner = Callable[[Sequence[str], bytes | None, float], CommandResult]
 
 
 def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> CommandResult:
-    completed = subprocess.run(
-        list(argv),
-        input=input_data,
-        stdin=subprocess.DEVNULL if input_data is None else subprocess.PIPE,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-    )
+    kwargs: dict[str, Any] = {
+        "capture_output": True,
+        "check": False,
+        "timeout": timeout,
+    }
+    if input_data is None:
+        kwargs["stdin"] = subprocess.DEVNULL
+    else:
+        kwargs["input"] = input_data
+    completed = subprocess.run(list(argv), **kwargs)
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
 
 
