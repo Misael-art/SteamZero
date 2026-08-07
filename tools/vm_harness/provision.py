@@ -43,8 +43,11 @@ if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
 from vm_harness.driver import (  # noqa: E402 - sys.path precisa incluir tools no entry point direto
+    M10_FLATPAK_EMULATORS,
     ComponentClient,
-    certify_m10,
+    certify_emulator,
+    certify_emulator_minimal,
+    m10_pinned_commits,
     render_evidence_report,
 )
 
@@ -111,6 +114,30 @@ class CommandResult:
 Runner = Callable[[Sequence[str], bytes | None, float], CommandResult]
 
 
+class RequiredCommandError(RuntimeError):
+    """Falha de subprocesso com seus bytes preservados para a evidência."""
+
+    def __init__(self, label: str, result: CommandResult) -> None:
+        self.label = label
+        self.result = result
+        detail = (
+            result.stderr.decode("utf-8", errors="replace").strip()
+            or result.stdout.decode("utf-8", errors="replace").strip()
+            or "sem diagnóstico"
+        )
+        super().__init__(f"{label} falhou: {detail}")
+
+
+class GuestComponentError(RuntimeError):
+    """Envelope JSON reprovado da CLI do guest, sem perder payload."""
+
+    def __init__(self, action: str, envelope: dict[str, Any]) -> None:
+        self.action = action
+        self.envelope = envelope
+        detail = envelope.get("error") or envelope.get("data") or envelope
+        super().__init__(f"component {action} falhou: {json.dumps(detail, sort_keys=True)}")
+
+
 def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> CommandResult:
     kwargs: dict[str, Any] = {
         "capture_output": True,
@@ -127,12 +154,7 @@ def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> Comma
 
 def _required(value: CommandResult, label: str) -> bytes:
     if value.returncode != 0:
-        detail = (
-            value.stderr.decode("utf-8", errors="replace").strip()
-            or value.stdout.decode("utf-8", errors="replace").strip()
-            or "sem diagnóstico"
-        )
-        raise RuntimeError(f"{label} falhou: {detail}")
+        raise RequiredCommandError(label, value)
     return value.stdout
 
 
@@ -325,8 +347,7 @@ class GuestComponentClient(ComponentClient):
         except json.JSONDecodeError as exc:
             raise RuntimeError("CLI da VM não devolveu JSON") from exc
         if envelope.get("ok") is False:
-            detail = envelope.get("error") or envelope.get("data") or envelope
-            raise RuntimeError(f"component {action} falhou: {json.dumps(detail, sort_keys=True)}")
+            raise GuestComponentError(action, envelope)
         data = envelope.get("data")
         if not isinstance(data, dict):
             raise RuntimeError(f"component {action} devolveu data inválido")
@@ -501,20 +522,77 @@ def _destroy_vm(config: VmConfig, *, runner: Runner, remove_run_dir: bool) -> No
         shutil.rmtree(config.run_dir)
 
 
-def _write_evidence(source_commit: str, report: dict[str, Any], *, baseline_restored: bool) -> Path:
+def _failure_payload(stage: str, exc: BaseException) -> dict[str, Any]:
+    """Normaliza a causa sem descartar os dados que a VM devolveu."""
+    payload: dict[str, Any] = {
+        "stage": stage,
+        "exception": {"type": type(exc).__name__, "message": str(exc)},
+    }
+    if isinstance(exc, GuestComponentError):
+        payload["component"] = {"action": exc.action, "envelope": exc.envelope}
+    if isinstance(exc, RequiredCommandError):
+        payload["command"] = {
+            "label": exc.label,
+            "returncode": exc.result.returncode,
+            "stdout": exc.result.stdout.decode("utf-8", errors="replace"),
+            "stderr": exc.result.stderr.decode("utf-8", errors="replace"),
+        }
+    return payload
+
+
+def _write_evidence(
+    source_commit: str,
+    report: dict[str, Any],
+    *,
+    baseline_restored: bool,
+    failure: dict[str, Any] | None = None,
+) -> Path:
     date = dt.date.today().isoformat()
     target = ROOT / "docs" / "diagnostics" / f"{date}-m10-vm-evidence.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     body = render_evidence_report(report, source_commit=source_commit, date=date)
     restored = "SIM" if baseline_restored else "NÃO — execução interrompida"
-    target.write_text(
-        body + f"\n## Restore do baseline Btrfs\n\n- Confirmado: **{restored}**\n",
-        encoding="utf-8",
-    )
+    if failure is not None:
+        body += "\n## Falha da execução\n\n```json\n"
+        body += json.dumps(failure, indent=2, ensure_ascii=False, sort_keys=True)
+        body += "\n```\n"
+    body += f"\n## Restore do baseline Btrfs\n\n- Confirmado: **{restored}**\n"
+    target.write_text(body, encoding="utf-8")
     return target
 
 
-def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
+def _selected_certification(
+    client: ComponentClient, *, adapter_id: str, protocol: str
+) -> dict[str, Any]:
+    if adapter_id not in M10_FLATPAK_EMULATORS:
+        raise ValueError(f"--adapter não pertence ao M10: {adapter_id}")
+    expected_commit = m10_pinned_commits()[adapter_id]
+    if protocol == "minimal":
+        result = certify_emulator_minimal(
+            client=client, emulator=adapter_id, expected_commit=expected_commit
+        )
+    elif protocol == "full":
+        result = certify_emulator(
+            client=client, emulator=adapter_id, expected_commit=expected_commit
+        )
+    else:
+        raise ValueError(f"protocolo M10 desconhecido: {protocol}")
+    return {
+        "ok": result.ok,
+        "pins": {adapter_id: expected_commit},
+        "emulators": [result.to_dict()],
+        "summary": {adapter_id: "ok" if result.ok else "fail"},
+        "protocol": protocol,
+    }
+
+
+def provision(
+    config: VmConfig,
+    *,
+    runner: Runner = _run,
+    adapter_id: str,
+    protocol: str = "full",
+) -> Path:
     """Executa a certificação autorizada; qualquer falha mantém evidência e falha."""
     config.validate(executing=True)
     _preflight()
@@ -540,7 +618,9 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
     seed = config.run_dir / "seed.iso"
     baseline_restored = False
     report: dict[str, Any] = {"ok": False, "emulators": [], "summary": {}}
+    failure: dict[str, Any] | None = None
     evidence: Path | None = None
+    stage = "preparação da overlay"
     try:
         _required(
             runner(
@@ -561,12 +641,16 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
             ),
             "criação da overlay qcow2",
         )
+        stage = "criação da seed cloud-init"
         seed_argv = _seed_argv(seed, config.run_dir / "user-data", config.run_dir / "meta-data")
         _required(runner(seed_argv, None, 120.0), "criação da seed cloud-init")
+        stage = "virt-install"
         _required(
             runner(build_virt_install_argv(config, overlay, seed), None, 180.0), "virt-install"
         )
+        stage = "readiness da VM"
         address = _wait_for_guest(config, runner=runner)
+        stage = "console serial independente"
         _required(
             runner(
                 ("virsh", "--connect", "qemu:///system", "ttyconsole", config.vm_name),
@@ -575,29 +659,42 @@ def provision(config: VmConfig, *, runner: Runner = _run) -> Path:
             ),
             "console serial independente",
         )
+        stage = "cópia da árvore do commit"
         _copy_source(config, address, runner=runner)
         identity_file = _private_identity(config)
+        stage = "snapshot Btrfs inicial"
         snapshot_id = _snapshot_before(address, identity_file=identity_file, runner=runner)
         client = GuestComponentClient(address, identity_file=identity_file, runner=runner)
-        report = certify_m10(client)
+        stage = f"certificação {adapter_id} ({protocol})"
+        report = _selected_certification(client, adapter_id=adapter_id, protocol=protocol)
         if not report["ok"]:
+            failure = {"stage": stage, "report": report}
             raise RuntimeError("certificação M10 reprovou; ver relatório de evidência")
+        stage = "seleção do snapshot Btrfs"
         _restore_snapshot(address, snapshot_id, identity_file=identity_file, runner=runner)
+        stage = "readiness após restore Btrfs"
         restored_address = _wait_for_guest(config, runner=runner)
         restored = GuestComponentClient(
             restored_address, identity_file=identity_file, runner=runner
         )
         baseline_restored = all(
             restored.status(adapter)["state"] in {"missing", "unavailable"}
-            for adapter in ("retroarch", "pcsx2", "ppsspp")
+            for adapter in (adapter_id,)
         )
         if not baseline_restored:
             raise RuntimeError("snapshot Btrfs não restaurou o baseline dos emuladores")
+    except BaseException as exc:
+        if failure is None:
+            failure = _failure_payload(stage, exc)
+        raise
     finally:
         evidence_written = False
         try:
             evidence = _write_evidence(
-                config.source_commit, report, baseline_restored=baseline_restored
+                config.source_commit,
+                report,
+                baseline_restored=baseline_restored,
+                failure=failure,
             )
             evidence_written = True
         finally:
@@ -622,6 +719,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--disk-size-gb", type=int, default=40)
     parser.add_argument("--memory-mib", type=int, default=4096)
     parser.add_argument("--cpus", type=int, default=4)
+    parser.add_argument("--adapter", choices=M10_FLATPAK_EMULATORS)
+    parser.add_argument(
+        "--protocol",
+        choices=("minimal", "full"),
+        default="full",
+        help="minimal roda install→verify→rollback em um único adapter",
+    )
     parser.add_argument(
         "--plan", action="store_true", help="somente imprime o plano; não toca o host"
     )
@@ -648,7 +752,9 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("recusa mutar: use --plan ou --execute --confirm EXECUTAR-VM-M10")
         if args.confirm != _CONFIRM:
             raise ValueError("confirmação incorreta para execução da VM M10")
-        evidence = provision(config)
+        if args.adapter is None:
+            raise ValueError("execução exige --adapter; um emulador por VM")
+        evidence = provision(config, adapter_id=args.adapter, protocol=args.protocol)
     except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"erro: {exc}", file=sys.stderr)
         return 1

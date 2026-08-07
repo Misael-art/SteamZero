@@ -68,6 +68,11 @@ CYCLE_STEPS: tuple[str, ...] = (
     "roll-forward",
 )
 
+#: Protocolo de diagnóstico: uma única transação que deve voltar ao baseline.
+#: Não inclui update nem roll-forward; serve para isolar rollback sem tocar os
+#: demais emuladores do M10.
+MINIMAL_CYCLE_STEPS: tuple[str, ...] = ("install", "verify", "rollback")
+
 
 def m10_pinned_commits(registry: AdapterRegistry | None = None) -> dict[str, str]:
     """Deriva os commits Flatpak do contrato bundled, nunca de uma constante.
@@ -234,6 +239,94 @@ def certify_emulator(
     return result
 
 
+def certify_emulator_minimal(
+    emulator: str,
+    client: ComponentClient,
+    *,
+    expected_commit: str,
+    evidence: EvidenceSink | None = None,
+) -> CycleResult:
+    """Roda somente ``install -> verify -> rollback`` para diagnóstico.
+
+    Este protocolo não é certificação M10 completa: ele existe para obter uma
+    causa concreta de rollback sem instalar PCSX2/PPSSPP nem deixar um
+    roll-forward no guest. O resultado sempre termina no baseline ausente.
+    """
+    result = CycleResult(emulator=emulator, ok=True)
+
+    def record(step: str, payload: dict[str, Any]) -> None:
+        result.steps.append({"step": step, **payload})
+        if evidence is not None:
+            evidence(emulator, step, payload)
+
+    def fail(step: str, detail: str, payload: dict[str, Any]) -> None:
+        record(step, {**payload, "ok": False, "detail": detail})
+        result.ok = False
+        result.failure = f"{step}: {detail}"
+
+    before = client.status(emulator)
+    record("baseline", {"status": before.get("state"), "ok": True})
+    if before.get("state") not in {"missing", "unavailable"}:
+        fail("baseline", f"emulador não começa ausente: state={before.get('state')}", before)
+        return result
+
+    install_plan = client.plan(emulator, "install")
+    plan_id = install_plan.get("planId")
+    confirm = install_plan.get("confirmToken")
+    if not plan_id or not confirm or install_plan.get("action") == "noop":
+        fail("install", "plan de install não é aplicável no baseline ausente", install_plan)
+        return result
+    install_op = client.apply(plan_id, confirm)
+    install_op_id = install_op.get("operationId")
+    if not install_op_id:
+        fail("install", "apply não devolveu operationId", install_op)
+        return result
+    after_install = client.status(emulator)
+    install_payload = {
+        "operationId": install_op_id,
+        "status": after_install.get("state"),
+        "commit": after_install.get("version"),
+        "expectedCommit": expected_commit,
+        "ok": True,
+    }
+    record("install", install_payload)
+    if after_install.get("state") != "installed":
+        fail("install", f"estado não é installed: {after_install.get('state')}", after_install)
+        return result
+    if after_install.get("version") != expected_commit:
+        fail(
+            "install",
+            f"commit Flatpak diverge: {after_install.get('version')} != {expected_commit}",
+            after_install,
+        )
+        return result
+
+    verified = client.verify(emulator)
+    record("verify", {**verified, "ok": verified.get("verified") is True})
+    if verified.get("verified") is not True:
+        fail("verify", "component verify não confirmou o deployment pinado", verified)
+        return result
+
+    rollback = client.rollback(str(install_op_id))
+    after_rollback = client.status(emulator)
+    record(
+        "rollback",
+        {
+            "operationId": install_op_id,
+            "rollback": rollback,
+            "status": after_rollback.get("state"),
+            "ok": True,
+        },
+    )
+    if after_rollback.get("state") not in {"missing", "unavailable"}:
+        fail(
+            "rollback",
+            f"estado após rollback não voltou a ausente: {after_rollback.get('state')}",
+            after_rollback,
+        )
+    return result
+
+
 def certify_m10(
     client: ComponentClient,
     *,
@@ -270,25 +363,27 @@ def render_evidence_report(report: dict[str, Any], *, source_commit: str, date: 
     ``source_commit`` e ``date`` são exigidos explicitamente: a evidência só vale
     se vinculada ao commit exato e à data em que a VM rodou.
     """
+    display_steps = MINIMAL_CYCLE_STEPS if report.get("protocol") == "minimal" else CYCLE_STEPS
     lines = [
         "# Evidência de certificação M10 (VM descartável)",
         "",
         f"- **Commit de origem:** `{source_commit}`",
         f"- **Data:** {date}",
         f"- **Veredito geral:** {'APROVADO' if report['ok'] else 'REPROVADO'}",
+        f"- **Protocolo:** {report.get('protocol', 'full')}",
         "",
         "## Resultado por emulador",
         "",
-        "| emulador | veredito | install | update | rollback | roll-forward |",
-        "|---|---|---|---|---|---|",
+        "| emulador | veredito | " + " | ".join(display_steps) + " |",
+        "|---|---|" + "---|" * len(display_steps),
     ]
     by_step: dict[str, dict[str, dict[str, Any]]] = {}
     for emu in report["emulators"]:
-        steps = {s["step"]: s for s in emu["steps"]}
-        by_step[emu["emulator"]] = steps
+        steps_by_name = {s["step"]: s for s in emu["steps"]}
+        by_step[emu["emulator"]] = steps_by_name
         row = [emu["emulator"], "OK" if emu["ok"] else "FAIL"]
-        for step in CYCLE_STEPS:
-            s = steps.get(step)
+        for step in display_steps:
+            s = steps_by_name.get(step)
             row.append(
                 f"{s.get('status', '—')} ({'ok' if s and s.get('ok', True) else 'fail'})"
                 if s

@@ -46,13 +46,16 @@ que prevalece sobre detalhes incompatíveis daquela intenção, é:
   `libretro-core`); `LibretroCoreExecutor`; 17 manifestos `libretro-*`; lockfile
   e matrix com 17 cores instaláveis e 0 plataformas bloqueadas.
 - **Item 5a concluído em `8a0425b`:** check read-only `boot.direct` no doctor.
-- **Item 4 (código) concluído:** o fundamento `4d4c989` foi auditado e o
-  provisionador efetivo foi completado no commit
+- **Item 4 — BLOQUEADO, NÃO CONCLUÍDO (2026-08-07):** o fundamento
+  `4d4c989` foi auditado e o provisionador efetivo foi completado no commit
   `feat(vm-harness): completa certificação M10 descartável`. Ele gera
   cloud-init/overlay/virt-install, usa CLI real por SSH, prova os pins Flatpak
   e restaura baseline Btrfs; sua execução continua protegida por confirmação e
-  autorização explícita. A VM real e a evidência física **não** foram feitas;
-  DEBT-A7 não pode ser declarado fechado.
+  autorização explícita. A VM real de RetroArch alcançou install e verify, mas
+  o rollback falhou; a evidência então não preservou o payload interno da
+  falha. Até capturá-lo, corrigi-lo com causa concreta, obter três ciclos
+  completos por emulador e confirmar o restore Btrfs, Item 4 e DEBT-A7 seguem
+  abertos.
 - **Restante pendente:** merge/CI na linha principal e os itens 5b–5h. Todos
   exigem primeiro a autorização explícita do operador descrita em AGENTS.md;
   este plano não autoriza mutação de host, release, VM, reboot nem push.

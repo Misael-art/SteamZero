@@ -5546,3 +5546,39 @@ skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
 independence boundaries` e `capability_matrix --check` verdes. A VM anterior
 foi descartada; nenhuma ação de host de produção, release ou push foi
 executada.
+
+## 2026-08-07 — Item 4 (VM M10) — bloqueado formalmente; diagnóstico focal iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `e4d680b`. **Estado formal:
+BLOQUEADO, NÃO CONCLUÍDO.** A execução descartável autorizada alcançou o
+install e o verify de RetroArch, mas `component rollback` retornou falha. A
+evidência existente registra o veredito reprovado, porém não reteve o payload
+interno da etapa; logo não há causa concreta para corrigir ainda. Escopo deste
+item: gravar a falha estruturada antes do cleanup e executar somente um ciclo
+mínimo de RetroArch (`install → verify → rollback`). PCSX2, PPSSPP e os três
+ciclos completos ficam explicitamente fora de escopo até o rollback de
+RetroArch ficar verde. Nenhuma ação de host de produção, release ou push está
+autorizada ou foi executada.
+
+## 2026-08-07 — Item 4 (VM M10) — observabilidade e protocolo focal concluídos
+
+O harness agora registra a etapa corrente, o tipo e a mensagem da exceção e,
+quando houver, o envelope JSON integral de `component` ou stdout/stderr e
+return code do subprocesso. A escrita de `docs/diagnostics/<data>-m10-vm-evidence.md`
+ocorre no `finally` **antes** do cleanup do domínio descartável. O protocolo
+`minimal` executa exclusivamente `install → verify → rollback`, deixa o adapter
+no baseline e renderiza somente essas etapas. A execução por CLI passou a
+exigir `--adapter`, impedindo por contrato que uma tentativa diagnóstica toque
+PCSX2 ou PPSSPP; `--protocol minimal --adapter retroarch` é a única próxima
+execução autorizada.
+
+Decisão de bancada: não inferir ou remendar a causa do rollback a partir do
+veredito vazio; primeiro preservar o payload emitido pelo guest. Também não
+mantive uma certificação ampla como atalho programático: a ordem passa a ser
+um emulador por VM, de modo que RetroArch precisa ficar verde antes dos demais.
+Validação: 27 testes dedicados; suíte isolada **4210 passaram, 10 skipados**;
+`ruff check`, `ruff format --check`, `mypy src`, `make independence
+boundaries` e `capability_matrix --check` verdes. Não fecha Item 4, DEBT-A7
+nem qualquer gap: falta executar e aprovar o ciclo mínimo, depois os três
+ciclos completos de cada emulador e o restore Btrfs. Nenhuma ação de host de
+produção, release ou push foi executada.

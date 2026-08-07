@@ -22,6 +22,7 @@ import vm_harness.provision as provision_module
 from vm_harness.driver import (
     CYCLE_STEPS,
     certify_emulator,
+    certify_emulator_minimal,
     certify_m10,
     m10_pinned_commits,
     render_evidence_report,
@@ -169,6 +170,21 @@ def test_certify_emulator_fails_when_rollback_does_not_restore_absent() -> None:
     assert "rollback" in (result.failure or "")
     # restore para não vazar estado entre asserções
     client.rollback = original_rollback  # type: ignore[method-assign]
+
+
+def test_certify_emulator_minimal_stops_after_verified_rollback() -> None:
+    client = FakeComponentClient()
+    result = certify_emulator_minimal(
+        "retroarch", client, expected_commit=m10_pinned_commits()["retroarch"]
+    )
+    assert result.ok is True
+    assert [step["step"] for step in result.steps] == [
+        "baseline",
+        "install",
+        "verify",
+        "rollback",
+    ]
+    assert client.status("retroarch")["state"] == "missing"
 
 
 def test_certify_m10_aggregates_all_emulators() -> None:
@@ -369,8 +385,32 @@ def test_guest_component_client_preserves_failed_lifecycle_data() -> None:
             json.dumps({"ok": False, "error": None, "data": {"status": "failed"}}).encode(),
         )
 
-    with pytest.raises(RuntimeError, match='"status": "failed"'):
+    with pytest.raises(provision_module.GuestComponentError, match='"status": "failed"') as exc:
         GuestComponentClient("192.0.2.5", runner=runner).rollback("op-1")
+    assert exc.value.envelope == {"ok": False, "error": None, "data": {"status": "failed"}}
+
+
+def test_write_evidence_keeps_complete_failed_component_payload(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(provision_module, "ROOT", tmp_path)
+    failure = provision_module._failure_payload(
+        "certificação retroarch (minimal)",
+        provision_module.GuestComponentError(
+            "rollback", {"ok": False, "error": {"code": "E-ROLLBACK"}, "data": {"id": "op-1"}}
+        ),
+    )
+    evidence = provision_module._write_evidence(
+        "a" * 40,
+        {"ok": False, "emulators": [], "summary": {}, "protocol": "minimal"},
+        baseline_restored=False,
+        failure=failure,
+    )
+    content = evidence.read_text(encoding="utf-8")
+    assert "Falha da execução" in content
+    assert "certificação retroarch (minimal)" in content
+    assert '"code": "E-ROLLBACK"' in content
+    assert '"action": "rollback"' in content
 
 
 def test_snapshot_is_bootable_and_records_its_subvolume_id(tmp_path: Path) -> None:
@@ -529,8 +569,8 @@ def test_provision_orchestrates_only_disposable_resources(
     monkeypatch.setattr(provision_module, "GuestComponentClient", FakeGuest)
     monkeypatch.setattr(
         provision_module,
-        "certify_m10",
-        lambda _client: {"ok": True, "emulators": [], "summary": {}, "pins": {}},
+        "_selected_certification",
+        lambda _client, **_kwargs: {"ok": True, "emulators": [], "summary": {}, "pins": {}},
     )
     evidence = tmp_path / "evidence.md"
     monkeypatch.setattr(
@@ -544,10 +584,85 @@ def test_provision_orchestrates_only_disposable_resources(
         lambda *_a, **_k: events.append("destroy"),
     )
 
-    assert provision_module.provision(config, runner=runner) == evidence
+    assert (
+        provision_module.provision(
+            config, runner=runner, adapter_id="retroarch", protocol="minimal"
+        )
+        == evidence
+    )
     assert events == ["preflight", "copy-source", "restore", "destroy"]
     qemu_img = next(command for command in calls if command[0] == "qemu-img")
     assert str(config.base_image.resolve()) in qemu_img
     assert any(command[0] in {"cloud-localds", "xorriso", "genisoimage"} for command in calls)
     assert any(command[0] == "virt-install" for command in calls)
     assert any(command[0] == "virsh" and "ttyconsole" in command for command in calls)
+
+
+def test_provision_writes_failed_component_payload_before_cleanup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_commit = "a" * 40
+    config = VmConfig(
+        source_commit=source_commit,
+        vm_name="steamzero-m10",
+        base_image=tmp_path / "arch.qcow2",
+        ssh_public_key=tmp_path / "operator.pub",
+        ssh_private_key=tmp_path / "operator.key",
+        work_dir=tmp_path / "work",
+    )
+    config.base_image.write_bytes(b"qcow2")
+    config.ssh_public_key.write_text(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test\n", encoding="utf-8"
+    )
+    config.ssh_private_key.write_text("private", encoding="utf-8")
+    events: list[str] = []
+    seen_failure: dict[str, Any] | None = None
+
+    def runner(argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        if argv[:2] == ("git", "rev-parse"):
+            return CommandResult(0, f"{source_commit}\n".encode())
+        return CommandResult(0)
+
+    monkeypatch.setattr(provision_module, "_preflight", lambda: None)
+    monkeypatch.setattr(provision_module, "_wait_for_guest", lambda *_a, **_k: "192.0.2.5")
+    monkeypatch.setattr(provision_module, "_copy_source", lambda *_a, **_k: None)
+    monkeypatch.setattr(provision_module, "_snapshot_before", lambda *_a, **_k: 271)
+    monkeypatch.setattr(provision_module, "GuestComponentClient", lambda *_a, **_k: object())
+    component_error = provision_module.GuestComponentError(
+        "rollback", {"ok": False, "error": {"code": "E-ROLLBACK"}, "data": {"id": "op-1"}}
+    )
+    monkeypatch.setattr(
+        provision_module,
+        "_selected_certification",
+        lambda *_a, **_k: (_ for _ in ()).throw(component_error),
+    )
+
+    def write_evidence(*_args: Any, **kwargs: Any) -> Path:
+        nonlocal seen_failure
+        events.append("evidence")
+        seen_failure = kwargs["failure"]
+        return tmp_path / "evidence.md"
+
+    monkeypatch.setattr(provision_module, "_write_evidence", write_evidence)
+    monkeypatch.setattr(
+        provision_module,
+        "_destroy_vm",
+        lambda *_a, **_k: events.append("destroy"),
+    )
+
+    with pytest.raises(provision_module.GuestComponentError):
+        provision_module.provision(
+            config, runner=runner, adapter_id="retroarch", protocol="minimal"
+        )
+    assert events == ["evidence", "destroy"]
+    assert seen_failure == {
+        "stage": "certificação retroarch (minimal)",
+        "exception": {
+            "type": "GuestComponentError",
+            "message": 'component rollback falhou: {"code": "E-ROLLBACK"}',
+        },
+        "component": {
+            "action": "rollback",
+            "envelope": {"ok": False, "error": {"code": "E-ROLLBACK"}, "data": {"id": "op-1"}},
+        },
+    }
