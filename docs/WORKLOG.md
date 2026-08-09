@@ -5887,3 +5887,24 @@ privilégio é usado no host. Validação: 32 testes de harness; suíte isolada
 `make independence boundaries` e `capability_matrix --check` verdes. Item
 4/DEBT-A7 continua aberto: r20i deve provar exclusivamente PCSX2/minimal.
 Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — known-hosts efêmero iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `4e01733`. A r20i falhou no
+probe SSH porque o IP DHCP reutilizado tinha chave distinta em
+`/home/misael/.ssh/known_hosts`; é host state externo, não risco aceitável para
+um guest descartável. Escopo: os dois caminhos SSH do harness usam apenas
+known-hosts nulo e não leem/escrevem o arquivo do operador; repetir PCSX2/minimal
+após gates. Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — known-hosts efêmero concluído
+
+Todos os SSH do harness agora usam `UserKnownHostsFile=/dev/null` e
+`GlobalKnownHostsFile=/dev/null`, junto de `StrictHostKeyChecking=accept-new`.
+Assim, IP DHCP reutilizado não consulta, modifica nem conflita com
+`~/.ssh/known_hosts` do operador; o escopo de confiança é exclusivamente a
+vida da VM descartável. Validação: 32 testes de harness; suíte isolada **4217
+passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
+continua aberto: r20j deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
+host de produção, release ou push foi executada.

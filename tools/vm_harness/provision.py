@@ -386,6 +386,10 @@ class GuestComponentClient(ComponentClient):
             "-o",
             "StrictHostKeyChecking=accept-new",
             "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "GlobalKnownHostsFile=/dev/null",
+            "-o",
             "ConnectTimeout=10",
         ]
         if self._identity_file is not None:
@@ -603,6 +607,10 @@ def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
             "BatchMode=yes",
             "-o",
             "StrictHostKeyChecking=accept-new",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "GlobalKnownHostsFile=/dev/null",
             "-i",
             str(identity_file),
             "-o",

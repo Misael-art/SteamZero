@@ -378,6 +378,8 @@ def test_guest_component_client_unwraps_the_cli_envelope(tmp_path: Path) -> None
     assert all(call[0] == "ssh" for call in calls)
     assert all("-i" in call and str(identity) in call for call in calls)
     assert all("IdentitiesOnly=yes" in call for call in calls)
+    assert all("UserKnownHostsFile=/dev/null" in call for call in calls)
+    assert all("GlobalKnownHostsFile=/dev/null" in call for call in calls)
 
 
 def test_guest_component_client_preserves_failed_lifecycle_data() -> None:
