@@ -5700,3 +5700,41 @@ Gates: suíte isolada **4215 passaram, 10 skipados**; Ruff, formatação, mypy,
 independência, boundaries e capability matrix verdes. Não fecha Item 4 nem
 DEBT-A7: falta repetir PCSX2 mínimo, seus três ciclos completos e PPSSPP.
 Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — PCSX2 sem GUI iniciado
+
+A r20b confirmou que `-platform offscreen` removeu a falha XCB, mas PCSX2
+ainda inicializou integração de portal desktop e a transação fez rollback. A
+opção documentada `-nogui` implica batch e evita criar a janela; será somada ao
+smoke, sem alterar executor, harness ou outros adapters. Dependência: lockfile
+promovido, gates verdes e repetição exclusiva de PCSX2/minimal. Nenhuma ação
+de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — RPC de integração confiável iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `e5f5cd5`. Durante o gate
+integral que valida o smoke PCSX2, duas provas in-process independentes
+(`controls.*` e `health.*`) falharam esporadicamente no timeout padrão de 2 s
+do cliente CLI, embora a operação terminasse no daemon. Escopo: usar o helper
+de RPC de integração, que já tem timeout de 10 s e valida o envelope completo,
+somente nesses testes; manter cinco repetições de controls e todos os contratos
+funcionais. Dependência: testes dedicados e os seis gates antes do commit que
+promove também o smoke PCSX2 sem GUI. Nenhuma ação de host de produção, release
+ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — PCSX2 sem GUI e RPC de integração concluídos
+
+O smoke PCSX2 passou a usar `-nogui -platform offscreen --version`: a primeira
+opção impede a criação da janela e a inicialização dos portais desktop; a segunda
+mantém o backend Qt independente de DISPLAY. O lockfile foi regenerado. Em
+paralelo, as duas provas in-process que oscilavam sob o timeout de cliente de
+2 s agora usam o RPC real de integração com timeout de 10 s e validação explícita
+do envelope/dados. Decisão: não aumentar o timeout do cliente de produção nem
+reduzir as cinco repetições de controls; o problema era orçamento de transporte
+inadequado à própria prova in-process, não o contrato do daemon. Validação:
+suíte isolada **4215 passaram, 10 skipados** em 12m53s; `ruff check`, `ruff
+format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. O Item 4/DEBT-A7 continua aberto: falta a
+r20c mínima e, apenas se ela provar install→verify→rollback e restore Btrfs,
+os ciclos completos de PCSX2 e PPSSPP. Nenhuma ação de host de produção, release
+ou push foi executada.

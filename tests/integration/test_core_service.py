@@ -84,6 +84,29 @@ def _rpc(socket_path: Path, request: dict[str, object]) -> dict[str, object]:
     return response
 
 
+def _rpc_envelope(
+    socket_path: Path, request_id: str, method: str, params: dict[str, object]
+) -> dict[str, object]:
+    response = _rpc(
+        socket_path,
+        {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params},
+    )
+    result = response["result"]
+    assert isinstance(result, dict)
+    envelope = result["envelope"]
+    assert isinstance(envelope, dict)
+    return envelope
+
+
+def _rpc_data(
+    socket_path: Path, request_id: str, method: str, params: dict[str, object]
+) -> dict[str, object]:
+    envelope = _rpc_envelope(socket_path, request_id, method, params)
+    data = envelope["data"]
+    assert isinstance(data, dict)
+    return data
+
+
 @pytest.fixture
 def inprocess_core(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
     runtime = tmp_path / "run"
@@ -279,7 +302,9 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
     _repetition: int,
 ) -> None:
     del _repetition
-    planned = invoke(
+    planned = _rpc_envelope(
+        inprocess_core,
+        "controls-plan",
         "controls.plan",
         {
             "platformId": "switch",
@@ -287,15 +312,17 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
             "orientation": "portrait-right",
             "correlationId": "01J000000000000000000000AC",
         },
-    ).envelope["data"]
-    applied = invoke(
+    )["data"]
+    applied = _rpc_envelope(
+        inprocess_core,
+        "controls-apply",
         "controls.apply",
         {
             "planId": planned["planId"],
             "confirmToken": planned["confirmToken"],
             "correlationId": "01J000000000000000000000AD",
         },
-    ).envelope["data"]
+    )["data"]
     assert len(applied["actions"]) == 1
     target = (
         tmp_path
@@ -311,26 +338,30 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
     assert activation["profile"]["id"] == "standard-gamepad"
     assert activation["orientation"] == "portrait-right"
 
-    observed = invoke(
+    observed = _rpc_envelope(
+        inprocess_core,
+        "controls-profiles",
         "controls.profiles",
         {
             "platformId": "switch",
             "correlationId": "01J000000000000000000000AE",
         },
-    ).envelope["data"]
+    )["data"]
     assert observed["state"] == "ready", observed
     active = observed["active"]
     assert isinstance(active, dict), observed
     assert active["id"] == "standard-gamepad"
     assert active["orientation"] == "portrait-right"
 
-    rolled_back = invoke(
+    rolled_back = _rpc_envelope(
+        inprocess_core,
+        "controls-rollback",
         "controls.rollback",
         {
             "operationId": applied["operationId"],
             "correlationId": "01J000000000000000000000AF",
         },
-    ).envelope["data"]
+    )["data"]
     assert rolled_back["status"] == "rolled-back"
     with pytest.raises(FileNotFoundError):
         target.lstat()
@@ -443,7 +474,6 @@ def test_daemon_library_health_roundtrip_uses_bounded_job(
     inprocess_core: Path,
     tmp_path: Path,
 ) -> None:
-    del inprocess_core
     rom = tmp_path / "Game.nsp"
     rom.write_bytes(b"synthetic" * 256)
     cache = tmp_path / "data" / "steamzero" / "emulation-library-cache-v1.json"
@@ -466,23 +496,29 @@ def test_daemon_library_health_roundtrip_uses_bounded_job(
         ),
         encoding="utf-8",
     )
-    before = invoke(
+    before = _rpc_data(
+        inprocess_core,
+        "health-status",
         "health.status",
         {"correlationId": "01J000000000000000000000AS"},
-    ).envelope["data"]
+    )
     assert before["counts"]["unchecked"] == 1
-    plan = invoke(
+    plan = _rpc_data(
+        inprocess_core,
+        "health-plan",
         "health.plan",
         {"correlationId": "01J000000000000000000000AT"},
-    ).envelope["data"]
-    result = invoke(
+    )
+    result = _rpc_data(
+        inprocess_core,
+        "health-apply",
         "health.apply",
         {
             "planId": plan["planId"],
             "confirmToken": plan["confirmToken"],
             "correlationId": "01J000000000000000000000AV",
         },
-    ).envelope["data"]
+    )
     assert result["job"]["rawState"] == "completed"
     assert result["health"]["state"] == "healthy"
 
