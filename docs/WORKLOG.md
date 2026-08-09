@@ -5738,3 +5738,28 @@ format --check`, `mypy src`, `make independence boundaries` e
 r20c mínima e, apenas se ela provar install→verify→rollback e restore Btrfs,
 os ciclos completos de PCSX2 e PPSSPP. Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — identidade SSH temporária iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `2810de7`. A r20c falhou
+antes da CLI: a evidência `2026-08-09-m10-vm-evidence-132417.md` registra lease
+IPv4 presente, mas OpenSSH recusou a chave privada do volume compartilhado por
+modo `0777`. Escopo: o harness deve copiar a identidade para um arquivo
+temporário local com modo `0600`, usá-lo durante toda a VM e removê-lo no
+cleanup; repetir somente PCSX2/minimal após gates. Nenhuma ação de host de
+produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — identidade SSH temporária concluída
+
+O harness agora materializa a chave privada em arquivo temporário local com
+modo `0600`, o usa em todos os probes SSH e o remove mesmo quando a VM falha.
+A espera preserva sua assinatura de teste para as provas isoladas, mas o fluxo
+real de `provision` sempre injeta a cópia segura. Decisão: não tentar alterar
+permissões no volume compartilhado (pode não suportar POSIX); copiar para o
+diretório temporário do sistema evita depender do filesystem de trabalho e não
+deixa credencial persistida. Validação: quatro testes dedicados, incluindo os
+três contratos preexistentes de readiness; suíte isolada **4216 passaram, 10
+skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make independence
+boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua
+aberto: r20d deve provar exclusivamente PCSX2/minimal. Nenhuma ação de host de
+produção, release ou push foi executada.

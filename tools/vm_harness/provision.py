@@ -26,10 +26,12 @@ import contextlib
 import datetime as dt
 import ipaddress
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 from collections.abc import Callable, Sequence
@@ -227,10 +229,27 @@ def _public_key(path: Path) -> str:
 
 
 def _private_identity(config: VmConfig) -> Path:
-    """Devolve a chave privada já validada para não cair no agente SSH do host."""
+    """Materializa a chave em arquivo local ``0600`` para uso exclusivo do SSH.
+
+    O diretório de trabalho do harness pode estar em volume removível que não
+    preserva permissões POSIX. OpenSSH recusa legitimamente uma chave assim; a
+    cópia temporária fica no diretório seguro padrão do sistema e é removida
+    pelo cleanup de :func:`provision`.
+    """
     if config.ssh_private_key is None:
         raise RuntimeError("execução sem identidade SSH privada")
-    return config.ssh_private_key
+    descriptor, temporary_name = tempfile.mkstemp(prefix="steamzero-m10-identity-")
+    identity_file = Path(temporary_name)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with config.ssh_private_key.open("rb") as source, os.fdopen(descriptor, "wb") as target:
+            shutil.copyfileobj(source, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.close(descriptor)
+        identity_file.unlink(missing_ok=True)
+        raise
+    return identity_file
 
 
 def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
@@ -410,8 +429,18 @@ def _guest_ssh(
     )
 
 
-def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> str:
-    """Espera lease IPv4 e autenticação SSH; timeout não vira êxito implícito."""
+def _wait_for_guest(
+    config: VmConfig,
+    *,
+    identity_file: Path | None = None,
+    runner: Runner,
+    retries: int = 90,
+) -> str:
+    """Espera lease IPv4 e autenticação SSH; timeout não vira êxito implícito.
+
+    ``provision`` sempre fornece a cópia temporária segura. O fallback mantém o
+    helper diretamente exercitável pelas provas unitárias do loop de readiness.
+    """
     last_issue: dict[str, Any] = {"phase": "lease", "detail": "nenhuma tentativa executada"}
     for _ in range(retries):
         try:
@@ -444,8 +473,14 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
                 continue
             if address.version != 4:
                 continue
+            if identity_file is None:
+                if config.ssh_private_key is None:
+                    raise RuntimeError("execução sem identidade SSH privada")
+                selected_identity = config.ssh_private_key
+            else:
+                selected_identity = identity_file
             probe = GuestComponentClient(
-                str(address), identity_file=_private_identity(config), runner=runner
+                str(address), identity_file=selected_identity, runner=runner
             )
             try:
                 probe._ssh(("true",), timeout=15.0)
@@ -705,8 +740,10 @@ def provision(
     }
     failure: dict[str, Any] | None = None
     evidence: Path | None = None
+    identity_file: Path | None = None
     stage = "preparação da overlay"
     try:
+        identity_file = _private_identity(config)
         _required(
             runner(
                 (
@@ -734,7 +771,7 @@ def provision(
             runner(build_virt_install_argv(config, overlay, seed), None, 180.0), "virt-install"
         )
         stage = "readiness da VM"
-        address = _wait_for_guest(config, runner=runner)
+        address = _wait_for_guest(config, identity_file=identity_file, runner=runner)
         stage = "console serial independente"
         _required(
             runner(
@@ -744,7 +781,6 @@ def provision(
             ),
             "console serial independente",
         )
-        identity_file = _private_identity(config)
         stage = "configuração do remote Flathub"
         _configure_flathub(address, identity_file=identity_file, runner=runner)
         stage = "cópia da árvore do commit"
@@ -760,7 +796,7 @@ def provision(
         stage = "seleção do snapshot Btrfs"
         _restore_snapshot(address, snapshot_id, identity_file=identity_file, runner=runner)
         stage = "readiness após restore Btrfs"
-        restored_address = _wait_for_guest(config, runner=runner)
+        restored_address = _wait_for_guest(config, identity_file=identity_file, runner=runner)
         restored = GuestComponentClient(
             restored_address, identity_file=identity_file, runner=runner
         )
@@ -785,11 +821,15 @@ def provision(
             )
             evidence_written = True
         finally:
-            _destroy_vm(
-                config,
-                runner=runner,
-                remove_run_dir=baseline_restored and evidence_written,
-            )
+            try:
+                _destroy_vm(
+                    config,
+                    runner=runner,
+                    remove_run_dir=baseline_restored and evidence_written,
+                )
+            finally:
+                if identity_file is not None:
+                    identity_file.unlink(missing_ok=True)
     if evidence is None:
         raise RuntimeError("a execução não produziu relatório de evidência")
     return evidence
