@@ -5929,3 +5929,29 @@ oculte pacman. Validação: 32 testes de harness; suíte isolada **4217 passaram
 independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
 continua aberto: r20k deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
 host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap pacman não interativo iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `663d3e6`. A r20k alcançou
+o cloud-init e revelou a causa interna: a instalação de SDDM pediu seleção
+interativa de provedor `ttf-font`, excedeu o timeout de 120 s e deixou o lock de
+pacman para as retentativas. Escopo: declarar `noto-fonts` explicitamente,
+estender de modo finito a tentativa de download/instalação e usar kill-after
+para que uma tentativa expirada não retenha o lock; repetir exclusivamente
+PCSX2/minimal após testes e gates. Nenhuma ação de host de produção, release ou
+push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap pacman não interativo concluído
+
+O cloud-init passa `noto-fonts` como alvo explícito, eliminando a pergunta de
+provedor que bloqueou a r20k, e cada tentativa de pacman tem 300 s com
+`kill-after` de 15 s; o orçamento total de cloud-init foi ajustado para 1300 s.
+A r20k órfã foi destruída e desregistrada como laboratório descartável depois
+da coleta do diagnóstico; seus artefatos ficaram preservados. Decisão: fixar o
+provedor resolve a causa observada sem mascarar prompts, enquanto o término
+forçado impede que um timeout deixe lock para a próxima tentativa. Validação:
+32 testes dedicados; suíte isolada **4217 passaram, 10 skipados**; `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Item 4/DEBT-A7 continua aberto: a r20l deve
+provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
+ou push foi executada.

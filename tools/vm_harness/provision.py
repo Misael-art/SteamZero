@@ -66,6 +66,9 @@ _GUEST_PACKAGES: tuple[str, ...] = (
     "python",
     "python-jsonschema",
     "flatpak",
+    # SDDM exige um provedor de ttf-font. Torná-lo alvo explícito impede que o
+    # pacman pergunte interativamente qual dos provedores deve usar.
+    "noto-fonts",
     "sddm",
     "openssh",
     "btrfs-progs",
@@ -73,8 +76,9 @@ _GUEST_PACKAGES: tuple[str, ...] = (
 )
 _GUEST_PACKAGE_ARGS = " ".join(_GUEST_PACKAGES)
 _PACMAN_RETRY_DELAYS: tuple[int, ...] = (5, 10, 20)
-_PACMAN_ATTEMPT_TIMEOUT_SECONDS = 120
-_CLOUD_INIT_TIMEOUT_SECONDS = 600
+_PACMAN_ATTEMPT_TIMEOUT_SECONDS = 300
+_PACMAN_KILL_AFTER_SECONDS = 15
+_CLOUD_INIT_TIMEOUT_SECONDS = 1_300
 
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
@@ -289,7 +293,9 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
             set -u
             systemctl enable --now sshd.service || true
             for attempt in 1 2 3 4; do
-              timeout {_PACMAN_ATTEMPT_TIMEOUT_SECONDS}s pacman -Syu --noconfirm --needed \\
+              timeout --kill-after={_PACMAN_KILL_AFTER_SECONDS}s \\
+                {_PACMAN_ATTEMPT_TIMEOUT_SECONDS}s \\
+                pacman -Syu --noconfirm --needed \\
                 {_GUEST_PACKAGE_ARGS} && exit 0
               status=$?
               echo "steamzero-m10: pacman bootstrap attempt $attempt failed (status=$status)" >&2
