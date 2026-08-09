@@ -330,8 +330,7 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     )
     user_data, meta_data = render_cloud_init(config, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
     assert "python-jsonschema" in user_data
-    assert "runuser, -l, steamzero" in user_data
-    assert "flatpak remote-add --user --if-not-exists flathub" in user_data
+    assert "flatpak remote-add" not in user_data
     assert "steamzero-m10" in meta_data
     argv = build_virt_install_argv(config, tmp_path / "overlay.qcow2", tmp_path / "seed.iso")
     assert argv[:5] == ["virt-install", "--connect", "qemu:///system", "--name", "steamzero-m10"]
@@ -550,6 +549,8 @@ def test_wait_for_guest_preserves_the_last_cloud_init_failure(
         if "domifaddr" in argv:
             return CommandResult(0, lease)
         if "'cloud-init'" in argv[-1]:
+            if "'--long'" in argv[-1]:
+                return CommandResult(0, stdout=b"detailed cloud-init failure")
             return CommandResult(1, stderr=b"cloud-init ainda instalando pacotes")
         return CommandResult(0)
 
@@ -564,6 +565,45 @@ def test_wait_for_guest_preserves_the_last_cloud_init_failure(
         "stdout": "",
         "stderr": "cloud-init ainda instalando pacotes",
     }
+    assert exc.value.last_issue["cloudInitStatusLong"] == {
+        "returncode": 0,
+        "stdout": "detailed cloud-init failure",
+        "stderr": "",
+    }
+
+
+def test_configure_flathub_retries_only_dns_failures(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls = 0
+
+    def runner(_argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return CommandResult(1, stderr=b"Could not resolve hostname")
+        return CommandResult(0)
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(provision_module.time, "sleep", sleeps.append)
+    provision_module._configure_flathub(
+        "192.0.2.5", identity_file=tmp_path / "steamzero-vm-key", runner=runner
+    )
+    assert calls == 3
+    assert sleeps == [5.0, 10.0]
+
+
+def test_configure_flathub_keeps_all_failed_payloads(tmp_path: Path) -> None:
+    def runner(_argv: tuple[str, ...], _input: bytes | None, _timeout: float) -> CommandResult:
+        return CommandResult(1, stderr=b"TLS certificate rejected")
+
+    with pytest.raises(provision_module.FlathubSetupError) as exc:
+        provision_module._configure_flathub(
+            "192.0.2.5", identity_file=tmp_path / "steamzero-vm-key", runner=runner
+        )
+    assert exc.value.attempts == [
+        {"attempt": 1, "returncode": 1, "stdout": "", "stderr": "TLS certificate rejected"}
+    ]
 
 
 def test_provision_orchestrates_only_disposable_resources(
@@ -611,6 +651,11 @@ def test_provision_orchestrates_only_disposable_resources(
     )
     monkeypatch.setattr(
         provision_module,
+        "_configure_flathub",
+        lambda *_a, **_k: events.append("flathub"),
+    )
+    monkeypatch.setattr(
+        provision_module,
         "_snapshot_before",
         lambda *_a, **_k: 271,
     )
@@ -643,7 +688,7 @@ def test_provision_orchestrates_only_disposable_resources(
         )
         == evidence
     )
-    assert events == ["preflight", "copy-source", "restore", "destroy"]
+    assert events == ["preflight", "flathub", "copy-source", "restore", "destroy"]
     qemu_img = next(command for command in calls if command[0] == "qemu-img")
     assert str(config.base_image.resolve()) in qemu_img
     assert any(command[0] in {"cloud-localds", "xorriso", "genisoimage"} for command in calls)
@@ -679,6 +724,7 @@ def test_provision_writes_failed_component_payload_before_cleanup(
     monkeypatch.setattr(provision_module, "_preflight", lambda: None)
     monkeypatch.setattr(provision_module, "_wait_for_guest", lambda *_a, **_k: "192.0.2.5")
     monkeypatch.setattr(provision_module, "_copy_source", lambda *_a, **_k: None)
+    monkeypatch.setattr(provision_module, "_configure_flathub", lambda *_a, **_k: None)
     monkeypatch.setattr(provision_module, "_snapshot_before", lambda *_a, **_k: 271)
     monkeypatch.setattr(provision_module, "GuestComponentClient", lambda *_a, **_k: object())
     component_error = provision_module.GuestComponentError(

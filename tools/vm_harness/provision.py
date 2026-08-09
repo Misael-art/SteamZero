@@ -58,6 +58,8 @@ _SNAPSHOT_ROOT = "/var/lib/steamzero-m10-snapshots"
 _GUEST_SOURCE = "/home/steamzero/steamzero-src"
 _GUEST_USER = "steamzero"
 _CONFIRM = "EXECUTAR-VM-M10"
+_FLATHUB_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+_FLATHUB_RETRY_DELAYS: tuple[float, ...] = (5.0, 10.0, 20.0, 30.0)
 
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
@@ -144,6 +146,14 @@ class GuestReadinessError(RuntimeError):
     def __init__(self, last_issue: dict[str, Any]) -> None:
         self.last_issue = last_issue
         super().__init__("VM não obteve IPv4/SSH antes do prazo")
+
+
+class FlathubSetupError(RuntimeError):
+    """Configuração do remote falhou; guarda cada tentativa para evidência."""
+
+    def __init__(self, attempts: list[dict[str, Any]]) -> None:
+        self.attempts = attempts
+        super().__init__("não foi possível configurar o remote Flathub na VM")
 
 
 def _run(argv: Sequence[str], input_data: bytes | None, timeout: float) -> CommandResult:
@@ -245,7 +255,6 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
         packages: [python, python-jsonschema, flatpak, sddm, openssh, btrfs-progs, git]
         runcmd:
           - [systemctl, enable, --now, sshd.service]
-          - [runuser, -l, {_GUEST_USER}, -c, "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"]
         """
     )
     meta_data = (
@@ -321,6 +330,9 @@ class GuestComponentClient(ComponentClient):
         self._runner = runner
 
     def _ssh(self, command: Sequence[str], *, timeout: float = 1800.0) -> bytes:
+        return _required(self._ssh_result(command, timeout=timeout), f"SSH guest ({command[0]})")
+
+    def _ssh_result(self, command: Sequence[str], *, timeout: float = 1800.0) -> CommandResult:
         remote = " ".join(_shell_quote(part) for part in command)
         argv = [
             "ssh",
@@ -334,8 +346,7 @@ class GuestComponentClient(ComponentClient):
         if self._identity_file is not None:
             argv.extend(("-i", str(self._identity_file), "-o", "IdentitiesOnly=yes"))
         argv.extend((f"{_GUEST_USER}@{self._address}", remote))
-        result = self._runner(tuple(argv), None, timeout)
-        return _required(result, f"SSH guest ({command[0]})")
+        return self._runner(tuple(argv), None, timeout)
 
     def _component(self, action: str, *args: str) -> dict[str, Any]:
         command = (
@@ -445,6 +456,12 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
                 probe._ssh(("cloud-init", "status", "--wait"), timeout=300.0)
             except (RuntimeError, subprocess.TimeoutExpired) as exc:
                 last_issue = _readiness_issue("cloud-init", str(address), exc)
+                diagnostic = probe._ssh_result(("cloud-init", "status", "--long"), timeout=30.0)
+                last_issue["cloudInitStatusLong"] = {
+                    "returncode": diagnostic.returncode,
+                    "stdout": diagnostic.stdout.decode("utf-8", errors="replace"),
+                    "stderr": diagnostic.stderr.decode("utf-8", errors="replace"),
+                }
                 break
             return str(address)
         else:
@@ -456,6 +473,29 @@ def _wait_for_guest(config: VmConfig, *, runner: Runner, retries: int = 90) -> s
             }
         time.sleep(2)
     raise GuestReadinessError(last_issue)
+
+
+def _configure_flathub(address: str, *, identity_file: Path, runner: Runner) -> None:
+    """Cria o remote após cloud-init; repete somente indisponibilidade DNS."""
+    client = GuestComponentClient(address, identity_file=identity_file, runner=runner)
+    command = ("flatpak", "remote-add", "--user", "--if-not-exists", "flathub", _FLATHUB_URL)
+    attempts: list[dict[str, Any]] = []
+    for index, delay in enumerate((*_FLATHUB_RETRY_DELAYS, 0.0), start=1):
+        result = client._ssh_result(command, timeout=180.0)
+        attempt = {
+            "attempt": index,
+            "returncode": result.returncode,
+            "stdout": result.stdout.decode("utf-8", errors="replace"),
+            "stderr": result.stderr.decode("utf-8", errors="replace"),
+        }
+        attempts.append(attempt)
+        if result.returncode == 0:
+            return
+        combined = f"{attempt['stdout']}\n{attempt['stderr']}".lower()
+        if "could not resolve hostname" not in combined or delay == 0.0:
+            raise FlathubSetupError(attempts)
+        time.sleep(delay)
+    raise AssertionError("loop de retry Flathub deveria ter terminado")
 
 
 def _copy_source(config: VmConfig, address: str, *, runner: Runner) -> None:
@@ -564,6 +604,8 @@ def _failure_payload(stage: str, exc: BaseException) -> dict[str, Any]:
         }
     if isinstance(exc, GuestReadinessError):
         payload["readiness"] = exc.last_issue
+    if isinstance(exc, FlathubSetupError):
+        payload["flathubAttempts"] = exc.attempts
     return payload
 
 
@@ -702,9 +744,11 @@ def provision(
             ),
             "console serial independente",
         )
+        identity_file = _private_identity(config)
+        stage = "configuração do remote Flathub"
+        _configure_flathub(address, identity_file=identity_file, runner=runner)
         stage = "cópia da árvore do commit"
         _copy_source(config, address, runner=runner)
-        identity_file = _private_identity(config)
         stage = "snapshot Btrfs inicial"
         snapshot_id = _snapshot_before(address, identity_file=identity_file, runner=runner)
         client = GuestComponentClient(address, identity_file=identity_file, runner=runner)

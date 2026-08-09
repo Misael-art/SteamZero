@@ -5628,3 +5628,30 @@ suíte isolada **4212 passaram, 10 skipados**; `ruff check`, `ruff format
 --check` verdes. Item 4/DEBT-A7 continuam bloqueados; a próxima ação é repetir
 somente RetroArch/minimal. Nenhuma ação de host de produção, release ou push
 foi executada.
+
+## 2026-08-08 — Item 4 (VM M10) — Flathub explícito e resiliente iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `db52104`. A inspeção
+somente leitura da overlay preservada da r14 confirmou que `pacman` concluiu e
+que o `runcmd` de Flathub falhou por DNS transitório (`Could not resolve
+hostname`). Escopo: retirar essa chamada do cloud-init, configurá-la após
+readiness via SSH com retry limitado exclusivamente para DNS e preservar todos
+os payloads de tentativa na evidência. RetroArch, PCSX2 e PPSSPP não serão
+alterados nesta correção. Nenhuma ação de host de produção, release ou push
+foi executada.
+
+## 2026-08-08 — Item 4 (VM M10) — Flathub explícito e resiliente concluído
+
+Cloud-init agora instala somente os pacotes e habilita SSH. O remote Flathub é
+configurado depois do readiness, antes do snapshot Btrfs, via SSH do usuário
+isolado; apenas `Could not resolve hostname` recebe quatro esperas limitadas
+(5, 10, 20 e 30 s). Qualquer outra falha para imediatamente e todas as
+tentativas (return code, stdout e stderr) entram na evidência. O diagnóstico
+`cloud-init status --long` também passou a ser preservado quando readiness
+falha. Decisão: não aumentar o orçamento de cloud-init nem mascarar DNS; a
+etapa explícita torna a causa e a recuperação auditáveis. Validação: 31 testes
+dedicados; suíte isolada **4214 passaram, 10 skipados**; `ruff check`, `ruff
+format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Item 4/DEBT-A7 continuam bloqueados até a
+r15 responder ao ciclo mínimo de RetroArch. Nenhuma ação de host de produção,
+release ou push foi executada.
