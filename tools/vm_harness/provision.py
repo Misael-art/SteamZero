@@ -71,7 +71,10 @@ _GUEST_PACKAGES: tuple[str, ...] = (
     "btrfs-progs",
     "git",
 )
+_GUEST_PACKAGE_ARGS = " ".join(_GUEST_PACKAGES)
 _PACMAN_RETRY_DELAYS: tuple[int, ...] = (5, 10, 20)
+_PACMAN_ATTEMPT_TIMEOUT_SECONDS = 120
+_CLOUD_INIT_TIMEOUT_SECONDS = 600
 
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
@@ -285,7 +288,8 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
           - |
             set -u
             for attempt in 1 2 3 4; do
-              pacman -Syu --noconfirm --needed {" ".join(_GUEST_PACKAGES)} && exit 0
+              timeout {_PACMAN_ATTEMPT_TIMEOUT_SECONDS}s pacman -Syu --noconfirm --needed \\
+                {_GUEST_PACKAGE_ARGS} && exit 0
               status=$?
               echo "steamzero-m10: pacman bootstrap attempt $attempt failed (status=$status)" >&2
               case "$attempt" in
@@ -522,7 +526,7 @@ def _wait_for_guest(
                 last_issue = _readiness_issue("ssh", str(address), exc)
                 break
             try:
-                probe._ssh(("cloud-init", "status", "--wait"), timeout=300.0)
+                probe._ssh(("cloud-init", "status", "--wait"), timeout=_CLOUD_INIT_TIMEOUT_SECONDS)
             except (RuntimeError, subprocess.TimeoutExpired) as exc:
                 last_issue = _readiness_issue("cloud-init", str(address), exc)
                 diagnostic = _diagnostic_ssh_result(

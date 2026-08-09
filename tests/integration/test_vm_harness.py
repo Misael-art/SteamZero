@@ -331,7 +331,7 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     user_data, meta_data = render_cloud_init(config, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
     assert "python-jsonschema" in user_data
     assert "package_update: false" in user_data
-    assert "pacman -Syu --noconfirm --needed" in user_data
+    assert "timeout 120s pacman -Syu --noconfirm --needed" in user_data
     assert "pacman bootstrap attempt $attempt failed" in user_data
     assert "flatpak remote-add" not in user_data
     assert "steamzero-m10" in meta_data

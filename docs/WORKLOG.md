@@ -5840,3 +5840,28 @@ isolada **4217 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
 `mypy src`, `make independence boundaries` e `capability_matrix --check`
 verdes. Item 4/DEBT-A7 continua aberto: r20g deve provar exclusivamente
 PCSX2/minimal. Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — orçamento pacman limitado iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `29eb15e`. Na r20g, o pacote
+retryável permaneceu pendurado dentro de uma tentativa; a VM foi interrompida e
+destruída/desregistrada explicitamente como laboratório descartável, mas nenhum
+relatório final pôde ser escrito após o SIGINT. Escopo: limitar cada pacman a
+120 s e dar 600 s à espera única de cloud-init, orçamento suficiente para as
+quatro tentativas e esperas definidas. Dependência: testes, gates e repetição
+exclusiva PCSX2/minimal. Nenhuma ação de host de produção, release ou push foi
+executada.
+
+## 2026-08-09 — Item 4 (VM M10) — orçamento pacman limitado concluído
+
+Cada tentativa do bootstrap usa agora `timeout 120s pacman -Syu --needed`; as
+quatro tentativas e esperas cabem no timeout de 600 s do único
+`cloud-init status --wait`. A r20g foi destruída e desregistrada explicitamente
+após interrupção porque o processo pendurado não executou cleanup; seus
+artefatos foram preservados e nenhum arquivo do host de produção foi tocado.
+Decisão: orçamento finito por subprocesso evita que retentativa limitada vire
+espera ilimitada. Validação: 32 testes de harness; suíte isolada **4217
+passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
+continua aberto: r20h deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
+host de produção, release ou push foi executada.
