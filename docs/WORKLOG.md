@@ -5908,3 +5908,24 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
 independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
 continua aberto: r20j deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
 host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — SSHD antes do bootstrap iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `b394d2f`. A r20j obteve
+IPv4, mas recusou TCP/22: o cloud-init só habilitava `sshd` depois de pacman,
+que pode estar aguardando ou falhar. Escopo: tentar habilitar SSHD antes do
+loop de pacman (best-effort, para imagem que já o contém) e reafirmar ao fim;
+repetir exclusivamente PCSX2/minimal após gates. Nenhuma ação de host de
+produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — SSHD antes do bootstrap concluído
+
+O script de `runcmd` tenta `systemctl enable --now sshd.service || true` antes
+do bootstrap, preservando a segunda habilitação obrigatória depois da instalação
+dos pacotes. Isso mantém a porta SSH disponível para observar cloud-init quando
+a imagem já fornece OpenSSH, mas não transforma sua ausência numa falha que
+oculte pacman. Validação: 32 testes de harness; suíte isolada **4217 passaram,
+10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
+continua aberto: r20k deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
+host de produção, release ou push foi executada.

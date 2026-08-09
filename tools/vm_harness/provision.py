@@ -287,6 +287,7 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
         runcmd:
           - |
             set -u
+            systemctl enable --now sshd.service || true
             for attempt in 1 2 3 4; do
               timeout {_PACMAN_ATTEMPT_TIMEOUT_SECONDS}s pacman -Syu --noconfirm --needed \\
                 {_GUEST_PACKAGE_ARGS} && exit 0
