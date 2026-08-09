@@ -5865,3 +5865,25 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
 independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
 continua aberto: r20h deve provar exclusivamente PCSX2/minimal. Nenhuma ação de
 host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — log root do cloud-init iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `f6fa1c3`. A r20h respeitou
+o orçamento e trouxe `scripts_user` como causa de cloud-init, mas a evidência
+mostrou que `tail /var/log/cloud-init-output.log` falhou por permissão do
+usuário guest. Escopo: ler somente esse arquivo de diagnóstico por `sudo tail`,
+autorizado pelo perfil efêmero do guest, e repetir exclusivamente PCSX2/minimal
+após gates. Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — log root do cloud-init concluído
+
+O harness passa a executar `sudo tail -n 400 /var/log/cloud-init-output.log`
+no guest efêmero, usando a permissão já declarada para o usuário de laboratório.
+Isso corrige a lacuna da r20h e permitirá que a próxima evidência mostre a causa
+do `scripts_user` em vez do erro secundário de permissão. Decisão: `sudo` é
+confinado ao SSH do guest descartável e apenas à leitura de log; nenhuma
+privilégio é usado no host. Validação: 32 testes de harness; suíte isolada
+**4217 passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
+`make independence boundaries` e `capability_matrix --check` verdes. Item
+4/DEBT-A7 continua aberto: r20i deve provar exclusivamente PCSX2/minimal.
+Nenhuma ação de host de produção, release ou push foi executada.

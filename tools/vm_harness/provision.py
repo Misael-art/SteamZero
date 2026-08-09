@@ -538,7 +538,9 @@ def _wait_for_guest(
                     "stderr": diagnostic.stderr.decode("utf-8", errors="replace"),
                 }
                 output_log = _diagnostic_ssh_result(
-                    probe, ("tail", "-n", "400", "/var/log/cloud-init-output.log"), timeout=30.0
+                    probe,
+                    ("sudo", "tail", "-n", "400", "/var/log/cloud-init-output.log"),
+                    timeout=30.0,
                 )
                 last_issue["cloudInitOutputLog"] = {
                     "returncode": output_log.returncode,
