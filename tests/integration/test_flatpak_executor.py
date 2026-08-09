@@ -12,7 +12,7 @@ from types import TracebackType
 import pytest
 
 from steamzero.adapters import flatpak as flatpak_module
-from steamzero.adapters.flatpak import FlatpakExecutor, FlatpakState
+from steamzero.adapters.flatpak import CommandResult, FlatpakCLI, FlatpakExecutor, FlatpakState
 from steamzero.adapters.registry import AdapterRegistry, load_manifest
 from steamzero.api import contracts
 from steamzero.core import fs, paths, state
@@ -65,8 +65,10 @@ class FakeFlatpak:
             raise SteamZeroError("E-COMPONENT-DEGRADED", detail="uninstall falhou")
         self.current = FlatpakState(False, ref)
 
-    def smoke(self, ref: str, arguments: Sequence[str]) -> None:
-        self.calls.append(("smoke", ref, *arguments))
+    def smoke(
+        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+    ) -> None:
+        self.calls.append(("smoke", ref, *arguments, *environment))
         if self.smoke_error is not None:
             raise self.smoke_error
 
@@ -111,6 +113,37 @@ def executor(
 ) -> FlatpakExecutor:
     item = load_manifest(manifest(end_of_life=eol))
     return FlatpakExecutor(store, AdapterRegistry([item]), flatpak)
+
+
+def test_cli_smoke_sets_manifest_environment_before_the_flatpak_ref() -> None:
+    calls: list[tuple[tuple[str, ...], float]] = []
+
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        calls.append((tuple(argv), timeout))
+        return CommandResult(0, "", "")
+
+    FlatpakCLI(runner=runner).smoke(
+        REF,
+        ("-nogui", "--version"),
+        (("QT_QPA_PLATFORM", "offscreen"), ("QT_QPA_PLATFORMTHEME", "none")),
+    )
+
+    assert calls == [
+        (
+            (
+                "flatpak",
+                "run",
+                "--user",
+                "--die-with-parent",
+                "--env=QT_QPA_PLATFORM=offscreen",
+                "--env=QT_QPA_PLATFORMTHEME=none",
+                REF,
+                "-nogui",
+                "--version",
+            ),
+            30.0,
+        )
+    ]
 
 
 def test_plan_is_pinned_schema_valid_and_read_only(store: state.StateStore, tmp_path: Path) -> None:

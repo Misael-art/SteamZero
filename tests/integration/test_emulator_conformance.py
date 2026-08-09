@@ -100,8 +100,10 @@ class FakeFlatpak:
         self.calls.append(("uninstall", ref))
         self.current = FlatpakState(False, ref)
 
-    def smoke(self, ref: str, arguments: Sequence[str]) -> None:
-        self.calls.append(("smoke", ref))
+    def smoke(
+        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+    ) -> None:
+        self.calls.append(("smoke", ref, *arguments, *environment))
 
 
 @pytest.fixture

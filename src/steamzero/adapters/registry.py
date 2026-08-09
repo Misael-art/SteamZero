@@ -101,6 +101,7 @@ class AdapterManifest:
     license: str
     upstream: str
     verify_smoke_test: tuple[str, ...]
+    verify_environment: tuple[tuple[str, str], ...]
     conflicts: tuple[str, ...]
     requires: tuple[str, ...]
     manifest_hash: str
@@ -144,6 +145,12 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             "E-API-SCHEMA", detail=f"adapter {data['id']} sem capacidades: {sorted(missing)}"
         )
     smoke = tuple(str(value) for value in data.get("verify", {}).get("smokeTest", ()))
+    environment = tuple(
+        sorted(
+            (str(key), str(value))
+            for key, value in data.get("verify", {}).get("environment", {}).items()
+        )
+    )
     if "install" in capabilities and ("verify" not in capabilities or not smoke):
         raise SteamZeroError(
             "E-API-SCHEMA",
@@ -151,6 +158,10 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         )
     if any("\x00" in argument or len(argument) > 256 for argument in smoke):
         raise SteamZeroError("E-API-SCHEMA", detail=f"adapter {data['id']} tem smokeTest inválido")
+    if any("\x00" in value for _, value in environment):
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail=f"adapter {data['id']} tem ambiente de verify inválido"
+        )
 
     sources = tuple(
         AdapterSource(
@@ -218,6 +229,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         license=data["license"],
         upstream=data["upstream"],
         verify_smoke_test=smoke,
+        verify_environment=environment,
         conflicts=tuple(data.get("conflicts", ())),
         requires=tuple(data.get("requires", ())),
         manifest_hash=crypto.digest_bytes(canonical.encode()).hexdigest,

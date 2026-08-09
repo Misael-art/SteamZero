@@ -5763,3 +5763,31 @@ skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make independence
 boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua
 aberto: r20d deve provar exclusivamente PCSX2/minimal. Nenhuma ação de host de
 produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — ambiente pré-inicialização PCSX2 iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `ef4e03f`. A r20d superou
+readiness/SSH e chegou ao `component apply`, mas fez rollback no smoke PCSX2:
+a evidência `2026-08-09-m10-vm-evidence-141608.md` registra chamadas ao
+`org.freedesktop.portal.Settings` e `FileChooser`. Escopo: permitir ambiente
+allowlisted de verify no comando `flatpak run`, aplicado antes do processo Qt;
+PCSX2 declarará apenas `QT_QPA_PLATFORM=offscreen` e
+`QT_QPA_PLATFORMTHEME=none`. Dependências: lockfile, testes de argv e gates
+antes de repetir somente PCSX2/minimal. Nenhuma ação de host de produção,
+release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — ambiente pré-inicialização PCSX2 concluído
+
+O contrato de adapter agora aceita `verify.environment` allowlisted; o executor
+Flatpak traduz cada par em `--env=CHAVE=valor` antes do `ref`, preservando o
+argv sem shell. PCSX2 declara `QT_QPA_PLATFORM=offscreen` e
+`QT_QPA_PLATFORMTHEME=none`, que impedem respectivamente a seleção de backend
+com display e a integração Qt com os portais que a r20d reportou. O argumento
+`-nogui` continua restrito ao smoke PCSX2. Decisão: ambiente é dado do manifesto
+e não condição global do executor; adapters sem ambiente continuam na assinatura
+de smoke de dois argumentos. O lockfile foi regenerado. Validação: 272 testes
+Flatpak/emuladores; suíte isolada **4217 passaram, 10 skipados**; `ruff check`,
+`ruff format --check`, `mypy src`, `make independence boundaries` e
+`capability_matrix --check` verdes. Item 4/DEBT-A7 segue aberto: r20e deve
+provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
+ou push foi executada.

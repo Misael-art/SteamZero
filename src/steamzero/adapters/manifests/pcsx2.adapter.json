@@ -35,10 +35,12 @@
   },
   "configFormat": "ini",
   "verify": {
+    "environment": {
+      "QT_QPA_PLATFORM": "offscreen",
+      "QT_QPA_PLATFORMTHEME": "none"
+    },
     "smokeTest": [
       "-nogui",
-      "-platform",
-      "offscreen",
       "--version"
     ]
   },

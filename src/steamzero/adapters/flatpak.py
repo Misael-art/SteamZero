@@ -122,7 +122,9 @@ class FlatpakPort(Protocol):
 
     def uninstall(self, ref: str) -> None: ...
 
-    def smoke(self, ref: str, arguments: Sequence[str]) -> None: ...
+    def smoke(
+        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+    ) -> None: ...
 
 
 class FlatpakCLI:
@@ -261,12 +263,24 @@ class FlatpakCLI:
         )
         _require_command(result, f"remover deployment de {ref}")
 
-    def smoke(self, ref: str, arguments: Sequence[str]) -> None:
+    def smoke(
+        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+    ) -> None:
         _require_ref(ref)
         if not arguments or any("\x00" in item or len(item) > 256 for item in arguments):
             raise SteamZeroError("E-API-SCHEMA", detail="smoke test Flatpak inválido")
+        if any("\x00" in key or "\x00" in value for key, value in environment):
+            raise SteamZeroError("E-API-SCHEMA", detail="ambiente de smoke Flatpak inválido")
         result = self._runner(
-            ("flatpak", "run", "--user", "--die-with-parent", ref, *arguments),
+            (
+                "flatpak",
+                "run",
+                "--user",
+                "--die-with-parent",
+                *(f"--env={key}={value}" for key, value in environment),
+                ref,
+                *arguments,
+            ),
             30.0,
         )
         _require_command(result, f"smoke test de {ref}")
@@ -563,7 +577,12 @@ class FlatpakExecutor:
                     self._flatpak.install(plan.remote, plan.ref)
                 self._flatpak.deploy(plan.ref, plan.target_commit)
                 self._verify_target(plan.ref, plan.remote, plan.target_commit)
-                self._flatpak.smoke(plan.ref, manifest.verify_smoke_test)
+                if manifest.verify_environment:
+                    self._flatpak.smoke(
+                        plan.ref, manifest.verify_smoke_test, manifest.verify_environment
+                    )
+                else:
+                    self._flatpak.smoke(plan.ref, manifest.verify_smoke_test)
                 final = self._flatpak.status(plan.ref)
                 self._persist(manifest, final)
                 self._save_operation(replace(operation, status="committed"))
