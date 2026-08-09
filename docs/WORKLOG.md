@@ -5955,3 +5955,25 @@ forçado impede que um timeout deixe lock para a próxima tentativa. Validação
 `capability_matrix --check` verdes. Item 4/DEBT-A7 continua aberto: a r20l deve
 provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap sem atualização integral iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `094fd59`. A r20l comprovou
+que `noto-fonts` eliminou a pergunta interativa, mas o bootstrap `pacman -Syu`
+atualizou o kernel e 143 pacotes, excedeu os 300 s e deixou lock para as demais
+tentativas. Escopo: instalar somente as dependências declaradas por `pacman -S
+--needed`, sem transformar a certificação de adapters em atualização integral
+da distribuição; repetir exclusivamente PCSX2/minimal após testes e gates.
+Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap sem atualização integral concluído
+
+O bootstrap passou a chamar `pacman -S --noconfirm --needed`: instala só a
+imagem de teste e suas dependências, sem atualizar kernel ou a distribuição.
+Isso remove a causa da r20l, cujo `-Syu` excedeu 300 s apesar de não haver mais
+prompt interativo. Decisão: a VM de certificação não deve executar manutenção
+do sistema operacional. Validação: 32 testes dedicados; suíte isolada **4217
+passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
+continua aberto: a r20m deve provar exclusivamente PCSX2/minimal. Nenhuma ação
+de host de produção, release ou push foi executada.
