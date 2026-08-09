@@ -850,6 +850,7 @@ def _cmd_component_rollback(args: list[str], correlation_id: str) -> tuple[dict[
             "component",
             "rollback",
             status=result["status"],
+            ok=result["status"] == "rolled-back",
             data=result,
             operation_id=result.get("operationId"),
             correlation_id=correlation_id,

@@ -5655,3 +5655,26 @@ format --check`, `mypy src`, `make independence boundaries` e
 `capability_matrix --check` verdes. Item 4/DEBT-A7 continuam bloqueados até a
 r15 responder ao ciclo mínimo de RetroArch. Nenhuma ação de host de produção,
 release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — contrato de rollback iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `9379963`. A r15 chegou ao
+rollback de RetroArch e o executor devolveu `status=rolled-back`, sem erro ou
+blocker, mas o envelope CLI derivou `ok=false` porque aquele status não fazia
+parte dos sucessos implícitos. Escopo: corrigir somente o envelope de
+`component rollback` e repetir o ciclo mínimo de RetroArch; nenhum adapter ou
+outro emulador será modificado. Nenhuma ação de host de produção, release ou
+push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — contrato de rollback concluído
+
+`component rollback` agora declara explicitamente `ok=true` quando o executor
+devolve `status=rolled-back`, sem esconder seu status descritivo. Isso corrige
+o contrato da CLI que reprovou falsamente a r15, cuja evidência já provou que
+o Flatpak tinha voltado ao baseline sem blocker. Teste de CLI cobre o envelope.
+Validação: 81 testes focados; suíte isolada **4215 passaram, 10 skipados**;
+`ruff check`, `ruff format --check`, `mypy src`, `make independence boundaries`
+e `capability_matrix --check` verdes. Item 4/DEBT-A7 continuam bloqueados:
+falta repetir RetroArch/minimal com o contrato correto e, depois, os ciclos
+estendidos e os outros emuladores. Nenhuma ação de host de produção, release
+ou push foi executada.

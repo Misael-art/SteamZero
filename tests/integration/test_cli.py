@@ -55,6 +55,23 @@ def test_contract_version(capsys: pytest.CaptureFixture[str]) -> None:
     assert code == cli.EXIT_OK
 
 
+def test_component_rollback_reports_rolled_back_as_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Lifecycle:
+        def rollback(self, operation_id: str) -> dict[str, str]:
+            return {"operationId": operation_id, "status": "rolled-back"}
+
+    monkeypatch.setattr(cli, "_component_lifecycle", lambda _store: Lifecycle())
+    envelope, exit_code = cli._cmd_component_rollback(
+        ["--operation-id", "01J000000000000000000000ZZ"], "correlation"
+    )
+
+    assert exit_code == cli.EXIT_OK
+    assert envelope["status"] == "rolled-back"
+    assert envelope["ok"] is True
+
+
 def test_jobs_list_empty(capsys: pytest.CaptureFixture[str]) -> None:
     code = cli.main(["jobs", "list", "--json"])
     env = json.loads(capsys.readouterr().out)
