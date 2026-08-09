@@ -36,6 +36,8 @@
   "configFormat": "ini",
   "verify": {
     "smokeTest": [
+      "-platform",
+      "offscreen",
       "--version"
     ]
   },

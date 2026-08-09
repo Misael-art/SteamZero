@@ -5678,3 +5678,25 @@ e `capability_matrix --check` verdes. Item 4/DEBT-A7 continuam bloqueados:
 falta repetir RetroArch/minimal com o contrato correto e, depois, os ciclos
 estendidos e os outros emuladores. Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — smoke headless PCSX2 iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `c170741`. A r20 chegou ao
+PCSX2, mas o ciclo mínimo reprovou antes do verify/rollback: o smoke
+`flatpak run net.pcsx2.PCSX2 --version` tentou o backend Qt XCB sem display e
+a transação restaurou corretamente o deployment anterior. Escopo: declarar o
+backend Qt `offscreen` exclusivamente no smoke do manifesto PCSX2 e repetir
+somente r20/minimal; RetroArch permanece certificado e PPSSPP fora de escopo.
+Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — smoke headless PCSX2 concluído
+
+O manifesto PCSX2 agora executa o probe de versão sob `-platform offscreen`,
+eliminando a dependência indevida de XCB/DISPLAY descoberta pela r20; o
+`component-lock.json` foi regenerado para preservar o vínculo manifesto↔lock.
+Decisão: o parâmetro pertence somente ao adapter Qt afetado, em vez de mudar o
+executor Flatpak para todos os emuladores. Testes dedicados: 32 passaram.
+Gates: suíte isolada **4215 passaram, 10 skipados**; Ruff, formatação, mypy,
+independência, boundaries e capability matrix verdes. Não fecha Item 4 nem
+DEBT-A7: falta repetir PCSX2 mínimo, seus três ciclos completos e PPSSPP.
+Nenhuma ação de host de produção, release ou push foi executada.
