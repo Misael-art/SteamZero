@@ -62,6 +62,16 @@ _GUEST_USER = "steamzero"
 _CONFIRM = "EXECUTAR-VM-M10"
 _FLATHUB_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
 _FLATHUB_RETRY_DELAYS: tuple[float, ...] = (5.0, 10.0, 20.0, 30.0)
+_GUEST_PACKAGES: tuple[str, ...] = (
+    "python",
+    "python-jsonschema",
+    "flatpak",
+    "sddm",
+    "openssh",
+    "btrfs-progs",
+    "git",
+)
+_PACMAN_RETRY_DELAYS: tuple[int, ...] = (5, 10, 20)
 
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
@@ -270,9 +280,21 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
             sudo: "ALL=(ALL) NOPASSWD:ALL"
             ssh_authorized_keys:
               - {public_key}
-        package_update: true
-        packages: [python, python-jsonschema, flatpak, sddm, openssh, btrfs-progs, git]
+        package_update: false
         runcmd:
+          - |
+            set -u
+            for attempt in 1 2 3 4; do
+              pacman -Syu --noconfirm --needed {" ".join(_GUEST_PACKAGES)} && exit 0
+              status=$?
+              echo "steamzero-m10: pacman bootstrap attempt $attempt failed (status=$status)" >&2
+              case "$attempt" in
+                1) sleep {_PACMAN_RETRY_DELAYS[0]} ;;
+                2) sleep {_PACMAN_RETRY_DELAYS[1]} ;;
+                3) sleep {_PACMAN_RETRY_DELAYS[2]} ;;
+                *) exit "$status" ;;
+              esac
+            done
           - [systemctl, enable, --now, sshd.service]
         """
     )
@@ -496,6 +518,14 @@ def _wait_for_guest(
                     "returncode": diagnostic.returncode,
                     "stdout": diagnostic.stdout.decode("utf-8", errors="replace"),
                     "stderr": diagnostic.stderr.decode("utf-8", errors="replace"),
+                }
+                output_log = probe._ssh_result(
+                    ("tail", "-n", "400", "/var/log/cloud-init-output.log"), timeout=30.0
+                )
+                last_issue["cloudInitOutputLog"] = {
+                    "returncode": output_log.returncode,
+                    "stdout": output_log.stdout.decode("utf-8", errors="replace"),
+                    "stderr": output_log.stderr.decode("utf-8", errors="replace"),
                 }
                 break
             return str(address)

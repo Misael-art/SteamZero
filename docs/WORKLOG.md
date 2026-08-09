@@ -5791,3 +5791,29 @@ Flatpak/emuladores; suíte isolada **4217 passaram, 10 skipados**; `ruff check`,
 `capability_matrix --check` verdes. Item 4/DEBT-A7 segue aberto: r20e deve
 provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap pacman retryável iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `8ee752c`. A r20e não chegou
+à CLI: `cloud-init status --long` registrou falha única do módulo automático
+`package_update_upgrade_install` ao chamar pacman para os sete pacotes do guest,
+sem stdout/stderr do pacote. Escopo: mover esse bootstrap para `runcmd` fixo
+com quatro tentativas limitadas e preservar `cloud-init-output.log` na
+evidência se readiness falhar. Dependência: testes de cloud-init/harness,
+gates e repetição exclusiva de PCSX2/minimal. Nenhuma ação de host de produção,
+release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — bootstrap pacman retryável concluído
+
+O cloud-init não usa mais o módulo `packages` de tentativa única. O `runcmd`
+fixo executa `pacman -Syu --noconfirm --needed` para os pacotes do laboratório,
+com quatro tentativas e esperas 5/10/20 s; após esgotar, mantém o código de
+falha para que readiness reprove corretamente. Quando cloud-init falha, o
+harness anexa também as últimas 400 linhas de `cloud-init-output.log` à
+evidência, além de `status --long`. Decisão: não repetir a VM cegamente nem
+alterar PCSX2 para falha anterior à CLI; a recuperação é confinada ao bootstrap
+descartável. Validação: 32 testes de harness; suíte isolada **4217 passaram, 10
+skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make independence
+boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua
+aberto: r20f deve provar exclusivamente PCSX2/minimal. Nenhuma ação de host de
+produção, release ou push foi executada.

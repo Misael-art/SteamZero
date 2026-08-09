@@ -330,6 +330,9 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     )
     user_data, meta_data = render_cloud_init(config, "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI test")
     assert "python-jsonschema" in user_data
+    assert "package_update: false" in user_data
+    assert "pacman -Syu --noconfirm --needed" in user_data
+    assert "pacman bootstrap attempt $attempt failed" in user_data
     assert "flatpak remote-add" not in user_data
     assert "steamzero-m10" in meta_data
     argv = build_virt_install_argv(config, tmp_path / "overlay.qcow2", tmp_path / "seed.iso")
@@ -568,6 +571,11 @@ def test_wait_for_guest_preserves_the_last_cloud_init_failure(
     assert exc.value.last_issue["cloudInitStatusLong"] == {
         "returncode": 0,
         "stdout": "detailed cloud-init failure",
+        "stderr": "",
+    }
+    assert exc.value.last_issue["cloudInitOutputLog"] == {
+        "returncode": 0,
+        "stdout": "",
         "stderr": "",
     }
 
