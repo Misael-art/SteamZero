@@ -451,6 +451,18 @@ def _guest_ssh(
     )
 
 
+def _diagnostic_ssh_result(
+    client: GuestComponentClient, command: Sequence[str], *, timeout: float
+) -> CommandResult:
+    """Coleta diagnóstico sem deixar um segundo timeout ocultar a falha raiz."""
+    try:
+        return client._ssh_result(command, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout.decode("utf-8", errors="replace") if exc.stdout else ""
+        stderr = exc.stderr.decode("utf-8", errors="replace") if exc.stderr else ""
+        return CommandResult(124, stdout.encode(), (stderr or "timeout de diagnóstico").encode())
+
+
 def _wait_for_guest(
     config: VmConfig,
     *,
@@ -513,14 +525,16 @@ def _wait_for_guest(
                 probe._ssh(("cloud-init", "status", "--wait"), timeout=300.0)
             except (RuntimeError, subprocess.TimeoutExpired) as exc:
                 last_issue = _readiness_issue("cloud-init", str(address), exc)
-                diagnostic = probe._ssh_result(("cloud-init", "status", "--long"), timeout=30.0)
+                diagnostic = _diagnostic_ssh_result(
+                    probe, ("cloud-init", "status", "--long"), timeout=30.0
+                )
                 last_issue["cloudInitStatusLong"] = {
                     "returncode": diagnostic.returncode,
                     "stdout": diagnostic.stdout.decode("utf-8", errors="replace"),
                     "stderr": diagnostic.stderr.decode("utf-8", errors="replace"),
                 }
-                output_log = probe._ssh_result(
-                    ("tail", "-n", "400", "/var/log/cloud-init-output.log"), timeout=30.0
+                output_log = _diagnostic_ssh_result(
+                    probe, ("tail", "-n", "400", "/var/log/cloud-init-output.log"), timeout=30.0
                 )
                 last_issue["cloudInitOutputLog"] = {
                     "returncode": output_log.returncode,

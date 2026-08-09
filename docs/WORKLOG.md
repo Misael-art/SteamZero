@@ -5817,3 +5817,26 @@ skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make independence
 boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua
 aberto: r20f deve provar exclusivamente PCSX2/minimal. Nenhuma ação de host de
 produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — diagnóstico de cloud-init resiliente iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `9ff70b5`. Na r20f, depois
+do timeout de `cloud-init status --wait`, a coleta secundária de `status --long`
+também expirou e substituiu a falha original na evidência. Escopo: capturar
+timeout de cada diagnóstico secundário como `returncode=124`, mantendo a falha
+primária de readiness e seguindo para evidência/cleanup; repetir PCSX2/minimal
+somente após gates. Nenhuma ação de host de produção, release ou push foi
+executada.
+
+## 2026-08-09 — Item 4 (VM M10) — diagnóstico de cloud-init resiliente concluído
+
+Diagnósticos secundários de readiness (`cloud-init status --long` e leitura de
+`cloud-init-output.log`) agora convertem timeout em resultado estruturado
+`returncode=124`; portanto não escondem a falha original de `status --wait` nem
+impedem que o `finally` grave evidência e limpe a VM. Decisão: esses comandos
+são observabilidade de melhor esforço, não podem alterar a semântica de falha
+nem provocar exceção não estruturada. Validação: 32 testes do harness; suíte
+isolada **4217 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
+`mypy src`, `make independence boundaries` e `capability_matrix --check`
+verdes. Item 4/DEBT-A7 continua aberto: r20g deve provar exclusivamente
+PCSX2/minimal. Nenhuma ação de host de produção, release ou push foi executada.
