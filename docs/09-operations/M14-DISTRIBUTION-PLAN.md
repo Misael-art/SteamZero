@@ -1,6 +1,10 @@
 # M14 — Plano de distribuição (canais, assinatura, SBOM, downgrade)
 
-**Status:** projeto documental apenas (2026-08-10).  
+**Status:** projeto documental **preparatório** (2026-08-10), originado na branch
+`codex/docs-g7-g32-m14` sobre `origin/main@39bd325`. Reaplicar em **commit
+documental próprio** sobre o tip pós–code freeze M10 (sem reescrever a branch
+antiga). Combinar M14 com G7 no mesmo commit é proibido.
+
 **Não inclui:** build de release, wheel/wheelhouse, instalação no host, mutação
 de `/opt/steamzero`, Flatpak de plataforma, nem código de packaging.
 

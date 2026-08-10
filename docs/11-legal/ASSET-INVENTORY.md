@@ -1,8 +1,14 @@
-# ASSET-INVENTORY — inventário fino de assets (G7)
+# ASSET-INVENTORY — inventário fino de assets (G7) — **PREPARATÓRIO**
+
+> **Status (2026-08-10):** rascunho sobre `origin/main@39bd325`. **Não fecha G7.**
+> Regenerar com hashes novos sobre o tip final pós–code freeze M10 (árvore
+> M10+M11), em commit próprio, antes de qualquer integração como closure.
+> Branch de origem: `codex/docs-g7-g32-m14` (preservar; não reescrever).
 
 Inventário **item a item** dos assets binários (e SVG) rastreados no repositório
-SteamZero, com origem, licença, hash SHA-256 e se podem ser redistribuídos com o
-produto. Complementa `THIRD-PARTY-NOTICES.md` e `src/steamzero/ui/assets/ATTRIBUTION.md`.
+SteamZero **nessa base**, com origem, licença, hash SHA-256 e se podem ser
+redistribuídos com o produto. Complementa `THIRD-PARTY-NOTICES.md` e
+`src/steamzero/ui/assets/ATTRIBUTION.md`.
 
 **Escopo:** somente o que está no tree do SteamZero. Assets dos projetos de
 referência (EmuDeck / RetroDECK / LinuxToys / PhaseZero) **não** são
@@ -11,8 +17,8 @@ redistribuídos; ver §Pendências.
 **Regra ADR-0019:** este inventário é documentação legal. Não reintroduz nomes
 de projetos de referência em código, UI, units ou paths de runtime.
 
-**Base deste inventário:** commit `39bd325` (`origin/main` no momento da
-auditoria). Hashes recalculados localmente em 2026-08-10.
+**Base deste inventário:** commit `39bd325` (`origin/main` no momento do
+rascunho). Hashes recalculados localmente em 2026-08-10.
 
 ## Legenda
 

@@ -5019,3 +5019,33 @@ M11 nem integração.
 ### Fora de escopo
 Integração M10+M11, contrato daemon frontends, install host, push, M12/M13.
 
+## 2026-08-10 — Correção: invalidar closure da frente A (G7/G32/M14)
+
+**Iniciado:** correção pós-auditoria da branch `codex/docs-g7-g32-m14`.  
+**Fechado:** registro corrigido; branch preparatória preservada; sem push/PR.
+
+### Decisões aceitas da auditoria
+1. `f57a34d` **não** comprova fechamento G32 e **não** deve ser integrado como
+   closure (base `origin/main@39bd325` / não é a prova exigida sobre o tip final
+   com `242ba38` no fluxo M10+M11).
+2. Inventário G7 em `216f87e` cobre só o tree antigo → regenerar no tip final
+   M10+M11.
+3. G7 e M14 misturados em `216f87e` violam um item por commit.
+4. Gates integrais obrigatórios ausentes nesta frente.
+5. `.venv` (symlink no worktree) não rastreado e nunca commitável.
+
+### Ações nesta correção
+- G7 e G32 **reabertas** em `KNOWN-GAPS.md` (closures de `216f87e`/`f57a34d`
+  invalidadas).
+- Documentos marcados como **preparatórios** (ASSET-INVENTORY, notices, matrix,
+  M14 plan, stress log).
+- Plano re-aplicação: `docs/diagnostics/2026-08-10-docs-parallel-a-correction.md`.
+- Branch `codex/docs-g7-g32-m14` **não** reescrita nem apagada.
+- Push/PR: **nenhum**.
+
+### Após code freeze M10 (ainda não executado)
+- Nova branch limpa a partir do tip que contenha `242ba38`.
+- Reaplicar M14 em commit próprio; regenerar G7 em commit próprio; stress G32
+  no código real; fechar G32 só se stress verde; gates integrais sem VM M10
+  concorrente; WORKLOG iniciado/fechado por item; push só com autorização.
+

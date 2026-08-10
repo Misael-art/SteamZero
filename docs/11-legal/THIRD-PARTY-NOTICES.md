@@ -24,8 +24,9 @@ hashes no SBOM de cada release (M14/M15).
 
 ## Inventário fino de assets (G7)
 
-**Inventário autoritativo item a item:** [`ASSET-INVENTORY.md`](ASSET-INVENTORY.md)
-(72 arquivos com SHA-256 em 2026-08-10, base `39bd325`). Resumo abaixo.
+**Inventário preparatório (não fecha G7):** [`ASSET-INVENTORY.md`](ASSET-INVENTORY.md)
+(72 arquivos com SHA-256 em 2026-08-10, base `39bd325` apenas). Regenerar no tip
+final M10+M11 antes de tratar como autoritativo. Resumo do rascunho abaixo.
 
 ### Liberation Sans 2.1.5 — fixture de teste visual
 

@@ -1,43 +1,39 @@
-# G32 closure audit — 2026-08-10
+# G32 stress log — 2026-08-10 — **NÃO VINCULANTE / NÃO É CLOSURE**
 
-- Base commit of tree: `39bd325` (origin/main at branch creation)
-- Docs commit on branch: `216f87e`
-- G32 fix commit present: `242ba38` (`242ba38d17762b4c43e25a862626f065f53346ee`)
+> **Status (2026-08-10, pós-auditoria):** este arquivo e o commit `f57a34d`
+> **não comprovam** o fechamento de G32 e **não devem ser integrados** como
+> closure. Preservados apenas como trabalho preparatório na branch
+> `codex/docs-g7-g32-m14`. Ver `docs/diagnostics/2026-08-10-docs-parallel-a-correction.md`
+> e o plano pós–code freeze no WORKLOG.
+
+## Por que não conta como fechamento
+
+1. Base da branch: `origin/main@39bd325` — a auditoria de integração considera
+   que essa base **não** é o tip válido para provar G32 em relação ao fluxo
+   M10+M11 / linha de desenvolvimento atual; o stress não foi refeito sobre o
+   tip final que a orquestração exige (tip com `242ba38` **e** árvore M10+M11).
+2. Gates integrais obrigatórios (`run_tests_isolated` suíte, ruff, format-check,
+   mypy, `make independence boundaries`) **não** foram executados nesta frente.
+3. G7 e M14 foram combinados em `216f87e` (viola “um item por commit”).
+4. Inventário G7 cobre o tree de `39bd325`, não a árvore final M10+M11.
+5. `.venv` (symlink no worktree) permanece não rastreado e **nunca** deve ser
+   commitado.
+
+## Log bruto (histórico; não usar para KNOWN-GAPS)
+
 - Branch: `codex/docs-g7-g32-m14`
-- Python: `Python 3.14.6`
-- Node ids: `tests/integration/test_cast_engine_ipc.py::TestEngineProtocol::test_start_session_already_running` and `tests/integration/test_cast_engine_ipc.py::TestEngineProtocol::test_pause_resume_with_pipeline`
-- Method: sequential isolated runs; 50× both G32 tests in one invocation; then 5× full `test_cast_engine_ipc.py`
-- Note: earlier aborted attempt used wrong node ids / concurrent kill; discarded
-- Smoke (1× both): 2 passed in 11.80s (pre-stress)
+- Base: `39bd325`
+- Node ids: `TestEngineProtocol::test_start_session_already_running` e
+  `test_pause_resume_with_pipeline`
+- 50× o par + 5× `test_cast_engine_ipc.py` → 0 falhas **nessa base**
+- Isso demonstra no máximo “verde local num ponto antigo”, não closure de G32
+  na linha de desenvolvimento.
 
-## Stress A — 50× both G32 tests together
+## Re-prova obrigatória (após code freeze M10)
 
-progress pair 10/50 fails=0
-progress pair 20/50 fails=0
-progress pair 30/50 fails=0
-progress pair 40/50 fails=0
-progress pair 50/50 fails=0
-pair (both G32 tests): failures=0/50
-
-## Stress B — 5× full test_cast_engine_ipc.py
-46 passed in 2.25s
-real-state after:  exists=True files=11810 directories=1924 bytes=1096910625 max_mtime_ns=1786132101843430846 source=HOME-default
-46 passed in 2.28s
-real-state after:  exists=True files=11810 directories=1924 bytes=1096910625 max_mtime_ns=1786132101843430846 source=HOME-default
-46 passed in 2.23s
-real-state after:  exists=True files=11810 directories=1924 bytes=1096910625 max_mtime_ns=1786132101843430846 source=HOME-default
-46 passed in 2.28s
-real-state after:  exists=True files=11810 directories=1924 bytes=1096910625 max_mtime_ns=1786132101843430846 source=HOME-default
-46 passed in 2.34s
-real-state after:  exists=True files=11810 directories=1924 bytes=1096910625 max_mtime_ns=1786132101843430846 source=HOME-default
-full cast_engine_ipc: failures=0/5
-
-## Conclusion
-
-PASS: 0 failures in 50 pair runs + 5 full-file runs (46 tests each, ~2.2–2.3 s)
-after fix `242ba38`. No timeout increases. Real-state guard: no mutation of host
-state home across runs.
-
-**G32 closed** in `docs/KNOWN-GAPS.md` with this evidence (2026-08-10).
-
-`DONE_G32 RESULT=PASS FAIL_PAIR=0 FAIL_FULL=0`
+1. Nova branch limpa a partir do tip final que **contenha** `242ba38`.
+2. Stress G32 dirigido sobre **esse** tip (par 50× + arquivo completo ≥5–10×).
+3. Só então atualizar `KNOWN-GAPS` se 0 falhas.
+4. Gates integrais sem VM/suíte M10 concorrente.
+5. WORKLOG: iniciado/fechado por item; um commit por item.
+6. Sem push sem autorização.
