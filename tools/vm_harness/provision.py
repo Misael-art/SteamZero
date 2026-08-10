@@ -45,6 +45,7 @@ if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
 from vm_harness.driver import (  # noqa: E402 - sys.path precisa incluir tools no entry point direto
+    FLATHUB_RETRY_DELAYS,
     M10_FLATPAK_EMULATORS,
     ComponentClient,
     certify_emulator,
@@ -61,7 +62,6 @@ _GUEST_SOURCE = "/home/steamzero/steamzero-src"
 _GUEST_USER = "steamzero"
 _CONFIRM = "EXECUTAR-VM-M10"
 _FLATHUB_URL = "https://dl.flathub.org/repo/flathub.flatpakrepo"
-_FLATHUB_RETRY_DELAYS: tuple[float, ...] = (5.0, 10.0, 20.0, 30.0)
 _GUEST_PACKAGES: tuple[str, ...] = (
     "python",
     "python-jsonschema",
@@ -582,7 +582,7 @@ def _configure_flathub(address: str, *, identity_file: Path, runner: Runner) -> 
     client = GuestComponentClient(address, identity_file=identity_file, runner=runner)
     command = ("flatpak", "remote-add", "--user", "--if-not-exists", "flathub", _FLATHUB_URL)
     attempts: list[dict[str, Any]] = []
-    for index, delay in enumerate((*_FLATHUB_RETRY_DELAYS, 0.0), start=1):
+    for index, delay in enumerate((*FLATHUB_RETRY_DELAYS, 0.0), start=1):
         result = client._ssh_result(command, timeout=180.0)
         attempt = {
             "attempt": index,

@@ -26,6 +26,7 @@ interrompe o ciclo e reporta, não persiste estado falso).
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -59,6 +60,11 @@ EvidenceSink = Callable[[str, str, dict[str, Any]], None]
 #: Emuladores Flatpak do M10 (DuckStation EOL sai; Switch keys+firmware fica
 #: para a43+). RetroArch destrava 15 plataformas via cores (BE-2 já entregue).
 M10_FLATPAK_EMULATORS: tuple[str, ...] = ("retroarch", "pcsx2", "ppsspp")
+
+#: Esperas entre tentativas de operações que dependem do DNS do guest; a
+#: política do harness é repetir somente a indisponibilidade DNS (a resposta
+#: do upstream pode levar ~5 s), nunca falhas reais do componente.
+FLATHUB_RETRY_DELAYS: tuple[float, ...] = (5.0, 10.0, 20.0, 30.0)
 
 #: Passos do ciclo M10 na ordem canônica.
 CYCLE_STEPS: tuple[str, ...] = (
@@ -107,6 +113,42 @@ class CycleResult:
             "steps": self.steps,
             "failure": self.failure,
         }
+
+
+def _install_with_dns_retry(
+    client: ComponentClient,
+    emulator: str,
+    *,
+    plan_invalid: str,
+) -> dict[str, Any] | None:
+    """plan install -> apply repetindo somente indisponibilidade DNS.
+
+    O plano é single-use, então cada tentativa replaneja. Levanta
+    ``ValueError(plan_invalid)`` quando o plano é inválido/noop (cabe ao
+    chamador registrar a falha). Falhas reais do apply re-lançam: a política
+    do harness (mesma de ``_configure_flathub``) é repetir só "could not
+    resolve hostname", nunca aceitar erro como sucesso.
+    """
+    for _attempt, delay in enumerate((*FLATHUB_RETRY_DELAYS, 0.0), start=1):
+        plan_response = client.plan(emulator, "install")
+        plan_id = plan_response.get("planId")
+        confirm = plan_response.get("confirmToken")
+        if not plan_id or not confirm or plan_response.get("action") == "noop":
+            raise ValueError(f"{plan_invalid}: {plan_response}")
+        try:
+            op = client.apply(plan_id, confirm)
+        except Exception as exc:
+            if "could not resolve hostname" not in str(exc).lower() or delay == 0.0:
+                raise
+            time.sleep(delay)
+            continue
+        if op.get("operationId"):
+            return op
+        combined = json.dumps(op, sort_keys=True).lower()
+        if "could not resolve hostname" not in combined or delay == 0.0:
+            return op
+        time.sleep(delay)
+    raise AssertionError("loop de retry DNS deveria ter terminado")
 
 
 def certify_emulator(
@@ -166,17 +208,14 @@ def certify_emulator(
         fail("baseline", f"emulador não começa ausente: state={before.get('state')}", before)
         return result
 
-    # 1. Install: plan -> confirm -> apply -> estado installed.
-    install_plan = client.plan(emulator, "install")
-    plan_id = install_plan.get("planId")
-    confirm = install_plan.get("confirmToken")
-    if not plan_id or not confirm:
-        fail("install", "plan não devolveu planId/confirmToken", install_plan)
+    # 1. Install: plan -> confirm -> apply -> estado installed (retry DNS).
+    try:
+        install_op = _install_with_dns_retry(
+            client, emulator, plan_invalid="plan de install veio noop num emulador ausente"
+        )
+    except ValueError as exc:
+        fail("install", str(exc), {})
         return result
-    if install_plan.get("action") == "noop":
-        fail("install", "plan de install veio noop num emulador ausente", install_plan)
-        return result
-    install_op = client.apply(plan_id, confirm)
     install_op_id = install_op.get("operationId")
     if not install_op_id:
         fail("install", "apply não devolveu operationId", install_op)
@@ -222,13 +261,13 @@ def certify_emulator(
         return result
 
     # 4. Roll-forward: reinstala para deixar o emulador no estado final desejado.
-    rf_plan = client.plan(emulator, "install")
-    rf_plan_id = rf_plan.get("planId")
-    rf_confirm = rf_plan.get("confirmToken")
-    if not rf_plan_id or not rf_confirm:
-        fail("roll-forward", "plan não devolveu planId/confirmToken", rf_plan)
+    try:
+        rf_op = _install_with_dns_retry(
+            client, emulator, plan_invalid="plan de roll-forward não é aplicável"
+        )
+    except ValueError as exc:
+        fail("roll-forward", str(exc), {})
         return result
-    rf_op = client.apply(rf_plan_id, rf_confirm)
     if not rf_op.get("operationId"):
         fail("roll-forward", "apply não devolveu operationId", rf_op)
         return result
@@ -270,13 +309,15 @@ def certify_emulator_minimal(
         fail("baseline", f"emulador não começa ausente: state={before.get('state')}", before)
         return result
 
-    install_plan = client.plan(emulator, "install")
-    plan_id = install_plan.get("planId")
-    confirm = install_plan.get("confirmToken")
-    if not plan_id or not confirm or install_plan.get("action") == "noop":
-        fail("install", "plan de install não é aplicável no baseline ausente", install_plan)
+    try:
+        install_op = _install_with_dns_retry(
+            client,
+            emulator,
+            plan_invalid="plan de install não é aplicável no baseline ausente",
+        )
+    except ValueError as exc:
+        fail("install", str(exc), {})
         return result
-    install_op = client.apply(plan_id, confirm)
     install_op_id = install_op.get("operationId")
     if not install_op_id:
         fail("install", "apply não devolveu operationId", install_op)

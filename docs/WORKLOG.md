@@ -6081,3 +6081,32 @@ independence boundaries` e `capability_matrix --check` verdes. Item
 4/DEBT-A7 continua aberto: r23 deve provar PCSX2/minimal com o smoke
 `-version` verde. Nenhuma ação de host de produção, release ou push foi
 executada.
+
+## 2026-08-10 — Item 4 (VM M10) — retry DNS no install da certificação iniciado
+
+A r23 e a r24 (commit 8ccff1c7, PCSX2/minimal) reprovaram de forma idêntica
+na certificação: `E-COMPONENT-DEGRADED: ... Could not resolve hostname` ao
+buscar `https://dl.flathub.org/repo/config` no install — e não no smoke. O
+bootstrap pacman funciona no mesmo guest minutos antes; medição no host:
+o resolver upstream demora ~5 s por consulta fria (AAAA do flathub 5,09 s;
+A do mirror 6,05 s), o que estoura o timeout do glibc/dnsmasq no guest.
+O harness já repetia `flatpak remote-add` exclusivamente em
+"could not resolve hostname" (`_configure_flathub`), mas o install da
+certificação era one-shot. Escopo: repetir plan/apply (plan é single-use)
+somente nessa falha DNS, nos installs do minimal e do ciclo completo e no
+roll-forward; falha real nunca é repetida. Nenhuma ação de host de produção,
+release ou push foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — retry DNS no install da certificação concluído
+
+`_install_with_dns_retry` (driver) replaneja e reaprova quando o apply falha
+com "could not resolve hostname" usando os mesmos delays de
+`_configure_flathub` (5/10/20/30 s); qualquer outra falha propaga na hora e
+plano inválido vira falha registrada no ciclo. A constante saiu de
+`provision.py` para `driver.py` (fonte única). Validação: 3 testes dedicados
+novos (retry DNS no minimal, falha real sem retry, agregação intacta);
+suíte isolada **4229 passaram, 10 skipados**; `ruff check`, `ruff format
+--check`, `mypy src`, `make independence boundaries` e `capability_matrix
+--check` verdes. Item 4/DEBT-A7 continua aberto: r25 deve provar PCSX2/minimal
+no commit desta correção. Nenhuma ação de host de produção, release ou push
+foi executada.

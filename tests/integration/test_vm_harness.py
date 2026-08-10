@@ -53,6 +53,8 @@ class FakeComponentClient:
         self._plans: dict[str, dict[str, Any]] = {}  # planId -> plan envelope
         self._counter = 0
         self._pins = m10_pinned_commits()
+        self.dns_fail_install_until = 0  # applies de install falham por DNS até 0
+        self.install_failures: dict[str, str] = {}  # adapter_id -> falha real
 
     def status(self, adapter_id: str) -> dict[str, Any]:
         state = self._state.get(adapter_id, "missing")
@@ -82,6 +84,13 @@ class FakeComponentClient:
         adapter_id = plan_id.split("-")[1]
         action = plan["action"]
         if action == "install":
+            if adapter_id in self.install_failures:
+                raise RuntimeError(self.install_failures[adapter_id])
+            if self.dns_fail_install_until > 0:
+                self.dns_fail_install_until -= 1
+                raise RuntimeError(
+                    "E-COMPONENT-DEGRADED: falha ao instalar: [6] Could not resolve hostname"
+                )
             self._state[adapter_id] = "installed"
         elif action == "uninstall":
             self._state[adapter_id] = "missing"
@@ -185,6 +194,30 @@ def test_certify_emulator_minimal_stops_after_verified_rollback() -> None:
         "rollback",
     ]
     assert client.status("retroarch")["state"] == "missing"
+
+
+def test_certify_emulator_minimal_retries_dns_unavailability_on_install() -> None:
+    # DNS lento do upstream (resposta ~5 s) falha o apply por "Could not
+    # resolve hostname"; o harness replaneja e repete somente essa falha.
+    client = FakeComponentClient()
+    client.dns_fail_install_until = 2
+    result = certify_emulator_minimal(
+        "pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"]
+    )
+    assert result.ok is True
+    assert client.status("pcsx2")["state"] == "missing"
+    install = next(step for step in result.steps if step["step"] == "install")
+    assert install["commit"] == m10_pinned_commits()["pcsx2"]
+
+
+def test_certify_emulator_does_not_retry_a_real_install_failure() -> None:
+    # Falha real do apply não é camuflada por retry DNS: propaga na hora.
+    client = FakeComponentClient()
+    client.install_failures["pcsx2"] = "E-COMPONENT-DEGRADED: disco cheio"
+    before = client.dns_fail_install_until
+    with pytest.raises(RuntimeError, match="disco cheio"):
+        certify_emulator_minimal("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
+    assert client.dns_fail_install_until == before
 
 
 def test_certify_m10_aggregates_all_emulators() -> None:
