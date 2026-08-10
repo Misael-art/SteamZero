@@ -165,9 +165,7 @@ def test_frontends_plan_then_apply_then_verify_then_rollback(
     )
     assert code == 0
     assert env["data"]["status"] == "rolled-back"
-    assert not esde_file.exists() or "steamzero-switch" not in esde_file.read_text(
-        encoding="utf-8"
-    )
+    assert not esde_file.exists() or "steamzero-switch" not in esde_file.read_text(encoding="utf-8")
 
 
 def test_frontends_rejects_bad_spec_and_wrong_confirm(
