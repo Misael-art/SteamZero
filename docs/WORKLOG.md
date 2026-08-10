@@ -4976,3 +4976,46 @@ independência, boundaries e `git diff --check` passaram. O runner isolado
 integral foi iniciado sem processos residuais, mas a sessão não devolveu resumo
 ou exit code conclusivo; a CI da PR será o gate autoritativo. Ações de host,
 release e tag: **nenhuma**.
+
+## 2026-08-10 — Agente paralelo A: G7 + auditoria G32 + projeto M14
+
+Worktree isolado `/mnt/sdcard/Projects/Port_Steam-docs-g7-g32-m14`, branch
+`codex/docs-g7-g32-m14` a partir de `origin/main` (`39bd325`). Sem tocar M10,
+M11 nem integração.
+
+### G7 — inventário legal de assets
+- Criado `docs/11-legal/ASSET-INVENTORY.md`: 72 arquivos com SHA-256, origem e
+  licença (UI assets, Liberation Sans, scene-media, golden, evidências).
+- Atualizados `THIRD-PARTY-NOTICES.md`, `LICENSE-MATRIX.md`, `ATTRIBUTION-PLAN.md`.
+- G7 **fechada** para o tree em `KNOWN-GAPS.md`; residuais (assets de referência
+  fora do tree, dat-files, other_licenses se houver derivação) ficam como regra
+  de manutenção, não como gap de assets já redistribuídos.
+
+### G32 — auditoria de encerramento
+- Confirmado ancestral `242ba38` (fix IPC cast engine).
+- Stress dirigido isolado: 50× o par
+  `TestEngineProtocol::test_start_session_already_running` +
+  `test_pause_resume_with_pipeline` e 5× `test_cast_engine_ipc.py` (46 testes
+  cada) → **0 falhas**.
+- Evidência: `docs/diagnostics/2026-08-10-g32-closure-audit.md`.
+- G32 **fechada** em `KNOWN-GAPS.md`. Nenhum código de cast reimplementado.
+
+### M14 — projeto documental
+- `docs/09-operations/M14-DISTRIBUTION-PLAN.md`: canais, assinatura, SBOM,
+  update/rollback/downgrade, RT-14, fases M14.0–M14.6, decisões do operador
+  (Q10, chave, Flatpak vs nativo). Sem release, wheel ou host.
+
+### Gates
+- Docs-only + stress dirigido G32 (acima). Suíte integral do repo **não** rodada
+  para não competir com a VM M10. `make independence` / ruff / mypy: N/A para
+  diff só de docs (zero `src/**`).
+
+### Commits
+| item | commit | prova |
+|---|---|---|
+| G7 + plano M14 | `216f87e` | inventário 72 hashes; plano M14 |
+| G32 audit + KNOWN-GAPS + WORKLOG | (este) | 50× par + 5× full file = 0 falhas |
+
+### Fora de escopo
+Integração M10+M11, contrato daemon frontends, install host, push, M12/M13.
+
