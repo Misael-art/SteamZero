@@ -6160,3 +6160,15 @@ falha sob as mesmas assinaturas de rede (DNS/timeout), e falha real de
 plan continua propagando. Testes de retry de plan por DNS e de não-retry
 de falha real de plan. Suíte isolada **4233 passaram, 10 skipados** +
 gates verdes.
+
+## 2026-08-10 — Item 4 (VM M10) — retry lê o detail de rede do envelope no stdout
+
+r35 (RetroArch/minimal) REPROVOU no apply com "[6] Could not resolve
+hostname" — e o retry existente deixou passar: a exceção
+`RequiredCommandError` preserva o stdout (envelope JSON do componente)
+em `.result`, mas o str() só expõe o stderr (a fixação "Warning:
+Permanently added..."). O retry agora inspeciona todos os canais da
+exceção (str, stdout/stderr preservados e envelope) para decidir se é
+rede transiente; falha real continua propagando. Teste reproduz o caso
+r35 com a classe real `RequiredCommandError`. Suíte isolada **4234
+passaram, 10 skipados** + gates verdes.

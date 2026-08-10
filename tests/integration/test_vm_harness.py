@@ -30,6 +30,7 @@ from vm_harness.driver import (
 from vm_harness.provision import (
     CommandResult,
     GuestComponentClient,
+    RequiredCommandError,
     VmConfig,
     _seed_argv,
     build_virt_install_argv,
@@ -57,6 +58,7 @@ class FakeComponentClient:
         self.timeout_fail_install_until = 0  # applies falham por timeout até 0
         self.plan_dns_fail_until = 0  # plans falham por DNS até 0
         self.plan_failures: dict[str, str] = {}  # adapter_id -> falha real de plan
+        self.apply_dns_hidden_until = 0  # apply falha com detail só no stdout
         self.install_failures: dict[str, str] = {}  # adapter_id -> falha real
 
     def status(self, adapter_id: str) -> dict[str, Any]:
@@ -98,6 +100,37 @@ class FakeComponentClient:
         if action == "install":
             if adapter_id in self.install_failures:
                 raise RuntimeError(self.install_failures[adapter_id])
+            if self.apply_dns_hidden_until > 0:
+                # r35: str() da exceção só tem o stderr; o detail de rede
+                # (envelope do componente) vive no stdout preservado.
+                self.apply_dns_hidden_until -= 1
+                envelope = json.dumps(
+                    {
+                        "ok": False,
+                        "module": "component",
+                        "action": "apply",
+                        "error": {
+                            "code": "E-COMPONENT-DEGRADED",
+                            "detail": (
+                                "E-COMPONENT-DEGRADED: falha ao instalar "
+                                "org.libretro.RetroArch: While fetching "
+                                "https://dl.flathub.org/repo/config: "
+                                "[6] Could not resolve hostname"
+                            ),
+                        },
+                    }
+                )
+                raise RequiredCommandError(
+                    "SSH guest (env)",
+                    CommandResult(
+                        returncode=1,
+                        stdout=envelope.encode(),
+                        stderr=(
+                            b"Warning: Permanently added '192.168.123.12' "
+                            b"(ED25519) to the list of known hosts.\r\n"
+                        ),
+                    ),
+                )
             if self.dns_fail_install_until > 0:
                 self.dns_fail_install_until -= 1
                 raise RuntimeError(
@@ -264,6 +297,18 @@ def test_certify_emulator_minimal_does_not_retry_a_real_plan_failure() -> None:
     with pytest.raises(RuntimeError, match="commit não existe"):
         certify_emulator_minimal("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
     assert client.dns_fail_install_until == 0
+
+
+def test_certify_emulator_minimal_retries_apply_dns_hidden_in_stdout() -> None:
+    # O detail de rede vive no stdout da exceção (envelope do componente),
+    # não no str(); o retry precisa inspecionar os canais preservados.
+    client = FakeComponentClient()
+    client.apply_dns_hidden_until = 2
+    result = certify_emulator_minimal(
+        "retroarch", client, expected_commit=m10_pinned_commits()["retroarch"]
+    )
+    assert result.ok is True
+    assert client.status("retroarch")["state"] == "missing"
 
 
 def test_certify_emulator_does_not_retry_a_real_install_failure() -> None:

@@ -136,7 +136,7 @@ def _install_with_dns_retry(
         try:
             plan_response = client.plan(emulator, "install")
         except Exception as exc:
-            if not _is_transient_network_failure(str(exc)) or delay == 0.0:
+            if not _exception_mentions_network(exc) or delay == 0.0:
                 raise
             time.sleep(delay)
             continue
@@ -147,7 +147,7 @@ def _install_with_dns_retry(
         try:
             op = client.apply(plan_id, confirm)
         except Exception as exc:
-            if not _is_transient_network_failure(str(exc)) or delay == 0.0:
+            if not _exception_mentions_network(exc) or delay == 0.0:
                 raise
             time.sleep(delay)
             continue
@@ -164,6 +164,25 @@ def _is_transient_network_failure(detail: str) -> bool:
     """Falhas de rede transientes reconhecidas pelo harness (nunca erro do app)."""
     lowered = detail.lower()
     return "could not resolve hostname" in lowered or "timeout was reached" in lowered
+
+
+def _exception_mentions_network(exc: Exception) -> bool:
+    """Assinatura de rede em qualquer canal da exceção, não só str().
+
+    ``RequiredCommandError`` preserva o stdout (envelope JSON do componente)
+    em ``.result`` e só expõe o stderr no str() — o detail de rede do
+    componente vive no envelope. Sem inspecionar os canais preservados, o
+    retry deixaria passar exatamente a falha que ele existe para cobrir.
+    """
+    pieces = [str(exc)]
+    result = getattr(exc, "result", None)
+    if result is not None:
+        pieces.append(getattr(result, "stdout", b"").decode("utf-8", errors="replace"))
+        pieces.append(getattr(result, "stderr", b"").decode("utf-8", errors="replace"))
+    envelope = getattr(exc, "envelope", None)
+    if envelope is not None:
+        pieces.append(json.dumps(envelope, sort_keys=True))
+    return any(_is_transient_network_failure(piece) for piece in pieces)
 
 
 def certify_emulator(
