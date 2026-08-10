@@ -6139,3 +6139,36 @@ injeção controlada de falha em teste. Ruff, ruff format, mypy, fronteiras,
 independência e matriz de capacidades verdes. Validação integral da suíte
 adiada por atividade concorrente (M10 rodando a suíte na árvore principal).
 Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.3 (Frontends) — adapter ES-DE concluído
+
+`src/steamzero/adapters/es_de.py` sincroniza `~/.config/ES-DE/custom_systems/
+es_systems.xml` (canal documentado de custom systems, mesclado aos sistemas
+internos do ES-DE). Diferente do SRM (canal de diretório com preservação
+byte a byte), o arquivo é um único documento compartilhado: o adapter
+preserva conteúdo externo de forma SEMÂNTICA — ordem dos sistemas,
+comentários (TreeBuilder com suporte a comentário/PI), atributos e textos —
+nunca deleta sistema sem marcador, e só reescreve o arquivo quando há
+diferença real (`skip_unchanged=True`), com rollback byte-idêntico do núcleo
+transacional. Marcador de ownership: atributo `steamzero="true"` no `<system>`
+(o ES-DE ignora atributos desconhecidos); nome é filho `<name>` com prefixo
+obrigatório `steamzero-` (evita colisão silenciosa com sistemas internos do
+ES-DE). Contrato da entrada: `name`, `label`, `path` absoluto (ROMPATH),
+`extensions` (`.ext` validado, deduplicado, ordenado), `platform`, `theme`
+opcional e `command` opcional (padrão
+`/usr/local/bin/steamzero emulation launch --game-id %BASENAME%`). Rejeições:
+nome inválido/duplicado, conflito de nome com sistema externo sem marcador,
+path relativo, platform/extensão/label inválidos (`E-API-SCHEMA`); XML
+malformado, raiz que não é `<systemList>`, `<!DOCTYPE>` (previne entidades/
+expansão), arquivo >4 MiB ou symlink (`E-STATE-INTEGRITY`); raiz ambígua
+(`E-COMPONENT-DEGRADED`). Apply valida kind/root/arquivo do plano
+(`E-TX-STALE-PLAN`) e roda smoke que reparseia o documento publicado — falha
+dispara rollback automático. Fora de escopo documentado: `es_settings.xml` e
+`gamelists`, gerados pelo próprio ES-DE. 11 testes dedicados em
+`tests/unit/test_es_de.py` + fixture `esde-foreign-systems.xml` (sistema
+externo com comentário preservado). ElementTree usado com `noqa: S314`
+justificado (limite de 4 MiB + rejeição de DOCTYPE), precedente igual ao de
+`theme_import_esde.py`; atenuação de leitura usa `iterdir` — `Path.glob` do
+Python 3.14 engole PermissionError. Ruff, ruff format, mypy (src inteiro),
+fronteiras, independência e matriz de capacidades verdes. Nenhuma ação de
+host de produção, release ou push foi executada.
