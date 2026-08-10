@@ -271,19 +271,21 @@ class FlatpakCLI:
             raise SteamZeroError("E-API-SCHEMA", detail="smoke test Flatpak inválido")
         if any("\x00" in key or "\x00" in value for key, value in environment):
             raise SteamZeroError("E-API-SCHEMA", detail="ambiente de smoke Flatpak inválido")
-        result = self._runner(
-            (
-                "flatpak",
-                "run",
-                "--user",
-                "--die-with-parent",
-                *(f"--env={key}={value}" for key, value in environment),
-                ref,
-                *arguments,
-            ),
-            30.0,
+        argv = (
+            "flatpak",
+            "run",
+            "--user",
+            "--die-with-parent",
+            *(f"--env={key}={value}" for key, value in environment),
+            ref,
+            *arguments,
         )
-        _require_command(result, f"smoke test de {ref}")
+        result = self._runner(argv, 30.0)
+        if result.returncode != 0:
+            raise SteamZeroError(
+                "E-COMPONENT-DEGRADED",
+                detail=_smoke_failure_detail(ref, argv, result),
+            )
 
 
 @dataclass(frozen=True)
@@ -924,6 +926,29 @@ def _require_commit(commit: str) -> None:
 
 def _detail(result: CommandResult) -> str:
     return (result.stderr or result.stdout or f"exit {result.returncode}").strip()[:500]
+
+
+_SMOKE_PAYLOAD_LIMIT = 12_000
+
+
+def _smoke_failure_detail(ref: str, argv: Sequence[str], result: CommandResult) -> str:
+    """Preserva o payload integral do smoke para a evidência da VM M10.
+
+    ``_detail`` truncava o envelope a 500 caracteres e a causa real do smoke
+    (retorno, stdout e stderr completos) nunca chegava à evidência — a falha do
+    PCSX2 ficou indiagnosticável por esse motivo. Aqui o comando exato e o
+    retorno ficam no início e a saída é preservada na cauda, onde aparecem o
+    crash e o encerramento do processo.
+    """
+    head = (
+        f"falha ao smoke test de {ref}\ncomando: {' '.join(argv)}\nretorno: {result.returncode}\n"
+    )
+    output = f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    if len(head) + len(output) > _SMOKE_PAYLOAD_LIMIT:
+        marker = f"... saída truncada (limite {_SMOKE_PAYLOAD_LIMIT} caracteres):\n"
+        budget = max(1, _SMOKE_PAYLOAD_LIMIT - len(head) - len(marker))
+        output = marker + output[-budget:]
+    return head + output
 
 
 def _require_command(result: CommandResult, action: str) -> None:

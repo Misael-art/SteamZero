@@ -146,6 +146,48 @@ def test_cli_smoke_sets_manifest_environment_before_the_flatpak_ref() -> None:
     ]
 
 
+def test_cli_smoke_failure_preserves_full_payload() -> None:
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        assert timeout == 30.0
+        return CommandResult(1, "linha de stdout\n", "linha de stderr\n")
+
+    with pytest.raises(SteamZeroError) as error:
+        FlatpakCLI(runner=runner).smoke(
+            REF,
+            ("-nogui", "--version"),
+            (("QT_QPA_PLATFORM", "offscreen"), ("QT_QPA_PLATFORMTHEME", "none")),
+        )
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    detail = error.value.detail
+    assert detail is not None
+    assert "falha ao smoke test de org.example.Emulator" in detail
+    assert "comando: flatpak run --user --die-with-parent" in detail
+    assert "--env=QT_QPA_PLATFORM=offscreen" in detail
+    assert "--env=QT_QPA_PLATFORMTHEME=none" in detail
+    assert "org.example.Emulator -nogui --version" in detail
+    assert "retorno: 1" in detail
+    assert "linha de stdout" in detail
+    assert "linha de stderr" in detail
+
+
+def test_cli_smoke_failure_truncation_keeps_tail() -> None:
+    huge_stderr = "".join(f"linha {i:04d}\n" for i in range(20_000))
+
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        return CommandResult(1, "", huge_stderr)
+
+    with pytest.raises(SteamZeroError) as error:
+        FlatpakCLI(runner=runner).smoke(REF, ("--version",))
+
+    detail = error.value.detail
+    assert detail is not None
+    assert "saída truncada" in detail
+    assert "limite" in detail
+    assert len(detail) <= flatpak_module._SMOKE_PAYLOAD_LIMIT
+    assert detail.endswith("linha 19999\n")
+
+
 def test_plan_is_pinned_schema_valid_and_read_only(store: state.StateStore, tmp_path: Path) -> None:
     flatpak = FakeFlatpak()
     service = executor(store, flatpak)

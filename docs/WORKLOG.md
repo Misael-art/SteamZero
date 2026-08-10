@@ -5997,3 +5997,27 @@ Validação: 32 testes dedicados; suíte isolada **4217 passaram, 10 skipados**;
 e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua aberto: r20n deve
 provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — captura integral do payload do smoke iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `a8053a7`. As evidências
+r20d e r20n mostraram que o detalhe do envelope `E-COMPONENT-DEGRADED` era
+truncado em 500 caracteres: o retorno, o stdout e o stderr completos do smoke
+nunca chegavam à evidência, tornando a falha do PCSX2 indiagnosticável. Escopo:
+preservar no detalhe do erro o comando exato, o retorno e a cauda da saída
+(sem exceder 12 KB), e registrar `expectedPins` no payload de falha do harness;
+repetir exclusivamente PCSX2/minimal após testes e gates. Nenhuma ação de host
+de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — captura integral do payload do smoke concluída
+
+O `FlatpakCLI.smoke` agora falha com `E-COMPONENT-DEGRADED` cujo detalhe
+preserva o comando exato, o retorno e a saída integral (cauda limitada a
+12 KB com marcador de truncamento); o harness anexa `expectedPins` a todo
+payload de falha. A causa da r20n (portal Settings/FileChooser) deve aparecer
+por inteiro na próxima evidência. Validação: 19 testes dedicados; suíte
+isolada **4217 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
+`mypy src`, `make independence boundaries` e `capability_matrix --check`
+verdes. Item 4/DEBT-A7 continua aberto: r21 deve provar exclusivamente
+PCSX2/minimal. Nenhuma ação de host de produção, release ou push foi
+executada.

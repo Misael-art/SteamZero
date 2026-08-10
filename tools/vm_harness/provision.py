@@ -874,6 +874,8 @@ def provision(
     except BaseException as exc:
         if failure is None:
             failure = _failure_payload(stage, exc)
+            with contextlib.suppress(Exception):
+                failure["expectedPins"] = m10_pinned_commits()
         raise
     finally:
         evidence_written = False

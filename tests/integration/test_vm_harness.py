@@ -778,4 +778,5 @@ def test_provision_writes_failed_component_payload_before_cleanup(
             "action": "rollback",
             "envelope": {"ok": False, "error": {"code": "E-ROLLBACK"}, "data": {"id": "op-1"}},
         },
+        "expectedPins": provision_module.m10_pinned_commits(),
     }
