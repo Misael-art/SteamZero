@@ -1,8 +1,13 @@
-# THIRD-PARTY-NOTICES — avisos de terceiros (estado da Fase 0)
+# THIRD-PARTY-NOTICES — avisos de terceiros
 
-Este arquivo será gerado automaticamente do SBOM em releases. Nesta fase, registra o conhecido:
+Em releases futuras este arquivo será gerado/atualizado a partir do SBOM
+(CycloneDX) e do inventário fino em `ASSET-INVENTORY.md`. Nesta fase registra o
+conhecido e o que já está no repositório.
 
 ## Fontes de análise (não redistribuídas)
+
+Material de pesquisa da fundação; **nenhum asset ou código desses projetos é
+redistribuído** no produto (política ADR-0019 + REUSE-POLICY):
 
 - EmuDeck © dragoonDorise & contributors — GPL-3.0 — https://github.com/dragoonDorise/EmuDeck
 - LinuxToys © psygreg & contributors — GPL-3.0 — https://github.com/psygreg/linuxtoys
@@ -10,17 +15,19 @@ Este arquivo será gerado automaticamente do SBOM em releases. Nesta fase, regis
 - RetroDECK/components © RetroDECK team — GPL-3.0
 - PhaseZero © Misael-art — sem licença publicada (uso mediante titularidade — Q3)
 
-## Dependências previstas do produto (a fixar na Fase 1 com SBOM)
+## Dependências de runtime (SBOM na release)
 
-Python 3.11+ (PSF), SQLite (public domain), Godot 4 (MIT), jsonschema/pydantic (MIT), ruamel.yaml (MIT), defusedxml (PSF), zstandard (BSD). Lista definitiva com versões e hashes no lockfile.
+Python 3.11+ (PSF), SQLite (public domain), PySide6/Qt (LGPL/GPL conforme
+empacotamento), jsonschema/pydantic (MIT), ruamel.yaml (MIT), defusedxml (PSF),
+zstandard (BSD), e demais pins do lockfile. Lista definitiva com versões e
+hashes no SBOM de cada release (M14/M15).
 
-## Assets redistribuídos no repositório
+## Inventário fino de assets (G7)
+
+**Inventário autoritativo item a item:** [`ASSET-INVENTORY.md`](ASSET-INVENTORY.md)
+(72 arquivos com SHA-256 em 2026-08-10, base `39bd325`). Resumo abaixo.
 
 ### Liberation Sans 2.1.5 — fixture de teste visual
-
-Primeiro asset binário de terceiro redistribuído neste repositório. A pendência
-G7 exigia inventário item a item antes de qualquer redistribuição; esta entrada
-É esse inventário, para este item.
 
 | campo | valor |
 |---|---|
@@ -32,26 +39,45 @@ G7 exigia inventário item a item antes de qualquer redistribuição; esta entra
 | Mantenedor | Vishal Vijayraghavan — Red Hat, Inc. |
 | Upstream | https://github.com/liberationfonts/liberation-fonts |
 | Artefato | `liberation-fonts-ttf-2.1.5.tar.gz`, sha256 `7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0` |
-| Uso | **exclusivamente** fixture de teste visual; não acompanha o produto, não é usada pela UI |
+| Uso | **exclusivamente** fixture de teste visual; não acompanha o produto |
 | Local | `tests/fixtures/fonts/liberation-sans-2.1.5/` |
 
-Arquivos incluídos (as quatro faces da família Sans; Serif e Mono do tarball
-original foram descartados por não terem consumidor):
+Arquivos incluídos:
 
 - `LiberationSans-Regular.ttf` — sha256 `76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8`
 - `LiberationSans-Bold.ttf` — sha256 `788abee4c806d660e8aee46689dd8540cd4bb98da03dcc9d171ce3efd99a9173`
 - `LiberationSans-Italic.ttf` — sha256 `e5bae5c4cde31f22142753855f4f8fb86da6ff39955ed3c0a11248b0d16948b0`
 - `LiberationSans-BoldItalic.ttf` — sha256 `698da70fc191cc5f33ad4d6d3fe830fe4624b898ea2e3169955928b7c491f1ee`
 
-Texto integral da licença em `tests/fixtures/fonts/liberation-sans-2.1.5/OFL.txt`,
-autores em `AUTHORS.txt`, ambos copiados sem alteração do artefato oficial.
+Texto integral da licença em `tests/fixtures/fonts/liberation-sans-2.1.5/OFL.txt`.
+Os arquivos **não são modificados nem renomeados** (OFL com RFN).
 
-Os arquivos **não são modificados nem renomeados**. A OFL com nome reservado
-proíbe distribuir versão modificada mantendo o nome `Liberation`, e nada aqui
-altera os binários.
+### Ícones de UI empacotados
 
-## Pendências (G7)
+Atribuição humana em `src/steamzero/ui/assets/ATTRIBUTION.md`; hashes em
+`ASSET-INVENTORY.md` §1.
 
-- Licenças de assets (ícones, artes, sons) dos projetos-fonte: **não inventariadas** — nada de assets de terceiros será redistribuído até inventário item a item. **Exceção já inventariada:** Liberation Sans 2.1.5, acima, redistribuída como fixture de teste com licença, autores, hashes e origem registrados.
-- `other_licenses.txt` do RetroDECK: aplicável apenas se algo dali for derivado; revisar na Fase 4.
-- Bancos de hashes (dat-files No-Intro/Redump): verificar termos de redistribuição antes de embarcar (alternativa: gerar a partir de fontes com termos claros).
+| grupo | licença | redistribuição |
+|---|---|---|
+| BigIcons Papient derivados (`dolphin-emu`, `duckstation`, `retroarch`, `steam`) | GPL-3.0 | sim, com atribuição |
+| Fallbacks geométricos e `steamzero-mark.png` | GPL-3.0-or-later (SteamZero) | sim |
+| `eden.svg`, `citron.svg` | GPL-3.0-or-later (projetos upstream) | sim, com atribuição |
+| `ryubing.png` | asset oficial Ryubing; uso identificativo | sim **só** como identificação; marcas dos titulares |
+
+### Fixtures e baselines
+
+- `tests/fixtures/scene-media/*` — covers sintéticos SteamZero (fixture-only)
+- `tests/qml/golden/*` e `src/steamzero/ui/qml/golden/*` — baselines visuais
+  geradas pelo harness do projeto (fixture-only; G14)
+- `docs/09-operations/evidence/**` — capturas de validação (evidência, não produto)
+
+## Pendências residuais (não bloqueiam assets já no tree)
+
+1. **Assets dos projetos-fonte de referência:** continuam **fora** do tree e
+   **fora** do produto. Se algum dia for desejado redistribuir um item, inventário
+   fino **antes** da cópia (mesmo processo de `ASSET-INVENTORY.md`).
+2. **`other_licenses.txt` do RetroDECK:** só se houver derivação concreta.
+3. **Dat-files No-Intro/Redump:** não embarcados; verificar termos antes de
+   qualquer redistribuição (alternativa: gerar de fonte com termos claros).
+4. **Templates de controle de terceiros:** não copiar packs sem licença
+   inventariada; preferir perfis gerados pelo SteamZero.

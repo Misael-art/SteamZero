@@ -23,8 +23,9 @@ Cada adapter registra `license` no manifesto (obrigatório — ADAPTER-MODEL). E
 | GPL-3.0 (3 projetos) → Unified GPL-3.0-or-later | ✔ compatível |
 | PhaseZero (proprietário do mesmo titular) → Unified | ✔ se o titular relicenciar/dual-licenciar seu próprio código |
 | Código GPL copiado ↔ pedaços proprietários no mesmo binário | ✖ — se Q2 escolher licença fechada, **zero cópia** dos três projetos (só reimplementação por comportamento, ver REUSE-POLICY) |
-| Assets (ícones/artes) dos projetos | ✖ por padrão — licenças de assets não inventariadas (G7); não redistribuir |
-| Marcas/nomes ("EmuDeck", "RetroDECK", "LinuxToys") | ✖ — nomes e logos não são licenciados pela GPL; não usar no produto (Q1) |
+| Assets **no tree SteamZero** (ícones UI, fixtures, golden) | ✔ inventariados em `ASSET-INVENTORY.md` (G7 fechada para o tree; 2026-08-10); redistribuir só o marcado como redistribuível; fixtures/evidência fora do produto |
+| Assets dos projetos de referência (ainda não no tree) | ✖ por padrão — não copiar sem inventário item a item (residual da política G7) |
+| Marcas/nomes de produtos de terceiros | ✖ como identidade do SteamZero; créditos e identificação factual de emuladores/plataformas ok (Q1/ADR-0019) |
 
 ## Bloqueio operativo
 

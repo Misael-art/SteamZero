@@ -9,3 +9,4 @@
 5. UI "Sobre": créditos aos quatro projetos e aos emuladores/ferramentas instalados (com licenças), no padrão RetroDECK (`retrodeck_credits`).
 6. Nomes/logos de terceiros nunca aparecem como identidade do produto; apenas em créditos e em contexto factual ("importar de uma instalação EmuDeck").
 7. Manter `THIRD-PARTY-NOTICES.md` gerado a partir do SBOM em cada release (automatizado no CI).
+8. Todo asset binário/SVG novo no repositório atualiza `ASSET-INVENTORY.md` (hash + licença + origem) no mesmo PR; ver G7 fechada em 2026-08-10.
