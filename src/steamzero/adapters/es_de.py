@@ -169,10 +169,7 @@ class EsDe:
         if not file.is_file():
             return set()
         try:
-            return {
-                self._system_name(entry)
-                for entry in self._marked_systems(self._parse(file))
-            }
+            return {self._system_name(entry) for entry in self._marked_systems(self._parse(file))}
         except (SteamZeroError, PermissionError):
             return set()
 
