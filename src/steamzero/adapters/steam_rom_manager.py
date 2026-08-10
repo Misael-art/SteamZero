@@ -26,7 +26,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths, transaction
+from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 
 _MANIFEST_PREFIX = "steamzero-manifest-"
@@ -85,7 +85,9 @@ class SteamRomManager:
 
     @staticmethod
     def _default_root() -> Path:
-        return paths.config_home() / "steam-rom-manager" / "userData" / "manifests"
+        env_base = os.environ.get("XDG_CONFIG_HOME")
+        base = Path(env_base) if env_base else Path.home() / ".config"
+        return base / "steam-rom-manager" / "userData" / "manifests"
 
     def _dir(self) -> Path:
         matches: list[Path] = []
@@ -178,8 +180,11 @@ class SteamRomManager:
         return collection
 
     def managed_collections(self) -> set[str]:
+        directory = self._dir()
+        if not directory.is_dir():
+            return set()
         try:
-            return set(self._load_published(self._dir()).keys())
+            return set(self._load_published(directory).keys())
         except (SteamZeroError, PermissionError):
             return set()
 
