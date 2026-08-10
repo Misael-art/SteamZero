@@ -6122,3 +6122,18 @@ baseline ausente e o snapshot Btrfs foi restaurado (SIM). Diretório da run
 removido pelo harness (política de sucesso). Item 4/DEBT-A7 continua aberto:
 faltam os 3 ciclos full do PCSX2 e os ciclos de RetroArch/PPSSPP. Nenhuma
 ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — retry de timeout de download na certificação
+
+A r29 (PPSSPP/minimal) reprovou sem chegar ao smoke: o install estourou
+`[28] Timeout was reached` puxando o runtime `org.freedesktop.Platform
+25.08` (objeto do flathub; ~centenas de MB) — a mesma instabilidade do
+upstream dos 5 s de DNS, agora em transferência longa. Não é erro do
+componente. O retry de install agora cobre também o timeout de download
+(curl), além do DNS, com a mesma política (nunca repete falha real) e os
+mesmos delays 5/10/20/30 s; o ostree retoma os objetos já baixados. Testes:
+`_is_transient_network_failure` cobre as duas assinaturas, retry de timeout
+no minimal, exaustão de retries falha com a causa original. Suíte isolada
+**4231 passaram, 10 skipados** + gates verdes. Item 4/DEBT-A7 continua
+aberto (PPSSPP sem certificação). Nenhuma ação de host de produção, release
+ou push foi executada.

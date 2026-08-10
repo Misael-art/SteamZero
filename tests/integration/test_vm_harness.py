@@ -54,6 +54,7 @@ class FakeComponentClient:
         self._counter = 0
         self._pins = m10_pinned_commits()
         self.dns_fail_install_until = 0  # applies de install falham por DNS até 0
+        self.timeout_fail_install_until = 0  # applies falham por timeout até 0
         self.install_failures: dict[str, str] = {}  # adapter_id -> falha real
 
     def status(self, adapter_id: str) -> dict[str, Any]:
@@ -90,6 +91,11 @@ class FakeComponentClient:
                 self.dns_fail_install_until -= 1
                 raise RuntimeError(
                     "E-COMPONENT-DEGRADED: falha ao instalar: [6] Could not resolve hostname"
+                )
+            if self.timeout_fail_install_until > 0:
+                self.timeout_fail_install_until -= 1
+                raise RuntimeError(
+                    "E-COMPONENT-DEGRADED: falha ao instalar: [28] Timeout was reached"
                 )
             self._state[adapter_id] = "installed"
         elif action == "uninstall":
@@ -208,6 +214,25 @@ def test_certify_emulator_minimal_retries_dns_unavailability_on_install() -> Non
     assert client.status("pcsx2")["state"] == "missing"
     install = next(step for step in result.steps if step["step"] == "install")
     assert install["commit"] == m10_pinned_commits()["pcsx2"]
+
+
+def test_certify_emulator_minimal_retries_download_timeout_on_install() -> None:
+    # Pull de runtime estagnado ([28] Timeout was reached): retry de rede.
+    client = FakeComponentClient()
+    client.timeout_fail_install_until = 2
+    result = certify_emulator_minimal(
+        "ppsspp", client, expected_commit=m10_pinned_commits()["ppsspp"]
+    )
+    assert result.ok is True
+    assert client.status("ppsspp")["state"] == "missing"
+
+
+def test_certify_emulator_minimal_gives_up_after_dns_retries_exhausted() -> None:
+    # DNS indisponível por mais tentativas que os delays: falha registrada.
+    client = FakeComponentClient()
+    client.dns_fail_install_until = 99
+    with pytest.raises(RuntimeError, match="Could not resolve hostname"):
+        certify_emulator_minimal("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
 
 
 def test_certify_emulator_does_not_retry_a_real_install_failure() -> None:

@@ -121,13 +121,14 @@ def _install_with_dns_retry(
     *,
     plan_invalid: str,
 ) -> dict[str, Any] | None:
-    """plan install -> apply repetindo somente indisponibilidade DNS.
+    """plan install -> apply repetindo indisponibilidade de rede transiente.
 
     O plano é single-use, então cada tentativa replaneja. Levanta
     ``ValueError(plan_invalid)`` quando o plano é inválido/noop (cabe ao
     chamador registrar a falha). Falhas reais do apply re-lançam: a política
-    do harness (mesma de ``_configure_flathub``) é repetir só "could not
-    resolve hostname", nunca aceitar erro como sucesso.
+    do harness (mesma de ``_configure_flathub``) é repetir só a rede
+    indisponível — "could not resolve hostname" (DNS) e "Timeout was
+    reached" (curl, download estagnado) — nunca aceitar erro como sucesso.
     """
     for _attempt, delay in enumerate((*FLATHUB_RETRY_DELAYS, 0.0), start=1):
         plan_response = client.plan(emulator, "install")
@@ -138,17 +139,23 @@ def _install_with_dns_retry(
         try:
             op = client.apply(plan_id, confirm)
         except Exception as exc:
-            if "could not resolve hostname" not in str(exc).lower() or delay == 0.0:
+            if not _is_transient_network_failure(str(exc)) or delay == 0.0:
                 raise
             time.sleep(delay)
             continue
         if op.get("operationId"):
             return op
         combined = json.dumps(op, sort_keys=True).lower()
-        if "could not resolve hostname" not in combined or delay == 0.0:
+        if not _is_transient_network_failure(combined) or delay == 0.0:
             return op
         time.sleep(delay)
-    raise AssertionError("loop de retry DNS deveria ter terminado")
+    raise AssertionError("loop de retry de rede deveria ter terminado")
+
+
+def _is_transient_network_failure(detail: str) -> bool:
+    """Falhas de rede transientes reconhecidas pelo harness (nunca erro do app)."""
+    lowered = detail.lower()
+    return "could not resolve hostname" in lowered or "timeout was reached" in lowered
 
 
 def certify_emulator(
