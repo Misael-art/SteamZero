@@ -6110,3 +6110,15 @@ suíte isolada **4229 passaram, 10 skipados**; `ruff check`, `ruff format
 --check` verdes. Item 4/DEBT-A7 continua aberto: r25 deve provar PCSX2/minimal
 no commit desta correção. Nenhuma ação de host de produção, release ou push
 foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — r25 PCSX2/minimal APROVADO
+
+Primeira certificação verde com procedência integral dos meus comandos:
+commit `19d8b9548a3ea0d4ed7f34c2e839dbf41ebd62d6`, VM `steamzero-m10-r25`,
+protocolo minimal. Instalação do PCSX2 (pin `31307c3e…`) passou pelo smoke
+`-version` com allowlist `[1]` e padrão `^PCSX2 v` — o apply só comita se o
+smoke passa —, verify confirmou o deployment pinado, rollback voltou ao
+baseline ausente e o snapshot Btrfs foi restaurado (SIM). Diretório da run
+removido pelo harness (política de sucesso). Item 4/DEBT-A7 continua aberto:
+faltam os 3 ciclos full do PCSX2 e os ciclos de RetroArch/PPSSPP. Nenhuma
+ação de host de produção, release ou push foi executada.
