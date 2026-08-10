@@ -6088,3 +6088,54 @@ testes dedicados + 137 testes dos módulos que consomem shortcuts
 desktop, steam_maintenance) verdes; real-state intocado. Gates integrais
 adiados por atividade concorrente (VM M10 + suíte do agente principal).
 Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.2 (Frontends) — adapter Steam ROM Manager iniciado
+
+Formato público confirmado na documentação do SRM (`manual-parser-input.md`
+e fonte do parser Manual): o parser Manual lê apenas `title`, `target`,
+`startIn`, `launchOptions` e `appendArgsToExecutable` de arquivos JSON em um
+diretório de manifests (`userData/manifests`), aceitando objeto único ou
+array; campos desconhecidos são ignorados e o diretório nunca é reescrito
+pelo SRM. Decisão de contrato: o adapter gerencia SOMENTE o canal de
+manifests (arquivos `steamzero-manifest-<slug>.json` com marcador
+`steamzero` por entrada); `configs.json` (lista de parsers) fica fora de
+escopo porque o SRM o reescreve do próprio serializador e nenhum marcador
+sobrevive ao round-trip — gerir ali violaria "segundo apply não duplica
+parsers" e a regra de não destruir conteúdo indistinguível. Escopo: parser
+JSON estruturado, limites de tamanho, rejeição de symlink/inválido, ids e
+slugs validados, saída determinística, plan/apply/verify/rollback com
+backup, noop após convergência, remoção só de manifests com marcador
+verificado, smoke que lê o arquivo publicado, status
+missing/configured/degraded/permissionDenied. Nenhuma ação de host de
+produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.2 (Frontends) — adapter Steam ROM Manager concluído
+
+`src/steamzero/adapters/steam_rom_manager.py` implementa o sincronizador
+idempotente do canal de manifests do parser Manual do SRM. Plan gera
+`transaction.plan_write_files(skip_unchanged=True)` — segundo plan após
+convergência tem `actions == []`; coleção com zero jogos remove o manifest
+via ação delete; coleções não pedidas removem apenas arquivos gerenciados
+com marcador verificado. Entradas são renderizadas com `title`, `target`
+(`/usr/local/bin/steamzero`), `startIn`, `launchOptions`
+(`emulation launch --game-id <id>` — id restrito a `[A-Za-z0-9._-]`, sem
+espaços, sem shell), `appendArgsToExecutable: true` e marcador `steamzero`
+(`collection`+`id`); campos desconhecidos do SRM são ignorados pelo parser
+dele, então o marcador é durável. Rejeições: slug/coleção inválida ou
+duplicada, jogo com id/título inválido ou id duplicado entre coleções
+(`E-API-SCHEMA`), manifest gerenciado com JSON inválido, array errado,
+entrada sem título/target/marcador, arquivo >2 MiB ou symlink
+(`E-STATE-INTEGRITY`), raiz ambígua ou symlink (`E-COMPONENT-DEGRADED`).
+Apply valida kind/root/targets do plano (`E-TX-STALE-PLAN` para plano
+estranho ou stale) e roda smoke que relê e valida os manifests escritos —
+falha de smoke dispara rollback automático do núcleo. Rollback restaura
+estado anterior byte-idêntico (verificado por sha256 nos testes). Leitura
+usa `iterdir()` — `Path.glob` do Python 3.14 engole PermissionError e
+apresentaria `missing` no lugar de `permissionDenied`. Testes: 13 dedicados
+em `tests/unit/test_steam_rom_manager.py` + fixtures minimalistas em
+`tests/fixtures/frontends/` (manifest externo preservado byte-a-byte).
+Adicionado parâmetro `smoke` de override no `apply` do adapter para
+injeção controlada de falha em teste. Ruff, ruff format, mypy, fronteiras,
+independência e matriz de capacidades verdes. Validação integral da suíte
+adiada por atividade concorrente (M10 rodando a suíte na árvore principal).
+Nenhuma ação de host de produção, release ou push foi executada.
