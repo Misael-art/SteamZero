@@ -295,7 +295,7 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
             for attempt in 1 2 3 4; do
               timeout --kill-after={_PACMAN_KILL_AFTER_SECONDS}s \\
                 {_PACMAN_ATTEMPT_TIMEOUT_SECONDS}s \\
-                pacman -Sy --noconfirm --needed \\
+                pacman -Sy --noconfirm --needed --disable-download-timeout \\
                 {_GUEST_PACKAGE_ARGS} && exit 0
               status=$?
               echo "steamzero-m10: pacman bootstrap attempt $attempt failed (status=$status)" >&2

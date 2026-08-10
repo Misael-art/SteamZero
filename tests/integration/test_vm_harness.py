@@ -392,7 +392,7 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     assert "package_update: false" in user_data
     assert "timeout --kill-after=30s" in user_data
     assert "600s " in user_data
-    assert "pacman -Sy --noconfirm --needed" in user_data
+    assert "pacman -Sy --noconfirm --needed --disable-download-timeout" in user_data
     assert "pacman bootstrap attempt $attempt failed" in user_data
     assert "pkill -9 -x pacman" in user_data
     assert "pgrep -x pacman" in user_data

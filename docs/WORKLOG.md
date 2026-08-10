@@ -6137,3 +6137,15 @@ no minimal, exaustão de retries falha com a causa original. Suíte isolada
 **4231 passaram, 10 skipados** + gates verdes. Item 4/DEBT-A7 continua
 aberto (PPSSPP sem certificação). Nenhuma ação de host de produção, release
 ou push foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — bootstrap pacman sem low-speed abort
+
+r30 (PPSSPP/minimal) APROVADA. r31 (PPSSPP/full) REPROVOU antes da
+certificação: os mirrors Arch abortaram pacotes com "Operation too slow.
+Less than 1 bytes/sec transferred the last 10 seconds" nas 4 tentativas do
+bootstrap (link exausto do host, mesmo sintoma dos 5 s de DNS e do timeout
+do flatpak). O pacman agora roda com `--disable-download-timeout`: lentidão
+transiente não aborta mais pacote por pacote; o teto externo de 600 s por
+tentativa continua valendo. Nenhuma falha real é mascarada (o download só
+termina com dados íntegros; o loop pkill/lock/backoff permanece). Suíte
+isolada **4231 passaram, 10 skipados** + gates verdes.
