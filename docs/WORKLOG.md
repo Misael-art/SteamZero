@@ -6048,3 +6048,43 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
 `make independence boundaries` e `capability_matrix --check` verdes. Item
 4/DEBT-A7 continua aberto. Nenhuma ação de host de produção, release ou push
 foi executada.
+
+## 2026-08-10 — Item M11.1 (Frontends) — auditoria de Steam shortcuts iniciada
+
+Branch/orktree exclusivos `codex/m11-frontends-idempotentes` criados do tip
+commitado `1723cc8` da fase 1. Auditoria do contrato transacional de
+`steam_shortcuts.py`: decoder/encoder VDF estruturados, rejeição de
+truncado/ambíguo/grande/symlink, preservação de entradas e campos externos,
+marker como única identidade gerenciada, ordenação determinística, dedupe,
+colisão de AppID, Steam fechada em plan/apply, plano stale, apply atômico,
+verify no arquivo publicado, rollback byte-idêntico e backup adulterado já
+estão cobertos por código ou testes. Lacunas provadas: segundo plan após
+convergência não é noop (reescreve o arquivo e cria novo backup) e não há
+teste de colisão de AppID, de preservação de campos desconhecidos, de backup
+adulterado nem de noop. Escopo: `plan_write_files(skip_unchanged=True)`,
+erros de schema para item sem id/nome, distinção de colisão
+gerenciado×externo e testes dedicados. Nenhuma ação de host de produção,
+release ou push foi executada.
+
+## 2026-08-10 — Item M11.1 (Frontends) — auditoria de Steam shortcuts concluída
+
+Endurecimento aplicado sem reescrever o módulo: (1) `_plan_rows` passa
+`skip_unchanged=True` — segundo plan após convergência tem `actions == []`
+(noop) e o apply de plano noop não reescreve o alvo nem cria arquivo de
+backup (apenas o manifesto de operação com zero entradas, semântica do núcleo
+compartilhado usada também por component/media); (2) item sem `id`/`name`
+vira `E-API-SCHEMA` em vez de `KeyError`; (3) colisão de AppID distingue
+atalho externo de colisão gerenciado×gerenciado (mensagens separadas);
+(4) `_apply_kind` aceita planos de 0 ações. Decisões: não alterar
+`core/transaction.py` — planos vazios têm donos legítimos (component,
+media.search) que dependem do `operationId` para rollback. Auditado e já
+coberto: decoder/encoder VDF, rejeição de truncado/ambíguo/grande/symlink,
+preservação de entradas e campos desconhecidos (teste novo), marker como
+única identidade, ordenação determinística, dedupe, Steam fechada, plano
+stale (teste novo), apply atômico, verify no arquivo publicado, rollback
+byte-idêntico e backup adulterado rejeitado (teste novo). Validação: 12
+testes dedicados + 137 testes dos módulos que consomem shortcuts
+(emulation_controller, cloud_platforms, jornada handheld, cli, screencast,
+desktop, steam_maintenance) verdes; real-state intocado. Gates integrais
+adiados por atividade concorrente (VM M10 + suíte do agente principal).
+Nenhuma ação de host de produção, release ou push foi executada.
