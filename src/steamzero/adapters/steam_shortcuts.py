@@ -273,13 +273,17 @@ class SteamShortcutManager:
         target = self._target()
         existing = self._read_rows(target)
         foreign = [row for row in existing if _managed_id(row, marker_prefix) is None]
-        occupied: set[int] = set()
+        foreign_app_ids: set[int] = set()
         for row in foreign:
             app_id = row.get("appid")
             if isinstance(app_id, int):
-                occupied.add(app_id)
+                foreign_app_ids.add(app_id)
         managed: list[dict[str, BinaryValue]] = []
+        managed_app_ids: set[int] = set()
         seen_ids: set[str] = set()
+        for item in items:
+            if item.get("id") is None or item.get("name") is None:
+                raise SteamZeroError("E-API-SCHEMA", detail=f"{noun} sem id ou nome")
         for item in sorted(items, key=lambda value: str(value["name"]).casefold()):
             item_id = str(item["id"])
             name = str(item["name"])
@@ -290,15 +294,22 @@ class SteamShortcutManager:
                 raise SteamZeroError("E-API-SCHEMA", detail=f"{noun} duplicado(a) ou inválido(a)")
             seen_ids.add(item_id)
             app_id = shortcut_app_id(_QUOTED_TARGET, name)
-            if app_id in occupied:
+            if app_id in foreign_app_ids:
                 raise SteamZeroError(
                     "E-STATE-INTEGRITY",
                     detail=f"colisão de AppID com atalho não gerenciado: {name}",
                 )
-            occupied.add(app_id)
+            if app_id in managed_app_ids:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY",
+                    detail=f"dois {noun}s gerenciados geram o mesmo AppID: {name}",
+                )
+            managed_app_ids.add(app_id)
             managed.append(row_factory(item_id, name, app_id))
         content = encode_shortcuts([*foreign, *managed])
-        return transaction.plan_write_files({target: content}, root=target.parents[1], kind=kind)
+        return transaction.plan_write_files(
+            {target: content}, root=target.parents[1], kind=kind, skip_unchanged=True
+        )
 
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         return self._apply_kind(plan_id, confirm_token, kind="steam.shortcuts.sync")
@@ -315,13 +326,12 @@ class SteamShortcutManager:
             )
         plan = transaction.load_plan(plan_id)
         target = self._target()
-        if (
-            plan.kind != kind
-            or Path(plan.root) != target.parents[1]
-            or len(plan.actions) != 1
-            or plan.actions[0].target != str(target)
-            or plan.actions[0].kind != "write"
-        ):
+        valid_actions = len(plan.actions) == 0 or (
+            len(plan.actions) == 1
+            and plan.actions[0].target == str(target)
+            and plan.actions[0].kind == "write"
+        )
+        if plan.kind != kind or Path(plan.root) != target.parents[1] or not valid_actions:
             raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não pertence aos atalhos Steam")
 
         def smoke() -> None:
