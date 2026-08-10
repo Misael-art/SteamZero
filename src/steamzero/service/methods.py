@@ -117,6 +117,13 @@ _ORIENTATION = Field(
     choices=frozenset({"landscape", "portrait-left", "portrait-right"}),
 )
 _ACTION_JSON = Field("actionJson", "--action-json")
+_SPEC_JSON = Field("specJson", "--spec-json")
+_TARGET = Field(
+    "target",
+    "--target",
+    required=False,
+    choices=frozenset({"srm", "esde"}),
+)
 
 METHOD_SPECS: tuple[MethodSpec, ...] = (
     # doctor.run varre o host inteiro; os testes já o invocam com timeout=10.
@@ -225,6 +232,26 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
         "controls",
         "rollback",
         (_OPERATION_ID,),
+        mutation=True,
+    ),
+    # frontends: a spec viaja como texto JSON fechado (--spec-json); o flag
+    # --spec <arquivo> é deliberadamente local — o daemon não recebe paths
+    # arbitrários. apply medido em 4-35 ms no lab; 2,0 s default cobre.
+    MethodSpec("frontends.status", "frontends", "status"),
+    MethodSpec("frontends.plan", "frontends", "plan", (_SPEC_JSON,), mutation=True),
+    MethodSpec(
+        "frontends.apply",
+        "frontends",
+        "apply",
+        (_PLAN_ID, _CONFIRM, _TARGET),
+        mutation=True,
+    ),
+    MethodSpec("frontends.verify", "frontends", "verify", (_SPEC_JSON,)),
+    MethodSpec(
+        "frontends.rollback",
+        "frontends",
+        "rollback",
+        (_OPERATION_ID, _TARGET),
         mutation=True,
     ),
 )

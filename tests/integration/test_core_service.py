@@ -381,6 +381,222 @@ def test_daemon_controls_profile_roundtrip_is_closed_and_reversible(
     assert after_rollback["active"] is None
 
 
+def test_daemon_frontends_roundtrip_is_closed_and_reversible(
+    inprocess_core: Path, tmp_path: Path
+) -> None:
+    """Mesmo fluxo provado no caminho local, agora pelo transporte JSON-RPC."""
+    manifests = tmp_path / "config" / "steam-rom-manager" / "userData" / "manifests"
+    manifests.mkdir(parents=True)
+    foreign_manifest = {
+        "version": "1.0",
+        "collections": [
+            {"collection": "nintendo", "apps": [{"appid": 99, "title": "Foreign"}]},
+        ],
+    }
+    manifest_file = manifests / "nintendo.json"
+    manifest_file.write_text(json.dumps(foreign_manifest), encoding="utf-8")
+    original_manifest = manifest_file.read_bytes()
+
+    esde_dir = tmp_path / "config" / "ES-DE" / "custom_systems"
+    esde_dir.mkdir(parents=True)
+    foreign_xml = (
+        '<?xml version="1.0"?>\n'
+        "<systemList>\n"
+        "  <!-- comentário estrangeiro preservado -->\n"
+        "  <system>\n"
+        "    <name>foreign</name>\n"
+        "    <fullname>Foreign</fullname>\n"
+        "    <path>/games/foreign</path>\n"
+        "  </system>\n"
+        "</systemList>\n"
+    )
+    esde_file = esde_dir / "es_systems.xml"
+    esde_file.write_text(foreign_xml, encoding="utf-8")
+    original_xml = esde_file.read_bytes()
+
+    spec = {
+        "srm": {
+            "collections": [
+                {
+                    "slug": "nintendo",
+                    "games": [
+                        {"id": "g1", "title": "Zelda", "target": "/roms/zelda.iso"},
+                    ],
+                },
+            ],
+        },
+        "esde": {
+            "systems": [
+                {
+                    "name": "steamzero-switch",
+                    "label": "Switch",
+                    "path": "/games/switch",
+                    "platform": "linux",
+                    "extensions": [".iso"],
+                },
+            ],
+        },
+    }
+    spec_json = json.dumps(spec)
+
+    status = _rpc_envelope(inprocess_core, "f-status", "frontends.status", {})["data"]
+    assert status["srm"]["status"] == "missing"
+    assert status["srm"]["collections"] == []
+    assert status["esde"]["systems"] == []
+
+    planned = _rpc_envelope(inprocess_core, "f-plan", "frontends.plan", {"specJson": spec_json})[
+        "data"
+    ]
+    assert planned["srm"]["actions"] != []
+    assert planned["srm"]["planId"]
+    assert planned["srm"]["confirmToken"]
+    assert planned["esde"]["actions"] != []
+    assert planned["esde"]["planId"]
+
+    applied = _rpc_envelope(
+        inprocess_core,
+        "f-apply-srm",
+        "frontends.apply",
+        {
+            "planId": planned["srm"]["planId"],
+            "confirmToken": planned["srm"]["confirmToken"],
+            "target": "srm",
+        },
+    )["data"]
+    assert applied["status"] == "ok", applied
+    assert applied["target"] == "srm"
+    assert applied["operationId"]
+    assert (manifests / "steamzero-manifest-nintendo.json").is_file()
+    assert manifest_file.read_bytes() == original_manifest, "manifesto estrangeiro preservado"
+
+    applied_esde = _rpc_envelope(
+        inprocess_core,
+        "f-apply-esde",
+        "frontends.apply",
+        {
+            "planId": planned["esde"]["planId"],
+            "confirmToken": planned["esde"]["confirmToken"],
+            "target": "esde",
+        },
+    )["data"]
+    assert applied_esde["status"] == "ok", applied_esde
+    written = esde_file.read_text(encoding="utf-8")
+    assert "steamzero-switch" in written
+    assert "comentário estrangeiro preservado" in written
+    assert "<name>foreign</name>" in written
+
+    noop_plan = _rpc_envelope(inprocess_core, "f-plan2", "frontends.plan", {"specJson": spec_json})[
+        "data"
+    ]
+    noop = _rpc_envelope(
+        inprocess_core,
+        "f-apply2",
+        "frontends.apply",
+        {
+            "planId": noop_plan["srm"]["planId"],
+            "confirmToken": noop_plan["srm"]["confirmToken"],
+            "target": "srm",
+        },
+    )["data"]
+    assert noop["status"] == "ok", noop
+    assert noop["actions"] == []
+
+    verified = _rpc_envelope(
+        inprocess_core, "f-verify", "frontends.verify", {"specJson": spec_json}
+    )["data"]
+    assert verified["srm"]["converged"] is True, verified
+    assert verified["esde"]["converged"] is True, verified
+
+    rolled_back = _rpc_envelope(
+        inprocess_core,
+        "f-rollback-srm",
+        "frontends.rollback",
+        {"operationId": applied["operationId"], "target": "srm"},
+    )["data"]
+    assert rolled_back["status"] == "rolled-back", rolled_back
+    assert not (manifests / "steamzero-manifest-nintendo.json").exists()
+    assert manifest_file.read_bytes() == original_manifest
+
+    rolled_esde = _rpc_envelope(
+        inprocess_core,
+        "f-rollback-esde",
+        "frontends.rollback",
+        {"operationId": applied_esde["operationId"], "target": "esde"},
+    )["data"]
+    assert rolled_esde["status"] == "rolled-back", rolled_esde
+    assert esde_file.read_bytes() == original_xml
+
+    status_after = _rpc_envelope(inprocess_core, "f-status2", "frontends.status", {})["data"]
+    assert status_after["srm"]["collections"] == []
+    assert status_after["esde"]["systems"] == []
+
+
+def test_cli_frontends_routes_spec_json_to_daemon_and_spec_file_to_local(
+    core_service: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """spec-json viaja pelo daemon; o flag --spec <arquivo> é deliberadamente local.
+
+    O schema fechado não expõe campo de path (testado em test_service_methods);
+    aqui a prova é pelo despacho: o handler local é substituído por um spy e o
+    envelope revela quem executou.
+    """
+    spec = {
+        "srm": {
+            "collections": [
+                {
+                    "slug": "nintendo",
+                    "games": [
+                        {"id": "g1", "title": "Zelda", "target": "/roms/zelda.iso"},
+                    ],
+                },
+            ],
+        },
+        "esde": {"systems": []},
+    }
+    spec_file = tmp_path / "spec.json"
+    spec_file.write_text(json.dumps(spec), encoding="utf-8")
+
+    called: list[list[str]] = []
+
+    def spy(args: list[str], correlation_id: str) -> tuple[dict[str, object], int]:
+        called.append(args)
+        envelope = cli.build_envelope(
+            "frontends",
+            "plan",
+            status="ready",
+            data={"spy": True},
+            correlation_id=correlation_id,
+        )
+        return envelope, cli.EXIT_OK
+
+    monkeypatch.setitem(cli.HANDLERS, ("frontends", "plan"), spy)
+
+    code = cli.main(["frontends", "plan", "--spec", str(spec_file), "--json"])
+    envelope = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert envelope["data"] == {"spy": True}
+    assert called, "--spec <arquivo> deve executar no handler local"
+
+    code = cli.main(
+        [
+            "frontends",
+            "plan",
+            "--spec-json",
+            json.dumps(spec),
+            "--json",
+        ]
+    )
+    envelope = json.loads(capsys.readouterr().out)
+    assert code == cli.EXIT_OK
+    assert envelope["module"] == "frontends"
+    assert envelope["data"]["srm"]["planId"]
+    assert envelope["data"]["srm"]["confirmToken"]
+    assert len(called) == 1, "--spec-json deve viajar pelo daemon, não pelo spy local"
+
+
 def test_daemon_operation_history_previews_and_confirms_rollback(
     inprocess_core: Path,
     tmp_path: Path,
