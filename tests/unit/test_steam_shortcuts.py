@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -133,3 +134,105 @@ def test_cloud_sync_rejects_invalid_ids_and_wrong_plan_kind(monkeypatch, tmp_pat
     switch_plan = manager.plan([])
     with pytest.raises(SteamZeroError, match="não pertence"):
         manager.apply_cloud(switch_plan.plan_id, switch_plan.confirm_token)
+
+
+def test_second_plan_after_convergence_is_noop_and_creates_no_backup(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    target = root / "userdata/123/config/shortcuts.vdf"
+    foreign = {"appid": 42, "AppName": "Foreign", "ShortcutPath": ""}
+    target.write_bytes(encode_shortcuts([foreign]))
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    games = [{"id": "game-1", "name": "Owned game"}]
+
+    first = manager.plan(games)
+    assert len(first.actions) == 1
+    manager.apply(first.plan_id, first.confirm_token)
+    bytes_after_first = target.read_bytes()
+
+    second = manager.plan(games)
+    assert second.actions == []
+    noop = manager.apply(second.plan_id, second.confirm_token)
+
+    assert target.read_bytes() == bytes_after_first
+    noop_backup = tmp_path / "state/steamzero/backups" / noop.operation_id
+    manifest = json.loads((noop_backup / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["entries"] == []
+    assert list(noop_backup.iterdir()) == [noop_backup / "manifest.json"]
+
+
+def test_plan_rejects_app_id_collision_with_foreign_entry(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    target = root / "userdata/123/config/shortcuts.vdf"
+    foreign_app_id = shortcut_app_id('"/usr/local/bin/steamzero"', "Taken")
+    target.write_bytes(encode_shortcuts([{"appid": foreign_app_id}]))
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    with pytest.raises(SteamZeroError, match="não gerenciado"):
+        manager.plan([{"id": "game-1", "name": "Taken"}])
+
+
+def test_plan_rejects_two_managed_games_with_same_app_id(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    with pytest.raises(SteamZeroError, match="mesmo AppID"):
+        manager.plan([{"id": "game-a", "name": "Same"}, {"id": "game-b", "name": "Same"}])
+
+
+def test_plan_rejects_item_without_id_or_name(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    with pytest.raises(SteamZeroError, match="sem id ou nome"):
+        manager.plan([{"id": "game-1"}])
+
+
+def test_foreign_entry_unknown_fields_survive_sync(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    target = root / "userdata/123/config/shortcuts.vdf"
+    foreign = {
+        "appid": 42,
+        "AppName": "Foreign",
+        "ShortcutPath": "",
+        "UnknownUint": 99,
+        "UnknownNested": {"0": "keep", "1": 7, "2": ""},
+    }
+    target.write_bytes(encode_shortcuts([foreign]))
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    plan = manager.plan([{"id": "game-1", "name": "Owned game"}])
+    manager.apply(plan.plan_id, plan.confirm_token)
+    rows = decode_shortcuts(target.read_bytes())
+    assert rows[0] == foreign
+    assert rows[1]["ShortcutPath"] == "steamzero://switch/game-1"
+
+
+def test_apply_rejects_stale_plan_when_file_changed(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    target = root / "userdata/123/config/shortcuts.vdf"
+    target.write_bytes(encode_shortcuts([{"appid": 42, "AppName": "Foreign"}]))
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    plan = manager.plan([{"id": "game-1", "name": "Owned game"}])
+    target.write_bytes(encode_shortcuts([{"appid": 43, "AppName": "Changed"}]))
+    with pytest.raises(SteamZeroError, match="STALE"):
+        manager.apply(plan.plan_id, plan.confirm_token)
+
+
+def test_rollback_rejects_tampered_backup(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    root = _steam_root(tmp_path)
+    target = root / "userdata/123/config/shortcuts.vdf"
+    target.write_bytes(encode_shortcuts([{"appid": 42, "AppName": "Foreign"}]))
+    manager = SteamShortcutManager(roots=[root], running_probe=lambda: False)
+    plan = manager.plan([{"id": "game-1", "name": "Owned game"}])
+    applied = manager.apply(plan.plan_id, plan.confirm_token)
+    backup_dir = tmp_path / "state/steamzero/backups" / applied.operation_id
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    entry = backup_dir / manifest["entries"][0]["relpath"]
+    entry.write_bytes(entry.read_bytes() + b"tampered")
+    with pytest.raises(SteamZeroError, match="adulterado"):
+        transaction.rollback(applied.operation_id, reason="test")

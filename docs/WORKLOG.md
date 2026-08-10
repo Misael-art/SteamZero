@@ -6122,3 +6122,168 @@ baseline ausente e o snapshot Btrfs foi restaurado (SIM). Diretório da run
 removido pelo harness (política de sucesso). Item 4/DEBT-A7 continua aberto:
 faltam os 3 ciclos full do PCSX2 e os ciclos de RetroArch/PPSSPP. Nenhuma
 ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.1 (Frontends) — auditoria de Steam shortcuts iniciada
+
+Branch/orktree exclusivos `codex/m11-frontends-idempotentes` criados do tip
+commitado `1723cc8` da fase 1. Auditoria do contrato transacional de
+`steam_shortcuts.py`: decoder/encoder VDF estruturados, rejeição de
+truncado/ambíguo/grande/symlink, preservação de entradas e campos externos,
+marker como única identidade gerenciada, ordenação determinística, dedupe,
+colisão de AppID, Steam fechada em plan/apply, plano stale, apply atômico,
+verify no arquivo publicado, rollback byte-idêntico e backup adulterado já
+estão cobertos por código ou testes. Lacunas provadas: segundo plan após
+convergência não é noop (reescreve o arquivo e cria novo backup) e não há
+teste de colisão de AppID, de preservação de campos desconhecidos, de backup
+adulterado nem de noop. Escopo: `plan_write_files(skip_unchanged=True)`,
+erros de schema para item sem id/nome, distinção de colisão
+gerenciado×externo e testes dedicados. Nenhuma ação de host de produção,
+release ou push foi executada.
+
+## 2026-08-10 — Item M11.1 (Frontends) — auditoria de Steam shortcuts concluída
+
+Endurecimento aplicado sem reescrever o módulo: (1) `_plan_rows` passa
+`skip_unchanged=True` — segundo plan após convergência tem `actions == []`
+(noop) e o apply de plano noop não reescreve o alvo nem cria arquivo de
+backup (apenas o manifesto de operação com zero entradas, semântica do núcleo
+compartilhado usada também por component/media); (2) item sem `id`/`name`
+vira `E-API-SCHEMA` em vez de `KeyError`; (3) colisão de AppID distingue
+atalho externo de colisão gerenciado×gerenciado (mensagens separadas);
+(4) `_apply_kind` aceita planos de 0 ações. Decisões: não alterar
+`core/transaction.py` — planos vazios têm donos legítimos (component,
+media.search) que dependem do `operationId` para rollback. Auditado e já
+coberto: decoder/encoder VDF, rejeição de truncado/ambíguo/grande/symlink,
+preservação de entradas e campos desconhecidos (teste novo), marker como
+única identidade, ordenação determinística, dedupe, Steam fechada, plano
+stale (teste novo), apply atômico, verify no arquivo publicado, rollback
+byte-idêntico e backup adulterado rejeitado (teste novo). Validação: 12
+testes dedicados + 137 testes dos módulos que consomem shortcuts
+(emulation_controller, cloud_platforms, jornada handheld, cli, screencast,
+desktop, steam_maintenance) verdes; real-state intocado. Gates integrais
+adiados por atividade concorrente (VM M10 + suíte do agente principal).
+Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.2 (Frontends) — adapter Steam ROM Manager iniciado
+
+Formato público confirmado na documentação do SRM (`manual-parser-input.md`
+e fonte do parser Manual): o parser Manual lê apenas `title`, `target`,
+`startIn`, `launchOptions` e `appendArgsToExecutable` de arquivos JSON em um
+diretório de manifests (`userData/manifests`), aceitando objeto único ou
+array; campos desconhecidos são ignorados e o diretório nunca é reescrito
+pelo SRM. Decisão de contrato: o adapter gerencia SOMENTE o canal de
+manifests (arquivos `steamzero-manifest-<slug>.json` com marcador
+`steamzero` por entrada); `configs.json` (lista de parsers) fica fora de
+escopo porque o SRM o reescreve do próprio serializador e nenhum marcador
+sobrevive ao round-trip — gerir ali violaria "segundo apply não duplica
+parsers" e a regra de não destruir conteúdo indistinguível. Escopo: parser
+JSON estruturado, limites de tamanho, rejeição de symlink/inválido, ids e
+slugs validados, saída determinística, plan/apply/verify/rollback com
+backup, noop após convergência, remoção só de manifests com marcador
+verificado, smoke que lê o arquivo publicado, status
+missing/configured/degraded/permissionDenied. Nenhuma ação de host de
+produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.2 (Frontends) — adapter Steam ROM Manager concluído
+
+`src/steamzero/adapters/steam_rom_manager.py` implementa o sincronizador
+idempotente do canal de manifests do parser Manual do SRM. Plan gera
+`transaction.plan_write_files(skip_unchanged=True)` — segundo plan após
+convergência tem `actions == []`; coleção com zero jogos remove o manifest
+via ação delete; coleções não pedidas removem apenas arquivos gerenciados
+com marcador verificado. Entradas são renderizadas com `title`, `target`
+(`/usr/local/bin/steamzero`), `startIn`, `launchOptions`
+(`emulation launch --game-id <id>` — id restrito a `[A-Za-z0-9._-]`, sem
+espaços, sem shell), `appendArgsToExecutable: true` e marcador `steamzero`
+(`collection`+`id`); campos desconhecidos do SRM são ignorados pelo parser
+dele, então o marcador é durável. Rejeições: slug/coleção inválida ou
+duplicada, jogo com id/título inválido ou id duplicado entre coleções
+(`E-API-SCHEMA`), manifest gerenciado com JSON inválido, array errado,
+entrada sem título/target/marcador, arquivo >2 MiB ou symlink
+(`E-STATE-INTEGRITY`), raiz ambígua ou symlink (`E-COMPONENT-DEGRADED`).
+Apply valida kind/root/targets do plano (`E-TX-STALE-PLAN` para plano
+estranho ou stale) e roda smoke que relê e valida os manifests escritos —
+falha de smoke dispara rollback automático do núcleo. Rollback restaura
+estado anterior byte-idêntico (verificado por sha256 nos testes). Leitura
+usa `iterdir()` — `Path.glob` do Python 3.14 engole PermissionError e
+apresentaria `missing` no lugar de `permissionDenied`. Testes: 13 dedicados
+em `tests/unit/test_steam_rom_manager.py` + fixtures minimalistas em
+`tests/fixtures/frontends/` (manifest externo preservado byte-a-byte).
+Adicionado parâmetro `smoke` de override no `apply` do adapter para
+injeção controlada de falha em teste. Ruff, ruff format, mypy, fronteiras,
+independência e matriz de capacidades verdes. Validação integral da suíte
+adiada por atividade concorrente (M10 rodando a suíte na árvore principal).
+Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.3 (Frontends) — adapter ES-DE concluído
+
+`src/steamzero/adapters/es_de.py` sincroniza `~/.config/ES-DE/custom_systems/
+es_systems.xml` (canal documentado de custom systems, mesclado aos sistemas
+internos do ES-DE). Diferente do SRM (canal de diretório com preservação
+byte a byte), o arquivo é um único documento compartilhado: o adapter
+preserva conteúdo externo de forma SEMÂNTICA — ordem dos sistemas,
+comentários (TreeBuilder com suporte a comentário/PI), atributos e textos —
+nunca deleta sistema sem marcador, e só reescreve o arquivo quando há
+diferença real (`skip_unchanged=True`), com rollback byte-idêntico do núcleo
+transacional. Marcador de ownership: atributo `steamzero="true"` no `<system>`
+(o ES-DE ignora atributos desconhecidos); nome é filho `<name>` com prefixo
+obrigatório `steamzero-` (evita colisão silenciosa com sistemas internos do
+ES-DE). Contrato da entrada: `name`, `label`, `path` absoluto (ROMPATH),
+`extensions` (`.ext` validado, deduplicado, ordenado), `platform`, `theme`
+opcional e `command` opcional (padrão
+`/usr/local/bin/steamzero emulation launch --game-id %BASENAME%`). Rejeições:
+nome inválido/duplicado, conflito de nome com sistema externo sem marcador,
+path relativo, platform/extensão/label inválidos (`E-API-SCHEMA`); XML
+malformado, raiz que não é `<systemList>`, `<!DOCTYPE>` (previne entidades/
+expansão), arquivo >4 MiB ou symlink (`E-STATE-INTEGRITY`); raiz ambígua
+(`E-COMPONENT-DEGRADED`). Apply valida kind/root/arquivo do plano
+(`E-TX-STALE-PLAN`) e roda smoke que reparseia o documento publicado — falha
+dispara rollback automático. Fora de escopo documentado: `es_settings.xml` e
+`gamelists`, gerados pelo próprio ES-DE. 11 testes dedicados em
+`tests/unit/test_es_de.py` + fixture `esde-foreign-systems.xml` (sistema
+externo com comentário preservado). ElementTree usado com `noqa: S314`
+justificado (limite de 4 MiB + rejeição de DOCTYPE), precedente igual ao de
+`theme_import_esde.py`; atenuação de leitura usa `iterdir` — `Path.glob` do
+Python 3.14 engole PermissionError. Ruff, ruff format, mypy (src inteiro),
+fronteiras, independência e matriz de capacidades verdes. Nenhuma ação de
+host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.4 (Frontends) — integração CLI concluída
+
+Comando `steamzero frontends` registrado em `HANDLERS` com cinco ações:
+`status` (estado srm/esde com lists de coleções/sistemas gerenciados),
+`plan` (spec JSON com seções `srm.collections` e `esde.systems`, via
+`--spec ARQUIVO.json` ou `--spec-json '<json>'`; devolve planId/confirmToken/
+preview/requirements/ações por canal), `apply` (`--target srm|esde
+--plan-id --confirm`, devolve operationId), `verify` (convergência por
+canal a partir do mesmo spec) e `rollback` (`--target --operation-id`,
+usa o núcleo transacional). Spec inválido vira `E-API-SCHEMA`; plano sem
+spec não é aceito; confirm ausente/errado mantém a semântica existente de
+`E-TX-CONFIRM-REQUIRED` (envelope `blocked`, exit 4). Correções de
+contrato descobertas na integração: roots padrão dos adapters apontam para
+os diretórios REAIS de terceiros — `~/.config/steam-rom-manager/userData/
+manifests` e `~/.config/ES-DE/custom_systems` — e não para
+`~/.config/steamzero/...` (o `config_home()` do projeto embute o segmento
+`steamzero`; os canais são config de apps externos, como o ES-DE real
+usa); `managed_collections`/`managed_systems` não vazam `FileNotFoundError`
+quando o diretório ainda não existe (status e lists retornam vazio).
+Adicionadas entradas no `_USAGE`. Testes de integração
+`tests/integration/test_frontend_adapters.py`: fluxo completo plan→apply→
+verify convergido→plan noop→rollback byte-idêntico dos dois canais via CLI
+com envelopes JSON e XDG isolados (3 testes). Gates: ruff, ruff format,
+mypy (src inteiro), fronteiras, independência e matriz de capacidades
+verdes. Nenhuma ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Integração M10+M11 — resolução do merge (append-only)
+
+Bloco de resolução da integração das frentes M10 e M11 na branch
+`codex/integrate-m10-m11` (base: checkpoint M10 `1a4b9bd`; merge de
+`codex/m11-frontends-idempotentes` `c6c2712`; merge-base `1723cc8`).
+Único conflito textual: `docs/WORKLOG.md`. Resolução: todos os blocos de
+ambos os lados foram preservados integralmente, sem edição de texto,
+ordenados cronologicamente (blocos M10 primeiro, blocos M11 depois);
+nenhum histórico foi condensado ou removido. Decisões de contrato: os
+lados não alteram os mesmos arquivos de código (overlap verificado:
+somente `docs/WORKLOG.md`); o registry/schema/flatpak do M10 não é
+consumido pelos adapters M11 de frontends; a CLI M11 (que importa
+`AdapterRegistry`/`FlatpakExecutor` do M10) é compatível com a base
+`1723cc8` e a mudança M10 não altera essas assinaturas.

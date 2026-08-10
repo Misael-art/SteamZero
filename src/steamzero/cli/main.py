@@ -13,11 +13,12 @@ import json
 import os
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from steamzero import CONTRACT_VERSION, __version__
 from steamzero.api.envelope import build_envelope, status_from_checks
-from steamzero.core import ids, log
+from steamzero.core import ids, log, transaction
 from steamzero.core.errors import SteamZeroError, build_error
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
@@ -98,6 +99,11 @@ Domínios (Fase 1):
   cloud launch           abre URL allowlisted (--platform ID)
   cloud plan             revisa publicação dos atalhos Steam
   cloud apply            aplica publicação (--plan-id ID --confirm TOKEN)
+  frontends status       estado dos canais de frontend (SRM manifests e ES-DE)
+  frontends plan         revisa sync (--spec ARQUIVO.json ou --spec-json JSON)
+  frontends apply        aplica sync (--target srm|esde --plan-id ID --confirm TOKEN)
+  frontends verify       confirma convergência (--spec ARQUIVO.json ou --spec-json JSON)
+  frontends rollback     desfaz sync (--target srm|esde --operation-id ID)
   hud presets            lista presets e evidência automatizada 1280x800
   controls profiles      lista perfis e seleção ativa (--platform ID)
   controls plan          revisa seleção de perfil (--platform ID --profile ID)
@@ -1401,6 +1407,154 @@ def _cmd_cloud_apply(args: list[str], correlation_id: str) -> tuple[dict[str, An
     )
 
 
+_FRONTEND_TARGETS = frozenset({"srm", "esde"})
+
+
+def _frontends_adapters() -> tuple[Any, Any]:
+    from steamzero.adapters.es_de import EsDe
+    from steamzero.adapters.steam_rom_manager import SteamRomManager
+
+    return SteamRomManager(), EsDe()
+
+
+def _frontends_target(args: list[str]) -> str:
+    target = _flag_value(args, "--target") or "srm"
+    if target not in _FRONTEND_TARGETS:
+        raise SteamZeroError("E-API-SCHEMA", detail="--target precisa ser srm ou esde")
+    return target
+
+
+def _frontends_spec(args: list[str]) -> dict[str, Any]:
+    value = _flag_value(args, "--spec-json")
+    if value is None:
+        path = _flag_value(args, "--spec")
+        if path is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail="use --spec <arquivo.json> ou --spec-json <json>"
+            )
+        try:
+            value = Path(path).read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"spec não encontrado: {path}") from exc
+    try:
+        spec = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise SteamZeroError("E-API-SCHEMA", detail="spec não é JSON válido") from exc
+    if not isinstance(spec, dict):
+        raise SteamZeroError("E-API-SCHEMA", detail="spec precisa ser um objeto JSON")
+    srm_part = spec.get("srm", {})
+    esde_part = spec.get("esde", {})
+    if not isinstance(srm_part, dict) or not isinstance(esde_part, dict):
+        raise SteamZeroError("E-API-SCHEMA", detail="spec precisa ter seções srm e esde")
+    collections = srm_part.get("collections", [])
+    systems = esde_part.get("systems", [])
+    if not isinstance(collections, list) or not isinstance(systems, list):
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail="spec.srm.collections e spec.esde.systems precisam ser listas"
+        )
+    return {"srm": {"collections": collections}, "esde": {"systems": systems}}
+
+
+def _cmd_frontends_status(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    srm, esde = _frontends_adapters()
+    data = {
+        "srm": {
+            **srm.status(),
+            "collections": sorted(srm.managed_collections()),
+        },
+        "esde": {
+            **esde.status(),
+            "systems": sorted(esde.managed_systems()),
+        },
+    }
+    return (
+        build_envelope(
+            "frontends", "status", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_frontends_plan(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    spec = _frontends_spec(args)
+    srm, esde = _frontends_adapters()
+    srm_plan = srm.plan(spec["srm"]["collections"])
+    esde_plan = esde.plan(spec["esde"]["systems"])
+    data: dict[str, Any] = {}
+    for name, plan in (("srm", srm_plan), ("esde", esde_plan)):
+        data[name] = {
+            "planId": plan.plan_id,
+            "confirmToken": plan.confirm_token,
+            "preview": plan.preview,
+            "rollbackGuarantee": plan.rollback_guarantee,
+            "requirements": plan.requirements,
+            "actions": [
+                {"kind": a.kind, "target": a.target, "newHash": a.new_hash} for a in plan.actions
+            ],
+        }
+    return (
+        build_envelope(
+            "frontends", "plan", status="ready", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_frontends_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    target = _frontends_target(args)
+    plan_id = _flag_value(args, "--plan-id")
+    confirm = _flag_value(args, "--confirm")
+    if plan_id is None or confirm is None:
+        raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="use --plan-id <id> --confirm <token>")
+    srm, esde = _frontends_adapters()
+    result = (srm if target == "srm" else esde).apply(plan_id, confirm)
+    data = {
+        "target": target,
+        "status": result.status,
+        "operationId": result.operation_id,
+        "actions": result.actions,
+    }
+    return (
+        build_envelope("frontends", "apply", status="ok", data=data, correlation_id=correlation_id),
+        EXIT_OK,
+    )
+
+
+def _cmd_frontends_verify(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    spec = _frontends_spec(args)
+    srm, esde = _frontends_adapters()
+    data = {
+        "srm": srm.verify(spec["srm"]["collections"]),
+        "esde": esde.verify(spec["esde"]["systems"]),
+    }
+    return (
+        build_envelope(
+            "frontends", "verify", status="ok", data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
+def _cmd_frontends_rollback(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
+    target = _frontends_target(args)
+    operation_id = _flag_value(args, "--operation-id")
+    if operation_id is None:
+        raise SteamZeroError("E-API-SCHEMA", detail="use --operation-id <id>")
+    result = transaction.rollback(operation_id, reason="manual")
+    data = {
+        "target": target,
+        "status": result.status,
+        "operationId": result.operation_id,
+        "restored": result.restored,
+    }
+    return (
+        build_envelope(
+            "frontends", "rollback", status=result.status, data=data, correlation_id=correlation_id
+        ),
+        EXIT_OK,
+    )
+
+
 def _cmd_hud_presets(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     import shutil
 
@@ -1918,6 +2072,11 @@ HANDLERS: dict[tuple[str, str | None], Handler] = {
     ("cloud", "launch"): _cmd_cloud_launch,
     ("cloud", "plan"): _cmd_cloud_plan,
     ("cloud", "apply"): _cmd_cloud_apply,
+    ("frontends", "status"): _cmd_frontends_status,
+    ("frontends", "plan"): _cmd_frontends_plan,
+    ("frontends", "apply"): _cmd_frontends_apply,
+    ("frontends", "verify"): _cmd_frontends_verify,
+    ("frontends", "rollback"): _cmd_frontends_rollback,
     ("hud", "presets"): _cmd_hud_presets,
     ("controls", "profiles"): _cmd_controls_profiles,
     ("controls", "plan"): _cmd_controls_plan,

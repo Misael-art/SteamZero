@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Legacy External",
+    "target": "/home/external/bin/game.sh",
+    "startIn": "/home/external/bin",
+    "launchOptions": "--fast",
+    "appendArgsToExecutable": false
+  },
+  {
+    "title": "Legacy External Two",
+    "target": "/usr/bin/two",
+    "startIn": "/usr/bin",
+    "launchOptions": "",
+    "appendArgsToExecutable": true
+  }
+]
