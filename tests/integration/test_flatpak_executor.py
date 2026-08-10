@@ -66,9 +66,14 @@ class FakeFlatpak:
         self.current = FlatpakState(False, ref)
 
     def smoke(
-        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+        self,
+        ref: str,
+        arguments: Sequence[str],
+        environment: Sequence[tuple[str, str]] = (),
+        exit_codes: Sequence[int] = (0,),
+        match: str | None = None,
     ) -> None:
-        self.calls.append(("smoke", ref, *arguments, *environment))
+        self.calls.append(("smoke", ref, arguments, environment, exit_codes, match))
         if self.smoke_error is not None:
             raise self.smoke_error
 
@@ -84,7 +89,10 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[state.Sta
 
 
 def manifest(
-    *, end_of_life: bool = False, capabilities: list[str] | None = None
+    *,
+    end_of_life: bool = False,
+    capabilities: list[str] | None = None,
+    verify_extra: dict[str, object] | None = None,
 ) -> dict[str, object]:
     source: dict[str, object] = {
         "type": "flatpak",
@@ -95,6 +103,9 @@ def manifest(
     }
     if end_of_life:
         source["endOfLife"] = True
+    verify: dict[str, object] = {"smokeTest": ["--version"]}
+    if verify_extra:
+        verify.update(verify_extra)
     return {
         "schemaVersion": 1,
         "id": "demo-flatpak",
@@ -102,7 +113,7 @@ def manifest(
         "platforms": ["demo"],
         "capabilities": capabilities or ["detect", "status", "install", "update", "verify"],
         "sources": [source],
-        "verify": {"smokeTest": ["--version"]},
+        "verify": verify,
         "license": "MIT",
         "upstream": "https://example.invalid/demo",
     }
@@ -186,6 +197,53 @@ def test_cli_smoke_failure_truncation_keeps_tail() -> None:
     assert "limite" in detail
     assert len(detail) <= flatpak_module._SMOKE_PAYLOAD_LIMIT
     assert detail.endswith("linha 19999\n")
+
+
+def test_cli_smoke_accepts_allowlisted_exit_code_with_output_match() -> None:
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        return CommandResult(1, "", "PCSX2 v2.6.3\nhttps://pcsx2.net/\n")
+
+    FlatpakCLI(runner=runner).smoke(REF, ("-version",), (), (1,), "^PCSX2 v")
+
+
+def test_cli_smoke_rejects_allowed_exit_code_when_output_misses_pattern() -> None:
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        return CommandResult(1, "", "boot falhou\n")
+
+    with pytest.raises(SteamZeroError) as error:
+        FlatpakCLI(runner=runner).smoke(REF, ("-version",), (), (1,), "^PCSX2 v")
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    detail = error.value.detail
+    assert detail is not None
+    assert "retorno: 1" in detail
+    assert "saída não corresponde ao padrão" in detail
+    assert "boot falhou" in detail
+
+
+def test_cli_smoke_rejects_exit_code_outside_allowlist_even_with_match() -> None:
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        return CommandResult(2, "", "PCSX2 v2.6.3\n")
+
+    with pytest.raises(SteamZeroError) as error:
+        FlatpakCLI(runner=runner).smoke(REF, ("-version",), (), (1,), "^PCSX2 v")
+
+    assert error.value.code == "E-COMPONENT-DEGRADED"
+    assert error.value.detail is not None
+    assert "retorno: 2" in error.value.detail
+
+
+def test_executor_forwards_smoke_allowlist_and_pattern(store: state.StateStore) -> None:
+    item = load_manifest(manifest(verify_extra={"smokeExitCodes": [1], "smokeMatch": "^PCSX2 v"}))
+    flatpak = FakeFlatpak(initial=FlatpakState(True, REF, "flathub", PREVIOUS))
+    service = FlatpakExecutor(store, AdapterRegistry([item]), flatpak)
+    plan = service.plan_install("demo-flatpak")
+    assert plan.action == "update"
+
+    applied = service.apply(plan.plan_id, plan.confirm_token)
+
+    assert applied.status == "ok"
+    assert ("smoke", REF, ("--version",), (), (1,), "^PCSX2 v") in flatpak.calls
 
 
 def test_plan_is_pinned_schema_valid_and_read_only(store: state.StateStore, tmp_path: Path) -> None:
@@ -293,7 +351,7 @@ def test_install_apply_and_manual_rollback_preserve_app_data_scope(
     assert applied.status == "ok"
     assert flatpak.current == FlatpakState(True, REF, "flathub", TARGET)
     assert store.get_component("demo-flatpak")["version"] == TARGET  # type: ignore[index]
-    assert ("smoke", REF, "--version") in flatpak.calls
+    assert ("smoke", REF, ("--version",), (), (0,), None) in flatpak.calls
 
     rolled_back = service.rollback(applied.operation_id)
     assert rolled_back.status == "rolled-back"

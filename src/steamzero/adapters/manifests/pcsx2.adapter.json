@@ -40,9 +40,12 @@
       "QT_QPA_PLATFORMTHEME": "none"
     },
     "smokeTest": [
-      "-nogui",
-      "--version"
-    ]
+      "-version"
+    ],
+    "smokeExitCodes": [
+      1
+    ],
+    "smokeMatch": "^PCSX2 v"
   },
   "compat": [
     "steamos",

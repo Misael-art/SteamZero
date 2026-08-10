@@ -6048,3 +6048,36 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
 `make independence boundaries` e `capability_matrix --check` verdes. Item
 4/DEBT-A7 continua aberto. Nenhuma ação de host de produção, release ou push
 foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — correção do smoke do PCSX2 iniciada
+
+Causa raiz provada no lab (overlay r22 preservada): o PCSX2 v2.6.3 nessa
+imagem de runtime não conhece `--version`/`--help` de dash duplo — mostra um
+diálogo modal "Unknown parameter" (279x100) e pendura headless (RC=124,
+timeout do harness). As formas documentadas são de dash único: `-version`
+imprime "PCSX2 v2.6.3" e `-help` imprime o usage; ambas saem com **RC=1**
+(quirk do app). `-batch` sem jogo também abre diálogo ("Cannot use batch
+mode..."). Portanto nenhuma invocação do PCSX2 nesse ambiente sai pela porta
+limpa RC=0. Escopo: manifesto PCSX2 smoke `-version` + contrato honesto
+(`smokeExitCodes` com allowlist, default `[0]`, e `smokeMatch` regex sobre
+stdout+stderr; payload integral preservado na falha) no schema, registry e
+executor Flatpak; nenhuma expectativa de sucesso falsa. Repetir PCSX2/minimal
+em VM após testes e gates. Nenhuma ação de host de produção, release ou push
+foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — correção do smoke do PCSX2 concluída
+
+O contrato de smoke agora admite allowlist de códigos de saída e padrão de
+saída exigido: sucesso = retorno na allowlist (default `[0]`) E saída
+correspondendo ao padrão (se declarado). O PCSX2 usa `-version` de dash único
+com `smokeExitCodes: [1]` e `smokeMatch: "^PCSX2 v"` — a saída documentada do
+próprio app vira o sinal de sucesso, sem aceitar erro de portal nem retorno
+fora da allowlist como saudável; a falha continua com payload integral. O
+lockfile foi regravado (única divergência: `manifestHash` do pcsx2).
+Validação: 8 testes dedicados novos (CLI allowlist/acerto/erro, propagação no
+executor, schema com default e rejeições); suíte isolada **4227 passaram, 10
+skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
+independence boundaries` e `capability_matrix --check` verdes. Item
+4/DEBT-A7 continua aberto: r23 deve provar PCSX2/minimal com o smoke
+`-version` verde. Nenhuma ação de host de produção, release ou push foi
+executada.

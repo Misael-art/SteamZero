@@ -202,6 +202,37 @@ def test_manifest_rejects_portable_source_without_checksum() -> None:
     assert error.value.code == "E-SUPPLY-NO-CHECKSUM"
 
 
+def test_manifest_smoke_defaults_to_zero_exit_code_and_no_pattern() -> None:
+    data = portable_manifest("1.0.0", b"v1")
+    item = load_manifest(data)
+    assert item.verify_smoke_exit_codes == (0,)
+    assert item.verify_smoke_match is None
+
+
+def test_bundled_pcsx2_smoke_uses_single_dash_version() -> None:
+    registry = AdapterRegistry.bundled()
+    item = registry.get("pcsx2")
+    assert item.verify_smoke_test == ("-version",)
+    assert item.verify_smoke_exit_codes == (1,)
+    assert item.verify_smoke_match == "^PCSX2 v"
+
+
+def test_manifest_rejects_invalid_smoke_match_regex() -> None:
+    data = portable_manifest("1.0.0", b"v1")
+    data["verify"]["smokeMatch"] = "([unclosed"
+    with pytest.raises(SteamZeroError) as error:
+        load_manifest(data)
+    assert error.value.code == "E-API-SCHEMA"
+
+
+def test_manifest_rejects_empty_smoke_exit_codes() -> None:
+    data = portable_manifest("1.0.0", b"v1")
+    data["verify"]["smokeExitCodes"] = []
+    with pytest.raises(SteamZeroError) as error:
+        load_manifest(data)
+    assert error.value.code == "E-API-SCHEMA"
+
+
 def test_manifest_requires_detect_and_status() -> None:
     data = portable_manifest("1.0.0", b"v1")
     data["capabilities"] = ["install", "verify"]

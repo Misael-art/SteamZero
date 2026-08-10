@@ -102,6 +102,8 @@ class AdapterManifest:
     upstream: str
     verify_smoke_test: tuple[str, ...]
     verify_environment: tuple[tuple[str, str], ...]
+    verify_smoke_exit_codes: tuple[int, ...]
+    verify_smoke_match: str | None
     conflicts: tuple[str, ...]
     requires: tuple[str, ...]
     manifest_hash: str
@@ -151,6 +153,8 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             for key, value in data.get("verify", {}).get("environment", {}).items()
         )
     )
+    smoke_codes = tuple(int(value) for value in data.get("verify", {}).get("smokeExitCodes", (0,)))
+    smoke_match = data.get("verify", {}).get("smokeMatch")
     if "install" in capabilities and ("verify" not in capabilities or not smoke):
         raise SteamZeroError(
             "E-API-SCHEMA",
@@ -158,6 +162,17 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         )
     if any("\x00" in argument or len(argument) > 256 for argument in smoke):
         raise SteamZeroError("E-API-SCHEMA", detail=f"adapter {data['id']} tem smokeTest inválido")
+    if not smoke_codes:
+        raise SteamZeroError(
+            "E-API-SCHEMA", detail=f"adapter {data['id']} tem smokeExitCodes vazio"
+        )
+    if smoke_match is not None:
+        try:
+            re.compile(smoke_match)
+        except re.error as exc:
+            raise SteamZeroError(
+                "E-API-SCHEMA", detail=f"adapter {data['id']} tem smokeMatch inválido: {exc}"
+            ) from exc
     if any("\x00" in value for _, value in environment):
         raise SteamZeroError(
             "E-API-SCHEMA", detail=f"adapter {data['id']} tem ambiente de verify inválido"
@@ -230,6 +245,8 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         upstream=data["upstream"],
         verify_smoke_test=smoke,
         verify_environment=environment,
+        verify_smoke_exit_codes=smoke_codes,
+        verify_smoke_match=smoke_match,
         conflicts=tuple(data.get("conflicts", ())),
         requires=tuple(data.get("requires", ())),
         manifest_hash=crypto.digest_bytes(canonical.encode()).hexdigest,

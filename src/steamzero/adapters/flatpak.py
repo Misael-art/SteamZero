@@ -123,7 +123,12 @@ class FlatpakPort(Protocol):
     def uninstall(self, ref: str) -> None: ...
 
     def smoke(
-        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+        self,
+        ref: str,
+        arguments: Sequence[str],
+        environment: Sequence[tuple[str, str]] = (),
+        exit_codes: Sequence[int] = (0,),
+        match: str | None = None,
     ) -> None: ...
 
 
@@ -264,13 +269,20 @@ class FlatpakCLI:
         _require_command(result, f"remover deployment de {ref}")
 
     def smoke(
-        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+        self,
+        ref: str,
+        arguments: Sequence[str],
+        environment: Sequence[tuple[str, str]] = (),
+        exit_codes: Sequence[int] = (0,),
+        match: str | None = None,
     ) -> None:
         _require_ref(ref)
         if not arguments or any("\x00" in item or len(item) > 256 for item in arguments):
             raise SteamZeroError("E-API-SCHEMA", detail="smoke test Flatpak inválido")
         if any("\x00" in key or "\x00" in value for key, value in environment):
             raise SteamZeroError("E-API-SCHEMA", detail="ambiente de smoke Flatpak inválido")
+        if not exit_codes:
+            raise SteamZeroError("E-API-SCHEMA", detail="smoke Flatpak sem códigos de saída")
         argv = (
             "flatpak",
             "run",
@@ -281,10 +293,14 @@ class FlatpakCLI:
             *arguments,
         )
         result = self._runner(argv, 30.0)
-        if result.returncode != 0:
+        codes_ok = result.returncode in exit_codes
+        match_ok = match is None or re.search(match, f"{result.stdout}\n{result.stderr}", re.M)
+        if not codes_ok or not match_ok:
             raise SteamZeroError(
                 "E-COMPONENT-DEGRADED",
-                detail=_smoke_failure_detail(ref, argv, result),
+                detail=_smoke_failure_detail(
+                    ref, argv, result, pattern=None if not codes_ok else match
+                ),
             )
 
 
@@ -579,12 +595,13 @@ class FlatpakExecutor:
                     self._flatpak.install(plan.remote, plan.ref)
                 self._flatpak.deploy(plan.ref, plan.target_commit)
                 self._verify_target(plan.ref, plan.remote, plan.target_commit)
-                if manifest.verify_environment:
-                    self._flatpak.smoke(
-                        plan.ref, manifest.verify_smoke_test, manifest.verify_environment
-                    )
-                else:
-                    self._flatpak.smoke(plan.ref, manifest.verify_smoke_test)
+                self._flatpak.smoke(
+                    plan.ref,
+                    manifest.verify_smoke_test,
+                    manifest.verify_environment,
+                    manifest.verify_smoke_exit_codes,
+                    manifest.verify_smoke_match,
+                )
                 final = self._flatpak.status(plan.ref)
                 self._persist(manifest, final)
                 self._save_operation(replace(operation, status="committed"))
@@ -931,18 +948,23 @@ def _detail(result: CommandResult) -> str:
 _SMOKE_PAYLOAD_LIMIT = 12_000
 
 
-def _smoke_failure_detail(ref: str, argv: Sequence[str], result: CommandResult) -> str:
+def _smoke_failure_detail(
+    ref: str, argv: Sequence[str], result: CommandResult, pattern: str | None = None
+) -> str:
     """Preserva o payload integral do smoke para a evidência da VM M10.
 
     ``_detail`` truncava o envelope a 500 caracteres e a causa real do smoke
     (retorno, stdout e stderr completos) nunca chegava à evidência — a falha do
     PCSX2 ficou indiagnosticável por esse motivo. Aqui o comando exato e o
     retorno ficam no início e a saída é preservada na cauda, onde aparecem o
-    crash e o encerramento do processo.
+    crash e o encerramento do processo. ``pattern`` registra a exigência de
+    ``smokeMatch`` quando o retorno passou mas a saída não correspondeu.
     """
     head = (
         f"falha ao smoke test de {ref}\ncomando: {' '.join(argv)}\nretorno: {result.returncode}\n"
     )
+    if pattern is not None:
+        head += f"saída não corresponde ao padrão {pattern!r}\n"
     output = f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     if len(head) + len(output) > _SMOKE_PAYLOAD_LIMIT:
         marker = f"... saída truncada (limite {_SMOKE_PAYLOAD_LIMIT} caracteres):\n"

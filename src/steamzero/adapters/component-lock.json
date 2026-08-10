@@ -278,7 +278,7 @@
     },
     {
       "id": "pcsx2",
-      "manifestHash": "1436449074645dbd6778c37e36a9b5790a3c079763e932f08a2a9643c20d2b16",
+      "manifestHash": "ef2fe19b99f30cc702987d22ffd84e316cd9fac6f9877434e005019956b7f72f",
       "source": {
         "type": "flatpak",
         "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",

@@ -101,9 +101,14 @@ class FakeFlatpak:
         self.current = FlatpakState(False, ref)
 
     def smoke(
-        self, ref: str, arguments: Sequence[str], environment: Sequence[tuple[str, str]] = ()
+        self,
+        ref: str,
+        arguments: Sequence[str],
+        environment: Sequence[tuple[str, str]] = (),
+        exit_codes: Sequence[int] = (0,),
+        match: str | None = None,
     ) -> None:
-        self.calls.append(("smoke", ref, *arguments, *environment))
+        self.calls.append(("smoke", ref, arguments, environment, exit_codes, match))
 
 
 @pytest.fixture
