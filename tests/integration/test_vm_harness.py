@@ -334,7 +334,7 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     assert "package_update: false" in user_data
     assert "timeout --kill-after=15s" in user_data
     assert "300s " in user_data
-    assert "pacman -S --noconfirm --needed" in user_data
+    assert "pacman -Sy --noconfirm --needed" in user_data
     assert "pacman bootstrap attempt $attempt failed" in user_data
     assert "systemctl enable --now sshd.service || true" in user_data
     assert "flatpak remote-add" not in user_data

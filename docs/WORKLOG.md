@@ -5977,3 +5977,23 @@ passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`, `make
 independence boundaries` e `capability_matrix --check` verdes. Item 4/DEBT-A7
 continua aberto: a r20m deve provar exclusivamente PCSX2/minimal. Nenhuma ação
 de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — sincronização de índices pacman iniciada
+
+Branch base: `codex/fase1-cores-laco-primario` em `5d01712`. A r20m mostrou
+HTTP 404 repetível para versões já removidas dos mirrors: `pacman -S` reutilizou
+o índice da imagem cloud. Escopo: sincronizar somente o índice antes de instalar
+as dependências (`-Sy --needed`), mantendo vedada a atualização integral
+(`-Syu`); repetir exclusivamente PCSX2/minimal após testes e gates. Nenhuma
+ação de host de produção, release ou push foi executada.
+
+## 2026-08-09 — Item 4 (VM M10) — sincronização de índices pacman concluída
+
+O bootstrap usa `pacman -Sy --noconfirm --needed`: os índices da imagem cloud
+são renovados sem promover uma atualização integral. A r20m demonstrou que os
+404 eram versões removidas de índices obsoletos, não defeito de adapter ou rede.
+Validação: 32 testes dedicados; suíte isolada **4217 passaram, 10 skipados**;
+`ruff check`, `ruff format --check`, `mypy src`, `make independence boundaries`
+e `capability_matrix --check` verdes. Item 4/DEBT-A7 continua aberto: r20n deve
+provar exclusivamente PCSX2/minimal. Nenhuma ação de host de produção, release
+ou push foi executada.
