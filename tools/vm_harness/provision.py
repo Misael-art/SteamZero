@@ -76,9 +76,9 @@ _GUEST_PACKAGES: tuple[str, ...] = (
 )
 _GUEST_PACKAGE_ARGS = " ".join(_GUEST_PACKAGES)
 _PACMAN_RETRY_DELAYS: tuple[int, ...] = (5, 10, 20)
-_PACMAN_ATTEMPT_TIMEOUT_SECONDS = 300
-_PACMAN_KILL_AFTER_SECONDS = 15
-_CLOUD_INIT_TIMEOUT_SECONDS = 1_300
+_PACMAN_ATTEMPT_TIMEOUT_SECONDS = 600
+_PACMAN_KILL_AFTER_SECONDS = 30
+_CLOUD_INIT_TIMEOUT_SECONDS = 2_600
 
 REQUIRED_BINARIES: tuple[str, ...] = (
     "virt-install",
@@ -299,6 +299,12 @@ def render_cloud_init(config: VmConfig, public_key: str) -> tuple[str, str]:
                 {_GUEST_PACKAGE_ARGS} && exit 0
               status=$?
               echo "steamzero-m10: pacman bootstrap attempt $attempt failed (status=$status)" >&2
+              pkill -9 -x pacman 2>/dev/null || true
+              sleep 2
+              if ! pgrep -x pacman >/dev/null 2>&1; then
+                rm -f /var/lib/pacman/db.lck
+                echo "steamzero-m10: lock órfão do pacman removido" >&2
+              fi
               case "$attempt" in
                 1) sleep {_PACMAN_RETRY_DELAYS[0]} ;;
                 2) sleep {_PACMAN_RETRY_DELAYS[1]} ;;

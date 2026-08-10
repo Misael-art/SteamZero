@@ -6021,3 +6021,30 @@ isolada **4217 passaram, 10 skipados**; `ruff check`, `ruff format --check`,
 verdes. Item 4/DEBT-A7 continua aberto: r21 deve provar exclusivamente
 PCSX2/minimal. Nenhuma ação de host de produção, release ou push foi
 executada.
+
+## 2026-08-10 — Item 4 (VM M10) — bootstrap resiliente a timeout/lock iniciado
+
+Branch base: `codex/fase1-cores-laco-primario` em `2486c78`. A r21 (PCSX2/
+minimal) falhou no bootstrap pacman: a tentativa 1 estourou os 300 s durante o
+download das dependências (qt6, xorg, mesa, flatpak — centenas de MB) e o
+pacman timeoutado reteve o lock do banco por mais de 35 s apesar do
+`kill-after=15s`; as tentativas 2-4 morreram com `unable to lock database`, ou
+seja, os retries eram inúteis. Escopo: dar 600 s por tentativa com
+`kill-after=30s`, derrubar o pacman preso e remover o lock órfão (somente com
+nenhum pacman vivo) entre tentativas, e estender o orçamento de cloud-init
+para 2600 s; repetir exclusivamente PCSX2/minimal após testes e gates. Nenhuma
+ação de host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item 4 (VM M10) — bootstrap resiliente a timeout/lock concluído
+
+O runcmd do cloud-init agora derruba o pacman restante (`pkill -9 -x pacman`),
+aguarda e remove `/var/lib/pacman/db.lck` somente se nenhum pacman estiver
+vivo antes de cada nova tentativa — a recuperação documentada do pacman —
+com 600 s por tentativa (antes 300 s), `kill-after=30s` e orçamento de
+cloud-init de 2600 s. A r21 provou a causa (timeout de download + lock
+retido); a r22 deve passar do bootstrap e chegar ao smoke do PCSX2 com o
+payload integral. Validação: 31 testes dedicados; suíte isolada **4219
+passaram, 10 skipados**; `ruff check`, `ruff format --check`, `mypy src`,
+`make independence boundaries` e `capability_matrix --check` verdes. Item
+4/DEBT-A7 continua aberto. Nenhuma ação de host de produção, release ou push
+foi executada.
