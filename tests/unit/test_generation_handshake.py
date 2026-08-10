@@ -272,6 +272,53 @@ class TestCliDegradesReadOnAmbiguousTransport:
         assert "ambíguo" in envelope["error"]["detail"]
 
 
+class TestCliFrontendsFollowSharedDaemonPolicy:
+    """As mutações de frontends herdam a política comum do transporte."""
+
+    def _ambiguous(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from steamzero.service import client as mod
+
+        def _ambiguous(*_args: Any, **_kw: Any) -> None:
+            raise mod.CoreAmbiguousResult("resultado da chamada é ambíguo")
+
+        monkeypatch.setattr(mod, "verify_generation", lambda **kw: {"sourceCommit": "x"})
+        monkeypatch.setattr(mod, "invoke", _ambiguous)
+        monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+
+    def test_frontends_apply_never_degrades_on_ambiguity(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.cli import main as cli
+
+        self._ambiguous(monkeypatch)
+        result = cli._try_daemon(
+            "frontends", "apply", ["--plan-id", "p", "--confirm", "t"], "corr-5"
+        )
+        assert result is not None, "mutação ambígua não pode cair no caminho local"
+        envelope, code = result
+        assert code == cli.EXIT_FAILURE
+        assert envelope["error"]["code"] == "E-API-CONTRACT"
+        assert "ambíguo" in envelope["error"]["detail"]
+
+    def test_frontends_rollback_never_degrades_on_ambiguity(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from steamzero.cli import main as cli
+
+        self._ambiguous(monkeypatch)
+        result = cli._try_daemon("frontends", "rollback", ["--operation-id", "op"], "corr-6")
+        assert result is not None
+        envelope, code = result
+        assert code == cli.EXIT_FAILURE
+        assert envelope["error"]["code"] == "E-API-CONTRACT"
+
+    def test_frontends_verify_read_degrades_to_local(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from steamzero.cli import main as cli
+
+        self._ambiguous(monkeypatch)
+        assert cli._try_daemon("frontends", "verify", ["--spec-json", "{}"], "corr-7") is None
+
+
 class TestCliNeverDegradesSecurityRefusal:
     """Socket inseguro não é ausência de daemon: é condição de segurança.
 

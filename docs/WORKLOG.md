@@ -6287,3 +6287,42 @@ somente `docs/WORKLOG.md`); o registry/schema/flatpak do M10 não é
 consumido pelos adapters M11 de frontends; a CLI M11 (que importa
 `AdapterRegistry`/`FlatpakExecutor` do M10) é compatível com a base
 `1723cc8` e a mudança M10 não altera essas assinaturas.
+
+## 2026-08-10 — Integração M10+M11 — contrato daemon de frontends decidido (opção B)
+
+Decisão: `frontends` entra em `src/steamzero/service/methods.py::CLI_METHODS`
+(opção B), em commit próprio após o commit de integração. Base da decisão:
+identidade do serviço — `steamzero-core` é unit systemd de USUÁRIO, portanto o
+daemon compartilha `~/.config` e `$XDG_STATE_HOME` do chamador e os roots
+reais de SRM (`~/.config/steam-rom-manager/userData/manifests`) e ES-DE
+(`~/.config/ES-DE/custom_systems`) e o StateStore transacional são os mesmos
+do caminho local; doctrina SR-19 do repositório (CLI e UI sobre uma única
+camada de ações) — todo domínio irmão (controls, health, desktop, component,
+collections) já está em `CLI_METHODS`, e `controls` tem exatamente o mesmo
+formato plan/apply/rollback; sem registro, a UI/capabilities não enxergariam
+frontends. Segurança de paths: o schema fechado NÃO expõe campo de caminho —
+a spec viaja como texto JSON (`specJson`, `--spec-json`, limite de 4096
+caracteres como `actionJson`); o flag `--spec <arquivo>` é deliberadamente
+LOCAL (prova: `args_to_params` rejeita a flag → `_try_daemon` retorna None →
+execução local do chamador, que lê o próprio arquivo; nenhum path arbitrário
+chega ao daemon). `target` é campo opcional com choices `srm|esde` (ausente →
+default `srm` do handler). Timeout: apply medido em 4-35 ms no lab (12
+coleções SRM + 8 sistemas ES-DE), noop 4 ms — 2,0 s default cobre com folga
+(precedente BUG-01: apenas operações medidas ~13 s ganharam 30 s).
+Mutações (plan/apply/rollback) herdam a política comum: resultado ambíguo ou
+geração divergente NUNCA repete localmente (E-API-CONTRACT /
+E-API-GENERATION-MISMATCH); leituras (status/verify) degradam para o local;
+daemon ausente → CoreUnavailable → fallback local. Provas: unidade —
+`test_frontends_specs_are_closed_and_spec_file_stays_local` (schema fechado,
+choices, rejeição de `--spec`), `TestCliFrontendsFollowSharedDaemonPolicy`
+(ambiguidade de apply/rollback e degradação de verify); integração por
+transporte real — `test_daemon_frontends_roundtrip_is_closed_and_reversible`
+(plan→apply→noop→verify→rollback byte-idêntico dos dois canais + preservação
+de manifestos/XML estrangeiros com comentário, envelope v2) e
+`test_cli_frontends_routes_spec_json_to_daemon_and_spec_file_to_local` (spy
+no handler local prova que `--spec-json` viaja pelo daemon e `--spec
+<arquivo>` executa no chamador). Equivalência com o caminho local: handlers
+são os MESMOS objetos executados in-process pelo daemon (`_invoke_action` →
+`HANDLERS`), shapes de envelope idênticos aos do fluxo local provado em
+`test_frontend_adapters.py`. Nenhuma ação de host de produção, release ou
+push foi executada.
