@@ -55,6 +55,8 @@ class FakeComponentClient:
         self._pins = m10_pinned_commits()
         self.dns_fail_install_until = 0  # applies de install falham por DNS até 0
         self.timeout_fail_install_until = 0  # applies falham por timeout até 0
+        self.plan_dns_fail_until = 0  # plans falham por DNS até 0
+        self.plan_failures: dict[str, str] = {}  # adapter_id -> falha real de plan
         self.install_failures: dict[str, str] = {}  # adapter_id -> falha real
 
     def status(self, adapter_id: str) -> dict[str, Any]:
@@ -72,6 +74,15 @@ class FakeComponentClient:
         if action == "update":
             # Fonte Flatpak pinada: update é noop (mesmo commit do manifesto).
             return {"planId": None, "confirmToken": None, "action": "noop"}
+        if action == "install" and self.plan_dns_fail_until > 0:
+            # Plan consulta o remote flathub (summary/pin): DNS indisponível.
+            self.plan_dns_fail_until -= 1
+            raise RuntimeError(
+                "E-SUPPLY-REMOTE-FAILED: Unable to load summary from remote "
+                "flathub: [6] Could not resolve hostname"
+            )
+        if action == "install" and adapter_id in self.plan_failures:
+            raise RuntimeError(self.plan_failures[adapter_id])
         self._counter += 1
         plan_id = f"plan-{adapter_id}-{self._counter}"
         confirm = secrets.token_urlsafe(16)
@@ -233,6 +244,26 @@ def test_certify_emulator_minimal_gives_up_after_dns_retries_exhausted() -> None
     client.dns_fail_install_until = 99
     with pytest.raises(RuntimeError, match="Could not resolve hostname"):
         certify_emulator_minimal("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
+
+
+def test_certify_emulator_minimal_retries_plan_dns_on_install() -> None:
+    # Plan consulta o remote flathub e falha por DNS: replaneja (single-use).
+    client = FakeComponentClient()
+    client.plan_dns_fail_until = 2
+    result = certify_emulator_minimal(
+        "ppsspp", client, expected_commit=m10_pinned_commits()["ppsspp"]
+    )
+    assert result.ok is True
+    assert client.status("ppsspp")["state"] == "missing"
+
+
+def test_certify_emulator_minimal_does_not_retry_a_real_plan_failure() -> None:
+    # Falha real de plan (pin indisponível, sem assinatura de rede): propaga.
+    client = FakeComponentClient()
+    client.plan_failures["pcsx2"] = "E-SUPPLY-REMOTE-FAILED: commit não existe"
+    with pytest.raises(RuntimeError, match="commit não existe"):
+        certify_emulator_minimal("pcsx2", client, expected_commit=m10_pinned_commits()["pcsx2"])
+    assert client.dns_fail_install_until == 0
 
 
 def test_certify_emulator_does_not_retry_a_real_install_failure() -> None:

@@ -6149,3 +6149,14 @@ transiente não aborta mais pacote por pacote; o teto externo de 600 s por
 tentativa continua valendo. Nenhuma falha real é mascarada (o download só
 termina com dados íntegros; o loop pkill/lock/backoff permanece). Suíte
 isolada **4231 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-10 — Item 4 (VM M10) — retry de rede também no plan da certificação
+
+r31b e r32 (PPSSPP/full) APROVADAS. r33 (PPSSPP/full) REPROVOU no primeiro
+step: o PLAN do install consulta o remote flathub (summary/pin) e falhou
+com `E-SUPPLY-REMOTE-FAILED: [6] Could not resolve hostname` — o retry
+existente só cobria o apply. O loop agora replaneja também quando o plan
+falha sob as mesmas assinaturas de rede (DNS/timeout), e falha real de
+plan continua propagando. Testes de retry de plan por DNS e de não-retry
+de falha real de plan. Suíte isolada **4233 passaram, 10 skipados** +
+gates verdes.

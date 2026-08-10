@@ -125,13 +125,21 @@ def _install_with_dns_retry(
 
     O plano é single-use, então cada tentativa replaneja. Levanta
     ``ValueError(plan_invalid)`` quando o plano é inválido/noop (cabe ao
-    chamador registrar a falha). Falhas reais do apply re-lançam: a política
-    do harness (mesma de ``_configure_flathub``) é repetir só a rede
+    chamador registrar a falha). Falhas reais do plan/apply re-lançam: a
+    política do harness (mesma de ``_configure_flathub``) é repetir só a rede
     indisponível — "could not resolve hostname" (DNS) e "Timeout was
     reached" (curl, download estagnado) — nunca aceitar erro como sucesso.
+    O plan consulta o remote flathub (summary/pin), então ele também repete
+    sob as mesmas assinaturas de rede.
     """
     for _attempt, delay in enumerate((*FLATHUB_RETRY_DELAYS, 0.0), start=1):
-        plan_response = client.plan(emulator, "install")
+        try:
+            plan_response = client.plan(emulator, "install")
+        except Exception as exc:
+            if not _is_transient_network_failure(str(exc)) or delay == 0.0:
+                raise
+            time.sleep(delay)
+            continue
         plan_id = plan_response.get("planId")
         confirm = plan_response.get("confirmToken")
         if not plan_id or not confirm or plan_response.get("action") == "noop":
