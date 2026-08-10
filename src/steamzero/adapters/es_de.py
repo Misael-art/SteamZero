@@ -32,7 +32,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from steamzero.core import paths, transaction
+from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 
 _MARKER_ATTR = "steamzero"
@@ -83,7 +83,9 @@ class EsDe:
 
     @staticmethod
     def _default_root() -> Path:
-        return paths.config_home() / "ES-DE" / "custom_systems"
+        env_base = os.environ.get("XDG_CONFIG_HOME")
+        base = Path(env_base) if env_base else Path.home() / ".config"
+        return base / "ES-DE" / "custom_systems"
 
     def _dir(self) -> Path:
         matches: list[Path] = []
@@ -163,12 +165,15 @@ class EsDe:
         ]
 
     def managed_systems(self) -> set[str]:
+        file = self._file()
+        if not file.is_file():
+            return set()
         try:
             return {
                 self._system_name(entry)
-                for entry in self._marked_systems(self._parse(self._file()))
+                for entry in self._marked_systems(self._parse(file))
             }
-        except (SteamZeroError, PermissionError, FileNotFoundError):
+        except (SteamZeroError, PermissionError):
             return set()
 
     def plan(self, systems: Sequence[Mapping[str, Any]]) -> transaction.Plan:

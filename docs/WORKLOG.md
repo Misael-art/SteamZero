@@ -6172,3 +6172,29 @@ justificado (limite de 4 MiB + rejeição de DOCTYPE), precedente igual ao de
 Python 3.14 engole PermissionError. Ruff, ruff format, mypy (src inteiro),
 fronteiras, independência e matriz de capacidades verdes. Nenhuma ação de
 host de produção, release ou push foi executada.
+
+## 2026-08-10 — Item M11.4 (Frontends) — integração CLI concluída
+
+Comando `steamzero frontends` registrado em `HANDLERS` com cinco ações:
+`status` (estado srm/esde com lists de coleções/sistemas gerenciados),
+`plan` (spec JSON com seções `srm.collections` e `esde.systems`, via
+`--spec ARQUIVO.json` ou `--spec-json '<json>'`; devolve planId/confirmToken/
+preview/requirements/ações por canal), `apply` (`--target srm|esde
+--plan-id --confirm`, devolve operationId), `verify` (convergência por
+canal a partir do mesmo spec) e `rollback` (`--target --operation-id`,
+usa o núcleo transacional). Spec inválido vira `E-API-SCHEMA`; plano sem
+spec não é aceito; confirm ausente/errado mantém a semântica existente de
+`E-TX-CONFIRM-REQUIRED` (envelope `blocked`, exit 4). Correções de
+contrato descobertas na integração: roots padrão dos adapters apontam para
+os diretórios REAIS de terceiros — `~/.config/steam-rom-manager/userData/
+manifests` e `~/.config/ES-DE/custom_systems` — e não para
+`~/.config/steamzero/...` (o `config_home()` do projeto embute o segmento
+`steamzero`; os canais são config de apps externos, como o ES-DE real
+usa); `managed_collections`/`managed_systems` não vazam `FileNotFoundError`
+quando o diretório ainda não existe (status e lists retornam vazio).
+Adicionadas entradas no `_USAGE`. Testes de integração
+`tests/integration/test_frontend_adapters.py`: fluxo completo plan→apply→
+verify convergido→plan noop→rollback byte-idêntico dos dois canais via CLI
+com envelopes JSON e XDG isolados (3 testes). Gates: ruff, ruff format,
+mypy (src inteiro), fronteiras, independência e matriz de capacidades
+verdes. Nenhuma ação de host de produção, release ou push foi executada.
