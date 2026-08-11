@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-RETROFE",
+  "title": "Vertical slice e declaracoes RetroFE",
+  "domain": "frontends",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/retrofe_declarations.py",
+    "src/steamzero/domain/retrofe_text_slice.py",
+    "src/steamzero/domain/scene_retrofe.py",
+    "tests/integration/test_retrofe_vertical_slice.py",
+    "tests/unit/test_scene_retrofe.py"
+  ],
+  "scopeDigest": "8bfa60cf89a4fce125e2d48391df3515d95eb6cc842754a3e976606fe08bd5ed",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "O slice RetroFE e exercitado na integracao sem runtime externo.",
+    "Declaracoes e texto possuem comportamento deterministico coberto por testes."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_retrofe_vertical_slice.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_retrofe_vertical_slice.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Conectar o frontend M11 sem alegar suporte a LaunchBox antes de um adapter proprio.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "O slice esta integrado no repositorio; a camada de frontend M11 permanece em branch separada."
+}

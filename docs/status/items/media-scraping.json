@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-MEDIA-SCRAPING",
+  "title": "Metadados e midia por scraping controlado",
+  "domain": "media",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/scraping",
+    "src/steamzero/domain/scraping_providers.py",
+    "tests/unit/scraping",
+    "tests/unit/test_scraping_provider_catalog.py"
+  ],
+  "dependsOn": [],
+  "knownGaps": ["LEDGER-A7", "LEDGER-A12"],
+  "acceptanceCriteria": [
+    "Providers, credenciais e cache possuem contratos testados e sanitizados.",
+    "Quota, indisponibilidade e dado parcial aparecem como estado observavel."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/scraping/test_registry.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/scraping tests/unit/test_scraping_provider_catalog.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Executar validacao real de providers em ambiente controlado sem promover scraping a dado confiavel por padrao.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "A base local esta testada; qualidade e licenciamento da midia externa ainda exigem validacao operacional."
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-GOVERNANCE",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/governance-status-model",
+  "baseRef": "e1e2c73",
+  "owner": "coordinator",
+  "state": "closed",
+  "exclusivePaths": ["docs/status", "tools/project_status.py", "tests/unit/test_project_status.py"],
+  "sharedPaths": ["AGENTS.md", "Makefile", "docs/WORKLOG.md"],
+  "nextAction": "Aguardar integracao do commit atomico de governanca.",
+  "updatedAt": "2026-08-10"
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-M11",
+  "item": "SZ-FRONTEND-RETROFE",
+  "branch": "codex/m11-frontends-idempotentes",
+  "baseRef": "e1e2c73",
+  "owner": "m11-frontends",
+  "state": "active",
+  "exclusivePaths": ["src/steamzero/adapters/frontends", "tests/integration/test_frontend_adapters.py"],
+  "sharedPaths": ["docs/WORKLOG.md", "src/steamzero/adapters/registry.py"],
+  "nextAction": "Finalizar idempotencia e preparar integracao isolada do adapter M11.",
+  "updatedAt": "2026-08-10"
+}
