@@ -27,6 +27,30 @@ class _MockPortalOK:
         return {"fd": read_fd, "node_id": 42, "serial": None}
 
 
+class _MockPortalSlow:
+    """Mock portal whose capture blocks until released.
+
+    Segura a sessão em PENDING para provar que a resposta de START_SESSION
+    espera o commit real (barreira G32) e é liberada no stop.
+    """
+
+    _release: threading.Event | None = None
+    _captures = 0
+
+    def capture(
+        self, scope: str = "monitor", audio: bool = False, cancel: threading.Event | None = None
+    ) -> dict:
+        type(self)._captures += 1
+        gate = type(self)._release if type(self)._release is not None else threading.Event()
+        cancel = cancel if cancel is not None else threading.Event()
+        while not gate.is_set() and not cancel.is_set():
+            if gate.wait(0.02):
+                break
+        read_fd, write_fd = os.pipe()
+        os.close(write_fd)
+        return {"fd": read_fd, "node_id": 42, "serial": None}
+
+
 def _mock_gi_modules() -> dict[str, MagicMock]:
     mock_gst = MagicMock()
     mock_gst.State.NULL = 0
@@ -509,6 +533,21 @@ def engine_env(_engine_module):
         os.unlink(sock_path)
 
 
+_EVENT_TYPES = frozenset(
+    {
+        "CAPTURE_READY",
+        "CAPTURE_DENIED",
+        "CAPTURE_CANCELLED",
+        "CAPTURE_REVOKED",
+        "OFFER_CREATED",
+        "PIPELINE_STARTED",
+        "SESSION_FAILED",
+        "CANDIDATE",
+        "ERROR",
+    }
+)
+
+
 def _ipc_call(sock_path: str, msg: dict, timeout: float = 2.0) -> dict:
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.settimeout(timeout)
@@ -525,11 +564,19 @@ def _ipc_call(sock_path: str, msg: dict, timeout: float = 2.0) -> dict:
         if not chunk:
             break
         buf += chunk
-        if b"\n" in buf:
-            break
+        while b"\n" in buf:
+            line, buf = buf.split(b"\n", 1)
+            if not line.strip():
+                continue
+            parsed = json.loads(line.decode("utf-8"))
+            # Eventos de controle se intercalam com respostas na mesma
+            # conexão; a resposta é a primeira mensagem fora do conjunto de
+            # eventos (mesmo critério do consumidor real em screencast_web).
+            if parsed.get("type") not in _EVENT_TYPES:
+                sock.close()
+                return parsed
     sock.close()
-    line = buf.split(b"\n", 1)[0]
-    return json.loads(line.decode("utf-8")) if line else {}
+    return {}
 
 
 def _wait_until(predicate, timeout: float = 2.0) -> bool:
@@ -546,6 +593,98 @@ class TestEngineProtocol:
         sock_path, ce = engine_env
         resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
         assert resp.get("type") == "START_SESSION_OK"
+
+    def test_start_session_response_reflects_commit(self, engine_env) -> None:
+        """G32: a resposta de START_SESSION só sai depois do commit real
+        (running=True + pipeline construído), nunca antes."""
+        sock_path, ce = engine_env
+        resp = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
+        assert resp.get("type") == "START_SESSION_OK"
+        assert resp.get("running") is True
+        assert resp.get("ready") is True
+
+    def test_concurrent_start_sessions_single_session(self, engine_env) -> None:
+        """G32: N conexões simultâneas — exatamente 1 vencedora com resposta
+        pós-commit, nenhuma conexão descartada (backlog) e nenhuma resposta
+        pré-commit."""
+        sock_path, ce = engine_env
+        n_conns = 8
+        barrier = threading.Barrier(n_conns)
+        results: list[dict | Exception | None] = [None] * n_conns
+
+        def _start(i: int) -> None:
+            barrier.wait()
+            try:
+                results[i] = _ipc_call(
+                    sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"}
+                )
+            except OSError as exc:
+                results[i] = exc
+
+        threads = [threading.Thread(target=_start, args=(i,)) for i in range(n_conns)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+
+        for i, result in enumerate(results):
+            assert not isinstance(result, Exception), f"conexão {i} descartada: {result!r}"
+            assert isinstance(result, dict)
+            assert result.get("type") == "START_SESSION_OK"
+
+        winners = [
+            r for r in results if isinstance(r, dict) and r.get("detail") != "already running"
+        ]
+        already = [
+            r for r in results if isinstance(r, dict) and r.get("detail") == "already running"
+        ]
+        assert len(winners) == 1
+        assert len(already) == n_conns - 1
+        # Vencedora: resposta pós-commit — nunca running=False/pending.
+        assert winners[0].get("running") is True
+        assert winners[0].get("ready") is True
+        # Perdedoras: nunca afirmam ready sem running (resposta honesta).
+        for loser in already:
+            assert loser.get("running") == loser.get("ready")
+
+        status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+        assert status.get("running") is True
+
+    def test_start_response_waits_for_commit_and_releases_on_stop(self, engine_env) -> None:
+        """G32: com o portal lento (PENDING), a resposta espera o commit; se a
+        sessão for parada antes, a espera é liberada com erro — nunca trava."""
+        sock_path, ce = engine_env
+        ce._portal_client_factory = _MockPortalSlow
+        _MockPortalSlow._captures = 0
+        _MockPortalSlow._release = threading.Event()
+        try:
+            holder: list[dict] = []
+
+            def _start() -> None:
+                holder.append(
+                    _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "START_SESSION"})
+                )
+
+            t = threading.Thread(target=_start)
+            t.start()
+            assert _wait_until(lambda: _MockPortalSlow._captures >= 1), "portal não foi chamado"
+
+            stop = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "STOP_SESSION"})
+            assert stop.get("type") == "STOP_SESSION_OK"
+
+            t.join(timeout=5)
+            assert not t.is_alive(), "START_SESSION ficou preso na barreira"
+            assert holder, "START_SESSION não recebeu resposta"
+            resp = holder[0]
+            assert resp.get("type") == "error"
+            assert resp.get("detail") == "session-not-started"
+
+            status = _ipc_call(sock_path, {"version": ce.IPC_VERSION, "type": "GET_STATUS"})
+            assert status.get("running") is False
+        finally:
+            if _MockPortalSlow._release is not None:
+                _MockPortalSlow._release.set()
+            _MockPortalSlow._release = None
 
     def test_start_session_already_running(self, engine_env) -> None:
         sock_path, ce = engine_env
