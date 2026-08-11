@@ -12,6 +12,8 @@
   "scopePaths": [
     "AGENTS.md",
     "Makefile",
+    "src/steamzero/__init__.py",
+    "docs/09-operations/RELEASE-LEDGER.md",
     "docs/12-roadmap/EXECUTION-TO-1.0.md",
     "docs/EXPANSION-LEDGER.md",
     "docs/KNOWN-GAPS.md",
@@ -21,7 +23,7 @@
     "tools/project_status.py",
     "tests/unit/test_project_status.py"
   ],
-  "scopeDigest": "227ea7b60db626d38dd140491b9c1ab9fd4f6d3265ba96d8144e8d48f2c53038",
+  "scopeDigest": "680b8ba6cda84ae3348db6cc05115c6251cd1c9f7572c20b528d2500fc2c70b8",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

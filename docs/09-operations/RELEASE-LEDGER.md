@@ -75,16 +75,31 @@ operador. Os gates físicos adiados continuam obrigatórios para publicação: a
 
 | Release | Commit | SHA-256 do wheel | Estado |
 |---|---|---|---|
-| `0.1.0a43-<pendente>` | pendente do merge na `main` | pendente do build do CI | **candidata — não construída, não instalada, não certificada** |
+| `0.1.0a43-01b32641021f` | `01b32641021f7bc3af3d5785f698240651de5bd4` | `2dfcef39aa2180636e8661ac1ccd276fd3a9d01c2bf87e6b529f1f94d8361471` | **preparada e verificada, NÃO instalada** — install bloqueado pelo NoNewPrivs da sessão do agente (operador executaria o argv do WORKLOG; não executou) |
 
-A versão do pacote foi elevada a `0.1.0a43`; o identificador completo da release
+A versão do pacote foi elevada a `0.1.0a43` e o CI construiu o wheel do commit
+mesclado na `main`; o bundle foi preparado e verificado (CI run 31486652048),
+mas a instalação **não ocorreu**: a sessão do agente roda com `NoNewPrivs=1` e
+`pkexec` recusa (`pkexec must be setuid root`), e o operador não executou o
+argv do WORKLOG até o fechamento desta sessão. A release a43 permanece
+preservada e imutável em `release-artifacts/a43-01b32641021f/` — **não
+reinstalar nem reutilizar**: a próxima instalação é a a44, construída do
+commit integrado.
+
+## Candidata em preparo — 0.1.0a44
+
+| Release | Commit | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `0.1.0a44-<pendente>` | pendente do merge na `main` | pendente do build do CI | **candidata — não construída, não instalada, não certificada** |
+
+A versão do pacote foi elevada a `0.1.0a44`; o identificador completo da release
 só existe depois que o CI construir o wheel a partir do commit exato mesclado na
 `main`. Até lá, esta linha registra a intenção, não um artefato.
 
-Nada aqui autoriza instalação: promover a a43 no host exige autorização explícita
+Nada aqui autoriza instalação: promover a a44 no host exige autorização explícita
 do operador na thread em curso (AGENTS.md §1), nomeando o ID completo. O rollback
 previsto é a release fisicamente certificada `0.1.0a41-31b30211ba85`, presente no
 host.
 
-A tag `v0.1.0a43` **não** será publicada nesta etapa: os gates físicos adiados
+A tag `v0.1.0a44` **não** será publicada nesta etapa: os gates físicos adiados
 continuam obrigatórios para publicação, e tag é a afirmação de que eles passaram.

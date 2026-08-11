@@ -6289,3 +6289,13 @@ regenerados (STATUS.md/ACTIVE-WORK.md). Suíte integral 4327 passed; gates
 locais verdes. Nenhuma ação de host, release ou push foi executada — a
 branch segue local, sem instalação e sem alteração de estado do host (host
 continua em 0.1.0a42-39bd325cee60; a43 preparada, não instalada).
+
+## 2026-08-11 — Integração — bump para 0.1.0a44 (candidata)
+
+PR #63 mergeado na main (f11758d, squash; CI 7 jobs verde; diff revisado sem
+P2P/RetroAchievements/cast-internet). Bump de versão 0.1.0a43 → 0.1.0a44 no
+padrão do 01b3264 (a43): __init__.py + ledger (a43 sai de candidata para
+preparada-não-instalada, preservada e imutável; a44 entra como candidata).
+Gates locais antes do push; prepare via tools/release_host.py após CI verde.
+Nenhuma ação de host até aqui; instalação da a44 exige o token INSTALAR da
+release e a execução do argv pelo operador (sessão com NoNewPrivs=1).
