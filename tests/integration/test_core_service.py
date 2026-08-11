@@ -35,6 +35,11 @@ def core_service(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Pa
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+    # Isolamento do host real: o daemon de teste roda em árvore dev (sem
+    # _build_info) e não deve ler /opt/steamzero/current do operador — senão o
+    # doctor publica um falso pending (current=a44 vs daemon=dev). A env é lida
+    # por release_convergence._current_link().
+    monkeypatch.setenv("STEAMZERO_CURRENT_LINK", str(tmp_path / "no-current"))
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(root / "src")
     process = subprocess.Popen(

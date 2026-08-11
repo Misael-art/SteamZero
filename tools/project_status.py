@@ -191,9 +191,8 @@ def _changed_paths(root: Path) -> set[str]:
 
 
 def _is_generated_or_status(path: str) -> bool:
-    return (
-        path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"}
-        or path.startswith("docs/status/")
+    return path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"} or path.startswith(
+        "docs/status/"
     )
 
 

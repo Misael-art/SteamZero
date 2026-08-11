@@ -170,7 +170,10 @@ def test_doctor_service_generation_fails_when_daemon_pending(
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     report = ConvergenceReport(
         ConvergenceState.PENDING,
-        "current aponta para '0.1.0a44-07802589e985', mas o daemon responde por '0.1.0a42-39bd325cee60'",
+        (
+            "current aponta para '0.1.0a44-07802589e985', "
+            "mas o daemon responde por '0.1.0a42-39bd325cee60'"
+        ),
         activated_release="0.1.0a44-07802589e985",
         daemon_release="0.1.0a42-39bd325cee60",
         code="E-HOST-DAEMON-PENDING",

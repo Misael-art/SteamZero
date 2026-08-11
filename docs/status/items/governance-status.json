@@ -23,9 +23,12 @@
     "tools/project_status.py",
     "tests/unit/test_project_status.py",
     "src/steamzero/diagnostics/doctor.py",
-    "tests/unit/test_doctor.py"
+    "tests/unit/test_doctor.py",
+    "src/steamzero/adapters/release_convergence.py",
+    "tests/integration/test_release_convergence.py",
+    "tests/integration/test_core_service.py"
   ],
-  "scopeDigest": "165d2f6d7043c7067f0a09e630a4960ab79cb98f79999f01ec08a4cc0bb91fd9",
+  "scopeDigest": "8be93a0af9510d5911211f3ea43861216caeb46fe4824c8301cbb171b80260bf",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

@@ -77,7 +77,7 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
             )
         )
     else:
-        # G38: comparar current × daemon (read-only). Pass genérico sem esta
+        # G38: comparar current vs daemon (read-only). Pass generico sem esta
         # leitura era falso verde quando a44 estava ativa e o daemon ainda
         # respondia como a42.
         try:
