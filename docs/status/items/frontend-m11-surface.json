@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-M11-SURFACE",
+  "title": "Superficie M11: comando frontends na CLI e no daemon",
+  "domain": "frontends",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/cli/main.py",
+    "src/steamzero/service/methods.py",
+    "tests/integration/test_frontend_adapters.py",
+    "tests/unit/test_service_methods.py",
+    "tests/unit/test_generation_handshake.py"
+  ],
+  "dependsOn": [
+    "SZ-FRONTEND-SRM",
+    "SZ-FRONTEND-ESDE-SYSTEMS"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "O ciclo plan/apply/verify/rollback atravessa a CLI e o transporte JSON-RPC com o mesmo contrato do caminho local.",
+    "Spec invalida e token de confirmacao errado sao recusados.",
+    "Falha de smoke dispara rollback automatico."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_frontend_adapters.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_frontend_adapters.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_methods.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_service_methods.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Cobrir cli/main.py e service/methods.py por itens agregadores de diretorio na etapa de catalogo; este item responde apenas pela superficie frontends dentro deles.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Cherry-picks f4a81d1/c6c2712/67ceab0 na harmonizacao a45. ATENCAO: cli/main.py e service/methods.py sao superficies COMPARTILHADAS; este item as lista para que nao fiquem sem dono, mas responde so pelo comando/metodos frontends. A cobertura por diretorio entra com os itens agregadores do catalogo."
+}

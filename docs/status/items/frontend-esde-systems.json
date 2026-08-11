@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-ESDE-SYSTEMS",
+  "title": "Custom systems do ES-DE idempotentes",
+  "domain": "frontends",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/es_de.py",
+    "tests/unit/test_es_de.py",
+    "tests/fixtures/frontends/esde-foreign-systems.xml"
+  ],
+  "dependsOn": [
+    "SZ-FRONTEND-SRM"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "plan/apply/verify/rollback devolvem custom_systems byte a byte ao estado anterior.",
+    "Reaplicar converge para no-op sem duplicar systems.",
+    "XML de terceiros preserva semantica, inclusive comando customizado e comentarios.",
+    "DOCTYPE, raiz invalida, tamanho excessivo e symlink sao recusados no plano."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_es_de.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_es_de.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Validar contra uma instalacao real do ES-DE no host (operador).",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Cherry-pick b1291ea/f4a81d1 na harmonizacao a45. NAO confundir com SZ-FRONTEND-ESDE, que cobre importacao de TEMA do ES-DE; este item trata de custom systems. Medido fora da suite em 2026-08-11 (harmonizacao a45): apos a primeira aplicacao o segundo plano declara ZERO acoes, o diretorio fica byte a byte identico entre as duas passagens, o artefato de terceiros permanece intacto byte a byte e o diretorio termina com um arquivo alheio mais um gerenciado — ou seja, sem duplicacao."
+}
