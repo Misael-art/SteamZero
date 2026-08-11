@@ -1,0 +1,4 @@
+{
+  "violates": "sync-requires-recognized-game",
+  "explains": "Unlock sincronizado com dados conflitantes: jogo nao reconhecido nao pode reportar unlock-synced."
+}

@@ -1,0 +1,4 @@
+{
+  "violates": "hardcore-active-forbids-capabilities",
+  "explains": "Hardcore solicitado com save state/rewind/cheat e contradicao: capacidades proibidas encerram o hardcore com motivo, nao coexistem com ele."
+}

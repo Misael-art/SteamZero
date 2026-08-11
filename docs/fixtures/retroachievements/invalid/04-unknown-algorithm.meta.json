@@ -1,0 +1,4 @@
+{
+  "violates": "hash-algorithm-allowlist",
+  "explains": "Algoritmo de hash versionado e fechado em sha256; algoritmo desconhecido e recusado antes de qualquer envio."
+}

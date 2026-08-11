@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.local/schemas/achievement-event-v1.schema.json",
+  "title": "SteamZero RetroAchievements event envelope v1",
+  "description": "Evento interno de achievements (ADR-0025). Porta independente do fornecedor: nenhum payload, endpoint ou formato externo e documentado; token nunca entra no envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "eventId",
+    "account",
+    "game",
+    "achievement",
+    "state",
+    "occurredAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "kind": {"const": "ra.event"},
+    "eventId": {"type": "string", "pattern": "^raev-[0-9a-f]{16}$"},
+    "idempotencyKey": {"type": "string", "pattern": "^raev-[0-9a-f]{16}$"},
+    "occurredAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "account": {"$ref": "#/$defs/account"},
+    "game": {"$ref": "#/$defs/game"},
+    "achievement": {"$ref": "#/$defs/achievement"},
+    "state": {
+      "enum": [
+        "locked",
+        "unlocked-local",
+        "pending-sync",
+        "unlocked-synced",
+        "rejected",
+        "revoked",
+        "unknown"
+      ]
+    },
+    "outbox": {"$ref": "#/$defs/outbox"},
+    "hardcore": {"$ref": "#/$defs/hardcore"},
+    "degradation": {"$ref": "#/$defs/degradation"},
+    "error": {"$ref": "#/$defs/error"}
+  },
+  "allOf": [{"$ref": "#/$defs/rules"}],
+  "$defs": {
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "authState"],
+      "properties": {
+        "reference": {"type": "string", "pattern": "^ra-acct-[0-9a-f]{12}$"},
+        "authState": {
+          "enum": ["configured", "notConfigured", "invalid", "expired", "unavailable"]
+        },
+        "credentialRef": {
+          "type": "string",
+          "pattern": "^keyring:steamzero/retroachievements/[A-Za-z0-9-]+$"
+        }
+      }
+    },
+    "game": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recognition", "romHash"],
+      "properties": {
+        "recognition": {
+          "enum": [
+            "recognized",
+            "unrecognized",
+            "ambiguous",
+            "incompatible-version",
+            "incompatible-region"
+          ]
+        },
+        "romHash": {"$ref": "#/$defs/romHash"},
+        "titleId": {"type": "string", "pattern": "^ra-game-[0-9]{1,6}$"}
+      }
+    },
+    "romHash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "achievement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^ra-ach-[0-9]{1,6}$"},
+        "title": {"type": "string", "maxLength": 120}
+      }
+    },
+    "outbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryId", "queuedAt", "retryCount", "maxRetries"],
+      "properties": {
+        "entryId": {"type": "string", "pattern": "^ra-ob-[0-9a-f]{12}$"},
+        "queuedAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "retryCount": {"type": "integer", "minimum": 0, "maximum": 10},
+        "maxRetries": {"const": 10}
+      }
+    },
+    "hardcore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active"],
+      "properties": {
+        "active": {"type": "boolean"},
+        "forbidden": {
+          "type": "array",
+          "items": {
+            "enum": ["save-state", "rewind", "cheat", "speed-mod", "core-change", "config-change"]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "degradation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "at"],
+      "properties": {
+        "reason": {
+          "enum": [
+            "user-requested",
+            "save-state-requested",
+            "rewind-requested",
+            "cheat-detected",
+            "speed-mod-detected",
+            "core-changed",
+            "config-changed"
+          ]
+        },
+        "at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "enum": [
+            "AUTH_EXPIRED",
+            "AUTH_INVALID",
+            "QUOTA_EXCEEDED",
+            "API_UNAVAILABLE",
+            "REMOTE_REJECTED",
+            "HASH_UNKNOWN",
+            "ALGORITHM_UNKNOWN",
+            "TIMESTAMP_INVALID",
+            "IMPOSSIBLE_TRANSITION",
+            "CONFLICTING_DUPLICATE",
+            "HARDCORE_FORBIDDEN",
+            "FUTURE_PROTOCOL_FIELDS",
+            "SENSITIVE_PAYLOAD_REJECTED"
+          ]
+        },
+        "message": {"type": "string", "maxLength": 200},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "rules": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "pending-sync"}}, "required": ["state"]},
+          "then": {"required": ["outbox"]}
+        },
+        {
+          "if": {"required": ["outbox"]},
+          "then": {
+            "properties": {"state": {"enum": ["unlocked-local", "pending-sync"]}},
+            "required": ["idempotencyKey"]
+          }
+        },
+        {
+          "if": {"required": ["error"]},
+          "then": {"properties": {"state": {"enum": ["rejected", "revoked", "unknown"]}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "rejected"}}, "required": ["state"]},
+          "then": {"required": ["error"]}
+        },
+        {
+          "if": {
+            "properties": {"account": {"properties": {"authState": {"enum": ["invalid", "expired"]}}}},
+            "required": ["account"]
+          },
+          "then": {"required": ["error"]}
+        },
+        {
+          "if": {
+            "properties": {"account": {"properties": {"authState": {"const": "configured"}}}},
+            "required": ["account"]
+          },
+          "then": {"properties": {"account": {"required": ["credentialRef"]}}}
+        },
+        {
+          "if": {
+            "properties": {"hardcore": {"properties": {"active": {"const": true}}}},
+            "required": ["hardcore"]
+          },
+          "then": {"properties": {"hardcore": {"properties": {"forbidden": {"maxItems": 0}}}}}
+        },
+        {
+          "if": {"required": ["degradation"]},
+          "then": {"properties": {"hardcore": {"properties": {"active": {"const": false}}}}}
+        },
+        {
+          "if": {"properties": {"outbox": {"properties": {"retryCount": {"const": 10}}}}, "required": ["outbox"]},
+          "then": {"required": ["error"]}
+        },
+        {
+          "if": {"properties": {"state": {"enum": ["pending-sync", "unlocked-synced"]}}, "required": ["state"]},
+          "then": {"properties": {"game": {"properties": {"recognition": {"const": "recognized"}}}}}
+        }
+      ]
+    }
+  }
+}
