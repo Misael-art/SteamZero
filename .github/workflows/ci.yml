@@ -79,6 +79,15 @@ jobs:
           else
             echo "qml6 indisponível; os harnesses serão pulados por skipif"
           fi
+      - name: Gerador de ISO cloud-init (harness de VM)
+        # test_vm_harness.py exercita provision(), que exige um gerador de ISO
+        # cidata no PATH (cloud-localds|xorriso|genisoimage). O runner do GitHub
+        # não traz nenhum por padrão; sem ele os testes do harness falham em
+        # RuntimeError na construção do seed. Obrigatório: são testes de
+        # integração do driver, não best-effort.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xorriso genisoimage
       - name: Testes e cobertura
         run: |
           mkdir -p build
