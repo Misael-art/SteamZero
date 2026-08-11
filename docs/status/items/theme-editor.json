@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-EDITOR",
+  "title": "Editor e marketplace de temas",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/domain/theme_marketplace.py",
+    "tests/unit/test_theme_editor.py",
+    "tests/unit/test_theme_marketplace.py"
+  ],
+  "dependsOn": ["SZ-THEME-AURA"],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Edicao e catalogo de temas possuem contratos e testes unitarios.",
+    "Instalacao de tema continua reversivel e nao altera o host diretamente."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_editor.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Cobrir preview, importacao e rollback em uma vertical integrada de UI.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "A cobertura atual prova dominio; experiencia completa de editor ainda nao foi certificada."
+}

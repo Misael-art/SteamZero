@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-M10",
+  "title": "Ciclo transacional de emuladores Flatpak",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "vm",
+  "operation": "blocked",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/flatpak.py",
+    "tests/integration/test_vm_harness.py",
+    "tools/vm_harness"
+  ],
+  "scopeDigest": "585e353ac4be39251c19965f052929149f1f04c3b4ca472a8aee5e1913939f12",
+  "dependsOn": [],
+  "knownGaps": ["DEBT-A7"],
+  "acceptanceCriteria": [
+    "Cada emulador conclui install, verify, rollback e roll-forward na VM.",
+    "O restore Btrfs e confirmado pela evidencia de cada ciclo.",
+    "Falha de rede ou bootstrap preserva payload estruturado para diagnostico."
+  ],
+  "evidence": [
+    {
+      "kind": "vm",
+      "reference": "docs/WORKLOG.md",
+      "command": "steamzero-m10-r25 --adapter pcsx2 --protocol minimal",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/WORKLOG.md",
+      "command": "r18/r19 e ciclos posteriores do harness M10",
+      "result": "partial"
+    }
+  ],
+  "nextAction": "Repetir somente RetroArch/minimal apos r35 e registrar o payload se a rede falhar.",
+  "activeWorkstreams": ["WS-2026-08-M10"],
+  "updatedAt": "2026-08-10",
+  "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado."
+}

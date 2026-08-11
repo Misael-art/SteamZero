@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-LAUNCHBOX",
+  "title": "Compatibilidade de importacao LaunchBox",
+  "domain": "frontends",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "dependsOn": [],
+  "knownGaps": ["LEDGER-A10"],
+  "acceptanceCriteria": [
+    "Contrato de importacao e fixtures LaunchBox sao revisados e versionados.",
+    "Conversao preserva caminhos e metadados sem executar binarios de terceiros."
+  ],
+  "evidence": [],
+  "nextAction": "Criar ADR e fixtures antes de prometer compatibilidade LaunchBox.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "Nenhum adapter LaunchBox esta presente no checkout integrado."
+}

@@ -1,5 +1,9 @@
 # Plano de execução até a 1.0
 
+> **Leitura histórica de planejamento.** O estado vigente e verificável está em
+> [`docs/STATUS.md`](../STATUS.md), com fonte em `docs/status/items/`. Este
+> documento conserva decisões e roadmap; não é autorizado como painel atual.
+
 **Base:** documentação em
 `175d83b79b6e472302c0a11ebc39d703078c02cc`, host em
 `0.1.0a41-31b30211ba85` (**mecânica de release certificada** — ver
@@ -10,9 +14,9 @@ posterior em
 **Próxima release:** a42, exclusivamente de estabilização. Nenhuma feature do
 backlog entra antes de GAP-G25–G31 terem os gates definidos neste documento.
 
-Este documento não copia estado antigo. Cada linha foi conferida contra o
-código, os testes ou o host nesta sessão; onde não foi possível verificar, está
-dito.
+Este documento registra a verificação feita na sua sessão de origem. Divergência
+posterior entre esta fotografia e o catálogo de estado deve ser resolvida a favor
+do catálogo, preservando este texto como evidência histórica.
 
 ## Namespaces de identificador — leia antes de citar um ID
 

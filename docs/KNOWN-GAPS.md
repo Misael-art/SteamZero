@@ -1,5 +1,9 @@
 # KNOWN-GAPS — lacunas conhecidas e classificadas
 
+> Este registro mantém a história e a classificação de riscos. O estágio atual
+> de uma capacidade está em [`docs/STATUS.md`](STATUS.md); itens de status devem
+> apontar para `GAP-*` quando a lacuna ainda condiciona sua próxima ação.
+
 | # | Lacuna | Classificação | Mitigação planejada |
 |---|---|---|---|
 | G1 | `RetroDECK/components` não clonado integralmente (timeout por blobs pesados; 5.516 paths só em `archive_later/`) | **Análise parcial** — modelo compreendido por amostragem (framework + duckstation + es-de) | Clonar com `--filter=blob:none --sparse` em máquina com rede melhor antes da Fase 4 (adapters) |

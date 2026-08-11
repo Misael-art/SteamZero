@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-CAST-INTERNET",
+  "title": "Partilha de ecra pela internet",
+  "domain": "casting",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "dependsOn": ["SZ-CAST-LAN"],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Descoberta, relay e autorizacao remota sao modelados por contrato auditavel.",
+    "Nenhuma porta publica ou credencial e criada sem autorizacao explicita."
+  ],
+  "evidence": [],
+  "nextAction": "Escrever ADR de NAT, relay, privacidade e limite de banda.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "O suporte Web atual nao equivale a cast funcional pela internet."
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-RETROACHIEVEMENTS",
+  "title": "RetroAchievements e modo offline",
+  "domain": "online",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "dependsOn": ["SZ-EMULATION-M10"],
+  "knownGaps": ["LEDGER-A9"],
+  "acceptanceCriteria": [
+    "Credenciais ficam em keyring e nunca em logs, estado ou relatorios.",
+    "Offline, hardcore e erro remoto preservam estado honesto e reversivel."
+  ],
+  "evidence": [],
+  "nextAction": "Definir contrato de credenciais, cache e modo hardcore antes de integrar API externa.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "O ledger registra a iniciativa, mas nao existe adapter RetroAchievements integrado."
+}

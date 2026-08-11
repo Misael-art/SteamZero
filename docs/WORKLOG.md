@@ -6172,3 +6172,24 @@ exceção (str, stdout/stderr preservados e envelope) para decidir se é
 rede transiente; falha real continua propagando. Teste reproduz o caso
 r35 com a classe real `RequiredCommandError`. Suíte isolada **4234
 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-10 — Governança de estado verificável — concluído
+
+Branch: `codex/governance-status-model`, baseada em `e1e2c73`. Foi criado o
+catálogo versionado `docs/status/`, com schema para capacidade e workstream,
+cinco eixos independentes (implementação, integração, verificação, operação e
+distribuição), escopo selado por digest, evidência, dependências, gaps e próxima
+ação. As visões `docs/STATUS.md` e `docs/ACTIVE-WORK.md` são geradas e o novo
+gate `make status-check` reprova schema, evidência/escopo desatualizados,
+workstreams exclusivos em colisão, arquivos modificados sem responsável e
+visões divergentes.
+
+Também foram ajustados `AGENTS.md`, o roadmap, o expansion ledger e os gaps
+para separar fonte de intenção/histórico da fonte de estado. O catálogo inicial
+expõe M10, ES-DE, RetroFE, LaunchBox, AURA, editor de temas, cast LAN/internet,
+P2P, RetroAchievements e scraping, sem promover cobertura unitária a
+certificação de VM, hardware ou release. Validação: testes dedicados do
+catálogo (4 aprovados), suíte isolada integral, `ruff check`, `ruff format
+--check`, `mypy src`, `make independence boundaries status-check` aprovados.
+Não foram alterados adapters funcionais, M10/M11 nem artefatos de release.
+Nenhuma ação de host, release ou push foi executada.

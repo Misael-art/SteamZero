@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-AURA",
+  "title": "Tema nativo AURA",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/default_theme.py",
+    "src/steamzero/themes/org.steamzero.default",
+    "tests/unit/test_default_theme.py"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Identidade, tokens e manifest do tema nativo sao versionados no projeto.",
+    "O tema tem testes de carregamento e preferencia."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_default_theme.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_default_theme.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Definir o baseline visual AURA e validar o fluxo completo em QML.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "O tema nativo existe, mas nao ha certificacao visual/hardware para chama-lo de produto concluido."
+}

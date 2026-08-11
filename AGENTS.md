@@ -54,8 +54,16 @@ ação do operador, depois que o agente declarar o host pronto para o teste.
   registre no relatório final em vez de editar.
 - Arquivo compartilhado entre frentes (ex.: `desktop_dashboard.py`, QML consumido
   por múltiplas tarefas): isole a mudança em commit próprio, por último.
+- Antes de delegar ou iniciar uma frente, registre/atualize o `workstream` em
+  `docs/status/workstreams/` e leia `docs/ACTIVE-WORK.md`. Caminhos exclusivos
+  não podem ser compartilhados por duas frentes ativas; arquivos compartilhados
+  só entram no commit final de integração.
+- Toda capacidade e toda alteração normativa precisa ter um item em
+  `docs/status/items/` com escopo, evidência e próxima ação. Rode `make
+  status-check`; não alegue estado a partir de um relatório, roadmap ou WORKLOG.
 - `docs/WORKLOG.md`: não toque durante o trabalho; ao final, apenas ACRESCENTE a
-  sua própria sessão (nunca edite sessões anteriores).
+  sua própria sessão de fechamento (nunca edite sessões anteriores). A reserva
+  de início pertence ao workstream, não a um bloco provisório no WORKLOG.
 
 ## 3. Base atualizada é pré-requisito, não detalhe
 
@@ -126,4 +134,6 @@ limpeza no unit, estado `unknown`/`permissionDenied` no `status()`.
 Relatório final com: tabela item→commit→testes que provam; o que ficou fora de
 escopo e por quê; ações de host executadas, release ativa e rollback disponível;
 e os passos que ainda exigem o operador (especialmente teste físico de boot).
-Push apenas da SUA branch; nunca force push.
+Atualize o item de status, regenere `docs/STATUS.md` e `docs/ACTIVE-WORK.md` e
+então acrescente o fechamento ao WORKLOG. Push apenas da SUA branch; nunca force
+push.

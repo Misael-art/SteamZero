@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-CAST-LAN",
+  "title": "Partilha de ecra em rede local",
+  "domain": "casting",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/cast_engine.py",
+    "src/steamzero/adapters/cast_orchestrator.py",
+    "src/steamzero/domain/screencast.py",
+    "tests/unit/test_cast_orchestrator.py",
+    "tests/unit/test_screencast.py"
+  ],
+  "dependsOn": [],
+  "knownGaps": ["GAP-G32"],
+  "acceptanceCriteria": [
+    "Pareamento e ciclo da sessao de cast possuem contratos testados.",
+    "Falhas do pipeline degradam com diagnostico, sem travar a sessao local."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_screencast_pairing.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_screencast.py tests/unit/test_screencast_pairing.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Fechar a flakiness IPC G32 e executar prova em dois dispositivos LAN.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "Ha base de dominio e orquestracao; nao existe certificacao fim a fim em hardware."
+}
