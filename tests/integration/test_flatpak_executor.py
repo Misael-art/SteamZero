@@ -152,14 +152,14 @@ def test_cli_smoke_sets_manifest_environment_before_the_flatpak_ref() -> None:
                 "-nogui",
                 "--version",
             ),
-            30.0,
+            flatpak_module._SMOKE_TIMEOUT,
         )
     ]
 
 
 def test_cli_smoke_failure_preserves_full_payload() -> None:
     def runner(argv: Sequence[str], timeout: float) -> CommandResult:
-        assert timeout == 30.0
+        assert timeout == flatpak_module._SMOKE_TIMEOUT
         return CommandResult(1, "linha de stdout\n", "linha de stderr\n")
 
     with pytest.raises(SteamZeroError) as error:

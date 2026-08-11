@@ -32,6 +32,12 @@ from steamzero.core.state import StateStore
 
 _COMMIT_RE = re.compile(r"^[a-f0-9]{64}$")
 _REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,254}$")
+# O primeiro `flatpak run --user` de um app-runtime cria a árvore .var/app
+# (config, dbus-proxy) e pode levar ~23 s em VM recém-provisionada (medido
+# 2026-08-10; o segundo run cai para ~10 s, o terceiro ~0,4 s). 90 s dá
+# margem de ~3x sobre o pior caso frio sem deixar de detectar app que abre
+# UI e pendura esperando entrada.
+_SMOKE_TIMEOUT = 90.0
 _REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _PLAN_SCHEMA = "component-plan-v1.schema.json"
 _DEFAULT_TTL_S = 3600
@@ -292,7 +298,7 @@ class FlatpakCLI:
             ref,
             *arguments,
         )
-        result = self._runner(argv, 30.0)
+        result = self._runner(argv, _SMOKE_TIMEOUT)
         codes_ok = result.returncode in exit_codes
         match_ok = match is None or re.search(match, f"{result.stdout}\n{result.stderr}", re.M)
         if not codes_ok or not match_ok:

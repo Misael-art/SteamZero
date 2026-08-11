@@ -6172,3 +6172,15 @@ exceção (str, stdout/stderr preservados e envelope) para decidir se é
 rede transiente; falha real continua propagando. Teste reproduz o caso
 r35 com a classe real `RequiredCommandError`. Suíte isolada **4234
 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-10 — Item 4 (VM M10) — smoke com folga para o primeiro run frio do flatpak
+
+r35b (RetroArch/minimal) reprovou no smoke real: `flatpak run --user
+--die-with-parent org.libretro.RetroArch --version` deu retorno 124
+(timeout de 30 s do runner) logo após o install. Diagnóstico em VM
+descartável (mesmo pin e fluxo do componente): o PRIMEIRO `flatpak run`
+de um app-runtime cria a árvore .var/app + dbus-proxy e leva ~23 s; o
+segundo ~10 s; os seguintes ~0,4 s. Com o guest sob I/O do pós-install,
+o primeiro run estoura a janela de 30 s. `_SMOKE_TIMEOUT` agora é 90 s
+(~3x o pior caso frio) sem deixar de detectar app que abre UI e
+pendura. Suíte isolada **4234 passaram, 10 skipados** + gates verdes.
