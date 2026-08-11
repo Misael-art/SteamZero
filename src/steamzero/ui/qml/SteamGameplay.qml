@@ -488,8 +488,16 @@ Item {
                             color: modelData.state === "ready"
                                 ? page.greenColor : page.amberColor
                             font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            Accessible.name: text
                         }
-                        Label { text: modelData.detail; color: page.mutedColor }
+                        Label {
+                            text: modelData.detail
+                            color: page.mutedColor
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
                     }
                     Label {
                         text: modelData.owner
@@ -1127,10 +1135,17 @@ Item {
                                                 color: modelData.state === "ready" ? page.greenColor : page.amberColor
                                                 font.pixelSize: 13
                                                 font.bold: true
-                                                elide: Text.ElideRight
+                                                wrapMode: Text.WordWrap
+                                                Layout.fillWidth: true
+                                                Accessible.name: text
+                                            }
+                                            Label {
+                                                text: modelData.detail
+                                                color: page.mutedColor
+                                                font.pixelSize: 10
+                                                wrapMode: Text.WordWrap
                                                 Layout.fillWidth: true
                                             }
-                                            Label { text: modelData.detail; color: page.mutedColor; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
                                         }
                                         ToolButton {
                                             visible: modelData.id === "gamemode" && modelData.state !== "ready"
