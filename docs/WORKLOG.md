@@ -6194,3 +6194,17 @@ estourou sob o I/O do pós-install (mesmo padrão do smoke de 30 s do
 r35b). `_STATUS_TIMEOUT` agora é 60 s para `flatpak list`/`info`
 (erro real de repo continua rc != 0, não mascarado). Suíte isolada
 **4235 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-11 — Item 4 (VM M10) — RetroArch certificado no commit 586ed7c
+
+r35c (RetroArch/minimal) APROVADA com o smoke de 90 s (evidência
+2026-08-11-m10-vm-evidence.md). r36 (evidência -020748) e r37
+(-024646) full APROVADAS. r38 (-031159) REPROVADA no rollback por
+"falha ao listar instalações Flatpak: timeout" (janela de 10 s do
+status() sob I/O pós-install — corrigida no commit 586ed7c com
+_STATUS_TIMEOUT=60). r38b (-040205) full APROVADA com install/update/
+rollback/roll-forward ok e restore SIM. RetroArch: minimal + 3 ciclos
+full verdes no commit 586ed7c. Item 4/DEBT-A7: faltam re-certificar
+PCSX2 e PPSSPP no commit final (o adapter ganhou _SMOKE_TIMEOUT/
+_STATUS_TIMEOUT após as provas deles em 19d8b954/6a76f04). Nenhuma
+ação de host, release ou push foi executada.
