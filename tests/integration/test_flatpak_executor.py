@@ -157,6 +157,25 @@ def test_cli_smoke_sets_manifest_environment_before_the_flatpak_ref() -> None:
     ]
 
 
+def test_cli_status_uses_roomy_timeout_for_list_and_info() -> None:
+    calls: list[tuple[tuple[str, ...], float]] = []
+
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        calls.append((tuple(argv), timeout))
+        if argv[1] == "list":
+            return CommandResult(0, f"{REF}\tflathub\n", "")
+        return CommandResult(0, "a" * 64, "")
+
+    state = FlatpakCLI(runner=runner).status(REF)
+
+    assert state.installed is True
+    assert state.commit == "a" * 64
+    assert [timeout for _, timeout in calls] == [
+        flatpak_module._STATUS_TIMEOUT,
+        flatpak_module._STATUS_TIMEOUT,
+    ]
+
+
 def test_cli_smoke_failure_preserves_full_payload() -> None:
     def runner(argv: Sequence[str], timeout: float) -> CommandResult:
         assert timeout == flatpak_module._SMOKE_TIMEOUT

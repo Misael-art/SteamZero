@@ -38,6 +38,11 @@ _REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,254}$")
 # margem de ~3x sobre o pior caso frio sem deixar de detectar app que abre
 # UI e pendura esperando entrada.
 _SMOKE_TIMEOUT = 90.0
+# `flatpak list`/`info` são locais, mas rodam logo após install/deploy
+# (I/O pesado no guest; um list estourou 10 s no rollback do r38 em
+# 2026-08-11). 60 s dá margem sem mascarar repo quebrado (erro real vira
+# rc != 0, não timeout).
+_STATUS_TIMEOUT = 60.0
 _REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _PLAN_SCHEMA = "component-plan-v1.schema.json"
 _DEFAULT_TTL_S = 3600
@@ -148,7 +153,7 @@ class FlatpakCLI:
         _require_ref(ref)
         result = self._runner(
             ("flatpak", "list", "--user", "--app", "--columns=application,origin"),
-            10.0,
+            _STATUS_TIMEOUT,
         )
         _require_command(result, "listar instalações Flatpak")
         for line in result.stdout.splitlines():
@@ -157,7 +162,7 @@ class FlatpakCLI:
                 origin = columns[1].strip()
                 info = self._runner(
                     ("flatpak", "info", "--user", "--show-commit", ref),
-                    10.0,
+                    _STATUS_TIMEOUT,
                 )
                 _require_command(info, f"ler commit Flatpak de {ref}")
                 commit = info.stdout.strip()

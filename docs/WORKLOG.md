@@ -6184,3 +6184,13 @@ segundo ~10 s; os seguintes ~0,4 s. Com o guest sob I/O do pós-install,
 o primeiro run estoura a janela de 30 s. `_SMOKE_TIMEOUT` agora é 90 s
 (~3x o pior caso frio) sem deixar de detectar app que abre UI e
 pendura. Suíte isolada **4234 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-11 — Item 4 (VM M10) — status Flatpak com folga para I/O pós-install
+
+r35c (RetroArch/minimal) e r36/r37 (RetroArch/full) APROVADAS. r38
+(RetroArch/full) reprovou no ROLLBACK: "falha ao listar instalações
+Flatpak: timeout" — o `flatpak list` do status() tinha janela de 10 s e
+estourou sob o I/O do pós-install (mesmo padrão do smoke de 30 s do
+r35b). `_STATUS_TIMEOUT` agora é 60 s para `flatpak list`/`info`
+(erro real de repo continua rc != 0, não mascarado). Suíte isolada
+**4235 passaram, 10 skipados** + gates verdes.
