@@ -133,22 +133,25 @@ class ScrapingDispatcher:
                 continue
 
             try:
-                data = self._download_and_validate(candidate)
+                data = self._download_and_validate(
+                    candidate, expected_kind=_expected_kind_for(kind)
+                )
             except SteamZeroError:
                 result.failed.append(kind)
                 continue
 
-            cache_entry_id = self._cache.save_cache_entry(
-                candidate, self._lookup_key(identity), platform_slug=identity.platform_slug
-            )
-            self._cache.save_media(
-                cache_entry_id,
-                identity.game_id,
-                kind,
-                data,
-                width=candidate.width,
-                height=candidate.height,
-            )
+            with self._cache.atomic():
+                cache_entry_id = self._cache.save_cache_entry(
+                    candidate, self._lookup_key(identity), platform_slug=identity.platform_slug
+                )
+                self._cache.save_media(
+                    cache_entry_id,
+                    identity.game_id,
+                    kind,
+                    data,
+                    width=candidate.width,
+                    height=candidate.height,
+                )
             result.downloaded[kind] = candidate
 
         return result
@@ -175,7 +178,9 @@ class ScrapingDispatcher:
             fs.ensure_dir(staging_path.parent)
 
             try:
-                data = self._download_and_validate(candidate)
+                data = self._download_and_validate(
+                    candidate, expected_kind=_expected_kind_for(kind)
+                )
                 fs.write_atomic(staging_path, data)
             except SteamZeroError:
                 continue
@@ -194,24 +199,38 @@ class ScrapingDispatcher:
     def _lookup_key(self, identity: GameIdentity) -> str:
         sha1 = identity.hashes.get("sha1")
         if sha1:
-            return sha1
+            return sha1.strip().lower()
         md5 = identity.hashes.get("md5")
         if md5:
-            return md5
+            return md5.strip().lower()
         if identity.title_id:
-            return f"tid:{identity.title_id}"
+            return f"tid:{identity.title_id.strip()}"
         if identity.serial:
-            return f"serial:{identity.serial}"
-        return f"name:{identity.platform_slug}:{identity.title.lower()}"
+            return f"serial:{identity.serial.strip()}"
+        return f"name:{identity.platform_slug.strip().lower()}:{identity.title.strip().lower()}"
 
-    def _download_and_validate(self, candidate: MediaCandidate) -> bytes:
+    def _download_and_validate(
+        self,
+        candidate: MediaCandidate,
+        *,
+        expected_kind: str | None = None,
+    ) -> bytes:
         provider = self._registry.get(candidate.provider)
         if not isinstance(provider, BaseMediaProvider):
             raise SteamZeroError(
                 "E-SCRAPE-DOWNLOAD-FAILED",
                 detail=f"provider {candidate.provider} não suporta download direto",
             )
-        return provider._fetch_url(candidate.url)
+        data = provider._fetch_url(candidate.url)
+        if provider._validate_media(data, expected_kind=expected_kind) is None:
+            raise SteamZeroError(
+                "E-SCRAPE-CORRUPT-MEDIA",
+                detail=(
+                    f"{candidate.provider}: conteúdo sem assinatura de mídia "
+                    "reconhecida (não é imagem, vídeo ou PDF)"
+                ),
+            )
+        return data
 
 
 def _kind_extension(kind: str) -> str:
@@ -229,3 +248,24 @@ def _kind_extension(kind: str) -> str:
         "title": ".png",
     }
     return ext_map.get(kind, ".png")
+
+
+def _expected_kind_for(kind: str) -> str | None:
+    """Família de assinatura esperada para cada tipo de mídia."""
+    if kind == "video":
+        return "video"
+    if kind == "manual":
+        return "manual"
+    if kind in {
+        "boxart",
+        "wheel",
+        "screenshot",
+        "fanart",
+        "marquee",
+        "grid",
+        "hero",
+        "icon",
+        "title",
+    }:
+        return "image"
+    return None

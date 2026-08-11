@@ -14,7 +14,9 @@ pode ser refeita.
 from __future__ import annotations
 
 import sqlite3
-from contextlib import suppress
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -71,7 +73,19 @@ class ScrapingCache:
         self._conn = sqlite3.connect(self._path, isolation_level=None)
         self._closed = False
         self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
+        # A troca para WAL exige lock exclusivo e não espera busy handler;
+        # em abertura concorrente do mesmo arquivo (processos paralelos) a
+        # primeira conexão vence e as demais esperam em retry limitado.
+        for _attempt in range(20):
+            try:
+                self._conn.execute("PRAGMA journal_mode=WAL")
+                break
+            except sqlite3.OperationalError:
+                time.sleep(0.05)
+        else:
+            raise
+        self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
         self._ensure_schema()
 
@@ -134,6 +148,31 @@ class ScrapingCache:
             )
             """
         )
+        # Uma falha por (chave, tipo, provider): registrar a mesma falha de novo
+        # atualiza a linha em vez de acumular entradas mortas.
+        self._conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_scraping_error_dedup
+            ON scraping_cache_entry(lookup_key, media_kind, provider)
+            WHERE error IS NOT NULL
+            """
+        )
+
+    @contextmanager
+    def atomic(self) -> Iterator[None]:
+        """Transação explícita: publica a escrita só no COMMIT.
+
+        Uma exceção dentro do bloco faz ROLLBACK — nenhuma entrada parcial
+        (ex.: entry sem media) é publicada.
+        """
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        except BaseException:
+            self._conn.execute("ROLLBACK")
+            raise
+        else:
+            self._conn.execute("COMMIT")
 
     # -- cache entries -------------------------------------------------------
 
@@ -145,17 +184,32 @@ class ScrapingCache:
         *,
         max_age_hours: int = 24,
     ) -> CacheEntry | None:
-        """Retorna entrada do cache se existir e não expirou."""
+        """Retorna entrada do cache se existir e não expirou.
+
+        ``provider="*"`` casa com qualquer provider (cache-first do dispatcher);
+        qualquer outro valor filtra pelo provider exato.
+        """
         cutoff = (datetime.now(UTC) - timedelta(hours=max_age_hours)).isoformat()
-        row = self._conn.execute(
-            """
-            SELECT * FROM scraping_cache_entry
-            WHERE lookup_key=? AND media_kind=? AND provider=?
-              AND last_checked > ? AND error IS NULL
-            ORDER BY last_checked DESC LIMIT 1
-            """,
-            (lookup_key, media_kind, provider, cutoff),
-        ).fetchone()
+        if provider == "*":
+            row = self._conn.execute(
+                """
+                SELECT * FROM scraping_cache_entry
+                WHERE lookup_key=? AND media_kind=?
+                  AND last_checked > ? AND error IS NULL
+                ORDER BY last_checked DESC LIMIT 1
+                """,
+                (lookup_key, media_kind, cutoff),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                """
+                SELECT * FROM scraping_cache_entry
+                WHERE lookup_key=? AND media_kind=? AND provider=?
+                  AND last_checked > ? AND error IS NULL
+                ORDER BY last_checked DESC LIMIT 1
+                """,
+                (lookup_key, media_kind, provider, cutoff),
+            ).fetchone()
         if row is None:
             return None
         return CacheEntry(**dict(row))
@@ -229,14 +283,19 @@ class ScrapingCache:
         *,
         platform_slug: str = "",
     ) -> None:
-        """Registra falha de consulta para evitar retentativas imediatas."""
+        """Registra falha de consulta para evitar retentativas imediatas.
+
+        Idempotente por (chave, tipo, provider): repetir a mesma falha atualiza
+        a mesma linha, sem acumular entradas mortas.
+        """
         self._conn.execute(
             """
             INSERT INTO scraping_cache_entry
               (id, platform_slug, lookup_key, lookup_method, provider, media_kind,
                url, error, http_status, last_checked, confidence)
             VALUES (?,?,?,?,?, ?,?,?,?,?, ?)
-            ON CONFLICT(id) DO UPDATE SET
+            ON CONFLICT(lookup_key, media_kind, provider) WHERE error IS NOT NULL
+            DO UPDATE SET
               error=excluded.error, http_status=excluded.http_status,
               last_checked=excluded.last_checked
             """,

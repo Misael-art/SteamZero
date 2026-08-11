@@ -23,6 +23,7 @@ from urllib.parse import urlencode
 
 from steamzero.adapters.scraping.base import BaseMediaProvider, RateLimiter
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import HttpClient
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _API_BASE = "https://www.screenscraper.fr/api2"
@@ -156,8 +157,9 @@ class ScreenScraperAdapter(BaseMediaProvider):
         ssid: str | None = None,
         sspassword: str | None = None,
         rate_limiter: RateLimiter | None = None,
+        client: HttpClient | None = None,
     ) -> None:
-        super().__init__(rate_limiter=rate_limiter)
+        super().__init__(rate_limiter=rate_limiter, client=client)
         self._devid = devid
         self._devpassword = devpassword
         self._ssid = ssid
@@ -241,6 +243,11 @@ class ScreenScraperAdapter(BaseMediaProvider):
                     raise SteamZeroError("E-SCRAPE-RATE-LIMITED", detail=f"ScreenScraper: {code}")
                 if code in ("403", "quota"):
                     raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED", detail=f"ScreenScraper: {code}")
+                if code == "401":
+                    raise SteamZeroError(
+                        "E-SCRAPE-CREDENTIAL-REJECTED",
+                        detail="ScreenScraper recusou as credenciais informadas",
+                    )
             return []
 
         medias_raw = jeu.get("medias", [])
@@ -257,7 +264,9 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 url_text = str(media.get("url", "")).strip()
                 if not url_text:
                     continue
-                url_text = url_text.replace("http://", "https://")
+                normalized_url = self._normalize_media_url(url_text)
+                if normalized_url is None:
+                    continue
                 region = str(media.get("region", "")).strip()
                 region_code = _region_normalize(region) if region else None
                 language = str(media.get("language", "")) or None
@@ -267,12 +276,12 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 except (ValueError, TypeError):
                     width = height = None
                 if kind == "wheel":
-                    confidence = 0.9 if "hd" in url_text.lower() else 0.8
+                    confidence = 0.9 if "hd" in normalized_url.lower() else 0.8
                 else:
                     confidence = 1.0 if identity.serial or identity.hashes else 0.85
                 candidates.append(
                     MediaCandidate(
-                        url=url_text,
+                        url=normalized_url,
                         media_kind=kind,
                         provider=self.name,
                         confidence=confidence,
@@ -323,6 +332,11 @@ class ScreenScraperAdapter(BaseMediaProvider):
                     raise SteamZeroError("E-SCRAPE-RATE-LIMITED", detail=f"ScreenScraper: {code}")
                 if code in ("403", "quota"):
                     raise SteamZeroError("E-SCRAPE-QUOTA-EXCEEDED", detail=f"ScreenScraper: {code}")
+                if code == "401":
+                    raise SteamZeroError(
+                        "E-SCRAPE-CREDENTIAL-REJECTED",
+                        detail="ScreenScraper recusou as credenciais informadas",
+                    )
             return []
 
         candidates: list[MediaCandidate] = []
@@ -338,7 +352,9 @@ class ScreenScraperAdapter(BaseMediaProvider):
                     url_text = media.findtext("url", "").strip()
                 if not url_text:
                     continue
-                url_text = url_text.replace("http://", "https://")
+                normalized_url = self._normalize_media_url(url_text)
+                if normalized_url is None:
+                    continue
                 region = media.get("region", "") or ""
                 region_code = _region_normalize(region) if region else None
                 language = media.get("language") or media.findtext("language", "") or None
@@ -348,7 +364,7 @@ class ScreenScraperAdapter(BaseMediaProvider):
                 except (ValueError, TypeError):
                     width = height = None
                 if kind == "wheel":
-                    confidence = 0.9 if "hd" in url_text.lower() else 0.8
+                    confidence = 0.9 if "hd" in normalized_url.lower() else 0.8
                 else:
                     confidence = 1.0 if identity.serial or identity.hashes else 0.85
                 candidates.append(
