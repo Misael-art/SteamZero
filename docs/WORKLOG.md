@@ -6208,3 +6208,23 @@ full verdes no commit 586ed7c. Item 4/DEBT-A7: faltam re-certificar
 PCSX2 e PPSSPP no commit final (o adapter ganhou _SMOKE_TIMEOUT/
 _STATUS_TIMEOUT após as provas deles em 19d8b954/6a76f04). Nenhuma
 ação de host, release ou push foi executada.
+
+## 2026-08-11 — Item 4 (VM M10) — FECHADO: M10 certificado no commit 586ed7c
+
+Certificação completa no commit `586ed7c` (restore btrfs SIM em todas):
+
+| emulador | minimal | full 1 | full 2 | full 3 |
+|---|---|---|---|---|
+| RetroArch | r35c | r36 | r37 | r38b |
+| PCSX2 | r39 | r40 | r41 | r42 |
+| PPSSPP | r43 | r44 | r45 | r46 |
+
+PCSX2 e PPSSPP foram re-certificados no commit final (o adapter ganhou
+_SMOKE_TIMEOUT=90/_STATUS_TIMEOUT=60 após as provas originais em
+19d8b954/6a76f04). Evidências 2026-08-06..11 versionadas com índice
+canônico `docs/diagnostics/INDEX-M10.md` (hashes sha256; mapeamento
+run→evidência; 8 REPROVADAS registradas com causa: r29/r31/r33/r33b/
+r35a/r35/r35b/r38). DEBT-A7 encerra. Ação de host para diagnóstico:
+instalação flatpak `--user` de org.libretro.RetroArch + runtimes
+FDO/KDE no host do lab (sem release/push). Próximo: Item 5a (doctor
+boot.direct) e merge 1-5a em main sob autorização.
