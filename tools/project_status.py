@@ -102,14 +102,56 @@ def _iter_scope_files(root: Path, scope_paths: Iterable[str]) -> Iterable[Path]:
 
 
 def scope_digest(root: Path, scope_paths: Iterable[str]) -> str:
+    """Digest funcional do escopo.
+
+    ``docs/WORKLOG.md`` é append-only histórico e **não** entra no digest: um
+    fechamento de sessão legítimo não pode invalidar evidência de governança.
+    O gate :func:`check_worklog_append_only` protege o conteúdo anterior.
+    """
     digest = hashlib.sha256()
     for path in _iter_scope_files(root, scope_paths):
-        relative = path.relative_to(root).as_posix().encode("utf-8")
-        digest.update(relative)
+        relative = path.relative_to(root).as_posix()
+        if relative == "docs/WORKLOG.md":
+            continue
+        digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def check_worklog_append_only(root: Path = ROOT) -> list[str]:
+    """Reprova reescrita/remoção de conteúdo já commitado em ``docs/WORKLOG.md``.
+
+    Só o acréscimo no final é permitido. Compara o blob em ``HEAD`` com o
+    conteúdo atual (working tree se sujo; caso contrário o próprio HEAD).
+    """
+    worklog = root / "docs" / "WORKLOG.md"
+    if not worklog.is_file():
+        return []
+    result = subprocess.run(
+        ["git", "show", "HEAD:docs/WORKLOG.md"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        # Arquivo ainda não versionado: qualquer conteúdo inicial é válido.
+        return []
+    committed = result.stdout
+    try:
+        current = worklog.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"docs/WORKLOG.md: ilegível: {exc}"]
+    if current == committed:
+        return []
+    if current.startswith(committed):
+        return []
+    return [
+        "docs/WORKLOG.md: reescrita ou remoção de conteúdo histórico reprovada; "
+        "somente acréscimo no final é permitido (AGENTS.md §2)"
+    ]
 
 
 def _derived_stage(item: dict[str, Any]) -> str:
@@ -149,7 +191,10 @@ def _changed_paths(root: Path) -> set[str]:
 
 
 def _is_generated_or_status(path: str) -> bool:
-    return path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md"} or path.startswith("docs/status/")
+    return (
+        path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"}
+        or path.startswith("docs/status/")
+    )
 
 
 def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[str]:
@@ -158,6 +203,7 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
     except ValueError as exc:
         return str(exc).splitlines()
     errors: list[str] = []
+    errors.extend(check_worklog_append_only(root))
     for identifier, item in catalog.items.items():
         for dependency in item["dependsOn"]:
             if dependency not in catalog.items:

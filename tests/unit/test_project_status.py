@@ -28,3 +28,52 @@ def test_scope_digest_changes_when_a_claimed_file_changes(tmp_path) -> None:
     first = project_status.scope_digest(tmp_path, ["claimed.txt"])
     claimed.write_text("second\n", encoding="utf-8")
     assert project_status.scope_digest(tmp_path, ["claimed.txt"]) != first
+
+
+def test_scope_digest_ignores_worklog_bytes(tmp_path) -> None:
+    worklog = tmp_path / "docs" / "WORKLOG.md"
+    worklog.parent.mkdir(parents=True)
+    worklog.write_text("sessao-1\n", encoding="utf-8")
+    claimed = tmp_path / "claimed.txt"
+    claimed.write_text("stable\n", encoding="utf-8")
+    first = project_status.scope_digest(tmp_path, ["docs/WORKLOG.md", "claimed.txt"])
+    worklog.write_text("sessao-1\nsessao-2\n", encoding="utf-8")
+    assert project_status.scope_digest(tmp_path, ["docs/WORKLOG.md", "claimed.txt"]) == first
+
+
+def test_worklog_append_only_accepts_suffix_and_rejects_rewrite(tmp_path) -> None:
+    import subprocess
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "test"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    docs = root / "docs"
+    docs.mkdir()
+    worklog = docs / "WORKLOG.md"
+    worklog.write_text("## sessao A\n\n", encoding="utf-8")
+    subprocess.run(["git", "add", "docs/WORKLOG.md"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "baseline worklog"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    assert project_status.check_worklog_append_only(root) == []
+    worklog.write_text("## sessao A\n\n## sessao B\n\n", encoding="utf-8")
+    assert project_status.check_worklog_append_only(root) == []
+    worklog.write_text("## sessao reescrita\n\n", encoding="utf-8")
+    errors = project_status.check_worklog_append_only(root)
+    assert errors
+    assert "reescrita" in errors[0]

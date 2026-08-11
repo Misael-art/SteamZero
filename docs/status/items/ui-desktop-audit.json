@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-UI-DESKTOP-AUDIT",
+  "title": "UI Desktop — auditoria visual e jornadas P0/P1",
+  "domain": "ui",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/ui",
+    "tools/ui_audit_capture.qml",
+    "tools/ui_audit_runner.py",
+    "docs/09-operations/evidence/2026-08-11-ui-audit",
+    "tests/qml/check_main_emulation.qml",
+    "tests/qml/check_emulation.qml",
+    "tests/qml/check_editorial_library.qml",
+    "tests/qml/check_theme_editor_aura.qml"
+  ],
+  "scopeDigest": "d2607dadba388d56632012e442cb3187d933d8cf499d36a5a556d42315b891c7",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Instalar emulador nao e no-op silencioso.",
+    "DarkButton legivel no tema claro.",
+    "Tema aplica via plan+confirm na UI.",
+    "Harnesses QML de dispatch/tema/biblioteca verdes."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Integrar em main e validar fisicamente no Deck.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45."
+}
