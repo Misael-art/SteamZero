@@ -66,3 +66,12 @@ src/steamzero/_build_info.py
 # os padrões globais acima, mas `requirements-runtime.lock` e o próprio
 # VERIFIED-SHA256SUMS ficavam rastreáveis.
 /release-artifacts/
+
+# Artefatos de runtime do harness de VM (Item 4 / DEBT-A7)
+#
+# Imagem base qcow2, overlays por run, seed ISO e chaves SSH não são
+# versionáveis: são reproduzíveis a partir do commit mais tools/vm_harness/.
+# As evidências de certificação vivem versionadas em docs/diagnostics/ e o
+# mapeamento run→evidência + hashes está em docs/diagnostics/INDEX-M10.md.
+# Overlays de falha preservados no disco são referenciados por aquele índice.
+.zcode/vm-harness/
