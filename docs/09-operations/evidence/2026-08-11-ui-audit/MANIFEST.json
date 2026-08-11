@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-ui-audit",
+  "generatedAt": "2026-08-11T16:18:24.644194+00:00",
+  "outdir": "/mnt/sdcard/Projects/Port_Steam/docs/09-operations/evidence/2026-08-11-ui-audit",
+  "mode": "offline",
+  "platform": "offscreen",
+  "qmlReturncode": 0,
+  "elapsedSeconds": 41.37,
+  "captureCount": 55,
+  "captures": [
+    {
+      "name": "deck-cast.png",
+      "bytes": 45660,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-cast.png"
+    },
+    {
+      "name": "deck-emulators.png",
+      "bytes": 65001,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-emulators.png"
+    },
+    {
+      "name": "deck-library.png",
+      "bytes": 38975,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-library.png"
+    },
+    {
+      "name": "deck-overview.png",
+      "bytes": 66853,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-overview.png"
+    },
+    {
+      "name": "deck-profiles.png",
+      "bytes": 40467,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-profiles.png"
+    },
+    {
+      "name": "deck-steam.png",
+      "bytes": 78037,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-steam.png"
+    },
+    {
+      "name": "deck-sync.png",
+      "bytes": 59343,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-sync.png"
+    },
+    {
+      "name": "deck-system.png",
+      "bytes": 63646,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-system.png"
+    },
+    {
+      "name": "deck-themes.png",
+      "bytes": 35152,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/deck-themes.png"
+    },
+    {
+      "name": "emulation-area-advanced.png",
+      "bytes": 166838,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-advanced.png"
+    },
+    {
+      "name": "emulation-area-controls.png",
+      "bytes": 168419,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-controls.png"
+    },
+    {
+      "name": "emulation-area-graphicsPerformance.png",
+      "bytes": 171861,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-graphicsPerformance.png"
+    },
+    {
+      "name": "emulation-area-keysFirmware.png",
+      "bytes": 169988,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-keysFirmware.png"
+    },
+    {
+      "name": "emulation-area-media.png",
+      "bytes": 184226,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-media.png"
+    },
+    {
+      "name": "emulation-area-modsCheats.png",
+      "bytes": 156522,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-modsCheats.png"
+    },
+    {
+      "name": "emulation-area-overview.png",
+      "bytes": 165837,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-overview.png"
+    },
+    {
+      "name": "emulation-area-saves.png",
+      "bytes": 167882,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-saves.png"
+    },
+    {
+      "name": "emulation-area-shaderCache.png",
+      "bytes": 170542,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-shaderCache.png"
+    },
+    {
+      "name": "emulation-area-storage.png",
+      "bytes": 169596,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-storage.png"
+    },
+    {
+      "name": "emulation-area-updatesDlc.png",
+      "bytes": 167228,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-area-updatesDlc.png"
+    },
+    {
+      "name": "emulation-global-management.png",
+      "bytes": 104305,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/emulation-global-management.png"
+    },
+    {
+      "name": "fullhd-cast.png",
+      "bytes": 82449,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-cast.png"
+    },
+    {
+      "name": "fullhd-emulators.png",
+      "bytes": 142490,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-emulators.png"
+    },
+    {
+      "name": "fullhd-library.png",
+      "bytes": 77047,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-library.png"
+    },
+    {
+      "name": "fullhd-overview.png",
+      "bytes": 128003,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-overview.png"
+    },
+    {
+      "name": "fullhd-profiles.png",
+      "bytes": 76891,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-profiles.png"
+    },
+    {
+      "name": "fullhd-steam.png",
+      "bytes": 184220,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-steam.png"
+    },
+    {
+      "name": "fullhd-sync.png",
+      "bytes": 91173,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-sync.png"
+    },
+    {
+      "name": "fullhd-system.png",
+      "bytes": 124952,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-system.png"
+    },
+    {
+      "name": "fullhd-themes.png",
+      "bytes": 71138,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/fullhd-themes.png"
+    },
+    {
+      "name": "handheld-emulation.png",
+      "bytes": 51609,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/handheld-emulation.png"
+    },
+    {
+      "name": "handheld-library.png",
+      "bytes": 37132,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/handheld-library.png"
+    },
+    {
+      "name": "handheld-overview.png",
+      "bytes": 49356,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/handheld-overview.png"
+    },
+    {
+      "name": "library-games-carousel.png",
+      "bytes": 92865,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/library-games-carousel.png"
+    },
+    {
+      "name": "library-games-grid.png",
+      "bytes": 92535,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/library-games-grid.png"
+    },
+    {
+      "name": "library-games-list.png",
+      "bytes": 92800,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/library-games-list.png"
+    },
+    {
+      "name": "library-systems.png",
+      "bytes": 74988,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/library-systems.png"
+    },
+    {
+      "name": "overlay-credentials.png",
+      "bytes": 118635,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/overlay-credentials.png"
+    },
+    {
+      "name": "overlay-nav-drawer-handheld.png",
+      "bytes": 48736,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/overlay-nav-drawer-handheld.png"
+    },
+    {
+      "name": "overlay-task-drawer.png",
+      "bytes": 66853,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/overlay-task-drawer.png"
+    },
+    {
+      "name": "steam-area-controls.png",
+      "bytes": 123702,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/steam-area-controls.png"
+    },
+    {
+      "name": "steam-area-desktop.png",
+      "bytes": 153035,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/steam-area-desktop.png"
+    },
+    {
+      "name": "steam-area-library.png",
+      "bytes": 133320,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/steam-area-library.png"
+    },
+    {
+      "name": "steam-area-performance.png",
+      "bytes": 158653,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/steam-area-performance.png"
+    },
+    {
+      "name": "studio-cast.png",
+      "bytes": 80152,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-cast.png"
+    },
+    {
+      "name": "studio-emulators.png",
+      "bytes": 104305,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-emulators.png"
+    },
+    {
+      "name": "studio-library.png",
+      "bytes": 74988,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-library.png"
+    },
+    {
+      "name": "studio-overview.png",
+      "bytes": 121377,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-overview.png"
+    },
+    {
+      "name": "studio-profiles.png",
+      "bytes": 74808,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-profiles.png"
+    },
+    {
+      "name": "studio-steam.png",
+      "bytes": 158653,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-steam.png"
+    },
+    {
+      "name": "studio-sync.png",
+      "bytes": 88788,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-sync.png"
+    },
+    {
+      "name": "studio-system.png",
+      "bytes": 118635,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-system.png"
+    },
+    {
+      "name": "studio-themes.png",
+      "bytes": 68863,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/studio-themes.png"
+    },
+    {
+      "name": "ultrawide-overview.png",
+      "bytes": 131705,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/ultrawide-overview.png"
+    },
+    {
+      "name": "ultrawide-sync.png",
+      "bytes": 94243,
+      "path": "docs/09-operations/evidence/2026-08-11-ui-audit/ultrawide-sync.png"
+    }
+  ],
+  "host": {
+    "generatedAt": "2026-08-11T16:18:24.644234+00:00",
+    "version": "0.1.0a44",
+    "desktopStatus": {
+      "error": "/mnt/sdcard/Projects/Port_Steam/.venv/bin/python: No module named steamzero.__main__; 'steamzero' is a package and cannot be directly executed"
+    },
+    "doctor": {
+      "error": "/mnt/sdcard/Projects/Port_Steam/.venv/bin/python: No module named steamzero.__main__; 'steamzero' is a package and cannot be directly executed"
+    }
+  },
+  "stdoutTail": "",
+  "stderrTail": ""
+}
