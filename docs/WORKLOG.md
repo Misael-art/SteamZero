@@ -6236,3 +6236,21 @@ release a43 no host, sem reinício físico (5f fica para o operador). Bump de
 versão 0.1.0a42 → 0.1.0a43 no padrão do f94b85f (a42): __init__.py + ledger
 (a42 sai de candidata para instalada; a43 entra como candidata). Gates locais
 antes do push; prepare via tools/release_host.py após CI verde.
+
+## 2026-08-11 — Item 5 — a43: prepare ok; install bloqueado pela sandbox da sessão
+
+5b concluído: release 0.1.0a43-01b32641021f preparada (CI run 31486652048,
+wheel 2dfcef39aa2180636e8661ac1ccd276fd3a9d01c2bf87e6b529f1f94d8361471) e
+bundle verificado. 5c bloqueado: a sessão do agente roda com NoNewPrivs=1
+(PID 1 do host = 0, sem seccomp/nosuid); pkexec recusa "pkexec must be
+setuid root". Sem contorno (AGENTS.md §1): o operador executa do terminal
+dele o argv exato abaixo (token INSTALAR-0.1.0a43-01b32641021f), e o agente
+valida pós-instalação de forma read-only.
+
+bigsudo /usr/bin/python3 tools/install_host.py install \
+  --release 0.1.0a43-01b32641021f \
+  --wheel release-artifacts/a43-01b32641021f/dist/steamzero-0.1.0a43-py3-none-any.whl \
+  --wheel-sha256 2dfcef39aa2180636e8661ac1ccd276fd3a9d01c2bf87e6b529f1f94d8361471 \
+  --requirements release-artifacts/a43-01b32641021f/requirements-runtime.lock \
+  --wheelhouse release-artifacts/a43-01b32641021f/dist/runtime-wheelhouse \
+  --source-commit 01b32641021f7bc3af3d5785f698240651de5bd4
