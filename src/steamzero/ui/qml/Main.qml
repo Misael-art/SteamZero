@@ -127,6 +127,8 @@ ApplicationWindow {
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
     property alias credentialCloseControl: credentialCloseButton
+    // Exposto para harness de auditoria visual (tools/ui_audit_capture.qml)
+    property alias editorialLibraryControl: editorialLibraryPage
 
     property var desktopStatus: ({
         "truthState": "unapplied",
@@ -279,8 +281,17 @@ ApplicationWindow {
         && desktopStatus.context.conflicts && desktopStatus.context.conflicts.length > 0)
     readonly property bool desktopTruthNeedsAttention: ["stale", "degraded", "unapplied"]
         .indexOf(desktopStatus.truthState) >= 0
+    // Banner de atenção: o utilizador pode reconhecer na sessão sem mentir o truth.
+    property bool attentionBannerDismissed: false
+    readonly property bool showLegacyOverview: false
+    readonly property bool showAttentionBanner: (hasConflicts || desktopTruthNeedsAttention)
+        && (!attentionBannerDismissed || hasConflicts)
     readonly property bool needsAttention: Boolean(hasConflicts || desktopTruthNeedsAttention
         || desktopStatus.recoveryRequired)
+    readonly property bool syncProviderPresent: Boolean(
+        desktopStatus.dashboard && desktopStatus.dashboard.sync
+        && desktopStatus.dashboard.sync.provider
+        && desktopStatus.dashboard.sync.provider.id)
     readonly property bool touchMode: desktopStatus.current && desktopStatus.current.profile
         ? desktopStatus.current.profile.touchMode : false
 
@@ -924,13 +935,26 @@ ApplicationWindow {
     }
 
     function performRowAction(row) {
-        if (!row || !row.action || !row.action.enabled)
+        if (!row || !row.action)
             return
-        const kind = row.action.kind
+        if (row.action.enabled === false) {
+            notify(row.action.reason
+                ? row.action.reason
+                : qsTr("Esta ação ainda não está disponível."), true)
+            return
+        }
+        const action = row.action
+        // Workspace de emulação publica action.id (ex.: emulator.install:dolphin)
+        // sem action.kind. O caminho canônico é performEmulationAction.
+        if (action.id && (!action.kind || action.kind === "")) {
+            performEmulationAction(action)
+            return
+        }
+        const kind = action.kind
         if (kind === "component-plan") {
             requestAction("component.plan", {
                 "componentId": row.id,
-                "action": row.action.operation || "install"
+                "action": action.operation || "install"
             }, function(response) {
                 componentPlan = response.plan
                 componentDialog.open()
@@ -947,12 +971,15 @@ ApplicationWindow {
                 notify(qsTr("%1 foi aberto").arg(row.name), false)
             })
         } else if (kind === "steam-open") {
-            requestAction("steam.open", {"target": row.action.target}, function(response) {
+            requestAction("steam.open", {"target": action.target}, function(response) {
                 notify(qsTr("Steam aberto com segurança"), false)
                 refreshStatus("")
             })
         } else if (kind === "keyboard") {
             openKeyboard()
+        } else {
+            notify(qsTr("Ação %1 não tem rota na central; nenhuma mudança foi feita.")
+                .arg(kind || action.id || qsTr("desconhecida")), true)
         }
     }
 
@@ -3005,7 +3032,7 @@ ApplicationWindow {
                     }
 
                     Rectangle {
-                        visible: root.hasConflicts || root.desktopTruthNeedsAttention
+                        visible: root.showAttentionBanner
                         color: "#24180b"
                         border.color: root.amberColor
                         border.width: 1
@@ -3088,6 +3115,21 @@ ApplicationWindow {
                                     else
                                         root.sectionIndex = root.desktopStatus.truthState === "degraded" ? 6 : 3
                                 }
+                            }
+                            DarkButton {
+                                visible: !root.hasConflicts
+                                text: qsTr("Dispensar")
+                                palette.buttonText: root.mutedColor
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Dispensar alerta nesta sessão")
+                                Accessible.description: qsTr("O estado real permanece; só oculta o banner até o próximo conflito.")
+                                background: Rectangle {
+                                    color: "transparent"
+                                    radius: 6
+                                    border.color: parent.activeFocus ? root.cyanColor : "#705127"
+                                    border.width: parent.activeFocus ? 2 : 1
+                                }
+                                onClicked: root.attentionBannerDismissed = true
                             }
                         }
                     }
@@ -3217,7 +3259,11 @@ ApplicationWindow {
                                         root.sectionIndex = root.sectionIndexOf(area)
                                     }
                                 }
+                                // Stack legado da visão geral: EditorialHome é a entrada
+                                // canónica. Mantido oculto para não duplicar pendências/
+                                // continuar/áreas (auditoria P1-10); ids de teste preservados.
                                 Label {
+                                    visible: false
                                     text: qsTr("Visão geral")
                                     color: root.textColor
                                     font.pixelSize: root.compactLayout ? 24 : 30
@@ -3226,12 +3272,14 @@ ApplicationWindow {
                                     Layout.leftMargin: root.responsiveGutter
                                 }
                                 Label {
+                                    visible: false
                                     text: root.deviceSummary()
                                     color: root.mutedColor
                                     font.pixelSize: 15
                                     Layout.leftMargin: root.responsiveGutter
                                 }
                                 Rectangle {
+                                    visible: false
                                     Layout.fillWidth: true
                                     Layout.leftMargin: root.responsiveGutter
                                     Layout.rightMargin: root.responsiveGutter
@@ -3276,6 +3324,7 @@ ApplicationWindow {
                                     }
                                 }
                                 RowLayout {
+                                    visible: false
                                     Layout.fillWidth: true
                                     Layout.leftMargin: root.responsiveGutter
                                     Layout.rightMargin: root.responsiveGutter
@@ -3293,8 +3342,7 @@ ApplicationWindow {
                                     }
                                 }
                                 Rectangle {
-                                    visible: !root.playtimeData.games
-                                        || root.playtimeData.games.length === 0
+                                    visible: false
                                     Layout.fillWidth: true
                                     Layout.leftMargin: root.responsiveGutter
                                     Layout.rightMargin: root.responsiveGutter
@@ -3317,6 +3365,7 @@ ApplicationWindow {
                                         ? root.playtimeData.games.slice(0, 4) : []
                                     delegate: Button {
                                         required property var modelData
+                                        visible: false
                                         Layout.fillWidth: true
                                         Layout.leftMargin: root.responsiveGutter
                                         Layout.rightMargin: root.responsiveGutter
@@ -3378,6 +3427,7 @@ ApplicationWindow {
                                     }
                                 }
                                 RowLayout {
+                                    visible: false
                                     Layout.fillWidth: true
                                     Layout.leftMargin: root.responsiveGutter
                                     Layout.rightMargin: root.responsiveGutter
@@ -3428,6 +3478,7 @@ ApplicationWindow {
                                     }
                                 }
                                 Rectangle {
+                                    visible: false
                                     Layout.fillWidth: true
                                     Layout.leftMargin: root.responsiveGutter
                                     Layout.rightMargin: root.responsiveGutter
@@ -3483,6 +3534,7 @@ ApplicationWindow {
                                     }
                                 }
                                 Label {
+                                    visible: false
                                     text: qsTr("Áreas principais")
                                     color: root.textColor
                                     font.pixelSize: 20
@@ -3490,11 +3542,11 @@ ApplicationWindow {
                                     Layout.leftMargin: root.responsiveGutter
                                 }
                                 Repeater {
-                                    model: [
+                                    model: root.showLegacyOverview ? [
                                         {"title": qsTr("Emuladores"), "detail": qsTr("%1 componentes · %2 precisam de atenção").arg(root.emulatorItems.length).arg(root.attentionCount(root.emulatorItems)), "target": 1, "icon": "input-gaming"},
                                         {"title": qsTr("Steam"), "detail": qsTr("Cliente, biblioteca, Steam Input e teclado"), "target": 2, "icon": "steam"},
                                         {"title": qsTr("Saves e Sync"), "detail": qsTr("Fila offline e conflitos preservados"), "target": 4, "icon": "folder-sync"}
-                                    ]
+                                    ] : []
                                     delegate: Button {
                                         required property var modelData
                                         text: modelData.title
@@ -3542,7 +3594,15 @@ ApplicationWindow {
                                 Layout.fillHeight: true
                                 onComponentActionRequested: function(component) {
                                     root.selectedEmulator = component
-                                    root.performRowAction(component)
+                                    // Workspace: action.id (emulator.install:…), sem kind.
+                                    // Dashboard legado: action.kind (component-plan/…).
+                                    const action = component && component.action
+                                        ? component.action : null
+                                    if (action && action.id
+                                            && (!action.kind || action.kind === ""))
+                                        root.performEmulationAction(action)
+                                    else
+                                        root.performRowAction(component)
                                 }
                                 onActionRequested: function(action) {
                                     root.performEmulationAction(action)
@@ -4213,9 +4273,121 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                 }
                                 Label {
-                                    text: qsTr("Aplicado: %1 · Observado: %2 · Desejado: %3").arg(root.desktopStatus.appliedProfile || qsTr("nenhum")).arg(root.desktopStatus.observedProfile || qsTr("incerto")).arg(root.desktopStatus.desiredProfile)
+                                    text: qsTr("Recomendado: %1 · Desejado: %2 · Aplicado: %3 · Observado: %4")
+                                        .arg(root.desktopStatus.recommendedProfile || qsTr("não verificado"))
+                                        .arg(root.desktopStatus.desiredProfile || qsTr("não verificado"))
+                                        .arg(root.desktopStatus.appliedProfile || qsTr("nenhum"))
+                                        .arg(root.desktopStatus.observedProfile || qsTr("não verificado"))
                                     color: root.mutedColor
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
                                     Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                }
+                                GridLayout {
+                                    columns: root.compactLayout ? 1 : 2
+                                    columnSpacing: 12
+                                    rowSpacing: 12
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Repeater {
+                                        model: [
+                                            {"id": "auto", "label": qsTr("Automático"), "detail": qsTr("Segue o contexto recomendado do host.")},
+                                            {"id": "handheld", "label": qsTr("Portátil"), "detail": qsTr("Touch, escala e painel para uso no colo.")},
+                                            {"id": "dock", "label": qsTr("Dock"), "detail": qsTr("Display externo e densidade de desktop.")},
+                                            {"id": "safe", "label": qsTr("Seguro"), "detail": qsTr("Recuperação mínima sem efeitos agressivos.")}
+                                        ]
+                                        delegate: Button {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: 96
+                                            checkable: true
+                                            checked: root.selectedProfile === modelData.id
+                                            Accessible.name: qsTr("%1. Recomendado %2. Aplicado %3")
+                                                .arg(modelData.label)
+                                                .arg(root.desktopStatus.recommendedProfile === modelData.id
+                                                    || (modelData.id === "auto" && root.desktopStatus.recommendedProfile)
+                                                    ? qsTr("sim") : qsTr("não"))
+                                                .arg(root.desktopStatus.appliedProfile
+                                                    && String(root.desktopStatus.appliedProfile).indexOf(modelData.id) >= 0
+                                                    ? qsTr("sim") : qsTr("não"))
+                                            onClicked: {
+                                                root.selectedProfile = modelData.id
+                                                profilePicker.currentIndex = ["auto", "handheld", "dock", "safe"].indexOf(modelData.id)
+                                            }
+                                            background: Rectangle {
+                                                radius: 10
+                                                color: parent.checked ? "#183044" : root.surfaceColor
+                                                border.color: parent.checked || parent.activeFocus
+                                                    ? root.cyanColor : root.borderColor
+                                                border.width: parent.checked || parent.activeFocus ? 2 : 1
+                                            }
+                                            contentItem: ColumnLayout {
+                                                spacing: 4
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Label {
+                                                        text: modelData.label
+                                                        color: root.textColor
+                                                        font.bold: true
+                                                        font.pixelSize: 17
+                                                        Layout.fillWidth: true
+                                                    }
+                                                    Label {
+                                                        visible: Boolean(root.desktopStatus.recommendedProfile)
+                                                            && (
+                                                                root.desktopStatus.recommendedProfile === modelData.id
+                                                                || (modelData.id === "dock"
+                                                                    && root.desktopStatus.recommendedProfile === "docked-desktop")
+                                                                || (modelData.id === "handheld"
+                                                                    && root.desktopStatus.recommendedProfile === "handheld-desktop")
+                                                                || (modelData.id === "safe"
+                                                                    && (root.desktopStatus.recommendedProfile === "safe"
+                                                                        || root.desktopStatus.recommendedProfile === "safe-desktop"))
+                                                                || modelData.id === "auto"
+                                                            )
+                                                        text: qsTr("Recomendado")
+                                                        color: root.cyanColor
+                                                        font.pixelSize: 11
+                                                    }
+                                                }
+                                                Label {
+                                                    text: modelData.detail
+                                                    color: root.mutedColor
+                                                    wrapMode: Text.WordWrap
+                                                    Layout.fillWidth: true
+                                                    font.pixelSize: 12
+                                                }
+                                                Label {
+                                                    text: {
+                                                        const applied = String(root.desktopStatus.appliedProfile || "")
+                                                        const desired = String(root.desktopStatus.desiredProfile || "")
+                                                        const observed = String(root.desktopStatus.observedProfile || "")
+                                                        const tags = []
+                                                        if (desired.indexOf(modelData.id) >= 0
+                                                                || (modelData.id === "dock" && desired.indexOf("docked") >= 0)
+                                                                || (modelData.id === "handheld" && desired.indexOf("handheld") >= 0)
+                                                                || (modelData.id === "safe" && desired.indexOf("safe") >= 0)
+                                                                || (modelData.id === "auto" && desired === "auto"))
+                                                            tags.push(qsTr("Desejado"))
+                                                        if (applied.indexOf(modelData.id) >= 0
+                                                                || (modelData.id === "dock" && applied.indexOf("docked") >= 0)
+                                                                || (modelData.id === "handheld" && applied.indexOf("handheld") >= 0)
+                                                                || (modelData.id === "safe" && applied.indexOf("safe") >= 0))
+                                                            tags.push(qsTr("Aplicado"))
+                                                        if (observed.indexOf(modelData.id) >= 0
+                                                                || (modelData.id === "dock" && observed.indexOf("docked") >= 0)
+                                                                || (modelData.id === "handheld" && observed.indexOf("handheld") >= 0))
+                                                            tags.push(qsTr("Observado"))
+                                                        return tags.length > 0 ? tags.join(" · ") : qsTr("Não verificado neste host")
+                                                    }
+                                                    color: root.amberColor
+                                                    font.pixelSize: 11
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 Rectangle {
                                     color: root.surfaceColor
@@ -4224,12 +4396,12 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Layout.leftMargin: 28
                                     Layout.rightMargin: 28
-                                    Layout.minimumHeight: 180
+                                    Layout.minimumHeight: 120
                                     ColumnLayout {
                                         anchors.fill: parent
                                         anchors.margins: 20
                                         spacing: 12
-                                        Label { text: qsTr("Escolha o comportamento"); color: root.textColor; font.pixelSize: 18; font.bold: true }
+                                        Label { text: qsTr("Revisar e aplicar"); color: root.textColor; font.pixelSize: 18; font.bold: true }
                                         SteamComboBox {
                                             id: profilePicker
                                             Layout.fillWidth: true
@@ -4323,8 +4495,53 @@ ApplicationWindow {
                                 width: parent.width
                                 spacing: 16
                                 Label { text: qsTr("Estado da sincronização"); color: root.textColor; font.pixelSize: 30; font.bold: true; Layout.topMargin: 28; Layout.leftMargin: 28 }
-                                Label { text: qsTr("Somente leitura: a bridge ainda não publicou provider nem mutações seguras."); color: root.amberColor; Layout.leftMargin: 28 }
+                                Rectangle {
+                                    visible: !root.syncProviderPresent
+                                    color: root.surfaceColor
+                                    radius: 10
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    Layout.minimumHeight: 140
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 20
+                                        spacing: 10
+                                        Label {
+                                            text: qsTr("Sincronização de saves ainda não configurada")
+                                            color: root.textColor
+                                            font.bold: true
+                                            font.pixelSize: 18
+                                        }
+                                        Label {
+                                            text: qsTr("Nenhum CloudPort autenticado foi publicado na bridge. A fila é somente leitura e não há retry, cancelamento ou resolução de conflito nesta versão.")
+                                            color: root.mutedColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                        Label {
+                                            text: qsTr("Quando um provider estiver disponível, contadores e mutações allowlisted aparecem aqui.")
+                                            color: root.mutedColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                                Label {
+                                    visible: !root.syncProviderPresent
+                                    text: qsTr("Somente leitura até haver provider.")
+                                    color: root.amberColor
+                                    Layout.leftMargin: 28
+                                }
+                                Label {
+                                    visible: root.syncProviderPresent
+                                    text: qsTr("Somente leitura: a bridge ainda não publicou mutações seguras.")
+                                    color: root.amberColor
+                                    Layout.leftMargin: 28
+                                }
                                 GridLayout {
+                                    visible: root.syncProviderPresent
                                     columns: root.compactLayout ? 1 : 3
                                     columnSpacing: 12
                                     rowSpacing: 12
@@ -4358,6 +4575,7 @@ ApplicationWindow {
                                 }
                                 Rectangle {
                                     id: providerStatusCard
+                                    visible: root.syncProviderPresent
                                     color: root.surfaceColor
                                     radius: 8
                                     border.color: root.borderColor
@@ -4491,14 +4709,43 @@ ApplicationWindow {
                                     Layout.topMargin: 28
                                     Layout.leftMargin: 28
                                 }
-                                Label {
-                                    text: root.castData.detail || ""
-                                    visible: !!root.castData.detail
-                                    color: root.mutedColor
+                                Rectangle {
+                                    color: root.surfaceColor
+                                    radius: 10
+                                    border.color: root.borderColor
+                                    Layout.fillWidth: true
                                     Layout.leftMargin: 28
                                     Layout.rightMargin: 28
-                                    wrapMode: Text.WordWrap
-                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 100
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 16
+                                        spacing: 8
+                                        Label {
+                                            text: root.castData.state === "available"
+                                                ? qsTr("Orquestrador disponível")
+                                                : qsTr("Orquestrador não configurado")
+                                            color: root.castData.state === "available"
+                                                ? root.greenColor : root.amberColor
+                                            font.bold: true
+                                            font.pixelSize: 16
+                                        }
+                                        Label {
+                                            text: root.castData.detail
+                                                || qsTr("Configure o serviço de transmissão no host antes de descobrir receptores. Nenhuma sessão é inventada pela central.")
+                                            color: root.mutedColor
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                }
+                                Label {
+                                    text: qsTr("Ações")
+                                    color: root.textColor
+                                    font.bold: true
+                                    font.pixelSize: 18
+                                    Layout.leftMargin: 28
+                                    Layout.topMargin: 4
                                 }
                                 Rectangle {
                                     color: root.castData.status && root.castData.status.state === "streaming"
@@ -4696,11 +4943,65 @@ ApplicationWindow {
                                     }
                                 }
                                 Label {
+                                    text: qsTr("Diagnóstico")
+                                    color: root.textColor
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    Layout.leftMargin: 28
+                                    Layout.topMargin: 4
+                                }
+                                Repeater {
+                                    model: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
+                                        ? root.desktopStatus.dashboard.doctor.checks || [] : []
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        color: root.surfaceColor
+                                        radius: 7
+                                        border.color: modelData.status === "fail" || modelData.status === "failed"
+                                            ? root.redColor
+                                            : modelData.status === "warn" || modelData.status === "degraded"
+                                                ? root.amberColor : root.borderColor
+                                        Layout.fillWidth: true
+                                        Layout.leftMargin: 28
+                                        Layout.rightMargin: 28
+                                        Layout.minimumHeight: 56
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 12
+                                            Label {
+                                                text: modelData.name || modelData.id || qsTr("check")
+                                                color: root.textColor
+                                                font.bold: true
+                                                Layout.fillWidth: true
+                                                elide: Text.ElideRight
+                                            }
+                                            Label {
+                                                text: modelData.status || qsTr("—")
+                                                color: modelData.status === "pass" || modelData.status === "ok"
+                                                    ? root.greenColor
+                                                    : modelData.status === "fail" || modelData.status === "failed"
+                                                        ? root.redColor : root.amberColor
+                                            }
+                                        }
+                                    }
+                                }
+                                Label {
+                                    visible: !(root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
+                                        && root.desktopStatus.dashboard.doctor.checks
+                                        && root.desktopStatus.dashboard.doctor.checks.length > 0)
+                                    text: qsTr("Nenhum check do doctor foi publicado ainda. Atualize o status.")
+                                    color: root.mutedColor
+                                    Layout.leftMargin: 28
+                                    Layout.rightMargin: 28
+                                    wrapMode: Text.WordWrap
+                                }
+                                Label {
                                     text: qsTr("Componentes de gameplay")
                                     color: root.textColor
                                     font.pixelSize: 20
                                     font.bold: true
                                     Layout.leftMargin: 28
+                                    Layout.topMargin: 8
                                 }
                                 Rectangle {
                                     color: root.surfaceColor
@@ -4954,10 +5255,17 @@ ApplicationWindow {
                                         }
                                     }
                                 }
-                                Label { text: qsTr("Diagnóstico"); color: root.textColor; font.pixelSize: 20; font.bold: true; Layout.leftMargin: 28 }
+                                // Diagnóstico movido para o primeiro fold (acima de memória).
+                                Label {
+                                    visible: false
+                                    text: qsTr("Diagnóstico")
+                                    color: root.textColor
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    Layout.leftMargin: 28
+                                }
                                 Repeater {
-                                    model: root.desktopStatus.dashboard && root.desktopStatus.dashboard.doctor
-                                        ? root.desktopStatus.dashboard.doctor.checks || [] : []
+                                    model: []
                                     delegate: Rectangle {
                                         required property var modelData
                                         color: root.surfaceColor
@@ -5128,7 +5436,11 @@ ApplicationWindow {
                             contentWidth: availableWidth
                             bottomPadding: root.bottomSafeInset
                             ThemeEditorPanel {
-                                width: Math.min(parent.width, root.contentMaxWidth)
+                                id: themeEditorPanel
+                                width: Math.min(themeEditorScroll.availableWidth, root.contentMaxWidth)
+                                // Preenche a viewport do shell; o painel tem
+                                // ScrollViews internos para lista e tokens.
+                                height: Math.max(themeEditorScroll.availableHeight, implicitHeight)
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 backgroundColor: root.backgroundColor
                                 surfaceColor: root.surfaceColor
@@ -5144,6 +5456,12 @@ ApplicationWindow {
                                 compactLayout: root.compactLayout
                                 requestAction: root.requestAction
                                 request: root.request
+                                activeThemeId: root.desktopStatus.dashboard
+                                    && root.desktopStatus.dashboard.theme
+                                    && root.desktopStatus.dashboard.theme.activeId
+                                    ? String(root.desktopStatus.dashboard.theme.activeId)
+                                    : (root._themeBridge.themeId || "")
+                                onApplied: root.refreshStatus(qsTr("Tema aplicado"))
                             }
                         }
                         // Biblioteca editorial: usa somente os read models já
