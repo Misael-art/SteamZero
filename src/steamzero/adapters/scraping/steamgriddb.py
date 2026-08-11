@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 
 from steamzero.adapters.scraping.base import BaseMediaProvider, RateLimiter
 from steamzero.core.errors import SteamZeroError
-from steamzero.core.net import NetworkFailure, fetch_bytes
+from steamzero.core.net import HttpClient, NetworkFailure, fetch_bytes
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _API_BASE = "https://www.steamgriddb.com/api/v2"
@@ -43,8 +43,9 @@ class SteamGridDbAdapter(BaseMediaProvider):
         *,
         api_key: str | None = None,
         rate_limiter: RateLimiter | None = None,
+        client: HttpClient | None = None,
     ) -> None:
-        super().__init__(rate_limiter=rate_limiter)
+        super().__init__(rate_limiter=rate_limiter, client=client)
         self._api_key = api_key
 
     @property
@@ -85,12 +86,12 @@ class SteamGridDbAdapter(BaseMediaProvider):
             if not results:
                 continue
             for item in results:
-                media_url = item.get("url", "")
-                if not media_url:
+                media_url = self._normalize_media_url(str(item.get("url", "")))
+                if media_url is None:
                     continue
                 candidates.append(
                     MediaCandidate(
-                        url=media_url.replace("http://", "https://"),
+                        url=media_url,
                         media_kind=kind,
                         provider=self.name,
                         confidence=0.9,
@@ -122,6 +123,7 @@ class SteamGridDbAdapter(BaseMediaProvider):
                 },
                 max_bytes=1024 * 1024,
                 timeout_seconds=15.0,
+                client=self._client,
             )
             payload = json.loads(body)
             if isinstance(payload, dict) and payload.get("success"):
@@ -170,7 +172,18 @@ class SteamGridDbAdapter(BaseMediaProvider):
         return None
 
     def _fetch_json(self, url: str) -> list[dict[str, Any]]:
-        """Chama API e retorna ``data`` como lista de dicts."""
+        """Chama API e retorna ``data`` como lista de dicts.
+
+        Classificação estável de falhas:
+        - 401/403: credencial recusada (``E-SCRAPE-CREDENTIAL-REJECTED``);
+        - 429: quota/rate limit (``E-SCRAPE-RATE-LIMITED``);
+        - 404: ausência de candidato — não é falha, vira lista vazia;
+        - 5xx: falha transitória (``E-SCRAPE-PROVIDER-UNREACHABLE``);
+        - timeout: ``E-SCRAPE-OFFLINE`` (mesma classificação do adapter base);
+        - payload acima do limite: ``E-SCRAPE-CORRUPT-MEDIA``;
+        - payload inválido (JSON indecodificável / shape estranho): lista vazia,
+          sem envenenar o cache como sucesso.
+        """
         url = url.replace("http://", "https://")
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -182,14 +195,57 @@ class SteamGridDbAdapter(BaseMediaProvider):
                 headers=headers,
                 max_bytes=4 * 1024 * 1024,
                 timeout_seconds=15.0,
+                client=self._client,
             )
+        except NetworkFailure as exc:
+            if exc.status in {401, 403}:
+                raise SteamZeroError(
+                    "E-SCRAPE-CREDENTIAL-REJECTED",
+                    detail="chave SteamGridDB rejeitada (401/403)",
+                ) from exc
+            if exc.status == 429:
+                raise SteamZeroError(
+                    "E-SCRAPE-RATE-LIMITED",
+                    detail="SteamGridDB: rate limit atingido (HTTP 429)",
+                ) from exc
+            if exc.status == 404:
+                return []
+            if exc.status is not None and exc.status >= 500:
+                raise SteamZeroError(
+                    "E-SCRAPE-PROVIDER-UNREACHABLE",
+                    detail=f"SteamGridDB: HTTP {exc.status}",
+                ) from exc
+            if exc.status is not None:
+                raise SteamZeroError(
+                    "E-SCRAPE-HTTP-ERROR",
+                    detail=f"HTTP {exc.status} do SteamGridDB",
+                ) from exc
+            if exc.code == "E-NET-TIMEOUT":
+                raise SteamZeroError(
+                    "E-SCRAPE-OFFLINE",
+                    detail=f"SteamGridDB: timeout na resposta ({exc.detail})",
+                ) from exc
+            if exc.code == "E-NET-CONTENT-LIMIT":
+                raise SteamZeroError(
+                    "E-SCRAPE-CORRUPT-MEDIA",
+                    detail="resposta do SteamGridDB excedeu o limite",
+                ) from exc
+            if exc.code in {"E-NET-INSECURE-URL", "E-NET-HOST-DENIED", "E-NET-REDIRECT-DENIED"}:
+                raise SteamZeroError("E-SCRAPE-DOWNLOAD-FAILED", detail=exc.detail) from exc
+            if exc.code == "E-NET-OFFLINE":
+                return []
+            raise SteamZeroError(
+                "E-SCRAPE-PROVIDER-UNREACHABLE",
+                detail=f"SteamGridDB: {exc.detail}",
+            ) from exc
+        try:
             payload = json.loads(body)
-            if not isinstance(payload, dict):
-                return []
-            success = payload.get("success", False)
-            data = payload.get("data", [])
-            if not success or not isinstance(data, list):
-                return []
-            return data
-        except (NetworkFailure, json.JSONDecodeError):
+        except json.JSONDecodeError:
             return []
+        if not isinstance(payload, dict):
+            return []
+        success = payload.get("success", False)
+        data = payload.get("data", [])
+        if not success or not isinstance(data, list):
+            return []
+        return data

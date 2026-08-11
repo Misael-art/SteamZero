@@ -5,10 +5,16 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 from unittest.mock import patch
 
 import pytest
 
+from fixtures.scraping.synthetic import (
+    screenscraper_error_json,
+    screenscraper_error_xml,
+    screenscraper_json,
+)
 from steamzero.adapters.scraping.screenscraper import (
     _MEDIA_KIND_MAP,
     _PLATFORM_MAP,
@@ -16,6 +22,7 @@ from steamzero.adapters.scraping.screenscraper import (
     _accepted_media_types,
 )
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import FakeTransport, HttpClient
 from steamzero.ports import GameIdentity
 
 _JSON_OK = json.dumps(
@@ -312,3 +319,140 @@ def test_platform_map_playstation2_is_58() -> None:
 
 def test_platform_map_neogeo_is_142() -> None:
     assert _PLATFORM_MAP["neogeo"] == "142"
+
+
+# -- classificação de erro no corpo ----------------------------------------
+
+
+def test_search_json_401_classified_as_auth(
+    adapter: ScreenScraperAdapter, identity: GameIdentity
+) -> None:
+    with (
+        patch.object(adapter, "_fetch_url", return_value=screenscraper_error_json("401")),
+        pytest.raises(SteamZeroError) as exc,
+    ):
+        adapter.search(identity, ["boxart"])
+    assert exc.value.code == "E-SCRAPE-CREDENTIAL-REJECTED"
+
+
+def test_search_xml_401_classified_as_auth(
+    adapter: ScreenScraperAdapter, identity: GameIdentity
+) -> None:
+    with (
+        patch.object(adapter, "_fetch_url", return_value=screenscraper_error_xml("401")),
+        pytest.raises(SteamZeroError) as exc,
+    ):
+        adapter.search(identity, ["boxart"])
+    assert exc.value.code == "E-SCRAPE-CREDENTIAL-REJECTED"
+
+
+def test_search_json_429_classified_as_rate_limit(
+    adapter: ScreenScraperAdapter, identity: GameIdentity
+) -> None:
+    with (
+        patch.object(adapter, "_fetch_url", return_value=screenscraper_error_json("429")),
+        pytest.raises(SteamZeroError) as exc,
+    ):
+        adapter.search(identity, ["boxart"])
+    assert exc.value.code == "E-SCRAPE-RATE-LIMITED"
+
+
+# -- sanitização de URL de mídia -------------------------------------------
+
+
+def _client_with(outcome: object) -> HttpClient:
+    return HttpClient(transport=FakeTransport([outcome]))  # type: ignore[list-item]
+
+
+def test_search_filters_unsafe_media_urls(identity: GameIdentity) -> None:
+    payload = screenscraper_json(
+        [
+            {
+                "type": "box-2d",
+                "region": "us",
+                "url": "file:///tmp/box.png",
+                "width": 400,
+                "height": 300,
+            },
+            {
+                "type": "ss",
+                "region": "us",
+                "url": "https://example.com/ss.jpg",
+                "width": 640,
+                "height": 480,
+            },
+        ]
+    )
+    adapter = ScreenScraperAdapter(devid="test-dev", devpassword="test-pass", rate_limiter=None)
+    with patch.object(adapter, "_fetch_url", return_value=payload):
+        results = adapter.search(identity, ["boxart", "screenshot"])
+    kinds = {c.media_kind for c in results}
+    assert "boxart" not in kinds
+    assert "screenshot" in kinds
+
+
+def test_search_upgrades_http_and_protocol_relative_urls(identity: GameIdentity) -> None:
+    payload = screenscraper_json(
+        [
+            {
+                "type": "box-2d",
+                "region": "us",
+                "url": "http://example.com/box.png",
+            },
+            {
+                "type": "ss",
+                "region": "us",
+                "url": "//example.com/ss.jpg",
+            },
+        ]
+    )
+    adapter = ScreenScraperAdapter(devid="test-dev", devpassword="test-pass", rate_limiter=None)
+    with patch.object(adapter, "_fetch_url", return_value=payload):
+        results = adapter.search(identity, ["boxart", "screenshot"])
+    urls = {c.url for c in results}
+    assert "https://example.com/box.png" in urls
+    assert "https://example.com/ss.jpg" in urls
+
+
+def test_search_xml_filters_unsafe_media_urls(identity: GameIdentity) -> None:
+    payload = b"""<?xml version="1.0"?>
+<data>
+  <jeu>
+    <media type="box-2d" region="us">file:///tmp/box.png</media>
+    <media type="ss" region="us">ftp://example.com/ss.jpg</media>
+  </jeu>
+</data>
+"""
+    adapter = ScreenScraperAdapter(devid="test-dev", devpassword="test-pass", rate_limiter=None)
+    with patch.object(adapter, "_fetch_url", return_value=payload):
+        results = adapter.search(identity, ["boxart", "screenshot"])
+    assert results == []
+
+
+# -- credenciais nunca vazam -----------------------------------------------
+
+
+def test_search_error_does_not_leak_credentials(identity: GameIdentity) -> None:
+    adapter = ScreenScraperAdapter(
+        devid="test-dev",
+        devpassword="super-secret-pass",
+        rate_limiter=None,
+        client=_client_with(urllib.error.HTTPError("https://x/api", 500, "fixture", {}, None)),
+    )
+    with pytest.raises(SteamZeroError) as exc:
+        adapter.search(identity, ["boxart"])
+    rendered = f"{exc.value.code}: {exc.value.detail}"
+    assert "super-secret-pass" not in rendered
+    assert "test-dev" not in rendered
+    assert "devpassword" not in rendered
+    assert "https://" not in rendered
+
+
+def test_search_results_do_not_contain_credentials(
+    adapter: ScreenScraperAdapter, identity: GameIdentity
+) -> None:
+    with patch.object(adapter, "_fetch_url", return_value=_JSON_OK):
+        results = adapter.search(identity, ["boxart", "screenshot", "wheel"])
+    assert all("devpassword" not in c.url for c in results)
+    assert all("test-pass" not in c.url for c in results)
+    assert all(c.url.startswith("https://") for c in results)

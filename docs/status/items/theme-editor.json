@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-EDITOR",
+  "title": "Editor e marketplace de temas",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/domain/theme_marketplace.py",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/qml/check_theme_editor_aura.qml",
+    "tests/unit/test_theme_editor.py",
+    "tests/unit/test_theme_marketplace.py"
+  ],
+  "dependsOn": ["SZ-THEME-AURA"],
+  "knownGaps": ["GAP-G37"],
+  "acceptanceCriteria": [
+    "Edicao e catalogo de temas possuem contratos e testes unitarios.",
+    "Instalacao de tema continua reversivel e nao altera o host diretamente."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_editor.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_aura.qml",
+      "command": "make check (abrir→editar→preview→cancelar→reabrir)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Resolver o gap G37 (preview de sessoes criadas sem resolver a cadeia extends) e cobrir importacao/rollback em uma vertical integrada de UI.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Preview bridge integrado (commit 8e1aa39, origem 4e02d50): o painel alimenta o ThemeBridge com o objeto QML completo do tema (themeId/themeVersion/resolved/effects) via editorPreviewObject, em vez de um dict de tokens; harness offscreen prova a sequencia vertical. G37 registra a limitacao preexistente de preview sem cadeia extends completa."
+}

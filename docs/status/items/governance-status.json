@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-GOVERNANCE-STATUS",
+  "title": "Estado verificavel e coordenacao de trabalho",
+  "domain": "governance",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "AGENTS.md",
+    "Makefile",
+    "docs/12-roadmap/EXECUTION-TO-1.0.md",
+    "docs/EXPANSION-LEDGER.md",
+    "docs/KNOWN-GAPS.md",
+    "docs/WORKLOG.md",
+    "docs/status/README.md",
+    "docs/status/project-item-v1.schema.json",
+    "tools/project_status.py",
+    "tests/unit/test_project_status.py"
+  ],
+  "scopeDigest": "227ea7b60db626d38dd140491b9c1ab9fd4f6d3265ba96d8144e8d48f2c53038",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Cada capacidade possui cinco eixos de estado independentes.",
+    "Mudanca sem item responsavel reprova no gate local.",
+    "Escopos exclusivos ativos nao podem se sobrepor.",
+    "As visoes Markdown sao reproduzidas pelo catalogo JSON."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_project_status.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Integrar este catalogo antes de abrir a proxima frente paralela.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "Este item substitui o uso de documentos historicos como painel de estado."
+}

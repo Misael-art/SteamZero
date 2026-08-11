@@ -223,3 +223,108 @@ def test_default_fallback_has_key_kinds() -> None:
     assert "video" in _DEFAULT_FALLBACK
     assert "fanart" in _DEFAULT_FALLBACK
     assert all(len(v) >= 1 for v in _DEFAULT_FALLBACK.values())
+
+
+# -- isolamento: exceção não-SteamZeroError não derruba o fallback -----------
+
+
+def test_search_best_survives_non_steamzero_provider_exception() -> None:
+    registry = ProviderRegistry()
+
+    class BoomProvider:
+        @property
+        def name(self) -> str:
+            return "boom"
+
+        def supported_kinds(self) -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        def supported_platforms(self) -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(self, identity, media_kinds, region_priority=None):
+            raise RuntimeError("vazamento interno")
+
+    class OkProvider:
+        @property
+        def name(self) -> str:
+            return "ok"
+
+        def supported_kinds(self) -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        def supported_platforms(self) -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(self, identity, media_kinds, region_priority=None):
+            return [
+                MediaCandidate(
+                    url="https://example.com/ok.png",
+                    media_kind="boxart",
+                    provider="ok",
+                    confidence=0.9,
+                )
+            ]
+
+    registry.register(BoomProvider())
+    registry.register(OkProvider())
+    identity = GameIdentity(game_id="g1", title="Test", platform_slug="switch")
+    result = registry.search_best(identity, "boxart")
+    assert result is not None
+    assert result.provider == "ok"
+
+
+def test_search_all_survives_non_steamzero_provider_exception() -> None:
+    registry = ProviderRegistry()
+
+    class BoomProvider:
+        @property
+        def name(self) -> str:
+            return "boom"
+
+        def supported_kinds(self) -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        def supported_platforms(self) -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(self, identity, media_kinds, region_priority=None):
+            raise ValueError("shape inesperado")
+
+    class OkProvider:
+        @property
+        def name(self) -> str:
+            return "ok"
+
+        def supported_kinds(self) -> frozenset[str]:
+            return frozenset({"boxart"})
+
+        def supported_platforms(self) -> frozenset[str]:
+            return frozenset({"switch"})
+
+        def search(self, identity, media_kinds, region_priority=None):
+            return [
+                MediaCandidate(
+                    url="https://example.com/ok.png",
+                    media_kind="boxart",
+                    provider="ok",
+                    confidence=0.9,
+                )
+            ]
+
+    registry.register(BoomProvider())
+    registry.register(OkProvider())
+    identity = GameIdentity(game_id="g1", title="Test", platform_slug="switch")
+    result = registry.search_all(identity, ["boxart"])
+    assert result["boxart"][0].provider == "ok"
+
+
+def test_fallback_order_is_deterministic_across_calls() -> None:
+    registry = ProviderRegistry()
+    names = ["alpha", "beta", "gamma"]
+    for name in names:
+        registry.register(FakeProvider(name, frozenset({"boxart"}), frozenset({"switch"})))
+    registry.fallback_order["boxart"] = ["gamma", "alpha", "beta"]
+    first = [p.name for p in registry.providers_for_kind("boxart")]
+    for _ in range(5):
+        assert [p.name for p in registry.providers_for_kind("boxart")] == first

@@ -99,10 +99,7 @@ class ProviderRegistry:
         >= ``min_confidence``.
         """
         for provider in self.providers_for_kind(media_kind):
-            try:
-                candidates = provider.search(identity, [media_kind], region_priority)
-            except SteamZeroError:
-                continue
+            candidates = _search_provider(provider, identity, [media_kind], region_priority)
             best: MediaCandidate | None = None
             for c in candidates:
                 if c.media_kind != media_kind:
@@ -132,12 +129,27 @@ class ProviderRegistry:
         for kind in kinds:
             all_candidates: list[MediaCandidate] = []
             for provider in self.providers_for_kind(kind):
-                try:
-                    all_candidates.extend(provider.search(identity, [kind], region_priority))
-                except SteamZeroError:
-                    continue
+                all_candidates.extend(_search_provider(provider, identity, [kind], region_priority))
             filtered = [c for c in all_candidates if c.confidence >= min_confidence]
             filtered.sort(key=lambda c: c.confidence, reverse=True)
             if filtered:
                 result[kind] = filtered
         return result
+
+
+def _search_provider(
+    provider: MediaProviderPort,
+    identity: GameIdentity,
+    media_kinds: list[str],
+    region_priority: list[str] | None,
+) -> list[MediaCandidate]:
+    """Chamada isolada a um provider: falha vira ausência, nunca exceção.
+
+    ``SteamZeroError`` (falha classificada) e falhas imprevistas de
+    implementação são convertidas em lista vazia para que a cadeia de
+    fallback prossiga com os demais providers.
+    """
+    try:
+        return provider.search(identity, media_kinds, region_priority)
+    except Exception:
+        return []

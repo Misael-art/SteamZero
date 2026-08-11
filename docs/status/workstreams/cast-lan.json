@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-CAST-LAN",
+  "item": "SZ-CAST-LAN",
+  "branch": "codex/fix-cast-g32-ipc",
+  "baseRef": "e1e2c73",
+  "owner": "coordinator",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/cast_engine.py",
+    "src/steamzero/domain/screencast.py",
+    "tests/integration/test_cast_engine_ipc.py"
+  ],
+  "sharedPaths": ["docs/WORKLOG.md"],
+  "nextAction": "Integrado na main via codex/integrate-aura-cast-scraping; prova em dois dispositivos LAN segue pendente de hardware.",
+  "updatedAt": "2026-08-11"
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-GOVERNANCE",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/governance-status-model",
+  "baseRef": "e1e2c73",
+  "owner": "coordinator",
+  "state": "closed",
+  "exclusivePaths": ["docs/status", "tools/project_status.py", "tests/unit/test_project_status.py"],
+  "sharedPaths": ["AGENTS.md", "Makefile", "docs/WORKLOG.md"],
+  "nextAction": "Integrado na main via codex/integrate-aura-cast-scraping (commit 8cf182c).",
+  "updatedAt": "2026-08-11"
+}

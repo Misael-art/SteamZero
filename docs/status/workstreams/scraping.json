@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-SCRAPING",
+  "item": "SZ-MEDIA-SCRAPING",
+  "branch": "codex/scraping-adapters-hardening",
+  "baseRef": "e1e2c73",
+  "owner": "coordinator",
+  "state": "closed",
+  "exclusivePaths": [
+    "src/steamzero/adapters/scraping",
+    "src/steamzero/domain/scraping_providers.py",
+    "tests/unit/scraping"
+  ],
+  "sharedPaths": ["tests/fixtures/scraping", "docs/WORKLOG.md"],
+  "nextAction": "Integrado na main via codex/integrate-aura-cast-scraping; validacao real de providers em ambiente controlado segue pendente de operador.",
+  "updatedAt": "2026-08-11"
+}

@@ -1,5 +1,10 @@
 # SteamZero Expansion Ledger
 
+> **Backlog e intenções, não status vigente.** Consulte
+> [`docs/STATUS.md`](STATUS.md) antes de afirmar estágio, integração ou
+> certificação de uma capacidade. O catálogo de status preserva os identificadores
+> `LEDGER-*` abaixo como dependências/riscos quando ainda forem aplicáveis.
+
 Fonte de governança: prompt mestre de expansão recebido diretamente do operador
 em 2026-07-23. A base é `c94d249`, tip limpo de
 `codex/correcao-midia-credenciais-diretorios` e descendente de `6b10db5`.

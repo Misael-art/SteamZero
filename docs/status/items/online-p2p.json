@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-ONLINE-P2P",
+  "title": "Jogo online ponto a ponto",
+  "domain": "online",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "dependsOn": [],
+  "knownGaps": ["LEDGER-A6"],
+  "acceptanceCriteria": [
+    "Sessao, convite, NAT e encerramento seguro possuem protocolo versionado.",
+    "O recurso fica atras de feature flag e preserva jogo local quando indisponivel."
+  ],
+  "evidence": [],
+  "nextAction": "Definir ADR de transporte, identidade, abuso e compatibilidade de emuladores.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "Nao ha implementacao P2P no checkout integrado."
+}

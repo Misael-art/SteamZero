@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-CAST-LAN",
+  "title": "Partilha de ecra em rede local",
+  "domain": "casting",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/cast_engine.py",
+    "src/steamzero/adapters/cast_orchestrator.py",
+    "src/steamzero/domain/screencast.py",
+    "tests/integration/test_cast_engine_ipc.py",
+    "tests/unit/test_cast_orchestrator.py",
+    "tests/unit/test_screencast.py"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Pareamento e ciclo da sessao de cast possuem contratos testados.",
+    "Falhas do pipeline degradam com diagnostico, sem travar a sessao local."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_cast_engine_ipc.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_cast_engine_ipc.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_cast_engine_ipc.py",
+      "command": "triade flaky x50 (test_start_session_already_running, test_pause_resume_with_pipeline, test_concurrent_start_sessions_single_session): for i in $(seq 1 50); do .venv/bin/python -m pytest tests/integration/test_cast_engine_ipc.py -k 'start_session_already_running or pause_resume_with_pipeline or concurrent_start_sessions' -q; done",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Prova fim a fim em dois dispositivos LAN reais (operador) e certificacao de hardware.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "GAP-G32 fechado em 2026-08-11 (commit 2a5c1df): causa raiz comprovada (barreira start_done liberada em todo caminho terminal + LISTEN_BACKLOG=128; accept so encerra em erro fatal); teste concorrente reprova pre-correcao via stash; tríade flaky 50/50 iteracoes verdes; nenhum sleep/retry/skip/xfail adicionado nem timeout aumentado. Nao existe certificacao fim a fim em hardware."
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-ESDE",
+  "title": "Importacao de temas ES-DE",
+  "domain": "frontends",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "ready",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/theme_import_esde.py",
+    "tests/unit/test_theme_import_esde.py"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Importador converte o contrato de tema ES-DE sem depender do runtime externo.",
+    "Casos invalidos e valores ausentes possuem teste unitario."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_import_esde.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_esde.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Promover a verificacao integrada somente junto do frontend que consome o tema.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-10",
+  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host."
+}

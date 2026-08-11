@@ -5,6 +5,9 @@
 
 Protocolo IPC: socket Unix, JSON por linha (delimitado por ``\n``).
 Campo ``version: 1`` em toda mensagem. Comandos idempotentes.
+Eventos de controle (CAPTURE_READY, OFFER_CREATED, CANDIDATE, ...) e
+respostas a comandos se intercalam na mesma conexão; o cliente distingue
+pelo campo ``type`` (respostas terminam em ``_OK`` ou são ``error``).
 
 Uso:
     python3 cast_engine.py --socket /tmp/cast-engine.sock
@@ -12,6 +15,7 @@ Uso:
 
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import os
@@ -48,6 +52,10 @@ POLL_INTERVAL = 0.05
 HEARTBEAT_SECONDS = 5
 MAX_MESSAGE_BYTES = 65536
 DEFAULT_VIDEO_BITRATE_KBPS = 4000
+# G32: o backlog antigo (5) era menor que o número de conexões simultâneas
+# razoáveis; com a fila cheia, connect() de clientes concorrentes falhava com
+# EAGAIN e a conexão era descartada (observado em stress de 8 conexões: 10/10).
+LISTEN_BACKLOG = 128
 
 
 def _nonnegative_int(value: Any) -> int | None:
@@ -599,6 +607,7 @@ class SessionState:
     portal_phase: str = PORTAL_PHASE_IDLE
     portal_cancel: threading.Event | None = None
     portal_thread: threading.Thread | None = None
+    start_done: threading.Event | None = None
     generation: int = 0
     control_conn: socket.socket | None = None
 
@@ -622,7 +631,7 @@ class CastEngine:
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             server.bind(self._socket_path)
-            server.listen(5)
+            server.listen(LISTEN_BACKLOG)
             self._server = server
             _log.info("engine ready on %s", self._socket_path)
             server.settimeout(POLL_INTERVAL)
@@ -631,8 +640,15 @@ class CastEngine:
                     conn, _addr = server.accept()
                 except TimeoutError:
                     continue
-                except OSError:
-                    break
+                except OSError as exc:
+                    # G32: erro transitório (ex.: pressão momentânea de fds)
+                    # não derruba o listener; apenas erros fatais encerram o
+                    # loop. Antes, qualquer OSError no accept matava o engine.
+                    if exc.errno in (errno.EBADF, errno.EINVAL, errno.ENOTSOCK):
+                        _log.error("listener fatal: %s", exc)
+                        break
+                    _log.warning("listener transient error: %s", exc)
+                    continue
                 t = threading.Thread(target=self._handle_client, args=(conn,), daemon=True)
                 t.start()
         finally:
@@ -770,6 +786,9 @@ class CastEngine:
             # nessa janela criava uma segunda sessão em vez de responder
             # "already running".
             if self._session.running or self._session.portal_phase != PORTAL_PHASE_IDLE:
+                # G32: resposta reflete o estado REALMENTE commitado — antes
+                # dizia running=True mesmo com a sessão ainda em PENDING.
+                running = self._session.running
                 self._send(
                     conn,
                     {
@@ -777,42 +796,57 @@ class CastEngine:
                         "type": "START_SESSION_OK",
                         "seq": seq,
                         "detail": "already running",
-                        "running": True,
-                        "ready": False,
+                        "running": running,
+                        "ready": bool(running),
                     },
                 )
                 return
             cancel = threading.Event()
+            start_done = threading.Event()
             generation = self._session.generation + 1
             self._session = SessionState(
                 control_conn=conn,
                 portal_phase=PORTAL_PHASE_PENDING,
                 portal_cancel=cancel,
+                start_done=start_done,
                 generation=generation,
             )
-        # Estado commitado antes de o cliente prosseguir.
-        self._send(
-            conn,
-            {
-                "version": IPC_VERSION,
-                "type": "START_SESSION_OK",
-                "seq": seq,
-                "running": False,
-                "portal_phase": PORTAL_PHASE_PENDING,
-            },
-        )
+        # G32: a resposta só sai DEPOIS do commit real (running=True + pipeline
+        # construído na thread do portal) ou do encerramento da tentativa
+        # (falha/stop). Antes, o OK era enviado imediatamente com
+        # running=False/portal_phase=pending — resposta pré-commit: o cliente
+        # que venceu lia "sucesso" enquanto a sessão ainda não existia, e
+        # concorrentes liam running=True antes do commit. A barreira é
+        # liberada em TODO caminho terminal (commit, falha do portal, falha do
+        # pipeline, teardown/stop), então a espera nunca trava.
         try:
             self._start_portal_async(scope, audio, conn, generation, cancel)
             _log.info("portal session pending (scope=%s, audio=%s)", scope, audio)
         except Exception as exc:
             _log.error("start portal failed: %s", exc)
+            start_done.set()
+        start_done.wait()
+        with self._lock:
+            committed = self._session.generation == generation and self._session.running
+        if committed:
+            self._send(
+                conn,
+                {
+                    "version": IPC_VERSION,
+                    "type": "START_SESSION_OK",
+                    "seq": seq,
+                    "running": True,
+                    "ready": True,
+                },
+            )
+        else:
             self._send(
                 conn,
                 {
                     "version": IPC_VERSION,
                     "type": "error",
                     "seq": seq,
-                    "detail": str(exc),
+                    "detail": "session-not-started",
                 },
             )
 
@@ -848,6 +882,8 @@ class CastEngine:
                     if self._session.generation != generation:
                         return
                     self._session.portal_phase = PORTAL_PHASE_IDLE
+                    if self._session.start_done is not None:
+                        self._session.start_done.set()
                 event_type = {
                     "capture-denied": "CAPTURE_DENIED",
                     "capture-cancelled": "CAPTURE_CANCELLED",
@@ -862,6 +898,15 @@ class CastEngine:
                 )
             except Exception:
                 _log.exception("portal worker failed")
+                with self._lock:
+                    if self._session.generation == generation:
+                        # G32: falha inesperada do worker também libera a
+                        # barreira e devolve o estado a IDLE — antes a sessão
+                        # ficava presa em PENDING e todo START_SESSION seguinte
+                        # respondia "already running" para sempre.
+                        self._session.portal_phase = PORTAL_PHASE_IDLE
+                        if self._session.start_done is not None:
+                            self._session.start_done.set()
                 self._send_control_event(
                     {
                         "version": IPC_VERSION,
@@ -1015,6 +1060,8 @@ class CastEngine:
             self._session.pipeline = pipeline
             self._session.running = True
             self._session.start_time = time.monotonic()
+            if self._session.start_done is not None:
+                self._session.start_done.set()
         _log.info("pipeline started")
 
     def _send_control_event(self, payload: dict[str, Any]) -> None:
@@ -1053,6 +1100,8 @@ class CastEngine:
                 return
             if state.portal_cancel is not None:
                 state.portal_cancel.set()
+            if state.start_done is not None:
+                state.start_done.set()
             self._session = SessionState(
                 generation=state.generation + 1,
                 control_conn=state.control_conn,

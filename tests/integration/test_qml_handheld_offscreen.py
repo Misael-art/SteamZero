@@ -163,6 +163,8 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_high_contrast.qml",
         # Prova Image.Ready de cada asset empacotado, não apenas o caminho.
         "check_packaged_assets.qml",
+        # Identidade AURA no editor: preview no ThemeBridge, cancelar restaura.
+        "check_theme_editor_aura.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:
