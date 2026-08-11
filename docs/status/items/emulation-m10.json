@@ -14,9 +14,11 @@
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
-  "scopeDigest": "585e353ac4be39251c19965f052929149f1f04c3b4ca472a8aee5e1913939f12",
+  "scopeDigest": "c2e87688b7700e190392f8c9b859ce192c507700ebb0e3d9ccbbe8ec3ebae831",
   "dependsOn": [],
-  "knownGaps": ["DEBT-A7"],
+  "knownGaps": [
+    "DEBT-A7"
+  ],
   "acceptanceCriteria": [
     "Cada emulador conclui install, verify, rollback e roll-forward na VM.",
     "O restore Btrfs e confirmado pela evidencia de cada ciclo.",
@@ -37,7 +39,9 @@
     }
   ],
   "nextAction": "Repetir somente RetroArch/minimal apos r35 e registrar o payload se a rede falhar.",
-  "activeWorkstreams": ["WS-2026-08-M10"],
+  "activeWorkstreams": [
+    "WS-2026-08-M10"
+  ],
   "updatedAt": "2026-08-10",
   "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado."
 }

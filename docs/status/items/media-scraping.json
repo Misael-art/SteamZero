@@ -4,7 +4,7 @@
   "id": "SZ-MEDIA-SCRAPING",
   "title": "Metadados e midia por scraping controlado",
   "domain": "media",
-  "implementation": "partial",
+  "implementation": "complete",
   "integration": "integrated",
   "verification": "unit",
   "operation": "degraded",
@@ -12,6 +12,7 @@
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "src/steamzero/domain/scraping_providers.py",
+    "tests/fixtures/scraping",
     "tests/unit/scraping",
     "tests/unit/test_scraping_provider_catalog.py"
   ],
@@ -24,13 +25,25 @@
   "evidence": [
     {
       "kind": "test",
-      "reference": "tests/unit/scraping/test_registry.py",
+      "reference": "tests/unit/scraping",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/scraping tests/unit/test_scraping_provider_catalog.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/scraping/test_cache.py",
+      "command": "concorrencia/cache x50 (com tests/unit/scraping/test_dispatcher.py): for i in $(seq 1 50); do .venv/bin/python -m pytest tests/unit/scraping/test_cache.py tests/unit/scraping/test_dispatcher.py -q; done",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/scraping/conftest.py",
+      "command": "guarda de ausencia de rede (autouse _block_real_network): .venv/bin/python -m pytest tests/unit/scraping -q",
       "result": "passed"
     }
   ],
-  "nextAction": "Executar validacao real de providers em ambiente controlado sem promover scraping a dado confiavel por padrao.",
+  "nextAction": "Executar validacao real de providers em ambiente controlado (operador, com credenciais) sem promover scraping a dado confiavel por padrao.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-10",
-  "notes": "A base local esta testada; qualidade e licenciamento da midia externa ainda exigem validacao operacional."
+  "updatedAt": "2026-08-11",
+  "notes": "Endurecimento integrado (commit 30d1247, origem 5adb3db): transporte, cache e classificacao de falhas dos adapters; credenciais nunca persistem no cache; circuito de quota e fallback testados; 144 testes unitarios passed. Qualidade e licenciamento da midia externa ainda exigem validacao operacional."
 }

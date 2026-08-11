@@ -9,6 +9,6 @@
   "state": "closed",
   "exclusivePaths": ["docs/status", "tools/project_status.py", "tests/unit/test_project_status.py"],
   "sharedPaths": ["AGENTS.md", "Makefile", "docs/WORKLOG.md"],
-  "nextAction": "Aguardar integracao do commit atomico de governanca.",
-  "updatedAt": "2026-08-10"
+  "nextAction": "Integrado na main via codex/integrate-aura-cast-scraping (commit 8cf182c).",
+  "updatedAt": "2026-08-11"
 }

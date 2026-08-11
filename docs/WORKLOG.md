@@ -6254,3 +6254,38 @@ bigsudo /usr/bin/python3 tools/install_host.py install \
   --requirements release-artifacts/a43-01b32641021f/requirements-runtime.lock \
   --wheelhouse release-artifacts/a43-01b32641021f/dist/runtime-wheelhouse \
   --source-commit 01b32641021f7bc3af3d5785f698240651de5bd4
+
+## 2026-08-11 — Integração — AURA/editor + cast G32 + scraping endurecido na main
+
+Integração das quatro frentes concluídas (governança, cast G32, scraping,
+AURA/editor) em `origin/main` (3396154), por cherry-pick na branch
+`codex/integrate-aura-cast-scraping` — sem merge cego: `origin/main` vence em
+M10/M11/lifecycle/VM harness/CLI/registry/services/schemas, e cada frente só
+traz o próprio escopo (verificado em diff: 47 arquivos, +3197/−109, sem
+P2P/RetroAchievements/cast-internet). Todas as frentes nasceram da base
+antiga `e1e2c73` (merge-bases conferidos). Ordem aplicada e commits resultantes:
+
+- `8cf182c` docs(governance) ← `29ac995` (bloco WORKLOG do commit original
+  descartado no conflito — mantido o do main, fechamento único neste bloco)
+- `2a5c1df` fix(cast) ← `0ae3702` (G32: barreira `start_done` liberada em
+  todo caminho terminal; `LISTEN_BACKLOG=128`; accept só encerra em erro
+  fatal; contrato intercalado por `type`)
+- `30d1247` fix(scraping) ← `5adb3db` (transporte, cache e classificação de
+  falhas endurecidos; credenciais nunca persistem no cache)
+- `2f34f0f` feat(themes) ← `5616d0c` (identidade AURA builtin escuro)
+- `8e1aa39` fix(ui) ← `4e02d50` (preview do editor alimenta o ThemeBridge
+  com o objeto QML completo do tema)
+- `f9ec79a` test(qml) ← `ac749b8` (harness do editor AURA no gate offscreen)
+- `5d1cb93` (WORKLOG-only) **não** aplicado — substituído por este bloco
+
+Harmonização de governança nesta branch: GAP-G32 fechado em 2026-08-11 (causa
+raiz comprovada; teste concorrente reprova pré-correção via stash; tríade
+flaky 50/50 iterações verdes, sem sleep/retry/skip/xfail nem timeout maior);
+novo GAP-G37 registrado (preexistente: preview de sessões criadas não resolve
+a cadeia `extends` — fora do escopo); itens SZ-CAST-LAN/SZ-MEDIA-SCRAPING/
+SZ-THEME-AURA/SZ-THEME-EDITOR atualizados com evidências e próximas ações;
+workstreams das quatro frentes marcados `closed`; digests e visões
+regenerados (STATUS.md/ACTIVE-WORK.md). Suíte integral 4327 passed; gates
+locais verdes. Nenhuma ação de host, release ou push foi executada — a
+branch segue local, sem instalação e sem alteração de estado do host (host
+continua em 0.1.0a42-39bd325cee60; a43 preparada, não instalada).
