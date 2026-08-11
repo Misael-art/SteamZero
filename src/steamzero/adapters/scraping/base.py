@@ -17,13 +17,16 @@ from dataclasses import dataclass, field
 
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.fs import hash_bytes
-from steamzero.core.net import NetworkFailure, fetch_bytes
+from steamzero.core.net import HttpClient, NetworkFailure, fetch_bytes
 from steamzero.ports import GameIdentity, MediaCandidate
 
 _MAGIC_BY_PNG = b"\x89PNG\r\n\x1a\n"
 _MAGIC_JPEG = b"\xff\xd8\xff"
 _MAGIC_WEBP = b"RIFF"
+_MAGIC_MP4 = b"ftyp"
+_MAGIC_PDF = b"%PDF"
 _MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
+_DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
 class TokenBucket:
@@ -96,8 +99,14 @@ class BaseMediaProvider(ABC):
     - ``_normalize_platform()``: conversão de slug SteamZero para slug do provider.
     """
 
-    def __init__(self, *, rate_limiter: RateLimiter | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        rate_limiter: RateLimiter | None = None,
+        client: HttpClient | None = None,
+    ) -> None:
         self._rate_limiter = rate_limiter or RateLimiter(provider=self.name)
+        self._client = client
 
     @property
     @abstractmethod
@@ -122,10 +131,26 @@ class BaseMediaProvider(ABC):
         if limiter is not None:
             limiter.acquire()
 
-    def _fetch_url(self, url: str, max_bytes: int = _MAX_DOWNLOAD_BYTES) -> bytes:
-        """Baixa conteúdo de ``url`` com validação de segurança."""
+    def _fetch_url(
+        self,
+        url: str,
+        max_bytes: int = _MAX_DOWNLOAD_BYTES,
+        *,
+        timeout_seconds: float | None = None,
+    ) -> bytes:
+        """Baixa conteúdo de ``url`` com validação de segurança.
+
+        Usa o transporte injetado (``client``) quando disponível — nunca o
+        transport real em testes. ``timeout_seconds`` é limitado e observável
+        pelo transport.
+        """
         try:
-            return fetch_bytes(url, max_bytes=max_bytes)
+            return fetch_bytes(
+                url,
+                max_bytes=max_bytes,
+                timeout_seconds=timeout_seconds or _DEFAULT_TIMEOUT_SECONDS,
+                client=self._client,
+            )
         except NetworkFailure as exc:
             if exc.status == 429:
                 raise SteamZeroError(
@@ -134,6 +159,11 @@ class BaseMediaProvider(ABC):
             if exc.status == 403:
                 raise SteamZeroError(
                     "E-SCRAPE-QUOTA-EXCEEDED", detail=f"{self.name}: quota/cota excedida (HTTP 403)"
+                ) from exc
+            if exc.status == 401:
+                raise SteamZeroError(
+                    "E-SCRAPE-CREDENTIAL-REJECTED",
+                    detail=f"{self.name}: credencial recusada (HTTP 401)",
                 ) from exc
             if exc.status == 404:
                 raise SteamZeroError(
@@ -146,6 +176,11 @@ class BaseMediaProvider(ABC):
                 "E-NET-CONTENT-LIMIT",
             }:
                 raise SteamZeroError("E-SCRAPE-DOWNLOAD-FAILED", detail=exc.detail) from exc
+            if exc.code == "E-NET-TIMEOUT":
+                raise SteamZeroError(
+                    "E-SCRAPE-OFFLINE",
+                    detail=f"{self.name}: tempo limite de resposta excedido",
+                ) from exc
             raise SteamZeroError(
                 "E-SCRAPE-PROVIDER-UNREACHABLE",
                 detail=f"{self.name}: {exc.detail}",
@@ -153,7 +188,17 @@ class BaseMediaProvider(ABC):
 
     @staticmethod
     def _validate_media(data: bytes, expected_kind: str | None = None) -> str | None:
-        """Valida magic bytes e retorna extensão ou None se inválido."""
+        """Valida magic bytes e retorna extensão ou None se inválido.
+
+        ``expected_kind`` restringe a assinatura: ``video`` exige container MP4,
+        ``manual`` exige PDF; os demais kinds (imagens) aceitam PNG/JPEG/WEBP.
+        A decisão é sempre por assinatura do conteúdo, nunca por extensão ou
+        content-type declarado.
+        """
+        if expected_kind == "video":
+            return ".mp4" if len(data) >= 8 and data[4:8] == _MAGIC_MP4 else None
+        if expected_kind == "manual":
+            return ".pdf" if data.startswith(_MAGIC_PDF) else None
         if len(data) < 4:
             return None
         if data.startswith(_MAGIC_BY_PNG):
@@ -163,6 +208,24 @@ class BaseMediaProvider(ABC):
         if data.startswith(_MAGIC_WEBP) and data[8:12] == b"WEBP":
             return ".webp"
         return None
+
+    @staticmethod
+    def _normalize_media_url(raw: str) -> str | None:
+        """Normaliza URL de mídia remota ou recusa esquemas inesperados.
+
+        Aceita apenas HTTPS: promove ``http://`` e ``//host/...`` para HTTPS e
+        recusa ``file://``, ``ftp://``, ``data:`` e qualquer outro esquema.
+        """
+        url = raw.strip()
+        if not url:
+            return None
+        if url.startswith("//"):
+            url = "https:" + url
+        elif url.startswith("http://"):
+            url = "https://" + url[len("http://") :]
+        if not url.startswith("https://"):
+            return None
+        return url
 
     @staticmethod
     def _media_hash(data: bytes) -> str:
