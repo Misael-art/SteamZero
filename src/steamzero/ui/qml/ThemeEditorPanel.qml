@@ -32,17 +32,18 @@ Rectangle {
     property bool editorReadOnly: false
     property bool editorDirty: false
     property var editorThemeList: []
+    // Objeto QML completo do tema (themeId/themeVersion/resolved/effects), na
+    // forma exata de ``to_theme_qml_object``. O ThemeBridge espera esse formato
+    // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
+    // fazia o preview cair no fallback claro e publicar binding warnings.
+    property var editorPreviewObject: null
 
     property var _previewBridge: ThemeBridge {
-        _source: editorTokens && Object.keys(editorTokens).length > 0
-            ? {
-                "schemaVersion": 1,
-                "themeId": editorManifest.id || "editing",
-                "themeVersion": editorManifest.version || "1.0.0",
-                "highContrast": false,
-                "reducedMotion": false,
-                "resolved": editorTokens
-            } : null
+        // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
+        // tema (themeId/themeVersion/resolved/effects), como o Main.qml entrega
+        // o ``dashboard.resolved``. Alimentá-lo com o dicionário de tokens puro
+        // fazia o preview cair no fallback claro e publicar binding warnings.
+        _source: panel.editorPreviewObject ? {"resolved": panel.editorPreviewObject} : null
     }
 
     function refreshThemeList() {
@@ -62,6 +63,7 @@ Rectangle {
     function _openEditor(sessionId, manifest, preview) {
         panel.editorSessionId = sessionId
         panel.editorManifest = manifest
+        panel.editorPreviewObject = preview
         panel.editorTokens = preview && preview.resolved ? preview.resolved : {}
         panel.editorDirty = false
         panel.editorReadOnly = manifest.readOnly === true
@@ -73,6 +75,7 @@ Rectangle {
         }
         panel.editorSessionId = ""
         panel.editorManifest = {}
+        panel.editorPreviewObject = null
         panel.editorTokens = {}
         panel.editorDirty = false
         panel.editorReadOnly = false
@@ -418,8 +421,10 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "color", values: newValues},
                                 function(r) {
-                                    if (r.preview && r.preview.resolved)
+                                    if (r.preview && r.preview.resolved) {
+                                        panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
+                                    }
                                 })
                         }
                     }
@@ -440,8 +445,10 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "geometry", values: newValues},
                                 function(r) {
-                                    if (r.preview && r.preview.resolved)
+                                    if (r.preview && r.preview.resolved) {
+                                        panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
+                                    }
                                 })
                         }
                     }
@@ -462,8 +469,10 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "typography", values: newValues},
                                 function(r) {
-                                    if (r.preview && r.preview.resolved)
+                                    if (r.preview && r.preview.resolved) {
+                                        panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
+                                    }
                                 })
                         }
                     }
@@ -484,8 +493,10 @@ Rectangle {
                             panel.requestAction("theme.editor.set-tokens",
                                 {sessionId: panel.editorSessionId, category: "motion", values: newValues},
                                 function(r) {
-                                    if (r.preview && r.preview.resolved)
+                                    if (r.preview && r.preview.resolved) {
+                                        panel.editorPreviewObject = r.preview
                                         panel.editorTokens = r.preview.resolved
+                                    }
                                 })
                         }
                     }
