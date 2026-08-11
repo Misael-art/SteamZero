@@ -1,0 +1,6 @@
+{
+  "violates": "failed-status-requires-error",
+  "explains": "status failed exige error",
+  "failsAt": "/",
+  "failsWith": "required"
+}

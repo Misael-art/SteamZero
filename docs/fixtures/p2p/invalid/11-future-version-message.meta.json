@@ -1,0 +1,6 @@
+{
+  "violates": "schema-version-const-1",
+  "explains": "Mensagem de versao futura desconhecida e recusada: schemaVersion diferente de 1 nao pode ser interpretada como v1.",
+  "failsAt": "/schemaVersion",
+  "failsWith": "const"
+}

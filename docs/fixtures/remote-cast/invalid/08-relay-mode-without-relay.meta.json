@@ -1,0 +1,6 @@
+{
+  "violates": "relay-mode-requires-relay",
+  "explains": "modo relay exige relay e proibe direct",
+  "failsAt": "/transport",
+  "failsWith": "required"
+}

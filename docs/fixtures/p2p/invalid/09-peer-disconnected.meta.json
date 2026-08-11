@@ -1,0 +1,6 @@
+{
+  "violates": "participants-min-2",
+  "explains": "Peer desconectado deixa a sessao sem numero valido de participantes; snapshot ativo com um participante e impossivel.",
+  "failsAt": "/sync/participants",
+  "failsWith": "minItems"
+}

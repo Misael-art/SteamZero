@@ -1,0 +1,6 @@
+{
+  "violates": "romhash-algorithm-sha256",
+  "explains": "O hash de jogo compara so digests sha256; sha1 nao e aceito e nunca deve ser enviado ao peer.",
+  "failsAt": "/game/romHash/algorithm",
+  "failsWith": "const"
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "unknown-future-fields-rejected",
+  "explains": "envelope fechado: campos de versao futura exigem v2",
+  "failsAt": "/",
+  "failsWith": "additionalProperties"
+}

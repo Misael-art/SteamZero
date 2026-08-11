@@ -1,0 +1,6 @@
+{
+  "violates": "no-token-in-payload",
+  "explains": "Token real de RetroAchievements so existe no keyring, nunca no envelope persistido.",
+  "failsAt": "/account",
+  "failsWith": "additionalProperties"
+}

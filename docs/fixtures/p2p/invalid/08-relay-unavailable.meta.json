@@ -1,0 +1,6 @@
+{
+  "violates": "relay-requires-relay-id",
+  "explains": "Modo relay exige relayId opaco; ausencia significa relay indisponivel, que deve falhar com RELAY_UNAVAILABLE.",
+  "failsAt": "/transport",
+  "failsWith": "required"
+}

@@ -1,0 +1,6 @@
+{
+  "violates": "attempt-limit-5",
+  "explains": "Numero excessivo de tentativas de conexao; o limite contratual e 5 e o excedente deve falhar com TOO_MANY_ATTEMPTS.",
+  "failsAt": "/transport/attemptCount",
+  "failsWith": "maximum"
+}

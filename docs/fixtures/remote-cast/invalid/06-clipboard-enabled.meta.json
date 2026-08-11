@@ -1,0 +1,6 @@
+{
+  "violates": "clipboard-forbidden-by-default",
+  "explains": "clipboard e proibido por padrao (const false)",
+  "failsAt": "/consent/permissions/clipboard",
+  "failsWith": "const"
+}

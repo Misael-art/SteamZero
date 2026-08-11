@@ -1,0 +1,6 @@
+{
+  "violates": "no-sensitive-payload",
+  "explains": "payload sensivel (SDP integral com IP/candidatos ICE) e rejeitado; logs nunca persistem credenciais de sessao",
+  "failsAt": "/",
+  "failsWith": "additionalProperties"
+}

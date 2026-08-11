@@ -1,0 +1,6 @@
+{
+  "violates": "core-version-semver",
+  "explains": "Versao de core incompativel deve ser reportada com semver exato M.N.P; '1.17' e ambiguo.",
+  "failsAt": "/game/core/version",
+  "failsWith": "pattern"
+}

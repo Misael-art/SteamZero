@@ -1,0 +1,6 @@
+{
+  "violates": "outbox-requires-unlock-state",
+  "explains": "Sequencia de estados impossivel: outbox so existe para unlocked-local/pending-sync; estado locked com outbox e contradicao.",
+  "failsAt": "/state",
+  "failsWith": "enum"
+}

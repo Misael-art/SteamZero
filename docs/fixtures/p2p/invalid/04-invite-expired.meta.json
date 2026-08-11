@@ -1,0 +1,6 @@
+{
+  "violates": "expired-invite-terminal",
+  "explains": "Convite expirado nao pode continuar em estado inviting; a sessao deve encerrar (failed/cancelled/ended).",
+  "failsAt": "/state",
+  "failsWith": "enum"
+}

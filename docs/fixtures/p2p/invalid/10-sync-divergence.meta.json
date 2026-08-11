@@ -1,0 +1,6 @@
+{
+  "violates": "divergence-non-negative",
+  "explains": "Divergencia de sincronizacao nunca e negativa; valor negativo e estado inconsistente que deve cair para SYNC_DIVERGENCE.",
+  "failsAt": "/sync/divergenceMs",
+  "failsWith": "minimum"
+}

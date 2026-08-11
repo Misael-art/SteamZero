@@ -1,0 +1,6 @@
+{
+  "violates": "media-state-requires-both-parties-consent",
+  "explains": "estado de midia exige consentimento de emissor e receptor",
+  "failsAt": "/consent/grantedByReceiver",
+  "failsWith": "const"
+}

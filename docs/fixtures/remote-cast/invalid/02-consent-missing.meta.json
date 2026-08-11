@@ -1,0 +1,6 @@
+{
+  "violates": "media-state-requires-consent",
+  "explains": "estado de midia exige consent",
+  "failsAt": "/",
+  "failsWith": "required"
+}

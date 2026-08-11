@@ -1,0 +1,6 @@
+{
+  "violates": "no-rom-path-in-payload",
+  "explains": "Payload nunca carrega caminho da ROM; apenas o digest local e usado, e a ROM nunca e enviada.",
+  "failsAt": "/game",
+  "failsWith": "additionalProperties"
+}

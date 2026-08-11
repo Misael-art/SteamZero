@@ -1,0 +1,6 @@
+{
+  "violates": "session-requires-accepted-invite",
+  "explains": "Sessao privada so existe a partir de convite aceito; estado ativo sem invitation nao tem participante autorizado.",
+  "failsAt": "/",
+  "failsWith": "required"
+}

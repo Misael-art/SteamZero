@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "ra.event",
+  "eventId": "raev-0123456789abcd07",
+  "idempotencyKey": "raev-0123456789abcd07",
+  "occurredAt": "2026-08-11T12:07:00Z",
+  "account": {
+    "reference": "ra-acct-0123456789ab",
+    "authState": "configured",
+    "credentialRef": "keyring:steamzero/retroachievements/v1"
+  },
+  "game": {
+    "recognition": "recognized",
+    "romHash": {
+      "algorithm": "sha256",
+      "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "titleId": "ra-game-012345"
+  },
+  "achievement": {"id": "ra-ach-0048", "title": "Passo degradado"},
+  "state": "unlocked-local",
+  "hardcore": {"active": false},
+  "degradation": {
+    "reason": "save-state-requested",
+    "at": "2026-08-11T12:07:10Z"
+  }
+}

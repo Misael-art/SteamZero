@@ -1,0 +1,6 @@
+{
+  "violates": "compat-fail-implies-incompatible",
+  "explains": "Um check com resultado fail obriga status 'incompatible'; reportar 'compatible' e mentira contratual.",
+  "failsAt": "/compatibility/status",
+  "failsWith": "const"
+}

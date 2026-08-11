@@ -1,0 +1,6 @@
+{
+  "violates": "pairing-attempts-exhausted-implies-failed",
+  "explains": "pairing.attemptsRemaining == 0 exige status failed",
+  "failsAt": "/status",
+  "failsWith": "const"
+}

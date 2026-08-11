@@ -1,0 +1,6 @@
+{
+  "violates": "error-requires-failure-state",
+  "explains": "API indisponivel com estado pending-sync: error so e admitido em rejected/revoked/unknown, para que a fila continue honesta.",
+  "failsAt": "/state",
+  "failsWith": "enum"
+}

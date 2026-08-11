@@ -1,0 +1,6 @@
+{
+  "violates": "files-forbidden-by-default",
+  "explains": "transferencia de arquivos e proibida por padrao (const false)",
+  "failsAt": "/consent/permissions/files",
+  "failsWith": "const"
+}

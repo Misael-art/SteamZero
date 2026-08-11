@@ -1,0 +1,6 @@
+{
+  "violates": "revoked-status-requires-revoked-consent",
+  "explains": "status revoked exige consent.revoked true",
+  "failsAt": "/consent",
+  "failsWith": "required"
+}

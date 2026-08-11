@@ -1,0 +1,6 @@
+{
+  "violates": "utc-timestamp-format",
+  "explains": "Timestamp invalido (sem formato RFC 3339 UTC) quebra ordenacao e idempotencia da fila offline.",
+  "failsAt": "/occurredAt",
+  "failsWith": "pattern"
+}

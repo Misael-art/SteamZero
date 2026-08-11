@@ -1,0 +1,6 @@
+{
+  "violates": "reconnecting-requires-last-switch",
+  "explains": "reconnecting exige transport.lastSwitch",
+  "failsAt": "/transport",
+  "failsWith": "required"
+}
