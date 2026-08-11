@@ -60,20 +60,31 @@ geraram versões sucessivas, mantendo os artefatos e manifests anteriores imutá
 | `0.1.0a39-8e17159d5122` | `8e17159d51222adf2efaa445c19de40999954d8b` | `591ae8a07205192d67cbcd78a072ff07e98d41d6ec11561e27d41e939cc4c161` | ciclo físico `a39→a37→a39` aprovado; convergência e idempotência provadas nas duas direções; tag `v0.1.0a39` aponta para este commit |
 | `0.1.0a41-31b30211ba85` | `31b30211ba85ec9ef60096809616771ff1aef6b5` | `e31e84a92a51f2de64e4ad3c83b021dc53f0050eee595ea9ecb33fd24dfb6d20` | ciclo físico `a41→a40→a41` aprovado; composição real da emulação observada no host; tag `v0.1.0a41` aponta para este commit |
 
-## Candidata em preparo — 0.1.0a42
+## Release instalada — 0.1.0a42
 
 | Release | Commit | SHA-256 do wheel | Estado |
 |---|---|---|---|
-| `0.1.0a42-<pendente>` | pendente do merge na `main` | pendente do build do CI | **candidata — não construída, não instalada, não certificada** |
+| `0.1.0a42-39bd325cee60` | `39bd325cee60dc8477ed2a1886dbe516d53aa7a8` | não registrado no ledger | **instalada no host** (release ativa, confirmada por `inspect`); certificação física adiada, tag `v0.1.0a42` não publicada |
 
-A versão do pacote foi elevada a `0.1.0a42`; o identificador completo da release
+A versão do pacote foi elevada a `0.1.0a42` e o CI construiu o wheel do commit
+mesclado na `main`; a release foi instalada no host com autorização explícita do
+operador. Os gates físicos adiados continuam obrigatórios para publicação: a tag
+`v0.1.0a42` não foi publicada — tag é a afirmação de que eles passaram.
+
+## Candidata em preparo — 0.1.0a43
+
+| Release | Commit | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `0.1.0a43-<pendente>` | pendente do merge na `main` | pendente do build do CI | **candidata — não construída, não instalada, não certificada** |
+
+A versão do pacote foi elevada a `0.1.0a43`; o identificador completo da release
 só existe depois que o CI construir o wheel a partir do commit exato mesclado na
 `main`. Até lá, esta linha registra a intenção, não um artefato.
 
-Nada aqui autoriza instalação: promover a a42 no host exige autorização explícita
+Nada aqui autoriza instalação: promover a a43 no host exige autorização explícita
 do operador na thread em curso (AGENTS.md §1), nomeando o ID completo. O rollback
 previsto é a release fisicamente certificada `0.1.0a41-31b30211ba85`, presente no
 host.
 
-A tag `v0.1.0a42` **não** será publicada nesta etapa: os gates físicos adiados
+A tag `v0.1.0a43` **não** será publicada nesta etapa: os gates físicos adiados
 continuam obrigatórios para publicação, e tag é a afirmação de que eles passaram.

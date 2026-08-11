@@ -6228,3 +6228,11 @@ r35a/r35/r35b/r38). DEBT-A7 encerra. Ação de host para diagnóstico:
 instalação flatpak `--user` de org.libretro.RetroArch + runtimes
 FDO/KDE no host do lab (sem release/push). Próximo: Item 5a (doctor
 boot.direct) e merge 1-5a em main sob autorização.
+
+## 2026-08-11 — Item 5 — bump para 0.1.0a43 (candidata)
+
+Autorizado pelo operador: "Faça sem reiniciar o host" — preparar e instalar a
+release a43 no host, sem reinício físico (5f fica para o operador). Bump de
+versão 0.1.0a42 → 0.1.0a43 no padrão do f94b85f (a42): __init__.py + ledger
+(a42 sai de candidata para instalada; a43 entra como candidata). Gates locais
+antes do push; prepare via tools/release_host.py após CI verde.
