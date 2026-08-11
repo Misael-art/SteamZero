@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.local/schemas/netplay-session-v1.schema.json",
+  "title": "SteamZero netplay session envelope v1",
+  "description": "Snapshot normativo de uma sessao de jogo online P2P (ADR-0024). Envelope fechado: nenhum caminho local, segredo, token real ou dado pessoal e admitido.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "sessionId",
+    "state",
+    "visibility",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "kind": {"const": "netplay.session"},
+    "sessionId": {"type": "string", "pattern": "^np-[0-9a-f]{8}-[0-9a-f]{4}$"},
+    "state": {
+      "enum": [
+        "created",
+        "inviting",
+        "negotiating",
+        "compatibility-check",
+        "connecting",
+        "active",
+        "reconnecting",
+        "ended",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "visibility": {"const": "private"},
+    "role": {"enum": ["host", "guest"]},
+    "createdAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "updatedAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "game": {"$ref": "#/$defs/game"},
+    "compatibility": {"$ref": "#/$defs/compatibility"},
+    "invitation": {"$ref": "#/$defs/invitation"},
+    "transport": {"$ref": "#/$defs/transport"},
+    "sync": {"$ref": "#/$defs/sync"},
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "error": {"$ref": "#/$defs/error"}
+  },
+  "allOf": [{"$ref": "#/$defs/rules"}],
+  "$defs": {
+    "game": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platformId", "gameId", "romHash"],
+      "properties": {
+        "platformId": {"type": "string", "pattern": "^[a-z0-9-]{2,32}$"},
+        "gameId": {"type": "string", "pattern": "^[a-z0-9-]{2,64}$"},
+        "romHash": {"$ref": "#/$defs/romHash"},
+        "core": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^[a-z0-9-]{2,32}$"},
+            "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+          }
+        },
+        "saveStateVersion": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "deterministicConfig": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seed", "clock"],
+          "properties": {
+            "seed": {"type": "integer", "minimum": 0},
+            "clock": {"type": "string", "pattern": "^[0-9]+Hz$"}
+          }
+        },
+        "playerCount": {"type": "integer", "minimum": 2, "maximum": 8},
+        "controlProfile": {"type": "string", "pattern": "^[a-z0-9-]{2,32}$"},
+        "region": {"type": "string", "pattern": "^[a-z0-9-]{2,16}$"}
+      }
+    },
+    "romHash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {"enum": ["compatible", "incompatible", "unknown"]},
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/compatCheck"}
+        },
+        "mismatches": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "platform",
+              "game-hash",
+              "core",
+              "core-version",
+              "save-state",
+              "deterministic-config",
+              "player-count",
+              "control-profile",
+              "region"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "compatCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "result"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "platform",
+            "game-hash",
+            "core",
+            "core-version",
+            "save-state",
+            "deterministic-config",
+            "player-count",
+            "control-profile",
+            "region"
+          ]
+        },
+        "result": {"enum": ["pass", "fail", "unknown"]}
+      }
+    },
+    "invitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token", "issuedAt", "expiresAt", "singleUse", "status"],
+      "properties": {
+        "token": {"type": "string", "pattern": "^inv-[A-Za-z0-9]{16}$"},
+        "issuedAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "expiresAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "singleUse": {"const": true},
+        "usedCount": {"type": "integer", "minimum": 0, "maximum": 1},
+        "status": {"enum": ["pending", "accepted", "rejected", "expired", "revoked"]}
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "attemptCount"],
+      "properties": {
+        "mode": {"enum": ["direct", "relay", "none"]},
+        "attemptCount": {"type": "integer", "minimum": 1, "maximum": 5},
+        "relayId": {"type": "string", "pattern": "^relay-[0-9a-f]{8}$"},
+        "natDiscovered": {"type": "boolean"},
+        "timeoutMs": {"type": "integer", "minimum": 100, "maximum": 30000},
+        "networkChanged": {"type": "boolean"}
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostPeerId", "participants", "inputOrder"],
+      "properties": {
+        "hostPeerId": {"type": "string", "pattern": "^peer-[0-9a-f]{8}$"},
+        "participants": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "pattern": "^peer-[0-9a-f]{8}$"},
+          "uniqueItems": true
+        },
+        "inputOrder": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "pattern": "^peer-[0-9a-f]{8}$"},
+          "uniqueItems": true
+        },
+        "divergenceMs": {"type": "integer", "minimum": 0, "maximum": 5000},
+        "latencyMs": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "rollbackCapable": {"type": "boolean"},
+        "lockstepCapable": {"type": "boolean"},
+        "abandoned": {"type": "boolean"}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["peerVisible", "relayVisible"],
+      "properties": {
+        "peerVisible": {
+          "type": "array",
+          "items": {"enum": ["displayName", "latencyMs", "region", "platformId"]},
+          "uniqueItems": true
+        },
+        "relayVisible": {
+          "type": "array",
+          "items": {"enum": ["sessionId", "byteVolume", "durationMs"]},
+          "uniqueItems": true
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "enum": [
+            "VERSION_INCOMPATIBLE",
+            "GAME_HASH_INCOMPATIBLE",
+            "CORE_INCOMPATIBLE",
+            "INVITE_EXPIRED",
+            "INVITE_REUSED",
+            "PARTICIPANT_NOT_AUTHORIZED",
+            "TOO_MANY_ATTEMPTS",
+            "RELAY_UNAVAILABLE",
+            "PEER_DISCONNECTED",
+            "SYNC_DIVERGENCE",
+            "FUTURE_PROTOCOL_VERSION",
+            "SENSITIVE_PAYLOAD_REJECTED",
+            "NAT_FAILED",
+            "TIMEOUT",
+            "HOST_LOST"
+          ]
+        },
+        "message": {"type": "string", "maxLength": 200},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "rules": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "failed"}}, "required": ["state"]},
+          "then": {"required": ["error"]}
+        },
+        {
+          "if": {"required": ["error"]},
+          "then": {"properties": {"state": {"const": "failed"}}}
+        },
+        {
+          "if": {"properties": {"state": {"enum": ["inviting", "negotiating"]}}, "required": ["state"]},
+          "then": {"required": ["invitation"]}
+        },
+        {
+          "if": {"properties": {"state": {"enum": ["connecting", "active", "reconnecting"]}}, "required": ["state"]},
+          "then": {"required": ["invitation", "transport"]}
+        },
+        {
+          "if": {"properties": {"state": {"const": "active"}}, "required": ["state"]},
+          "then": {"required": ["sync"]}
+        },
+        {
+          "if": {"properties": {"transport": {"properties": {"mode": {"const": "relay"}}}}, "required": ["transport"]},
+          "then": {"properties": {"transport": {"required": ["relayId"]}}}
+        },
+        {
+          "if": {"properties": {"sync": {"properties": {"abandoned": {"const": true}}}}, "required": ["sync"]},
+          "then": {"properties": {"state": {"enum": ["failed", "ended", "cancelled"]}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "compatibility": {
+                "properties": {
+                  "checks": {
+                    "contains": {"properties": {"result": {"const": "fail"}}}
+                  }
+                }
+              }
+            },
+            "required": ["compatibility"]
+          },
+          "then": {
+            "properties": {
+              "compatibility": {"properties": {"status": {"const": "incompatible"}}}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "invitation": {"properties": {"status": {"enum": ["rejected", "expired", "revoked"]}}}
+            },
+            "required": ["invitation"]
+          },
+          "then": {"properties": {"state": {"enum": ["failed", "cancelled", "ended"]}}}
+        }
+      ]
+    }
+  }
+}

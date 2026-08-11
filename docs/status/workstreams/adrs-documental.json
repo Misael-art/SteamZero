@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-ADRS-P2P-RA-CAST",
+  "item": "SZ-ONLINE-P2P",
+  "branch": "codex/adrs-p2p-achievements-remote-cast",
+  "baseRef": "3396154",
+  "owner": "adrs-documental",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/adr/0024-jogo-online-p2p-netplay.md",
+    "docs/adr/0025-retroachievements-contrato-interno.md",
+    "docs/adr/0026-cast-remoto-internet.md",
+    "docs/contracts",
+    "docs/fixtures",
+    "tests/unit/test_contract_fixtures.py"
+  ],
+  "sharedPaths": ["docs/WORKLOG.md", "docs/STATUS.md", "docs/ACTIVE-WORK.md"],
+  "nextAction": "Entregar ADRs e fixtures contratuais de P2P, RetroAchievements e cast remoto; integrador aplica atualizacoes de status nos itens SZ-ONLINE-P2P, SZ-RETROACHIEVEMENTS e SZ-CAST-INTERNET.",
+  "updatedAt": "2026-08-11"
+}
