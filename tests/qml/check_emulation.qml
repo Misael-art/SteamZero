@@ -232,6 +232,69 @@ Window {
         object.destroy()
     }
 
+    function testGlobalInstallPanelHelpers() {
+        const object = makePage({
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "attention",
+                "statusLabel": "Revisar",
+                "technicalPlatformCount": 1,
+                "editorialDestinationCount": 2,
+                "editorialExperienceCount": 0,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": ""},
+                "platformCards": [{
+                    "id": "wii", "name": "Wii", "identity": "emulated",
+                    "gameCount": 0, "state": "attention",
+                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                    "runtime": "Dolphin, PPSSPP, melonDS, Azahar, DuckStation",
+                    "coreRequired": [],
+                    "keysStatus": {"status": "not-required"},
+                    "firmwareStatus": {"status": "not-required"},
+                    "biosStatus": null,
+                    "blocker": "o emulador desta plataforma não está instalado",
+                    "action": {"id": "platform.open", "label": "Abrir plataforma", "enabled": true}
+                }],
+                "emulators": [
+                    {"id": "dolphin", "name": "Dolphin", "state": "unavailable",
+                        "installState": "not-installed", "statusLabel": "Não instalado",
+                        "action": {"id": "emulator.install:dolphin", "label": "Instalar", "enabled": true}},
+                    {"id": "citron", "name": "Citron", "state": "ready",
+                        "installState": "installed", "statusLabel": "Instalado",
+                        "action": {"id": "emulator.launch:citron", "label": "Abrir", "enabled": true}},
+                    {"id": "eden", "name": "Eden", "state": "attention",
+                        "installState": "degraded", "statusLabel": "Reparar",
+                        "action": {"id": "emulator.repair:eden", "label": "Reparar", "enabled": true}}
+                ],
+                "directories": [],
+                "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "wii", "name": "Wii", "state": "attention",
+                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                "emulators": [], "games": []
+            }]
+        }, true)
+        if (!object)
+            return
+        const summary = object.globalEmulatorInstallSummary()
+        check(summary.total === 3 && summary.installed === 1
+              && summary.missing === 1 && summary.attention === 1,
+              "resumo global deve separar instalados, ausentes e atenção")
+        const runtime = object.formatPlatformRuntime(
+            "Dolphin, PPSSPP, melonDS, Azahar, DuckStation")
+        check(runtime.indexOf("Dolphin") >= 0 && runtime.indexOf("PPSSPP") >= 0,
+              "runtime deve manter os dois primeiros nomes")
+        check(runtime.indexOf("e mais 3") >= 0,
+              "runtime longo deve colapsar o restante com contagem")
+        check(object.platformMissingEmulator(object.globalManagement.platformCards[0]),
+              "bloqueador de emulador ausente deve ser detectado")
+        check(!object.platformMissingEmulator({"blocker": ""}),
+              "card sem bloqueador não deve exigir Ver emuladores")
+        object.destroy()
+    }
+
     function testPublishedPrimaryAndPlatformArtwork() {
         const object = makePage({
             "platforms": [{
@@ -683,6 +746,7 @@ Window {
             testSafeFallback()
             testManifestDrivenPlatformSelection()
             testGlobalManagementOpensPlatformWithoutCreatingAnotherTechnicalId()
+            testGlobalInstallPanelHelpers()
             testPublishedPrimaryAndPlatformArtwork()
             testBackendArea()
             testGameLibraryJourney()

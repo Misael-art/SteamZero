@@ -639,6 +639,68 @@ Item {
         }).length
     }
 
+    // Contagem da lista global de componentes (gestão geral), não da plataforma.
+    function globalEmulatorInstallSummary() {
+        const rows = globalManagement.emulators || []
+        let installed = 0
+        let missing = 0
+        let attention = 0
+        for (let i = 0; i < rows.length; i++) {
+            const emulator = rows[i]
+            const install = String(emulator.installState || "")
+            const state = String(emulator.state || "")
+            if (install === "installed" || state === "ready" || state === "installed")
+                installed += 1
+            else if (install === "degraded" || state === "attention")
+                attention += 1
+            else
+                missing += 1
+        }
+        return {
+            "total": rows.length,
+            "installed": installed,
+            "missing": missing,
+            "attention": attention
+        }
+    }
+
+    // Runtime do card: evita despejar 10+ nomes; mostra os dois primeiros + resto.
+    function formatPlatformRuntime(runtime) {
+        const raw = String(runtime || "").trim()
+        if (raw === "" || raw === "Nenhum runtime declarado")
+            return raw === "" ? qsTr("Nenhum runtime declarado") : raw
+        const parts = raw.split(",").map(function(part) {
+            return String(part || "").trim()
+        }).filter(function(part) {
+            return part.length > 0
+        })
+        if (parts.length === 0)
+            return qsTr("Nenhum runtime declarado")
+        if (parts.length <= 2)
+            return parts.join(", ")
+        return qsTr("%1 e mais %2").arg(parts.slice(0, 2).join(", ")).arg(parts.length - 2)
+    }
+
+    function platformMissingEmulator(card) {
+        if (!card)
+            return false
+        const blocker = String(card.blocker || "").toLowerCase()
+        if (blocker === "")
+            return false
+        return blocker.indexOf("emulador") >= 0
+            || blocker.indexOf("não instal") >= 0
+            || blocker.indexOf("nao instal") >= 0
+            || blocker.indexOf("instal") >= 0
+    }
+
+    function scrollGlobalManagementToInstall() {
+        const flickable = globalManagementScroll.contentItem
+        if (flickable)
+            flickable.contentY = 0
+        if (globalComponentsPanel)
+            globalComponentsPanel.forceActiveFocus(Qt.TabFocusReason)
+    }
+
     function contextTitle() {
         if (scopeId() === "emulator")
             return selectedEmulator.name
@@ -1776,6 +1838,96 @@ Item {
                         }
                     }
 
+                    // Primeiro fold: instalar/reparar emuladores (antes dos cards de plataforma).
+                    Rectangle {
+                        id: globalComponentsPanel
+                        Layout.fillWidth: true
+                        Layout.leftMargin: page.responsiveGutter
+                        Layout.rightMargin: page.responsiveGutter
+                        Layout.preferredHeight: globalComponents.implicitHeight + 24
+                        color: page.surfaceColor
+                        border.color: page.cyanColor
+                        border.width: 1
+                        radius: 10
+                        activeFocusOnTab: true
+                        Accessible.name: qsTr("Instalar e reparar emuladores")
+                        ColumnLayout {
+                            id: globalComponents
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            Label {
+                                readonly property var summary: page.globalEmulatorInstallSummary()
+                                text: summary.total > 0
+                                    ? qsTr("Instalar e reparar emuladores (%1 instalados · %2 ausentes%3)")
+                                        .arg(summary.installed)
+                                        .arg(summary.missing)
+                                        .arg(summary.attention > 0
+                                            ? qsTr(" · %1 com atenção").arg(summary.attention) : "")
+                                    : qsTr("Instalar e reparar emuladores")
+                                color: page.textColor
+                                font.bold: true
+                                font.pixelSize: 16
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Mostrando emuladores das plataformas ativas. Use Instalar ou Reparar para abrir o plano seguro.")
+                                color: page.mutedColor
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            Repeater {
+                                model: page.globalManagement.emulators || []
+                                delegate: ColumnLayout {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: 3
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: modelData.name
+                                            color: page.textColor
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                        Label {
+                                            text: modelData.statusLabel
+                                            color: page.stateColor(modelData.state)
+                                            font.pixelSize: 11
+                                        }
+                                    }
+                                    RowLayout {
+                                        visible: !!modelData.action
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: modelData.action && modelData.action.reason
+                                                ? modelData.action.reason : ""
+                                            color: page.mutedColor
+                                            font.pixelSize: 11
+                                            wrapMode: Text.WordWrap
+                                            Layout.fillWidth: true
+                                        }
+                                        Button {
+                                            text: modelData.action ? modelData.action.label : ""
+                                            enabled: modelData.action && modelData.action.enabled !== false
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.description: modelData.action
+                                                ? modelData.action.reason || "" : ""
+                                            onClicked: page.componentActionRequested(modelData)
+                                        }
+                                    }
+                                }
+                            }
+                            Label {
+                                visible: (page.globalManagement.emulators || []).length === 0
+                                text: qsTr("Nenhum componente verificado ainda.")
+                                color: page.mutedColor
+                            }
+                        }
+                    }
+
                     GridLayout {
                         Layout.fillWidth: true
                         Layout.leftMargin: page.responsiveGutter
@@ -1823,7 +1975,7 @@ Item {
                                         font.pixelSize: 11
                                     }
                                     Label {
-                                        text: qsTr("Runtime: %1").arg(modelData.runtime)
+                                        text: qsTr("Runtime: %1").arg(page.formatPlatformRuntime(modelData.runtime))
                                         color: page.textColor
                                         font.pixelSize: 12
                                         wrapMode: Text.WordWrap
@@ -1856,13 +2008,25 @@ Item {
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
                                     }
-                                    Button {
-                                        text: modelData.action.label
-                                        enabled: modelData.action.enabled !== false
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        Layout.minimumHeight: page.minimumTouchTarget
-                                        Accessible.description: modelData.action.reason || modelData.blocker || ""
-                                        onClicked: page.openPlatformFromGlobal(modelData.id)
+                                        spacing: 8
+                                        Button {
+                                            text: modelData.action.label
+                                            enabled: modelData.action.enabled !== false
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.description: modelData.action.reason || modelData.blocker || ""
+                                            onClicked: page.openPlatformFromGlobal(modelData.id)
+                                        }
+                                        Button {
+                                            visible: page.platformMissingEmulator(modelData)
+                                            text: qsTr("Ver emuladores")
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.description: qsTr("Rola até a lista de instalação e reparo")
+                                            onClicked: page.scrollGlobalManagementToInstall()
+                                        }
                                     }
                                 }
                             }
@@ -1873,60 +2037,9 @@ Item {
                         Layout.fillWidth: true
                         Layout.leftMargin: page.responsiveGutter
                         Layout.rightMargin: page.responsiveGutter
-                        columns: page.width >= 1300 ? 3 : 1
+                        columns: page.width >= 1300 ? 2 : 1
                         columnSpacing: 12
                         rowSpacing: 12
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: globalComponents.implicitHeight + 24
-                            color: page.surfaceColor
-                            border.color: page.borderColor
-                            radius: 10
-                            ColumnLayout {
-                                id: globalComponents
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                Label { text: qsTr("Componentes e emuladores"); color: page.textColor; font.bold: true }
-                                Repeater {
-                                    model: page.globalManagement.emulators || []
-                                    delegate: ColumnLayout {
-                                        required property var modelData
-                                        Layout.fillWidth: true
-                                        spacing: 3
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            Label { text: modelData.name; color: page.textColor; Layout.fillWidth: true; elide: Text.ElideRight }
-                                            Label { text: modelData.statusLabel; color: page.stateColor(modelData.state); font.pixelSize: 11 }
-                                        }
-                                        RowLayout {
-                                            visible: !!modelData.action
-                                            Layout.fillWidth: true
-                                            Label {
-                                                text: modelData.action && modelData.action.reason
-                                                    ? modelData.action.reason : ""
-                                                color: page.mutedColor
-                                                font.pixelSize: 11
-                                                wrapMode: Text.WordWrap
-                                                Layout.fillWidth: true
-                                            }
-                                            Button {
-                                                text: modelData.action ? modelData.action.label : ""
-                                                enabled: modelData.action && modelData.action.enabled !== false
-                                                Layout.minimumHeight: page.minimumTouchTarget
-                                                Accessible.description: modelData.action ? modelData.action.reason || "" : ""
-                                                onClicked: page.componentActionRequested(modelData)
-                                            }
-                                        }
-                                    }
-                                }
-                                Label {
-                                    visible: (page.globalManagement.emulators || []).length === 0
-                                    text: qsTr("Nenhum componente verificado ainda.")
-                                    color: page.mutedColor
-                                }
-                            }
-                        }
 
                         Rectangle {
                             Layout.fillWidth: true
@@ -2045,6 +2158,8 @@ Item {
                                 id: compactPrimaryAction
                                 text: page.primaryAction().label
                                 enabled: page.primaryAction().enabled !== false
+                                // CTA sobre ciano escuro: herda a cor clara do tema da página.
+                                palette.buttonText: page.textColor
                                 Layout.preferredWidth: Math.min(250, contentScroll.width * 0.34)
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: text

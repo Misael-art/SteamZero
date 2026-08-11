@@ -108,6 +108,60 @@ Main {
         check(lastRequest.indexOf("Bridge local indisponível") >= 0,
               "refresh deve usar somente o GET /status existente")
 
+        // A0: action.id de emulação sem kind não pode ser no-op silencioso.
+        // Sem contrato publicado, o caminho correto ainda notifica (emulator.plan).
+        lastRequest = ""
+        lastRequestIsError = false
+        performRowAction({
+            "id": "dolphin",
+            "name": "Dolphin",
+            "action": {
+                "id": "emulator.install:dolphin",
+                "label": "Instalar",
+                "enabled": true
+            }
+        })
+        check(lastRequest.length > 0,
+              "emulator.install sem kind deve produzir feedback (nunca silêncio)")
+        check(lastRequestIsError === true,
+              "sem contrato, install deve ser erro recuperável, não no-op")
+        check(lastRequest.indexOf("emulator.plan") >= 0
+              || lastRequest.indexOf("não publicou o contrato") >= 0
+              || lastRequest.indexOf("Bridge") >= 0,
+              "emulator.install deve seguir performEmulationAction → emulator.plan")
+
+        // A0: kind de dashboard continua no caminho performRowAction.
+        lastRequest = ""
+        lastRequestIsError = false
+        performRowAction({
+            "id": "dolphin",
+            "name": "Dolphin",
+            "action": {
+                "kind": "component-plan",
+                "label": "Instalar",
+                "enabled": true,
+                "operation": "install"
+            }
+        })
+        check(lastRequest.length > 0,
+              "component-plan habilitado deve produzir feedback")
+        check(lastRequest.indexOf("component.plan") >= 0
+              || lastRequest.indexOf("não publicou o contrato") >= 0
+              || lastRequest.indexOf("Bridge") >= 0,
+              "component-plan deve pedir o contrato component.plan")
+
+        // A0: kind desconhecido habilitado não pode silenciar.
+        lastRequest = ""
+        lastRequestIsError = false
+        performRowAction({
+            "id": "x",
+            "name": "X",
+            "action": {"kind": "detail", "label": "Detalhe", "enabled": true}
+        })
+        check(lastRequestIsError === true
+              && lastRequest.indexOf("não tem rota") >= 0,
+              "kind sem rota deve notificar erro")
+
         Qt.exit(failures === 0 ? 0 : firstFailure)
     }
 
