@@ -15,13 +15,19 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/qml/check_theme_editor_aura.qml",
     "tests/unit/test_theme_editor.py",
+    "tests/unit/test_theme_editor_extends.py",
     "tests/unit/test_theme_marketplace.py"
   ],
-  "dependsOn": ["SZ-THEME-AURA"],
-  "knownGaps": ["GAP-G37"],
+  "dependsOn": [
+    "SZ-THEME-AURA"
+  ],
+  "knownGaps": [
+    "GAP-G39"
+  ],
   "acceptanceCriteria": [
     "Edicao e catalogo de temas possuem contratos e testes unitarios.",
-    "Instalacao de tema continua reversivel e nao altera o host diretamente."
+    "Instalacao de tema continua reversivel e nao altera o host diretamente.",
+    "O preview de uma sessao reflete a paleta da base escolhida em extends, nao a paleta padrao."
   ],
   "evidence": [
     {
@@ -35,10 +41,16 @@
       "reference": "tests/qml/check_theme_editor_aura.qml",
       "command": "make check (abrir→editar→preview→cancelar→reabrir)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_editor_extends.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_editor_extends.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Resolver o gap G37 (preview de sessoes criadas sem resolver a cadeia extends) e cobrir importacao/rollback em uma vertical integrada de UI.",
+  "nextAction": "Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada para a paleta padrao sem diagnostico) e cobrir importacao/rollback em uma vertical integrada de UI.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Preview bridge integrado (commit 8e1aa39, origem 4e02d50): o painel alimenta o ThemeBridge com o objeto QML completo do tema (themeId/themeVersion/resolved/effects) via editorPreviewObject, em vez de um dict de tokens; harness offscreen prova a sequencia vertical. G37 registra a limitacao preexistente de preview sem cadeia extends completa."
+  "notes": "Preview bridge integrado (commit 8e1aa39, origem 4e02d50): o painel alimenta o ThemeBridge com o objeto QML completo do tema (themeId/themeVersion/resolved/effects) via editorPreviewObject, em vez de um dict de tokens; harness offscreen prova a sequencia vertical. G37 FECHADA em 2026-08-11: _make_resolved resolve a cadeia via ThemeResolver e _make_resolved_leaf guarda a degradacao; medido extends=aura -> #22d3ee/#0b1020 e extends=steamdeck -> #1b9e4a, onde antes os tres davam a paleta padrao. A G39, descoberta ao escrever esses testes, congela por teste a degradacao silenciosa de cadeias acima do limite de profundidade."
 }

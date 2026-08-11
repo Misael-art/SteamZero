@@ -17,7 +17,7 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | Definir ADR de transporte, identidade, abuso e compatibilidade de emuladores. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | Definir contrato de credenciais, cache e modo hardcore antes de integrar API externa. |
 | SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
-| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | Resolver o gap G37 (preview de sessoes criadas sem resolver a cadeia extends) e cobrir importacao/rollback em uma vertical integrada de UI. |
+| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada para a paleta padrao sem diagnostico) e cobrir importacao/rollback em uma vertical integrada de UI. |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | Integrar em main e validar fisicamente no Deck. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.

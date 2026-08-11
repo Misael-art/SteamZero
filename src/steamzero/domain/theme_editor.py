@@ -23,6 +23,7 @@ from steamzero.domain.themes import (
     ThemeGeometryTokens,
     ThemeManifest,
     ThemeMotionTokens,
+    ThemeResolver,
     ThemeTypographyTokens,
 )
 
@@ -33,6 +34,7 @@ THEME_ID_RE = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$")
 
 
 _ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
+_THEME_PACKAGE = "steamzero.themes"
 
 
 @dataclass
@@ -52,13 +54,73 @@ def _default_session_id() -> str:
     return f"edit-{ids.new_ulid().lower()}"
 
 
-def _make_resolved(
+def _read_manifest_file(path: Path) -> ThemeManifest | None:
+    """Lê um theme.json; falha de parse/IO devolve None (preview degrada)."""
+    try:
+        raw = json.loads(path.read_bytes())
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return ThemeManifest.from_dict(raw)
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def _load_manifests_for_resolution() -> dict[str, ThemeManifest]:
+    """Coleta manifests builtin + usuário para resolver a cadeia ``extends``.
+
+    Somente leitura: builtins empacotados e temas em ``themes_dir()``. Não grava
+    nem altera arquivos (builtins permanecem imutáveis).
+    """
+    import importlib.resources as _res
+
+    manifests: dict[str, ThemeManifest] = {}
+
+    try:
+        root = _res.files(_THEME_PACKAGE)
+        for entry in root.iterdir():
+            try:
+                if not entry.is_dir():
+                    continue
+                theme_json = entry.joinpath("theme.json")
+                if not theme_json.is_file():
+                    continue
+                with _res.as_file(theme_json) as path:
+                    loaded = _read_manifest_file(path)
+                if loaded is not None:
+                    manifests[loaded.id] = loaded
+            except (OSError, TypeError, AttributeError, ValueError):
+                continue
+    except (ModuleNotFoundError, FileNotFoundError, TypeError, AttributeError):
+        pass
+
+    themes_dir = paths.themes_dir()
+    if themes_dir.is_dir():
+        try:
+            entries = list(themes_dir.iterdir())
+        except OSError:
+            entries = []
+        for entry in entries:
+            if not entry.is_dir():
+                continue
+            loaded = _read_manifest_file(entry / "theme.json")
+            if loaded is not None:
+                # Usuário sobrescreve homônimo builtin apenas no mapa de resolução
+                # da sessão; o pacote builtin no disco/recursos não é tocado.
+                manifests[loaded.id] = loaded
+    return manifests
+
+
+def _make_resolved_leaf(
     manifest: dict[str, object],
     tokens: dict[str, dict[str, object]],
     assets: dict[str, str],
     high_contrast: bool = False,
     reduced_motion: bool = False,
 ) -> ResolvedTheme:
+    """Resolve só os tokens da sessão (sem herança) — fallback seguro."""
     color_data: dict[str, Any] = tokens.get("color", {})
     geometry_data: dict[str, Any] = tokens.get("geometry", {})
     typo_data: dict[str, Any] = tokens.get("typography", {})
@@ -88,6 +150,50 @@ def _make_resolved(
         motion=motion,
         assets=resolved_assets,
     ).apply_accessibility(high_contrast, reduced_motion)
+
+
+def _make_resolved(
+    manifest: dict[str, object],
+    tokens: dict[str, dict[str, object]],
+    assets: dict[str, str],
+    high_contrast: bool = False,
+    reduced_motion: bool = False,
+) -> ResolvedTheme:
+    """Resolve o preview da sessão percorrendo a cadeia ``extends``.
+
+    Usa ``ThemeResolver`` (profundidade finita, detecção de ciclo, base ausente).
+    Em qualquer falha de cadeia ou de montagem do rascunho, degrada para a
+    resolução só com tokens da sessão — o editor nunca trava o preview.
+    """
+    draft_tokens = {cat: dict(vals) for cat, vals in tokens.items() if vals}
+    draft_assets = {slot: path for slot, path in assets.items() if slot in ASSET_SLOTS_ALLOWED}
+    try:
+        draft_data = dict(manifest)
+        if draft_tokens:
+            draft_data["tokens"] = draft_tokens
+        else:
+            draft_data.pop("tokens", None)
+        if draft_assets:
+            draft_data["assets"] = draft_assets
+        else:
+            draft_data.pop("assets", None)
+        draft = ThemeManifest.from_dict(draft_data)
+        available = _load_manifests_for_resolution()
+        # Rascunho da sessão vence o que estiver em disco/builtin para o mesmo id.
+        available[draft.id] = draft
+        return ThemeResolver(available).resolve(
+            draft.id,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
+        )
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return _make_resolved_leaf(
+            manifest,
+            tokens,
+            assets,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
+        )
 
 
 class ThemeEditorManager:
