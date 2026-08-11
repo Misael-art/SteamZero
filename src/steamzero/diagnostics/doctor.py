@@ -14,6 +14,7 @@ from typing import Any
 
 from steamzero import __version__
 from steamzero.adapters.desktop_kde import detect_deck_input_keys
+from steamzero.adapters.release_convergence import ConvergenceState, observe
 from steamzero.adapters.service_activation import read_quarantine
 from steamzero.adapters.steam_boot import status as boot_status
 from steamzero.core import fs as corefs
@@ -67,15 +68,72 @@ def run_doctor() -> tuple[dict[str, Any], list[dict[str, str]]]:
 
     # C3: quarentena é anunciada, não descoberta.
     quarantine = read_quarantine()
-    checks.append(
-        _check(
-            "service.generation",
-            "fail" if quarantine else "pass",
-            str(quarantine.get("reason", "serviço em quarentena"))
-            if quarantine
-            else "Serviço na mesma versão do pacote instalado.",
+    if quarantine:
+        checks.append(
+            _check(
+                "service.generation",
+                "fail",
+                str(quarantine.get("reason", "serviço em quarentena")),
+            )
         )
-    )
+    else:
+        # G38: comparar current × daemon (read-only). Pass genérico sem esta
+        # leitura era falso verde quando a44 estava ativa e o daemon ainda
+        # respondia como a42.
+        try:
+            convergence = observe()
+        except Exception as exc:  # doctor nunca deve crashar nem mutar
+            checks.append(
+                _check(
+                    "service.generation",
+                    "warn",
+                    f"convergência ilegível: {exc}",
+                )
+            )
+        else:
+            state = convergence.state
+            activated = convergence.activated_release or "?"
+            daemon = convergence.daemon_release or "?"
+            if state is ConvergenceState.CONVERGED:
+                checks.append(
+                    _check(
+                        "service.generation",
+                        "pass",
+                        f"daemon na release ativada {activated}",
+                    )
+                )
+            elif state is ConvergenceState.PENDING:
+                checks.append(
+                    _check(
+                        "service.generation",
+                        "fail",
+                        f"E-HOST-DAEMON-PENDING: current={activated} daemon={daemon}",
+                    )
+                )
+            elif state is ConvergenceState.MISMATCH:
+                checks.append(
+                    _check(
+                        "service.generation",
+                        "fail",
+                        f"E-HOST-RELEASE-MISMATCH: current={activated} daemon={daemon}",
+                    )
+                )
+            elif state is ConvergenceState.TIMEOUT:
+                checks.append(
+                    _check(
+                        "service.generation",
+                        "warn",
+                        f"daemon não respondeu; current={activated}",
+                    )
+                )
+            else:
+                checks.append(
+                    _check(
+                        "service.generation",
+                        "warn",
+                        f"convergência {state.value}: {convergence.detail}",
+                    )
+                )
 
     corefs.ensure_state_layout()
     layout_ok = all(f().is_dir() for f in paths.STATE_SUBDIRS)
