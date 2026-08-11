@@ -1,0 +1,431 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.local/schemas/remote-cast-session-v1.schema.json",
+  "title": "SteamZero remote cast session envelope v1",
+  "description": "Snapshot normativo de uma sessao de cast remoto pela internet (ADR-0026). Envelope fechado: nenhum caminho local, segredo, token real, SDP integral, IP publico, candidato ICE ou dado pessoal e admitido.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "sessionId",
+    "status",
+    "emitterId",
+    "receiverId",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "kind": {"const": "remote-cast.session"},
+    "sessionId": {"type": "string", "pattern": "^rc-sess-[0-9a-f]{16}$"},
+    "status": {
+      "enum": [
+        "idle",
+        "pairing",
+        "awaiting-consent",
+        "negotiating",
+        "direct",
+        "relayed",
+        "degraded",
+        "reconnecting",
+        "stopped",
+        "revoked",
+        "failed"
+      ]
+    },
+    "emitterId": {"type": "string", "pattern": "^rc-dev-[0-9a-f]{12}$"},
+    "receiverId": {"type": "string", "pattern": "^rc-dev-[0-9a-f]{12}$"},
+    "createdAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "updatedAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "pairing": {"$ref": "#/$defs/pairing"},
+    "consent": {"$ref": "#/$defs/consent"},
+    "transport": {"$ref": "#/$defs/transport"},
+    "degradation": {"$ref": "#/$defs/degradation"},
+    "auth": {"$ref": "#/$defs/auth"},
+    "error": {"$ref": "#/$defs/error"}
+  },
+  "allOf": [{"$ref": "#/$defs/rules"}],
+  "$defs": {
+    "pairing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "code", "expiresAt", "attemptsRemaining"],
+      "properties": {
+        "mode": {"enum": ["pairing-code", "qr"]},
+        "code": {"type": "string", "pattern": "^[A-Z0-9]{6}$"},
+        "qrToken": {"type": "string", "pattern": "^rc-qr-[0-9a-f]{16}$"},
+        "expiresAt": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "attemptsRemaining": {"type": "integer", "minimum": 0, "maximum": 5},
+        "deviceBound": {"type": "boolean"},
+        "boundDeviceId": {"type": "string", "pattern": "^rc-dev-[0-9a-f]{12}$"}
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantedByEmitter", "grantedByReceiver", "permissions"],
+      "properties": {
+        "grantedByEmitter": {"type": "boolean"},
+        "grantedByReceiver": {"type": "boolean"},
+        "revoked": {"type": "boolean"},
+        "explicitInputGrant": {"type": "boolean"},
+        "elevation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["granted", "grantedAt"],
+          "properties": {
+            "granted": {"type": "boolean"},
+            "grantedAt": {"type": "string", "format": "date-time", "pattern": "Z$"}
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "video",
+            "audio",
+            "input",
+            "remoteControl",
+            "clipboard",
+            "files",
+            "elevated"
+          ],
+          "properties": {
+            "video": {"type": "boolean"},
+            "audio": {"type": "boolean"},
+            "input": {"type": "boolean", "default": false},
+            "remoteControl": {"type": "boolean", "default": false},
+            "clipboard": {"const": false},
+            "files": {"const": false},
+            "elevated": {"type": "boolean", "default": false}
+          }
+        }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["direct", "nat-traversal", "relay"]},
+        "direct": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocol", "remoteEndpointRef", "encrypted"],
+          "properties": {
+            "protocol": {"enum": ["webrtc", "quic", "tcp-tls"]},
+            "remoteEndpointRef": {
+              "type": "string",
+              "pattern": "^ref:rc-endpoint-[0-9a-f]{12}$"
+            },
+            "encrypted": {"const": true}
+          }
+        },
+        "relay": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["relayId", "encrypted"],
+          "properties": {
+            "relayId": {"type": "string", "pattern": "^rc-relay-[0-9a-f]{12}$"},
+            "region": {"type": "string", "pattern": "^[a-z0-9-]{2,16}$"},
+            "encrypted": {"const": true}
+          }
+        },
+        "lastSwitch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to", "at", "reason"],
+          "properties": {
+            "from": {"enum": ["direct", "nat-traversal", "relay"]},
+            "to": {"enum": ["direct", "nat-traversal", "relay"]},
+            "at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+            "reason": {
+              "enum": ["direct-to-relay", "relay-to-direct", "network-change", "loss"]
+            }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bitrateKbps", "ceilingKbps", "latencyMs", "keyframeRequested"],
+          "properties": {
+            "bitrateKbps": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "ceilingKbps": {"type": "integer", "minimum": 0, "maximum": 100000},
+            "latencyMs": {"type": "integer", "minimum": 0, "maximum": 5000},
+            "keyframeRequested": {"type": "boolean"}
+          }
+        },
+        "teardown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "at"],
+          "properties": {
+            "reason": {"enum": ["user-ended", "session-ended", "timeout"]},
+            "at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+          }
+        }
+      }
+    },
+    "degradation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "impact", "at"],
+      "properties": {
+        "reason": {
+          "enum": [
+            "quality",
+            "latency",
+            "bandwidth-ceiling",
+            "relay-overload",
+            "input-interrupted"
+          ]
+        },
+        "impact": {"enum": ["input", "media", "both"]},
+        "at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["established", "keyRotation"],
+      "properties": {
+        "established": {"type": "boolean"},
+        "cipher": {"enum": ["aes-256-gcm", "chacha20-poly1305"]},
+        "revoked": {"type": "boolean"},
+        "keyRotation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rotations", "lastRotatedAt"],
+          "properties": {
+            "rotations": {"type": "integer", "minimum": 0},
+            "lastRotatedAt": {"type": "string", "format": "date-time", "pattern": "Z$"}
+          }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "retryable"],
+      "properties": {
+        "code": {
+          "enum": [
+            "PAIRING_EXPIRED",
+            "TOO_MANY_ATTEMPTS",
+            "CONSENT_DENIED",
+            "CONSENT_EXPIRED",
+            "AUTH_FAILED",
+            "RELAY_UNAVAILABLE",
+            "CONNECTION_LOST",
+            "NEGOTIATION_FAILED",
+            "REVOKED",
+            "ELEVATION_REQUIRED",
+            "FUTURE_PROTOCOL_FIELDS",
+            "SENSITIVE_PAYLOAD_REJECTED"
+          ]
+        },
+        "message": {"type": "string", "maxLength": 200},
+        "retryable": {"type": "boolean"}
+      }
+    },
+    "rules": {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"enum": ["pairing", "awaiting-consent"]}}, "required": ["status"]},
+          "then": {"required": ["pairing"]}
+        },
+        {
+          "if": {"properties": {"pairing": {"properties": {"attemptsRemaining": {"const": 0}}}}, "required": ["pairing"]},
+          "then": {"properties": {"status": {"const": "failed"}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "awaiting-consent",
+                  "negotiating",
+                  "direct",
+                  "relayed",
+                  "degraded",
+                  "reconnecting",
+                  "stopped",
+                  "revoked"
+                ]
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {"required": ["consent"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "negotiating",
+                  "direct",
+                  "relayed",
+                  "degraded",
+                  "reconnecting",
+                  "stopped",
+                  "revoked"
+                ]
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "consent": {
+                "required": ["grantedByEmitter", "grantedByReceiver"],
+                "properties": {
+                  "grantedByEmitter": {"const": true},
+                  "grantedByReceiver": {"const": true}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "consent": {
+                "properties": {
+                  "permissions": {"properties": {"input": {"const": true}}}
+                }
+              }
+            },
+            "required": ["consent"]
+          },
+          "then": {
+            "properties": {
+              "consent": {
+                "required": ["explicitInputGrant"],
+                "properties": {"explicitInputGrant": {"const": true}}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "consent": {
+                "properties": {
+                  "permissions": {"properties": {"elevated": {"const": true}}}
+                }
+              }
+            },
+            "required": ["consent"]
+          },
+          "then": {
+            "properties": {
+              "consent": {
+                "required": ["elevation"],
+                "properties": {
+                  "elevation": {
+                    "required": ["granted", "grantedAt"],
+                    "properties": {"granted": {"const": true}}
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["direct", "relayed", "degraded", "reconnecting", "stopped"]}}, "required": ["status"]},
+          "then": {"required": ["transport"]}
+        },
+        {
+          "if": {"properties": {"transport": {"properties": {"mode": {"const": "direct"}}}}, "required": ["transport"]},
+          "then": {
+            "properties": {
+              "transport": {
+                "required": ["direct"],
+                "not": {"required": ["relay"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"transport": {"properties": {"mode": {"const": "nat-traversal"}}}}, "required": ["transport"]},
+          "then": {
+            "properties": {
+              "transport": {
+                "required": ["direct"],
+                "not": {"required": ["relay"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"transport": {"properties": {"mode": {"const": "relay"}}}}, "required": ["transport"]},
+          "then": {
+            "properties": {
+              "transport": {
+                "required": ["relay"],
+                "not": {"required": ["direct"]}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["direct", "relayed", "degraded", "reconnecting"]}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "transport": {"required": ["quality"]},
+              "auth": {
+                "required": ["established"],
+                "properties": {"established": {"const": true}}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "degraded"}}, "required": ["status"]},
+          "then": {"required": ["degradation"]}
+        },
+        {
+          "if": {"properties": {"status": {"const": "reconnecting"}}, "required": ["status"]},
+          "then": {"properties": {"transport": {"required": ["lastSwitch"]}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "stopped"}}, "required": ["status"]},
+          "then": {"properties": {"transport": {"required": ["teardown"]}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "revoked"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "consent": {
+                "required": ["revoked"],
+                "properties": {"revoked": {"const": true}}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "auth": {
+                "properties": {"revoked": {"const": true}},
+                "required": ["revoked"]
+              }
+            },
+            "required": ["auth"]
+          },
+          "then": {"properties": {"status": {"enum": ["revoked", "stopped"]}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "failed"}}, "required": ["status"]},
+          "then": {"required": ["error"]}
+        },
+        {
+          "if": {"required": ["error"]},
+          "then": {"properties": {"status": {"const": "failed"}}}
+        }
+      ]
+    }
+  }
+}

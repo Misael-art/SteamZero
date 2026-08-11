@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "kind": "remote-cast.session",
+  "sessionId": "rc-sess-0000000000000113",
+  "status": "direct",
+  "emitterId": "rc-dev-000000000001",
+  "receiverId": "rc-dev-000000000002",
+  "updatedAt": "2026-08-11T10:43:00Z",
+  "consent": {
+    "grantedByEmitter": true,
+    "grantedByReceiver": true,
+    "explicitInputGrant": true,
+    "permissions": {
+      "video": true,
+      "audio": true,
+      "input": true,
+      "remoteControl": false,
+      "clipboard": false,
+      "files": false,
+      "elevated": false
+    }
+  },
+  "transport": {
+    "mode": "direct",
+    "direct": {
+      "protocol": "webrtc",
+      "remoteEndpointRef": "ref:rc-endpoint-000000000001",
+      "encrypted": true
+    },
+    "quality": {
+      "bitrateKbps": 4500,
+      "ceilingKbps": 10000,
+      "latencyMs": 28,
+      "keyframeRequested": false
+    }
+  },
+  "auth": {
+    "established": true,
+    "cipher": "aes-256-gcm",
+    "keyRotation": {
+      "rotations": 3,
+      "lastRotatedAt": "2026-08-11T10:42:30Z"
+    }
+  },
+  "futureField": "campo desconhecido de versao futura"
+}

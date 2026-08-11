@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "remote-cast.session",
+  "sessionId": "rc-sess-0000000000000009",
+  "status": "reconnecting",
+  "emitterId": "rc-dev-000000000001",
+  "receiverId": "rc-dev-000000000002",
+  "updatedAt": "2026-08-11T10:21:00Z",
+  "consent": {
+    "grantedByEmitter": true,
+    "grantedByReceiver": true,
+    "permissions": {
+      "video": true,
+      "audio": true,
+      "input": false,
+      "remoteControl": false,
+      "clipboard": false,
+      "files": false,
+      "elevated": false
+    }
+  },
+  "transport": {
+    "mode": "nat-traversal",
+    "direct": {
+      "protocol": "quic",
+      "remoteEndpointRef": "ref:rc-endpoint-000000000002",
+      "encrypted": true
+    },
+    "lastSwitch": {
+      "from": "direct",
+      "to": "nat-traversal",
+      "at": "2026-08-11T10:21:00Z",
+      "reason": "network-change"
+    },
+    "quality": {
+      "bitrateKbps": 0,
+      "ceilingKbps": 10000,
+      "latencyMs": 0,
+      "keyframeRequested": true
+    }
+  },
+  "degradation": {
+    "reason": "input-interrupted",
+    "impact": "input",
+    "at": "2026-08-11T10:20:55Z"
+  },
+  "auth": {
+    "established": true,
+    "cipher": "chacha20-poly1305",
+    "keyRotation": {
+      "rotations": 5,
+      "lastRotatedAt": "2026-08-11T10:20:00Z"
+    }
+  }
+}
