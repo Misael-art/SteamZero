@@ -6299,3 +6299,32 @@ preparada-não-instalada, preservada e imutável; a44 entra como candidata).
 Gates locais antes do push; prepare via tools/release_host.py após CI verde.
 Nenhuma ação de host até aqui; instalação da a44 exige o token INSTALAR da
 release e a execução do argv pelo operador (sessão com NoNewPrivs=1).
+
+## 2026-08-11 — Integração — a44 instalada no host; validação pós-instalação
+
+Instalação executada pelo operador (token INSTALAR-0.1.0a44-07802589e985
+repetido na thread) com argv de caminhos absolutos — o pkexec do ambiente
+executa com CWD /root, então o caminho relativo falhava
+(`/root/tools/install_host.py`); o instalador resolve o próprio caminho por
+`__file__` e não depende de CWD. Resultado `ok: true`: release
+0.1.0a44-07802589e985 publicada (wheelSha256 confere com o preparado,
+sourceTreeState clean, requirementsSha256/installerSha256 registrados),
+previousRelease 0.1.0a42-39bd325cee60, installedAt 2026-08-11T15:10:44Z.
+daemonRefresh: pending (`E-HOST-DAEMON-PENDING`) — o daemon ainda responde
+pela a42; convergência é mutação e fica para o operador:
+`steamzero-host converge --expect-release 0.1.0a44-07802589e985`.
+
+Validação pós-instalação (read-only, tudo verificado): inspect host ok=true
+(packageVersion 0.1.0a44); entry points /usr/local/bin → current (a44);
+unidade steamzero-gamemode-boot presente e enabled (oneshot inactive =
+normal fora de boot); sessão steamzero-gamemode.desktop em
+/usr/share/wayland-sessions; catálogo de temas do pacote instalado contém
+org.steamzero.aura (extends org.steamzero.default); módulos M10/M11/boot
+(steam_boot, steam_session, lifecycle, flatpak, scraping/cache,
+cast_engine, theme_editor) presentes no site-packages; sem processos órfãos
+de cast; health de scraping sem credenciais no state; doctor run: provenance
+a44, integridade do state ok, sem jobs stalados, warns de órfãos históricos
+(staging 12 / backup 111 / journal 108, acervo G25/G26 — não desta release).
+Ação no host acidental observada no journal (12:04:40, CWD PhaseZero):
+`pacman -U` do phasezero-control-center — projeto de referência, fora do
+escopo desta sessão; registrada para ciência do operador, não revertida.

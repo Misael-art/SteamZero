@@ -86,20 +86,19 @@ preservada e imutável em `release-artifacts/a43-01b32641021f/` — **não
 reinstalar nem reutilizar**: a próxima instalação é a a44, construída do
 commit integrado.
 
-## Candidata em preparo — 0.1.0a44
+## Release instalada — 0.1.0a44
 
 | Release | Commit | SHA-256 do wheel | Estado |
 |---|---|---|---|
-| `0.1.0a44-<pendente>` | pendente do merge na `main` | pendente do build do CI | **candidata — não construída, não instalada, não certificada** |
+| `0.1.0a44-07802589e985` | `07802589e9857abf022ea69f874bc49717a32658` | `ee951a66eeb48f974f267e2b9308a62db85e21abad35580d2dbe2ef79a755a49` | **instalada no host em 2026-08-11** (CI run 31501957659; publicada com `sourceTreeState: clean`, wheel/requirements/installer hashes conferidos pelo instalador); daemon com convergência pendente da ação do operador (`steamzero-host converge --expect-release 0.1.0a44-07802589e985`); certificação física adiada, tag `v0.1.0a44` não publicada |
 
-A versão do pacote foi elevada a `0.1.0a44`; o identificador completo da release
-só existe depois que o CI construir o wheel a partir do commit exato mesclado na
-`main`. Até lá, esta linha registra a intenção, não um artefato.
-
-Nada aqui autoriza instalação: promover a a44 no host exige autorização explícita
-do operador na thread em curso (AGENTS.md §1), nomeando o ID completo. O rollback
-previsto é a release fisicamente certificada `0.1.0a41-31b30211ba85`, presente no
-host.
-
-A tag `v0.1.0a44` **não** será publicada nesta etapa: os gates físicos adiados
-continuam obrigatórios para publicação, e tag é a afirmação de que eles passaram.
+A release `0.1.0a44-07802589e985` foi construída do commit `07802589e985`
+(PR #63: AURA/editor + cast G32 + scraping endurecido + governança; bump a44)
+e instalada no host com autorização explícita do operador (token
+`INSTALAR-0.1.0a44-07802589e985`), via argv com caminhos absolutos — o
+`pkexec` do ambiente roda com CWD `/root` e caminhos relativos falham
+(`/root/tools/install_host.py`). A release anterior `0.1.0a42-39bd325cee60`
+continua no host como rollback imediato; o rollback fisicamente certificado
+permanece `0.1.0a41-31b30211ba85`. Os gates físicos adiados continuam
+obrigatórios para publicação: a tag `v0.1.0a44` não foi publicada — tag é a
+afirmação de que eles passaram.
