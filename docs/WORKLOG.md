@@ -6172,3 +6172,39 @@ exceção (str, stdout/stderr preservados e envelope) para decidir se é
 rede transiente; falha real continua propagando. Teste reproduz o caso
 r35 com a classe real `RequiredCommandError`. Suíte isolada **4234
 passaram, 10 skipados** + gates verdes.
+
+## 2026-08-11 — Frente B (G32) — START_SESSION só responde após o commit
+
+Falha determinística sob 8 conexões simultâneas: `listen(5)` estourava
+EAGAIN no accept e a resposta `START_SESSION_OK` era emitida ANTES de o
+pipeline existir. O listener agora usa backlog 128 (aceita erros
+transitórios e só encerra em EBADF/EINVAL/ENOTSOCK); `_cmd_start_session`
+tem barreira (check-e-create atômico sob lock; already-running responde
+`running` real) e só responde após o commit do portal, liberada em todo
+caminho terminal. Contrato documentado: eventos de controle e respostas
+se intercalam, cliente distingue por `type` (consumidor existente já
+filtrava por type — seguro). 3 testes novos (resposta pós-commit, 8
+conexões concorrentes com 1 vencedora, portal lento liberado por STOP).
+Prova de regressão via stash; 50/30/5 loops sem flake; suíte **4237
+passaram, 10 skipados** + gates verdes. Commit `0ae3702` em
+`codex/fix-cast-g32-ipc`. Nenhuma ação de host, release ou push.
+
+## 2026-08-11 — Frente A — identidade AURA e vertical do editor de temas
+
+AURA existia só como paleta de referência da cena (`DEFAULT_TOKENS`).
+Agora é tema builtin real: `org.steamzero.aura` estende
+`org.steamzero.default` e sobrescreve só tokens de cor com a paleta Aura
+(fundo `#0b1020`, acento/foco `#22d3ee`) — aparece no catálogo, resolve
+pela cadeia e serve de base para temas do usuário. Corrigido bug real do
+painel: o `_previewBridge` alimentava o ThemeBridge com o dicionário de
+tokens puro (o contrato espera o objeto QML completo em `_source.resolved`,
+como o Main.qml faz com `dashboard.resolved`) — o preview ao vivo caía no
+fallback claro e publicava 5 binding warnings por sessão. O painel agora
+guarda o objeto de preview completo e o repassa ao bridge. Testes:
+identidade/catálogo/hereditariedade/resolução sem mutar o default; vertical
+abrir→editar→preview→cancelar→reabrir→salvar→aplicar→rollback; harness QML
+novo (preview aplicado ao bridge, edição refletida ao vivo, cancelar
+restaura a aparência e devolve a lista, reabrir restaura os tokens) com
+zero warnings. Suíte **4245 passaram, 10 skipados** + gates verdes.
+Commits `5616d0c`, `4e02d50`, `ac749b8` em `codex/aura-theme-editor-vertical`.
+Nenhuma ação de host, release ou push.
