@@ -309,12 +309,29 @@ Item {
         return initial === initialFilter
     }
 
+    // Metadados vazios ou "não publicado" não entram em chips/filtros.
+    function isPublishedMetadataValue(value) {
+        const v = String(value || "").trim()
+        if (v === "")
+            return false
+        const lower = v.toLowerCase()
+        if (lower === "—" || lower === "-" || lower === "n/a" || lower === "na")
+            return false
+        if (lower.indexOf("não publicado") >= 0 || lower.indexOf("nao publicado") >= 0)
+            return false
+        if (lower.indexOf("ainda não") >= 0 || lower.indexOf("ainda nao") >= 0)
+            return false
+        if (lower.indexOf("unpublished") >= 0)
+            return false
+        return true
+    }
+
     function metadataValues(field) {
         const values = []
         const seen = ({})
         for (let i = 0; i < baseVisibleGames.length; ++i) {
             const value = String(baseVisibleGames[i][field] || "").trim()
-            if (value !== "" && !seen[value]) {
+            if (root.isPublishedMetadataValue(value) && !seen[value]) {
                 seen[value] = true
                 values.push(value)
             }
@@ -995,8 +1012,12 @@ Item {
                     }
                     Flickable {
                         clip: true
+                        visible: root.metadataValues("genre").length > 0
+                            || root.metadataValues("year").length > 0
+                            || root.metadataValues("developer").length > 0
                         Layout.fillWidth: true
-                        Layout.preferredHeight: root.minimumTarget
+                        Layout.preferredHeight: visible ? root.minimumTarget : 0
+                        Layout.maximumHeight: visible ? root.minimumTarget : 0
                         contentWidth: metadataRow.width
                         contentHeight: height
                         boundsBehavior: Flickable.StopAtBounds
@@ -1020,17 +1041,13 @@ Item {
                                     required property var modelData
                                     readonly property var values: root.metadataValues(modelData.field)
                                     readonly property string selectedValue: root.metadataFilter(modelData.field)
-                                    text: values.length === 0
-                                        ? qsTr("%1: não publicado").arg(modelData.label)
-                                        : qsTr("%1: %2").arg(modelData.label)
-                                            .arg(selectedValue === "" ? qsTr("todos") : selectedValue)
-                                    enabled: values.length > 0
+                                    visible: values.length > 0
+                                    text: qsTr("%1: %2").arg(modelData.label)
+                                        .arg(selectedValue === "" ? qsTr("todos") : selectedValue)
                                     width: root.compact ? 180 : 220
                                     height: root.minimumTarget
                                     Accessible.name: text
-                                    Accessible.description: values.length === 0
-                                        ? qsTr("A fonte ainda não publicou este metadado")
-                                        : qsTr("Alterna o filtro pelos valores publicados")
+                                    Accessible.description: qsTr("Alterna o filtro pelos valores publicados")
                                     onClicked: root.cycleMetadataFilter(modelData.field)
                                 }
                             }
@@ -1058,7 +1075,9 @@ Item {
                                 Layout.preferredHeight: 42
                             }
                             Label {
-                                text: qsTr("Nenhum jogo publicado nesta biblioteca")
+                                text: root.systemFilter !== "all"
+                                    ? qsTr("Nenhum jogo neste filtro ou sistema")
+                                    : qsTr("Nenhum jogo publicado nesta biblioteca")
                                 color: root.textColor
                                 font.pixelSize: root.typeSize("title")
                                 font.weight: Font.DemiBold
@@ -1067,7 +1086,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("Quando a fonte gerenciada publicar jogos, eles aparecerão aqui sem criar cópias de mídia.")
+                                text: qsTr("A central só lista jogos que a fonte gerenciada publicou. Capas e metadados aparecem quando existirem no read model — nada é inventado aqui.")
                                 color: root.mutedColor
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
@@ -1140,13 +1159,37 @@ Item {
                                         : root.recipeEffects("peripheralCover", "peripheralCover")
                                     opacity: index === root.selectedIndex ? 1 : root.themePeripheralOpacity
                                 }
-                                NavigationIcon {
-                                    anchors.centerIn: parent
+                                // Sem capa: placeholder honesto com ícone do sistema + título.
+                                Rectangle {
+                                    anchors.fill: parent
                                     visible: modelData.coverUrl === ""
-                                    glyph: modelData.source === "steam" ? "steam" : "emulators"
-                                    iconColor: index === root.selectedIndex ? root.cyanColor : root.mutedColor
-                                    width: 50
-                                    height: 50
+                                    color: root.surfaceColor
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: root.raisedColor }
+                                        GradientStop { position: 1.0; color: root.surfaceColor }
+                                    }
+                                }
+                                Column {
+                                    anchors.centerIn: parent
+                                    anchors.verticalCenterOffset: -16
+                                    visible: modelData.coverUrl === ""
+                                    spacing: 8
+                                    width: parent.width - 24
+                                    NavigationIcon {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        glyph: modelData.source === "steam" ? "steam" : "emulators"
+                                        iconColor: index === root.selectedIndex ? root.cyanColor : root.mutedColor
+                                        width: 50
+                                        height: 50
+                                    }
+                                    Label {
+                                        width: parent.width
+                                        text: modelData.systemName || ""
+                                        color: root.mutedColor
+                                        font.pixelSize: root.typeSize("badge")
+                                        horizontalAlignment: Text.AlignHCenter
+                                        elide: Text.ElideRight
+                                    }
                                 }
                                 Rectangle {
                                     anchors.left: parent.left
@@ -1212,13 +1255,32 @@ Item {
                                     fillMode: root.recipeFillMode("peripheralCover")
                                     effects: root.recipeEffects("peripheralCover", "peripheralCover")
                                 }
-                                NavigationIcon {
-                                    anchors.centerIn: parent
+                                Rectangle {
+                                    anchors.fill: parent
                                     visible: modelData.coverUrl === ""
-                                    glyph: modelData.source === "steam" ? "steam" : "emulators"
-                                    iconColor: root.mutedColor
-                                    width: 40
-                                    height: 40
+                                    color: root.surfaceColor
+                                }
+                                Column {
+                                    anchors.centerIn: parent
+                                    anchors.verticalCenterOffset: -14
+                                    visible: modelData.coverUrl === ""
+                                    spacing: 6
+                                    width: parent.width - 16
+                                    NavigationIcon {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        glyph: modelData.source === "steam" ? "steam" : "emulators"
+                                        iconColor: root.mutedColor
+                                        width: 40
+                                        height: 40
+                                    }
+                                    Label {
+                                        width: parent.width
+                                        text: modelData.systemName || ""
+                                        color: root.mutedColor
+                                        font.pixelSize: root.typeSize("badge")
+                                        horizontalAlignment: Text.AlignHCenter
+                                        elide: Text.ElideRight
+                                    }
                                 }
                                 Rectangle {
                                     anchors.left: parent.left
@@ -1266,11 +1328,27 @@ Item {
                             onClicked: root.openDossier(index)
                             contentItem: RowLayout {
                                 spacing: 12
-                                NavigationIcon {
-                                    glyph: modelData.source === "steam" ? "steam" : "emulators"
-                                    iconColor: root.cyanColor
-                                    Layout.preferredWidth: 28
-                                    Layout.preferredHeight: 28
+                                Rectangle {
+                                    Layout.preferredWidth: 44
+                                    Layout.preferredHeight: 56
+                                    color: root.raisedColor
+                                    radius: 6
+                                    border.color: root.borderColor
+                                    clip: true
+                                    Image {
+                                        anchors.fill: parent
+                                        source: modelData.coverUrl || ""
+                                        visible: modelData.coverUrl !== ""
+                                        fillMode: Image.PreserveAspectCrop
+                                    }
+                                    NavigationIcon {
+                                        anchors.centerIn: parent
+                                        visible: modelData.coverUrl === ""
+                                        glyph: modelData.source === "steam" ? "steam" : "emulators"
+                                        iconColor: root.cyanColor
+                                        width: 22
+                                        height: 22
+                                    }
                                 }
                                 ColumnLayout {
                                     Layout.fillWidth: true

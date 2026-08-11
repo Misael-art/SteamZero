@@ -301,6 +301,10 @@ Window {
                     check(library.metadataValues("genre").length === 2
                           && library.metadataValues("year").length === 2,
                           "filtros de metadados devem usar somente valores publicados")
+                    check(library.isPublishedMetadataValue("") === false
+                          && library.isPublishedMetadataValue("não publicado") === false
+                          && library.isPublishedMetadataValue("Action") === true,
+                          "metadados vazios ou 'não publicado' não contam como publicados")
                     library.genreFilter = "Action"
                     check(library.visibleGames.length === 1 && library.selectedGame.genre === "Action",
                           "gênero publicado deve filtrar a biblioteca sem criar categorias")
