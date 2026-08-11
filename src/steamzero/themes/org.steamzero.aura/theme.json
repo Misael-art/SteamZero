@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-theme-v1",
+  "id": "org.steamzero.aura",
+  "name": "AURA",
+  "version": "1.0.0",
+  "author": "SteamZero contributors",
+  "license": "GPL-3.0-or-later",
+  "description": "Identidade escura AURA: fundo profundo e acentos ciano, a paleta de referência da spec do tema padrão.",
+  "compatibility": { "themeApi": 1 },
+  "extends": "org.steamzero.default",
+  "tokens": {
+    "color": {
+      "background": "#0b1020",
+      "sidebar": "#0d1326",
+      "surface": "#141a2e",
+      "surfaceRaised": "#1c2440",
+      "surfaceSelected": "#1a2542",
+      "border": "#262f4d",
+      "text": "#e8ecf7",
+      "textMuted": "#8b93a8",
+      "textDisabled": "#5d6579",
+      "accent": "#22d3ee",
+      "accentStrong": "#0e7490",
+      "success": "#59d35d",
+      "successSurface": "#16301c",
+      "warning": "#ff9f1a",
+      "warningSurface": "#3b2a0e",
+      "danger": "#ff6b73",
+      "dangerSurface": "#3b1619",
+      "focus": "#22d3ee"
+    }
+  },
+  "assets": {}
+}
