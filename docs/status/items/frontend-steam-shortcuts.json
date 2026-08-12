@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "c04ba2debea065d87209636281ed83bbccb6c2d856bc84d634018da321d3475f",
+  "scopeDigest": "2d23096c0497b83bebac81230bf512033a5fe805d601fa7055a7185d6a96182e",
   "scopePaths": [
     "src/steamzero/adapters/steam_shortcuts.py",
     "tests/unit/test_steam_shortcuts.py"
@@ -19,7 +19,8 @@
   "acceptanceCriteria": [
     "O codec VDF faz round-trip e o appid deriva de formula estavel.",
     "A sincronizacao remove somente entradas marcadas como gerenciadas e preserva as de terceiros, inclusive campos desconhecidos.",
-    "Steam em execucao ou arquivo malformado falham fechado, sem escrita parcial."
+    "Steam em execucao ou arquivo malformado falham fechado, sem escrita parcial.",
+    "A propria interface pode ser publicada como atalho nao-Steam, para abrir a central pelo Big Picture, sem remover atalhos de jogos, de nuvem ou de terceiros."
   ],
   "evidence": [
     {
@@ -29,8 +30,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Exercitar contra um shortcuts.vdf real do operador antes de promover a verificacao integrada.",
+  "nextAction": "Expor a marcacao do atalho de interface na UI e validar contra um shortcuts.vdf real do operador antes de promover a verificacao integrada.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-11",
-  "notes": "Cherry-pick a040f86 na harmonizacao a45. Escopo separado do SZ-FRONTEND-ESDE, que trata de importacao de TEMA e nao de frontends. Promovido a 'integrated' em 2026-08-11: a PR #65 foi mesclada na main (63963d5f8633, squash) e todos os caminhos de scopePaths existem naquele commit — verificado por ancestralidade, nao pelo relatorio do merge."
+  "updatedAt": "2026-08-12",
+  "notes": "Cherry-pick a040f86 na harmonizacao a45. Escopo separado do SZ-FRONTEND-ESDE, que trata de importacao de TEMA e nao de frontends. Promovido a 'integrated' em 2026-08-11: a PR #65 foi mesclada na main (63963d5f8633, squash) e todos os caminhos de scopePaths existem naquele commit — verificado por ancestralidade, nao pelo relatorio do merge. 2026-08-12: acrescentado o terceiro tipo de atalho. Os dois anteriores publicavam DESTINOS (emulation launch --game-id, cloud launch --platform); este publica a INTERFACE (desktop ui), que e o que faz o Big Picture virar porta de entrada da experiencia, como em ES-DE, LaunchBox ou RetroFE. O modo vem de uma tabela FECHADA, e nao de interpolacao do id recebido da UI: interpolar transformaria 'escolher um modo' em 'escolher o que o binario instalado executa'. Medido em ambiente isolado: atalho gravado com LaunchOptions 'desktop ui', reaplicacao byte a byte identica, atalhos de jogo e de terceiros preservados, modo inventado recusado e apply de outro tipo recusado."
 }
