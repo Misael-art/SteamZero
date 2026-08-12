@@ -124,12 +124,35 @@ def test_activation_is_confirmed_verified_noop_and_rollback_safe(
     first_bytes = target.read_bytes()
     status = manager.status("switch")
     assert first_result.status == "ok"
+    # Igualdade exata de propósito: ela pega crescimento acidental do payload.
+    # Cresceu de propósito em 2026-08-12 (G45) — `retropad` e
+    # `withoutRetropadEquivalent` são o consumidor que os bindings resolvidos
+    # nunca tiveram —, então os campos novos entram na expectativa em vez de a
+    # asserção virar comparação de subconjunto.
     assert status["active"] == {
         "id": "standard-gamepad",
         "revision": 1,
         "orientation": "portrait-left",
         "scope": "platform",
         "scopeId": None,
+        "retropad": {
+            # Rotacionados: a orientação é `portrait-left`, e `resolve_bindings`
+            # gira os direcionais. Ver a rotação chegar até a tradução RetroPad
+            # é a prova de que ela atravessa a cadeia inteira.
+            "input_up_axis": "hat.right",
+            "input_right_axis": "hat.down",
+            "input_down_axis": "hat.left",
+            "input_left_axis": "hat.up",
+            "input_b_btn": "button.south",
+            "input_a_btn": "button.east",
+            "input_y_btn": "button.west",
+            "input_x_btn": "button.north",
+            "input_start_btn": "button.start",
+            "input_select_btn": "button.select",
+            "input_l_btn": "button.shoulder-left",
+            "input_r_btn": "button.shoulder-right",
+        },
+        "withoutRetropadEquivalent": [],
     }
 
     second = manager.plan_activate(platform_id="switch", profile_id="joycon-pair")
