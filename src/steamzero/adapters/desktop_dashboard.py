@@ -410,6 +410,7 @@ class DesktopDashboard:
         )
         self._playtime = playtime or PlaytimeCatalog(store_factory)
         self._collections = collections or CollectionManager()
+        # Injetado nos testes; em produção nasce sob demanda em `_cast_orchestrator`.
         self._cast = cast_orchestrator
         self._theme_catalog = ThemeCatalog()
         self._theme_prefs = ThemePreferenceManager()
@@ -671,11 +672,12 @@ class DesktopDashboard:
             }
 
         try:
-            if self._cast is not None:
+            orchestrator = self._cast_orchestrator()
+            if orchestrator is not None:
                 cast = {
                     "state": "available",
-                    "status": self._cast.session_status(),
-                    "activeSessions": self._cast.active_sessions(),
+                    "status": orchestrator.session_status(),
+                    "activeSessions": orchestrator.active_sessions(),
                     "detail": None,
                 }
             else:
@@ -859,16 +861,50 @@ class DesktopDashboard:
     def apply_library_health(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         return self._emulation.apply_action(plan_id, confirm_token)
 
-    def cast_discover(self, timeout_ms: int = 5000) -> list[dict[str, Any]]:
+    def _cast_orchestrator(self) -> CastOrchestrator | None:
+        """Orquestrador de transmissão, construído na primeira necessidade.
+
+        Antes, `self._cast` só recebia valor por injeção — usada apenas nos
+        testes. Nenhum caminho de produção construía um, então TODA chamada de
+        cast via `None` e a tela de Transmissão respondia "Orquestrador não
+        configurado" para sempre. Não faltava configuração: faltava instância.
+
+        Preguiçoso, e não no `__init__`, para que a construção — que dispara
+        `_reconcile`, encerrando sessões órfãs dos providers — aconteça quando a
+        transmissão é de fato consultada, e não como efeito colateral de
+        instanciar o dashboard num teste ou numa fixture.
+
+        Em produção o único construtor do dashboard é o servidor da própria UI,
+        que é exatamente o caso "UI reiniciou" para o qual `_reconcile` existe.
+        Por isso o snapshot também resolve por aqui: reportar "indisponível" na
+        tela enquanto os botões funcionam seria pior que a limpeza de órfãs.
+
+        Falha de construção degrada para `None` — a tela volta a dizer que a
+        transmissão está indisponível, em vez de derrubar o dashboard inteiro
+        (AGENTS.md §8).
+        """
         if self._cast is None:
+            try:
+                self._cast = CastOrchestrator()
+            except (SteamZeroError, OSError) as exc:
+                _log.warning("orquestrador de transmissão indisponível: %s", exc)
+                return None
+        return self._cast
+
+    def cast_discover(self, timeout_ms: int = 5000) -> list[dict[str, Any]]:
+        cast = self._cast_orchestrator()
+        if cast is None:
             return []
-        return self._cast.discover_receivers(timeout_ms=timeout_ms)
+        return cast.discover_receivers(timeout_ms=timeout_ms)
 
     def cast_pair(self, receiver_id: str, pin: str | None = None) -> dict[str, Any]:
-        if self._cast is None:
-            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
+        cast = self._cast_orchestrator()
+        if cast is None:
+            raise SteamZeroError(
+                "E-CAST-UNAVAILABLE", detail="Transmissão indisponível neste ambiente."
+            )
         secret_pin = Secret(pin) if pin is not None else None
-        paired = self._cast.pair_receiver(receiver_id, pin=secret_pin)
+        paired = cast.pair_receiver(receiver_id, pin=secret_pin)
         return {"paired": paired, "receiverId": receiver_id}
 
     def cast_start(
@@ -878,9 +914,12 @@ class DesktopDashboard:
         mode: str = "game",
         consent: CaptureConsent | None = None,
     ) -> dict[str, Any]:
-        if self._cast is None:
-            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
-        return self._cast.start_stream(
+        cast = self._cast_orchestrator()
+        if cast is None:
+            raise SteamZeroError(
+                "E-CAST-UNAVAILABLE", detail="Transmissão indisponível neste ambiente."
+            )
+        return cast.start_stream(
             receiver_id,
             profile_id=profile_id,
             mode=mode,
@@ -888,23 +927,28 @@ class DesktopDashboard:
         )
 
     def cast_stop(self) -> dict[str, Any]:
-        if self._cast is None:
-            raise SteamZeroError("E-CAST-UNAVAILABLE", detail="Orquestrador não configurado.")
-        self._cast.stop_stream()
+        cast = self._cast_orchestrator()
+        if cast is None:
+            raise SteamZeroError(
+                "E-CAST-UNAVAILABLE", detail="Transmissão indisponível neste ambiente."
+            )
+        cast.stop_stream()
         return {"stopped": True}
 
     def cast_status(self) -> dict[str, Any]:
-        if self._cast is None:
-            return {"state": "unavailable", "detail": "Orquestrador não configurado."}
-        result = self._cast.session_status()
+        cast = self._cast_orchestrator()
+        if cast is None:
+            return {"state": "unavailable", "detail": "Transmissão indisponível neste ambiente."}
+        result = cast.session_status()
         if result is None:
             return {"state": "idle", "detail": "Nenhuma sessão ativa."}
         return result
 
     def cast_sessions(self) -> list[dict[str, Any]]:
-        if self._cast is None:
+        cast = self._cast_orchestrator()
+        if cast is None:
             return []
-        return list(self._cast.active_sessions())
+        return list(cast.active_sessions())
 
     def _rollback_component_for_history(self, operation_id: str) -> Any:
         with self._store_factory() as store:

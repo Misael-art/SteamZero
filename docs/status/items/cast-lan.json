@@ -19,9 +19,7 @@
     "tests/unit/test_screencast.py"
   ],
   "dependsOn": [],
-  "knownGaps": [
-    "GAP-G41"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Pareamento e ciclo da sessao de cast possuem contratos testados.",
     "Falhas do pipeline degradam com diagnostico, sem travar a sessao local."
@@ -40,8 +38,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Expor a configuracao do orquestrador na UI (G41): hoje discover responde vazio e status diz 'Orquestrador nao configurado', sem caminho para configurar. Depois, prova fim a fim em dois dispositivos LAN reais (operador).",
+  "nextAction": "Exercitar pareamento e transmissao contra um receptor real (operador): a descoberta voltou a responder, o caminho seguinte nunca foi percorrido em producao.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-12",
-  "notes": "GAP-G32 fechado em 2026-08-11 (commit 2a5c1df): causa raiz comprovada (barreira start_done liberada em todo caminho terminal + LISTEN_BACKLOG=128; accept so encerra em erro fatal); teste concorrente reprova pre-correcao via stash; tríade flaky 50/50 iteracoes verdes; nenhum sleep/retry/skip/xfail adicionado nem timeout aumentado. Nao existe certificacao fim a fim em hardware. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). Medido no host em 2026-08-12, com a a45 e o daemon convergido: as rotas HTTP da UI (/cast/discover, /pair, /start, /stop, /status, /sessions) existem e respondem; cast_discover() devolve [] e cast_status() devolve state=unavailable com detalhe 'Orquestrador nao configurado'. O codigo esta completo e a capacidade e inalcancavel pelo usuario — ver G41. 'operation: degraded' continua correto e agora tem causa nomeada."
+  "notes": "GAP-G32 fechado em 2026-08-11 (commit 2a5c1df): causa raiz comprovada (barreira start_done liberada em todo caminho terminal + LISTEN_BACKLOG=128; accept so encerra em erro fatal); teste concorrente reprova pre-correcao via stash; tríade flaky 50/50 iteracoes verdes; nenhum sleep/retry/skip/xfail adicionado nem timeout aumentado. Nao existe certificacao fim a fim em hardware. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). Medido no host em 2026-08-12, com a a45 e o daemon convergido: as rotas HTTP da UI (/cast/discover, /pair, /start, /stop, /status, /sessions) existem e respondem; cast_discover() devolve [] e cast_status() devolve state=unavailable com detalhe 'Orquestrador nao configurado'. O codigo esta completo e a capacidade e inalcancavel pelo usuario — ver G41. 'operation: degraded' continua correto e agora tem causa nomeada. G41 FECHADA em 2026-08-12: nao faltava configuracao, faltava instancia — nenhum caminho de producao construia o CastOrchestrator. Corrigido com construcao sob demanda. Medido: cast_status saiu de unavailable para idle e cast_discover devolve 1 receptor (local-browser)."
 }
