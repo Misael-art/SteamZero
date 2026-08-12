@@ -634,6 +634,18 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
         # `apply` de propósito: a conversão não é fiel por construção, e o
         # usuário precisa ver `isMonochrome` e `unsupportedSlots` ANTES de
         # importar, não depois de olhar um tema cinza e não entender por quê.
+        if path == "/theme/import/package/inspect":
+            return self._dashboard().theme_import_zip_inspect(
+                self._required_string(payload, "source"),
+            )
+        if path == "/theme/import/package/apply":
+            # `overwrite` é explícito e falso por omissão: importar um tema cujo
+            # id já existe SOBRESCREVE o instalado, e isso não pode acontecer
+            # por omissão de campo.
+            return self._dashboard().theme_import_zip_apply(
+                self._required_string(payload, "source"),
+                overwrite=payload.get("overwrite") is True,
+            )
         if path == "/theme/import/esde/inspect":
             return self._dashboard().theme_import_esde_inspect(
                 self._required_string(payload, "source"),

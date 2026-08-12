@@ -33,7 +33,7 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
 | SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | degraded | installed | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
-| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | degraded | installed | Expor importacao de tema na UI (G42), comecando por ES-DE, que e o unico formato com importador pronto no dominio; depois fechar a G39. |
+| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | degraded | installed | Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada sem diagnostico). |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.
