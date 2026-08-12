@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote
 
 from steamzero.adapters.scraping.base import BaseMediaProvider, RateLimiter
 from steamzero.core.errors import SteamZeroError
@@ -164,8 +164,11 @@ class SteamGridDbAdapter(BaseMediaProvider):
                 return results[0].get("id")
 
         self._rate_limit()
-        params = urlencode({"term": identity.title, "platform": identity.platform_slug})
-        url = f"{_API_BASE}/games/autocomplete?{params}"
+        # `/games/autocomplete?term=` devolve **405 Method Not Allowed**: esse
+        # endpoint não existe na v2. O real recebe o termo no CAMINHO, e não em
+        # query string. Medido contra a API em 2026-08-12: 405 no antigo, 200 no
+        # novo. Sem `platform`, que o endpoint real não aceita.
+        url = f"{_API_BASE}/search/autocomplete/{quote(identity.title, safe='')}"
         results = self._fetch_json(url)
         if results:
             return results[0].get("id")
