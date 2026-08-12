@@ -16,7 +16,9 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PLATFORM-MANIFESTS | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-SERVICE-API | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 267 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TOOLS | 29 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |

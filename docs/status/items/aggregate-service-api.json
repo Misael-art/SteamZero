@@ -10,8 +10,9 @@
   "operation": "unknown",
   "distribution": "installed",
   "scopePaths": [
+    "src/steamzero/api",
     "src/steamzero/service",
-    "src/steamzero/api"
+    "tests/unit/test_envelope.py"
   ],
   "dependsOn": [],
   "knownGaps": [],
