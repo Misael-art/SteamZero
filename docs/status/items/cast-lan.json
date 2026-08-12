@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
+  "scopeDigest": "a77a13dfa5bae17a14d139f824bdf7882253ecb9c68363111b16e7d7c34c9513",
   "scopePaths": [
     "src/steamzero/adapters/cast_engine.py",
     "src/steamzero/adapters/cast_orchestrator.py",

@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
+  "scopeDigest": "22b688ea3cacf427911c3675e3c08ca36f0f1d0069ee90418c4e744c0d3a8c67",
   "scopePaths": [
     "src/steamzero/adapters/steam_rom_manager.py",
     "tests/unit/test_steam_rom_manager.py",

@@ -215,7 +215,11 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
                 errors.append(
                     f"{identifier}: workstream {workstream_id} pertence a {workstream['item']}"
                 )
-        if item["verification"] in {"dev", "vm", "hw"}:
+        # `unit` entra junto de dev/vm/hw. Sem isto, a verificacao mais COMUM do
+        # catalogo era tambem a unica que nao envelhecia: um item podia declarar
+        # "coberto por teste unitario" e continuar verde depois de o proprio
+        # codigo do escopo mudar, porque nada amarrava a alegacao ao conteudo.
+        if item["verification"] in {"unit", "dev", "vm", "hw"}:
             if not any(entry["result"] == "passed" for entry in item["evidence"]):
                 errors.append(
                     f"{identifier}: verificacao {item['verification']} exige evidencia aprovada"

@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
+  "scopeDigest": "11411dc2e4d150a9a281360b9c7bfb512199770255d3a9d9acc22c297f503dc9",
   "scopePaths": [
     "src/steamzero/adapters/es_de.py",
     "tests/unit/test_es_de.py",

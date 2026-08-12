@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
+  "scopeDigest": "c8971a0d4e2352a3356841e67a3125549495d34eb4a468b0c3559ee5cd61c79a",
   "scopePaths": [
     "src/steamzero/adapters/scraping",
     "src/steamzero/domain/scraping_providers.py",
@@ -17,7 +18,10 @@
     "tests/unit/test_scraping_provider_catalog.py"
   ],
   "dependsOn": [],
-  "knownGaps": ["LEDGER-A7", "LEDGER-A12"],
+  "knownGaps": [
+    "LEDGER-A7",
+    "LEDGER-A12"
+  ],
   "acceptanceCriteria": [
     "Providers, credenciais e cache possuem contratos testados e sanitizados.",
     "Quota, indisponibilidade e dado parcial aparecem como estado observavel."

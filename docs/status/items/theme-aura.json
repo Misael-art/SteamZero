@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
+  "scopeDigest": "a46fbf7eaf90fa3ed57078bbd48b1b4ca96a6fb22efb64ea0d8dd4ef0c5e6cf0",
   "scopePaths": [
     "src/steamzero/domain/default_theme.py",
     "src/steamzero/themes/org.steamzero.aura",

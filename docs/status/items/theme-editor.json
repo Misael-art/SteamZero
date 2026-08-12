@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "not-packaged",
+  "scopeDigest": "74aa14767a00173c2759a5f14eeeb98786e5fdd9f4417dd44d26bff885595fcc",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",

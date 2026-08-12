@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
+  "scopeDigest": "c04ba2debea065d87209636281ed83bbccb6c2d856bc84d634018da321d3475f",
   "scopePaths": [
     "src/steamzero/adapters/steam_shortcuts.py",
     "tests/unit/test_steam_shortcuts.py"

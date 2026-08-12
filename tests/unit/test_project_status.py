@@ -4,6 +4,10 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+from pathlib import Path
+
 import project_status
 
 
@@ -53,6 +57,71 @@ def test_status_table_publishes_operation_and_distribution_per_item() -> None:
         assert len(cells) == len(columns), f"{identifier}: numero de colunas divergente"
         assert cells[6] == item["operation"], f"{identifier}: coluna de operacao divergente"
         assert cells[7] == item["distribution"], f"{identifier}: coluna de distribuicao divergente"
+
+
+def test_unit_evidence_goes_stale_when_the_scope_changes(tmp_path: Path) -> None:
+    """`verification: unit` envelhece como dev/vm/hw.
+
+    Antes, `unit` era a verificacao mais comum do catalogo e a unica que nunca
+    envelhecia: um item podia dizer "coberto por teste unitario" e seguir verde
+    depois de o codigo do proprio escopo mudar. O teste mexe no ARQUIVO do
+    escopo, nao no item, porque e essa a direcao do defeito — a alegacao fica
+    parada enquanto o codigo anda.
+    """
+    root = tmp_path / "repo"
+    scope = root / "src" / "steamzero"
+    scope.mkdir(parents=True)
+    (root / "docs" / "status" / "items").mkdir(parents=True)
+    shutil.copy(
+        project_status.ROOT / "docs" / "status" / "project-item-v1.schema.json",
+        root / "docs" / "status" / "project-item-v1.schema.json",
+    )
+    covered = scope / "coberto.py"
+    covered.write_text("VALOR = 1\n", encoding="utf-8")
+
+    item = {
+        "schemaVersion": 1,
+        "kind": "project-item",
+        "id": "SZ-EXEMPLO",
+        "title": "Exemplo",
+        "domain": "governance",
+        "implementation": "complete",
+        "integration": "integrated",
+        "verification": "unit",
+        "operation": "ready",
+        "distribution": "not-packaged",
+        "scopePaths": ["src/steamzero/coberto.py"],
+        "dependsOn": [],
+        "knownGaps": [],
+        "acceptanceCriteria": ["Existe."],
+        "evidence": [
+            {
+                "kind": "test",
+                "reference": "src/steamzero/coberto.py",
+                "command": "pytest",
+                "result": "passed",
+            }
+        ],
+        "nextAction": "Nada a fazer.",
+        "activeWorkstreams": [],
+        "updatedAt": "2026-08-11",
+        "notes": "Item sintetico do teste.",
+    }
+    item_path = root / "docs" / "status" / "items" / "exemplo.json"
+
+    def write(digest: str) -> None:
+        item_path.write_text(json.dumps({**item, "scopeDigest": digest}), encoding="utf-8")
+
+    write(project_status.scope_digest(root, item["scopePaths"]))
+    assert project_status.check_catalog(root, check_generated=False) == [], (
+        "selo em dia nao pode acusar nada"
+    )
+
+    covered.write_text("VALOR = 2\n", encoding="utf-8")
+    errors = project_status.check_catalog(root, check_generated=False)
+    assert any("SZ-EXEMPLO" in error and "obsoleta" in error for error in errors), (
+        f"escopo mudou e a evidencia unitaria continuou valida: {errors}"
+    )
 
 
 def test_active_workstream_paths_cannot_overlap() -> None:
