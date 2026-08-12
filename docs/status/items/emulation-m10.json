@@ -7,8 +7,8 @@
   "implementation": "partial",
   "integration": "feature-branch",
   "verification": "vm",
-  "operation": "blocked",
-  "distribution": "not-packaged",
+  "operation": "degraded",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/flatpak.py",
     "tests/integration/test_vm_harness.py",
@@ -42,6 +42,6 @@
   "activeWorkstreams": [
     "WS-2026-08-M10"
   ],
-  "updatedAt": "2026-08-10",
-  "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado."
+  "updatedAt": "2026-08-11",
+  "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado. Certificacao VM COMPLETA no commit 586ed7c: RetroArch, PCSX2 e PPSSPP com minimal + 3 ciclos full e restore btrfs SIM em todas (indice docs/diagnostics/INDEX-M10.md); DEBT-A7 encerrada. Operacao 'degraded' e nao 'blocked' porque o ciclo esta provado em VM e o codigo esta na 0.1.0a44-07802589e985 instalada; o que falta e a convergencia do daemon e a certificacao fisica, ambas do operador. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge)."
 }
