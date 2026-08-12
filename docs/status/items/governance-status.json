@@ -29,7 +29,7 @@
     "tests/unit/test_project_status.py",
     "tools/project_status.py"
   ],
-  "scopeDigest": "e81f56d5e9e0e521c780be4594d1d5568445a2e1d2f4919c3dece658223e8505",
+  "scopeDigest": "53db0acd00fc0ca82c3dede16918f33e87ede8e0deac5ffcbb712107c8ed459f",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
