@@ -9,16 +9,38 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
+  "scopePaths": [
+    "docs/adr/0024-jogo-online-p2p-netplay.md",
+    "docs/contracts/p2p",
+    "docs/fixtures/p2p",
+    "docs/EXPANSION-LEDGER.md",
+    "docs/contracts/fronteiras.md",
+    "tests/unit/test_contract_fixtures.py"
+  ],
   "dependsOn": [],
-  "knownGaps": ["LEDGER-A6"],
+  "knownGaps": [
+    "LEDGER-A6"
+  ],
   "acceptanceCriteria": [
     "Sessao, convite, NAT e encerramento seguro possuem protocolo versionado.",
     "O recurso fica atras de feature flag e preserva jogo local quando indisponivel."
   ],
-  "evidence": [],
-  "nextAction": "Definir ADR de transporte, identidade, abuso e compatibilidade de emuladores.",
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/adr/0024-jogo-online-p2p-netplay.md",
+      "command": "test -f docs/adr/0024-jogo-online-p2p-netplay.md && test -f docs/contracts/p2p/netplay-session-v1.schema.json",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/fixtures/p2p",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_contract_fixtures.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-10",
-  "notes": "Nao ha implementacao P2P no checkout integrado."
+  "updatedAt": "2026-08-11",
+  "notes": "ADR-0024 e fixtures contratuais integrados como design only. Nao ha implementacao P2P no checkout."
 }

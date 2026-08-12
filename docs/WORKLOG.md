@@ -6328,3 +6328,46 @@ a44, integridade do state ok, sem jobs stalados, warns de órfãos históricos
 Ação no host acidental observada no journal (12:04:40, CWD PhaseZero):
 `pacman -U` do phasezero-control-center — projeto de referência, fora do
 escopo desta sessão; registrada para ciência do operador, não revertida.
+
+## 2026-08-11 — Harmonização a45 — Fases 4, 5, 6, 3 e 7 fechadas
+
+Retomada da frente `codex/harmonize-main-a45` a partir da Fase 6 inacabada.
+Base `origin/main` em `245e8d8`; nenhuma ação de host executada.
+
+| fase | commit | entrega | prova |
+|---|---|---|---|
+| 6 | `ea95873` | preview do editor resolve a cadeia `extends` (G37) | 11 testes; `extends=aura` dá `#22d3ee/#0b1020`, `steamdeck` dá `#1b9e4a` — antes os três davam a paleta padrão |
+| 4 | `dbc32db` | ADRs 0024/0025/0026 + contratos + 29/39 fixtures | 10 testes; ancoragem `failsAt`/`failsWith` verificada por mutação |
+| 5 | `d555561`…`2ded3c2` | seis cherry-picks do M11 (autoria preservada) | 39 testes; arquivos byte a byte idênticos à origem |
+| 5 | `9026517` | quatro itens de capacidade do M11 | idempotência medida fora da suíte |
+| 3a | `c3a6a03` | `operation`/`distribution` como colunas do STATUS | teste parseia a tabela célula a célula |
+| 3c | `3b0b90c` | `scopeDigest` passa a valer para `verification: unit` | mutação: com a regra antiga o teste reprova |
+| 3b | `26bc3fe` | estado real de operação/distribuição de 6 itens | ancestralidade de commit contra a release a44 |
+| 3d | `bfcc5c5` | custódia declarada para os 321 arquivos órfãos de `src/` | teste varre a árvore inteira a cada execução |
+| 3e | `11e4786` | `docs/status/COVERAGE.md` | teste checa as duas direções da marcação |
+
+Fase 7: `make check` integral verde — **4399 passaram, 10 skipados, cobertura
+86,05%** (piso 85%). Os oito alvos (`format-check`, `lint`, `boundaries`,
+`independence`, `component-lock`, `capability-matrix`, `status-check`,
+`typecheck`) reexecutados individualmente com exit 0 conferido. Mesmos cinco
+marcadores de skip/xfail/timeout que `origin/main`: nenhum novo. Nenhum teste
+novo toca rede. Worktree limpo; nenhum artefato de release commitado.
+
+Três defeitos encontrados e corrigidos além do plano:
+
+1. Os catorze `.meta.json` de remote-cast eram cópia byte a byte do payload com
+   um `violates` pendurado. O teste os aceitava porque só exigia falha genérica
+   — um erro de digitação em qualquer campo satisfazia a condição.
+2. Colisão de ID: a G38 registrada pela Fase 6 já existia (doctor
+   `service.generation`). O gap novo passou a ser a G39.
+3. Os 321 arquivos de `src/` sem dono não eram descuido: `check_catalog` só
+   compara `HEAD^..HEAD`, então cada arquivo é conferido no commit em que muda
+   e sai do campo de visão no seguinte. A lacuna se acumulava sozinha.
+
+Desvio consciente do plano: os quatro itens M11 permanecem em `feature-branch`
+e não `integrated`. Neste catálogo `integrated` significa presente na `main`, e
+esta branch ainda não foi mesclada; promovê-los agora afirmaria o resultado de
+um CI que ainda não rodou.
+
+Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
+pendentes e exigem o operador.

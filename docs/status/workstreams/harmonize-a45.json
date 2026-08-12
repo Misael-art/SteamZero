@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-HARMONIZE-A45",
+  "item": "SZ-GOVERNANCE-STATUS",
+  "branch": "codex/harmonize-main-a45",
+  "baseRef": "245e8d8e9dd3977f15f9402143d6e432966e7202",
+  "owner": "harmonize-a45-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/status",
+    "tools/project_status.py",
+    "src/steamzero/diagnostics/doctor.py",
+    "src/steamzero/adapters/release_convergence.py",
+    "tests/unit/test_project_status.py",
+    "tests/unit/test_doctor.py",
+    "tests/unit/test_theme_editor.py",
+    "src/steamzero/domain/theme_editor.py",
+    "src/steamzero/adapters/steam_shortcuts.py",
+    "src/steamzero/adapters/steam_rom_manager.py",
+    "src/steamzero/adapters/es_de.py",
+    "docs/adr"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "docs/09-operations/RELEASE-LEDGER.md",
+    "src/steamzero/__init__.py",
+    "AGENTS.md",
+    "Makefile",
+    "src/steamzero/ui",
+    "docs/KNOWN-GAPS.md"
+  ],
+  "nextAction": "UI audit preservada via cherry-pick; corrigir status-check WORKLOG append-only e doctor falso verde; depois ADRs/M11/G37.",
+  "updatedAt": "2026-08-11"
+}

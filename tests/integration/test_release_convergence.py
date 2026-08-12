@@ -573,3 +573,26 @@ class TestTheCliContract:
         from steamzero.cli.main import _gate_flag
 
         assert _gate_flag(argv, "--expect-release") == expected
+
+
+def test_current_link_isolates_from_host_via_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """STEAMZERO_CURRENT_LINK isola testes de IPC do host real.
+
+    Sem isto, um daemon de teste (árvore dev, sem ``_build_info``) lê
+    ``/opt/steamzero/current`` do operador e o doctor publica um falso
+    ``pending`` (current=a44 vs daemon=dev). Produção nunca define a env;
+    quando ausente, o link canônico é ``/opt/steamzero/current``.
+    """
+    from steamzero.adapters import release_convergence
+
+    monkeypatch.delenv("STEAMZERO_CURRENT_LINK", raising=False)
+    assert release_convergence._current_link() == release_convergence.CURRENT_LINK
+
+    isolated = tmp_path / "no-current"
+    monkeypatch.setenv("STEAMZERO_CURRENT_LINK", str(isolated))
+    assert release_convergence._current_link() == isolated
+    # Sem symlink no link isolado, read_activated_release devolve None sem tocar
+    # o host real — caminho usado pelo doctor nos testes de IPC.
+    assert read_activated_release() is None

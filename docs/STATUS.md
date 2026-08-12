@@ -4,19 +4,34 @@
 
 Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/status/items/`; WORKLOG, diagnosticos e relatorios sao evidencias historicas.
 
-| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | Proxima acao |
-|---|---|---|---|---|---|---|
-| SZ-CAST-INTERNET | Partilha de ecra pela internet | planned | planned | isolated | none | Escrever ADR de NAT, relay, privacidade e limite de banda. |
-| SZ-CAST-LAN | Partilha de ecra em rede local | implemented | complete | integrated | unit | Prova fim a fim em dois dispositivos LAN reais (operador) e certificacao de hardware. |
-| SZ-EMULATION-M10 | Ciclo transacional de emuladores Flatpak | blocked | partial | feature-branch | vm | Repetir somente RetroArch/minimal apos r35 e registrar o payload se a rede falhar. |
-| SZ-FRONTEND-ESDE | Importacao de temas ES-DE | implemented | complete | integrated | unit | Promover a verificacao integrada somente junto do frontend que consome o tema. |
-| SZ-FRONTEND-LAUNCHBOX | Compatibilidade de importacao LaunchBox | planned | planned | isolated | none | Criar ADR e fixtures antes de prometer compatibilidade LaunchBox. |
-| SZ-FRONTEND-RETROFE | Vertical slice e declaracoes RetroFE | verified-dev | complete | integrated | dev | Conectar o frontend M11 sem alegar suporte a LaunchBox antes de um adapter proprio. |
-| SZ-GOVERNANCE-STATUS | Estado verificavel e coordenacao de trabalho | verified-dev | complete | feature-branch | dev | Integrar este catalogo antes de abrir a proxima frente paralela. |
-| SZ-MEDIA-SCRAPING | Metadados e midia por scraping controlado | implemented | complete | integrated | unit | Executar validacao real de providers em ambiente controlado (operador, com credenciais) sem promover scraping a dado confiavel por padrao. |
-| SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | Definir ADR de transporte, identidade, abuso e compatibilidade de emuladores. |
-| SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | Definir contrato de credenciais, cache e modo hardcore antes de integrar API externa. |
-| SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
-| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | Resolver o gap G37 (preview de sessoes criadas sem resolver a cadeia extends) e cobrir importacao/rollback em uma vertical integrada de UI. |
+| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | Operacao | Distribuicao | Proxima acao |
+|---|---|---|---|---|---|---|---|---|
+| SZ-AGG-ADAPTERS | Adapters: integracoes externas sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os adapters com ciclo transacional e evidencia dedicada. |
+| SZ-AGG-ASSETS | Conteudo empacotado: experiencias, i18n e catalogos | partial | partial | integrated | none | unknown | installed | Amarrar cada catalogo empacotado ao item da capacidade que o consome. |
+| SZ-AGG-CORE | Nucleo: paths, erros, transacao e migracoes | partial | partial | integrated | none | unknown | installed | Separar migracoes de estado em item proprio, com prova de round-trip por versao. |
+| SZ-AGG-DOMAIN | Dominio: regras de negocio sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os recortes de dominio com contrato e teste dedicados. |
+| SZ-AGG-INPUT-PROFILES | Perfis de controle empacotados | partial | partial | integrated | none | unknown | installed | Provar que um perfil aplicado tem efeito observavel antes de declarar a capacidade. |
+| SZ-AGG-JOBS | Jobs em segundo plano e recovery | partial | partial | integrated | none | unknown | installed | Cobrir recovery de job interrompido por teste dedicado. |
+| SZ-AGG-PLATFORM-MANIFESTS | Manifests de plataforma empacotados | partial | partial | integrated | none | unknown | installed | Cobrir a curadoria dos manifests por um item de catalogo de plataformas. |
+| SZ-AGG-PRIVILEGED | Superficie privilegiada e helpers de host | partial | partial | integrated | none | unknown | installed | Cobrir cada helper privilegiado por teste de recusa e por checagem de ownership. |
+| SZ-AGG-SCHEMAS | Schemas versionados do runtime | partial | partial | integrated | none | unknown | installed | Amarrar cada schema ao item da capacidade que o produz ou consome. |
+| SZ-AGG-SERVICE-API | Daemon e superficie de API | partial | partial | integrated | none | unknown | installed | Separar o contrato JSON-RPC em item proprio com fixtures de envelope. |
+| SZ-CAST-INTERNET | Partilha de ecra pela internet | planned | planned | isolated | none | unknown | not-packaged | Implementar cast internet apenas apos prova LAN estavel e decisao de relay, respeitando remote-cast-session-v1. |
+| SZ-CAST-LAN | Partilha de ecra em rede local | implemented | complete | integrated | unit | degraded | installed | Prova fim a fim em dois dispositivos LAN reais (operador) e certificacao de hardware. |
+| SZ-EMULATION-M10 | Ciclo transacional de emuladores Flatpak | verified-vm | partial | feature-branch | vm | degraded | installed | Repetir somente RetroArch/minimal apos r35 e registrar o payload se a rede falhar. |
+| SZ-FRONTEND-ESDE | Importacao de temas ES-DE | implemented | complete | integrated | unit | ready | not-packaged | Promover a verificacao integrada somente junto do frontend que consome o tema. |
+| SZ-FRONTEND-ESDE-SYSTEMS | Custom systems do ES-DE idempotentes | implemented | complete | feature-branch | unit | unknown | not-packaged | Validar contra uma instalacao real do ES-DE no host (operador). |
+| SZ-FRONTEND-LAUNCHBOX | Compatibilidade de importacao LaunchBox | planned | planned | isolated | none | unknown | not-packaged | Criar ADR e fixtures antes de prometer compatibilidade LaunchBox. |
+| SZ-FRONTEND-M11-SURFACE | Superficie M11: comando frontends na CLI e no daemon | implemented | complete | feature-branch | unit | unknown | not-packaged | Cobrir cli/main.py e service/methods.py por itens agregadores de diretorio na etapa de catalogo; este item responde apenas pela superficie frontends dentro deles. |
+| SZ-FRONTEND-RETROFE | Vertical slice e declaracoes RetroFE | verified-dev | complete | integrated | dev | ready | not-packaged | Conectar o RetroFE aos adapters M11 (SZ-FRONTEND-SRM, SZ-FRONTEND-ESDE-SYSTEMS, SZ-FRONTEND-STEAM-SHORTCUTS) sem alegar suporte a LaunchBox antes de um adapter proprio. |
+| SZ-FRONTEND-SRM | Manifests do Steam ROM Manager idempotentes | implemented | complete | feature-branch | unit | unknown | not-packaged | Validar contra uma instalacao real do Steam ROM Manager no host (operador). |
+| SZ-FRONTEND-STEAM-SHORTCUTS | Atalhos do Steam (shortcuts.vdf) transacionais | implemented | complete | feature-branch | unit | unknown | not-packaged | Exercitar contra um shortcuts.vdf real do operador antes de promover a verificacao integrada. |
+| SZ-GOVERNANCE-STATUS | Estado verificavel e coordenacao de trabalho | verified-dev | complete | feature-branch | dev | ready | not-packaged | Manter status-check e WORKLOG append-only verdes apos harmonizacao a45. |
+| SZ-MEDIA-SCRAPING | Metadados e midia por scraping controlado | implemented | complete | integrated | unit | degraded | installed | Executar validacao real de providers em ambiente controlado (operador, com credenciais) sem promover scraping a dado confiavel por padrao. |
+| SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
+| SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
+| SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | degraded | installed | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
+| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | degraded | installed | Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada para a paleta padrao sem diagnostico) e cobrir importacao/rollback em uma vertical integrada de UI. |
+| SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.

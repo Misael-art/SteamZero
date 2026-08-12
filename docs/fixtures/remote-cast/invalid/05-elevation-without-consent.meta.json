@@ -1,0 +1,6 @@
+{
+  "violates": "elevation-requires-new-consent",
+  "explains": "elevacao exige novo consentimento (consent.elevation)",
+  "failsAt": "/consent",
+  "failsWith": "required"
+}

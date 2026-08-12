@@ -9,16 +9,38 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
-  "dependsOn": ["SZ-CAST-LAN"],
+  "scopePaths": [
+    "docs/adr/0026-cast-remoto-pareamento-consentimento-transporte-revogacao.md",
+    "docs/contracts/remote-cast",
+    "docs/fixtures/remote-cast",
+    "docs/EXPANSION-LEDGER.md",
+    "docs/contracts/fronteiras.md",
+    "tests/unit/test_contract_fixtures.py"
+  ],
+  "dependsOn": [
+    "SZ-CAST-LAN"
+  ],
   "knownGaps": [],
   "acceptanceCriteria": [
     "Descoberta, relay e autorizacao remota sao modelados por contrato auditavel.",
     "Nenhuma porta publica ou credencial e criada sem autorizacao explicita."
   ],
-  "evidence": [],
-  "nextAction": "Escrever ADR de NAT, relay, privacidade e limite de banda.",
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/adr/0026-cast-remoto-pareamento-consentimento-transporte-revogacao.md",
+      "command": "test -f docs/adr/0026-cast-remoto-pareamento-consentimento-transporte-revogacao.md && test -f docs/contracts/remote-cast/remote-cast-session-v1.schema.json",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/fixtures/remote-cast",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_contract_fixtures.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Implementar cast internet apenas apos prova LAN estavel e decisao de relay, respeitando remote-cast-session-v1.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-10",
-  "notes": "O suporte Web atual nao equivale a cast funcional pela internet."
+  "updatedAt": "2026-08-11",
+  "notes": "ADR-0026 e fixtures contratuais integrados como design only. Cast LAN local nao equivale a cast funcional pela internet. Os catorze .meta.json de remote-cast entraram como copia do payload com 'violates' pendurado e foram reescritos na forma fechada violates/explains/failsAt/failsWith; o teste passava antes porque so exigia falha generica."
 }

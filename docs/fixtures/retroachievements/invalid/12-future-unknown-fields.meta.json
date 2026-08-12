@@ -1,0 +1,6 @@
+{
+  "violates": "unknown-future-fields-rejected",
+  "explains": "Resposta futura com campos desconhecidos e recusada (envelope fechado); campos novos exigem v2 negociado.",
+  "failsAt": "/",
+  "failsWith": "additionalProperties"
+}

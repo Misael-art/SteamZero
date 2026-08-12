@@ -1,0 +1,6 @@
+{
+  "violates": "invite-single-use",
+  "explains": "Convite e single-use; usedCount acima de 1 indica reutilizacao e deve ser rejeitado.",
+  "failsAt": "/invitation/usedCount",
+  "failsWith": "maximum"
+}

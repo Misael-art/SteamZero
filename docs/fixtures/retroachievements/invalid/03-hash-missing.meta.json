@@ -1,0 +1,6 @@
+{
+  "violates": "hash-required",
+  "explains": "O hash local do jogo e obrigatorio para identificacao; ausencia impede reconhecer ou comparar.",
+  "failsAt": "/game",
+  "failsWith": "required"
+}

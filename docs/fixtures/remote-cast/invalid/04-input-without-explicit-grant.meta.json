@@ -1,0 +1,6 @@
+{
+  "violates": "input-requires-explicit-grant",
+  "explains": "input exige consentimento explicito (explicitInputGrant)",
+  "failsAt": "/consent",
+  "failsWith": "required"
+}

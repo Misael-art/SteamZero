@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Identidade AURA no editor: abrir → editar → preview → cancelar → reabrir.
+// Também cobre o fluxo theme.apply → confirm e a ausência de document.*.
 // O preview resolve os tokens editados no ThemeBridge; cancelar restaura a
 // aparência (fallback) e devolve a lista de temas ao primeiro plano.
 import QtQuick
@@ -18,6 +19,10 @@ Window {
     property int phase: 0
     property var cancelRequests: 0
     property string lastLoadId: ""
+    property string lastApplyThemeId: ""
+    property string lastConfirmPlanId: ""
+    property string lastCreateExtends: ""
+    property int appliedSignals: 0
 
     readonly property var auraColors: ({
         "background": "#0b1020",
@@ -67,11 +72,23 @@ Window {
     // Envelope do painel: URL/método vêm do backend, o harness só responde.
     property var request: function(method, path, payload, callback) {
         if (path === "/theme/list")
-            callback({"themes": [{
-                "id": "org.steamzero.aura", "name": "AURA", "version": "1.0.0",
-                "author": "SteamZero contributors", "origin": "builtin",
-                "state": "available", "compatible": true
-            }]})
+            callback({"themes": [
+                {
+                    "id": "org.steamzero.default", "name": "Default", "version": "1.0.0",
+                    "author": "SteamZero", "origin": "builtin",
+                    "state": "available", "compatible": true
+                },
+                {
+                    "id": "org.steamzero.aura", "name": "AURA", "version": "1.0.0",
+                    "author": "SteamZero contributors", "origin": "builtin",
+                    "state": "available", "compatible": true
+                },
+                {
+                    "id": "user.custom", "name": "Custom", "version": "0.1.0",
+                    "author": "Tester", "origin": "user",
+                    "state": "available", "compatible": true
+                }
+            ]})
     }
 
     property var requestAction: function(actionId, payload, callback) {
@@ -93,6 +110,38 @@ Window {
         if (actionId === "theme.editor.cancel") {
             cancelRequests += 1
             callback({"status": "cancelled", "sessionId": payload.sessionId})
+            return
+        }
+        if (actionId === "theme.apply") {
+            lastApplyThemeId = payload.themeId || ""
+            callback({
+                "planId": "plan-theme-apply-1",
+                "confirmToken": "token-theme-1",
+                "preview": "Operação: theme.preference.activate\nGarantia de rollback: G-FULL",
+                "rollbackGuarantee": "G-FULL"
+            })
+            return
+        }
+        if (actionId === "theme.apply.confirm") {
+            lastConfirmPlanId = payload.planId || ""
+            callback({"status": "applied", "operationId": "op-theme-1"})
+            return
+        }
+        if (actionId === "theme.editor.create") {
+            lastCreateExtends = payload.extends || ""
+            callback({
+                "sessionId": "edit-copy-fixture",
+                "manifest": {
+                    "id": "user.copy",
+                    "name": payload.name || "Cópia",
+                    "version": "0.1.0",
+                    "author": "Tester",
+                    "readOnly": false,
+                    "extends": payload.extends || "org.steamzero.default"
+                },
+                "preview": previewObject({"color": auraColors})
+            })
+            return
         }
     }
 
@@ -101,6 +150,8 @@ Window {
         anchors.fill: parent
         request: harness.request
         requestAction: harness.requestAction
+        activeThemeId: "org.steamzero.default"
+        onApplied: harness.appliedSignals += 1
     }
 
     function check(condition, message) {
@@ -121,9 +172,15 @@ Window {
     function runPhase() {
         if (phase === 0) {
             check(editor.editorSessionId === "", "sem sessão o editor mostra a lista")
-            check(editor.editorThemeList.length === 1, "lista deve carregar do catálogo")
-            check(editor.editorThemeList[0].name === "AURA",
+            check(editor.editorThemeList.length === 3, "lista deve carregar do catálogo")
+            check(editor.editorThemeList[1].name === "AURA",
                   "catálogo deve publicar a identidade AURA")
+            check(editor.activeThemeId === "org.steamzero.default",
+                  "activeThemeId deve refletir o tema ativo do shell")
+            check(editor.isActiveTheme("org.steamzero.default") === true,
+                  "default deve ser reconhecido como ativo")
+            check(editor.isActiveTheme("org.steamzero.aura") === false,
+                  "AURA não deve estar ativo no fixture")
             openAura()
             phase = 1
             return
@@ -173,7 +230,7 @@ Window {
             check(editor.editorDirty === false, "cancelar deve limpar o estado sujo")
             check(String(editor._previewBridge.background) === "#e7eceb",
                   "cancelar deve restaurar a aparência padrão (fallback)")
-            check(editor.editorThemeList.length === 1,
+            check(editor.editorThemeList.length === 3,
                   "cancelar deve devolver a lista de temas ao primeiro plano")
             phase = 4
             return
@@ -184,7 +241,32 @@ Window {
                   "reabrir deve restaurar os tokens originais do AURA")
             check(String(editor._previewBridge.accent) === "#22d3ee",
                   "reabrir deve restaurar o preview AURA")
+            editor._closeEditor()
             phase = 5
+            return
+        }
+        if (phase === 5) {
+            // Fluxo apply → confirm (sem document.* / browser APIs).
+            editor.beginApply("org.steamzero.aura")
+            check(lastApplyThemeId === "org.steamzero.aura",
+                  "Aplicar deve chamar theme.apply com themeId")
+            check(editor.applyPlan !== null && editor.applyPlan.planId === "plan-theme-apply-1",
+                  "theme.apply deve preencher applyPlan com planId")
+            check(editor.applyPlan.confirmToken === "token-theme-1",
+                  "theme.apply deve preencher confirmToken")
+            editor.confirmApply()
+            check(lastConfirmPlanId === "plan-theme-apply-1",
+                  "confirm deve chamar theme.apply.confirm com planId")
+            check(editor.applyPlan === null, "após confirm applyPlan deve limpar")
+            check(appliedSignals === 1, "confirm deve emitir applied()")
+            // Duplicar builtin usa create com extends.
+            editor.duplicateAndEdit("org.steamzero.aura", "AURA")
+            check(lastCreateExtends === "org.steamzero.aura",
+                  "Duplicar e editar deve criar com extends do builtin")
+            check(editor.editorSessionId === "edit-copy-fixture",
+                  "Duplicar e editar deve abrir sessão editável")
+            check(editor.editorReadOnly === false, "cópia do usuário não é somente leitura")
+            phase = 6
             return
         }
         check(checks > 0, "o harness precisa executar ao menos uma verificação")

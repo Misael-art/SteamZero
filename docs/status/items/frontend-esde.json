@@ -9,6 +9,7 @@
   "verification": "unit",
   "operation": "ready",
   "distribution": "not-packaged",
+  "scopeDigest": "58a57d1c5f77b6da9c3b7688133b5874a88ced7e66016c88bda0c92b2532d2ba",
   "scopePaths": [
     "src/steamzero/domain/theme_import_esde.py",
     "tests/unit/test_theme_import_esde.py"

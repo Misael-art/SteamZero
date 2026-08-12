@@ -1,0 +1,6 @@
+{
+  "violates": "no-sensitive-payload",
+  "explains": "Envelope fechado: caminho local de ROM (ou segredo) nunca entra no contrato; a ROM nao e transferida.",
+  "failsAt": "/",
+  "failsWith": "additionalProperties"
+}

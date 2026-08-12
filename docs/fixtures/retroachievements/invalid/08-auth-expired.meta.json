@@ -1,0 +1,6 @@
+{
+  "violates": "expired-auth-requires-error",
+  "explains": "Autenticacao expirada sem error.code AUTH_EXPIRED e estado silencioso; o contrato exige causa observavel.",
+  "failsAt": "/",
+  "failsWith": "required"
+}

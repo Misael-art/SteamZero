@@ -159,3 +159,54 @@ def test_doctor_boot_direct_never_crashes(tmp_path: Path, monkeypatch: pytest.Mo
     c = next(c for c in checks if c["name"] == "boot.direct")
     assert c["status"] == "warn"
     assert "boom" in c["message"]
+
+
+def test_doctor_service_generation_fails_when_daemon_pending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """G38: current=a44 e daemon=a42 não podem passar como generation=pass."""
+    from steamzero.adapters.release_convergence import ConvergenceReport, ConvergenceState
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    report = ConvergenceReport(
+        ConvergenceState.PENDING,
+        (
+            "current aponta para '0.1.0a44-07802589e985', "
+            "mas o daemon responde por '0.1.0a42-39bd325cee60'"
+        ),
+        activated_release="0.1.0a44-07802589e985",
+        daemon_release="0.1.0a42-39bd325cee60",
+        code="E-HOST-DAEMON-PENDING",
+    )
+    with (
+        patch("steamzero.diagnostics.doctor.read_quarantine", return_value=None),
+        patch("steamzero.diagnostics.doctor.observe", return_value=report),
+    ):
+        _data, checks = run_doctor()
+    c = next(c for c in checks if c["name"] == "service.generation")
+    assert c["status"] == "fail"
+    assert "0.1.0a44" in c["message"]
+    assert "0.1.0a42" in c["message"]
+    assert "E-HOST-DAEMON-PENDING" in c["message"]
+
+
+def test_doctor_service_generation_passes_when_converged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from steamzero.adapters.release_convergence import ConvergenceReport, ConvergenceState
+
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    report = ConvergenceReport(
+        ConvergenceState.CONVERGED,
+        "o daemon responde na release ativada '0.1.0a44-07802589e985'",
+        activated_release="0.1.0a44-07802589e985",
+        daemon_release="0.1.0a44-07802589e985",
+    )
+    with (
+        patch("steamzero.diagnostics.doctor.read_quarantine", return_value=None),
+        patch("steamzero.diagnostics.doctor.observe", return_value=report),
+    ):
+        _data, checks = run_doctor()
+    c = next(c for c in checks if c["name"] == "service.generation")
+    assert c["status"] == "pass"
+    assert "0.1.0a44" in c["message"]

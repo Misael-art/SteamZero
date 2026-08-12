@@ -30,6 +30,7 @@ o refresh.
 from __future__ import annotations
 
 import json
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -40,6 +41,21 @@ from typing import Any
 #: Onde a instalação publica a release ativa. O alvo do symlink é a verdade —
 #: o nome do diretório é o `releaseId`.
 CURRENT_LINK = Path("/opt/steamzero/current")
+
+
+def _current_link() -> Path:
+    """Symlink da release ativa, isolável em testes de IPC.
+
+    Em produção aponta para ``/opt/steamzero/current``. Testes que sobem um
+    daemon fora de uma instalação gerenciada (árvore de desenvolvimento, sem
+    ``_build_info``) usam ``STEAMZERO_CURRENT_LINK`` para evitar ler a release do
+    operador: sem isto, o doctor compara o ``current`` real do host com o daemon
+    de teste e produz um falso ``pending``. A env é intencional e só faz sentido
+    em teste; produção nunca a define.
+    """
+    override = os.environ.get("STEAMZERO_CURRENT_LINK")
+    return Path(override) if override else CURRENT_LINK
+
 
 #: Códigos do contrato público. Texto humano muda; código não.
 DIAG_MISMATCH = "E-HOST-RELEASE-MISMATCH"
@@ -111,13 +127,15 @@ class ConvergenceReport:
         return payload
 
 
-def read_activated_release(link: Path = CURRENT_LINK) -> str | None:
+def read_activated_release(link: Path | None = None) -> str | None:
     """A release que a instalação ativou.
 
     O alvo do symlink é a fonte, não o ``manifest.json``. Ler o manifesto seria
     ler um arquivo que a release NOVA escreveu — e o processo antigo o leria
     afirmando ser ela, que é a mesma armadilha descrita em ``core.identity``.
     """
+    if link is None:
+        link = _current_link()
     try:
         if not link.is_symlink():
             return None
@@ -128,11 +146,13 @@ def read_activated_release(link: Path = CURRENT_LINK) -> str | None:
     return name or None
 
 
-def read_activated_manifest(link: Path = CURRENT_LINK) -> dict[str, Any]:
+def read_activated_manifest(link: Path | None = None) -> dict[str, Any]:
     """Manifesto da release ativada. Vazio quando ausente ou ilegível.
 
     Serve ao relatório, nunca à decisão: a decisão usa o alvo do symlink.
     """
+    if link is None:
+        link = _current_link()
     try:
         raw = (link / "manifest.json").read_text(encoding="utf-8")
     except OSError:
@@ -151,7 +171,7 @@ def _daemon_release(identity: dict[str, Any]) -> str | None:
 
 def observe(
     *,
-    link: Path = CURRENT_LINK,
+    link: Path | None = None,
     probe: Callable[[], dict[str, Any]] | None = None,
 ) -> ConvergenceReport:
     """Observa a release ativa e o daemon sem reiniciar ou aguardar nada.
@@ -161,6 +181,8 @@ def observe(
     Este caminho lê ``current`` primeiro e, somente quando ele é legível,
     consulta o daemon exatamente uma vez para publicar a divergência.
     """
+    if link is None:
+        link = _current_link()
     steps: list[str] = []
     activated = read_activated_release(link)
     steps.append("leu current")
@@ -214,7 +236,7 @@ def observe(
 def converge(
     *,
     expect_release: str | None = None,
-    link: Path = CURRENT_LINK,
+    link: Path | None = None,
     probe: Callable[[], dict[str, Any]] | None = None,
     restart: Callable[[], tuple[bool, str]] | None = None,
     attempts: int = 10,
@@ -228,6 +250,8 @@ def converge(
     Ambos são injetáveis para que a regressão da a37 possa ser encenada sem
     systemd.
     """
+    if link is None:
+        link = _current_link()
     steps: list[str] = []
     activated = read_activated_release(link)
     steps.append("leu current")

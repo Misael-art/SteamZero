@@ -13,7 +13,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,6 +27,7 @@ WORKSTREAMS_DIR = STATUS_ROOT / "workstreams"
 SCHEMA_PATH = STATUS_ROOT / "project-item-v1.schema.json"
 GENERATED_STATUS = ROOT / "docs" / "STATUS.md"
 GENERATED_ACTIVE = ROOT / "docs" / "ACTIVE-WORK.md"
+GENERATED_COVERAGE = ROOT / "docs" / "status" / "COVERAGE.md"
 
 
 @dataclass(frozen=True)
@@ -102,14 +103,56 @@ def _iter_scope_files(root: Path, scope_paths: Iterable[str]) -> Iterable[Path]:
 
 
 def scope_digest(root: Path, scope_paths: Iterable[str]) -> str:
+    """Digest funcional do escopo.
+
+    ``docs/WORKLOG.md`` é append-only histórico e **não** entra no digest: um
+    fechamento de sessão legítimo não pode invalidar evidência de governança.
+    O gate :func:`check_worklog_append_only` protege o conteúdo anterior.
+    """
     digest = hashlib.sha256()
     for path in _iter_scope_files(root, scope_paths):
-        relative = path.relative_to(root).as_posix().encode("utf-8")
-        digest.update(relative)
+        relative = path.relative_to(root).as_posix()
+        if relative == "docs/WORKLOG.md":
+            continue
+        digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def check_worklog_append_only(root: Path = ROOT) -> list[str]:
+    """Reprova reescrita/remoção de conteúdo já commitado em ``docs/WORKLOG.md``.
+
+    Só o acréscimo no final é permitido. Compara o blob em ``HEAD`` com o
+    conteúdo atual (working tree se sujo; caso contrário o próprio HEAD).
+    """
+    worklog = root / "docs" / "WORKLOG.md"
+    if not worklog.is_file():
+        return []
+    result = subprocess.run(
+        ["git", "show", "HEAD:docs/WORKLOG.md"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        # Arquivo ainda não versionado: qualquer conteúdo inicial é válido.
+        return []
+    committed = result.stdout
+    try:
+        current = worklog.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"docs/WORKLOG.md: ilegível: {exc}"]
+    if current == committed:
+        return []
+    if current.startswith(committed):
+        return []
+    return [
+        "docs/WORKLOG.md: reescrita ou remoção de conteúdo histórico reprovada; "
+        "somente acréscimo no final é permitido (AGENTS.md §2)"
+    ]
 
 
 def _derived_stage(item: dict[str, Any]) -> str:
@@ -149,7 +192,9 @@ def _changed_paths(root: Path) -> set[str]:
 
 
 def _is_generated_or_status(path: str) -> bool:
-    return path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md"} or path.startswith("docs/status/")
+    return path in {"docs/STATUS.md", "docs/ACTIVE-WORK.md", "docs/WORKLOG.md"} or path.startswith(
+        "docs/status/"
+    )
 
 
 def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[str]:
@@ -158,6 +203,7 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
     except ValueError as exc:
         return str(exc).splitlines()
     errors: list[str] = []
+    errors.extend(check_worklog_append_only(root))
     for identifier, item in catalog.items.items():
         for dependency in item["dependsOn"]:
             if dependency not in catalog.items:
@@ -170,7 +216,11 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
                 errors.append(
                     f"{identifier}: workstream {workstream_id} pertence a {workstream['item']}"
                 )
-        if item["verification"] in {"dev", "vm", "hw"}:
+        # `unit` entra junto de dev/vm/hw. Sem isto, a verificacao mais COMUM do
+        # catalogo era tambem a unica que nao envelhecia: um item podia declarar
+        # "coberto por teste unitario" e continuar verde depois de o proprio
+        # codigo do escopo mudar, porque nada amarrava a alegacao ao conteudo.
+        if item["verification"] in {"unit", "dev", "vm", "hw"}:
             if not any(entry["result"] == "passed" for entry in item["evidence"]):
                 errors.append(
                     f"{identifier}: verificacao {item['verification']} exige evidencia aprovada"
@@ -238,24 +288,119 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
                 "docs/ACTIVE-WORK.md esta desatualizado; execute "
                 "tools/project_status.py render --write"
             )
+        coverage_path = root / "docs" / "status" / "COVERAGE.md"
+        actual_coverage = (
+            coverage_path.read_text(encoding="utf-8") if coverage_path.exists() else ""
+        )
+        if actual_coverage != render_coverage(catalog, root):
+            errors.append(
+                "docs/status/COVERAGE.md esta desatualizado; execute "
+                "tools/project_status.py render --write"
+            )
     return errors
 
 
+def _scope_file_count(root: Path, scopes: Sequence[str]) -> int:
+    total = 0
+    for scope in scopes:
+        target = root / scope
+        if target.is_dir():
+            total += sum(
+                1
+                for path in target.rglob("*")
+                if path.is_file() and "__pycache__" not in path.parts
+            )
+        elif target.is_file():
+            total += 1
+    return total
+
+
+def render_coverage(catalog: Catalog, root: Path = ROOT) -> str:
+    """Cobertura declarada por item, e o que o STATUS nao mostra sozinho.
+
+    O STATUS diz o estagio de cada capacidade. Nao diz quanto codigo cada uma
+    responde, nem quais itens afirmam verificacao sem uma evidencia aprovada
+    para sustenta-la, nem quanto do runtime esta apenas sob custodia de um
+    agregador — isto e, com dono declarado e nenhuma capacidade provada.
+    """
+    rows = [
+        "| ID | Arquivos no escopo | Evidencias | Aprovadas | Verificacao | Observacao |",
+        "|---|---|---|---|---|---|",
+    ]
+    for identifier, item in sorted(catalog.items.items()):
+        evidence = item["evidence"]
+        approved = sum(1 for entry in evidence if entry["result"] == "passed")
+        if identifier.startswith("SZ-AGG-"):
+            note = "custodia declarada; nenhuma capacidade provada"
+        elif item["verification"] != "none" and approved == 0:
+            note = "**verificacao declarada sem evidencia aprovada**"
+        elif not evidence:
+            note = "sem evidencia registrada"
+        else:
+            note = ""
+        rows.append(
+            f"| {identifier} | {_scope_file_count(root, item['scopePaths'])} | "
+            f"{len(evidence)} | {approved} | {item['verification']} | {note} |"
+        )
+
+    owners = [
+        (identifier, scope)
+        for identifier, item in catalog.items.items()
+        for scope in item["scopePaths"]
+    ]
+    total = custody_only = 0
+    for path in (root / "src").rglob("*"):
+        if not path.is_file() or "__pycache__" in path.parts:
+            continue
+        total += 1
+        relative = str(path.relative_to(root))
+        holders = {identifier for identifier, scope in owners if _paths_overlap(relative, scope)}
+        if holders and all(identifier.startswith("SZ-AGG-") for identifier in holders):
+            custody_only += 1
+
+    share = f"{custody_only * 100 // total}%" if total else "0%"
+    return "\n".join(
+        [
+            "# COVERAGE — SteamZero",
+            "",
+            "<!-- Gerado por tools/project_status.py; nao editar manualmente. -->",
+            "",
+            "Visao complementar ao STATUS: quanto codigo cada capacidade responde e",
+            "onde uma alegacao nao tem evidencia que a sustente.",
+            "",
+            *rows,
+            "",
+            f"Arquivos em `src/`: **{total}**. Sob agregador apenas, sem item de capacidade: "
+            f"**{custody_only}** ({share}). Esse numero e o tamanho real do runtime que tem dono "
+            "declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens "
+            "proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.",
+            "",
+        ]
+    )
+
+
 def render_catalog(catalog: Catalog) -> tuple[str, str]:
+    # `operation` e `distribution` sao colunas, nao rodape: sem elas a tabela
+    # deixava um item aparecer como pronto por implementacao e verificacao sem
+    # dizer se ele opera no host ou se sequer chegou a ser empacotado — que e
+    # justamente a diferenca entre codigo escrito e capacidade entregue.
     item_rows = [
-        "| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | Proxima acao |",
-        "|---|---|---|---|---|---|---|",
+        "| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | "
+        "Operacao | Distribuicao | Proxima acao |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for identifier, item in sorted(catalog.items.items()):
         item_rows.append(
             "| {id} | {title} | {stage} | {implementation} | {integration} | "
-            "{verification} | {next_action} |".format(
+            "{verification} | {operation} | {distribution} | {next_action} |".format(
                 id=identifier,
                 title=item["title"],
                 stage=_derived_stage(item),
                 implementation=item["implementation"],
                 integration=item["integration"],
                 verification=item["verification"],
+                operation=item["operation"],
+                distribution=item["distribution"],
                 next_action=item["nextAction"],
             )
         )
@@ -338,12 +483,15 @@ def main(argv: list[str] | None = None) -> int:
         print(scope_digest(ROOT, _item_by_id(catalog, args.item)["scopePaths"]))
         return 0
     status, active = render_catalog(catalog)
+    coverage = render_coverage(catalog)
     if args.write:
         GENERATED_STATUS.write_text(status, encoding="utf-8")
         GENERATED_ACTIVE.write_text(active, encoding="utf-8")
+        GENERATED_COVERAGE.write_text(coverage, encoding="utf-8")
     else:
         print(status, end="")
         print(active, end="")
+        print(coverage, end="")
     return 0
 
 

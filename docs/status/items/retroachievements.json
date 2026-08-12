@@ -9,16 +9,40 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopePaths": ["docs/EXPANSION-LEDGER.md"],
-  "dependsOn": ["SZ-EMULATION-M10"],
-  "knownGaps": ["LEDGER-A9"],
+  "scopePaths": [
+    "docs/adr/0025-retroachievements-contrato-interno.md",
+    "docs/contracts/retroachievements",
+    "docs/fixtures/retroachievements",
+    "docs/EXPANSION-LEDGER.md",
+    "docs/contracts/fronteiras.md",
+    "tests/unit/test_contract_fixtures.py"
+  ],
+  "dependsOn": [
+    "SZ-EMULATION-M10"
+  ],
+  "knownGaps": [
+    "LEDGER-A9"
+  ],
   "acceptanceCriteria": [
     "Credenciais ficam em keyring e nunca em logs, estado ou relatorios.",
     "Offline, hardcore e erro remoto preservam estado honesto e reversivel."
   ],
-  "evidence": [],
-  "nextAction": "Definir contrato de credenciais, cache e modo hardcore antes de integrar API externa.",
+  "evidence": [
+    {
+      "kind": "design",
+      "reference": "docs/adr/0025-retroachievements-contrato-interno.md",
+      "command": "test -f docs/adr/0025-retroachievements-contrato-interno.md && test -f docs/contracts/retroachievements/achievement-event-v1.schema.json",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/fixtures/retroachievements",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_contract_fixtures.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-10",
-  "notes": "O ledger registra a iniciativa, mas nao existe adapter RetroAchievements integrado."
+  "updatedAt": "2026-08-11",
+  "notes": "ADR-0025 e fixtures contratuais integrados como design only. Nao existe adapter RetroAchievements no runtime."
 }

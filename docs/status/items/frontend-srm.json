@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-FRONTEND-SRM",
+  "title": "Manifests do Steam ROM Manager idempotentes",
+  "domain": "frontends",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopeDigest": "22b688ea3cacf427911c3675e3c08ca36f0f1d0069ee90418c4e744c0d3a8c67",
+  "scopePaths": [
+    "src/steamzero/adapters/steam_rom_manager.py",
+    "tests/unit/test_steam_rom_manager.py",
+    "tests/fixtures/frontends/srm-foreign-manifest.json"
+  ],
+  "dependsOn": [
+    "SZ-FRONTEND-STEAM-SHORTCUTS"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "plan/apply/verify/rollback devolvem o diretorio byte a byte ao estado anterior.",
+    "Reaplicar o mesmo plano e no-op e nao duplica manifests.",
+    "Manifests de terceiros sobrevivem; so os marcados como gerenciados sao removidos.",
+    "Saida deterministica independentemente da ordem de entrada."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_steam_rom_manager.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_steam_rom_manager.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Validar contra uma instalacao real do Steam ROM Manager no host (operador).",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Cherry-pick 7b3454d na harmonizacao a45. Medido fora da suite em 2026-08-11 (harmonizacao a45): apos a primeira aplicacao o segundo plano declara ZERO acoes, o diretorio fica byte a byte identico entre as duas passagens, o artefato de terceiros permanece intacto byte a byte e o diretorio termina com um arquivo alheio mais um gerenciado — ou seja, sem duplicacao."
+}

@@ -22,8 +22,15 @@ Rectangle {
     property var request: function(_method, _path, _payload, _cb, _ecb) {}
 
     property bool compactLayout: false
+    // Tema ativo no host (dashboard.theme.activeId). Main.qml deve vincular.
+    property string activeThemeId: ""
+    property var applyPlan: null
+
+    signal applied()
 
     color: panel.backgroundColor
+    // Garante altura mínima útil quando embutido em ScrollView do shell.
+    implicitHeight: 560
 
     // -- state --------------------------------------------------------------
     property string editorSessionId: ""
@@ -44,6 +51,10 @@ Rectangle {
         // o ``dashboard.resolved``. Alimentá-lo com o dicionário de tokens puro
         // fazia o preview cair no fallback claro e publicar binding warnings.
         _source: panel.editorPreviewObject ? {"resolved": panel.editorPreviewObject} : null
+    }
+
+    function isActiveTheme(themeId) {
+        return themeId && panel.activeThemeId && themeId === panel.activeThemeId
     }
 
     function refreshThemeList() {
@@ -81,16 +92,56 @@ Rectangle {
         panel.editorReadOnly = false
     }
 
+    function beginApply(themeId) {
+        if (!themeId || panel.isActiveTheme(themeId))
+            return
+        panel.requestAction("theme.apply", {themeId: themeId}, function(r) {
+            panel.applyPlan = {
+                "planId": r.planId,
+                "confirmToken": r.confirmToken,
+                "preview": r.preview || "",
+                "rollbackGuarantee": r.rollbackGuarantee || "",
+                "themeId": themeId
+            }
+            applyDialog.open()
+        })
+    }
+
+    function confirmApply() {
+        if (!panel.applyPlan)
+            return
+        panel.requestAction("theme.apply.confirm", {
+            "planId": panel.applyPlan.planId,
+            "confirmToken": panel.applyPlan.confirmToken
+        }, function(_r) {
+            panel.applyPlan = null
+            applyDialog.close()
+            // activeThemeId vem do shell (binding); applied() dispara refresh.
+            panel.refreshThemeList()
+            panel.applied()
+        })
+    }
+
+    function duplicateAndEdit(sourceId, sourceName) {
+        var base = sourceName || sourceId || qsTr("Tema")
+        var name = qsTr("%1 (cópia)").arg(base)
+        panel.requestAction("theme.editor.create",
+            {name: name, extends: sourceId},
+            function(r) {
+                panel._openEditor(r.sessionId, r.manifest, r.preview)
+            })
+    }
+
     Component.onCompleted: refreshThemeList()
 
     // =====================================================================
     // THEME LIST (no active session)
     // =====================================================================
     ColumnLayout {
+        id: listColumn
         visible: panel.editorSessionId === ""
+        anchors.fill: parent
         spacing: 0
-        Layout.fillWidth: true
-        Layout.fillHeight: true
 
         Item { Layout.minimumHeight: 16 }
 
@@ -101,6 +152,8 @@ Rectangle {
             font.weight: Font.Bold
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            Layout.fillWidth: true
+            elide: Text.ElideRight
         }
 
         Item { Layout.minimumHeight: 8 }
@@ -111,6 +164,8 @@ Rectangle {
             font.pixelSize: 14
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
         }
 
         Item { Layout.minimumHeight: 20 }
@@ -121,6 +176,7 @@ Rectangle {
             Layout.rightMargin: 20
             Layout.minimumHeight: 48
             Layout.preferredWidth: 260
+            Accessible.name: text
             icon.name: "document-save"
             icon.color: "#071019"
             onClicked: createDialog.open()
@@ -148,6 +204,7 @@ Rectangle {
             font.weight: Font.Medium
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            Layout.fillWidth: true
         }
 
         Item { Layout.minimumHeight: 8 }
@@ -161,7 +218,7 @@ Rectangle {
             contentWidth: availableWidth
 
             ColumnLayout {
-                width: parent.availableWidth
+                width: parent.availableWidth > 0 ? parent.availableWidth : panel.width - 40
                 spacing: 8
 
                 Repeater {
@@ -169,20 +226,40 @@ Rectangle {
                     delegate: Rectangle {
                         required property var modelData
                         id: themeCard
-                        implicitHeight: 72
+                        readonly property bool isBuiltin: modelData.origin === "builtin"
+                        readonly property bool isActive: panel.isActiveTheme(modelData.id)
+                        // Reserva espaço para badge + Aplicar + Editar/Duplicar
+                        // sem dependência circular com o RowLayout interno.
+                        implicitHeight: panel.compactLayout ? 96 : 72
+                        Layout.minimumHeight: 72
                         radius: 10
                         color: panel.surfaceColor
-                        border.color: panel.borderColor
-                        border.width: 1
+                        border.color: themeCard.isActive ? panel.cyanColor : panel.borderColor
+                        border.width: themeCard.isActive ? 2 : 1
                         Layout.fillWidth: true
 
                         RowLayout {
+                            id: themeCardRow
                             anchors.fill: parent
-                            anchors.margins: 14
+                            anchors.margins: 12
                             spacing: 12
+
+                            // Swatch opcional (accent do catálogo quando existir).
+                            Rectangle {
+                                visible: Boolean(modelData.accent || (modelData.colors && modelData.colors.accent))
+                                implicitWidth: 12
+                                implicitHeight: 40
+                                radius: 4
+                                color: modelData.accent
+                                    || (modelData.colors && modelData.colors.accent)
+                                    || panel.cyanColor
+                                Layout.alignment: Qt.AlignVCenter
+                            }
 
                             ColumnLayout {
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 120
+                                Layout.alignment: Qt.AlignVCenter
                                 spacing: 2
                                 Label {
                                     text: modelData.name || modelData.id
@@ -197,45 +274,125 @@ Rectangle {
                                         + qsTr("v%1").arg(modelData.version || "0")
                                     color: panel.mutedColor
                                     font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                                 Label {
                                     text: modelData.origin === "builtin"
                                         ? qsTr("Tema nativo") : qsTr("Tema do usuário")
                                     color: panel.cyanColor
                                     font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                             }
 
-                            Button {
-                                text: qsTr("Editar")
-                                implicitWidth: 80
-                                implicitHeight: 36
-                                onClicked: {
-                                    // Via envelope de ações, como todo o resto do
-                                    // painel: a URL e o método vêm do contrato do
-                                    // backend, não são montados aqui.
-                                    panel.requestAction("theme.editor.load",
-                                        {themeId: modelData.id}, function(r) {
-                                            panel._openEditor(r.sessionId, r.manifest, r.preview)
-                                        })
+                            // Ações: badge Em uso | Aplicar | Editar/Ver | Duplicar.
+                            // Sem fillWidth: o nome/autor elidem na coluna à esquerda.
+                            RowLayout {
+                                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                                Layout.fillWidth: false
+                                spacing: 8
+
+                                Label {
+                                    visible: themeCard.isActive
+                                    text: qsTr("Em uso")
+                                    color: panel.greenColor
+                                    font.pixelSize: 12
+                                    font.weight: Font.Medium
+                                    padding: 6
+                                    background: Rectangle {
+                                        color: panel.greenColor
+                                        opacity: 0.15
+                                        radius: 4
+                                    }
+                                    Accessible.name: qsTr("Tema em uso")
                                 }
-                                background: Rectangle {
-                                    color: parent.hovered ? panel.cyanDarkColor : panel.raisedColor
-                                    radius: 6
-                                    border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
-                                    border.width: parent.activeFocus ? 2 : 1
+
+                                Button {
+                                    visible: !themeCard.isActive
+                                    text: qsTr("Aplicar")
+                                    implicitWidth: 88
+                                    implicitHeight: 36
+                                    Accessible.name: qsTr("Aplicar tema %1").arg(modelData.name || modelData.id)
+                                    onClicked: panel.beginApply(modelData.id)
+                                    background: Rectangle {
+                                        color: parent.hovered ? panel.cyanColor : panel.raisedColor
+                                        radius: 6
+                                        border.color: parent.activeFocus ? panel.textColor : panel.cyanColor
+                                        border.width: parent.activeFocus ? 2 : 1
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: parent.hovered ? "#071019" : panel.cyanColor
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 13
+                                        font.weight: Font.Medium
+                                    }
                                 }
-                                contentItem: Label {
-                                    text: parent.text
-                                    color: panel.cyanColor
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.pixelSize: 13
+
+                                Button {
+                                    text: themeCard.isBuiltin
+                                        ? qsTr("Ver (somente leitura)")
+                                        : qsTr("Editar")
+                                    implicitWidth: themeCard.isBuiltin
+                                        ? (panel.compactLayout ? 120 : 150)
+                                        : 88
+                                    implicitHeight: 36
+                                    Accessible.name: text + " " + (modelData.name || modelData.id)
+                                    onClicked: {
+                                        // Via envelope de ações: URL/método vêm do
+                                        // contrato do backend, não são montados aqui.
+                                        panel.requestAction("theme.editor.load",
+                                            {themeId: modelData.id}, function(r) {
+                                                panel._openEditor(r.sessionId, r.manifest, r.preview)
+                                            })
+                                    }
+                                    background: Rectangle {
+                                        color: parent.hovered ? panel.cyanDarkColor : panel.raisedColor
+                                        radius: 6
+                                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
+                                        border.width: parent.activeFocus ? 2 : 1
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: panel.cyanColor
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                Button {
+                                    visible: themeCard.isBuiltin
+                                    text: qsTr("Duplicar e editar")
+                                    implicitWidth: panel.compactLayout ? 120 : 140
+                                    implicitHeight: 36
+                                    Accessible.name: qsTr("Duplicar e editar %1").arg(modelData.name || modelData.id)
+                                    onClicked: panel.duplicateAndEdit(modelData.id, modelData.name)
+                                    background: Rectangle {
+                                        color: parent.hovered ? panel.raisedColor : panel.surfaceColor
+                                        radius: 6
+                                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
+                                        border.width: parent.activeFocus ? 2 : 1
+                                    }
+                                    contentItem: Label {
+                                        text: parent.text
+                                        color: panel.textColor
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                Item { Layout.minimumHeight: 24 }
             }
         }
     }
@@ -244,10 +401,10 @@ Rectangle {
     // EDITOR VIEW (active session)
     // =====================================================================
     ColumnLayout {
+        id: editorColumn
         visible: panel.editorSessionId !== ""
+        anchors.fill: parent
         spacing: 0
-        Layout.fillWidth: true
-        Layout.fillHeight: true
 
         // -- top bar -------------------------------------------------------
         Rectangle {
@@ -334,30 +491,28 @@ Rectangle {
                 }
 
                 Button {
+                    // Exportação ZIP via download browser (document.*) não existe
+                    // no shell Qt/QML. Mantém o botão visível mas desabilitado com
+                    // motivo honesto até haver FileDialog + escrita segura.
                     text: qsTr("Exportar")
+                    enabled: false
                     implicitHeight: 36
                     implicitWidth: 90
-                    onClicked: {
-                        panel.requestAction("theme.editor.export",
-                            {sessionId: panel.editorSessionId},
-                            function(r) {
-                                var link = document.createElement("a")
-                                link.download = r.filename || "theme.zip"
-                                link.href = "data:application/zip;base64," + r.zip
-                                document.body.appendChild(link)
-                                link.click()
-                                document.body.removeChild(link)
-                            })
-                    }
+                    Accessible.name: text
+                    Accessible.description: qsTr("Exportação de ZIP ainda não disponível neste shell")
+                    ToolTip.visible: hovered || activeFocus
+                    ToolTip.delay: 400
+                    ToolTip.text: qsTr("Exportação de ZIP ainda não disponível neste shell")
                     background: Rectangle {
-                        color: parent.hovered ? panel.raisedColor : panel.surfaceColor
+                        color: panel.borderColor
                         radius: 6
-                        border.color: parent.activeFocus ? panel.cyanColor : panel.borderColor
-                        border.width: parent.activeFocus ? 2 : 1
+                        border.color: panel.borderColor
+                        border.width: 1
+                        opacity: 0.7
                     }
                     contentItem: Label {
                         text: parent.text
-                        color: panel.textColor
+                        color: panel.mutedColor
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -675,6 +830,117 @@ Rectangle {
                     }
 
                     Item { Layout.fillHeight: true }
+                }
+            }
+        }
+    }
+
+    // =====================================================================
+    // APPLY THEME CONFIRMATION
+    // =====================================================================
+    Dialog {
+        id: applyDialog
+        title: qsTr("Aplicar tema")
+        modal: true
+        width: Math.min(panel.width > 0 ? panel.width - 32 : 720, 560)
+        x: panel.width > 0 ? (panel.width - width) / 2 : 0
+        y: panel.height > 0 ? Math.max((panel.height - height) / 2, 24) : 24
+        standardButtons: Dialog.NoButton
+
+        background: Rectangle {
+            color: panel.raisedColor
+            radius: 12
+            border.color: panel.cyanDarkColor
+            border.width: 1
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 14
+
+            Label {
+                text: qsTr("Revise o plano antes de ativar o tema. A preferência é gravada com rollback.")
+                color: panel.textColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.minimumHeight: 120
+                Layout.preferredHeight: 160
+                clip: true
+                TextArea {
+                    text: panel.applyPlan ? String(panel.applyPlan.preview || "") : ""
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.WrapAnywhere
+                    color: panel.textColor
+                    background: Rectangle {
+                        color: panel.backgroundColor
+                        radius: 8
+                        border.color: panel.borderColor
+                    }
+                    Accessible.name: qsTr("Prévia da aplicação do tema")
+                }
+            }
+
+            Label {
+                visible: panel.applyPlan && panel.applyPlan.rollbackGuarantee
+                text: qsTr("Rollback: %1").arg(
+                    panel.applyPlan ? (panel.applyPlan.rollbackGuarantee || "") : "")
+                color: panel.mutedColor
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+                Button {
+                    text: qsTr("Cancelar")
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 44
+                    Accessible.name: text
+                    onClicked: {
+                        panel.applyPlan = null
+                        applyDialog.close()
+                    }
+                    background: Rectangle {
+                        color: panel.surfaceColor
+                        radius: 8
+                        border.color: panel.borderColor
+                        border.width: 1
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: panel.textColor
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+                Button {
+                    text: qsTr("Confirmar aplicação")
+                    enabled: panel.applyPlan !== null
+                        && panel.applyPlan.planId
+                        && panel.applyPlan.confirmToken
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 44
+                    Accessible.name: text
+                    onClicked: panel.confirmApply()
+                    background: Rectangle {
+                        color: parent.enabled ? panel.cyanColor : panel.borderColor
+                        radius: 8
+                        border.color: parent.activeFocus ? panel.textColor : "transparent"
+                        border.width: parent.activeFocus ? 2 : 0
+                    }
+                    contentItem: Label {
+                        text: parent.text
+                        color: parent.enabled ? "#071019" : panel.mutedColor
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.weight: parent.enabled ? Font.Medium : Font.Normal
+                    }
                 }
             }
         }

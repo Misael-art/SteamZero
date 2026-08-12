@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "ra.event",
+  "eventId": "raev-0123456789abcd16",
+  "idempotencyKey": "raev-0123456789abcd16",
+  "occurredAt": "2026-08-11T12:16:00Z",
+  "account": {
+    "reference": "ra-acct-0123456789ab",
+    "authState": "configured",
+    "credentialRef": "keyring:steamzero/retroachievements/v1"
+  },
+  "game": {
+    "recognition": "unrecognized",
+    "romHash": {
+      "algorithm": "sha256",
+      "digest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+    }
+  },
+  "achievement": {"id": "ra-ach-0042"},
+  "state": "unlocked-synced"
+}

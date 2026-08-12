@@ -1,0 +1,6 @@
+{
+  "violates": "quota-exhausted-requires-error",
+  "explains": "Quota da outbox esgotada (retryCount == maxRetries) exige error; permanecer em pending-sync sem causa e mentira contratual.",
+  "failsAt": "/",
+  "failsWith": "required"
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "remote-cast.session",
+  "sessionId": "rc-sess-0000000000000111",
+  "status": "failed",
+  "emitterId": "rc-dev-000000000001",
+  "receiverId": "rc-dev-000000000002",
+  "updatedAt": "2026-08-11T10:41:00Z",
+  "pairing": {
+    "mode": "pairing-code",
+    "code": "K4L5M6",
+    "expiresAt": "2026-08-11T10:46:00Z",
+    "attemptsRemaining": 1,
+    "deviceBound": false
+  }
+}

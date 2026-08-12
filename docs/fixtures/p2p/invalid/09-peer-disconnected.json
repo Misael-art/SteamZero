@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "netplay.session",
+  "sessionId": "np-0a1b2c3d-4e5f",
+  "state": "active",
+  "visibility": "private",
+  "role": "host",
+  "createdAt": "2026-08-11T12:00:00Z",
+  "updatedAt": "2026-08-11T12:00:45Z",
+  "game": {
+    "platformId": "sfc",
+    "gameId": "demo-castlevania-style",
+    "romHash": {
+      "algorithm": "sha256",
+      "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "core": {"id": "snes9x", "version": "1.63.0"},
+    "playerCount": 2,
+    "controlProfile": "gamepad-classic",
+    "region": "ntsc-u"
+  },
+  "invitation": {
+    "token": "inv-0A1B2C3D4E5F6A7B",
+    "issuedAt": "2026-08-11T12:00:05Z",
+    "expiresAt": "2026-08-11T12:15:00Z",
+    "singleUse": true,
+    "usedCount": 1,
+    "status": "accepted"
+  },
+  "transport": {
+    "mode": "direct",
+    "attemptCount": 1,
+    "natDiscovered": true
+  },
+  "sync": {
+    "hostPeerId": "peer-0a1b2c3d",
+    "participants": ["peer-0a1b2c3d"],
+    "inputOrder": ["peer-0a1b2c3d", "peer-9f8e7d6c"],
+    "divergenceMs": 0,
+    "latencyMs": 24,
+    "rollbackCapable": true,
+    "lockstepCapable": false,
+    "abandoned": false
+  }
+}

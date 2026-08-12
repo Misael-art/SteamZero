@@ -1,0 +1,6 @@
+{
+  "violates": "direct-mode-requires-direct",
+  "explains": "modo direct exige direct e proibe relay",
+  "failsAt": "/transport",
+  "failsWith": "required"
+}
