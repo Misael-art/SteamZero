@@ -9,13 +9,15 @@
   "verification": "unit",
   "operation": "ready",
   "distribution": "not-packaged",
-  "scopeDigest": "58a57d1c5f77b6da9c3b7688133b5874a88ced7e66016c88bda0c92b2532d2ba",
+  "scopeDigest": "18ccec7628698a0b9218b199679f7ba3201c2e491c93275c27dc55cfd10a53fd",
   "scopePaths": [
     "src/steamzero/domain/theme_import_esde.py",
     "tests/unit/test_theme_import_esde.py"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-G42"
+  ],
   "acceptanceCriteria": [
     "Importador converte o contrato de tema ES-DE sem depender do runtime externo.",
     "Casos invalidos e valores ausentes possuem teste unitario."
@@ -28,8 +30,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Promover a verificacao integrada somente junto do frontend que consome o tema.",
+  "nextAction": "Ligar o importador a uma rota de UI (G42): hoje ele so e alcancavel por linha de comando, o que nao serve ao usuario que quer trazer um tema ES-DE.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-10",
-  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host."
+  "updatedAt": "2026-08-12",
+  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42."
 }

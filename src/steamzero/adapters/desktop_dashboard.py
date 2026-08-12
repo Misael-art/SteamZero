@@ -15,6 +15,7 @@ import logging
 import shutil
 import subprocess
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ from steamzero.core.secret import Secret
 from steamzero.core.session_state import SESSION_OWNER
 from steamzero.core.state import StateStore
 from steamzero.diagnostics.doctor import run_doctor
+from steamzero.domain import theme_import_esde
 from steamzero.domain.bios_sources import approved_bios_sources, resolve_approved_bios_source
 from steamzero.domain.collections import CollectionManager
 from steamzero.domain.emulation_workspace import build_switch_workspace
@@ -305,6 +307,49 @@ def _unreadable_workspace() -> dict[str, Any]:
                 "Nenhum dado foi alterado; tente novamente."
             )
     return payload
+
+
+#: Teto de leitura do `colors.xml` de origem. O caminho vem do usuário, e um
+#: arquivo enorme apontado por engano não pode virar consumo de memória sem
+#: limite. Os `colors.xml` reais do ES-DE têm alguns KB.
+_ESDE_COLORS_MAX_BYTES = 4 * 1024 * 1024
+_ESDE_COLORS_FILENAME = "colors.xml"
+
+
+def _read_esde_colors(source: str) -> str:
+    """Localiza e lê o `colors.xml` de um tema ES-DE, com o mínimo de confiança.
+
+    Aceita tanto o diretório do tema quanto o próprio arquivo, porque é isso que
+    a pessoa tem à mão. Recusa symlink: o caminho é escolhido pelo usuário, mas
+    seguir link daqui transformaria "abrir um tema" em ler qualquer arquivo do
+    sistema com o nome certo.
+    """
+    if not source or "\x00" in source:
+        raise SteamZeroError("E-API-SCHEMA", detail="caminho de tema inválido")
+    path = Path(source).expanduser()
+    if path.is_symlink():
+        raise SteamZeroError("E-THEME-MANIFEST", detail="caminho de tema é symlink; recusado")
+    if path.is_dir():
+        path = path / _ESDE_COLORS_FILENAME
+        if path.is_symlink():
+            raise SteamZeroError("E-THEME-MANIFEST", detail="colors.xml é symlink; recusado")
+    if not path.is_file():
+        raise SteamZeroError(
+            "E-THEME-NOT-FOUND",
+            detail=f"{_ESDE_COLORS_FILENAME} não encontrado em {source}",
+        )
+    size = path.stat().st_size
+    if size > _ESDE_COLORS_MAX_BYTES:
+        raise SteamZeroError(
+            "E-THEME-MANIFEST",
+            detail=f"{_ESDE_COLORS_FILENAME} tem {size} bytes; teto é {_ESDE_COLORS_MAX_BYTES}",
+        )
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise SteamZeroError(
+            "E-THEME-MANIFEST", detail=f"não foi possível ler {_ESDE_COLORS_FILENAME}: {exc}"
+        ) from exc
 
 
 class DesktopDashboard:
@@ -1480,6 +1525,73 @@ class DesktopDashboard:
 
     def theme_list(self) -> list[dict[str, Any]]:
         return self._theme_catalog.list_catalog()
+
+    # -- importação de tema de terceiros -------------------------------
+
+    def theme_import_esde_inspect(self, source: str) -> dict[str, Any]:
+        """Lê um tema ES-DE do disco e diz o que dá para importar. Não escreve.
+
+        Inspecionar antes de importar existe porque a conversão não é fiel por
+        construção: um esquema cuja identidade está na ARTE, e não na paleta,
+        vira cinza genérico. ``isMonochrome`` diz isso ANTES, em vez de entregar
+        um tema morto e deixar o usuário descobrir sozinho.
+        """
+        colors = _read_esde_colors(source)
+        schemes = theme_import_esde.parse_color_schemes(colors)
+        if not schemes:
+            raise SteamZeroError(
+                "E-THEME-NOT-FOUND",
+                detail="nenhum esquema de cor encontrado; o arquivo é um colors.xml do ES-DE?",
+            )
+        entries: list[dict[str, Any]] = []
+        for name in sorted(schemes):
+            imported = theme_import_esde.import_scheme(name, colors)
+            entries.append(
+                {
+                    "scheme": name,
+                    "isMonochrome": imported.is_monochrome,
+                    "sourceTags": imported.source_tags,
+                    "derived": list(imported.derived),
+                    "colors": dict(imported.color),
+                }
+            )
+        return {
+            "source": str(Path(source).expanduser().resolve()),
+            "schemes": entries,
+            "unsupportedSlots": theme_import_esde.unsupported_slots(),
+        }
+
+    def theme_import_esde_apply(self, source: str, scheme: str, name: str) -> dict[str, Any]:
+        """Importa um esquema como tema EDITÁVEL.
+
+        A importação não escreve arquivos por conta própria: abre uma sessão do
+        editor, aplica os tokens convertidos e usa o ``save`` já existente.
+        Duplicar a escrita criaria um segundo caminho para o disco, sem o
+        descarte por cancelamento nem as validações que o editor faz.
+
+        O resultado é um tema editável, não um tema aplicado: quem importa quase
+        sempre quer ajustar antes de ativar.
+        """
+        colors = _read_esde_colors(source)
+        imported = theme_import_esde.import_scheme(scheme, colors)
+        session = self._theme_editor.create(name, "org.steamzero.default")
+        session_id = str(session["sessionId"])
+        try:
+            self._theme_editor.set_tokens(session_id, "color", dict(imported.color))
+            saved = self._theme_editor.save(session_id)
+        except Exception:
+            # Falha no meio não pode deixar sessão pendurada nem tema parcial.
+            with suppress(SteamZeroError):
+                self._theme_editor.cancel(session_id)
+            raise
+        return {
+            "themeId": saved["themeId"],
+            "path": saved["path"],
+            "scheme": scheme,
+            "isMonochrome": imported.is_monochrome,
+            "derived": list(imported.derived),
+            "unsupportedSlots": theme_import_esde.unsupported_slots(),
+        }
 
     # -- theme editor --------------------------------------------------
 
