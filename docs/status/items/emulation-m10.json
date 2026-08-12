@@ -39,7 +39,7 @@
       "result": "partial"
     }
   ],
-  "nextAction": "Fechar a G45: provar install/verify/rollback de pelo menos um emulador NO HOST. A certificacao em VM cobriu o ciclo com commits validos a epoca; o pino do RetroArch ja nao resolve no Flathub.",
+  "nextAction": "Escrever o autoconfig gerenciado do RetroArch a partir da traducao RetroPad (resolver indice contra o pad real, arquivo com marcador, nunca editar o retroarch.cfg do usuario) e provar install/verify/rollback de um emulador no host.",
   "activeWorkstreams": [
     "WS-2026-08-M10"
   ],

@@ -17,6 +17,7 @@ from jsonschema import ValidationError
 from steamzero.api import contracts
 from steamzero.core import ids, journal, transaction
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain import retropad as retropad_mod
 from steamzero.domain.platforms import PlatformRegistry
 
 _SCHEMA = "retro-input-profile-v1.schema.json"
@@ -355,6 +356,19 @@ class InputProfileManager:
                 "active": None,
                 "available": available,
             }
+        # Os bindings existiam resolvidos em disco e ninguém os lia (G45). O
+        # `status` passa a publicar a tradução RetroPad, que é a forma que um
+        # emulador entende — e a lista do que NÃO traduz, para a tela poder
+        # dizer o que não vai valer em vez de prometer mapeamento completo.
+        bindings = active.get("resolvedBindings")
+        rows = bindings if isinstance(bindings, list) else []
+        try:
+            retropad = retropad_mod.translate_bindings(rows)
+            sem_equivalente = list(retropad_mod.untranslatable(rows))
+        except SteamZeroError:
+            # Perfil com binding malformado degrada a tradução, não o status:
+            # a seleção continua válida e visível (AGENTS.md §8).
+            retropad, sem_equivalente = {}, [str(b.get("action") or "") for b in rows]
         return {
             "state": "ready",
             "statusLabel": "Perfil selecionado",
@@ -364,6 +378,8 @@ class InputProfileManager:
                 "orientation": active["orientation"],
                 "scope": active["scope"],
                 "scopeId": active["scopeId"],
+                "retropad": retropad,
+                "withoutRetropadEquivalent": sem_equivalente,
             },
             "available": available,
         }
