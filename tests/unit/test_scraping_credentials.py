@@ -15,6 +15,21 @@ from steamzero.core.state import StateStore
 from steamzero.ports import SecretStorePort
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Estado XDG próprio para cada teste deste módulo.
+
+    Sem isto, um teste que afirma "credencial não configurada" depende de nenhum
+    OUTRO teste da suíte ter salvo credencial antes — e `save_credential` agora
+    grava um marcador persistente em `state_home`. O teste passava por ordem de
+    execução, não por isolamento: `tests/unit` sozinho ficava verde e a suíte
+    inteira reprovava.
+    """
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config-home"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data-home"))
+
+
 def _controller(tmp_path: Path) -> EmulationController:
     return EmulationController(
         store_factory=lambda: StateStore(tmp_path / "state.db"),
@@ -403,3 +418,101 @@ class TestMediaSearchJobHandlerErrors:
         assert result.get("remote_state") == "degraded"
         media_store.close()
         job_store.close()
+
+
+class TestTheVaultThatLosesWhatItStored:
+    """G44: o operador preencheu a credencial e a tela disse "nao configurado".
+
+    O chaveiro dele so tinha colecao de sessao — efemera. O segredo evaporava e
+    o produto reportava o mesmo `notConfigured` de um campo em branco, mandando
+    reconfigurar algo que ja fora configurado.
+    """
+
+    @staticmethod
+    def _controller(tmp_path: Path, monkeypatch):  # type: ignore[no-untyped-def]
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+        return EmulationController(
+            store_factory=lambda: StateStore(tmp_path / "state.db"),
+            which=lambda _command: None,
+            spawn=lambda _argv: None,
+            secret_store=SessionSecretStore(),
+        )
+
+    @staticmethod
+    def _state(controller: EmulationController, provider: str = "steamgriddb") -> str:
+        row = next(
+            item for item in controller.credential_status()["providers"] if item["id"] == provider
+        )
+        return str(row["credentialState"])
+
+    def test_never_filled_and_lost_by_the_vault_are_different(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """A ascercao que pega o defeito.
+
+        Conferir so o caso "nunca preenchido" passava — e passou o tempo todo,
+        porque `notConfigured` estava certo para ele. O que nao passa e exigir
+        que o caso PERDIDO seja distinguivel.
+        """
+        controller = self._controller(tmp_path, monkeypatch)
+        assert self._state(controller) == "notConfigured"
+
+        controller._secret_store.store("steamgriddb", "api_key", Secret("chave"))
+        controller._remember_credential_configured("steamgriddb")
+        assert self._state(controller) == "stored"
+
+        controller._secret_store.delete("steamgriddb", "api_key")
+        assert self._state(controller) == "vaultVolatile", (
+            "credencial que existiu e sumiu nao pode virar 'nunca preenchida'"
+        )
+
+    def test_the_marker_holds_no_secret(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """O marcador atravessa reinicios; segredo dentro dele seria vazamento."""
+        controller = self._controller(tmp_path, monkeypatch)
+        controller._secret_store.store("steamgriddb", "api_key", Secret("segredo-do-usuario"))
+        controller._remember_credential_configured("steamgriddb")
+
+        raw = controller._credential_markers_path.read_text(encoding="utf-8")
+        assert "segredo-do-usuario" not in raw
+        assert "steamgriddb" in raw
+
+    def test_the_marker_survives_a_new_controller(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """`_credential_health` e memoria de processo; o marcador precisa durar.
+
+        Sem persistir, reabrir a central perderia a informacao de que houve
+        configuracao — que e exatamente o momento em que ela importa.
+        """
+        first = self._controller(tmp_path, monkeypatch)
+        first._secret_store.store("steamgriddb", "api_key", Secret("chave"))
+        first._remember_credential_configured("steamgriddb")
+
+        second = self._controller(tmp_path, monkeypatch)
+        assert self._state(second) == "vaultVolatile"
+
+    def test_an_unreadable_marker_file_degrades_to_not_configured(
+        self, tmp_path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        """Na duvida, a mensagem conservadora (AGENTS.md §8)."""
+        controller = self._controller(tmp_path, monkeypatch)
+        path = controller._credential_markers_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{ isto nao e json", encoding="utf-8")
+        assert self._state(controller) == "notConfigured"
+
+    def test_saving_through_the_public_api_records_the_marker(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """O marcador precisa nascer no caminho REAL, nao so num helper.
+
+        Os outros testes desta classe chamam `_remember_credential_configured`
+        direto. Removi a chamada de dentro de `save_credential` por mutacao e
+        todos continuaram verdes — a lacuna era minha, e este teste a fecha:
+        quem salva credencial e o usuario, pela API publica.
+        """
+        controller = self._controller(tmp_path, monkeypatch)
+        controller.save_credential("steamgriddb", "chave-do-usuario")
+        assert self._state(controller) == "stored"
+
+        controller._secret_store.delete("steamgriddb", "api_key")
+        assert self._state(controller) == "vaultVolatile", (
+            "salvar pela API publica precisa deixar marcador; sem ele o segredo perdido "
+            "volta a parecer campo em branco"
+        )
