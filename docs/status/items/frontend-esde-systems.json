@@ -5,7 +5,7 @@
   "title": "Custom systems do ES-DE idempotentes",
   "domain": "frontends",
   "implementation": "complete",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
@@ -36,5 +36,5 @@
   "nextAction": "Validar contra uma instalacao real do ES-DE no host (operador).",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Cherry-pick b1291ea/f4a81d1 na harmonizacao a45. NAO confundir com SZ-FRONTEND-ESDE, que cobre importacao de TEMA do ES-DE; este item trata de custom systems. Medido fora da suite em 2026-08-11 (harmonizacao a45): apos a primeira aplicacao o segundo plano declara ZERO acoes, o diretorio fica byte a byte identico entre as duas passagens, o artefato de terceiros permanece intacto byte a byte e o diretorio termina com um arquivo alheio mais um gerenciado — ou seja, sem duplicacao."
+  "notes": "Cherry-pick b1291ea/f4a81d1 na harmonizacao a45. NAO confundir com SZ-FRONTEND-ESDE, que cobre importacao de TEMA do ES-DE; este item trata de custom systems. Medido fora da suite em 2026-08-11 (harmonizacao a45): apos a primeira aplicacao o segundo plano declara ZERO acoes, o diretorio fica byte a byte identico entre as duas passagens, o artefato de terceiros permanece intacto byte a byte e o diretorio termina com um arquivo alheio mais um gerenciado — ou seja, sem duplicacao. Promovido a 'integrated' em 2026-08-11: a PR #65 foi mesclada na main (63963d5f8633, squash) e todos os caminhos de scopePaths existem naquele commit — verificado por ancestralidade, nao pelo relatorio do merge."
 }

@@ -5,7 +5,7 @@
   "title": "Superficie M11: comando frontends na CLI e no daemon",
   "domain": "frontends",
   "implementation": "complete",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
@@ -44,5 +44,5 @@
   "nextAction": "Cobrir cli/main.py e service/methods.py por itens agregadores de diretorio na etapa de catalogo; este item responde apenas pela superficie frontends dentro deles.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Cherry-picks f4a81d1/c6c2712/67ceab0 na harmonizacao a45. ATENCAO: cli/main.py e service/methods.py sao superficies COMPARTILHADAS; este item as lista para que nao fiquem sem dono, mas responde so pelo comando/metodos frontends. A cobertura por diretorio entra com os itens agregadores do catalogo."
+  "notes": "Cherry-picks f4a81d1/c6c2712/67ceab0 na harmonizacao a45. ATENCAO: cli/main.py e service/methods.py sao superficies COMPARTILHADAS; este item as lista para que nao fiquem sem dono, mas responde so pelo comando/metodos frontends. A cobertura por diretorio entra com os itens agregadores do catalogo. Promovido a 'integrated' em 2026-08-11: a PR #65 foi mesclada na main (63963d5f8633, squash) e todos os caminhos de scopePaths existem naquele commit — verificado por ancestralidade, nao pelo relatorio do merge."
 }

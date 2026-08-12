@@ -102,3 +102,33 @@ continua no host como rollback imediato; o rollback fisicamente certificado
 permanece `0.1.0a41-31b30211ba85`. Os gates físicos adiados continuam
 obrigatórios para publicação: a tag `v0.1.0a44` não foi publicada — tag é a
 afirmação de que eles passaram.
+
+## Release candidata — 0.1.0a45
+
+| Release | Commit | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `0.1.0a45-<pendente>` | `<pendente: merge da PR de release na main>` | `<pendente>` | **candidata — não construída, não instalada** |
+
+O bump `0.1.0a44 → 0.1.0a45` acompanha a harmonização a45 (PR #65, mesclada na
+`main` em `63963d5` por squash) mais a correção do envelope. O que entra em
+relação à a44:
+
+- **M11 integrado**: adapters idempotentes de Steam ROM Manager, custom systems
+  do ES-DE e atalhos do Steam, com o comando `frontends` na CLI e no daemon.
+- **G37 fechada**: o preview do editor de temas passa a resolver a cadeia
+  `extends`. Isto importa para quem já usa o host: **a a44 instalada mostra a
+  paleta padrão para qualquer base não-default**, e só a a45 corrige.
+- **Envelope**: 41 respostas que diziam falha sobre operação bem-sucedida
+  (`ready`, `rolled-back`, `committed`, `unchecked`, `unverified`) passam a
+  reportar `ok: true`. Afeta qualquer consumidor da CLI ou do daemon que leia o
+  campo `ok` — inclusive a UI.
+- **Contratos**: ADRs 0024/0025/0026 com envelopes JSON Schema e 68 fixtures,
+  como design-only; nenhum runtime novo.
+- **Catálogo verificável**: `operation`/`distribution` publicados, `scopeDigest`
+  passa a valer para `verification: unit`, custódia declarada para `src/`,
+  `tests/` e `tools/`, e a visão `docs/status/COVERAGE.md`.
+
+Rollback disponível na ativação: `0.1.0a44-07802589e985` (instalada hoje);
+rollback fisicamente certificado permanece `0.1.0a41-31b30211ba85`. A tag
+`v0.1.0a45` **não** será publicada antes dos gates físicos — a tag é a
+afirmação de que eles passaram.

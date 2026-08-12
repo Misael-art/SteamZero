@@ -5,7 +5,7 @@
   "title": "Atalhos do Steam (shortcuts.vdf) transacionais",
   "domain": "frontends",
   "implementation": "complete",
-  "integration": "feature-branch",
+  "integration": "integrated",
   "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
@@ -32,5 +32,5 @@
   "nextAction": "Exercitar contra um shortcuts.vdf real do operador antes de promover a verificacao integrada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-11",
-  "notes": "Cherry-pick a040f86 na harmonizacao a45. Escopo separado do SZ-FRONTEND-ESDE, que trata de importacao de TEMA e nao de frontends."
+  "notes": "Cherry-pick a040f86 na harmonizacao a45. Escopo separado do SZ-FRONTEND-ESDE, que trata de importacao de TEMA e nao de frontends. Promovido a 'integrated' em 2026-08-11: a PR #65 foi mesclada na main (63963d5f8633, squash) e todos os caminhos de scopePaths existem naquele commit — verificado por ancestralidade, nao pelo relatorio do merge."
 }
