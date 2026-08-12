@@ -132,3 +132,34 @@ Rollback disponível na ativação: `0.1.0a44-07802589e985` (instalada hoje);
 rollback fisicamente certificado permanece `0.1.0a41-31b30211ba85`. A tag
 `v0.1.0a45` **não** será publicada antes dos gates físicos — a tag é a
 afirmação de que eles passaram.
+
+## Release candidata — 0.1.0a46
+
+| Release | Commit | SHA-256 do wheel | Estado |
+|---|---|---|---|
+| `0.1.0a46-<pendente>` | `<pendente: merge desta PR na main>` | `<pendente>` | **candidata — não construída, não instalada** |
+
+Motivo do bump: a a45 instalada está atrás de seis PRs mescladas, e metade do que
+o operador testou como "não funcional" já estava corrigido e invisível para ele.
+O que entra em relação à a45:
+
+- **Listagem por plataforma** (#67): Dolphin e PPSSPP deixam de aparecer sob
+  Nintendo Switch com "Keys pendentes"; PlayStation e PlayStation 2 ganham
+  emulador renderizável.
+- **Raspagem SteamGridDB** (#67): `/games/autocomplete?term=` respondia HTTP 405
+  — endpoint inexistente. Com o correto a busca devolve candidatos reais.
+- **Importação de tema** (#68 ES-DE, #72 formato próprio): antes o motor existia
+  sem nenhuma rota de interface.
+- **Big Picture** (#69, #70): atalho que abre a própria central, com botão na
+  tela Steam.
+- **Transmissão** (#71): o orquestrador nunca era construído em produção; toda
+  chamada respondia "Orquestrador não configurado".
+
+Rollback disponível na ativação: `0.1.0a45-e2049b4999d5`; rollback fisicamente
+certificado permanece `0.1.0a41-31b30211ba85`. A tag `v0.1.0a46` **não** será
+publicada antes dos gates físicos.
+
+Duas lacunas registradas nesta preparação, ambas P1 e nenhuma resolvida aqui:
+**G44** (credencial em coleção efêmera do chaveiro some e o produto reporta
+"não configurado") e **G45** (instalação de emulador nunca vista concluir;
+RetroArch falha por commit pinado indisponível).
