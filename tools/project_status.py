@@ -287,20 +287,27 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
 
 
 def render_catalog(catalog: Catalog) -> tuple[str, str]:
+    # `operation` e `distribution` sao colunas, nao rodape: sem elas a tabela
+    # deixava um item aparecer como pronto por implementacao e verificacao sem
+    # dizer se ele opera no host ou se sequer chegou a ser empacotado — que e
+    # justamente a diferenca entre codigo escrito e capacidade entregue.
     item_rows = [
-        "| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | Proxima acao |",
-        "|---|---|---|---|---|---|---|",
+        "| ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | "
+        "Operacao | Distribuicao | Proxima acao |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for identifier, item in sorted(catalog.items.items()):
         item_rows.append(
             "| {id} | {title} | {stage} | {implementation} | {integration} | "
-            "{verification} | {next_action} |".format(
+            "{verification} | {operation} | {distribution} | {next_action} |".format(
                 id=identifier,
                 title=item["title"],
                 stage=_derived_stage(item),
                 implementation=item["implementation"],
                 integration=item["integration"],
                 verification=item["verification"],
+                operation=item["operation"],
+                distribution=item["distribution"],
                 next_action=item["nextAction"],
             )
         )

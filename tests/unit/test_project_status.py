@@ -16,6 +16,45 @@ def test_render_is_deterministic() -> None:
     assert project_status.render_catalog(catalog) == project_status.render_catalog(catalog)
 
 
+def _table_rows(status: str) -> dict[str, list[str]]:
+    """Linhas da tabela de itens, indexadas por ID e ja divididas em colunas.
+
+    Parsear a tabela em vez de procurar substring importa: `grep` por
+    "degraded" passaria se a palavra aparecesse na proxima acao de qualquer
+    item, e continuaria passando com a coluna ausente.
+    """
+    rows: dict[str, list[str]] = {}
+    for line in status.splitlines():
+        if not line.startswith("| SZ-"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        rows[cells[0]] = cells
+    return rows
+
+
+def test_status_table_publishes_operation_and_distribution_per_item() -> None:
+    """Estado operacional e de distribuicao sao colunas, item a item.
+
+    Sem elas a tabela deixava um item parecer entregue por implementacao e
+    verificacao sem dizer se ele opera no host ou se chegou a ser empacotado.
+    """
+    catalog = project_status.load_catalog()
+    status, _ = project_status.render_catalog(catalog)
+
+    header = next(line for line in status.splitlines() if line.startswith("| ID |"))
+    columns = [cell.strip() for cell in header.strip("|").split("|")]
+    assert columns.index("Operacao") == 6
+    assert columns.index("Distribuicao") == 7
+
+    rows = _table_rows(status)
+    assert set(rows) == set(catalog.items), "toda capacidade precisa de uma linha"
+    for identifier, item in catalog.items.items():
+        cells = rows[identifier]
+        assert len(cells) == len(columns), f"{identifier}: numero de colunas divergente"
+        assert cells[6] == item["operation"], f"{identifier}: coluna de operacao divergente"
+        assert cells[7] == item["distribution"], f"{identifier}: coluna de distribuicao divergente"
+
+
 def test_active_workstream_paths_cannot_overlap() -> None:
     assert project_status._paths_overlap("src/steamzero/ui", "src/steamzero/ui/qml")
     assert project_status._paths_overlap("tools/vm_harness", "tools/vm_harness")
