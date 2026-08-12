@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from steamzero.adapters import desktop_dashboard as module
 from steamzero.adapters.cast_orchestrator import CastOrchestrator
 from steamzero.adapters.desktop_dashboard import DesktopDashboard, SteamDesktopController
 from steamzero.adapters.flatpak import FlatpakState
@@ -904,6 +905,11 @@ def test_gameplay_apply_refuses_plan_after_library_changes(tmp_path: Path) -> No
     assert error.value.code == "E-TX-STALE-PLAN"
 
 
+def _refuses_to_build(*_args: object, **_kwargs: object) -> None:
+    """Simula ambiente sem transmissão: construir o orquestrador falha."""
+    raise OSError("sem compositor de captura")
+
+
 class TestCastDashboardIntegration:
     """Testes de integração entre DesktopDashboard e CastOrchestrator."""
 
@@ -919,9 +925,10 @@ class TestCastDashboardIntegration:
         ]
         return cast
 
-    def test_cast_section_is_unavailable_when_orchestrator_not_configured(
-        self, tmp_path: Path
-    ) -> None:
+    def test_cast_section_is_unavailable_when_the_orchestrator_cannot_be_built(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(module, "CastOrchestrator", _refuses_to_build)
         dashboard = DesktopDashboard(
             store_factory=lambda: StateStore(tmp_path / "state.db"),
             flatpak_factory=lambda: MagicMock(),
@@ -1075,7 +1082,18 @@ class TestCastDashboardIntegration:
         mock_cast.active_sessions.assert_called_once_with()
         assert len(result) == 1
 
-    def test_cast_methods_raise_when_orchestrator_not_configured(self, tmp_path: Path) -> None:
+    def test_cast_methods_raise_when_the_orchestrator_cannot_be_built(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        """Contrato alterado em 2026-08-12 (G41).
+
+        Antes este teste construía o dashboard SEM injetar orquestrador e
+        afirmava indisponibilidade — congelando como correto exatamente o estado
+        que era a produção quebrada: nenhum caminho real construía um, e a
+        transmissão nunca funcionou. A indisponibilidade continua sendo contrato,
+        mas agora tem a premissa certa: ela vale quando CONSTRUIR falha.
+        """
+        monkeypatch.setattr(module, "CastOrchestrator", _refuses_to_build)
         dashboard = DesktopDashboard(
             store_factory=lambda: StateStore(tmp_path / "state.db"),
             flatpak_factory=lambda: MagicMock(),
@@ -1095,7 +1113,10 @@ class TestCastDashboardIntegration:
             dashboard.cast_stop()
         assert exc.value.code == "E-CAST-UNAVAILABLE"
 
-    def test_cast_discover_returns_empty_when_not_configured(self, tmp_path: Path) -> None:
+    def test_cast_discover_returns_empty_when_the_orchestrator_cannot_be_built(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(module, "CastOrchestrator", _refuses_to_build)
         dashboard = DesktopDashboard(
             store_factory=lambda: StateStore(tmp_path / "state.db"),
             flatpak_factory=lambda: MagicMock(),
@@ -1105,7 +1126,10 @@ class TestCastDashboardIntegration:
         )
         assert dashboard.cast_discover() == []
 
-    def test_cast_sessions_returns_empty_when_not_configured(self, tmp_path: Path) -> None:
+    def test_cast_sessions_returns_empty_when_the_orchestrator_cannot_be_built(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(module, "CastOrchestrator", _refuses_to_build)
         dashboard = DesktopDashboard(
             store_factory=lambda: StateStore(tmp_path / "state.db"),
             flatpak_factory=lambda: MagicMock(),
@@ -1115,7 +1139,10 @@ class TestCastDashboardIntegration:
         )
         assert dashboard.cast_sessions() == []
 
-    def test_cast_status_returns_unavailable_when_not_configured(self, tmp_path: Path) -> None:
+    def test_cast_status_returns_unavailable_when_the_orchestrator_cannot_be_built(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(module, "CastOrchestrator", _refuses_to_build)
         dashboard = DesktopDashboard(
             store_factory=lambda: StateStore(tmp_path / "state.db"),
             flatpak_factory=lambda: MagicMock(),
@@ -1212,3 +1239,65 @@ class TestPublishingSteamZeroToTheBigPicture:
         assert row["statusLabel"] == "Não publicado"
         assert action["enabled"] is True, "degradar nao pode tirar a acao do usuario"
         assert "não foi possível ler" in str(row["detail"]).lower()
+
+
+class TestTheCastOrchestratorExistsInProduction:
+    """G41: a transmissao inteira estava morta por falta de INSTANCIA.
+
+    `self._cast` so recebia valor por injecao, usada apenas nos testes. Nenhum
+    caminho de producao construia um orquestrador, entao toda chamada via `None`
+    e a tela respondia "Orquestrador nao configurado" para sempre. Nao faltava
+    configuracao — faltava construir.
+    """
+
+    def test_cast_is_available_without_injection(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """A ascercao que pega o defeito.
+
+        Testar com orquestrador injetado passava — e passou, por todo esse
+        tempo. O que nao passa e exigir que a producao, SEM injecao, tenha um.
+        """
+        dashboard = DesktopDashboard()
+        try:
+            assert dashboard.cast_status()["state"] != "unavailable"
+            assert dashboard.cast_sessions() == []
+        finally:
+            dashboard.close_request_context()
+
+    def test_the_orchestrator_is_not_built_at_construction(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Construir dispara `_reconcile`, que encerra sessoes orfas.
+
+        Isso pertence a quem consulta a transmissao, nao a quem instancia o
+        dashboard: uma fixture nao pode derrubar sessao de ninguem.
+        """
+        from steamzero.adapters import desktop_dashboard as module
+
+        built: list[int] = []
+        monkeypatch.setattr(
+            module, "CastOrchestrator", lambda *a, **k: built.append(1) or MagicMock()
+        )
+        dashboard = DesktopDashboard()
+        try:
+            assert built == [], "instanciar o dashboard nao pode construir o orquestrador"
+            dashboard.cast_sessions()
+            assert built == [1], "a primeira consulta constroi"
+            dashboard.cast_sessions()
+            assert built == [1], "a segunda reaproveita"
+        finally:
+            dashboard.close_request_context()
+
+    def test_a_failing_orchestrator_degrades_instead_of_breaking(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """AGENTS.md §8: sem transmissao a central continua utilizavel."""
+        from steamzero.adapters import desktop_dashboard as module
+
+        def explode(*_args: object, **_kwargs: object) -> None:
+            raise OSError("sem compositor")
+
+        monkeypatch.setattr(module, "CastOrchestrator", explode)
+        dashboard = DesktopDashboard()
+        try:
+            assert dashboard.cast_status()["state"] == "unavailable"
+            assert dashboard.cast_discover(10) == []
+            with pytest.raises(SteamZeroError, match="indisponível"):
+                dashboard.cast_pair("qualquer")
+        finally:
+            dashboard.close_request_context()
