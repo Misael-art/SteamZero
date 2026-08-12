@@ -107,7 +107,7 @@ def test_xenia_is_portable_and_launches_payload_with_rom(monkeypatch, tmp_path: 
 
 def test_rows_carry_real_platforms_and_specialties(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
-    rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
+    rows = controller._emulator_rows()  # workspace do Switch lista só o Switch
     by_id = {row["id"]: row for row in rows}
 
     expected = {

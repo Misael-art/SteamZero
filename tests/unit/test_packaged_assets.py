@@ -151,7 +151,13 @@ class TestAdapterPresentationAssets:
         from steamzero.adapters.emulation import _EMULATOR_ROWS_ORDER, _emulator_presentation
 
         rows = _emulator_presentation()
-        assert set(rows) == set(_EMULATOR_ROWS_ORDER)
+        # Contrato alterado em 2026-08-12: a membresia deixou de ser
+        # `_EMULATOR_ROWS_ORDER` e passou a ser "declarado por alguma
+        # plataforma". A tupla decidia ordem E membresia, e por isso excluía
+        # `duckstation` e `pcsx2` — os únicos emuladores que PlayStation e
+        # PlayStation 2 declaram. A ordem continua sendo contrato, verificada
+        # em `test_order_follows_the_declaration`.
+        assert set(rows) >= set(_EMULATOR_ROWS_ORDER)
         for emulator_id, (name, icon) in rows.items():
             assert name, f"{emulator_id} sem nome"
             assert Path(icon).name in _packaged_assets()
@@ -185,9 +191,17 @@ class TestDisplayOrderIsDeclared:
     """
 
     def test_order_follows_the_declaration(self) -> None:
+        """A ordem declarada LIDERA a apresentação.
+
+        Antes esta asserção era de igualdade, o que fazia a tupla decidir
+        também QUEM aparece — a allowlist implícita que deixava PlayStation e
+        PlayStation 2 sem emulador renderizável. A ordem, que é o que este
+        teste existe para proteger, segue verificada.
+        """
         from steamzero.adapters.emulation import _EMULATOR_ROWS_ORDER, _emulator_presentation
 
-        assert list(_emulator_presentation()) == list(_EMULATOR_ROWS_ORDER)
+        presented = list(_emulator_presentation())
+        assert presented[: len(_EMULATOR_ROWS_ORDER)] == list(_EMULATOR_ROWS_ORDER)
 
     def test_order_is_not_alphabetical_by_accident(self) -> None:
         from steamzero.adapters.emulation import _emulator_presentation

@@ -197,3 +197,59 @@ def test_connection_offline_classified_as_offline() -> None:
     with pytest.raises(SteamZeroError) as exc:
         adapter.test_connection()
     assert exc.value.code == "E-SCRAPE-OFFLINE"
+
+
+class TestTheRequestTheApiActuallyAccepts:
+    """Relatado pelo operador em 2026-08-12: com chave válida, nada era buscado.
+
+    A causa não era credencial: era um endpoint que não existe. Medida contra a
+    API real antes de corrigida, e congelada aqui contra `FakeTransport` —
+    nenhum teste toca a rede.
+    """
+
+    def test_every_request_identifies_the_client(self) -> None:
+        """Toda requisição sai com `User-Agent`.
+
+        O SteamGridDB responde 403 a requisição sem `User-Agent`, antes de olhar
+        a chave — verificado contra a API real. Quem garante o cabeçalho é
+        `core.net`, que o injeta em toda saída; este teste existe para que a
+        garantia continue valendo pelo caminho deste adapter, e não para afirmar
+        que o adapter o adiciona.
+        """
+        adapter, transport = _adapter(_ok({"id": 42}), _ok({"id": 1, "url": "https://x/a.png"}))
+        list(adapter.search(_identity(), ["grid"]))
+
+        assert transport.requests, "nenhuma requisição registrada"
+        for url, _timeout, headers in transport.requests:
+            agent = {key.lower(): value for key, value in headers.items()}.get("user-agent", "")
+            assert agent.startswith("SteamZero/"), f"{url} saiu sem User-Agent: {headers}"
+
+    def test_autocomplete_uses_the_endpoint_that_exists(self) -> None:
+        """`/games/autocomplete?term=` devolve **405**; ele não existe na v2.
+
+        O endpoint real recebe o termo no CAMINHO. Sem `title_id`, a busca cai
+        na resolução por nome — que era exatamente o caminho quebrado.
+        """
+        adapter, transport = _adapter(_ok({"id": 7}), _ok({"id": 1, "url": "https://x/a.png"}))
+        list(adapter.search(_identity(title_id=None), ["grid"]))
+
+        urls = [url for url, _timeout, _headers in transport.requests]
+        assert any("/search/autocomplete/" in url for url in urls), urls
+        assert not any("/games/autocomplete" in url for url in urls), (
+            f"voltou ao endpoint que responde 405: {urls}"
+        )
+
+    def test_the_search_term_is_escaped_in_the_path(self) -> None:
+        """Título com espaço e barra não pode forjar outro caminho na API."""
+        adapter, transport = _adapter(_ok(), _ok())
+        identity = GameIdentity(
+            game_id="g1",
+            title="Sonic / Knuckles & Tails",
+            platform_slug="mega-drive",
+            title_id=None,
+        )
+        list(adapter.search(identity, ["grid"]))
+
+        url = next(url for url, _t, _h in transport.requests if "/search/autocomplete/" in url)
+        suffix = url.split("/search/autocomplete/", 1)[1]
+        assert "/" not in suffix and " " not in suffix, suffix

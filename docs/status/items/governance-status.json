@@ -28,7 +28,7 @@
     "tests/integration/test_release_convergence.py",
     "tests/integration/test_core_service.py"
   ],
-  "scopeDigest": "f68fa85abfd2937b60eaec9f4b8d5d38f38907bf9e0c1c4cb2697bc2296f71fe",
+  "scopeDigest": "b44bbaafee68b30418d2070aeb8d74aac477183d44368c14841a80bebe502cda",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -49,6 +49,6 @@
   "activeWorkstreams": [
     "WS-2026-08-HARMONIZE-A45"
   ],
-  "updatedAt": "2026-08-11",
+  "updatedAt": "2026-08-12",
   "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe()."
 }

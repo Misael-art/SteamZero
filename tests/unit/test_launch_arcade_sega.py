@@ -98,7 +98,7 @@ class TestFlycast:
 
     def test_row_carries_dreamcast_platform(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
         controller = _controller(monkeypatch, tmp_path)
-        rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
+        rows = controller._emulator_rows()  # workspace do Switch lista só o Switch
         row = next(item for item in rows if item["id"] == "flycast")
         assert row["platform"] == "dreamcast"
         assert "Flatpak" in row["specialty"]
@@ -118,7 +118,7 @@ class TestFlycast:
 class TestRetroArchFamily:
     def test_retroarch_has_a_row_in_the_center(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
         controller = _controller(monkeypatch, tmp_path)
-        rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
+        rows = controller._emulator_rows()  # workspace do Switch lista só o Switch
         row = next(item for item in rows if item["id"] == "retroarch")
         assert "Flatpak" in row["specialty"]
         assert row["action"]["id"] == "emulator.install:retroarch"
