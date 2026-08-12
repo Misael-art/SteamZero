@@ -11,9 +11,12 @@ qualquer provider degrada somente a linha correspondente.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import shutil
 import subprocess
+import urllib.parse
+import zipfile
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from pathlib import Path
@@ -33,7 +36,7 @@ from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import AdapterManifest, AdapterRegistry
 from steamzero.adapters.resource_probe import ResourceProbe
 from steamzero.adapters.steam_gameplay import SteamGameplayController
-from steamzero.adapters.theme_catalog import ThemeCatalog
+from steamzero.adapters.theme_catalog import ThemeCatalog, validate_theme_directory
 from steamzero.core import log
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.secret import Secret
@@ -47,6 +50,7 @@ from steamzero.domain.emulation_workspace import build_switch_workspace
 from steamzero.domain.operation_history import OperationHistory
 from steamzero.domain.playtime import PlaytimeCatalog
 from steamzero.domain.theme_editor import ThemeEditorManager
+from steamzero.domain.theme_install import ThemeInstaller
 from steamzero.domain.theme_preferences import ThemePreferenceManager
 from steamzero.ports import CaptureConsent
 
@@ -138,6 +142,67 @@ def _steam_process_running(proc_root: Path | None = None) -> bool:
         if name in {"steam", "steamwebhelper"}:
             return True
     return False
+
+
+#: Teto do `theme.json` lido de dentro do pacote. O arquivo vem de fora, e um
+#: manifesto inflado não pode virar consumo de memória antes de qualquer
+#: validação. Os manifestos reais têm poucos KB.
+_THEME_MANIFEST_MAX_BYTES = 1024 * 1024
+
+
+def _peek_theme_manifest(source: str) -> dict[str, Any]:
+    """Lê o `theme.json` de um pacote SteamZero SEM extrair nada.
+
+    Inspecionar não pode ter efeito colateral: quem só quer ver o que há dentro
+    de um zip não instalou nada ainda. Ler só a entrada do manifesto, com teto,
+    evita tanto a escrita quanto a descompressão de um pacote inteiro para
+    responder "qual é o id deste tema".
+
+    Recusa URL de propósito: baixar de endereço digitado na interface é outra
+    funcionalidade — com consentimento, verificação de tamanho e origem — e o
+    marketplace já cobre o caso remoto atrás de opt-in.
+    """
+    if not source or "\x00" in source:
+        raise SteamZeroError("E-API-SCHEMA", detail="caminho de pacote inválido")
+    if urllib.parse.urlparse(source).scheme in ("http", "https"):
+        raise SteamZeroError(
+            "E-API-SCHEMA",
+            detail="importação pela central aceita arquivo local; use o marketplace para URL",
+        )
+    path = Path(source).expanduser()
+    if path.is_symlink():
+        raise SteamZeroError("E-THEME-MANIFEST", detail="pacote é symlink; recusado")
+    if not path.is_file():
+        raise SteamZeroError("E-THEME-NOT-FOUND", detail=f"pacote não encontrado: {source}")
+    try:
+        with zipfile.ZipFile(path) as package:
+            entries = [
+                name
+                for name in package.namelist()
+                if name == "theme.json" or name.endswith("/theme.json")
+            ]
+            if not entries:
+                raise SteamZeroError("E-THEME-MANIFEST", detail="o pacote não contém um theme.json")
+            # Manifesto da raiz vence: um tema aninhado não pode se passar por outro.
+            entry = min(entries, key=lambda name: name.count("/"))
+            info = package.getinfo(entry)
+            if info.file_size > _THEME_MANIFEST_MAX_BYTES:
+                raise SteamZeroError(
+                    "E-THEME-MANIFEST",
+                    detail=f"theme.json tem {info.file_size} bytes; teto é "
+                    f"{_THEME_MANIFEST_MAX_BYTES}",
+                )
+            with package.open(entry) as handle:
+                raw = handle.read(_THEME_MANIFEST_MAX_BYTES + 1)
+    except (zipfile.BadZipFile, OSError) as exc:
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"pacote ilegível: {exc}") from exc
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SteamZeroError("E-THEME-MANIFEST", detail=f"theme.json inválido: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise SteamZeroError("E-THEME-MANIFEST", detail="theme.json precisa ser objeto JSON")
+    return loaded
 
 
 class SteamDesktopController:
@@ -1613,6 +1678,44 @@ class DesktopDashboard:
 
     def theme_list(self) -> list[dict[str, Any]]:
         return self._theme_catalog.list_catalog()
+
+    def theme_import_zip_inspect(self, source: str) -> dict[str, Any]:
+        """Diz o que há num pacote SteamZero antes de instalar. Não escreve.
+
+        O que importa aqui é `alreadyInstalled`: importar um tema cujo id já
+        existe SOBRESCREVE o instalado. Saber disso antes é a diferença entre
+        uma escolha e uma perda.
+        """
+        manifest = _peek_theme_manifest(source)
+        theme_id = str(manifest.get("id") or "")
+        if not theme_id:
+            raise SteamZeroError("E-THEME-MANIFEST", detail="theme.json sem id")
+        installed = {str(item.get("id")) for item in self.theme_list()}
+        return {
+            "themeId": theme_id,
+            "name": str(manifest.get("name") or theme_id),
+            "version": str(manifest.get("version") or ""),
+            "author": str(manifest.get("author") or ""),
+            "license": str(manifest.get("license") or ""),
+            "extends": str(manifest.get("extends") or ""),
+            "alreadyInstalled": theme_id in installed,
+        }
+
+    def theme_import_zip_apply(self, source: str, *, overwrite: bool = False) -> dict[str, Any]:
+        """Instala um pacote SteamZero vindo do disco.
+
+        Reusa o `ThemeInstaller`, que já extrai com limites, valida o manifesto
+        e limpa o staging. Reimplementar a extração aqui seria um segundo
+        caminho para descompactar arquivo de terceiro — o pior lugar possível
+        para ter duas implementações.
+
+        `_peek_theme_manifest` roda antes para recusar URL e pacote ilegível com
+        mensagem própria, em vez de deixar o instalador falhar mais fundo.
+        """
+        _peek_theme_manifest(source)
+        installer = ThemeInstaller(validate=validate_theme_directory)
+        result = installer.install(source, force=overwrite, yes=True)
+        return dict(result)
 
     # -- importação de tema de terceiros -------------------------------
 
