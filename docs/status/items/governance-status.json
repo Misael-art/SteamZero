@@ -12,7 +12,7 @@
   "scopePaths": [
     "AGENTS.md",
     "Makefile",
-    "src/steamzero/__init__.py",
+    "docs/01-product/CAPABILITY-MATRIX.md",
     "docs/09-operations/RELEASE-LEDGER.md",
     "docs/12-roadmap/EXECUTION-TO-1.0.md",
     "docs/EXPANSION-LEDGER.md",
@@ -20,15 +20,16 @@
     "docs/WORKLOG.md",
     "docs/status/README.md",
     "docs/status/project-item-v1.schema.json",
-    "tools/project_status.py",
-    "tests/unit/test_project_status.py",
-    "src/steamzero/diagnostics/doctor.py",
-    "tests/unit/test_doctor.py",
+    "src/steamzero/__init__.py",
     "src/steamzero/adapters/release_convergence.py",
+    "src/steamzero/diagnostics/doctor.py",
+    "tests/integration/test_core_service.py",
     "tests/integration/test_release_convergence.py",
-    "tests/integration/test_core_service.py"
+    "tests/unit/test_doctor.py",
+    "tests/unit/test_project_status.py",
+    "tools/project_status.py"
   ],
-  "scopeDigest": "33c4f9369086eaa00ec8e34421a81c67a20fe37fb39295cc2be26692a0466e87",
+  "scopeDigest": "ed96ca277fccbcedb28322ef0ee92b05826a6324b5bb2d155889da2dd30031fa",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

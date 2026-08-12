@@ -630,6 +630,20 @@ class DesktopControlHandler(BaseHTTPRequestHandler):
             )
         if path == "/cast/stop":
             return self._dashboard().cast_stop()
+        # Importação de tema de terceiros. `inspect` é leitura e vem antes de
+        # `apply` de propósito: a conversão não é fiel por construção, e o
+        # usuário precisa ver `isMonochrome` e `unsupportedSlots` ANTES de
+        # importar, não depois de olhar um tema cinza e não entender por quê.
+        if path == "/theme/import/esde/inspect":
+            return self._dashboard().theme_import_esde_inspect(
+                self._required_string(payload, "source"),
+            )
+        if path == "/theme/import/esde/apply":
+            return self._dashboard().theme_import_esde_apply(
+                self._required_string(payload, "source"),
+                self._required_string(payload, "scheme"),
+                self._required_string(payload, "name"),
+            )
         if path == "/theme/editor/create":
             return self._dashboard().editor_create(
                 self._required_string(payload, "name"),

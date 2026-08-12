@@ -307,3 +307,116 @@ class TestFidelityIsReported:
         """A UI precisa distinguir "não veio" de "faltou implementar"."""
         report = import_report(import_scheme("neon", _COLORS))
         assert set(report["unsupportedSlots"]) == {"logo", "sidebar"}
+
+
+class TestTheImportPathTheUserCanActuallyReach:
+    """G42: o motor de importacao existia sem nenhum caminho de interface.
+
+    `theme_import_esde` nao tinha um unico consumidor no repositorio. Importar
+    era possivel por linha de comando e impossivel pela central — que e onde a
+    pessoa esta quando quer trazer um tema.
+    """
+
+    @staticmethod
+    def _dashboard(tmp_path, monkeypatch):  # type: ignore[no-untyped-def]
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+        from steamzero.adapters.desktop_dashboard import DesktopDashboard
+
+        return DesktopDashboard()
+
+    @staticmethod
+    def _theme(tmp_path):  # type: ignore[no-untyped-def]
+        root = tmp_path / "esde-theme"
+        root.mkdir()
+        (root / "colors.xml").write_text(
+            '<?xml version="1.0"?><theme>'
+            '<colorScheme name="vivo"><view>'
+            "<backgroundColor>101820</backgroundColor>"
+            "<gamelistSelectedColor>eaeaea</gamelistSelectedColor>"
+            "<gridSelectorColor>e94560</gridSelectorColor>"
+            "<helpTextColor>9aa4b0</helpTextColor>"
+            "</view></colorScheme>"
+            '<colorScheme name="apagado"><view>'
+            "<backgroundColor>808080</backgroundColor>"
+            "<gridSelectorColor>828282</gridSelectorColor>"
+            "</view></colorScheme></theme>",
+            encoding="utf-8",
+        )
+        return root
+
+    def test_inspect_reports_what_conversion_will_lose(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Inspecionar vem antes de importar porque a conversao nao e fiel.
+
+        Um esquema cuja identidade esta na ARTE vira cinza generico. Dizer isso
+        DEPOIS entrega um tema morto e deixa a pessoa sem entender por que.
+        """
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        report = dashboard.theme_import_esde_inspect(str(self._theme(tmp_path)))
+
+        by_scheme = {entry["scheme"]: entry for entry in report["schemes"]}
+        assert set(by_scheme) == {"vivo", "apagado"}
+        assert by_scheme["vivo"]["isMonochrome"] is False
+        assert by_scheme["vivo"]["colors"]["accent"] == "#e94560"
+        assert by_scheme["apagado"]["isMonochrome"] is True, (
+            "esquema sem cor distinguivel precisa ser sinalizado ANTES da importacao"
+        )
+        assert report["unsupportedSlots"], "o que nao converte precisa ser declarado"
+
+    def test_inspect_does_not_write_anything(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Inspecionar e leitura. Sem isto, olhar um tema ja o instalaria."""
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        source = self._theme(tmp_path)
+        before = {p: p.read_bytes() for p in sorted(source.rglob("*")) if p.is_file()}
+
+        dashboard.theme_import_esde_inspect(str(source))
+
+        after = {p: p.read_bytes() for p in sorted(source.rglob("*")) if p.is_file()}
+        assert after == before
+        assert dashboard.theme_list() == dashboard.theme_list()
+
+    def test_import_produces_an_editable_theme_on_disk(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Importar entrega tema EDITAVEL, nao aplicado.
+
+        Quem importa quase sempre quer ajustar antes de ativar; aplicar direto
+        trocaria a aparencia do sistema sem ninguem pedir.
+        """
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        result = dashboard.theme_import_esde_apply(str(self._theme(tmp_path)), "vivo", "Vivo")
+
+        assert Path(result["path"]).is_dir()
+        assert result["isMonochrome"] is False
+        assert "accentStrong" in result["derived"], "derivados precisam ser auditaveis"
+        session = dashboard.editor_load(str(result["themeId"]))
+        assert session["preview"]["resolved"]["color"]["accent"] == "#e94560"
+
+    def test_a_directory_without_colors_xml_fails_closed(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        empty = tmp_path / "vazio"
+        empty.mkdir()
+        with pytest.raises(SteamZeroError, match=r"colors\.xml"):
+            dashboard.theme_import_esde_inspect(str(empty))
+
+    def test_a_symlinked_source_is_refused(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """O caminho vem do usuario; seguir symlink daqui le qualquer arquivo.
+
+        "Abrir um tema" nao pode virar leitura arbitraria do sistema so porque
+        o alvo tem o nome certo.
+        """
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        link = tmp_path / "atalho"
+        link.symlink_to(self._theme(tmp_path), target_is_directory=True)
+        with pytest.raises(SteamZeroError, match="symlink"):
+            dashboard.theme_import_esde_inspect(str(link))
+
+    def test_an_oversized_colors_file_is_refused(self, tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Arquivo apontado por engano nao pode virar consumo sem limite."""
+        from steamzero.adapters import desktop_dashboard
+
+        dashboard = self._dashboard(tmp_path, monkeypatch)
+        source = self._theme(tmp_path)
+        monkeypatch.setattr(desktop_dashboard, "_ESDE_COLORS_MAX_BYTES", 8)
+        with pytest.raises(SteamZeroError, match="teto"):
+            dashboard.theme_import_esde_inspect(str(source))
