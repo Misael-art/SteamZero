@@ -285,3 +285,107 @@ def test_bundled_registry_is_cached_per_process() -> None:
 def test_manifest_parser_never_leaks_untyped_exception(data: dict[str, Any]) -> None:
     with suppress(SteamZeroError):
         load_platform_manifest(data)
+
+
+class TestEachPlatformDeclaresItsOwnEmulators:
+    """Regressao do que o operador viu na tela em 2026-08-12.
+
+    A central de emulacao montava a lista de emuladores a partir do registro
+    INTEIRO de adapters e a entregava ao workspace do Switch. Resultado: Dolphin
+    (GameCube e Wii) e PPSSPP (PSP) apareciam sob Nintendo Switch, com o rotulo
+    "Keys pendentes" — um requisito que so existe para o Switch.
+
+    A relacao plataforma->emulador sempre esteve em `manifest.emulators`; o que
+    faltava era alguem consulta-la.
+    """
+
+    def test_switch_declares_only_switch_emulators(self) -> None:
+        registry = PlatformRegistry.bundled()
+        assert registry.emulator_ids_for("switch") == ("eden", "citron", "ryubing")
+
+    def test_emulators_of_other_platforms_are_not_claimed_by_switch(self) -> None:
+        """A ascercao que pega o defeito.
+
+        Conferir so a lista do Switch passaria mesmo com o vazamento, porque a
+        lista correta continua sendo um subconjunto do registro inteiro. O que
+        nao passa e exigir que emuladores de OUTRAS plataformas fiquem de fora.
+        """
+        registry = PlatformRegistry.bundled()
+        switch = set(registry.emulator_ids_for("switch"))
+        for foreign in ("dolphin", "ppsspp", "cemu", "rpcs3", "flycast", "azahar", "melonds"):
+            assert foreign not in switch, f"{foreign} nao e emulador de Nintendo Switch"
+
+    def test_a_multi_system_emulator_belongs_to_the_platforms_that_declare_it(self) -> None:
+        """RetroArch e legitimamente compartilhado; o filtro nao pode exclui-lo."""
+        registry = PlatformRegistry.bundled()
+        assert "retroarch" in registry.emulator_ids_for("nes-famicom")
+        assert "retroarch" in registry.emulator_ids_for("mega-drive")
+        assert "retroarch" not in registry.emulator_ids_for("switch")
+
+    def test_cloud_platforms_declare_no_emulator(self) -> None:
+        """Vazio legitimo: nuvem nao emula. Nao pode virar erro."""
+        registry = PlatformRegistry.bundled()
+        for platform_id in ("geforce-now", "xbox-cloud-gaming", "amazon-luna"):
+            assert registry.emulator_ids_for(platform_id) == ()
+
+    def test_an_unknown_platform_raises_instead_of_answering_empty(self) -> None:
+        """Vazio e indistinguivel de 'nuvem'; erro de id precisa doer."""
+        registry = PlatformRegistry.bundled()
+        with pytest.raises(SteamZeroError):
+            registry.emulator_ids_for("plataforma-que-nao-existe")
+
+    def test_every_declared_emulator_exists_in_the_adapter_registry(self) -> None:
+        """Uma plataforma nao pode declarar adapter que nao existe.
+
+        Sem isto, a plataforma fica permanentemente sem emulador utilizavel e a
+        UI nao tem como dizer por que.
+        """
+        from steamzero.adapters.registry import AdapterRegistry
+
+        adapters = {manifest.id for manifest in AdapterRegistry.bundled().list()}
+        missing: dict[str, list[str]] = {}
+        for manifest in PlatformRegistry.bundled().list():
+            absent = [
+                adapter_id
+                for adapter_id in PlatformRegistry.bundled().emulator_ids_for(manifest.id)
+                if adapter_id not in adapters
+            ]
+            if absent:
+                missing[manifest.id] = absent
+        assert missing == {}, f"plataformas declaram adapters inexistentes: {missing}"
+
+    def test_every_declared_emulator_can_actually_be_rendered(self) -> None:
+        """Declarar nao basta: a UI precisa conseguir desenhar a linha.
+
+        `_EMULATOR_ROWS_ORDER` ordenava E filtrava. Dos 33 adapters com
+        `presentation` no manifesto, 13 chegavam a tela. Entre os 20 de fora
+        estavam `duckstation` e `pcsx2` — os UNICOS emuladores declarados por
+        PlayStation e PlayStation 2. As duas plataformas ficavam sem emulador
+        renderizavel para sempre, sem nada falhar.
+
+        Conferir apenas "o adapter existe no registro" nao pega isso: eles
+        existiam. O que faltava era apresentacao alcancavel.
+        """
+        from steamzero.adapters.emulation import _emulator_presentation
+
+        presentable = set(_emulator_presentation(AdapterRegistry.bundled()))
+        registry = PlatformRegistry.bundled()
+        unreachable: dict[str, list[str]] = {}
+        for manifest in registry.list():
+            absent = [
+                adapter_id
+                for adapter_id in registry.emulator_ids_for(manifest.id)
+                if adapter_id not in presentable
+            ]
+            if absent:
+                unreachable[manifest.id] = absent
+        assert unreachable == {}, (
+            f"plataformas com emulador declarado e nao renderizavel: {unreachable}"
+        )
+
+    def test_the_declared_order_still_leads_the_presentation(self) -> None:
+        """A ordem continua sendo contrato de UI — ela so deixou de excluir."""
+        from steamzero.adapters.emulation import _EMULATOR_ROWS_ORDER, _emulator_presentation
+
+        presented = list(_emulator_presentation(AdapterRegistry.bundled()))
+        assert presented[: len(_EMULATOR_ROWS_ORDER)] == list(_EMULATOR_ROWS_ORDER)

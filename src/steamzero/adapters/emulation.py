@@ -189,6 +189,12 @@ _MANAGED_EMULATORS: tuple[str, ...] = ("eden", "citron", "ryubing")
 #: fechar, requisitos) exibidos na central. Cada id aqui tem fonte instalável
 #: e perfil de launch declarado; os demais continuam fora das linhas até que
 #: cada família fique real (LAUNCH-E2E-02 B e C).
+#: Emuladores que o manifesto do Nintendo Switch declara. Derivado, não escrito
+#: à mão: uma lista paralela voltaria a divergir do contrato em silêncio.
+_SWITCH_EMULATOR_IDS: frozenset[str] = frozenset(
+    PlatformRegistry.bundled().emulator_ids_for("switch")
+)
+
 _EMULATOR_ROWS_ORDER: tuple[str, ...] = (
     *_MANAGED_EMULATORS,
     "dolphin",
@@ -218,8 +224,26 @@ def _emulator_presentation(
     source = registry or AdapterRegistry.bundled()
     by_id = {manifest.id: manifest for manifest in source.list()}
     rows: dict[str, tuple[str, str]] = {}
-    # Percorre na ordem declarada, não na do registry: a ordem é contrato de UI.
-    for emulator_id in _EMULATOR_ROWS_ORDER:
+    # Quem entra: todo adapter que ALGUMA plataforma declara como emulador.
+    # Quem ordena: `_EMULATOR_ROWS_ORDER`, que continua sendo contrato de UI.
+    #
+    # Enquanto a tupla decidia as duas coisas, ela era a allowlist implícita que
+    # o docstring acima diz ter sido eliminada — e deixava de fora `duckstation`
+    # e `pcsx2`, os ÚNICOS emuladores declarados por PlayStation e PlayStation 2.
+    # As duas plataformas ficavam sem emulador renderizável para sempre, sem
+    # nada falhar.
+    #
+    # O critério é "declarado por plataforma", e não "tem presentation": 33
+    # adapters têm presentation, mas 18 deles são cores libretro, que rodam
+    # DENTRO do RetroArch e não são emulador autônomo, mais o `sunshine`, que é
+    # host de streaming. Listá-los como emulador seria trocar um erro por outro.
+    declared_by_platform = {
+        adapter_id
+        for manifest in PlatformRegistry.bundled().list()
+        for adapter_id in PlatformRegistry.bundled().emulator_ids_for(manifest.id)
+    }
+    extra = sorted(declared_by_platform - set(_EMULATOR_ROWS_ORDER))
+    for emulator_id in [*_EMULATOR_ROWS_ORDER, *extra]:
         manifest = by_id.get(emulator_id)
         if manifest is None or manifest.presentation is None:
             continue
@@ -557,10 +581,20 @@ class EmulationController:
         return paths.state_home() / "media-audit-v1.json"
 
     def snapshot(self, desktop_status: Mapping[str, Any]) -> dict[str, Any]:
-        emulator_rows = self._emulator_rows()
+        # Duas listas, dois consumidores, e confundi-las era o defeito:
+        #
+        # `all_rows` é o inventário completo — a Gestão geral responde por todo
+        # emulador empacotado, e as versões publicadas cobrem todos eles.
+        #
+        # `emulator_rows` é do WORKSPACE DO SWITCH. Entregar o inventário
+        # inteiro aqui fazia a central listar Dolphin (GameCube e Wii) e PPSSPP
+        # (PSP) sob Nintendo Switch, e ainda calcular keys/firmware do Switch
+        # sobre eles — requisitos que não se aplicam.
+        all_rows = self._emulator_rows()
+        emulator_rows = [row for row in all_rows if row["id"] in _SWITCH_EMULATOR_IDS]
         self._emulator_versions = {
             str(row["id"]): str(row.get("version") or row.get("installedVersion") or "unknown")
-            for row in emulator_rows
+            for row in all_rows
         }
         games, unidentified = self._load_library_cache()
         roots = self.library_roots()
@@ -723,7 +757,7 @@ class EmulationController:
             editorial_platforms=workspace["editorialPlatforms"],
             canonical_experiences=workspace["canonicalExperiences"],
             truth_state=truth_state,
-            emulators=emulator_rows,
+            emulators=all_rows,
             directories=media_area.get("libraryRoots", []),
             media_providers=media_area["providerCredentials"],
         )
@@ -2891,9 +2925,19 @@ class EmulationController:
             response["library"] = self.scan_library()
         return response
 
-    def _emulator_rows(self) -> list[dict[str, Any]]:
+    def _emulator_rows(self, *, platform_id: str | None = None) -> list[dict[str, Any]]:
+        """Linhas de emulador; com ``platform_id``, só os que a plataforma declara.
+
+        Sem o filtro, a central montava a lista a partir do registro INTEIRO de
+        adapters e a entregava ao workspace do Switch: Dolphin (GameCube e Wii)
+        e PPSSPP (PSP) apareciam sob Nintendo Switch, herdando o rótulo "Keys
+        pendentes" que só se aplica ao Switch.
+        """
         rows: list[dict[str, Any]] = []
         registry = self._registry_factory()
+        declared: frozenset[str] | None = None
+        if platform_id is not None:
+            declared = frozenset(PlatformRegistry.bundled().emulator_ids_for(platform_id))
         roots = self.library_roots()
         try:
             self._current_key_source()
@@ -2905,6 +2949,8 @@ class EmulationController:
             engine = AdapterEngine(store, registry, self._artifacts)
             lifecycle = ComponentLifecycle(store, registry, artifacts=self._artifacts)
             for emulator_id, (name, icon_asset) in _emulator_presentation(registry).items():
+                if declared is not None and emulator_id not in declared:
+                    continue
                 manifest = registry.get(emulator_id)
                 status = lifecycle.status(emulator_id)
                 state = str(status["state"])

@@ -178,6 +178,25 @@ class PlatformRegistry:
     def list(self) -> list[PlatformManifest]:
         return list(self._items.values())
 
+    def emulator_ids_for(self, platform_id: str) -> tuple[str, ...]:
+        """Adapters que ESTA plataforma declara, na ordem do manifesto.
+
+        A relação plataforma→emulador sempre existiu em ``manifest.emulators``;
+        o que faltava era alguém consultá-la. A central de emulação montava a
+        lista a partir do registro inteiro de adapters, então Dolphin (GameCube
+        e Wii) e PPSSPP (PSP) apareciam sob Nintendo Switch — e herdavam os
+        requisitos de keys e firmware do Switch, que não se aplicam a eles.
+
+        Plataforma desconhecida levanta (via :meth:`get`) em vez de devolver
+        vazio: vazio é indistinguível de "nenhum emulador declarado", que é o
+        caso legítimo das plataformas de nuvem.
+        """
+        return tuple(
+            str(emulator["adapterId"])
+            for emulator in self.get(platform_id).emulators
+            if emulator.get("adapterId")
+        )
+
 
 def platform_placeholder(manifest: PlatformManifest) -> dict[str, Any]:
     """Projeta uma plataforma ainda não composta sem alegar disponibilidade."""

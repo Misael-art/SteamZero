@@ -62,24 +62,15 @@ def test_switch_emulators_publish_managed_ryubing_with_official_icon(
 ) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
 
+    # Contrato alterado em 2026-08-12: o workspace do Switch lista SÓ os
+    # emuladores do Switch. Antes esta asserção exigia o inventário inteiro
+    # dentro do Switch — Dolphin, PPSSPP, Cemu e companhia — e foi exatamente
+    # isso que o operador viu na tela: emuladores de GameCube e de PSP sob
+    # Nintendo Switch, com o rótulo "Keys pendentes" que só cabe ao Switch.
     rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
     by_id = {row["id"]: row for row in rows}
 
-    assert set(by_id) == {
-        "eden",
-        "citron",
-        "ryubing",
-        "dolphin",
-        "ppsspp",
-        "melonds",
-        "azahar",
-        "retroarch",
-        "flycast",
-        "cemu",
-        "rpcs3",
-        "xemu",
-        "xenia-canary",
-    }
+    assert set(by_id) == {"eden", "citron", "ryubing"}
     assert by_id["ryubing"]["sourceState"] == "verified"
     assert by_id["ryubing"]["targetVersion"] == "1.3.3"
     assert by_id["ryubing"]["iconAsset"] == "../assets/ryubing.png"
@@ -113,7 +104,11 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
     assert switch["action"]["id"] == "platform.open"
     assert switch["keysStatus"]["kind"] == "keys"
-    assert len(global_management["emulators"]) == 13
+    # 15, e não 13, desde 2026-08-12: `duckstation` e `pcsx2` passaram a ser
+    # apresentáveis. Eles sempre estiveram declarados por PlayStation e
+    # PlayStation 2, mas a tupla de ordem da UI também filtrava a membresia e os
+    # deixava de fora — as duas plataformas ficavam sem emulador renderizável.
+    assert len(global_management["emulators"]) == 15
     assert all("apiKey" not in provider for provider in global_management["mediaProviders"])
 
 

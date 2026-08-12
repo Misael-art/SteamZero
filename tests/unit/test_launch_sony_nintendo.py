@@ -174,9 +174,20 @@ def test_unknown_emulator_is_still_rejected(monkeypatch, tmp_path: Path) -> None
 def test_emulator_rows_carry_real_platform_and_flatpak_specialty(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]
+    """Cada linha declara a plataforma REAL do emulador, não a da tela.
+
+    Contrato alterado em 2026-08-12: antes esta asserção era feita sobre
+    ``snapshot()["platforms"][0]``, que é o Nintendo Switch — ou seja, ela
+    EXIGIA que Dolphin, PPSSPP, melonDS e Azahar aparecessem dentro do Switch.
+    O operador viu o resultado disso na tela: emuladores de GameCube e de PSP
+    listados sob Nintendo Switch, herdando o rótulo "Keys pendentes", que só se
+    aplica ao Switch.
+
+    A propriedade que o teste queria provar continua valendo e é verificada
+    aqui, sobre a lista completa, onde esses emuladores legitimamente vivem.
+    """
     controller = _controller(monkeypatch, tmp_path)
-    rows = controller.snapshot({"context": {}})["platforms"][0]["emulators"]
-    by_id = {row["id"]: row for row in rows}
+    by_id = {row["id"]: row for row in controller._emulator_rows()}
     expected_platform = {
         "dolphin": "nintendo-console",
         "ppsspp": "playstation-portable",
@@ -188,6 +199,21 @@ def test_emulator_rows_carry_real_platform_and_flatpak_specialty(
         assert row["platform"] == platform_id
         assert "Flatpak" in row["specialty"]
         assert row["action"]["id"] == f"emulator.install:{emulator_id}"
+
+
+def test_the_switch_workspace_lists_only_switch_emulators(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """A metade que faltava: emulador de outra plataforma fica FORA do Switch.
+
+    Sem esta asserção, a anterior passa mesmo com o vazamento — ela só olha se
+    a linha diz a plataforma certa, não se a linha deveria estar ali.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    switch = controller.snapshot({"context": {}})["platforms"][0]
+    assert switch["id"] == "switch"
+    listed = {row["id"] for row in switch["emulators"]}
+    assert listed == {"eden", "citron", "ryubing"}
+    for foreign in ("dolphin", "ppsspp", "melonds", "azahar", "cemu", "rpcs3"):
+        assert foreign not in listed, f"{foreign} não é emulador de Nintendo Switch"
 
 
 def test_launch_emulator_starts_pinned_flatpak(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
