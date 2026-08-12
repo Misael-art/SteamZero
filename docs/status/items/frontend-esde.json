@@ -15,9 +15,7 @@
     "tests/unit/test_theme_import_esde.py"
   ],
   "dependsOn": [],
-  "knownGaps": [
-    "GAP-G42"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Importador converte o contrato de tema ES-DE sem depender do runtime externo.",
     "Casos invalidos e valores ausentes possuem teste unitario."
