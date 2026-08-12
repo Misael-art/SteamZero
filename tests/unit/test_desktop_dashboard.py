@@ -1148,3 +1148,67 @@ def test_dashboard_snapshot_includes_touch_mode_from_profile(tmp_path: Path) -> 
     }
     snapshot = dashboard.snapshot(status)
     assert snapshot["touchMode"] is True
+
+
+class TestPublishingSteamZeroToTheBigPicture:
+    """A linha que expõe o atalho da propria central na tela Steam.
+
+    Fica ali, e nao por jogo, porque publica a INTERFACE — nao um destino. E o
+    que faz o Big Picture virar porta de entrada, como em ES-DE ou RetroFE.
+    """
+
+    class _Shortcuts:
+        def __init__(self, modes: set[str] | Exception) -> None:
+            self._modes = modes
+
+        def managed_frontend_mode_ids(self) -> set[str]:
+            if isinstance(self._modes, Exception):
+                raise self._modes
+            return self._modes
+
+    @staticmethod
+    def _row(modes: set[str] | Exception) -> dict[str, object]:
+        dashboard = DesktopDashboard()
+        try:
+            dashboard._emulation._shortcuts = (  # type: ignore[assignment]
+                TestPublishingSteamZeroToTheBigPicture._Shortcuts(modes)
+            )
+            return dashboard._frontend_shortcut_row()
+        finally:
+            # Sem isto o read model deixa recurso de thread aberto e a suíte
+            # passa a acumular ResourceWarning por teste.
+            dashboard.close_request_context()
+
+    def test_the_button_offers_publishing_when_absent(self) -> None:
+        row = self._row(set())
+        action = row["action"]
+        assert isinstance(action, dict)
+        assert row["statusLabel"] == "Não publicado"
+        assert action["selected"] is True, "o botao precisa PUBLICAR quando nao ha atalho"
+        assert action["enabled"] is True
+
+    def test_the_button_offers_removal_when_present(self) -> None:
+        """A metade que pega o defeito real.
+
+        Conferir so o estado "nao publicado" passaria com o botao travado em
+        publicar — e reaplicar seria no-op, entao ninguem notaria que remover
+        nunca funcionou.
+        """
+        row = self._row({"central"})
+        action = row["action"]
+        assert isinstance(action, dict)
+        assert row["statusLabel"] == "Publicado"
+        assert action["selected"] is False, "o botao precisa REMOVER quando ja ha atalho"
+
+    def test_an_unreadable_shortcuts_file_degrades_instead_of_breaking(self) -> None:
+        """AGENTS.md §8: falha degrada, nunca trava.
+
+        Um `shortcuts.vdf` ilegivel e problema da integracao com a Steam, nao da
+        central; derrubar a tela inteira por causa dele seria desproporcional.
+        """
+        row = self._row(SteamZeroError("E-COMPONENT-DEGRADED", detail="ilegível"))
+        action = row["action"]
+        assert isinstance(action, dict)
+        assert row["statusLabel"] == "Não publicado"
+        assert action["enabled"] is True, "degradar nao pode tirar a acao do usuario"
+        assert "não foi possível ler" in str(row["detail"]).lower()

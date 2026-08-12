@@ -716,7 +716,7 @@ class DesktopDashboard:
                 "highContrast": high_contrast,
             },
             "components": components,
-            "steam": self._steam.rows(desktop_status),
+            "steam": [*self._steam.rows(desktop_status), self._frontend_shortcut_row()],
             "steamGameplay": steam_gameplay,
             "sync": sync,
             "doctor": doctor,
@@ -1521,6 +1521,50 @@ class DesktopDashboard:
             "resolved": qml_object,
             "state": "ready",
             "detail": None,
+        }
+
+    def _frontend_shortcut_row(self) -> dict[str, Any]:
+        """Linha que publica o SteamZero como atalho da Steam.
+
+        É o que faz o Big Picture virar porta de entrada da experiência, como em
+        ES-DE, LaunchBox ou RetroFE. Fica na tela Steam, e não por jogo, porque
+        publica a INTERFACE — não um destino.
+
+        Falha de leitura do `shortcuts.vdf` degrada para "não publicado" em vez
+        de derrubar a tela inteira: um arquivo ilegível é um problema da
+        integração com a Steam, não da central (AGENTS.md §8).
+        """
+        try:
+            published = "central" in self._emulation._shortcuts.managed_frontend_mode_ids()
+            readable = True
+        except (SteamZeroError, OSError):
+            published, readable = False, False
+        return {
+            "id": "steamzero-big-picture",
+            "name": "SteamZero no Big Picture",
+            "description": "Abre a central pelo modo Big Picture da Steam",
+            "iconName": "steam",
+            "state": "available" if published else "missing",
+            "statusLabel": "Publicado" if published else "Não publicado",
+            "versionLabel": "Atalho não-Steam",
+            "detail": (
+                "O SteamZero aparece na sua biblioteca Steam; abra por lá para entrar "
+                "direto na central."
+                if published
+                else (
+                    "Publique para abrir a central pelo Big Picture, como um jogo da "
+                    "biblioteca. Feche a Steam antes de aplicar."
+                    if readable
+                    else "Não foi possível ler os atalhos da Steam; a publicação continua "
+                    "disponível e nada foi alterado."
+                )
+            ),
+            "action": {
+                "kind": "steamzero-frontend-shortcut",
+                "selected": not published,
+                "label": "Remover da Steam" if published else "Publicar na Steam",
+                "enabled": True,
+            },
         }
 
     def theme_list(self) -> list[dict[str, Any]]:

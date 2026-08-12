@@ -975,6 +975,16 @@ ApplicationWindow {
                 notify(qsTr("Steam aberto com segurança"), false)
                 refreshStatus("")
             })
+        } else if (kind === "steamzero-frontend-shortcut") {
+            // Publica ou remove o atalho que abre a própria central pela Steam.
+            // Passa pelo fluxo de plano+confirmação como toda mutação: escrever
+            // no shortcuts.vdf de alguém sem revisão seria a única ação da tela
+            // a mudar arquivo do usuário sem ele ver o que muda.
+            performEmulationAction({
+                "id": "steam.frontend-shortcut.sync",
+                "enabled": true,
+                "selected": action.selected === true
+            })
         } else if (kind === "keyboard") {
             openKeyboard()
         } else {
@@ -1056,7 +1066,8 @@ ApplicationWindow {
                 "content.update.import", "content.dlc.import", "content.save.import",
                 "content.shader.import", "storage.recover", "game.emulator.set",
                 "mod.import", "cheat.import",
-                "game.steam.set", "steam.shortcuts.sync", "cloud.shortcuts.sync"]
+                "game.steam.set", "steam.shortcuts.sync", "cloud.shortcuts.sync",
+                "steam.frontend-shortcut.sync"]
             .indexOf(action.id) >= 0
                 || action.id.indexOf("content.state:") === 0
                 || action.id.indexOf("mod.state:") === 0
@@ -1081,7 +1092,8 @@ ApplicationWindow {
                 || action.id === "game.emulator.default"
                 || action.id === "game.emulator.clear_default"
                 || action.id === "emulation.global.set-auto-publish-steam"
-                || action.id === "emulation.global.set-prefer-native-nca") {
+                || action.id === "emulation.global.set-prefer-native-nca"
+                || action.id === "steam.frontend-shortcut.sync") {
             const payload = {
                 "actionId": action.id,
                 "path": action.path || "",
