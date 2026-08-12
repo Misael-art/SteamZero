@@ -28,7 +28,7 @@
     "tests/integration/test_release_convergence.py",
     "tests/integration/test_core_service.py"
   ],
-  "scopeDigest": "b44bbaafee68b30418d2070aeb8d74aac477183d44368c14841a80bebe502cda",
+  "scopeDigest": "33c4f9369086eaa00ec8e34421a81c67a20fe37fb39295cc2be26692a0466e87",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
