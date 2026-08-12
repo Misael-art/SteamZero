@@ -2039,6 +2039,23 @@ class EmulationController:
                 if self._settings_for_game(game, settings).get("steamSelected") is True
             ]
             plan = self._shortcuts.plan(selected)
+        elif action == "steam.frontend-shortcut.sync":
+            # Publica o próprio SteamZero como atalho não-Steam. É o que faz o
+            # Big Picture virar porta de entrada da experiência inteira; sem
+            # isto dava para lançar cada jogo pela Steam e não dava para lançar
+            # o SteamZero. `selected` falso remove a entrada e preserva o resto.
+            selected = payload.get("selected", True)
+            if not isinstance(selected, bool):
+                raise SteamZeroError("E-API-SCHEMA", detail="campo booleano obrigatório: selected")
+            entries = [{"id": "central", "name": "SteamZero"}] if selected else []
+            plan = self._shortcuts.plan_frontend(entries)
+            plan_extra["preview"] = (
+                "Publica o SteamZero como atalho não-Steam, para abrir a central pelo Big "
+                "Picture. Atalhos de jogos, de nuvem e de terceiros são preservados; a Steam "
+                "deve permanecer fechada."
+                if selected
+                else "Remove o atalho do SteamZero. Os demais atalhos são preservados."
+            )
         elif action == "cloud.shortcuts.sync":
             plan = self._cloud.plan_shortcuts()
             plan_extra["preview"] = (
@@ -2291,6 +2308,8 @@ class EmulationController:
             result = self._shortcuts.apply(plan_id, confirm_token)
         elif plan.kind == "steam.cloud-shortcuts.sync":
             result = self._shortcuts.apply_cloud(plan_id, confirm_token)
+        elif plan.kind == "steam.frontend-shortcuts.sync":
+            result = self._shortcuts.apply_frontend(plan_id, confirm_token)
         elif (
             plan.kind.startswith("emulation.")
             or plan.kind
@@ -2449,7 +2468,11 @@ class EmulationController:
         tracked_type: str | None = None
         if plan.kind == "library.convert":
             tracked_type = "nsz.convert"
-        elif plan.kind in {"steam.shortcuts.sync", "steam.cloud-shortcuts.sync"} or (
+        elif plan.kind in {
+            "steam.shortcuts.sync",
+            "steam.cloud-shortcuts.sync",
+            "steam.frontend-shortcuts.sync",
+        } or (
             pending is not None and pending.kind in {"media-publish-steam", "media-unpublish-steam"}
         ):
             tracked_type = "steam.publish"

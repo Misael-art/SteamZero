@@ -236,3 +236,92 @@ def test_rollback_rejects_tampered_backup(monkeypatch, tmp_path: Path) -> None: 
     entry.write_bytes(entry.read_bytes() + b"tampered")
     with pytest.raises(SteamZeroError, match="adulterado"):
         transaction.rollback(applied.operation_id, reason="test")
+
+
+class TestLaunchingSteamZeroItselfFromSteam:
+    """O atalho que faltava: abrir a INTERFACE, e nao um destino.
+
+    Os dois tipos anteriores publicam destinos — um jogo (`emulation launch`) e
+    um servico de nuvem (`cloud launch`). Dava para lancar cada jogo pela Steam
+    e nao dava para lancar o SteamZero. E a entrada pelo Big Picture que faz a
+    experiencia ser equivalente a de um ES-DE, LaunchBox ou RetroFE.
+    """
+
+    @staticmethod
+    def _manager(monkeypatch, tmp_path: Path) -> tuple[SteamShortcutManager, Path]:  # type: ignore[no-untyped-def]
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        root = _steam_root(tmp_path)
+        target = root / "userdata/123/config/shortcuts.vdf"
+        return SteamShortcutManager(roots=[root], running_probe=lambda: False), target
+
+    def test_the_shortcut_opens_the_interface(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        manager, target = self._manager(monkeypatch, tmp_path)
+        plan = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        manager.apply_frontend(plan.plan_id, plan.confirm_token)
+
+        row = decode_shortcuts(target.read_bytes())[0]
+        assert row["LaunchOptions"] == "desktop ui"
+        assert row["ShortcutPath"] == "steamzero://frontend/central"
+        assert manager.managed_frontend_mode_ids() == {"central"}
+
+    def test_foreign_and_game_shortcuts_survive(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """O contrato do M11 vale para o tipo novo tambem.
+
+        Conferir so que o atalho da interface aparece passaria mesmo se ele
+        varresse os outros — que e o defeito que mais dói, porque leva embora a
+        biblioteca inteira de alguem.
+        """
+        manager, target = self._manager(monkeypatch, tmp_path)
+        foreign = {"appid": 42, "AppName": "Foreign", "ShortcutPath": ""}
+        target.write_bytes(encode_shortcuts([foreign]))
+
+        game = manager.plan([{"id": "game-1", "name": "Owned game"}])
+        manager.apply(game.plan_id, game.confirm_token)
+        front = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        manager.apply_frontend(front.plan_id, front.confirm_token)
+
+        rows = decode_shortcuts(target.read_bytes())
+        assert foreign in rows, "atalho de terceiro nao pode ser removido"
+        assert manager.managed_game_ids() == {"game-1"}, "atalho de jogo nao pode ser removido"
+        assert manager.managed_frontend_mode_ids() == {"central"}
+
+    def test_reapplying_converges_without_duplicating(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        manager, target = self._manager(monkeypatch, tmp_path)
+        first = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        manager.apply_frontend(first.plan_id, first.confirm_token)
+        before = target.read_bytes()
+
+        second = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        manager.apply_frontend(second.plan_id, second.confirm_token)
+
+        assert target.read_bytes() == before
+        assert len(decode_shortcuts(target.read_bytes())) == 1
+
+    def test_an_unknown_mode_is_refused(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """O modo vem da UI; interpolá-lo daria argumento arbitrário ao binário.
+
+        A tabela fechada e o que separa "escolher um modo" de "escolher o que o
+        SteamZero instalado executa".
+        """
+        manager, _target = self._manager(monkeypatch, tmp_path)
+        with pytest.raises(SteamZeroError, match="modo de interface desconhecido"):
+            manager.plan_frontend([{"id": "modo-inventado", "name": "X"}])
+
+    def test_a_plan_of_another_kind_is_refused(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        manager, _target = self._manager(monkeypatch, tmp_path)
+        plan = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        with pytest.raises(SteamZeroError, match="não pertence"):
+            manager.apply(plan.plan_id, plan.confirm_token)
+
+    def test_removing_the_entry_leaves_the_rest_intact(self, monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        manager, target = self._manager(monkeypatch, tmp_path)
+        foreign = {"appid": 42, "AppName": "Foreign", "ShortcutPath": ""}
+        target.write_bytes(encode_shortcuts([foreign]))
+        first = manager.plan_frontend([{"id": "central", "name": "SteamZero"}])
+        manager.apply_frontend(first.plan_id, first.confirm_token)
+
+        empty = manager.plan_frontend([])
+        manager.apply_frontend(empty.plan_id, empty.confirm_token)
+
+        assert decode_shortcuts(target.read_bytes()) == [foreign]
+        assert manager.managed_frontend_mode_ids() == set()

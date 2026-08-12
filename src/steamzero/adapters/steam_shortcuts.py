@@ -28,6 +28,19 @@ from steamzero.core.errors import SteamZeroError
 _MAX_BYTES = 16 * 1024 * 1024
 _SWITCH_MARKER_PREFIX = "steamzero://switch/"
 _CLOUD_MARKER_PREFIX = "steamzero://cloud/"
+#: Atalho que abre o PRÓPRIO SteamZero. Os outros dois marcadores publicam
+#: destinos — um jogo, um serviço de nuvem. Este publica a interface, que é o
+#: que faz o Big Picture virar porta de entrada para a experiência inteira, como
+#: em ES-DE, LaunchBox ou RetroFE. Sem ele, dava para lançar cada jogo pela
+#: Steam e não dava para lançar o SteamZero.
+_FRONTEND_MARKER_PREFIX = "steamzero://frontend/"
+
+#: Tabela FECHADA do que um atalho de interface pode executar. Fechada porque o
+#: id chega da UI: interpolá-lo na linha de comando transformaria "modo de
+#: abertura" em argumento arbitrário do binário instalado.
+_FRONTEND_MODES: dict[str, str] = {
+    "central": "desktop ui",
+}
 _TARGET = "/usr/local/bin/steamzero"
 _QUOTED_TARGET = f'"{_TARGET}"'
 
@@ -182,6 +195,16 @@ class SteamShortcutManager:
         except SteamZeroError:
             return set()
 
+    def managed_frontend_mode_ids(self) -> set[str]:
+        try:
+            return {
+                mode_id
+                for row in self._read_rows(self._target())
+                if (mode_id := _managed_id(row, _FRONTEND_MARKER_PREFIX)) is not None
+            }
+        except SteamZeroError:
+            return set()
+
     def managed_cloud_platform_ids(self) -> set[str]:
         try:
             return {
@@ -244,6 +267,22 @@ class SteamShortcutManager:
             row_factory=self._row,
             noun="jogo",
             id_pattern=None,
+        )
+
+    def plan_frontend(self, entries: Sequence[Mapping[str, Any]]) -> transaction.Plan:
+        """Publica a própria interface como atalho não-Steam.
+
+        Cada entrada é ``{"id": <modo>, "name": <rótulo>}``. O id vira o modo de
+        abertura, e a allowlist de `_frontend_row` decide o que é aceitável —
+        o `id` NUNCA é interpolado cru na linha de comando.
+        """
+        return self._plan_rows(
+            entries,
+            marker_prefix=_FRONTEND_MARKER_PREFIX,
+            kind="steam.frontend-shortcuts.sync",
+            row_factory=self._frontend_row,
+            noun="modo de interface",
+            id_pattern=r"[a-z][a-z0-9-]{0,31}",
         )
 
     def plan_cloud(self, platforms: Sequence[Mapping[str, Any]]) -> transaction.Plan:
@@ -314,6 +353,9 @@ class SteamShortcutManager:
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         return self._apply_kind(plan_id, confirm_token, kind="steam.shortcuts.sync")
 
+    def apply_frontend(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        return self._apply_kind(plan_id, confirm_token, kind="steam.frontend-shortcuts.sync")
+
     def apply_cloud(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
         return self._apply_kind(plan_id, confirm_token, kind="steam.cloud-shortcuts.sync")
 
@@ -371,6 +413,41 @@ class SteamShortcutManager:
             "LastPlayTime": 0,
             "FlatpakAppID": "",
             "tags": {"0": "SteamZero", "1": "Nintendo Switch"},
+        }
+
+    @staticmethod
+    def _frontend_row(mode_id: str, name: str, app_id: int) -> dict[str, BinaryValue]:
+        """Linha do atalho que abre o SteamZero.
+
+        `LaunchOptions` vem de uma tabela FECHADA, não de interpolação do id.
+        O id chega da UI; montar a linha de comando com ele — como as outras
+        duas linhas fazem, onde o id é validado por padrão restrito — abriria
+        espaço para um modo inventado virar argumento arbitrário do binário.
+        """
+        options = _FRONTEND_MODES.get(mode_id)
+        if options is None:
+            raise SteamZeroError(
+                "E-API-SCHEMA",
+                detail=f"modo de interface desconhecido: {mode_id}",
+            )
+        return {
+            "appid": app_id,
+            "AppName": name,
+            "Exe": _QUOTED_TARGET,
+            "StartDir": '"/usr/local/bin"',
+            "icon": "",
+            "ShortcutPath": f"{_FRONTEND_MARKER_PREFIX}{mode_id}",
+            "LaunchOptions": options,
+            "IsHidden": 0,
+            "AllowDesktopConfig": 1,
+            "AllowOverlay": 1,
+            "OpenVR": 0,
+            "Devkit": 0,
+            "DevkitGameID": "",
+            "DevkitOverrideAppID": 0,
+            "LastPlayTime": 0,
+            "FlatpakAppID": "",
+            "tags": {"0": "SteamZero"},
         }
 
     @staticmethod
