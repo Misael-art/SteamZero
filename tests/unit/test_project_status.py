@@ -153,22 +153,24 @@ def test_coverage_view_flags_a_claim_without_approved_evidence() -> None:
     assert "sem evidencia aprovada" in row
 
 
-def test_every_source_file_has_a_custodian_item() -> None:
-    """Nenhum arquivo de `src/` fica sem item responsavel.
+def test_every_tracked_file_has_a_custodian_item() -> None:
+    """Nenhum arquivo de `src/`, `tests/` ou `tools/` fica sem item responsavel.
 
     `check_catalog` so olha `HEAD^..HEAD` mais a arvore de trabalho: pega o
     arquivo no commit em que ele muda e nunca mais. Foi assim que 321 arquivos
     de `src/` chegaram a harmonizacao a45 sem dono — cada um passou verde no
     proprio commit e saiu do campo de visao no seguinte.
 
-    Este teste varre a arvore inteira toda vez, que e a unica forma de a lacuna
-    nao voltar por acumulo.
+    Este teste varre as arvores inteiras toda vez, que e a unica forma de a
+    lacuna nao voltar por acumulo. `tests/` estava no mesmo estado que `src/` —
+    226 de 267 arquivos sem dono — e `tools/`, 22 de 29.
     """
     catalog = project_status.load_catalog()
     owners = [scope for item in catalog.items.values() for scope in item["scopePaths"]]
     orphans = sorted(
         str(path.relative_to(project_status.ROOT))
-        for path in (project_status.ROOT / "src").rglob("*")
+        for root in ("src", "tests", "tools")
+        for path in (project_status.ROOT / root).rglob("*")
         if path.is_file()
         and "__pycache__" not in path.parts
         and not any(
@@ -177,7 +179,7 @@ def test_every_source_file_has_a_custodian_item() -> None:
         )
     )
     assert orphans == [], (
-        f"{len(orphans)} arquivo(s) de src/ sem item de status responsavel: {orphans[:10]}"
+        f"{len(orphans)} arquivo(s) sem item de status responsavel: {orphans[:10]}"
     )
 
 

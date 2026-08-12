@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AGG-TESTS",
+  "title": "Suite de testes sem item proprio",
+  "domain": "governance",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "installed",
+  "scopePaths": [
+    "tests"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Todo arquivo do escopo tem custodia declarada e aparece no catalogo.",
+    "Nenhuma alegacao de verificacao e feita por este item."
+  ],
+  "evidence": [],
+  "nextAction": "Amarrar cada arquivo de teste ao item da capacidade que ele prova, comecando pelos que sustentam evidencia declarada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto da arvore. Promover um recorte a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+}
