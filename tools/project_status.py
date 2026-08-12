@@ -13,7 +13,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,6 +27,7 @@ WORKSTREAMS_DIR = STATUS_ROOT / "workstreams"
 SCHEMA_PATH = STATUS_ROOT / "project-item-v1.schema.json"
 GENERATED_STATUS = ROOT / "docs" / "STATUS.md"
 GENERATED_ACTIVE = ROOT / "docs" / "ACTIVE-WORK.md"
+GENERATED_COVERAGE = ROOT / "docs" / "status" / "COVERAGE.md"
 
 
 @dataclass(frozen=True)
@@ -287,7 +288,95 @@ def check_catalog(root: Path = ROOT, *, check_generated: bool = True) -> list[st
                 "docs/ACTIVE-WORK.md esta desatualizado; execute "
                 "tools/project_status.py render --write"
             )
+        coverage_path = root / "docs" / "status" / "COVERAGE.md"
+        actual_coverage = (
+            coverage_path.read_text(encoding="utf-8") if coverage_path.exists() else ""
+        )
+        if actual_coverage != render_coverage(catalog, root):
+            errors.append(
+                "docs/status/COVERAGE.md esta desatualizado; execute "
+                "tools/project_status.py render --write"
+            )
     return errors
+
+
+def _scope_file_count(root: Path, scopes: Sequence[str]) -> int:
+    total = 0
+    for scope in scopes:
+        target = root / scope
+        if target.is_dir():
+            total += sum(
+                1
+                for path in target.rglob("*")
+                if path.is_file() and "__pycache__" not in path.parts
+            )
+        elif target.is_file():
+            total += 1
+    return total
+
+
+def render_coverage(catalog: Catalog, root: Path = ROOT) -> str:
+    """Cobertura declarada por item, e o que o STATUS nao mostra sozinho.
+
+    O STATUS diz o estagio de cada capacidade. Nao diz quanto codigo cada uma
+    responde, nem quais itens afirmam verificacao sem uma evidencia aprovada
+    para sustenta-la, nem quanto do runtime esta apenas sob custodia de um
+    agregador — isto e, com dono declarado e nenhuma capacidade provada.
+    """
+    rows = [
+        "| ID | Arquivos no escopo | Evidencias | Aprovadas | Verificacao | Observacao |",
+        "|---|---|---|---|---|---|",
+    ]
+    for identifier, item in sorted(catalog.items.items()):
+        evidence = item["evidence"]
+        approved = sum(1 for entry in evidence if entry["result"] == "passed")
+        if identifier.startswith("SZ-AGG-"):
+            note = "custodia declarada; nenhuma capacidade provada"
+        elif item["verification"] != "none" and approved == 0:
+            note = "**verificacao declarada sem evidencia aprovada**"
+        elif not evidence:
+            note = "sem evidencia registrada"
+        else:
+            note = ""
+        rows.append(
+            f"| {identifier} | {_scope_file_count(root, item['scopePaths'])} | "
+            f"{len(evidence)} | {approved} | {item['verification']} | {note} |"
+        )
+
+    owners = [
+        (identifier, scope)
+        for identifier, item in catalog.items.items()
+        for scope in item["scopePaths"]
+    ]
+    total = custody_only = 0
+    for path in (root / "src").rglob("*"):
+        if not path.is_file() or "__pycache__" in path.parts:
+            continue
+        total += 1
+        relative = str(path.relative_to(root))
+        holders = {identifier for identifier, scope in owners if _paths_overlap(relative, scope)}
+        if holders and all(identifier.startswith("SZ-AGG-") for identifier in holders):
+            custody_only += 1
+
+    share = f"{custody_only * 100 // total}%" if total else "0%"
+    return "\n".join(
+        [
+            "# COVERAGE — SteamZero",
+            "",
+            "<!-- Gerado por tools/project_status.py; nao editar manualmente. -->",
+            "",
+            "Visao complementar ao STATUS: quanto codigo cada capacidade responde e",
+            "onde uma alegacao nao tem evidencia que a sustente.",
+            "",
+            *rows,
+            "",
+            f"Arquivos em `src/`: **{total}**. Sob agregador apenas, sem item de capacidade: "
+            f"**{custody_only}** ({share}). Esse numero e o tamanho real do runtime que tem dono "
+            "declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens "
+            "proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.",
+            "",
+        ]
+    )
 
 
 def render_catalog(catalog: Catalog) -> tuple[str, str]:
@@ -394,12 +483,15 @@ def main(argv: list[str] | None = None) -> int:
         print(scope_digest(ROOT, _item_by_id(catalog, args.item)["scopePaths"]))
         return 0
     status, active = render_catalog(catalog)
+    coverage = render_coverage(catalog)
     if args.write:
         GENERATED_STATUS.write_text(status, encoding="utf-8")
         GENERATED_ACTIVE.write_text(active, encoding="utf-8")
+        GENERATED_COVERAGE.write_text(coverage, encoding="utf-8")
     else:
         print(status, end="")
         print(active, end="")
+        print(coverage, end="")
     return 0
 
 

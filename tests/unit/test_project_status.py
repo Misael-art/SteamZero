@@ -124,6 +124,35 @@ def test_unit_evidence_goes_stale_when_the_scope_changes(tmp_path: Path) -> None
     )
 
 
+def test_coverage_view_flags_a_claim_without_approved_evidence() -> None:
+    """A visao de cobertura existe para acusar alegacao sem lastro.
+
+    O STATUS diz o estagio; nao diz se ha evidencia aprovada por tras dele. Um
+    item pode declarar `verification: unit` com a lista de evidencias vazia e a
+    tabela do STATUS fica igual a de um item provado.
+    """
+    catalog = project_status.load_catalog()
+    rendered = project_status.render_coverage(catalog)
+
+    # Nenhum item do catalogo real pode estar nessa situacao.
+    marked = [
+        line
+        for line in rendered.splitlines()
+        if line.startswith("| SZ-") and "sem evidencia aprovada" in line
+    ]
+    assert marked == [], f"item alega verificacao sem evidencia aprovada: {marked}"
+
+    # E a coluna precisa mesmo acusar quando o caso aparece.
+    sample = next(item for item in catalog.items.values() if not item["id"].startswith("SZ-AGG-"))
+    broken = dict(catalog.items)
+    broken[sample["id"]] = {**sample, "verification": "unit", "evidence": []}
+    flagged = project_status.render_coverage(
+        project_status.Catalog(items=broken, workstreams=catalog.workstreams)
+    )
+    row = next(line for line in flagged.splitlines() if line.startswith(f"| {sample['id']} |"))
+    assert "sem evidencia aprovada" in row
+
+
 def test_every_source_file_has_a_custodian_item() -> None:
     """Nenhum arquivo de `src/` fica sem item responsavel.
 
