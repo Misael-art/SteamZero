@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AGG-INPUT-PROFILES",
+  "title": "Perfis de controle empacotados",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "installed",
+  "scopePaths": [
+    "src/steamzero/input_profiles"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Todo arquivo do escopo tem custodia declarada e aparece no catalogo.",
+    "Nenhuma alegacao de verificacao e feita por este item."
+  ],
+  "evidence": [],
+  "nextAction": "Provar que um perfil aplicado tem efeito observavel antes de declarar a capacidade.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-11",
+  "notes": "Item AGREGADOR: existe para que nenhum arquivo de codigo fique sem custodia declarada, nao para alegar capacidade verificada. Onde um item de capacidade especifico cobre o mesmo caminho, ELE prevalece — o agregador responde apenas pelo resto do diretorio. Promover um recorte deste escopo a item proprio, com aceitacao e evidencia, e o caminho normal; o agregador encolhe quando isso acontece."
+}

@@ -6,6 +6,16 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 
 | ID | Capacidade | Estagio | Implementacao | Integracao | Verificacao | Operacao | Distribuicao | Proxima acao |
 |---|---|---|---|---|---|---|---|---|
+| SZ-AGG-ADAPTERS | Adapters: integracoes externas sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os adapters com ciclo transacional e evidencia dedicada. |
+| SZ-AGG-ASSETS | Conteudo empacotado: experiencias, i18n e catalogos | partial | partial | integrated | none | unknown | installed | Amarrar cada catalogo empacotado ao item da capacidade que o consome. |
+| SZ-AGG-CORE | Nucleo: paths, erros, transacao e migracoes | partial | partial | integrated | none | unknown | installed | Separar migracoes de estado em item proprio, com prova de round-trip por versao. |
+| SZ-AGG-DOMAIN | Dominio: regras de negocio sem item proprio | partial | partial | integrated | none | unknown | installed | Promover a itens proprios os recortes de dominio com contrato e teste dedicados. |
+| SZ-AGG-INPUT-PROFILES | Perfis de controle empacotados | partial | partial | integrated | none | unknown | installed | Provar que um perfil aplicado tem efeito observavel antes de declarar a capacidade. |
+| SZ-AGG-JOBS | Jobs em segundo plano e recovery | partial | partial | integrated | none | unknown | installed | Cobrir recovery de job interrompido por teste dedicado. |
+| SZ-AGG-PLATFORM-MANIFESTS | Manifests de plataforma empacotados | partial | partial | integrated | none | unknown | installed | Cobrir a curadoria dos manifests por um item de catalogo de plataformas. |
+| SZ-AGG-PRIVILEGED | Superficie privilegiada e helpers de host | partial | partial | integrated | none | unknown | installed | Cobrir cada helper privilegiado por teste de recusa e por checagem de ownership. |
+| SZ-AGG-SCHEMAS | Schemas versionados do runtime | partial | partial | integrated | none | unknown | installed | Amarrar cada schema ao item da capacidade que o produz ou consome. |
+| SZ-AGG-SERVICE-API | Daemon e superficie de API | partial | partial | integrated | none | unknown | installed | Separar o contrato JSON-RPC em item proprio com fixtures de envelope. |
 | SZ-CAST-INTERNET | Partilha de ecra pela internet | planned | planned | isolated | none | unknown | not-packaged | Implementar cast internet apenas apos prova LAN estavel e decisao de relay, respeitando remote-cast-session-v1. |
 | SZ-CAST-LAN | Partilha de ecra em rede local | implemented | complete | integrated | unit | degraded | installed | Prova fim a fim em dois dispositivos LAN reais (operador) e certificacao de hardware. |
 | SZ-EMULATION-M10 | Ciclo transacional de emuladores Flatpak | verified-vm | partial | feature-branch | vm | degraded | installed | Repetir somente RetroArch/minimal apos r35 e registrar o payload se a rede falhar. |

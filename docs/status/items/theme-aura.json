@@ -9,13 +9,14 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "a46fbf7eaf90fa3ed57078bbd48b1b4ca96a6fb22efb64ea0d8dd4ef0c5e6cf0",
+  "scopeDigest": "ad55d8a185129d34e9224c83c64729dbff422e6340b9ef5529883152b1336dc2",
   "scopePaths": [
     "src/steamzero/domain/default_theme.py",
+    "src/steamzero/themes",
     "src/steamzero/themes/org.steamzero.aura",
     "src/steamzero/themes/org.steamzero.default",
-    "tests/qml/check_theme_editor_aura.qml",
     "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/qml/check_theme_editor_aura.qml",
     "tests/unit/test_default_theme.py",
     "tests/unit/test_theme_aura.py"
   ],
