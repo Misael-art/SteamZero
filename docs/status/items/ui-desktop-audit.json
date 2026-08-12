@@ -19,7 +19,7 @@
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_theme_editor_aura.qml"
   ],
-  "scopeDigest": "d2607dadba388d56632012e442cb3187d933d8cf499d36a5a556d42315b891c7",
+  "scopeDigest": "30be3a94afc86d07fad7af4c36088ad6cbeceea21c0cd60eb80069ec5cc67d1e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -38,6 +38,6 @@
   ],
   "nextAction": "Integrar em main e validar fisicamente no Deck.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-11",
+  "updatedAt": "2026-08-12",
   "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45."
 }
