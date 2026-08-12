@@ -68,6 +68,13 @@ class _Response:
         return self._url
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_home(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Isola o estado XDG: este módulo salva credencial, e `save_credential`
+    grava um marcador persistente que vazava para testes de outros módulos."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state-home"))
+
+
 def test_rate_limiter_and_media_provider_success_paths(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

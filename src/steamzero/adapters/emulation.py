@@ -2636,6 +2636,44 @@ class EmulationController:
         except Exception:
             return False
 
+    @property
+    def _credential_markers_path(self) -> Path:
+        return paths.state_home() / "credential-markers-v1.json"
+
+    def _credential_marker(self, provider: str) -> str | None:
+        """Quando este provedor foi configurado, se algum dia foi.
+
+        O marcador NÃO guarda segredo — só o id do provedor e o instante. Ele
+        existe para separar dois casos que a tela mostrava iguais: campo nunca
+        preenchido, e campo preenchido cujo cofre perdeu o valor.
+
+        Ilegível degrada para "sem marcador": na dúvida a tela volta a dizer
+        "não configurado", que é a mensagem conservadora.
+        """
+        try:
+            raw = json.loads(self._credential_markers_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(raw, dict):
+            return None
+        entry = raw.get(provider)
+        return str(entry) if isinstance(entry, str) else None
+
+    def _remember_credential_configured(self, provider: str) -> None:
+        """Anota que o usuário configurou este provedor. Sem segredo."""
+        path = self._credential_markers_path
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            markers = dict(raw) if isinstance(raw, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            markers = {}
+        markers[provider] = datetime.now(UTC).isoformat()
+        # `fs.write_atomic` já garante o diretório pai via `ensure_dir`; criar
+        # aqui seria redundante e sairia da fronteira de escrita que `core.fs`
+        # define (BND-WRITE-PORT).
+        with suppress(OSError):
+            fs.write_atomic(path, json.dumps(markers, sort_keys=True).encode("utf-8"))
+
     def _provider_credential_status(self, provider: str) -> dict[str, object]:
         definition = provider_by_id(provider)
         try:
@@ -2664,7 +2702,17 @@ class EmulationController:
                 )
                 configured = not missing
                 recorded = self._credential_health.get(provider, {})
-                state = str(recorded.get("state") or "stored") if configured else "notConfigured"
+                if configured:
+                    state = str(recorded.get("state") or "stored")
+                elif self._credential_marker(provider) is not None:
+                    # O usuário JÁ preencheu e o cofre não devolve mais. Isso é
+                    # diferente de campo em branco, e dizer "não configurado"
+                    # manda a pessoa reconfigurar algo que ela configurou —
+                    # queixa real do operador em 2026-08-12, cujo chaveiro só
+                    # tinha coleção de sessão, efêmera.
+                    state = "vaultVolatile"
+                else:
+                    state = "notConfigured"
             except Exception:
                 configured = False
                 missing = required
@@ -2675,6 +2723,7 @@ class EmulationController:
             "validated": "ready",
             "rejected": "rejected",
             "vaultUnavailable": "unavailable",
+            "vaultVolatile": "unavailable",
             "local": "ready",
             "unavailable": "unavailable",
         }.get(state, "unknown")
@@ -2752,6 +2801,7 @@ class EmulationController:
             "state": "stored",
             "lastValidatedAt": None,
         }
+        self._remember_credential_configured(provider)
         provider_status = self._provider_credential_status(provider)
         return {
             "provider": provider,
