@@ -6644,3 +6644,40 @@ no teste. Provar a descoberta automática ponta a ponta exige controle físico.
 
 Artefatos de teste removidos; `retroarch.cfg` do usuário intocado. Nenhuma ação
 de host ou release, e `bigsudo` não foi necessário em momento algum.
+
+### 2026-08-13 — G45, sexta rodada: a integração chega aos botões reais
+
+Três reprovações minhas, todas reproduzidas antes de corrigir.
+
+**O overlay não chegava a quem aperta o botão.** Eu havia injetado
+`--appendconfig` só no `ComponentLifecycle.launch()`, mas a tela de emulação
+monta o argv em `EmulationController._build_exec_argv` — então "Abrir emulador"
+e "Jogar" subiam o RetroArch sem o perfil. A prova A/B validava o mecanismo do
+emulador, não a integração do produto. A composição virou ponto único
+(`input_devices.retroarch_launch_arguments`), usado pelos dois. A chave é a REF
+do Flatpak, não o id do adapter: um core libretro roda DENTRO do RetroArch, e
+chavear pelo adapter deixaria justamente os jogos de fora.
+
+**A janela de atualização continuava aberta.** Entre conferir o fingerprint e o
+`os.replace` havia intervalo, e o intruso era sobrescrito (`UPDATE_RACE ok`).
+Fechada com `renameat2`/`RENAME_EXCHANGE`: a troca é atômica e o conteúdo que
+saiu é conferido depois; se não for o esperado, a troca é DESFEITA e a operação
+falha, devolvendo o arquivo alheio ao lugar. Sem suporte do kernel, cai para
+conferir-e-publicar, o que é pior mas ainda melhor que não conferir.
+
+**O rollback removia arquivo estrangeiro.** Para ações `write` o `expectHash`
+saía `None`, o que PULAVA o guard do `delete` — o guard existia e nunca era
+consultado. Corrigido incluindo `write` no registro do hash esperado.
+
+Ao verificar isso apareceu uma QUARTA instância da mesma classe, que a revisão
+não listou: o `restore` do rollback sobrescrevia o alvo sem conferir identidade.
+Agora só restaura sobre o que reconhece — o backup (nada mudou) ou o que o
+próprio plano gravou. Reprodução final: `E-TX-ROLLBACK-FAILED` com o intruso
+preservado nos dois casos.
+
+**Documentação contradizia a evidência.** O item afirmava que o `retroarch.cfg`
+não existia; ele passou a existir quando executei o RetroArch na investigação, e
+o problema nunca foi ausência de config — era caminho inalcançável. Corrigido.
+
+O workstream volta a `active`: falta repetir a prova pelo botão real da UI com um
+controle FÍSICO que tenha autoconfig empacotado. Nenhuma ação de host ou release.

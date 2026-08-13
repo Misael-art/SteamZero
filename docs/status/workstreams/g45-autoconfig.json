@@ -6,7 +6,7 @@
   "branch": "codex/g45-autoconfig-gerenciado",
   "baseRef": "e71d9b4",
   "owner": "g45-autoconfig",
-  "state": "closed",
+  "state": "active",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "src/steamzero/adapters/input_devices.py",
@@ -19,6 +19,7 @@
   "sharedPaths": [
     "docs/WORKLOG.md",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/core/fs.py",
     "src/steamzero/core/transaction.py",
     "src/steamzero/domain/input_profiles.py",
@@ -27,6 +28,6 @@
     "src/steamzero/ui/qml/Emulation.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Integracao --appendconfig implementada e provada ponta a ponta com joypad virtual. O que resta exige o operador: um CONTROLE FISICO com autoconfig empacotado, para provar a descoberta automatica (o pad do uinput nao recebe symlink -event-joystick, e o pad interno deste Deck nao tem autoconfig). Evidencia em docs/09-operations/evidence/2026-08-13-retroarch-autoconfig.",
+  "nextAction": "Repetir a prova pelo BOTAO real da UI ('Abrir emulador' / 'Jogar') com um controle FISICO que tenha autoconfig empacotado. O overlay ja chega aos dois caminhos de lancamento e as tres janelas transacionais estao fechadas; falta so o hardware, que e do operador.",
   "updatedAt": "2026-08-13"
 }
