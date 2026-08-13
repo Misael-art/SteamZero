@@ -21,6 +21,8 @@ from steamzero.adapters.input_devices import (
     SysfsInputDevices,
     resolve_target,
 )
+from steamzero.core import transaction
+from steamzero.core.errors import SteamZeroError
 from steamzero.domain.retroarch_autoconfig import MANAGED_MARKER, DeviceIdentity, is_managed
 
 _STEAM_CONTROLLER = """
@@ -92,10 +94,26 @@ def _status(controls):
     )
 
 
-def _apply(controls):
-    return controls.apply(
-        bindings=_PERFIL, profile_id="standard-gamepad", profile_revision=1, orientation="landscape"
-    )
+def _apply(controls, bindings=None):
+    """Planeja e aplica pelo núcleo transacional, devolvendo o estado observado.
+
+    Não existe mais escrita fora da transação: o conteúdo vai DENTRO do plano, a
+    precondição guarda o fingerprint do destino e o commit só acontece depois de
+    o arquivo estar gravado e verificado. Quando `plan()` recusa, o estado
+    observado já explica a recusa.
+    """
+    argumentos = {
+        "bindings": bindings if bindings is not None else _PERFIL,
+        "profile_id": "standard-gamepad",
+        "profile_revision": 1,
+        "orientation": "landscape",
+    }
+    try:
+        plan = controls.plan(**argumentos)
+    except SteamZeroError:
+        return controls.status(**argumentos)
+    controls.apply(plan.plan_id, plan.confirm_token)
+    return controls.status(**argumentos)
 
 
 class TestReadingTheRealDeviceIdentity:
@@ -340,16 +358,58 @@ class TestTheFileOnDisk:
         controls = _controls(tmp_path, _Devices(_DECK))
         _apply(controls)
 
-        girado = controls.apply(
+        girado = _apply(controls, bindings=[{"action": "game.primary", "input": "button.west"}])
+
+        assert girado.state == "applied"
+        assert girado.target.path is not None
+        assert 'input_b_btn = "2"' in girado.target.path.read_text(encoding="utf-8")
+
+
+class TestRollbackIsRealNotDeclared:
+    def test_rolling_back_removes_the_file_it_created(self, tmp_path) -> None:
+        """`G-FULL` precisa ser verdade, não rótulo.
+
+        Antes, o efeito acontecia FORA da transação e o plano não tinha ações.
+        O histórico oferecia rollback e classificava tudo como `G-FULL`, mas
+        desfazer marcava a operação como revertida e deixava o autoconfig no
+        disco — rollback falso. Com o conteúdo dentro do plano, desfazer remove
+        de fato o arquivo que a operação criou.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
+        resultado = controls.apply(plan.plan_id, plan.confirm_token)
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        assert alvo.is_file()
+
+        transaction.rollback(resultado.operation_id, reason="teste")
+
+        assert not alvo.exists()
+        assert controls.status(**argumentos).state == "pending-write"
+
+    def test_rolling_back_an_update_restores_the_previous_content(self, tmp_path) -> None:
+        controls = _controls(tmp_path, _Devices(_DECK))
+        _apply(controls)
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        anterior = alvo.read_text(encoding="utf-8")
+
+        plan = controls.plan(
             bindings=[{"action": "game.primary", "input": "button.west"}],
             profile_id="mega-drive-3-button",
             profile_revision=1,
             orientation="landscape",
         )
+        resultado = controls.apply(plan.plan_id, plan.confirm_token)
+        assert alvo.read_text(encoding="utf-8") != anterior
 
-        assert girado.state == "applied"
-        assert girado.target.path is not None
-        assert 'input_b_btn = "2"' in girado.target.path.read_text(encoding="utf-8")
+        transaction.rollback(resultado.operation_id, reason="teste")
+
+        assert alvo.read_text(encoding="utf-8") == anterior
 
 
 class TestWhatIsNotOursIsNotTouched:
@@ -426,25 +486,91 @@ class TestWhatIsNotOursIsNotTouched:
         assert outcome.state == "conflict"
         assert alvo.read_text(encoding="utf-8") == original
 
-    def test_a_file_appearing_after_the_check_is_not_overwritten(self, tmp_path) -> None:
-        """A recusa é garantia, não checagem com janela.
+    def test_a_foreign_file_appearing_between_plan_and_apply_is_not_overwritten(
+        self, tmp_path
+    ) -> None:
+        """A CORRIDA integrada, não só a primitiva.
 
-        Criação exclusiva: se algo aparecer no alvo entre a observação e a
-        escrita, a publicação falha em vez de substituir.
+        A versão anterior verificava o alvo e só então escolhia entre escrita
+        exclusiva e `os.replace`. A verificação era refeita imediatamente antes
+        de gravar, e um arquivo estrangeiro que aparecesse na janela fazia a
+        checagem dizer "estrangeiro" — o que DESLIGAVA a criação exclusiva e
+        levava ao `os.replace`, sobrescrevendo exatamente o arquivo que deveria
+        proteger. A garantia estava invertida.
+
+        Agora o conteúdo vai dentro do plano e a precondição guarda o
+        fingerprint do destino. Um arquivo que apareça entre planejar e aplicar
+        muda o fingerprint, e `apply` reprova como plano obsoleto.
         """
-        directory = tmp_path / "autoconfig"
-        directory.mkdir()
-        alvo = directory / MANAGED_BASENAME
-        original = 'input_device = "chegou primeiro"\n'
-        alvo.write_text(original, encoding="utf-8")
+        controls = _controls(tmp_path, _Devices(_DECK))
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
 
-        from steamzero.core import fs
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        intruso = 'input_device = "chegou entre o plano e o apply"\n'
+        alvo.write_text(intruso, encoding="utf-8")
 
-        with pytest.raises(FileExistsError):
-            fs.write_atomic_text_in_foreign_dir(alvo, "nosso conteudo", must_not_exist=True)
+        with pytest.raises(SteamZeroError) as erro:
+            controls.apply(plan.plan_id, plan.confirm_token)
 
-        assert alvo.read_text(encoding="utf-8") == original
-        assert [p.name for p in directory.iterdir()] == [MANAGED_BASENAME]
+        assert erro.value.code == "E-TX-STALE-PLAN"
+        assert alvo.read_text(encoding="utf-8") == intruso
+
+    def test_a_profile_changed_after_confirmation_does_not_write_the_other_one(
+        self, tmp_path
+    ) -> None:
+        """Confirmar o perfil A e gravar o B seria trocar a decisão do usuário.
+
+        O plano carrega o CONTEÚDO, então ele está amarrado ao perfil exato que
+        foi confirmado; não há como o apply produzir outro.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        plan = controls.plan(
+            bindings=[{"action": "game.primary", "input": "button.west"}],
+            profile_id="mega-drive-3-button",
+            profile_revision=1,
+            orientation="landscape",
+        )
+
+        controls.apply(plan.plan_id, plan.confirm_token)
+
+        gravado = (tmp_path / "autoconfig" / MANAGED_BASENAME).read_text(encoding="utf-8")
+        assert 'input_b_btn = "2"' in gravado
+        assert "mega-drive-3-button" in gravado
+
+    def test_the_plan_is_single_use(self, tmp_path) -> None:
+        controls = _controls(tmp_path, _Devices(_DECK))
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
+        controls.apply(plan.plan_id, plan.confirm_token)
+
+        with pytest.raises(SteamZeroError):
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+    def test_a_wrong_token_never_writes(self, tmp_path) -> None:
+        controls = _controls(tmp_path, _Devices(_DECK))
+        plan = controls.plan(
+            bindings=_PERFIL,
+            profile_id="standard-gamepad",
+            profile_revision=1,
+            orientation="landscape",
+        )
+
+        with pytest.raises(SteamZeroError) as erro:
+            controls.apply(plan.plan_id, "token-errado")
+
+        assert erro.value.code == "E-TX-CONFIRM-REQUIRED"
+        assert not (tmp_path / "autoconfig" / MANAGED_BASENAME).exists()
 
     def test_a_conflict_is_reported_with_the_path_that_blocked(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
@@ -475,7 +601,12 @@ class TestWhatIsNotOursIsNotTouched:
         assert stat.S_IMODE(directory.stat().st_mode) == 0o750
 
     def test_an_absent_host_directory_is_not_created_by_us(self, tmp_path) -> None:
-        """Criar diretorio dentro da configuracao do RetroArch e passar do limite."""
+        """Criar diretorio dentro da configuracao do RetroArch e passar do limite.
+
+        Se o RetroArch declarou uma pasta que ainda nao existe, ele ainda nao
+        montou a arvore de configuracao dele; o estado honesto e esperar, nao
+        construir na casa dos outros.
+        """
         directory = tmp_path / "nao-existe"
         controls = RetroArchControls(
             devices=_Devices(_DECK),
@@ -483,7 +614,7 @@ class TestWhatIsNotOursIsNotTouched:
             target=AutoconfigTarget(directory, declared=True),
         )
 
-        assert _apply(controls).state == "write-failed"
+        assert _apply(controls).state == "awaiting-emulator"
         assert not directory.exists()
 
     def test_the_bundled_autoconfig_of_the_vendor_is_never_modified(self, tmp_path) -> None:
@@ -498,24 +629,36 @@ class TestWhatIsNotOursIsNotTouched:
 
 class TestFailureDegradesAndNeverBlocks:
     @pytest.mark.skipif(os.geteuid() == 0, reason="root ignora permissao de diretorio")
-    def test_a_read_only_directory_becomes_write_failed_not_a_crash(self, tmp_path) -> None:
-        """Falha degrada para estado visivel; o RetroArch segue usavel (§8)."""
+    def test_a_read_only_directory_fails_the_operation_instead_of_committing(
+        self, tmp_path
+    ) -> None:
+        """Falha de escrita reprova a OPERAÇÃO, não devolve sucesso.
+
+        Antes, o efeito acontecia depois do commit e seu resultado era
+        descartado: uma escrita impossível ainda devolvia sucesso transacional,
+        e o `write-failed` publicado no snapshot era ficção — a leitura seguinte
+        via o arquivo ausente e voltava a `pending-write`. Agora o efeito É a
+        transação: o commit só ocorre depois de gravar e verificar.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
         directory = tmp_path / "autoconfig"
-        directory.mkdir()
-        controls = RetroArchControls(
-            devices=_Devices(_DECK),
-            catalog=_catalog(tmp_path, pad=_STEAM_CONTROLLER),
-            target=AutoconfigTarget(directory, declared=True),
-        )
         os.chmod(directory, stat.S_IRUSR | stat.S_IXUSR)
         try:
-            outcome = _apply(controls)
+            with pytest.raises(PermissionError):
+                controls.apply(plan.plan_id, plan.confirm_token)
         finally:
             os.chmod(directory, stat.S_IRWXU)
 
-        assert outcome.state == "write-failed"
-        assert outcome.detail
-        assert outcome.label
+        # E o estado observado continua honesto: nada foi gravado.
+        assert controls.status(**argumentos).state == "pending-write"
+        assert not (directory / MANAGED_BASENAME).exists()
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root ignora permissao de diretorio")
     def test_a_failed_write_leaves_the_previous_managed_file_intact(self, tmp_path) -> None:
@@ -525,20 +668,21 @@ class TestFailureDegradesAndNeverBlocks:
         assert primeiro.target.path is not None
         bom = primeiro.target.path.read_text(encoding="utf-8")
 
+        plan = controls.plan(
+            bindings=[{"action": "game.primary", "input": "button.west"}],
+            profile_id="mega-drive-3-button",
+            profile_revision=1,
+            orientation="landscape",
+        )
         directory = primeiro.target.directory
         assert directory is not None
         os.chmod(directory, stat.S_IRUSR | stat.S_IXUSR)
         try:
-            falho = controls.apply(
-                bindings=[{"action": "game.primary", "input": "button.west"}],
-                profile_id="mega-drive-3-button",
-                profile_revision=1,
-                orientation="landscape",
-            )
+            with pytest.raises(PermissionError):
+                controls.apply(plan.plan_id, plan.confirm_token)
         finally:
             os.chmod(directory, stat.S_IRWXU)
 
-        assert falho.state == "write-failed"
         assert primeiro.target.path.read_text(encoding="utf-8") == bom
 
     def test_an_unreadable_catalog_directory_does_not_raise(self, tmp_path) -> None:

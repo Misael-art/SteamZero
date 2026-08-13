@@ -908,8 +908,8 @@
                         "pending-write",
                         "partial",
                         "applied",
-                        "write-failed",
-                        "conflict"
+                        "conflict",
+                        "unsupported-scope"
                       ]
                     },
                     "statusLabel": {
@@ -1092,8 +1092,8 @@
                 "pending-write",
                 "partial",
                 "applied",
-                "write-failed",
-                "conflict"
+                "conflict",
+                "unsupported-scope"
               ]
             },
             "profileConfigured": {

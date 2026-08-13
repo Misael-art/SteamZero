@@ -1953,25 +1953,20 @@ class EmulationController:
             plan_extra["orientation"] = orientation or "landscape"
         elif action == "controls.autoconfig.apply":
             # Rota de produção do writer. Sem ela o perfil chegava a
-            # `pending-write` e ninguém materializava o arquivo: a integração
-            # inteira ficava inerte, e `write-failed` era inalcançável.
+            # `pending-write` e ninguém materializava o arquivo.
             #
-            # O plano é vazio de propósito. O núcleo transacional grava com
-            # `fs.write_atomic`, que faz `chmod` incondicional no diretório pai
-            # — aqui, a configuração do RetroArch. Deixá-lo executar a escrita
-            # reintroduziria o defeito que esta frente corrigiu, então ele
-            # fornece o portão (token, expiração, uso único, journal) e a
-            # escrita fica com o writer que preserva o diretório alheio.
-            self._require_autoconfig_pending()
-            plan = transaction.plan_write_files(
-                {},
-                root=paths.config_home(),
-                kind="controls.autoconfig.apply",
-                rollback_guarantee=(
-                    "G-NONE pelo journal; o arquivo é exclusivo do SteamZero, "
-                    "identificado por marcador e removível sem afetar o RetroArch"
-                ),
-            )
+            # O plano carrega o CONTEÚDO, então ele fica amarrado ao perfil, à
+            # revisão, à orientação e ao dispositivo exatos que o usuário viu ao
+            # confirmar. A precondição guarda o fingerprint do destino e `apply`
+            # a revalida: trocar de perfil depois de confirmar, ou um arquivo
+            # estrangeiro aparecer na janela, reprova como plano obsoleto em vez
+            # de gravar a coisa errada por cima.
+            arguments = self._autoconfig_arguments()
+            if arguments is None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="nenhum perfil de controle ativo para aplicar"
+                )
+            plan = self._retroarch_controls().plan(**arguments)
         elif action.startswith("controls.profile.clear:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
@@ -2328,10 +2323,9 @@ class EmulationController:
         elif plan.kind == "switch-shader.invalidate":
             result = self._content.apply_shader_invalidation(plan_id, confirm_token)
         elif plan.kind == "controls.autoconfig.apply":
-            # O portão transacional roda primeiro (valida token, expiração e uso
-            # único); só depois o writer materializa o arquivo.
-            result = transaction.apply(plan_id, confirm_token)
-            self._materialize_autoconfig()
+            # O efeito É a transação: commit só acontece depois de o arquivo ter
+            # sido gravado e verificado, e falha reverte com backup.
+            result = self._retroarch_controls().apply(plan_id, confirm_token)
         elif plan.kind.startswith("input-profile."):
             result = self._input_profiles.apply(plan_id, confirm_token)
         elif plan.kind.startswith("preservation."):
@@ -7088,7 +7082,7 @@ class EmulationController:
                 "activateActions": activate_actions,
                 "clearAction": clear_action,
             }
-            autoconfig = self._autoconfig_view(active, autoconfig_by_profile)
+            autoconfig = self._autoconfig_view(active, autoconfig_by_profile, source)
             autoconfig_state = str(autoconfig.get("state") or "") if autoconfig else ""
             game["controlsProfile"] = game["controlsProfile"] | {
                 "autoconfig": autoconfig,
@@ -7130,12 +7124,26 @@ class EmulationController:
         return games
 
     def _effective_input_activation(self) -> Mapping[str, Any] | None:
-        """Perfil que vale hoje para a plataforma, com a herança já resolvida."""
+        """Perfil de PLATAFORMA — o único que um autoconfig pode materializar.
+
+        O autoconfig do RetroArch é por DISPOSITIVO: um arquivo por pad, lido
+        quando o pad é reconhecido, sem noção de qual jogo está rodando. Um
+        perfil por jogo não tem como valer por esse mecanismo — dois jogos com
+        perfis diferentes disputariam o mesmo arquivo. Perfil por jogo exigiria
+        remap por jogo do RetroArch, que é outro mecanismo e não está
+        implementado.
+
+        Por isso esta função lê deliberadamente só o escopo de plataforma, e
+        `_autoconfig_view` marca o jogo cujo perfil efetivo vem do escopo de
+        jogo como `unsupported-scope` em vez de oferecer uma gravação que
+        aplicaria silenciosamente OUTRO perfil.
+        """
         status = self._input_profiles.status("switch")
         active = status.get("active")
         return active if isinstance(active, Mapping) else None
 
     def _autoconfig_arguments(self) -> dict[str, Any] | None:
+        """Argumentos do perfil de PLATAFORMA para resolver/gravar o autoconfig."""
         active = self._effective_input_activation()
         if active is None:
             return None
@@ -7149,39 +7157,6 @@ class EmulationController:
             "orientation": str(active.get("orientation") or ""),
         }
 
-    def _require_autoconfig_pending(self) -> None:
-        """Só planeja quando há de fato algo honesto a gravar.
-
-        Planejar a partir de `partial`, `conflict` ou `awaiting-*` ofereceria ao
-        usuário uma confirmação que não pode resultar em perfil valendo.
-        """
-        arguments = self._autoconfig_arguments()
-        if arguments is None:
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN", detail="nenhum perfil de controle ativo para aplicar"
-            )
-        outcome = self._retroarch_controls().status(**arguments)
-        if outcome.state != "pending-write":
-            raise SteamZeroError(
-                "E-TX-STALE-PLAN",
-                detail=f"perfil não está pronto para gravar: {outcome.label}",
-            )
-
-    def _materialize_autoconfig(self) -> None:
-        """Executa a escrita. Falha NÃO derruba a operação já confirmada.
-
-        O estado real volta pelo snapshot (`write-failed`, `conflict`), que é
-        onde o usuário lê o resultado; estourar aqui deixaria a ação sem
-        resposta legível (AGENTS.md §8).
-        """
-        arguments = self._autoconfig_arguments()
-        if arguments is None:
-            return
-        try:
-            self._retroarch_controls().apply(**arguments)
-        except (OSError, SteamZeroError):
-            return
-
     def _retroarch_controls(self) -> input_devices.RetroArchControls:
         if self._retroarch_controls_override is not None:
             return self._retroarch_controls_override
@@ -7190,7 +7165,7 @@ class EmulationController:
         return self._retroarch_controls_cache
 
     def _autoconfig_view(
-        self, active: Any, cache: dict[str, dict[str, Any]]
+        self, active: Any, cache: dict[str, dict[str, Any]], source: str = "platform"
     ) -> dict[str, Any] | None:
         """Estado do autoconfig efetivo para o perfil ativo — só OBSERVAÇÃO.
 
@@ -7204,6 +7179,27 @@ class EmulationController:
         bindings = active.get("resolvedBindings")
         if not isinstance(bindings, list) or not bindings:
             return None
+        if source != "platform":
+            # O perfil efetivo deste jogo vem do escopo de JOGO, e o autoconfig
+            # do RetroArch é por DISPOSITIVO. Materializá-lo gravaria o perfil da
+            # PLATAFORMA — outro perfil, silenciosamente. Melhor dizer que o
+            # mecanismo não alcança esse caso do que aplicar a coisa errada.
+            return {
+                "state": "unsupported-scope",
+                "statusLabel": input_devices.STATE_LABELS["unsupported-scope"],
+                "detail": (
+                    "o autoconfig do RetroArch vale por dispositivo, não por jogo; "
+                    "perfil por jogo exigiria remap por jogo, ainda não implementado"
+                ),
+                "device": None,
+                "deviceReason": "no-device",
+                "autoconfigCandidates": [],
+                "path": None,
+                "directoryDeclared": False,
+                "resolvedBindings": [],
+                "unresolvedBindings": [],
+                "withoutRetropadEquivalent": [],
+            }
         profile_id = str(active.get("id") or "")
         orientation = str(active.get("orientation") or "")
         key = f"{profile_id}\0{active.get('revision')}\0{orientation}"

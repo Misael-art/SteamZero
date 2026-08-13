@@ -112,15 +112,32 @@ def set_mode(path: Path, mode: int) -> None:
 # Escrita atômica
 # ===========================================================================
 def write_atomic(
-    path: Path, data: bytes, *, mode: int = _FILE_MODE, fsync_dir: bool = True
+    path: Path,
+    data: bytes,
+    *,
+    mode: int = _FILE_MODE,
+    fsync_dir: bool = True,
+    preserve_existing_dir: bool = False,
 ) -> None:
     """Escreve ``data`` em ``path`` atomicamente (tmp+fsync+rename), 0600.
 
     Em crash no meio, ``path`` fica intacto (estado antigo ou ausente); o tmp
     órfão é removível por ``sweep_orphan_temps``. Base de AC-TX-02 / FI-10.
+
+    ``ensure_dir`` cria os pais E aplica ``chmod`` incondicional neles. Isso é
+    correto na árvore de estado do SteamZero, da qual somos donos, e errado
+    quando o alvo mora na configuração de um terceiro (ex.: os perfis de
+    controle do RetroArch): gravar um arquivo passaria a mudar a permissão de um
+    diretório alheio como efeito colateral invisível, que a AGENTS.md §5 proíbe.
+    Com ``preserve_existing_dir``, um pai que JÁ EXISTE sai intocado; um pai
+    ausente continua sendo criado com o nosso modo, porque aí o diretório é
+    nosso.
     """
     parent = path.parent
-    ensure_dir(parent)
+    if preserve_existing_dir and parent.is_dir():
+        pass
+    else:
+        ensure_dir(parent)
     tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
@@ -139,62 +156,6 @@ def write_atomic(
 
 def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
     write_atomic(path, text.encode("utf-8"), mode=mode)
-
-
-def write_atomic_in_foreign_dir(
-    path: Path, data: bytes, *, mode: int = _FILE_MODE, must_not_exist: bool = False
-) -> None:
-    """Escreve atomicamente num diretório que NÃO é nosso, sem alterá-lo.
-
-    ``write_atomic`` chama ``ensure_dir``, que faz ``mkdir(parents=True)`` e um
-    ``chmod`` INCONDICIONAL no diretório pai. Isso é correto para a árvore de
-    estado do SteamZero, da qual somos donos, e errado para o diretório de
-    configuração de um terceiro (ex.: os perfis de controle do RetroArch):
-    gravar um arquivo passaria a criar diretórios na configuração alheia e a
-    mudar a permissão dela como efeito colateral invisível, que é o que a
-    AGENTS.md §5 proíbe.
-
-    Aqui o diretório precisa já existir e sai intocado — inclusive o modo. A
-    garantia atômica é a mesma: tmp + fsync + rename, e em falha no meio o
-    arquivo anterior fica íntegro.
-
-    Com ``must_not_exist``, a publicação usa ``os.link`` em vez de ``os.replace``
-    e falha com ``FileExistsError`` se o destino existir. Serve a quem observou
-    o alvo como ausente e precisa que isso continue verdadeiro no instante da
-    escrita: sem essa variante, um arquivo criado entre a verificação e o
-    rename seria substituído em silêncio, e a recusa a sobrescrever arquivo de
-    terceiro seria uma checagem com janela em vez de garantia.
-    """
-    parent = path.parent
-    tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
-    try:
-        _write_all(fd, data)
-        os.fsync(fd)
-    except BaseException:
-        os.close(fd)
-        _silent_unlink(tmp)
-        raise
-    else:
-        os.close(fd)
-    try:
-        if must_not_exist:
-            os.link(tmp, path)
-            _silent_unlink(tmp)
-        else:
-            os.replace(tmp, path)
-    except OSError:
-        _silent_unlink(tmp)
-        raise
-    _fsync_dir(parent)
-
-
-def write_atomic_text_in_foreign_dir(
-    path: Path, text: str, *, mode: int = _FILE_MODE, must_not_exist: bool = False
-) -> None:
-    write_atomic_in_foreign_dir(
-        path, text.encode("utf-8"), mode=mode, must_not_exist=must_not_exist
-    )
 
 
 def write_stream_atomic(
@@ -275,13 +236,20 @@ def move_tree(src: Path, dest: Path) -> None:
         remove_tree(src)
 
 
-def copy_file_atomic(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
+def copy_file_atomic(
+    src: Path, dest: Path, *, mode: int = _FILE_MODE, preserve_existing_dir: bool = False
+) -> None:
     """Copia um arquivo em streaming e publica ``dest`` atomicamente.
 
     O temporário vive no diretório de destino, portanto o ``replace`` final é
     atômico. A função não carrega ROMs/imagens grandes inteiras na memória.
+
+    ``preserve_existing_dir`` tem o mesmo papel que em ``write_atomic``: publicar
+    num diretório de terceiro que já existe não pode mudar a permissão dele.
     """
-    parent = ensure_dir(dest.parent)
+    parent = (
+        dest.parent if preserve_existing_dir and dest.parent.is_dir() else ensure_dir(dest.parent)
+    )
     tmp = parent / f".{dest.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
     dst_fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:

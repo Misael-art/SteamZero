@@ -142,10 +142,14 @@ Window {
             check(String(card.honestMessage()).indexOf("não será sobrescrito") >= 0,
                   "o usuário precisa saber que o arquivo dele está preservado")
 
-            // Falha de escrita degrada sem prometer que o emulador quebrou.
-            card.profile = harness.perfil("write-failed", {"detail": "permissão negada"})
-            check(String(card.honestMessage()).indexOf("continua utilizável") >= 0,
-                  "falha precisa deixar claro que o emulador segue usável")
+            // Perfil por JOGO não é aplicável: o autoconfig vale por controle, e
+            // gravar aqui aplicaria o perfil da PLATAFORMA — outro perfil.
+            card.profile = harness.perfil("unsupported-scope", {})
+            check(!card.isApplied(), "escopo não suportado nunca é aplicação")
+            check(card.applyAction === null,
+                  "não se oferece gravar o que gravaria OUTRO perfil")
+            check(String(card.honestMessage()).indexOf("por jogo") >= 0,
+                  "a tela precisa dizer por que o perfil do jogo não vale aqui")
 
             // Ações sem equivalente RetroPad aparecem mesmo sem autoconfig.
             card.profile = harness.perfil("partial", {

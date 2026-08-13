@@ -241,7 +241,6 @@ def plan_write_files(
     removals: set[Path] | None = None,
     skip_unchanged: bool = False,
     requirements_extra: dict[str, Any] | None = None,
-    rollback_guarantee: str = "G-FULL",
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -308,11 +307,11 @@ def plan_write_files(
         created_at=now.isoformat(),
         expires_at=(now + timedelta(seconds=ttl_s)).isoformat(),
         status="pending",
-        rollback_guarantee=rollback_guarantee,
+        rollback_guarantee="G-FULL",
         requirements=requirements,
         actions=actions,
         preconditions=preconditions,
-        preview=_render_preview(kind, actions, rollback_guarantee),
+        preview=_render_preview(kind, actions, "G-FULL"),
     )
     _save_plan(plan)
     return plan
@@ -873,7 +872,7 @@ def _apply_actions(
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"cópia mudou durante apply: {a.source}"
                 )
-            fs.copy_file_atomic(staged, target)
+            fs.copy_file_atomic(staged, target, preserve_existing_dir=True)
         elif a.kind == "symlink":
             if a.source is None:  # defesa em profundidade; validado antes
                 raise SteamZeroError("E-TX-STALE-PLAN", detail="symlink sem origem")
@@ -887,7 +886,7 @@ def _apply_actions(
         elif a.kind == "delete":
             fs.remove_file(Path(a.target))
         else:
-            fs.write_atomic(Path(a.target), a.new_content())
+            fs.write_atomic(Path(a.target), a.new_content(), preserve_existing_dir=True)
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -1046,7 +1045,7 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
             operation_id=operation_id,
             detail=f"backup adulterado para {target}",
         )
-    fs.copy_file_atomic(backup_path, target)
+    fs.copy_file_atomic(backup_path, target, preserve_existing_dir=True)
     if fs.hash_file(target) != undo["expectHash"]:  # RB-4: rollback verificado
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",

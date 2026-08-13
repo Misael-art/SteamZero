@@ -2877,6 +2877,44 @@ def test_readiness_is_not_ready_until_the_autoconfig_is_applied(
     assert depois["state"] == ("ready" if depois["controllers"] > 0 else "attention")
 
 
+def test_a_game_scoped_profile_never_offers_to_write_the_platform_one(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """O autoconfig vale por CONTROLE; o perfil por jogo nao cabe nele.
+
+    O cartao mostra o perfil efetivo do jogo, mas a gravacao usa o perfil de
+    PLATAFORMA — sao arquivos por dispositivo, sem nocao de qual jogo roda. Se a
+    acao fosse oferecida aqui, confirmar "aplicar" gravaria silenciosamente OUTRO
+    perfil. Melhor dizer que o mecanismo nao alcanca esse caso.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+    # Perfil especifico do jogo, diferente do da plataforma.
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "controls.profile.activate:joycon-pair",
+                "gameId": game_id,
+                "scope": "game",
+                "scopeId": game_id,
+            }
+        ),
+    )
+
+    profile = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsProfile"]
+
+    assert profile["source"] == "game"
+    assert profile["active"]["id"] == "joycon-pair"
+    assert profile["autoconfig"]["state"] == "unsupported-scope"
+    assert profile["applyAutoconfigAction"] is None
+    assert "por jogo" in profile["autoconfig"]["detail"]
+
+
 def test_controls_profile_never_says_applied_when_retroarch_did_not_declare_a_dir(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]
