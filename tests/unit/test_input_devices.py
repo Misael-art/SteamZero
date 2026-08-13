@@ -229,7 +229,15 @@ class TestTheStatesTheScreenHasToTellApart:
         assert outcome.state == "pending-write"
         assert len(outcome.to_dict()["resolvedBindings"]) == 12
 
-    def test_a_device_missing_some_inputs_is_partial(self, tmp_path) -> None:
+    def test_a_partial_profile_is_diagnosed_and_NOT_written(self, tmp_path) -> None:
+        """Meio perfil em disco é pior que perfil nenhum.
+
+        O RetroArch aceitaria o arquivo, as ações faltantes ficariam sem binding
+        e o controle responderia pela metade sem nada dizer por quê. O critério
+        desta entrega é gravar somente com tudo resolvido, então `partial` é
+        diagnóstico: aparece na tela com o motivo e o emulador segue nos padrões
+        dele.
+        """
         sem_ombros = _STEAM_CONTROLLER.replace('input_l_btn = "4"', "")
         controls = _controls(tmp_path, _Devices(_DECK), pad=sem_ombros)
 
@@ -239,6 +247,43 @@ class TestTheStatesTheScreenHasToTellApart:
         payload = outcome.to_dict()
         assert [row["action"] for row in payload["unresolvedBindings"]] == ["game.shoulder-left"]
         assert payload["unresolvedBindings"][0]["reasonLabel"]
+        assert outcome.target.path is not None
+        assert not outcome.target.path.exists()
+
+    def test_a_profile_that_became_partial_does_not_erase_what_was_applied(self, tmp_path) -> None:
+        """Recusar gravar não é remover: o perfil anterior continua valendo.
+
+        Troca do pad completo por um que não declara os ombros — a resolução
+        vira parcial e a gravação é recusada, mas o arquivo que já estava
+        aplicado permanece intacto.
+        """
+        alvo = tmp_path / "autoconfig"
+        alvo.mkdir()
+        completo = _catalog(tmp_path, pad=_STEAM_CONTROLLER)
+        controls = RetroArchControls(
+            devices=_Devices(_DECK),
+            catalog=completo,
+            target=AutoconfigTarget(alvo, declared=True),
+        )
+        aplicado = _apply(controls)
+        assert aplicado.state == "applied"
+        bom = (alvo / MANAGED_BASENAME).read_text(encoding="utf-8")
+
+        degradado = tmp_path / "degradado"
+        degradado.mkdir()
+        (degradado / "pad.cfg").write_text(
+            _STEAM_CONTROLLER.replace('input_l_btn = "4"', ""), encoding="utf-8"
+        )
+        parcial = _apply(
+            RetroArchControls(
+                devices=_Devices(_DECK),
+                catalog=AutoconfigCatalog([degradado]),
+                target=AutoconfigTarget(alvo, declared=True),
+            )
+        )
+
+        assert parcial.state == "partial"
+        assert (alvo / MANAGED_BASENAME).read_text(encoding="utf-8") == bom
 
     def test_applied_is_only_claimed_after_the_file_exists(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
@@ -319,6 +364,87 @@ class TestWhatIsNotOursIsNotTouched:
 
         assert outcome.state == "conflict"
         assert alheio.read_text(encoding="utf-8") == original
+
+    @pytest.mark.parametrize(
+        ("nome", "motivo"),
+        [
+            ("symlink", "link simbólico"),
+            ("oversized", "grande demais"),
+            ("unreadable", "não pôde ser lido"),
+            ("not-regular", "não é um arquivo regular"),
+        ],
+    )
+    def test_an_unverifiable_target_is_foreign_not_absent(self, tmp_path, nome, motivo) -> None:
+        """Só a AUSÊNCIA comprovada autoriza gravar.
+
+        A leitura tolerante devolvia `None` tanto para arquivo inexistente
+        quanto para symlink, arquivo grande demais e arquivo ilegível — e quem
+        lia esse `None` concluía "ausente, pode escrever". Um `steamzero.cfg` do
+        usuário em qualquer dessas formas seria substituído sem que o marcador
+        fosse conferido uma única vez.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        if nome == "symlink":
+            outro = tmp_path / "arquivo-do-usuario.cfg"
+            outro.write_text('input_b_btn = "9"\n', encoding="utf-8")
+            os.symlink(outro, alvo)
+        elif nome == "oversized":
+            alvo.write_text("#" * (128 * 1024 + 1), encoding="utf-8")
+        elif nome == "unreadable":
+            alvo.write_text('input_b_btn = "9"\n', encoding="utf-8")
+            os.chmod(alvo, 0)
+        else:
+            alvo.mkdir()
+
+        try:
+            outcome = _apply(controls)
+        finally:
+            if nome == "unreadable":
+                os.chmod(alvo, stat.S_IRUSR | stat.S_IWUSR)
+
+        assert outcome.state == "conflict"
+        assert motivo in outcome.detail
+        # E o alvo continua sendo o que era.
+        if nome == "symlink":
+            assert alvo.is_symlink()
+        elif nome == "not-regular":
+            assert alvo.is_dir()
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root lê arquivo sem permissão")
+    def test_an_unreadable_target_is_never_replaced(self, tmp_path) -> None:
+        controls = _controls(tmp_path, _Devices(_DECK))
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        original = 'input_device = "perfil do usuario"\n'
+        alvo.write_text(original, encoding="utf-8")
+        os.chmod(alvo, 0)
+        try:
+            outcome = _apply(controls)
+        finally:
+            os.chmod(alvo, stat.S_IRUSR | stat.S_IWUSR)
+
+        assert outcome.state == "conflict"
+        assert alvo.read_text(encoding="utf-8") == original
+
+    def test_a_file_appearing_after_the_check_is_not_overwritten(self, tmp_path) -> None:
+        """A recusa é garantia, não checagem com janela.
+
+        Criação exclusiva: se algo aparecer no alvo entre a observação e a
+        escrita, a publicação falha em vez de substituir.
+        """
+        directory = tmp_path / "autoconfig"
+        directory.mkdir()
+        alvo = directory / MANAGED_BASENAME
+        original = 'input_device = "chegou primeiro"\n'
+        alvo.write_text(original, encoding="utf-8")
+
+        from steamzero.core import fs
+
+        with pytest.raises(FileExistsError):
+            fs.write_atomic_text_in_foreign_dir(alvo, "nosso conteudo", must_not_exist=True)
+
+        assert alvo.read_text(encoding="utf-8") == original
+        assert [p.name for p in directory.iterdir()] == [MANAGED_BASENAME]
 
     def test_a_conflict_is_reported_with_the_path_that_blocked(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
