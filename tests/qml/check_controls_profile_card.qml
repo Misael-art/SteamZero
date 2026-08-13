@@ -27,6 +27,14 @@ Window {
         {"action": "game.up", "input": "hat.up", "key": "input_up_btn", "value": "h0up"}
     ]
 
+    property var acaoAplicar: ({
+        "id": "controls.autoconfig.apply",
+        "label": "Aplicar perfil no RetroArch",
+        "enabled": true,
+        "reason": null,
+        "requiresConfirmation": true
+    })
+
     function perfil(estado, extras) {
         var autoconfig = null
         if (estado !== null) {
@@ -48,7 +56,10 @@ Window {
             "state": "ready",
             "statusLabel": "Perfil selecionado",
             "active": {"id": "standard-gamepad", "revision": 1, "orientation": "landscape"},
-            "autoconfig": autoconfig
+            "autoconfig": autoconfig,
+            // A fachada só oferece a ação em `pending-write`; o cartão reflete
+            // isso em vez de decidir por conta própria.
+            "applyAutoconfigAction": estado === "pending-write" ? harness.acaoAplicar : null
         }
     }
 
@@ -82,6 +93,17 @@ Window {
                   "os mapeamentos que serão aplicados precisam ser desenhados")
             check(String(card.honestMessage()).indexOf("ainda não foi gravado") >= 0,
                   "a mensagem precisa dizer por que o perfil ainda não vale")
+            // Rota de produção: sem o botão, o perfil resolvido nunca chega ao
+            // disco e a integração fica inerte.
+            check(card.applyAction !== null,
+                  "resolvido-mas-não-gravado precisa oferecer a ação de aplicar")
+            var aplicou = null
+            card.applyAutoconfigRequested.connect(function (acao) { aplicou = acao })
+            card.applyAutoconfigRequested(card.applyAction)
+            check(aplicou !== null && String(aplicou.id) === "controls.autoconfig.apply",
+                  "a ação emitida precisa ser a que a fachada executa")
+            check(aplicou.requiresConfirmation === true,
+                  "gravar no host exige confirmação explícita")
 
             // Sem dispositivo: o índice não pode ser lido, e não será adivinhado.
             card.profile = harness.perfil("awaiting-device", {})
@@ -138,6 +160,8 @@ Window {
             check(card.isApplied(), "perfil aplicado precisa ser reconhecido como aplicado")
             check(card.accentColor() === card.greenColor,
                   "perfil aplicado é o ÚNICO estado que pode ficar verde")
+            check(card.applyAction === null,
+                  "já aplicado não pode oferecer uma confirmação que não muda nada")
 
             // Sem perfil ativo, o cartão não inventa estado.
             card.profile = harness.perfil(null, {})
