@@ -111,6 +111,41 @@ def set_mode(path: Path, mode: int) -> None:
 # ===========================================================================
 # Escrita atômica
 # ===========================================================================
+_AT_FDCWD = -100
+_RENAME_EXCHANGE = 1 << 1
+
+
+def _rename_exchange(first: Path, second: Path) -> bool:
+    """Troca dois caminhos ATOMICAMENTE (``renameat2`` + ``RENAME_EXCHANGE``).
+
+    Devolve ``False`` quando o kernel ou o filesystem não suportam. É o único
+    jeito de publicar sobre um arquivo existente sem janela: verificar antes do
+    ``rename`` sempre deixa um intervalo em que o alvo pode ser trocado, e é
+    dentro dele que um arquivo alheio seria destruído.
+    """
+    import ctypes
+    import ctypes.util
+
+    libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
+    try:
+        renameat2 = libc.renameat2
+    except AttributeError:  # pragma: no cover - glibc antiga
+        return False
+    result = renameat2(
+        ctypes.c_int(_AT_FDCWD),
+        ctypes.c_char_p(bytes(first)),
+        ctypes.c_int(_AT_FDCWD),
+        ctypes.c_char_p(bytes(second)),
+        ctypes.c_uint(_RENAME_EXCHANGE),
+    )
+    if result == 0:
+        return True
+    errno = ctypes.get_errno()
+    if errno in {38, 22, 95}:  # ENOSYS, EINVAL, EOPNOTSUPP
+        return False
+    raise OSError(errno, os.strerror(errno), str(first))
+
+
 def write_atomic(
     path: Path,
     data: bytes,
@@ -118,6 +153,7 @@ def write_atomic(
     mode: int = _FILE_MODE,
     fsync_dir: bool = True,
     must_not_exist: bool = False,
+    expect_hash: str | None = None,
 ) -> None:
     """Escreve ``data`` em ``path`` atomicamente (tmp+fsync+rename), 0600.
 
@@ -128,6 +164,11 @@ def write_atomic(
     ``FileExistsError`` se o destino existir. É a única forma ATÔMICA de dizer
     "crie, mas não sobrescreva": qualquer verificação anterior ao ``rename``
     deixa uma janela, e é dentro dela que um arquivo alheio seria destruído.
+
+    Com ``expect_hash``, a publicação sobre um arquivo EXISTENTE é condicionada
+    à identidade dele: a troca é atômica (``RENAME_EXCHANGE``) e o conteúdo que
+    saiu é conferido depois. Se não for o esperado, a troca é DESFEITA e a
+    operação falha — o arquivo alheio volta ao lugar intacto.
     """
     parent = path.parent
     ensure_dir(parent)
@@ -146,13 +187,34 @@ def write_atomic(
         if must_not_exist:
             os.link(tmp, path)
             _silent_unlink(tmp)
+        elif expect_hash is not None:
+            _publish_verified(tmp, path, expect_hash)
         else:
             os.replace(tmp, path)
-    except OSError:
+    except BaseException:
         _silent_unlink(tmp)
         raise
     if fsync_dir:
         _fsync_dir(parent)
+
+
+def _publish_verified(tmp: Path, path: Path, expect_hash: str) -> None:
+    """Publica sobre um alvo existente só se ele ainda for o que esperávamos."""
+    if not _rename_exchange(tmp, path):
+        # Kernel/FS sem RENAME_EXCHANGE: resta conferir e publicar, com a janela
+        # residual que a troca atômica eliminaria. Melhor que não conferir.
+        if hash_file(path) != expect_hash:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
+        os.replace(tmp, path)
+        return
+    # A troca já aconteceu: `tmp` agora carrega o conteúdo ANTIGO do alvo.
+    if hash_file(tmp) != expect_hash:
+        _rename_exchange(tmp, path)  # devolve o arquivo alheio ao lugar
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
+    # Publicou. O antigo ficou no temporário e precisa sair daqui: deixá-lo
+    # seria um órfão em diretório de configuração, que os gates de killproof
+    # cobram com razão.
+    _silent_unlink(tmp)
 
 
 def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
