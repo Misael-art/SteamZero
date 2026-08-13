@@ -91,3 +91,45 @@ Os artefatos deste teste (`copia-teste.cfg`, `override-teste.cfg`,
 `steamzero-autoconfig/`) foram removidos. O `retroarch.cfg` criado pela execução
 permanece — é do RetroArch, e é o estado normal de quem abriu o emulador uma
 vez; seu `joypad_autoconfig_dir` segue com o valor original do pacote.
+
+---
+
+## 4. Prova ponta a ponta da integração `--appendconfig`
+
+Feita em 2026-08-13, no host, com **joypad virtual** criado via `uinput`
+(`SteamZero Virtual Pad`, `2dc8:3001` = 11720:12289 em decimal — os mesmos ids
+de um 8BitDo que o RetroArch empacota). O perfil gerenciado foi gerado pelo
+CÓDIGO DE PRODUÇÃO (`RetroArchControls.plan/apply`), não à mão.
+
+O teste é um A/B com o mesmo pad conectado, mudando só o `--appendconfig`:
+
+| execução | comando | o que o RetroArch reportou |
+|---|---|---|
+| **A** — sem overlay | `flatpak run … --verbose --menu` | `[Autoconf] 8BitDo SF30 2.4G conectado na porta 1.` |
+| **B** — com overlay | `… --appendconfig <overlay>` | `[Autoconf] SteamZero Virtual Pad conectado na porta 1.` |
+
+Em **A** o RetroArch usou o perfil **empacotado** (`/app/share/libretro/
+autoconfig/udev/`). Em **B** usou o **nosso**, no diretório gerenciado — o nome
+publicado (`SteamZero Virtual Pad`) só existe no arquivo que o SteamZero gerou.
+
+Isso prova, com o pacote real e sem simulação:
+
+1. o `--appendconfig` redireciona de fato `joypad_autoconfig_dir`;
+2. o RetroArch lê o perfil da árvore gerenciada;
+3. o subdiretório do driver (`udev`) é obrigatório — o perfil foi gravado em
+   `<raiz>/autoconfig/udev/` e foi encontrado ali.
+
+### O que continuou intocado
+
+- `retroarch.cfg` do usuário: `joypad_autoconfig_dir` segue
+  `"/app/share/libretro/autoconfig"`, o valor original do pacote;
+- `~/.var/app/org.libretro.RetroArch/config/retroarch/autoconfig/`: continua
+  vazio;
+- o pad virtual e a árvore de teste (`~/.config/steamzero-e2e`) foram removidos.
+
+### Limite conhecido
+
+O pad virtual do `uinput` **não** recebe symlink `-event-joystick` em
+`/dev/input/by-id`, que é onde `SysfsInputDevices` procura. A descoberta
+automática não o enxergaria; neste teste a identidade foi injetada. Provar a
+descoberta ponta a ponta exige um controle físico real.

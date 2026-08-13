@@ -6,7 +6,7 @@
   "branch": "codex/g45-autoconfig-gerenciado",
   "baseRef": "e71d9b4",
   "owner": "g45-autoconfig",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "src/steamzero/adapters/input_devices.py",
@@ -27,6 +27,6 @@
     "src/steamzero/ui/qml/Emulation.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Definir a integracao Flatpak: o RetroArch 1.22.2 declara joypad_autoconfig_dir=/app/share/libretro/autoconfig, caminho interno do sandbox que nao existe no host, e procura perfis em <dir>/<input_joypad_driver>/ (udev). --appendconfig funciona em tempo de lancamento, MAS config_save_on_exit=true persiste o valor no arquivo usado, entao aplica-lo ao retroarch.cfg do usuario seria edita-lo permanentemente. Decidir o mecanismo (config proprio do SteamZero no lancamento?) e provar com o pacote real antes de pedir teste fisico. Evidencia em docs/09-operations/evidence/2026-08-13-retroarch-autoconfig.",
+  "nextAction": "Integracao --appendconfig implementada e provada ponta a ponta com joypad virtual. O que resta exige o operador: um CONTROLE FISICO com autoconfig empacotado, para provar a descoberta automatica (o pad do uinput nao recebe symlink -event-joystick, e o pad interno deste Deck nao tem autoconfig). Evidencia em docs/09-operations/evidence/2026-08-13-retroarch-autoconfig.",
   "updatedAt": "2026-08-13"
 }

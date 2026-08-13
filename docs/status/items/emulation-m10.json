@@ -50,9 +50,15 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/README.md",
       "command": "flatpak run org.libretro.RetroArch --verbose --menu",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/README.md",
+      "command": "A/B com joypad virtual uinput: sem overlay vs --appendconfig",
+      "result": "passed"
     }
   ],
-  "nextAction": "Definir e provar a integracao Flatpak: o RetroArch declara joypad_autoconfig_dir=/app/share/libretro/autoconfig (interno ao sandbox, inexistente no host) e le perfis em <dir>/<input_joypad_driver>/. Abrir o RetroArch NAO destrava. --appendconfig funciona mas config_save_on_exit=true persiste o valor no arquivo usado.",
+  "nextAction": "Provar a descoberta automatica com um CONTROLE FISICO que tenha autoconfig empacotado: a integracao --appendconfig ja esta provada ponta a ponta, mas o pad do uinput nao recebe symlink -event-joystick e o pad interno deste Deck (10462:4613) nao tem autoconfig.",
   "activeWorkstreams": [
     "WS-2026-08-G45-AUTOCONFIG",
     "WS-2026-08-M10"

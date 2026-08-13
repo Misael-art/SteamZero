@@ -6601,3 +6601,46 @@ dizendo que o diretório declarado é interno ao sandbox, e não tenta escrever.
 Artefatos do teste foram removidos; o `retroarch.cfg` criado permanece com o
 valor original do pacote. Nenhuma ação de host ou release, nenhum uso de
 `bigsudo` — nada aqui exigiu privilégio.
+
+### 2026-08-13 — G45, quinta rodada: a integração `--appendconfig`, provada
+
+O bloqueio da rodada anterior era o caminho: o RetroArch Flatpak procura perfis
+em `/app/share/libretro/autoconfig`, interno ao sandbox e inalcançável do host.
+A saída implementada é `--appendconfig` com um config PRÓPRIO do SteamZero.
+
+**O desenho.** O overlay (`<config>/retroarch/steamzero.cfg`, com marcador)
+redireciona `joypad_autoconfig_dir` para uma árvore nossa e **desliga
+`config_save_on_exit`**. Sem isso, o RetroArch — que vem com a chave em `true` —
+gravaria nossa injeção dentro do `retroarch.cfg` do usuário ao sair, editando-o
+em definitivo. Verificado: com o overlay, o config real sai da execução byte a
+byte idêntico. O custo, que a UI declara, é que nas sessões lançadas pelo
+SteamZero os ajustes feitos no menu do emulador não persistem.
+
+Perfil e overlay entram na MESMA transação: perfil sem overlay nunca é
+procurado, overlay sem perfil aponta para diretório vazio. O `lifecycle.launch`
+só passa `--appendconfig` quando o overlay existe — enquanto ninguém aplicou um
+perfil, o lançamento continua idêntico ao que era.
+
+**A prova.** A/B no host com joypad virtual (`uinput`, ids de um 8BitDo
+empacotado) e o perfil gerado pelo código de produção:
+
+| execução | o que o RetroArch reportou |
+|---|---|
+| sem overlay | `[Autoconf] 8BitDo SF30 2.4G conectado na porta 1.` |
+| com overlay | `[Autoconf] SteamZero Virtual Pad conectado na porta 1.` |
+
+O nome publicado em B só existe no arquivo que o SteamZero gerou. Evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`.
+
+**Efeito colateral bom:** como o diretório passou a ser NOSSO, a escrita em
+diretório de terceiro deixou de existir, e com ela a mudança ampla de núcleo
+(`preserve_existing_dir`) que a revisão pediu para isolar — foi **revertida**.
+Do núcleo permanece apenas a correção da corrida, que é defeito de verdade e
+vale para qualquer plano.
+
+**Limite conhecido:** o pad do `uinput` não recebe symlink `-event-joystick` em
+`/dev/input/by-id`, que é onde a descoberta procura; a identidade foi injetada
+no teste. Provar a descoberta automática ponta a ponta exige controle físico.
+
+Artefatos de teste removidos; `retroarch.cfg` do usuário intocado. Nenhuma ação
+de host ou release, e `bigsudo` não foi necessário em momento algum.
