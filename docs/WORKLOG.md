@@ -6371,3 +6371,57 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+---
+
+## 2026-08-13 — Fechamento funcional da UI: matriz de controles e harness
+
+Frente `codex/ui-ux-functional-closure`, base `origin/main` em `e71d9b4`.
+Workstream `WS-2026-08-UI-FUNCTIONAL-CLOSURE`. **Nenhuma ação de host
+executada**: só `tools/release_host.py inspect`, que é read-only.
+
+O pedido cobria as seções A–P (Home, biblioteca, destaque persistente,
+lifecycle de emuladores, perfis, sync, cast, sistema, temas, acessibilidade e
+uma matriz visual de ~150 capturas). O operador priorizou fundação e P0
+funcional. O que segue é o que foi medido, não o que foi planejado.
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §6 | `26da453` | sonda comportamental de despacho + inventário de ações | 4 testes; mede 0 no-op silencioso em `e71d9b4` |
+| §4 | `26da453` | harness: CLI publicada, warnings não silenciados, manifesto com commit/branch/SHA-256 | 8 testes unitários |
+| P3-6 | `d2e3e53` | `Qt.exit` atravessa o event loop nos harnesses | combinação que reprovava passa 3/3 (38 testes) |
+| P0-5 | `07480ac` | card de plataforma oferece instalar o emulador ausente | 93 testes de emulação; 3 novos cobrem ausente/instalado/não instalável |
+| §4 | `6a3755e` | manifesto volta a registrar contexto por captura | as 4 verificações programáticas passam |
+
+Três defeitos que o próprio instrumento denunciou:
+
+1. **Classificação por forma inventava controles.** Um escopo de plataforma
+   (`{id, label, enabled, reason}`) é indistinguível de uma ação. A primeira
+   medição acusou 76 ações sem rota; 40 delas não existiam. O discriminador é
+   a posição na árvore — a QML só despacha o que está sob `action`/`actions[]`.
+2. **`openPlatformFromGlobal` saía em silêncio** quando a plataforma não estava
+   no workspace publicado. O clique não produzia efeito nem aviso. Só apareceu
+   porque a sonda passou a medir efeito observável além da notificação.
+3. **O parse do manifesto lia só stdout.** Com `QT_FORCE_STDERR_LOGGING` o
+   `console.log` do QML sai por stderr: 0 registros para 55 PNGs. Quem apontou
+   foi a verificação `toda-captura-declara-contexto`, que existe para isso.
+
+Contaminações minhas, registradas para não virarem folclore: a primeira
+execução da suíte teve `release_host.py inspect` rodando junto (exit 86 do
+guard de estado, mais dois SIGSEGV sob carga); a segunda teve edições de
+arquivo no meio (digest de status vermelho). Nenhuma das duas era defeito do
+código. O gate definitivo rodou com a árvore parada: **4467 passaram, 10
+skipados, exit 0**.
+
+O SIGSEGV de `check_editorial_library.qml` é anterior a esta frente — apareceu
+na primeira execução, antes de qualquer alteração minha. Sozinho passava 12/12,
+o que o escondia; só reproduzia em sessão pytest com outros harnesses.
+
+Limite honesto do que foi verificado: a matriz cobre **o workspace de emulação**,
+não a central inteira. Home, biblioteca, perfis, sync, cast, sistema e temas
+não foram sondados. Os P0 visuais da auditoria (DarkButton ilegível no tema
+claro, biblioteca sem capas, Home duplicada) continuam **abertos**. A matriz
+visual de ~150 capturas não foi produzida: só as 55 offline existentes.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
