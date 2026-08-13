@@ -380,6 +380,11 @@ class InputProfileManager:
                 "scopeId": active["scopeId"],
                 "retropad": retropad,
                 "withoutRetropadEquivalent": sem_equivalente,
+                # A tradução acima é abstrata e o sufixo dela é provisório (o
+                # dispositivo é quem decide entre `_btn` e `_axis`). Quem resolve
+                # o índice físico precisa dos bindings crus, então eles deixam de
+                # ficar só no arquivo e passam a ser publicados.
+                "resolvedBindings": [dict(row) for row in rows],
             },
             "available": available,
         }

@@ -811,15 +811,24 @@ def _backup(op_id: str, plan: Plan, jrnl: journal.Journal) -> dict[str, dict[str
                 "target": a.target,
                 "backupRel": a.action_id,
                 "expectHash": entry.hash,
+                # O que ESTE plano deixaria no alvo. Sem isso, o restore
+                # sobrescreve o que estiver lá — inclusive um arquivo alheio que
+                # tenha aparecido depois do backup.
+                "appliedHash": a.new_hash if a.kind in {"copy", "write"} else None,
             }
         else:
             undo_map[a.action_id] = {
                 "op": "delete",
                 "target": a.target,
                 "backupRel": None,
+                # `write` ficava de fora e o `expectHash` saía None, o que
+                # PULAVA o guard do rollback: um arquivo estrangeiro que
+                # aparecesse depois do backup era removido sem conferência.
+                # Agora toda criação registra o que ESPERA encontrar, e o
+                # rollback só remove o que reconhece como nosso.
                 "expectHash": (
                     a.new_hash
-                    if a.kind == "copy"
+                    if a.kind in {"copy", "write"}
                     else f"symlink:{a.source}"
                     if a.kind == "symlink"
                     else None
@@ -843,6 +852,14 @@ def _write_backup_manifest(op_id: str, entries: list[fs.BackupEntry]) -> None:
         paths.backup_for(op_id) / "manifest.json",
         json.dumps(manifest, sort_keys=True, ensure_ascii=False),
     )
+
+
+_MISSING = object()
+
+
+def _expected_fingerprints(plan: Plan) -> dict[str, str | None]:
+    """Fingerprint que o PLANO registrou para cada alvo, por caminho."""
+    return {p.target: p.fingerprint for p in plan.preconditions}
 
 
 def _apply_actions(
@@ -886,7 +903,37 @@ def _apply_actions(
         elif a.kind == "delete":
             fs.remove_file(Path(a.target))
         else:
-            fs.write_atomic(Path(a.target), a.new_content())
+            # A janela que a revalidação de preconditions NÃO cobre.
+            #
+            # `_revalidate_preconditions` roda uma vez, no início do apply, e
+            # depois ainda acontecem staging e backup. Um arquivo estrangeiro
+            # criado nesse intervalo era copiado para o backup e então
+            # SOBRESCRITO por esta linha, com a operação retornando `ok` — a
+            # garantia de nunca destruir arquivo alheio valia só até o staging.
+            #
+            # A política vem do próprio plano: quando a precondição registrou o
+            # alvo como AUSENTE, a publicação é uma criação exclusiva, que é a
+            # única forma atômica de garantir que não se sobrescreve nada.
+            # Quando o alvo existia, o fingerprint é reconferido imediatamente
+            # antes de publicar, em vez de só no começo da operação.
+            target = Path(a.target)
+            expected = _expected_fingerprints(plan).get(str(target), _MISSING)
+            if expected is not _MISSING and _fingerprint(target) != expected:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN",
+                    detail=f"alvo mudou durante apply: {a.target}",
+                )
+            # A conferência acima é barata e pega o caso comum, mas sozinha
+            # deixa janela até o `rename`. A publicação vai condicionada à
+            # identidade: criação exclusiva quando o alvo era ausente, troca
+            # atômica verificada quando ele existia.
+            fs.write_atomic(
+                target,
+                a.new_content(),
+                must_not_exist=expected is None,
+                expect_hash=None if expected in {None, _MISSING} else str(expected),
+                holding=paths.quarantine_for(op_id),
+            )
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -1000,7 +1047,28 @@ def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
                     operation_id=operation_id,
                     detail=f"rollback recusou remover arquivo alterado: {target}",
                 )
-            fs.remove_file(target)
+            # Symlink e move têm semântica de identidade própria (o "conteúdo"
+            # é o alvo do link) e guard próprio acima; a custódia é para
+            # arquivo REGULAR, onde a identidade é o hash.
+            if (
+                expected is None
+                or repairable_symlink
+                or undo.get("expectKind")
+                not in {
+                    "write",
+                    "copy",
+                }
+            ):
+                fs.remove_file(target)
+            else:
+                # A conferência acima é só triagem barata; a garantia está em
+                # tomar a entrada em custódia ANTES de removê-la, para que um
+                # arquivo criado depois do guard volte ao lugar em vez de sumir.
+                try:
+                    fs.delete_verified(target, expected, paths.quarantine_for(operation_id))
+                except SteamZeroError as exc:
+                    exc.operation_id = operation_id
+                    raise
         else:
             raise SteamZeroError(
                 "E-TX-ROLLBACK-FAILED",
@@ -1032,6 +1100,12 @@ def _record_operation_state(operation_id: str, state: str) -> None:
 
 
 def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
+    # Restaurar é escrever: só pode acontecer sobre um alvo que reconhecemos.
+    # O estado legítimo é o backup (nada mudou) ou o que este plano gravou
+    # (apply concluiu). Qualquer outra coisa apareceu de fora, e sobrescrevê-la
+    # destruiria dado de terceiro — a mesma classe de defeito que o `delete`
+    # incondicional tinha.
+    applied = undo.get("appliedHash")
     backup_path = paths.backup_for(operation_id) / undo["backupRel"]
     if not backup_path.exists():
         raise SteamZeroError(
@@ -1045,7 +1119,12 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
             operation_id=operation_id,
             detail=f"backup adulterado para {target}",
         )
-    fs.copy_file_atomic(backup_path, target)
+    aceitos = {undo["expectHash"]} | ({applied} if applied else set())
+    try:
+        fs.restore_verified(backup_path, target, aceitos, paths.quarantine_for(operation_id))
+    except SteamZeroError as exc:
+        exc.operation_id = operation_id
+        raise
     if fs.hash_file(target) != undo["expectHash"]:  # RB-4: rollback verificado
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",

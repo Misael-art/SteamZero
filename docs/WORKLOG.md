@@ -6371,3 +6371,355 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+## 2026-08-12 — G45, segundo incremento: o índice físico deixa de faltar
+
+Branch `codex/g45-autoconfig-gerenciado`, nascida de `origin/main` em `e71d9b4`
+(merge da PR #77). Quatro commits funcionais mais este fechamento.
+
+A PR #77 traduziu a ação abstrata para a chave RetroPad e parou de propósito
+onde o índice do botão começa, porque o índice pertence ao dispositivo. Este
+incremento resolve o índice LENDO o autoconfig que descreve o pad real — o
+RetroArch empacota 420 desses arquivos, e cada um é a tabela "posição física →
+índice" declarada pelo fabricante. Sem arquivo para o pad conectado, o resultado
+é não resolvido e visível.
+
+### Correção de medição da própria série
+
+A #77 registrou que "entradas direcionais chegam como eixo nos autoconfigs
+reais". Medindo com casamento exato de chave — `^input_up_btn[[:space:]]*=`, que
+exclui as linhas `*_label` que contaminaram a contagem original — são **296
+arquivos com `input_up_btn` contra 134 com `input_up_axis`**: o oposto. Fixar
+`_axis` até a gravação daria à maioria dos pads um arquivo que o RetroArch
+aceita e IGNORA, que é a falha silenciosa que a própria #77 identificou como o
+pior resultado possível. `retropad_key` ficou como está, documentado como
+provisório e restrito à visão sem dispositivo.
+
+Outras medições que viraram regra: 239 arquivos usam notação de hat (`h0up`),
+`-0` e `+0` são entradas opostas (o valor é token opaco, nunca `int`), 44
+arquivos gravam `nul` e 27 gravam string vazia (ausência declarada, não valor),
+dois gravam `"ZR Button"` no lugar do índice (a gramática do valor é fechada), e
+12 declaram btn e axis para o mesmo direcional (ambiguidade explícita, não
+escolha).
+
+### O que este incremento NÃO afirma
+
+- **Nada foi gravado no host.** O writer só rodou em `tmp_path`. Nenhuma
+  instalação de Flatpak, release ou wheel foi executada.
+- **O `retroarch.cfg` deste host não existe** — o RetroArch nunca foi executado
+  até gravar configuração. Sem ele não há como saber em que diretório ele
+  procura perfis, então o estado real aqui é `awaiting-emulator` e nenhum perfil
+  pode ser declarado aplicado. Esse é o sexto estado, além dos cinco pedidos, e
+  existe porque medir o host mostrou o caso.
+- **O pad interno deste Steam Deck (10462:4613) não tem autoconfig empacotado**
+  e cai em `no-autoconfig`. Falta decidir a fonte de índice para pads sem
+  arquivo.
+- **Nenhuma instalação de emulador foi vista concluir no host.** O fluxo isolado
+  foi exercitado (274 testes verdes em lifecycle, flatpak executor e
+  conformance), o que é o limite do que teste isolado alcança.
+
+### Um defeito encontrado no caminho
+
+`fs.write_atomic` chama `ensure_dir`, que faz `mkdir(parents=True)` e `chmod`
+incondicional no diretório pai. Usá-la para gravar o perfil teria mudado a
+permissão do diretório de configuração do RetroArch (0750 → 0700) e criado
+diretórios dentro da configuração alheia — efeito colateral invisível de gravar
+um arquivo. O gate de fronteiras recusou, com razão, um writer local no adapter;
+a variante que preserva o diretório entrou em `core.fs`, que é o porto de
+escrita. Dois testes fixam o comportamento.
+
+### Estado dos gates neste checkout
+
+Os quatro gates de código passam. `make status-check` reprova por **um** item,
+`SZ-MEDIA-SCRAPING`, e a causa não é este trabalho: quatro arquivos
+`tests/fixtures/scraping/screenscraper/raw/*_error.txt`, datados de 26/07 e
+cobertos por `.gitignore`, existem neste worktree e entram no `scopeDigest`.
+Prova: numa árvore limpa de `origin/main` o digest calculado é
+`484fe509d2e7…`, idêntico ao declarado no item. Os arquivos foram preservados
+por instrução. O mesmo vale para `src/steamzero/_build_info.py` (01/08,
+gitignored), que faz `test_every_tracked_file_has_a_custodian_item` reprovar
+apesar de o arquivo não ser rastreado — o teste varre o sistema de arquivos, não
+o índice do git.
+
+Os digests de `SZ-GOVERNANCE-STATUS`, `SZ-THEME-AURA` e `SZ-UI-DESKTOP-AUDIT`
+foram reatestados porque este trabalho alterou conteúdo dentro do escopo deles
+(`docs/KNOWN-GAPS.md`, `tests/integration/test_qml_handheld_offscreen.py` e
+`src/steamzero/ui`, respectivamente).
+
+### Pendente do operador
+
+Abrir o RetroArch uma vez no host para que ele declare `joypad_autoconfig_dir`;
+sem isso nenhum perfil pode passar de `awaiting-emulator`. Depois disso, provar
+fisicamente que o RetroArch aplica o arquivo gerado. Nenhuma ação de host ou de
+release foi executada nesta sessão.
+
+### 2026-08-12 — G45, segunda rodada: resposta à revisão
+
+A primeira rodada entregou a resolução, o writer e a tela — e deixou o writer
+**sem rota de produção**. `apply()` só era chamado por teste: a ativação do
+perfil gravava a seleção, o dashboard apenas observava, e o estado parava em
+`pending-write` sem que ninguém materializasse o arquivo. A integração inteira
+ficava inerte, e `write-failed` era inalcançável. Fechado por uma ação explícita
+e confirmada, `controls.autoconfig.apply`, exposta no cartão.
+
+O plano dessa ação é vazio de propósito. O núcleo transacional grava com
+`fs.write_atomic`, que faz `chmod` incondicional no diretório pai — aqui, a
+configuração do RetroArch. Deixá-lo executar a escrita reintroduziria o defeito
+que esta mesma frente tinha corrigido. Então ele fornece o portão (token,
+expiração, uso único, journal) e a escrita fica com o writer que preserva o
+diretório alheio. O `rollbackGuarantee` diz isso em vez de alegar G-FULL:
+`plan_write_files` ganhou o parâmetro para não mentir no payload.
+
+**Brecha de ownership (a mais séria).** `_read_text_limited` devolvia `None`
+tanto para arquivo inexistente quanto para symlink, arquivo acima de 128 KiB ou
+ilegível — e `status()` lia esse `None` como "ausente, pode escrever". Um
+`steamzero.cfg` do usuário em qualquer dessas formas seria substituído sem que o
+marcador fosse conferido uma única vez, violando a garantia central da entrega.
+Agora `_probe_target` classifica em ausente / nosso / estrangeiro, **só ENOENT
+autoriza gravar**, e cada recusa diz o motivo. A criação usa `os.link`
+(`must_not_exist`), então um arquivo que apareça entre a verificação e a escrita
+faz a operação falhar em vez de ser substituído: a recusa virou garantia, não
+checagem com janela.
+
+**Perfil parcial deixou de ser gravado.** O texto dizia "somente quando tudo
+estiver resolvido" e o código exigia apenas um binding. Meio perfil em disco é
+pior que perfil nenhum: o RetroArch aceita o arquivo, as ações faltantes ficam
+sem binding, e o controle responde pela metade sem nada dizer por quê. `partial`
+virou diagnóstico — aparece na tela com o motivo, e o emulador segue nos padrões
+dele. Um teste prova que recusar gravar não apaga o perfil que já valia.
+
+**`controlsReadiness` deixou de dar falso verde.** Dizia `ready` com perfil salvo
+e controle plugado, ignorando `awaiting-emulator`, `pending-write`, `conflict` e
+`no-autoconfig` — exatamente o falso verde que a G45 existe para não repetir.
+Agora deriva do estado efetivo e publica `autoconfigState`.
+
+**Contagem de testes reconciliada.** Não havia divergência: a PR #77 relatou
+4452 e minha baseline mediu 4450 *passed* mais 2 *failed*, que somam os mesmos
+4452. As duas falhas são os arquivos gitignored perdidos deste worktree, já
+documentados acima.
+
+O que continua exigindo o operador não mudou: abrir o RetroArch uma vez para que
+ele declare `joypad_autoconfig_dir`, e decidir a fonte de índice para pads sem
+autoconfig empacotado — o pad interno deste Deck é um deles. Nenhuma ação de
+host ou release foi executada nesta rodada.
+
+### 2026-08-13 — G45, terceira rodada: o efeito passa a ser a transação
+
+A segunda rodada apanhou em quatro P1 com uma causa comum: eu tinha pendurado um
+efeito colateral num plano VAZIO, usando o núcleo transacional só como portão de
+confirmação. Cada defeito era sintoma dessa forma errada, e todos somem quando o
+CONTEÚDO vai para dentro do plano.
+
+**A corrida estava invertida, não apenas aberta.** O writer escolhia entre
+criação exclusiva e `os.replace` reconsultando o alvo imediatamente antes de
+gravar. Se um arquivo estrangeiro aparecesse na janela, a checagem passava a
+dizer "foreign", o que DESLIGAVA a exclusividade e caía no `os.replace` —
+sobrescrevendo justamente o arquivo que devia proteger. O teste que eu tinha
+escrito só exercitava a primitiva `must_not_exist=True`, nunca a sequência
+integrada; por isso passou verde sobre um defeito. Hoje a precondição do plano
+guarda o fingerprint do destino e `apply` a revalida, e o teste é a sequência
+inteira.
+
+**`write-failed` era ficção.** A operação era commitada antes do writer rodar, o
+resultado era descartado e as exceções engolidas; depois da falha, a leitura
+seguinte via arquivo ausente e voltava a `pending-write`. O estado saiu do
+vocabulário: falha levanta e reverte.
+
+**O rollback era falso.** Plano sem ações ⇒ desfazer marcava a operação como
+revertida e deixava o autoconfig no disco, enquanto o histórico anunciava
+`G-FULL`. Agora `G-FULL` é verdade, com teste: desfazer remove o arquivo criado
+e restaura o conteúdo anterior numa atualização. O parâmetro
+`rollback_guarantee` que eu havia acrescentado a `plan_write_files` foi
+revertido — ele só servia para declarar um `G-NONE` que o histórico exibiria
+como `G-FULL`.
+
+**Perfil por jogo aplicaria o da plataforma.** O cartão mostrava o perfil
+efetivo do jogo e a gravação usava o da plataforma. A raiz é de mecanismo: o
+autoconfig do RetroArch é por DISPOSITIVO e não sabe qual jogo está rodando;
+dois jogos com perfis diferentes disputariam o mesmo arquivo. Perfil por jogo
+exigiria remap por jogo, que não está implementado. O estado
+`unsupported-scope` diz isso e a ação não é oferecida — em vez de gravar
+silenciosamente outro perfil.
+
+O que viabilizou usar o núcleo: `write_atomic` e `copy_file_atomic` ganharam
+`preserve_existing_dir`, usado ao publicar ALVOS DE PLANO. O `chmod`
+incondicional de `ensure_dir` teria mudado a permissão da configuração do
+RetroArch ao gravar um perfil. Pai ausente segue sendo criado com o nosso modo;
+pai preexistente sai intocado. Diretório declarado mas inexistente virou
+`awaiting-emulator`, porque construir dentro da configuração alheia continua
+fora de escopo.
+
+Suíte: 4527 passed, com as mesmas duas reprovações pré-existentes deste worktree
+(arquivos gitignored perdidos). Nenhuma ação de host ou release.
+
+Segue exigindo o operador: abrir o RetroArch uma vez para que ele declare
+`joypad_autoconfig_dir`, e um controle externo com autoconfig conhecido para o
+teste físico — o pad interno deste Deck continua em `no-autoconfig`.
+
+### 2026-08-13 — G45, quarta rodada: a janela interna e o caminho do Flatpak
+
+Duas reprovações minhas, ambas reproduzidas antes de corrigir.
+
+**A corrida continuava — dentro da transação.** Eu havia declarado que "qualquer
+mudança entre planejar e aplicar reprova". Falso: `_revalidate_preconditions`
+roda UMA vez, no início do `apply`, e depois ainda acontecem staging e backup.
+Um arquivo estrangeiro criado nesse intervalo era copiado para o backup e então
+sobrescrito pela escrita, com a operação retornando `ok`. Meu teste inseria o
+intruso ANTES de `apply()` e por isso nunca tocou a janela real.
+
+Reproduzido com um hook em `_stage`; a correção põe a política no PLANO: quando
+a precondição registrou o alvo como AUSENTE, a publicação é criação exclusiva
+(`os.link`, atômica); quando o alvo existia, o fingerprint é reconferido
+imediatamente antes de publicar, e não só no começo da operação. Dois testes
+cobrem a janela — criação e atualização.
+
+**`preserve_existing_dir` estava global.** Eu o passei incondicionalmente em
+`_apply_actions`, mudando em silêncio a política de TODAS as capacidades que
+usam o núcleo: diretórios do SteamZero deixariam de ter o modo seguro
+normalizado. Agora é uma propriedade do plano (`foreign_dir`), declarada só por
+quem escreve em diretório de terceiro; o padrão restaura o comportamento
+histórico.
+
+**O caminho do Flatpak não era o que eu supunha.** Medi o pacote e executei o
+RetroArch uma vez (evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`):
+
+- o config que ele cria declara `joypad_autoconfig_dir = "/app/share/libretro/
+  autoconfig"`, e `/app` **não existe no host** — é o mount do sandbox;
+- os perfis ficam em `<dir>/<input_joypad_driver>/` (`udev`, 420 arquivos); a
+  raiz tem ZERO. O código gravava na raiz, o que geraria arquivo nunca lido. O
+  driver é `input_joypad_driver`, não `input_driver` (que aqui é `x`);
+- `--appendconfig` funciona, mas `config_save_on_exit = "true"` PERSISTE o valor
+  no arquivo usado — aplicá-lo ao `retroarch.cfg` do usuário seria editá-lo
+  permanentemente, o que a AGENTS.md §5 proíbe.
+
+Portanto "abrir o RetroArch uma vez" **não** destrava a gravação, e eu estava
+errado ao pedir isso ao operador. O workstream volta a `active`: falta decidir e
+provar o mecanismo de integração. O código hoje degrada para `awaiting-emulator`
+dizendo que o diretório declarado é interno ao sandbox, e não tenta escrever.
+
+Artefatos do teste foram removidos; o `retroarch.cfg` criado permanece com o
+valor original do pacote. Nenhuma ação de host ou release, nenhum uso de
+`bigsudo` — nada aqui exigiu privilégio.
+
+### 2026-08-13 — G45, quinta rodada: a integração `--appendconfig`, provada
+
+O bloqueio da rodada anterior era o caminho: o RetroArch Flatpak procura perfis
+em `/app/share/libretro/autoconfig`, interno ao sandbox e inalcançável do host.
+A saída implementada é `--appendconfig` com um config PRÓPRIO do SteamZero.
+
+**O desenho.** O overlay (`<config>/retroarch/steamzero.cfg`, com marcador)
+redireciona `joypad_autoconfig_dir` para uma árvore nossa e **desliga
+`config_save_on_exit`**. Sem isso, o RetroArch — que vem com a chave em `true` —
+gravaria nossa injeção dentro do `retroarch.cfg` do usuário ao sair, editando-o
+em definitivo. Verificado: com o overlay, o config real sai da execução byte a
+byte idêntico. O custo, que a UI declara, é que nas sessões lançadas pelo
+SteamZero os ajustes feitos no menu do emulador não persistem.
+
+Perfil e overlay entram na MESMA transação: perfil sem overlay nunca é
+procurado, overlay sem perfil aponta para diretório vazio. O `lifecycle.launch`
+só passa `--appendconfig` quando o overlay existe — enquanto ninguém aplicou um
+perfil, o lançamento continua idêntico ao que era.
+
+**A prova.** A/B no host com joypad virtual (`uinput`, ids de um 8BitDo
+empacotado) e o perfil gerado pelo código de produção:
+
+| execução | o que o RetroArch reportou |
+|---|---|
+| sem overlay | `[Autoconf] 8BitDo SF30 2.4G conectado na porta 1.` |
+| com overlay | `[Autoconf] SteamZero Virtual Pad conectado na porta 1.` |
+
+O nome publicado em B só existe no arquivo que o SteamZero gerou. Evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`.
+
+**Efeito colateral bom:** como o diretório passou a ser NOSSO, a escrita em
+diretório de terceiro deixou de existir, e com ela a mudança ampla de núcleo
+(`preserve_existing_dir`) que a revisão pediu para isolar — foi **revertida**.
+Do núcleo permanece apenas a correção da corrida, que é defeito de verdade e
+vale para qualquer plano.
+
+**Limite conhecido:** o pad do `uinput` não recebe symlink `-event-joystick` em
+`/dev/input/by-id`, que é onde a descoberta procura; a identidade foi injetada
+no teste. Provar a descoberta automática ponta a ponta exige controle físico.
+
+Artefatos de teste removidos; `retroarch.cfg` do usuário intocado. Nenhuma ação
+de host ou release, e `bigsudo` não foi necessário em momento algum.
+
+### 2026-08-13 — G45, sexta rodada: a integração chega aos botões reais
+
+Três reprovações minhas, todas reproduzidas antes de corrigir.
+
+**O overlay não chegava a quem aperta o botão.** Eu havia injetado
+`--appendconfig` só no `ComponentLifecycle.launch()`, mas a tela de emulação
+monta o argv em `EmulationController._build_exec_argv` — então "Abrir emulador"
+e "Jogar" subiam o RetroArch sem o perfil. A prova A/B validava o mecanismo do
+emulador, não a integração do produto. A composição virou ponto único
+(`input_devices.retroarch_launch_arguments`), usado pelos dois. A chave é a REF
+do Flatpak, não o id do adapter: um core libretro roda DENTRO do RetroArch, e
+chavear pelo adapter deixaria justamente os jogos de fora.
+
+**A janela de atualização continuava aberta.** Entre conferir o fingerprint e o
+`os.replace` havia intervalo, e o intruso era sobrescrito (`UPDATE_RACE ok`).
+Fechada com `renameat2`/`RENAME_EXCHANGE`: a troca é atômica e o conteúdo que
+saiu é conferido depois; se não for o esperado, a troca é DESFEITA e a operação
+falha, devolvendo o arquivo alheio ao lugar. Sem suporte do kernel, cai para
+conferir-e-publicar, o que é pior mas ainda melhor que não conferir.
+
+**O rollback removia arquivo estrangeiro.** Para ações `write` o `expectHash`
+saía `None`, o que PULAVA o guard do `delete` — o guard existia e nunca era
+consultado. Corrigido incluindo `write` no registro do hash esperado.
+
+Ao verificar isso apareceu uma QUARTA instância da mesma classe, que a revisão
+não listou: o `restore` do rollback sobrescrevia o alvo sem conferir identidade.
+Agora só restaura sobre o que reconhece — o backup (nada mudou) ou o que o
+próprio plano gravou. Reprodução final: `E-TX-ROLLBACK-FAILED` com o intruso
+preservado nos dois casos.
+
+**Documentação contradizia a evidência.** O item afirmava que o `retroarch.cfg`
+não existia; ele passou a existir quando executei o RetroArch na investigação, e
+o problema nunca foi ausência de config — era caminho inalcançável. Corrigido.
+
+O workstream volta a `active`: falta repetir a prova pelo botão real da UI com um
+controle FÍSICO que tenha autoconfig empacotado. Nenhuma ação de host ou release.
+
+### 2026-08-13 — G45, sétima rodada: custódia em vez de conferência
+
+A revisão derrubou o padrão inteiro das minhas três correções anteriores, e com
+razão. Todas faziam a mesma coisa: conferir o alvo imediatamente antes de
+destruí-lo. Isso nunca fecha a janela — entre a conferência e o syscall cabe uma
+troca —, e as três reproduções mostraram o dado alheio sendo perdido:
+
+    FALLBACK_RACE ok b'new'
+    DELETE_RACE   rolled-back exists=False
+    RESTORE_RACE  rolled-back b'old'
+
+**A ordem inverteu.** Agora se TIRA a entrada do lugar primeiro, com rename
+atômico sem substituição (`RENAME_NOREPLACE`), e só depois se confere o que foi
+tirado. Publicação, remoção e restauração passam a operar sobre algo já sob
+custódia; o que não for reconhecido volta intacto. Não existe mais janela entre
+conferir e destruir porque a conferência deixou de vir antes da destruição.
+
+**Sem primitiva, falha fechada.** Nada de fallback com janela residual: um FS
+sem rename sem substituição não permite preservar o inesperado, e recusar é a
+resposta certa.
+
+**Quando o alvo é ocupado enquanto está vazio**, as duas entradas são
+conservadas — a nova onde está, a antiga sob custódia, com o erro nomeando os
+caminhos. Apagar qualquer uma seria a perda que o desenho evita.
+
+Escrevi os cinco testes VERMELHOS antes de mexer no código, como a revisão
+exigiu, cada um injetando na janela real e cobrando erro explícito + intruso
+byte a byte + ausência de órfão da própria operação + journal que não alega
+rollback completo.
+
+Dois aprendizados que valem mais que o patch:
+
+1. **Symlink não cabe na custódia.** A identidade dele é o alvo do link, não um
+   hash; rotear symlink por lá fez o `O_NOFOLLOW` estourar `ELOOP`. Ficou de
+   fora, com o guard que já existia.
+2. **O helper de órfãos precisa ser por operação.** Varrendo a quarentena
+   inteira, um caso de falha fechada — que CONSERVA a custódia de propósito —
+   fazia os outros testes reprovarem.
+
+Suíte: 4557 passed, com as duas reprovações pré-existentes deste worktree.
+Nenhuma ação de host, release ou privilégio.
