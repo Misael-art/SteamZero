@@ -6555,3 +6555,49 @@ Suíte: 4527 passed, com as mesmas duas reprovações pré-existentes deste work
 Segue exigindo o operador: abrir o RetroArch uma vez para que ele declare
 `joypad_autoconfig_dir`, e um controle externo com autoconfig conhecido para o
 teste físico — o pad interno deste Deck continua em `no-autoconfig`.
+
+### 2026-08-13 — G45, quarta rodada: a janela interna e o caminho do Flatpak
+
+Duas reprovações minhas, ambas reproduzidas antes de corrigir.
+
+**A corrida continuava — dentro da transação.** Eu havia declarado que "qualquer
+mudança entre planejar e aplicar reprova". Falso: `_revalidate_preconditions`
+roda UMA vez, no início do `apply`, e depois ainda acontecem staging e backup.
+Um arquivo estrangeiro criado nesse intervalo era copiado para o backup e então
+sobrescrito pela escrita, com a operação retornando `ok`. Meu teste inseria o
+intruso ANTES de `apply()` e por isso nunca tocou a janela real.
+
+Reproduzido com um hook em `_stage`; a correção põe a política no PLANO: quando
+a precondição registrou o alvo como AUSENTE, a publicação é criação exclusiva
+(`os.link`, atômica); quando o alvo existia, o fingerprint é reconferido
+imediatamente antes de publicar, e não só no começo da operação. Dois testes
+cobrem a janela — criação e atualização.
+
+**`preserve_existing_dir` estava global.** Eu o passei incondicionalmente em
+`_apply_actions`, mudando em silêncio a política de TODAS as capacidades que
+usam o núcleo: diretórios do SteamZero deixariam de ter o modo seguro
+normalizado. Agora é uma propriedade do plano (`foreign_dir`), declarada só por
+quem escreve em diretório de terceiro; o padrão restaura o comportamento
+histórico.
+
+**O caminho do Flatpak não era o que eu supunha.** Medi o pacote e executei o
+RetroArch uma vez (evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`):
+
+- o config que ele cria declara `joypad_autoconfig_dir = "/app/share/libretro/
+  autoconfig"`, e `/app` **não existe no host** — é o mount do sandbox;
+- os perfis ficam em `<dir>/<input_joypad_driver>/` (`udev`, 420 arquivos); a
+  raiz tem ZERO. O código gravava na raiz, o que geraria arquivo nunca lido. O
+  driver é `input_joypad_driver`, não `input_driver` (que aqui é `x`);
+- `--appendconfig` funciona, mas `config_save_on_exit = "true"` PERSISTE o valor
+  no arquivo usado — aplicá-lo ao `retroarch.cfg` do usuário seria editá-lo
+  permanentemente, o que a AGENTS.md §5 proíbe.
+
+Portanto "abrir o RetroArch uma vez" **não** destrava a gravação, e eu estava
+errado ao pedir isso ao operador. O workstream volta a `active`: falta decidir e
+provar o mecanismo de integração. O código hoje degrada para `awaiting-emulator`
+dizendo que o diretório declarado é interno ao sandbox, e não tenta escrever.
+
+Artefatos do teste foram removidos; o `retroarch.cfg` criado permanece com o
+valor original do pacote. Nenhuma ação de host ou release, nenhum uso de
+`bigsudo` — nada aqui exigiu privilégio.
