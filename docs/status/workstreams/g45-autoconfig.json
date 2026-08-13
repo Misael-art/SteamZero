@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-G45-AUTOCONFIG",
+  "item": "SZ-EMULATION-M10",
+  "branch": "codex/g45-autoconfig-gerenciado",
+  "baseRef": "e71d9b4",
+  "owner": "g45-autoconfig",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "src/steamzero/adapters/input_devices.py",
+    "tests/unit/test_retroarch_autoconfig.py",
+    "tests/unit/test_input_devices.py"
+  ],
+  "sharedPaths": [
+    "src/steamzero/domain/retropad.py",
+    "src/steamzero/domain/input_profiles.py",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Resolver o indice fisico contra o autoconfig real do dispositivo e gravar arquivo gerenciado com marcador, sem tocar no retroarch.cfg.",
+  "updatedAt": "2026-08-12"
+}
