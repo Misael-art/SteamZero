@@ -1207,6 +1207,108 @@ def test_launch_argv_flatpak_standalone_from_platform_profile(monkeypatch, tmp_p
     assert argv == ["flatpak", "run", "--user", "net.pcsx2.PCSX2", "--fullscreen", str(rom)]
 
 
+def _retroarch_profile(adapter_id: str = "retroarch"):  # type: ignore[no-untyped-def]
+    from steamzero.domain.launch_profile import LaunchProfile
+
+    return LaunchProfile(
+        platform_id="switch",
+        adapter_id=adapter_id,
+        game_args=("{rom}",),
+    )
+
+
+def test_retroarch_launch_carries_the_controls_overlay(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """O caminho que o usuario realmente percorre: "Abrir emulador" / "Jogar".
+
+    A injecao do `--appendconfig` tinha sido posta so no `ComponentLifecycle`,
+    mas a tela de emulacao monta o argv por aqui. O RetroArch subia sem o perfil
+    de controle — a integracao provada no A/B nao chegava ao botao real.
+    """
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.nsp"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile(),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert argv[:4] == ["flatpak", "run", "--user", "org.libretro.RetroArch"]
+    assert argv[4:6] == ["--appendconfig", str(managed.overlay_path)]
+    # A ROM continua sendo o ultimo argumento, atomico.
+    assert argv[-1] == str(rom)
+
+
+def test_a_libretro_core_launch_also_carries_the_overlay(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Core libretro roda DENTRO do RetroArch, entao precisa do mesmo overlay.
+
+    Chavear pelo id do adapter deixaria os jogos de fora; a chave e a ref.
+    """
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.sfc"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile("libretro-mesen"),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert "--appendconfig" in argv
+
+
+def test_a_non_retroarch_emulator_is_launched_unchanged(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.iso"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile("pcsx2"),
+        source_type="flatpak",
+        flatpak_ref="net.pcsx2.PCSX2",
+        payload=None,
+        rom=rom,
+    )
+
+    assert "--appendconfig" not in argv
+
+
+def test_without_an_applied_profile_the_launch_is_untouched(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Sem overlay, nao se passa `--appendconfig` para arquivo inexistente."""
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "vazio")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.nsp"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile(),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert argv == ["flatpak", "run", "--user", "org.libretro.RetroArch", str(rom)]
+
+
 def test_launch_core_missing_refuses_jogar_before_spawn(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
     from steamzero.domain.launch_profile import LaunchProfile

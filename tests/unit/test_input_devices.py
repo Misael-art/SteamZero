@@ -616,6 +616,88 @@ class TestTheAppendconfigIntegration:
         assert managed.launch_arguments() == ("--appendconfig", str(managed.overlay_path))
 
 
+class TestTheWindowsBetweenCheckAndWrite:
+    """As tres janelas em que um arquivo estrangeiro era destruido.
+
+    Todas foram REPRODUZIDAS antes de corrigir. O padrao que as escondia era
+    sempre o mesmo: o teste inseria o intruso num ponto onde a verificacao ainda
+    o pegava, em vez de dentro da janela real.
+    """
+
+    def _args(self):  # type: ignore[no-untyped-def]
+        return {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+
+    def test_an_update_does_not_overwrite_a_file_swapped_before_the_rename(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """Janela entre conferir o fingerprint e o `os.replace`.
+
+        Fechada com troca ATOMICA (`RENAME_EXCHANGE`): o conteudo que saiu e
+        conferido depois e, se nao for o esperado, a troca e desfeita.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        _apply(controls)
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        plan = controls.plan(
+            bindings=[{"action": "game.primary", "input": "button.west"}],
+            profile_id="mega-drive-3-button",
+            profile_revision=1,
+            orientation="landscape",
+        )
+        intruso = 'input_device = "trocado na janela"\n'
+
+        from steamzero.core import fs
+
+        original = fs.write_atomic
+
+        def troca_e_publica(path, data, **kwargs):  # type: ignore[no-untyped-def]
+            if path.name == MANAGED_BASENAME:
+                alvo.write_text(intruso, encoding="utf-8")
+            return original(path, data, **kwargs)
+
+        monkeypatch.setattr(fs, "write_atomic", troca_e_publica)
+
+        with pytest.raises(SteamZeroError):
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+        monkeypatch.undo()
+        assert alvo.read_text(encoding="utf-8") == intruso
+
+    def test_rollback_does_not_delete_a_file_that_appeared_after_the_backup(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """O guard do `delete` existia e nunca era consultado.
+
+        Para acoes `write` o `expectHash` saia `None`, e a condicao
+        `expected is not None` pulava a conferencia inteira: o rollback removia
+        o que estivesse la.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        plan = controls.plan(**self._args())
+        intruso = 'input_device = "apareceu apos o backup"\n'
+
+        original = transaction._backup
+
+        def backup_e_intruso(*args: object, **kwargs: object) -> object:
+            resultado = original(*args, **kwargs)  # type: ignore[arg-type]
+            alvo.parent.mkdir(parents=True, exist_ok=True)
+            alvo.write_text(intruso, encoding="utf-8")
+            return resultado
+
+        monkeypatch.setattr(transaction, "_backup", backup_e_intruso)
+
+        with pytest.raises(SteamZeroError):
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+        assert alvo.read_text(encoding="utf-8") == intruso
+
+
 class TestRollbackIsRealNotDeclared:
     def test_rolling_back_removes_the_file_it_created(self, tmp_path) -> None:
         """`G-FULL` precisa ser verdade, não rótulo.

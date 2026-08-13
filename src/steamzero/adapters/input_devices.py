@@ -444,6 +444,38 @@ class ManagedRetroArchConfig:
         return ("--appendconfig", str(self.overlay_path))
 
 
+#: Ref Flatpak do RetroArch. A chave é a REF, não o id do adapter: um core
+#: libretro é carregado DENTRO do RetroArch, então `launch_game` de um core
+#: precisa do mesmo overlay que `launch_emulator` do RetroArch. Chavear pelo id
+#: do adapter deixaria os jogos de fora — que foi o defeito original.
+RETROARCH_REF = "org.libretro.RetroArch"
+
+
+def retroarch_launch_arguments(
+    flatpak_ref: str | None, managed: ManagedRetroArchConfig | None = None
+) -> tuple[str, ...]:
+    """Argumentos de app a acrescentar quando quem sobe é o RetroArch.
+
+    Ponto ÚNICO de composição, usado tanto pelo `ComponentLifecycle` quanto pelo
+    `EmulationController`. Antes cada um montava o seu argv, e só o primeiro
+    recebeu o overlay: "Abrir emulador" e "Jogar" — os botões que o usuário
+    realmente aperta — lançavam o RetroArch sem o perfil.
+
+    Devolve vazio quando o overlay não existe: enquanto ninguém aplicou um
+    perfil, o lançamento continua idêntico ao que sempre foi, e não se passa
+    `--appendconfig` apontando para arquivo inexistente.
+    """
+    if not flatpak_ref or RETROARCH_REF not in flatpak_ref:
+        return ()
+    config = managed if managed is not None else managed_config()
+    try:
+        if not config.overlay_path.is_file():
+            return ()
+    except OSError:
+        return ()
+    return config.launch_arguments()
+
+
 def managed_config(home: Path | None = None) -> ManagedRetroArchConfig:
     """Config gerenciado, com o driver de joypad LIDO do RetroArch do usuário.
 

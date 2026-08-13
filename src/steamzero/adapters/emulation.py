@@ -1053,7 +1053,11 @@ class EmulationController:
                 raise SteamZeroError(
                     "E-API-SCHEMA", detail=f"perfil Flatpak sem ref: {profile.adapter_id}"
                 )
-            return ["flatpak", "run", "--user", flatpak_ref, *args]
+            # Mesmo ponto de composição que o lifecycle usa. Sem isto, "Abrir
+            # emulador" e "Jogar" subiriam o RetroArch sem o perfil de controle
+            # — que é o caminho que o usuário realmente percorre.
+            overlay = input_devices.retroarch_launch_arguments(flatpak_ref)
+            return ["flatpak", "run", "--user", flatpak_ref, *overlay, *args]
         if payload is None:
             raise SteamZeroError(
                 "E-API-SCHEMA", detail=f"fonte portátil sem payload: {profile.adapter_id}"
