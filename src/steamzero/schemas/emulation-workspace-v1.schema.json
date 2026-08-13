@@ -773,7 +773,8 @@
             "active",
             "available",
             "activateActions",
-            "clearAction"
+            "clearAction",
+            "autoconfig"
           ],
           "properties": {
             "state": {
@@ -855,6 +856,184 @@
                     "reason",
                     "requiresConfirmation"
                   ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "autoconfig": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "state",
+                    "statusLabel",
+                    "detail",
+                    "device",
+                    "deviceReason",
+                    "autoconfigCandidates",
+                    "path",
+                    "directoryDeclared",
+                    "resolvedBindings",
+                    "unresolvedBindings",
+                    "withoutRetropadEquivalent"
+                  ],
+                  "properties": {
+                    "state": {
+                      "enum": [
+                        "not-configured",
+                        "awaiting-device",
+                        "awaiting-emulator",
+                        "pending-write",
+                        "partial",
+                        "applied",
+                        "write-failed",
+                        "conflict"
+                      ]
+                    },
+                    "statusLabel": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "detail": {
+                      "type": "string"
+                    },
+                    "device": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "name",
+                            "vendorId",
+                            "productId"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "vendorId": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "productId": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "deviceReason": {
+                      "enum": [
+                        "matched",
+                        "no-device",
+                        "ambiguous-device",
+                        "no-autoconfig",
+                        "ambiguous-autoconfig"
+                      ]
+                    },
+                    "autoconfigCandidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "directoryDeclared": {
+                      "type": "boolean"
+                    },
+                    "resolvedBindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "action",
+                          "input",
+                          "key",
+                          "value"
+                        ],
+                        "properties": {
+                          "action": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "input": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "key": {
+                            "type": "string",
+                            "pattern": "^input_[a-z0-9_]+_(btn|axis)$"
+                          },
+                          "value": {
+                            "type": "string",
+                            "pattern": "^(?:[+-]?[0-9]+|h[0-9]+(?:up|down|left|right))$"
+                          }
+                        }
+                      }
+                    },
+                    "unresolvedBindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "action",
+                          "input",
+                          "reason",
+                          "reasonLabel"
+                        ],
+                        "properties": {
+                          "action": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "input": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "reason": {
+                            "enum": [
+                              "entrada-sem-slot-retropad",
+                              "dispositivo-nao-declara",
+                              "dispositivo-declara-sem-atribuicao",
+                              "dispositivo-declara-btn-e-axis",
+                              "valor-do-dispositivo-ilegivel"
+                            ]
+                          },
+                          "reasonLabel": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "withoutRetropadEquivalent": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
                 },
                 {
                   "type": "null"
