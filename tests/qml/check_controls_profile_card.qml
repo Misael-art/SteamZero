@@ -166,6 +166,10 @@ Window {
                   "perfil aplicado é o ÚNICO estado que pode ficar verde")
             check(card.applyAction === null,
                   "já aplicado não pode oferecer uma confirmação que não muda nada")
+            // Alcance: o perfil vale via --appendconfig no lançamento do
+            // SteamZero. Prometer que vale sempre seria falso.
+            check(String(card.honestMessage()).indexOf("pelo SteamZero") >= 0,
+                  "aplicado precisa dizer em que condição vale")
 
             // Sem perfil ativo, o cartão não inventa estado.
             card.profile = harness.perfil(null, {})
