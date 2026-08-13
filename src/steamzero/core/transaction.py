@@ -139,11 +139,6 @@ class Plan:
     preconditions: list[Precondition]
     preview: str
     schema_version: int = 1
-    #: O alvo mora em diretório de TERCEIRO (ex.: config do RetroArch). Só então
-    #: um diretório preexistente é poupado do `chmod` de `ensure_dir`. O padrão
-    #: preserva o comportamento histórico: na árvore do SteamZero, da qual somos
-    #: donos, o modo seguro continua sendo normalizado.
-    foreign_dir: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -159,7 +154,6 @@ class Plan:
             "requirements": self.requirements,
             "actions": [a.to_dict() for a in self.actions],
             "preconditions": [p.to_dict() for p in self.preconditions],
-            "foreignDir": self.foreign_dir,
             "preview": self.preview,
         }
 
@@ -177,7 +171,6 @@ class Plan:
             requirements=d["requirements"],
             actions=[FileAction.from_dict(a) for a in d["actions"]],
             preconditions=[Precondition.from_dict(p) for p in d["preconditions"]],
-            foreign_dir=bool(d.get("foreignDir", False)),
             preview=d["preview"],
             schema_version=d.get("schemaVersion", 1),
         )
@@ -248,7 +241,6 @@ def plan_write_files(
     removals: set[Path] | None = None,
     skip_unchanged: bool = False,
     requirements_extra: dict[str, Any] | None = None,
-    foreign_dir: bool = False,
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -320,7 +312,6 @@ def plan_write_files(
         actions=actions,
         preconditions=preconditions,
         preview=_render_preview(kind, actions, "G-FULL"),
-        foreign_dir=foreign_dir,
     )
     _save_plan(plan)
     return plan
@@ -889,7 +880,7 @@ def _apply_actions(
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"cópia mudou durante apply: {a.source}"
                 )
-            fs.copy_file_atomic(staged, target, preserve_existing_dir=plan.foreign_dir)
+            fs.copy_file_atomic(staged, target)
         elif a.kind == "symlink":
             if a.source is None:  # defesa em profundidade; validado antes
                 raise SteamZeroError("E-TX-STALE-PLAN", detail="symlink sem origem")
@@ -923,12 +914,7 @@ def _apply_actions(
                     "E-TX-STALE-PLAN",
                     detail=f"alvo mudou durante apply: {a.target}",
                 )
-            fs.write_atomic(
-                target,
-                a.new_content(),
-                preserve_existing_dir=plan.foreign_dir,
-                must_not_exist=expected is None,
-            )
+            fs.write_atomic(target, a.new_content(), must_not_exist=expected is None)
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -1087,7 +1073,7 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
             operation_id=operation_id,
             detail=f"backup adulterado para {target}",
         )
-    fs.copy_file_atomic(backup_path, target, preserve_existing_dir=True)
+    fs.copy_file_atomic(backup_path, target)
     if fs.hash_file(target) != undo["expectHash"]:  # RB-4: rollback verificado
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
