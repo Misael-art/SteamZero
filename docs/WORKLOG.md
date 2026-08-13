@@ -6502,3 +6502,56 @@ O que continua exigindo o operador não mudou: abrir o RetroArch uma vez para qu
 ele declare `joypad_autoconfig_dir`, e decidir a fonte de índice para pads sem
 autoconfig empacotado — o pad interno deste Deck é um deles. Nenhuma ação de
 host ou release foi executada nesta rodada.
+
+### 2026-08-13 — G45, terceira rodada: o efeito passa a ser a transação
+
+A segunda rodada apanhou em quatro P1 com uma causa comum: eu tinha pendurado um
+efeito colateral num plano VAZIO, usando o núcleo transacional só como portão de
+confirmação. Cada defeito era sintoma dessa forma errada, e todos somem quando o
+CONTEÚDO vai para dentro do plano.
+
+**A corrida estava invertida, não apenas aberta.** O writer escolhia entre
+criação exclusiva e `os.replace` reconsultando o alvo imediatamente antes de
+gravar. Se um arquivo estrangeiro aparecesse na janela, a checagem passava a
+dizer "foreign", o que DESLIGAVA a exclusividade e caía no `os.replace` —
+sobrescrevendo justamente o arquivo que devia proteger. O teste que eu tinha
+escrito só exercitava a primitiva `must_not_exist=True`, nunca a sequência
+integrada; por isso passou verde sobre um defeito. Hoje a precondição do plano
+guarda o fingerprint do destino e `apply` a revalida, e o teste é a sequência
+inteira.
+
+**`write-failed` era ficção.** A operação era commitada antes do writer rodar, o
+resultado era descartado e as exceções engolidas; depois da falha, a leitura
+seguinte via arquivo ausente e voltava a `pending-write`. O estado saiu do
+vocabulário: falha levanta e reverte.
+
+**O rollback era falso.** Plano sem ações ⇒ desfazer marcava a operação como
+revertida e deixava o autoconfig no disco, enquanto o histórico anunciava
+`G-FULL`. Agora `G-FULL` é verdade, com teste: desfazer remove o arquivo criado
+e restaura o conteúdo anterior numa atualização. O parâmetro
+`rollback_guarantee` que eu havia acrescentado a `plan_write_files` foi
+revertido — ele só servia para declarar um `G-NONE` que o histórico exibiria
+como `G-FULL`.
+
+**Perfil por jogo aplicaria o da plataforma.** O cartão mostrava o perfil
+efetivo do jogo e a gravação usava o da plataforma. A raiz é de mecanismo: o
+autoconfig do RetroArch é por DISPOSITIVO e não sabe qual jogo está rodando;
+dois jogos com perfis diferentes disputariam o mesmo arquivo. Perfil por jogo
+exigiria remap por jogo, que não está implementado. O estado
+`unsupported-scope` diz isso e a ação não é oferecida — em vez de gravar
+silenciosamente outro perfil.
+
+O que viabilizou usar o núcleo: `write_atomic` e `copy_file_atomic` ganharam
+`preserve_existing_dir`, usado ao publicar ALVOS DE PLANO. O `chmod`
+incondicional de `ensure_dir` teria mudado a permissão da configuração do
+RetroArch ao gravar um perfil. Pai ausente segue sendo criado com o nosso modo;
+pai preexistente sai intocado. Diretório declarado mas inexistente virou
+`awaiting-emulator`, porque construir dentro da configuração alheia continua
+fora de escopo.
+
+Suíte: 4527 passed, com as mesmas duas reprovações pré-existentes deste worktree
+(arquivos gitignored perdidos). Nenhuma ação de host ou release.
+
+Segue exigindo o operador: abrir o RetroArch uma vez para que ele declare
+`joypad_autoconfig_dir`, e um controle externo com autoconfig conhecido para o
+teste físico — o pad interno deste Deck continua em `no-autoconfig`.
