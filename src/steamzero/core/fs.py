@@ -206,20 +206,6 @@ def return_custody(custody: Path, path: Path) -> None:
         ) from exc
 
 
-def _rename_exchange(first: Path, second: Path) -> bool:
-    """Troca dois caminhos ATOMICAMENTE (``renameat2`` + ``RENAME_EXCHANGE``).
-
-    Devolve ``False`` quando o kernel ou o filesystem não suportam. É o único
-    jeito de publicar sobre um arquivo existente sem janela: verificar antes do
-    ``rename`` sempre deixa um intervalo em que o alvo pode ser trocado, e é
-    dentro dele que um arquivo alheio seria destruído.
-    """
-    import ctypes
-    import ctypes.util
-
-    return _renameat2(first, second, _RENAME_EXCHANGE)
-
-
 def write_atomic(
     path: Path,
     data: bytes,
