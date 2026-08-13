@@ -19,6 +19,10 @@ import QtQuick.Layouts
 Item {
     id: root
 
+    // Emitido com a ação de aplicar o autoconfig. O cartão não grava nada por
+    // conta própria: quem executa é a fachada, atrás de confirmação.
+    signal applyAutoconfigRequested(var action)
+
     // O bloco `controlsProfile` do jogo. `autoconfig` pode ser nulo: sem perfil
     // ativo não há nada a resolver, e inventar um estado seria pior que a
     // ausência.
@@ -33,6 +37,9 @@ Item {
     required property color redColor
 
     readonly property var autoconfig: profile && profile.autoconfig ? profile.autoconfig : null
+    readonly property var applyAction: profile && profile.applyAutoconfigAction
+        ? profile.applyAutoconfigAction
+        : null
     readonly property var active: profile && profile.active ? profile.active : null
     readonly property var resolvedBindings: autoconfig ? (autoconfig.resolvedBindings || []) : []
     readonly property var unresolvedBindings: autoconfig ? (autoconfig.unresolvedBindings || []) : []
@@ -173,6 +180,21 @@ Item {
                 color: root.mutedColor
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap
+            }
+
+            // O botão só existe quando há algo honesto a gravar. Oferecê-lo em
+            // `awaiting-device` ou `conflict` prometeria uma ação que não pode
+            // resultar em perfil valendo.
+            Button {
+                objectName: "controlsProfileApplyButton"
+                visible: root.applyAction !== null
+                enabled: root.applyAction ? root.applyAction.enabled !== false : false
+                text: root.applyAction
+                    ? String(root.applyAction.label || "")
+                    : qsTr("Aplicar perfil no RetroArch")
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+                onClicked: root.applyAutoconfigRequested(root.applyAction)
             }
 
             Text {

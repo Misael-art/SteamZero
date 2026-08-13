@@ -3868,6 +3868,10 @@ Item {
                                 && page.selectedGame.controlsProfile !== null
                             Layout.fillWidth: true
                             profile: page.selectedGame.controlsProfile || null
+                            onApplyAutoconfigRequested: function (action) {
+                                if (action)
+                                    page.actionRequested(action)
+                            }
                             surfaceColor: page.backgroundColor
                             raisedColor: page.raisedColor
                             borderColor: page.borderColor
