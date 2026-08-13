@@ -117,7 +117,6 @@ def write_atomic(
     *,
     mode: int = _FILE_MODE,
     fsync_dir: bool = True,
-    preserve_existing_dir: bool = False,
     must_not_exist: bool = False,
 ) -> None:
     """Escreve ``data`` em ``path`` atomicamente (tmp+fsync+rename), 0600.
@@ -125,25 +124,13 @@ def write_atomic(
     Em crash no meio, ``path`` fica intacto (estado antigo ou ausente); o tmp
     órfão é removível por ``sweep_orphan_temps``. Base de AC-TX-02 / FI-10.
 
-    ``ensure_dir`` cria os pais E aplica ``chmod`` incondicional neles. Isso é
-    correto na árvore de estado do SteamZero, da qual somos donos, e errado
-    quando o alvo mora na configuração de um terceiro (ex.: os perfis de
-    controle do RetroArch): gravar um arquivo passaria a mudar a permissão de um
-    diretório alheio como efeito colateral invisível, que a AGENTS.md §5 proíbe.
-    Com ``preserve_existing_dir``, um pai que JÁ EXISTE sai intocado; um pai
-    ausente continua sendo criado com o nosso modo, porque aí o diretório é
-    nosso.
-
     Com ``must_not_exist``, a publicação usa ``os.link`` e falha com
     ``FileExistsError`` se o destino existir. É a única forma ATÔMICA de dizer
     "crie, mas não sobrescreva": qualquer verificação anterior ao ``rename``
     deixa uma janela, e é dentro dela que um arquivo alheio seria destruído.
     """
     parent = path.parent
-    if preserve_existing_dir and parent.is_dir():
-        pass
-    else:
-        ensure_dir(parent)
+    ensure_dir(parent)
     tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
@@ -250,20 +237,14 @@ def move_tree(src: Path, dest: Path) -> None:
         remove_tree(src)
 
 
-def copy_file_atomic(
-    src: Path, dest: Path, *, mode: int = _FILE_MODE, preserve_existing_dir: bool = False
-) -> None:
+def copy_file_atomic(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
     """Copia um arquivo em streaming e publica ``dest`` atomicamente.
 
     O temporário vive no diretório de destino, portanto o ``replace`` final é
     atômico. A função não carrega ROMs/imagens grandes inteiras na memória.
 
-    ``preserve_existing_dir`` tem o mesmo papel que em ``write_atomic``: publicar
-    num diretório de terceiro que já existe não pode mudar a permissão dele.
     """
-    parent = (
-        dest.parent if preserve_existing_dir and dest.parent.is_dir() else ensure_dir(dest.parent)
-    )
+    parent = ensure_dir(dest.parent)
     tmp = parent / f".{dest.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
     dst_fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
     try:
