@@ -16,6 +16,7 @@ Nenhum outro módulo pode chamar ``open(...,'w')``, ``os.rename/replace``,
 from __future__ import annotations
 
 import contextlib
+import errno
 import os
 import secrets
 import shutil
@@ -169,8 +170,19 @@ def take_custody(path: Path, holding: Path) -> Path | None:
     """
     ensure_dir(holding)
     destino = holding / f"custody.{os.getpid()}.{secrets.token_hex(8)}"
+    return take_custody_named(path, destino)
+
+
+def take_custody_named(path: Path, custody: Path) -> Path | None:
+    """Variante determinística de ``take_custody`` (nome de custódia explícito).
+
+    O nome determinístico é o que torna a custódia RECUPERÁVEL: o journal grava
+    a intenção com o caminho exato antes do rename, e um recovery posterior
+    encontra a entrada pelo mesmo caminho. ``None`` se ``path`` não existia.
+    """
+    ensure_dir(custody.parent)
     try:
-        if not _rename_noreplace(path, destino):
+        if not _rename_noreplace(path, custody):
             raise SteamZeroError(
                 "E-TX-STALE-PLAN",
                 detail=(
@@ -180,7 +192,28 @@ def take_custody(path: Path, holding: Path) -> Path | None:
             )
     except FileNotFoundError:
         return None
-    return destino
+    except OSError as exc:
+        if exc.errno == errno.EXDEV:
+            raise SteamZeroError(
+                "E-TX-CUSTODY-CROSS-FS",
+                detail=(
+                    f"alvo {path} está em outro filesystem que a área de custódia "
+                    f"{custody.parent}; tomada atômica impossível"
+                ),
+            ) from exc
+        raise
+    return custody
+
+
+def release_custody(custody: Path) -> None:
+    """Remove uma entrada sob custódia (já verificada) e persiste o diretório."""
+    _silent_unlink(custody)
+    _fsync_dir(custody.parent)
+
+
+def discard_tmp(tmp: Path) -> None:
+    """Remove um temporário sem persistir (limpeza de falha)."""
+    _silent_unlink(tmp)
 
 
 def return_custody(custody: Path, path: Path) -> None:
@@ -196,6 +229,7 @@ def return_custody(custody: Path, path: Path) -> None:
                 "E-TX-ROLLBACK-FAILED",
                 detail=f"não foi possível devolver {custody} para {path}",
             )
+        _fsync_dir(path.parent)
     except FileExistsError as exc:
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
@@ -204,6 +238,123 @@ def return_custody(custody: Path, path: Path) -> None:
                 f"permanece preservado em {custody}"
             ),
         ) from exc
+    except OSError as exc:
+        if exc.errno == errno.EXDEV:
+            raise SteamZeroError(
+                "E-TX-CUSTODY-CROSS-FS",
+                detail=f"devolução da custódia {custody} cruzaria filesystems até {path}",
+            ) from exc
+        raise
+
+
+def write_tmp(parent: Path, data: bytes, *, mode: int = _FILE_MODE) -> Path:
+    """Cria um temporário no diretório do alvo com conteúdo e fsync.
+
+    O temporário vive no diretório do alvo de propósito: publicá-lo depois por
+    ``publish_link`` exige o mesmo filesystem, e qualquer fallback que cruze
+    filesystems reintroduziria a janela que a custódia fecha.
+    """
+    ensure_dir(parent)
+    tmp = parent / f".{secrets.token_hex(6)}.tmp.{os.getpid()}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        _write_all(fd, data)
+        os.fsync(fd)
+    except BaseException:
+        os.close(fd)
+        _silent_unlink(tmp)
+        raise
+    else:
+        os.close(fd)
+    return tmp
+
+
+def publish_link(tmp: Path, path: Path) -> None:
+    """Publica ``tmp`` em ``path`` por link exclusivo — nunca sobrescreve.
+
+    ``os.link`` cria apenas se o destino não existir (pelo menos atomically
+    quanto o `rename`), então não há janela entre conferir e publicar. O
+    temporário é removido depois; o diretório é persistido.
+    """
+    os.link(tmp, path)
+    _silent_unlink(tmp)
+    _fsync_dir(path.parent)
+
+
+def publish_symlink(tmp: Path, path: Path) -> None:
+    """Publica um symlink por link exclusivo do próprio symlink.
+
+    O temporário é um symlink e o hard link preserva a entrada sem seguir o
+    alvo (``follow_symlinks=False``): o destino só é criado se estiver vazio.
+    """
+    os.link(tmp, path, follow_symlinks=False)
+    _silent_unlink(tmp)
+    _fsync_dir(path.parent)
+
+
+def make_symlink_tmp(parent: Path, name: str, source: Path) -> Path:
+    """Cria um symlink temporário no diretório do destino (absolute realpath).
+
+    Devolve o caminho do temporário; ``publish_symlink`` o publica e o remove.
+    """
+    ensure_dir(parent)
+    tmp = parent / f".{name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    os.symlink(str(Path(os.path.realpath(source))), tmp)
+    return tmp
+
+
+def copy_exclusive(src: Path, dest: Path, *, mode: int = _FILE_MODE) -> None:
+    """Copia ``src`` para ``dest`` publicando por link exclusivo (sem janela).
+
+    Usada quando o destino precisa ser criado SEM substituir o que aparecer:
+    o temporário vive no diretório do destino e a publicação é ``publish_link``.
+    """
+    tmp = write_tmp(dest.parent, b"", mode=mode)
+    try:
+        src_fd = os.open(src, os.O_RDONLY)
+        try:
+            dst_fd = os.open(tmp, os.O_WRONLY | os.O_APPEND)
+            try:
+                while chunk := os.read(src_fd, _CHUNK):
+                    _write_all(dst_fd, chunk)
+                os.fsync(dst_fd)
+            finally:
+                os.close(dst_fd)
+        finally:
+            os.close(src_fd)
+    except BaseException:
+        _silent_unlink(tmp)
+        raise
+    publish_link(tmp, dest)
+
+
+def move_file_noreplace(src: Path, dest: Path) -> None:
+    """Move ``src`` para ``dest`` SEM substituir o que estiver no destino.
+
+    No mesmo filesystem usa ``renameat2(RENAME_NOREPLACE)``. Entre filesystems
+    (ou em FS sem a flag) faz cópia verificada por link exclusivo antes de
+    remover a origem — a remoção da origem só acontece depois que o destino já
+    é uma cópia íntegra e publicada.
+    """
+    ensure_dir(dest.parent)
+    if dest.exists() or dest.is_symlink():
+        raise FileExistsError(f"destino já existe: {dest}")
+    try:
+        if _rename_noreplace(src, dest):
+            _fsync_dir(dest.parent)
+            if src.parent != dest.parent:
+                _fsync_dir(src.parent)
+            return
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN",
+            detail=f"filesystem sem rename sem substituição para mover {src}",
+        )
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+    copy_exclusive(src, dest)
+    _silent_unlink(src)
+    _fsync_dir(src.parent)
 
 
 def write_atomic(

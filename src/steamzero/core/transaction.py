@@ -862,10 +862,428 @@ def _expected_fingerprints(plan: Plan) -> dict[str, str | None]:
     return {p.target: p.fingerprint for p in plan.preconditions}
 
 
+# ===========================================================================
+# Custódia durável (FI-06)
+#
+# As primitivas abaixo embrulham a custódia com registros de journal e pontos
+# de crash determinísticos. A sequência é sempre:
+#
+#     custody.intent  (fsync) -> tomar a entrada (rename atômico)
+#     custody.taken   (fsync) -> verificar -> publicar/remover/restaurar
+#     custody.released(fsync) -> liberar a entrada sob custódia
+#
+# Um crash entre quaisquer dois passos deixa registros pendentes que o
+# recovery resolve (reconcile) ANTES de qualquer decisão — inclusive antes de
+# declarar kept para uma operação commitada.
+# ===========================================================================
+
+
+def _custody_dest(holding: Path, action_id: str) -> Path:
+    return holding / f"custody.{action_id}"
+
+
+def _custody_identity(custody: Path) -> str:
+    """Identidade da entrada sob custódia: hash (regular) ou readlink (symlink)."""
+    if custody.is_symlink():
+        return f"symlink:{os.readlink(custody)}"
+    return fs.hash_file(custody)
+
+
+def _accepted_identities(undo: dict[str, Any]) -> set[str]:
+    """Identidades que o rollback reconhece como legítimas para a ação."""
+    aceitos: set[str] = set()
+    for key in ("expectHash", "appliedHash", "appliedFingerprint"):
+        valor = undo.get(key)
+        if valor:
+            aceitos.add(str(valor))
+    if undo.get("op") == "restore-symlink":
+        origem = undo.get("source")
+        if origem:
+            aceitos.add(f"symlink:{origem}")
+    return aceitos
+
+
+def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None:
+    """Resolve toda custódia pendente da operação; idempotente e não destrutivo.
+
+    Roda no início de qualquer rollback. Cada ``custody.taken`` sem o
+    ``custody.released`` correspondente é fechado de uma das três formas:
+
+    - devolução: a entrada volta ao lugar (alvo vago) — o rollback continua
+      sobre o estado original;
+    - conclusão: a entrada é a que o undo reconhece (hash/readlink) e a ação
+      em andamento era legítima — libera a custódia;
+    - falha FECHADA: a entrada não é reconhecida e o alvo está ocupado —
+      nada é destruído, a custódia permanece e o rollback falha com o caminho
+      preservado. Nunca se declara sucesso nesse caso.
+    """
+    undos = {r["actionId"]: r.get("undo", {}) for r in records if r.get("type") == "action.intent"}
+    intents = {r["actionId"]: r for r in records if r.get("type") == "custody.intent"}
+    taken = [r for r in records if r.get("type") == "custody.taken"]
+    released = {r.get("actionId") for r in records if r.get("type") == "custody.released"}
+    pendentes = [r for r in taken if r["actionId"] not in released]
+    restos = [
+        r
+        for r in records
+        if r.get("type") == "custody.released"
+        and not r.get("returned")
+        and r.get("custody")
+        and (Path(r["custody"]).exists() or Path(r["custody"]).is_symlink())
+    ]
+    if not pendentes and not restos:
+        return
+
+    def falha(detalhe: str) -> None:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            operation_id=operation_id,
+            detail=detalhe,
+        )
+
+    with journal.Journal(operation_id) as jrnl:
+        for rec in pendentes:
+            action_id = rec["actionId"]
+            custody = Path(rec["custody"])
+            target = Path(rec["target"])
+            if not custody.exists() and not custody.is_symlink():
+                jrnl.custody_released(
+                    action_id, custody=str(custody), returned=False, reason="absent"
+                )
+                continue
+            intent = intents.get(action_id) or {}
+            purpose = intent.get("purpose", "publish")
+            undo = undos.get(action_id) or {}
+            ocupado = target.exists() or target.is_symlink()
+            if purpose == "publish":
+                if not ocupado:
+                    fs.return_custody(custody, target)
+                    jrnl.custody_released(
+                        action_id, custody=str(custody), returned=True, reason="returned"
+                    )
+                elif _custody_identity(custody) in _accepted_identities(undo):
+                    fs.release_custody(custody)
+                    jrnl.custody_released(
+                        action_id, custody=str(custody), returned=False, reason="done"
+                    )
+                else:
+                    falha(f"alvo reocupado e custódia divergente do backup: {target}")
+            elif purpose == "remove":
+                expected = undo.get("expectHash")
+                if expected is None or _custody_identity(custody) == str(expected):
+                    fs.release_custody(custody)
+                    jrnl.custody_released(
+                        action_id, custody=str(custody), returned=False, reason="done"
+                    )
+                else:
+                    falha(f"custódia de remoção divergente: {custody}")
+            else:  # restore
+                if not ocupado:
+                    fs.return_custody(custody, target)
+                    jrnl.custody_released(
+                        action_id, custody=str(custody), returned=True, reason="returned"
+                    )
+                elif _custody_identity(custody) in _accepted_identities(undo):
+                    fs.release_custody(custody)
+                    jrnl.custody_released(
+                        action_id, custody=str(custody), returned=False, reason="done"
+                    )
+                else:
+                    falha(f"alvo do restore reocupado e custódia divergente: {target}")
+        for rec in restos:
+            action_id = rec["actionId"]
+            custody = Path(rec["custody"])
+            if not custody.exists() and not custody.is_symlink():
+                continue
+            undo = undos.get(action_id) or {}
+            if _custody_identity(custody) in _accepted_identities(undo):
+                fs.release_custody(custody)
+            else:
+                falha(f"custódia liberada reapareceu divergente: {custody}")
+
+
+def _has_rollback_evidence(records: list[dict[str, Any]]) -> bool:
+    """True se há trabalho de rollback interrompido (mesmo com COMMIT no journal).
+
+    Uma operação commitada com custódia pendente, restos de liberação ou
+    registros de propósito remove/restore NÃO pode ser declarada kept: algo foi
+    retirado do lugar e o recovery precisa terminar o trabalho antes de decidir.
+    """
+    taken = [r for r in records if r.get("type") == "custody.taken"]
+    released = {r.get("actionId") for r in records if r.get("type") == "custody.released"}
+    if any(r["actionId"] not in released for r in taken):
+        return True
+    for r in records:
+        if r.get("type") == "custody.released" and not r.get("returned"):
+            cust = r.get("custody")
+            if cust and (Path(cust).exists() or Path(cust).is_symlink()):
+                return True
+        if r.get("type") == "custody.intent" and r.get("purpose") in {"remove", "restore"}:
+            return True
+    return False
+
+
+def _publish_verified_tx(
+    jrnl: journal.Journal,
+    action_id: str,
+    path: Path,
+    content: bytes,
+    expect_hash: str,
+    holding: Path,
+) -> None:
+    """Publica sobre alvo existente com custódia registrada no journal.
+
+    O temporário só é criado DEPOIS da tomada da custódia: um crash nos pontos
+    de custódia não deixa temporário órfão no diretório do alvo.
+    """
+    custody_dest = _custody_dest(holding, action_id)
+    jrnl.custody_intent(
+        action_id,
+        target=str(path),
+        custody=str(custody_dest),
+        purpose="publish",
+        expected=expect_hash,
+    )
+    _maybe_crash("custody.intent")
+    custody = fs.take_custody_named(path, custody_dest)
+    if custody is None:
+        tmp = fs.write_tmp(path.parent, content)
+        try:
+            fs.publish_link(tmp, path)
+        except BaseException:
+            fs.discard_tmp(tmp)
+            raise
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        return
+    jrnl.custody_taken(action_id, target=str(path), custody=str(custody_dest))
+    _maybe_crash("custody.taken")
+    if fs.hash_file(custody) != expect_hash:
+        fs.return_custody(custody, path)
+        jrnl.custody_released(
+            action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+        )
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
+    tmp = fs.write_tmp(path.parent, content)
+    try:
+        fs.publish_link(tmp, path)
+    except OSError:
+        fs.discard_tmp(tmp)
+        fs.return_custody(custody, path)
+        jrnl.custody_released(
+            action_id, custody=str(custody_dest), returned=True, reason="occupied"
+        )
+        raise
+    _maybe_crash("custody.postlink")
+    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    fs.release_custody(custody)
+    _maybe_crash("custody.release")
+
+
+def _remove_verified_tx(
+    jrnl: journal.Journal,
+    action_id: str,
+    path: Path,
+    expected: str | None,
+    holding: Path,
+    *,
+    mismatch_code: str,
+) -> None:
+    """Remove ``path`` só se for o que esperávamos — com custódia registrada."""
+    custody_dest = _custody_dest(holding, action_id)
+    jrnl.custody_intent(
+        action_id,
+        target=str(path),
+        custody=str(custody_dest),
+        purpose="remove",
+        expected=expected,
+    )
+    _maybe_crash("custody.intent")
+    custody = fs.take_custody_named(path, custody_dest)
+    if custody is None:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        return
+    jrnl.custody_taken(action_id, target=str(path), custody=str(custody_dest))
+    _maybe_crash("custody.taken")
+    if expected is not None and _custody_identity(custody) != expected:
+        fs.return_custody(custody, path)
+        jrnl.custody_released(
+            action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+        )
+        raise SteamZeroError(
+            mismatch_code, detail=f"rollback recusou remover arquivo alterado: {path}"
+        )
+    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    fs.release_custody(custody)
+    _maybe_crash("custody.release")
+
+
+def _restore_verified_tx(
+    jrnl: journal.Journal,
+    action_id: str,
+    operation_id: str,
+    backup: Path,
+    target: Path,
+    accepted: set[str],
+    holding: Path,
+    undo: dict[str, Any],
+) -> None:
+    """Restaura ``backup`` sobre ``target`` sem sobrescrever o inesperado."""
+    custody_dest = _custody_dest(holding, action_id)
+    jrnl.custody_intent(
+        action_id,
+        target=str(target),
+        custody=str(custody_dest),
+        purpose="restore",
+        expected=undo.get("expectHash"),
+    )
+    _maybe_crash("custody.intent")
+    custody = fs.take_custody_named(target, custody_dest)
+    if custody is not None:
+        jrnl.custody_taken(action_id, target=str(target), custody=str(custody_dest))
+        _maybe_crash("custody.taken")
+        if _custody_identity(custody) not in accepted:
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+            )
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                operation_id=operation_id,
+                detail=f"rollback recusou sobrescrever arquivo alterado: {target}",
+            )
+    try:
+        fs.copy_exclusive(backup, target)
+    except BaseException:
+        if custody is not None:
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="error"
+            )
+        raise
+    _maybe_crash("custody.postlink")
+    if custody is not None:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+        fs.release_custody(custody)
+    else:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+    _maybe_crash("custody.release")
+
+
+def _publish_symlink_tx(
+    jrnl: journal.Journal,
+    action_id: str,
+    source: Path,
+    target: Path,
+    holding: Path,
+    *,
+    expected_readlink: str | None,
+    purpose: str,
+) -> None:
+    """Publica symlink por link exclusivo, com custódia registrada."""
+    custody_dest = _custody_dest(holding, action_id)
+    jrnl.custody_intent(
+        action_id,
+        target=str(target),
+        custody=str(custody_dest),
+        purpose=purpose,
+        expected=expected_readlink,
+    )
+    _maybe_crash("custody.intent")
+    custody = fs.take_custody_named(target, custody_dest)
+    if custody is not None:
+        jrnl.custody_taken(action_id, target=str(target), custody=str(custody_dest))
+        _maybe_crash("custody.taken")
+        if not custody.is_symlink():
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+            )
+            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}")
+        if expected_readlink is not None and os.readlink(custody) != expected_readlink:
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+            )
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"link mudou antes de publicar: {target}"
+            )
+    tmp = fs.make_symlink_tmp(target.parent, target.name, source)
+    try:
+        fs.publish_symlink(tmp, target)
+    except FileExistsError as exc:
+        fs.discard_tmp(tmp)
+        if custody is not None:
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="occupied"
+            )
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}"
+            ) from exc
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}"
+        ) from exc
+    except BaseException:
+        fs.discard_tmp(tmp)
+        if custody is not None:
+            fs.return_custody(custody, target)
+            jrnl.custody_released(
+                action_id, custody=str(custody_dest), returned=True, reason="error"
+            )
+        raise
+    _maybe_crash("custody.postlink")
+    if custody is not None:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+        fs.release_custody(custody)
+    else:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+    _maybe_crash("custody.release")
+
+
+def _publish_move_tx(
+    jrnl: journal.Journal,
+    action_id: str,
+    source: Path,
+    target: Path,
+    holding: Path,
+) -> None:
+    """Move ``source`` para ``target`` sem substituir nada que apareça."""
+    custody_dest = _custody_dest(holding, action_id)
+    jrnl.custody_intent(
+        action_id,
+        target=str(target),
+        custody=str(custody_dest),
+        purpose="publish",
+        expected=None,
+    )
+    _maybe_crash("custody.intent")
+    custody = fs.take_custody_named(target, custody_dest)
+    _maybe_crash("custody.taken")
+    if custody is not None:
+        fs.return_custody(custody, target)
+        jrnl.custody_released(
+            action_id, custody=str(custody_dest), returned=True, reason="occupied"
+        )
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {target}")
+    try:
+        fs.move_file_noreplace(source, target)
+    except FileExistsError as exc:
+        jrnl.custody_released(
+            action_id, custody=str(custody_dest), returned=False, reason="occupied"
+        )
+        raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {target}") from exc
+    except BaseException:
+        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="error")
+        raise
+    _maybe_crash("custody.postlink")
+    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    _maybe_crash("custody.release")
+
+
 def _apply_actions(
     op_id: str, plan: Plan, jrnl: journal.Journal, undo_map: dict[str, dict[str, Any]]
 ) -> None:
     jrnl.stage("apply")
+    holding = paths.quarantine_for(op_id)
     for a in plan.actions:
         jrnl.intent(a.action_id, undo=undo_map[a.action_id])
         _maybe_crash("apply.intent")
@@ -878,7 +1296,7 @@ def _apply_actions(
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"movimento mudou durante apply: {a.source}"
                 )
-            fs.move_file(source, target)
+            _publish_move_tx(jrnl, a.action_id, source, target, holding)
         elif a.kind == "copy":
             if a.source is None:
                 raise SteamZeroError("E-TX-STALE-PLAN", detail="cópia sem origem")
@@ -899,9 +1317,34 @@ def _apply_actions(
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"link mudou durante apply: {a.target}"
                 )
-            fs.symlink_atomic(source, target)
+            # Na substituição autorizada (replace_existing), o link legítimo a
+            # preservar é o que JÁ ESTÁ no alvo (registrado no undo), não o
+            # destino novo do plano.
+            undo = undo_map[a.action_id]
+            expected_readlink: str | None = None
+            if undo.get("op") == "restore-symlink" and undo.get("expectHash"):
+                obturado = str(undo["expectHash"])
+                expected_readlink = (
+                    obturado[len("symlink:") :] if obturado.startswith("symlink:") else obturado
+                )
+            _publish_symlink_tx(
+                jrnl,
+                a.action_id,
+                source,
+                target,
+                holding,
+                expected_readlink=expected_readlink,
+                purpose="publish",
+            )
         elif a.kind == "delete":
-            fs.remove_file(Path(a.target))
+            _remove_verified_tx(
+                jrnl,
+                a.action_id,
+                Path(a.target),
+                undo_map[a.action_id].get("expectHash"),
+                holding,
+                mismatch_code="E-TX-STALE-PLAN",
+            )
         else:
             # A janela que a revalidação de preconditions NÃO cobre.
             #
@@ -923,17 +1366,15 @@ def _apply_actions(
                     "E-TX-STALE-PLAN",
                     detail=f"alvo mudou durante apply: {a.target}",
                 )
-            # A conferência acima é barata e pega o caso comum, mas sozinha
-            # deixa janela até o `rename`. A publicação vai condicionada à
-            # identidade: criação exclusiva quando o alvo era ausente, troca
-            # atômica verificada quando ele existia.
-            fs.write_atomic(
-                target,
-                a.new_content(),
-                must_not_exist=expected is None,
-                expect_hash=None if expected in {None, _MISSING} else str(expected),
-                holding=paths.quarantine_for(op_id),
-            )
+            if expected is None or expected is _MISSING:
+                fs.write_atomic(target, a.new_content(), must_not_exist=True)
+            else:
+                # A conferência acima é barata e pega o caso comum, mas sozinha
+                # deixa janela até o `rename`. A publicação vai condicionada à
+                # identidade, com custódia durável registrada no journal.
+                _publish_verified_tx(
+                    jrnl, a.action_id, target, a.new_content(), str(expected), holding
+                )
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -1018,68 +1459,89 @@ def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
     if journal.has_type(records, journal.ROLLBACK):
         return RollbackResult(operation_id, "rolled-back")  # idempotente (RB-3)
 
+    # Fecha qualquer custódia pendente de um crash anterior (FI-06). Idempotente;
+    # rodar de novo não muda estado e não destrói o que não reconhece.
+    _reconcile_custody(operation_id, records)
+
     intents = [r for r in records if r.get("type") == "action.intent"]
+    holding = paths.quarantine_for(operation_id)
     restored: list[str] = []
-    for rec in reversed(intents):
-        undo = rec["undo"]
-        target = Path(undo["target"])
-        if undo["op"] == "restore":
-            _restore_one(operation_id, target, undo)
-        elif undo["op"] == "restore-symlink":
-            _restore_symlink(
-                target,
-                undo,
-                repair=reason in _REPAIR_ROLLBACK_REASONS,
-            )
-        elif undo["op"] == "move-restore":
-            _restore_move(operation_id, undo)
-        elif undo["op"] == "delete":
-            expected = undo.get("expectHash")
-            current = _fingerprint(target)
-            repairable_symlink = (
-                reason in _REPAIR_ROLLBACK_REASONS
-                and undo.get("expectKind") == "symlink"
-                and target.is_symlink()
-            )
-            if expected is not None and current not in {None, expected} and not repairable_symlink:
+    with journal.Journal(operation_id) as jrnl:
+        for rec in reversed(intents):
+            undo = rec["undo"]
+            action_id = rec["actionId"]
+            target = Path(undo["target"])
+            if undo["op"] == "restore":
+                _restore_one(jrnl, action_id, operation_id, target, undo, holding)
+            elif undo["op"] == "restore-symlink":
+                _restore_symlink(
+                    jrnl,
+                    action_id,
+                    target,
+                    undo,
+                    holding,
+                    repair=reason in _REPAIR_ROLLBACK_REASONS,
+                )
+            elif undo["op"] == "move-restore":
+                _restore_move(jrnl, action_id, operation_id, undo, holding)
+            elif undo["op"] == "delete":
+                expected = undo.get("expectHash")
+                current = _fingerprint(target)
+                repairable_symlink = (
+                    reason in _REPAIR_ROLLBACK_REASONS
+                    and undo.get("expectKind") == "symlink"
+                    and target.is_symlink()
+                )
+                if (
+                    expected is not None
+                    and current not in {None, expected}
+                    and not repairable_symlink
+                ):
+                    raise SteamZeroError(
+                        "E-TX-ROLLBACK-FAILED",
+                        operation_id=operation_id,
+                        detail=f"rollback recusou remover arquivo alterado: {target}",
+                    )
+                # Symlink e move têm semântica de identidade própria (o "conteúdo"
+                # é o alvo do link) e guard próprio acima; a custódia é para
+                # arquivo REGULAR, onde a identidade é o hash.
+                if (
+                    expected is None
+                    or repairable_symlink
+                    or undo.get("expectKind")
+                    not in {
+                        "write",
+                        "copy",
+                    }
+                ):
+                    fs.remove_file(target)
+                else:
+                    # A conferência acima é só triagem barata; a garantia está em
+                    # tomar a entrada em custódia ANTES de removê-la, com vinca no
+                    # journal, para que um arquivo criado depois do guard volte ao
+                    # lugar em vez de sumir.
+                    try:
+                        _remove_verified_tx(
+                            jrnl,
+                            action_id,
+                            target,
+                            expected,
+                            holding,
+                            mismatch_code="E-TX-ROLLBACK-FAILED",
+                        )
+                    except SteamZeroError as exc:
+                        exc.operation_id = operation_id
+                        raise
+            else:
                 raise SteamZeroError(
                     "E-TX-ROLLBACK-FAILED",
                     operation_id=operation_id,
-                    detail=f"rollback recusou remover arquivo alterado: {target}",
+                    detail=f"undo desconhecido: {undo['op']}",
                 )
-            # Symlink e move têm semântica de identidade própria (o "conteúdo"
-            # é o alvo do link) e guard próprio acima; a custódia é para
-            # arquivo REGULAR, onde a identidade é o hash.
-            if (
-                expected is None
-                or repairable_symlink
-                or undo.get("expectKind")
-                not in {
-                    "write",
-                    "copy",
-                }
-            ):
-                fs.remove_file(target)
-            else:
-                # A conferência acima é só triagem barata; a garantia está em
-                # tomar a entrada em custódia ANTES de removê-la, para que um
-                # arquivo criado depois do guard volte ao lugar em vez de sumir.
-                try:
-                    fs.delete_verified(target, expected, paths.quarantine_for(operation_id))
-                except SteamZeroError as exc:
-                    exc.operation_id = operation_id
-                    raise
-        else:
-            raise SteamZeroError(
-                "E-TX-ROLLBACK-FAILED",
-                operation_id=operation_id,
-                detail=f"undo desconhecido: {undo['op']}",
-            )
-        restored.append(str(target))
+            restored.append(str(target))
 
-    # zero temporários órfãos (ROLLBACK-TESTS §6)
-    fs.remove_tree(paths.staging_for(operation_id))
-    with journal.Journal(operation_id) as jrnl:
+        # zero temporários órfãos (ROLLBACK-TESTS §6)
+        fs.remove_tree(paths.staging_for(operation_id))
         jrnl.rollback(reason=reason)
     _record_operation_state(operation_id, "rolled-back")
     return RollbackResult(operation_id, "rolled-back", restored)
@@ -1099,7 +1561,14 @@ def _record_operation_state(operation_id: str, state: str) -> None:
         )
 
 
-def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
+def _restore_one(
+    jrnl: journal.Journal,
+    action_id: str,
+    operation_id: str,
+    target: Path,
+    undo: dict[str, Any],
+    holding: Path,
+) -> None:
     # Restaurar é escrever: só pode acontecer sobre um alvo que reconhecemos.
     # O estado legítimo é o backup (nada mudou) ou o que este plano gravou
     # (apply concluiu). Qualquer outra coisa apareceu de fora, e sobrescrevê-la
@@ -1121,7 +1590,16 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
         )
     aceitos = {undo["expectHash"]} | ({applied} if applied else set())
     try:
-        fs.restore_verified(backup_path, target, aceitos, paths.quarantine_for(operation_id))
+        _restore_verified_tx(
+            jrnl,
+            action_id,
+            operation_id,
+            backup_path,
+            target,
+            aceitos,
+            holding,
+            undo,
+        )
     except SteamZeroError as exc:
         exc.operation_id = operation_id
         raise
@@ -1133,24 +1611,39 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
         )
 
 
-def _restore_symlink(target: Path, undo: dict[str, Any], *, repair: bool) -> None:
-    if target.exists() or target.is_symlink():
-        applied = undo.get("appliedFingerprint")
-        if (applied is None or _fingerprint(target) != applied) and not (
-            repair and target.is_symlink()
-        ):
-            raise SteamZeroError(
-                "E-TX-ROLLBACK-FAILED",
-                detail=f"rollback recusou substituir destino recriado: {target}",
-            )
-        fs.remove_file(target)
+def _restore_symlink(
+    jrnl: journal.Journal,
+    action_id: str,
+    target: Path,
+    undo: dict[str, Any],
+    holding: Path,
+    *,
+    repair: bool,
+) -> None:
     source = Path(str(undo["source"]))
     if source.is_symlink() or not source.is_file():
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
             detail=f"origem do symlink não está íntegra: {source}",
         )
-    fs.symlink_atomic(source, target)
+    # O destino legítimo é o link que O PLANO criou (appliedFingerprint) — no
+    # modo repair, qualquer symlink é aceitável. A identificação e a troca são
+    # atômicas via custódia; um destino recriado por terceiro sobrevive.
+    expected_readlink: str | None = None
+    if not repair:
+        applied = undo.get("appliedFingerprint")
+        if applied is not None:
+            prefix = "symlink:"
+            expected_readlink = applied[len(prefix) :] if applied.startswith(prefix) else applied
+    _publish_symlink_tx(
+        jrnl,
+        action_id,
+        source,
+        target,
+        holding,
+        expected_readlink=expected_readlink,
+        purpose="restore",
+    )
     if not target.is_symlink() or Path(os.path.realpath(target)) != source.resolve():
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
@@ -1158,7 +1651,13 @@ def _restore_symlink(target: Path, undo: dict[str, Any], *, repair: bool) -> Non
         )
 
 
-def _restore_move(operation_id: str, undo: dict[str, Any]) -> None:
+def _restore_move(
+    jrnl: journal.Journal,
+    action_id: str,
+    operation_id: str,
+    undo: dict[str, Any],
+    holding: Path,
+) -> None:
     source = Path(undo["source"])
     target = Path(undo["target"])
     expected = str(undo["expectHash"])
@@ -1177,7 +1676,9 @@ def _restore_move(operation_id: str, undo: dict[str, Any]) -> None:
                 detail=f"origem foi recriada com outro conteúdo: {source}",
             )
     else:
-        fs.copy_file_atomic(backup, source)
+        # Publicação exclusiva: um intruso que apareça no lugar vazio da origem
+        # sobrevive (o link falha) em vez de ser substituído pelo backup.
+        fs.copy_exclusive(backup, source)
     if target.exists():
         if fs.hash_file(target) != expected:
             raise SteamZeroError(
@@ -1185,7 +1686,18 @@ def _restore_move(operation_id: str, undo: dict[str, Any]) -> None:
                 operation_id=operation_id,
                 detail=f"destino mudou após a operação: {target}",
             )
-        fs.remove_file(target)
+        try:
+            _remove_verified_tx(
+                jrnl,
+                action_id,
+                target,
+                expected,
+                holding,
+                mismatch_code="E-TX-ROLLBACK-FAILED",
+            )
+        except SteamZeroError as exc:
+            exc.operation_id = operation_id
+            raise
     if fs.hash_file(source) != expected:
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",
@@ -1195,15 +1707,30 @@ def _restore_move(operation_id: str, undo: dict[str, Any]) -> None:
 
 
 def recover_operation(operation_id: str) -> RecoveryResult:
-    """Recupera uma operação após crash: commit=>mantém; senão=>rollback."""
+    """Recupera uma operação após crash: commit=>mantém; senão=>rollback.
+
+    Uma operação commitada NUNCA é declarada kept quando há evidência de
+    trabalho interrompido: custódia pendente, restos de liberação ou registros
+    de propósito remove/restore significam que um rollback começou e precisa
+    terminar — declarar kept nesse estado mentiria sobre arquivos que já
+    saíram do lugar (FI-06).
+    """
     records = journal.read_records(operation_id)
     if not records:
         return RecoveryResult(operation_id, "clean")
-    if journal.has_type(records, journal.COMMIT):
-        fs.remove_tree(paths.staging_for(operation_id))
-        return RecoveryResult(operation_id, "kept")
     if journal.has_type(records, journal.ROLLBACK):
         return RecoveryResult(operation_id, "already-terminal")
+    if journal.has_type(records, journal.COMMIT):
+        if _has_rollback_evidence(records):
+            try:
+                _do_rollback(operation_id, reason="crash-recovery")
+                return RecoveryResult(operation_id, "rolled-back")
+            except SteamZeroError as exc:
+                if exc.code == "E-TX-ROLLBACK-FAILED":
+                    return RecoveryResult(operation_id, "rollback-failed")
+                raise
+        fs.remove_tree(paths.staging_for(operation_id))
+        return RecoveryResult(operation_id, "kept")
     try:
         _do_rollback(operation_id, reason="crash-recovery")
         return RecoveryResult(operation_id, "rolled-back")
