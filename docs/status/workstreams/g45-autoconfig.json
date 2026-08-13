@@ -3,8 +3,8 @@
   "kind": "workstream",
   "id": "WS-2026-08-G45-AUTOCONFIG",
   "item": "SZ-EMULATION-M10",
-  "branch": "codex/g45-autoconfig-gerenciado",
-  "baseRef": "e71d9b4",
+  "branch": "codex/g45-custody-recovery",
+  "baseRef": "38bc1b7",
   "owner": "g45-autoconfig",
   "state": "active",
   "exclusivePaths": [
@@ -28,6 +28,6 @@
     "src/steamzero/ui/qml/Emulation.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Repetir a prova pelo BOTAO real da UI ('Abrir emulador' / 'Jogar') com um controle FISICO que tenha autoconfig empacotado. O overlay ja chega aos dois caminhos de lancamento e as tres janelas transacionais estao fechadas; falta so o hardware, que e do operador.",
+  "nextAction": "HANDOFF 2026-08-13: branch codex/g45-custody-recovery (a partir de 38bc1b7) corrige a custodia transacional: journal de custodia durável, recovery pos-crash, rollback de operacao commitada priorizado, symlink e move seguros, EXDEV deliberado. A integracao --appendconfig da G45 ja esta provada; depois desta correcao do nucleo, a PR #78 so libera com a prova fisica com controle REAL e com a revisao confirmando crash recovery, symlink, move e cross-filesystem.",
   "updatedAt": "2026-08-13"
 }
