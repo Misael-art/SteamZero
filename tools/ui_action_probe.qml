@@ -53,16 +53,31 @@ Main {
         return String(task.result.actionId || "")
     }
 
-    function verdictFor(action, attempted, message) {
+    // Efeito observável que não passa pelo backend: navegar, abrir um overlay.
+    // Sem medir isto, uma ação de navegação legítima seria acusada de no-op.
+    function observableState() {
+        return JSON.stringify({
+            "section": sectionIndex,
+            "steamArea": steamArea,
+            "emulationPlatform": emulationControl ? emulationControl.platformIndex : -1,
+            "emulationGlobal": emulationControl ? emulationControl.globalManagementActive : true,
+            "credentialDialog": credentialDialogControl
+                ? credentialDialogControl.visible : false
+        })
+    }
+
+    function verdictFor(action, attempted, message, changed) {
         // Desabilitada é decisão de produto, não defeito — desde que explique.
         if (action.enabled !== true)
             return message === "" ? "blocked-silent" : "blocked-explained"
         if (attempted !== "")
             return "routed"
-        if (message === "")
-            return "silent-no-op"
         if (message.indexOf("não reconhecida") >= 0 || message.indexOf("não tem rota") >= 0)
             return "unrouted"
+        if (changed)
+            return "handled-locally"
+        if (message === "")
+            return "silent-no-op"
         return "handled-locally"
     }
 
@@ -72,6 +87,7 @@ Main {
         liveTasks = []
 
         const action = entry.action
+        const before = observableState()
         if (entry.dispatch === "emulation")
             performEmulationAction(action)
         else
@@ -80,6 +96,7 @@ Main {
 
         const attempted = attemptedContract()
         const message = String(lastRequest || "")
+        const changed = observableState() !== before
         console.log("PROBE " + JSON.stringify({
             "surface": entry.surface || "",
             "actionId": action.id || "",
@@ -90,7 +107,8 @@ Main {
             "attemptedContract": attempted,
             "message": message,
             "isError": lastRequestIsError === true,
-            "verdict": verdictFor(action, attempted, message)
+            "changedState": changed,
+            "verdict": verdictFor(action, attempted, message, changed)
         }))
     }
 
