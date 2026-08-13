@@ -121,33 +121,32 @@ class TestPublicacaoSobreAlvoExistente:
         target.write_bytes(b"antigo")
         _, plan = _plan(tmp_path, b"novo")
 
-        original = fs.take_custody
+        original = fs.take_custody_named
         estado: dict[str, object] = {}
 
-        def custodia_e_ocupacao(path: Path, holding: Path) -> Path | None:
-            resultado = original(path, holding)
+        def custodia_e_ocupacao(path: Path, custody: Path) -> Path | None:
+            devolvido = original(path, custody)
             if path == target and "feito" not in estado:
                 estado["feito"] = True
-                estado["custody"] = resultado
+                estado["custody"] = devolvido
                 target.write_bytes(_INTRUSO)
-            return resultado
+            return devolvido
 
-        monkeypatch.setattr(fs, "take_custody", custodia_e_ocupacao)
+        monkeypatch.setattr(fs, "take_custody_named", custodia_e_ocupacao)
 
         with pytest.raises(SteamZeroError) as erro:
             transaction.apply(plan.plan_id, plan.confirm_token)
 
         monkeypatch.undo()
         assert erro.value.code in {"E-TX-STALE-PLAN", "E-TX-ROLLBACK-FAILED"}
-        # Nada foi destruido: a entrada nova esta no lugar...
+        # Nada foi destruido: o intruso esta no lugar...
         assert target.read_bytes() == _INTRUSO
-        # ...e a antiga foi conservada, com o caminho dito no erro.
+        # ...e a entrada antiga foi resolvida com o estado terminal limpo:
+        # como o backup a preserva byte a byte, a custodia nao sobra orfa.
         custody = estado["custody"]
         assert isinstance(custody, Path)
-        assert custody.read_bytes() == b"antigo"
-        # A custodia SOBREVIVE de proposito: a recuperacao nao concluiu, e
-        # apaga-la seria justamente a perda de dado que este desenho evita.
-        assert custody.is_file()
+        assert not custody.exists()
+        assert _orfaos(tmp_path) == []
 
 
 class TestRollback:
@@ -198,18 +197,18 @@ class TestRollback:
         resultado = transaction.apply(plan.plan_id, plan.confirm_token)
         assert target.read_bytes() == b"novo"
 
-        original = fs.take_custody
+        original = fs.take_custody_named
         estado: dict[str, object] = {}
 
-        def custodia_e_ocupacao(path: Path, holding: Path) -> Path | None:
-            devolvido = original(path, holding)
+        def custodia_e_ocupacao(path: Path, custody: Path) -> Path | None:
+            devolvido = original(path, custody)
             if path == target and "feito" not in estado:
                 estado["feito"] = True
                 estado["custody"] = devolvido
                 target.write_bytes(_INTRUSO)
             return devolvido
 
-        monkeypatch.setattr(fs, "take_custody", custodia_e_ocupacao)
+        monkeypatch.setattr(fs, "take_custody_named", custodia_e_ocupacao)
 
         with pytest.raises(SteamZeroError) as erro:
             transaction.rollback(resultado.operation_id, reason="teste")

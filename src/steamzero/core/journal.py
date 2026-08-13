@@ -11,6 +11,12 @@ recovery. Registros:
     stage.enter     {stage}
     action.intent   {actionId, undo}   ← gravado ANTES de mutar
     action.done     {actionId}         ← gravado DEPOIS de mutar
+    custody.intent  {actionId, target, custody, purpose, expected}
+                                      ← intenção durável de tomar a entrada
+    custody.taken   {actionId, target, custody}
+                                      ← entrada realmente retirada do lugar
+    custody.released {actionId, custody, returned, reason}
+                                      ← custódia resolvida (devolvida/removida)
     operation.commit
     operation.rollback {reason}
 """
@@ -70,6 +76,49 @@ class Journal:
 
     def done(self, action_id: str) -> None:
         self._record("action.done", actionId=action_id)
+
+    def custody_intent(
+        self,
+        action_id: str,
+        *,
+        target: str,
+        custody: str,
+        purpose: str,
+        expected: str | None,
+    ) -> None:
+        """Registra a intenção de tomar ``target`` em custódia (antes do rename).
+
+        Este registro é o vínculo durável entre a entrada retirada do lugar e o
+        journal: sem ele, um crash entre a tomada e a resolução deixaria a
+        entrada órfã e invisível para o recovery.
+        """
+        self._record(
+            "custody.intent",
+            actionId=action_id,
+            target=target,
+            custody=custody,
+            purpose=purpose,
+            expected=expected,
+        )
+
+    def custody_taken(self, action_id: str, *, target: str, custody: str) -> None:
+        self._record("custody.taken", actionId=action_id, target=target, custody=custody)
+
+    def custody_released(
+        self,
+        action_id: str,
+        *,
+        custody: str,
+        returned: bool,
+        reason: str,
+    ) -> None:
+        self._record(
+            "custody.released",
+            actionId=action_id,
+            custody=custody,
+            returned=returned,
+            reason=reason,
+        )
 
     def commit(self) -> None:
         self._record(COMMIT)
