@@ -1951,6 +1951,27 @@ class EmulationController:
                 )
             plan_extra["profileId"] = profile_id
             plan_extra["orientation"] = orientation or "landscape"
+        elif action == "controls.autoconfig.apply":
+            # Rota de produção do writer. Sem ela o perfil chegava a
+            # `pending-write` e ninguém materializava o arquivo: a integração
+            # inteira ficava inerte, e `write-failed` era inalcançável.
+            #
+            # O plano é vazio de propósito. O núcleo transacional grava com
+            # `fs.write_atomic`, que faz `chmod` incondicional no diretório pai
+            # — aqui, a configuração do RetroArch. Deixá-lo executar a escrita
+            # reintroduziria o defeito que esta frente corrigiu, então ele
+            # fornece o portão (token, expiração, uso único, journal) e a
+            # escrita fica com o writer que preserva o diretório alheio.
+            self._require_autoconfig_pending()
+            plan = transaction.plan_write_files(
+                {},
+                root=paths.config_home(),
+                kind="controls.autoconfig.apply",
+                rollback_guarantee=(
+                    "G-NONE pelo journal; o arquivo é exclusivo do SteamZero, "
+                    "identificado por marcador e removível sem afetar o RetroArch"
+                ),
+            )
         elif action.startswith("controls.profile.clear:"):
             game_id = action.split(":", 1)[1]
             game = self._current_game(game_id)
@@ -2306,6 +2327,11 @@ class EmulationController:
             result = self._content.apply_recovery(plan_id, confirm_token)
         elif plan.kind == "switch-shader.invalidate":
             result = self._content.apply_shader_invalidation(plan_id, confirm_token)
+        elif plan.kind == "controls.autoconfig.apply":
+            # O portão transacional roda primeiro (valida token, expiração e uso
+            # único); só depois o writer materializa o arquivo.
+            result = transaction.apply(plan_id, confirm_token)
+            self._materialize_autoconfig()
         elif plan.kind.startswith("input-profile."):
             result = self._input_profiles.apply(plan_id, confirm_token)
         elif plan.kind.startswith("preservation."):
@@ -7061,7 +7087,20 @@ class EmulationController:
                 ],
                 "activateActions": activate_actions,
                 "clearAction": clear_action,
-                "autoconfig": self._autoconfig_view(active, autoconfig_by_profile),
+            }
+            autoconfig = self._autoconfig_view(active, autoconfig_by_profile)
+            autoconfig_state = str(autoconfig.get("state") or "") if autoconfig else ""
+            game["controlsProfile"] = game["controlsProfile"] | {
+                "autoconfig": autoconfig,
+                "applyAutoconfigAction": (
+                    self._action(
+                        "controls.autoconfig.apply",
+                        "Aplicar perfil no RetroArch",
+                        confirmation=True,
+                    )
+                    if autoconfig_state == "pending-write"
+                    else None
+                ),
             }
             profile_configured = isinstance(active, Mapping)
             reasons: list[str] = []
@@ -7069,14 +7108,79 @@ class EmulationController:
                 reasons.append("Nenhum perfil de input ativo; o jogo usará os padrões do emulador.")
             if controllers == 0:
                 reasons.append("Nenhum controle detectado no host.")
-            ready = profile_configured and controllers > 0
+            # A prontidão passa a olhar o efeito, não a intenção. Perfil salvo
+            # com controle plugado NÃO é perfil valendo: enquanto o autoconfig
+            # não estiver aplicado, o emulador roda nos padrões dele, e dizer
+            # `ready` aqui era o falso verde que a G45 existe para não repetir.
+            if autoconfig is not None and autoconfig_state != "applied":
+                reasons.append(str(autoconfig.get("statusLabel") or ""))
+            ready = (
+                profile_configured
+                and controllers > 0
+                and autoconfig is not None
+                and autoconfig_state == "applied"
+            )
             game["controlsReadiness"] = {
                 "state": "ready" if ready else "attention",
-                "reason": None if ready else " ".join(reasons),
+                "reason": None if ready else " ".join(reason for reason in reasons if reason),
                 "profileConfigured": profile_configured,
                 "controllers": controllers,
+                "autoconfigState": autoconfig_state or "not-configured",
             }
         return games
+
+    def _effective_input_activation(self) -> Mapping[str, Any] | None:
+        """Perfil que vale hoje para a plataforma, com a herança já resolvida."""
+        status = self._input_profiles.status("switch")
+        active = status.get("active")
+        return active if isinstance(active, Mapping) else None
+
+    def _autoconfig_arguments(self) -> dict[str, Any] | None:
+        active = self._effective_input_activation()
+        if active is None:
+            return None
+        bindings = active.get("resolvedBindings")
+        if not isinstance(bindings, list) or not bindings:
+            return None
+        return {
+            "bindings": bindings,
+            "profile_id": str(active.get("id") or ""),
+            "profile_revision": int(active.get("revision") or 0),
+            "orientation": str(active.get("orientation") or ""),
+        }
+
+    def _require_autoconfig_pending(self) -> None:
+        """Só planeja quando há de fato algo honesto a gravar.
+
+        Planejar a partir de `partial`, `conflict` ou `awaiting-*` ofereceria ao
+        usuário uma confirmação que não pode resultar em perfil valendo.
+        """
+        arguments = self._autoconfig_arguments()
+        if arguments is None:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="nenhum perfil de controle ativo para aplicar"
+            )
+        outcome = self._retroarch_controls().status(**arguments)
+        if outcome.state != "pending-write":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"perfil não está pronto para gravar: {outcome.label}",
+            )
+
+    def _materialize_autoconfig(self) -> None:
+        """Executa a escrita. Falha NÃO derruba a operação já confirmada.
+
+        O estado real volta pelo snapshot (`write-failed`, `conflict`), que é
+        onde o usuário lê o resultado; estourar aqui deixaria a ação sem
+        resposta legível (AGENTS.md §8).
+        """
+        arguments = self._autoconfig_arguments()
+        if arguments is None:
+            return
+        try:
+            self._retroarch_controls().apply(**arguments)
+        except (OSError, SteamZeroError):
+            return
 
     def _retroarch_controls(self) -> input_devices.RetroArchControls:
         if self._retroarch_controls_override is not None:

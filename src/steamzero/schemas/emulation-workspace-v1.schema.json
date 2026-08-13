@@ -774,7 +774,8 @@
             "available",
             "activateActions",
             "clearAction",
-            "autoconfig"
+            "autoconfig",
+            "applyAutoconfigAction"
           ],
           "properties": {
             "state": {
@@ -845,6 +846,24 @@
               }
             },
             "clearAction": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "id",
+                    "label",
+                    "enabled",
+                    "reason",
+                    "requiresConfirmation"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "applyAutoconfigAction": {
               "oneOf": [
                 {
                   "type": "object",
@@ -1048,6 +1067,7 @@
           "required": [
             "state",
             "reason",
+            "autoconfigState",
             "profileConfigured",
             "controllers"
           ],
@@ -1062,6 +1082,18 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "autoconfigState": {
+              "enum": [
+                "not-configured",
+                "awaiting-device",
+                "awaiting-emulator",
+                "pending-write",
+                "partial",
+                "applied",
+                "write-failed",
+                "conflict"
               ]
             },
             "profileConfigured": {

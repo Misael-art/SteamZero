@@ -890,6 +890,9 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 # nenhum, então o autoconfig é ausência honesta e não um objeto
                 # com estado inventado (G45).
                 "autoconfig": None,
+                # E sem nada resolvido não se oferece a confirmação de gravar:
+                # ela não poderia resultar em perfil valendo.
+                "applyAutoconfigAction": None,
             },
             "controlsReadiness": {
                 "state": "attention",
@@ -901,6 +904,9 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 ),
                 "profileConfigured": False,
                 "controllers": published[0]["controlsReadiness"]["controllers"],
+                # A prontidão passou a publicar o estado do EFEITO, não só o da
+                # intenção: perfil salvo não é perfil valendo.
+                "autoconfigState": "not-configured",
             },
         }
     ]
@@ -2774,6 +2780,101 @@ def test_controls_profile_publishes_the_autoconfig_the_screen_needs(
     # `input_up_axis`; quem resolve contra o dispositivo corrige para `_btn`.
     assert gravados["input_up_btn"] == "h0up"
     assert "input_up_axis" not in gravados
+
+
+def test_the_autoconfig_reaches_disk_through_a_confirmed_action(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """G45: o writer precisa ter rota de PRODUÇÃO, não só de teste.
+
+    Antes desta ação o perfil chegava a `pending-write` e ninguém materializava
+    o arquivo: a ativação só gravava a seleção, e o dashboard apenas observava.
+    A integração inteira ficava inerte — e `write-failed` era inalcançável.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+
+    def _profile() -> dict:
+        return controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsProfile"]
+
+    antes = _profile()
+    assert antes["autoconfig"]["state"] == "pending-write"
+    assert antes["applyAutoconfigAction"]["id"] == "controls.autoconfig.apply"
+    assert antes["applyAutoconfigAction"]["requiresConfirmation"] is True
+
+    plano = controller.plan_action({"actionId": "controls.autoconfig.apply"})
+    _apply(controller, plano)
+
+    depois = _profile()
+    assert depois["autoconfig"]["state"] == "applied"
+    # A ação some quando não há mais o que gravar: oferecer confirmação que não
+    # muda nada seria ruído.
+    assert depois["applyAutoconfigAction"] is None
+    gravado = Path(depois["autoconfig"]["path"])
+    assert gravado.is_file()
+    assert gravado.read_text(encoding="utf-8").splitlines()[0] == "# SteamZero-Managed: true"
+
+
+def test_applying_the_autoconfig_twice_is_idempotent(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+    _apply(controller, controller.plan_action({"actionId": "controls.autoconfig.apply"}))
+
+    # Já aplicado: planejar de novo é recusado com causa, em vez de oferecer uma
+    # confirmação que não mudaria nada.
+    with pytest.raises(SteamZeroError, match="não está pronto para gravar"):
+        controller.plan_action({"actionId": "controls.autoconfig.apply"})
+
+
+def test_applying_the_autoconfig_is_refused_without_an_active_profile(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+
+    with pytest.raises(SteamZeroError, match="nenhum perfil de controle ativo"):
+        controller.plan_action({"actionId": "controls.autoconfig.apply"})
+
+
+def test_readiness_is_not_ready_until_the_autoconfig_is_applied(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Perfil salvo com controle plugado NÃO é perfil valendo.
+
+    A prontidão olhava só "existe perfil" e "existe controle", então dizia
+    `ready` enquanto o emulador ainda rodava nos padrões dele — o falso verde
+    que a G45 existe para não repetir.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+
+    def _readiness() -> dict:
+        return controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsReadiness"]
+
+    antes = _readiness()
+    assert antes["state"] == "attention"
+    assert antes["autoconfigState"] == "pending-write"
+    assert antes["reason"]
+
+    _apply(controller, controller.plan_action({"actionId": "controls.autoconfig.apply"}))
+
+    depois = _readiness()
+    assert depois["autoconfigState"] == "applied"
+    # `ready` continua exigindo controle detectado; num host sem joystick o
+    # estado permanece honesto.
+    assert depois["state"] == ("ready" if depois["controllers"] > 0 else "attention")
 
 
 def test_controls_profile_never_says_applied_when_retroarch_did_not_declare_a_dir(
