@@ -6681,3 +6681,45 @@ o problema nunca foi ausência de config — era caminho inalcançável. Corrigi
 
 O workstream volta a `active`: falta repetir a prova pelo botão real da UI com um
 controle FÍSICO que tenha autoconfig empacotado. Nenhuma ação de host ou release.
+
+### 2026-08-13 — G45, sétima rodada: custódia em vez de conferência
+
+A revisão derrubou o padrão inteiro das minhas três correções anteriores, e com
+razão. Todas faziam a mesma coisa: conferir o alvo imediatamente antes de
+destruí-lo. Isso nunca fecha a janela — entre a conferência e o syscall cabe uma
+troca —, e as três reproduções mostraram o dado alheio sendo perdido:
+
+    FALLBACK_RACE ok b'new'
+    DELETE_RACE   rolled-back exists=False
+    RESTORE_RACE  rolled-back b'old'
+
+**A ordem inverteu.** Agora se TIRA a entrada do lugar primeiro, com rename
+atômico sem substituição (`RENAME_NOREPLACE`), e só depois se confere o que foi
+tirado. Publicação, remoção e restauração passam a operar sobre algo já sob
+custódia; o que não for reconhecido volta intacto. Não existe mais janela entre
+conferir e destruir porque a conferência deixou de vir antes da destruição.
+
+**Sem primitiva, falha fechada.** Nada de fallback com janela residual: um FS
+sem rename sem substituição não permite preservar o inesperado, e recusar é a
+resposta certa.
+
+**Quando o alvo é ocupado enquanto está vazio**, as duas entradas são
+conservadas — a nova onde está, a antiga sob custódia, com o erro nomeando os
+caminhos. Apagar qualquer uma seria a perda que o desenho evita.
+
+Escrevi os cinco testes VERMELHOS antes de mexer no código, como a revisão
+exigiu, cada um injetando na janela real e cobrando erro explícito + intruso
+byte a byte + ausência de órfão da própria operação + journal que não alega
+rollback completo.
+
+Dois aprendizados que valem mais que o patch:
+
+1. **Symlink não cabe na custódia.** A identidade dele é o alvo do link, não um
+   hash; rotear symlink por lá fez o `O_NOFOLLOW` estourar `ELOOP`. Ficou de
+   fora, com o guard que já existia.
+2. **O helper de órfãos precisa ser por operação.** Varrendo a quarentena
+   inteira, um caso de falha fechada — que CONSERVA a custódia de propósito —
+   fazia os outros testes reprovarem.
+
+Suíte: 4557 passed, com as duas reprovações pré-existentes deste worktree.
+Nenhuma ação de host, release ou privilégio.
