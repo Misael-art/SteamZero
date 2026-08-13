@@ -6371,3 +6371,84 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+## 2026-08-12 — G45, segundo incremento: o índice físico deixa de faltar
+
+Branch `codex/g45-autoconfig-gerenciado`, nascida de `origin/main` em `e71d9b4`
+(merge da PR #77). Quatro commits funcionais mais este fechamento.
+
+A PR #77 traduziu a ação abstrata para a chave RetroPad e parou de propósito
+onde o índice do botão começa, porque o índice pertence ao dispositivo. Este
+incremento resolve o índice LENDO o autoconfig que descreve o pad real — o
+RetroArch empacota 420 desses arquivos, e cada um é a tabela "posição física →
+índice" declarada pelo fabricante. Sem arquivo para o pad conectado, o resultado
+é não resolvido e visível.
+
+### Correção de medição da própria série
+
+A #77 registrou que "entradas direcionais chegam como eixo nos autoconfigs
+reais". Medindo com casamento exato de chave — `^input_up_btn[[:space:]]*=`, que
+exclui as linhas `*_label` que contaminaram a contagem original — são **296
+arquivos com `input_up_btn` contra 134 com `input_up_axis`**: o oposto. Fixar
+`_axis` até a gravação daria à maioria dos pads um arquivo que o RetroArch
+aceita e IGNORA, que é a falha silenciosa que a própria #77 identificou como o
+pior resultado possível. `retropad_key` ficou como está, documentado como
+provisório e restrito à visão sem dispositivo.
+
+Outras medições que viraram regra: 239 arquivos usam notação de hat (`h0up`),
+`-0` e `+0` são entradas opostas (o valor é token opaco, nunca `int`), 44
+arquivos gravam `nul` e 27 gravam string vazia (ausência declarada, não valor),
+dois gravam `"ZR Button"` no lugar do índice (a gramática do valor é fechada), e
+12 declaram btn e axis para o mesmo direcional (ambiguidade explícita, não
+escolha).
+
+### O que este incremento NÃO afirma
+
+- **Nada foi gravado no host.** O writer só rodou em `tmp_path`. Nenhuma
+  instalação de Flatpak, release ou wheel foi executada.
+- **O `retroarch.cfg` deste host não existe** — o RetroArch nunca foi executado
+  até gravar configuração. Sem ele não há como saber em que diretório ele
+  procura perfis, então o estado real aqui é `awaiting-emulator` e nenhum perfil
+  pode ser declarado aplicado. Esse é o sexto estado, além dos cinco pedidos, e
+  existe porque medir o host mostrou o caso.
+- **O pad interno deste Steam Deck (10462:4613) não tem autoconfig empacotado**
+  e cai em `no-autoconfig`. Falta decidir a fonte de índice para pads sem
+  arquivo.
+- **Nenhuma instalação de emulador foi vista concluir no host.** O fluxo isolado
+  foi exercitado (274 testes verdes em lifecycle, flatpak executor e
+  conformance), o que é o limite do que teste isolado alcança.
+
+### Um defeito encontrado no caminho
+
+`fs.write_atomic` chama `ensure_dir`, que faz `mkdir(parents=True)` e `chmod`
+incondicional no diretório pai. Usá-la para gravar o perfil teria mudado a
+permissão do diretório de configuração do RetroArch (0750 → 0700) e criado
+diretórios dentro da configuração alheia — efeito colateral invisível de gravar
+um arquivo. O gate de fronteiras recusou, com razão, um writer local no adapter;
+a variante que preserva o diretório entrou em `core.fs`, que é o porto de
+escrita. Dois testes fixam o comportamento.
+
+### Estado dos gates neste checkout
+
+Os quatro gates de código passam. `make status-check` reprova por **um** item,
+`SZ-MEDIA-SCRAPING`, e a causa não é este trabalho: quatro arquivos
+`tests/fixtures/scraping/screenscraper/raw/*_error.txt`, datados de 26/07 e
+cobertos por `.gitignore`, existem neste worktree e entram no `scopeDigest`.
+Prova: numa árvore limpa de `origin/main` o digest calculado é
+`484fe509d2e7…`, idêntico ao declarado no item. Os arquivos foram preservados
+por instrução. O mesmo vale para `src/steamzero/_build_info.py` (01/08,
+gitignored), que faz `test_every_tracked_file_has_a_custodian_item` reprovar
+apesar de o arquivo não ser rastreado — o teste varre o sistema de arquivos, não
+o índice do git.
+
+Os digests de `SZ-GOVERNANCE-STATUS`, `SZ-THEME-AURA` e `SZ-UI-DESKTOP-AUDIT`
+foram reatestados porque este trabalho alterou conteúdo dentro do escopo deles
+(`docs/KNOWN-GAPS.md`, `tests/integration/test_qml_handheld_offscreen.py` e
+`src/steamzero/ui`, respectivamente).
+
+### Pendente do operador
+
+Abrir o RetroArch uma vez no host para que ele declare `joypad_autoconfig_dir`;
+sem isso nenhum perfil pode passar de `awaiting-emulator`. Depois disso, provar
+fisicamente que o RetroArch aplica o arquivo gerado. Nenhuma ação de host ou de
+release foi executada nesta sessão.
