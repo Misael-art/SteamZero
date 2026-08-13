@@ -811,15 +811,24 @@ def _backup(op_id: str, plan: Plan, jrnl: journal.Journal) -> dict[str, dict[str
                 "target": a.target,
                 "backupRel": a.action_id,
                 "expectHash": entry.hash,
+                # O que ESTE plano deixaria no alvo. Sem isso, o restore
+                # sobrescreve o que estiver lá — inclusive um arquivo alheio que
+                # tenha aparecido depois do backup.
+                "appliedHash": a.new_hash if a.kind in {"copy", "write"} else None,
             }
         else:
             undo_map[a.action_id] = {
                 "op": "delete",
                 "target": a.target,
                 "backupRel": None,
+                # `write` ficava de fora e o `expectHash` saía None, o que
+                # PULAVA o guard do rollback: um arquivo estrangeiro que
+                # aparecesse depois do backup era removido sem conferência.
+                # Agora toda criação registra o que ESPERA encontrar, e o
+                # rollback só remove o que reconhece como nosso.
                 "expectHash": (
                     a.new_hash
-                    if a.kind == "copy"
+                    if a.kind in {"copy", "write"}
                     else f"symlink:{a.source}"
                     if a.kind == "symlink"
                     else None
@@ -914,7 +923,16 @@ def _apply_actions(
                     "E-TX-STALE-PLAN",
                     detail=f"alvo mudou durante apply: {a.target}",
                 )
-            fs.write_atomic(target, a.new_content(), must_not_exist=expected is None)
+            # A conferência acima é barata e pega o caso comum, mas sozinha
+            # deixa janela até o `rename`. A publicação vai condicionada à
+            # identidade: criação exclusiva quando o alvo era ausente, troca
+            # atômica verificada quando ele existia.
+            fs.write_atomic(
+                target,
+                a.new_content(),
+                must_not_exist=expected is None,
+                expect_hash=None if expected in {None, _MISSING} else str(expected),
+            )
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
@@ -1060,6 +1078,19 @@ def _record_operation_state(operation_id: str, state: str) -> None:
 
 
 def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
+    # Restaurar é escrever: só pode acontecer sobre um alvo que reconhecemos.
+    # O estado legítimo é o backup (nada mudou) ou o que este plano gravou
+    # (apply concluiu). Qualquer outra coisa apareceu de fora, e sobrescrevê-la
+    # destruiria dado de terceiro — a mesma classe de defeito que o `delete`
+    # incondicional tinha.
+    applied = undo.get("appliedHash")
+    current = _fingerprint(target)
+    if current is not None and current != undo["expectHash"] and current != applied:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            operation_id=operation_id,
+            detail=f"rollback recusou sobrescrever arquivo alterado: {target}",
+        )
     backup_path = paths.backup_for(operation_id) / undo["backupRel"]
     if not backup_path.exists():
         raise SteamZeroError(
