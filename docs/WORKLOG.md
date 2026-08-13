@@ -6452,3 +6452,53 @@ Abrir o RetroArch uma vez no host para que ele declare `joypad_autoconfig_dir`;
 sem isso nenhum perfil pode passar de `awaiting-emulator`. Depois disso, provar
 fisicamente que o RetroArch aplica o arquivo gerado. Nenhuma ação de host ou de
 release foi executada nesta sessão.
+
+### 2026-08-12 — G45, segunda rodada: resposta à revisão
+
+A primeira rodada entregou a resolução, o writer e a tela — e deixou o writer
+**sem rota de produção**. `apply()` só era chamado por teste: a ativação do
+perfil gravava a seleção, o dashboard apenas observava, e o estado parava em
+`pending-write` sem que ninguém materializasse o arquivo. A integração inteira
+ficava inerte, e `write-failed` era inalcançável. Fechado por uma ação explícita
+e confirmada, `controls.autoconfig.apply`, exposta no cartão.
+
+O plano dessa ação é vazio de propósito. O núcleo transacional grava com
+`fs.write_atomic`, que faz `chmod` incondicional no diretório pai — aqui, a
+configuração do RetroArch. Deixá-lo executar a escrita reintroduziria o defeito
+que esta mesma frente tinha corrigido. Então ele fornece o portão (token,
+expiração, uso único, journal) e a escrita fica com o writer que preserva o
+diretório alheio. O `rollbackGuarantee` diz isso em vez de alegar G-FULL:
+`plan_write_files` ganhou o parâmetro para não mentir no payload.
+
+**Brecha de ownership (a mais séria).** `_read_text_limited` devolvia `None`
+tanto para arquivo inexistente quanto para symlink, arquivo acima de 128 KiB ou
+ilegível — e `status()` lia esse `None` como "ausente, pode escrever". Um
+`steamzero.cfg` do usuário em qualquer dessas formas seria substituído sem que o
+marcador fosse conferido uma única vez, violando a garantia central da entrega.
+Agora `_probe_target` classifica em ausente / nosso / estrangeiro, **só ENOENT
+autoriza gravar**, e cada recusa diz o motivo. A criação usa `os.link`
+(`must_not_exist`), então um arquivo que apareça entre a verificação e a escrita
+faz a operação falhar em vez de ser substituído: a recusa virou garantia, não
+checagem com janela.
+
+**Perfil parcial deixou de ser gravado.** O texto dizia "somente quando tudo
+estiver resolvido" e o código exigia apenas um binding. Meio perfil em disco é
+pior que perfil nenhum: o RetroArch aceita o arquivo, as ações faltantes ficam
+sem binding, e o controle responde pela metade sem nada dizer por quê. `partial`
+virou diagnóstico — aparece na tela com o motivo, e o emulador segue nos padrões
+dele. Um teste prova que recusar gravar não apaga o perfil que já valia.
+
+**`controlsReadiness` deixou de dar falso verde.** Dizia `ready` com perfil salvo
+e controle plugado, ignorando `awaiting-emulator`, `pending-write`, `conflict` e
+`no-autoconfig` — exatamente o falso verde que a G45 existe para não repetir.
+Agora deriva do estado efetivo e publica `autoconfigState`.
+
+**Contagem de testes reconciliada.** Não havia divergência: a PR #77 relatou
+4452 e minha baseline mediu 4450 *passed* mais 2 *failed*, que somam os mesmos
+4452. As duas falhas são os arquivos gitignored perdidos deste worktree, já
+documentados acima.
+
+O que continua exigindo o operador não mudou: abrir o RetroArch uma vez para que
+ele declare `joypad_autoconfig_dir`, e decidir a fonte de índice para pads sem
+autoconfig empacotado — o pad interno deste Deck é um deles. Nenhuma ação de
+host ou release foi executada nesta rodada.

@@ -6,20 +6,26 @@
   "branch": "codex/g45-autoconfig-gerenciado",
   "baseRef": "e71d9b4",
   "owner": "g45-autoconfig",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
-    "src/steamzero/domain/retroarch_autoconfig.py",
     "src/steamzero/adapters/input_devices.py",
-    "tests/unit/test_retroarch_autoconfig.py",
-    "tests/unit/test_input_devices.py"
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "src/steamzero/ui/qml/ControlsProfileCard.qml",
+    "tests/qml/check_controls_profile_card.qml",
+    "tests/unit/test_input_devices.py",
+    "tests/unit/test_retroarch_autoconfig.py"
   ],
   "sharedPaths": [
-    "src/steamzero/domain/retropad.py",
-    "src/steamzero/domain/input_profiles.py",
+    "docs/WORKLOG.md",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/core/fs.py",
+    "src/steamzero/core/transaction.py",
+    "src/steamzero/domain/input_profiles.py",
+    "src/steamzero/domain/retropad.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
     "src/steamzero/ui/qml/Emulation.qml",
-    "docs/WORKLOG.md"
+    "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Resolver o indice fisico contra o autoconfig real do dispositivo e gravar arquivo gerenciado com marcador, sem tocar no retroarch.cfg.",
+  "nextAction": "Entregue e revisado. O que resta NAO e desta frente: abrir o RetroArch uma vez no host para que ele declare joypad_autoconfig_dir (sem isso o estado honesto e awaiting-emulator) e decidir a fonte de indice para pads sem autoconfig empacotado — o pad interno deste Deck (10462:4613) e um deles. Ambos exigem o operador.",
   "updatedAt": "2026-08-12"
 }
