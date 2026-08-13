@@ -303,22 +303,50 @@ class AutoconfigTarget:
         return None if self.directory is None else self.directory / MANAGED_BASENAME
 
 
+#: Driver de joypad padrão quando o `retroarch.cfg` não declara um. O
+#: subdiretório NÃO é decoração: medindo o pacote 1.22.2 instalado, a raiz de
+#: `share/libretro/autoconfig` tem ZERO arquivos `.cfg`, e os perfis moram em
+#: subdiretórios com o nome do driver (`udev/` com 420, `dinput/` com 223,
+#: `sdl2/` com 67...). Gravar na raiz produziria um arquivo que ninguém lê.
+_DEFAULT_JOYPAD_DRIVER = "udev"
+
+
+def _setting(text: str, key: str) -> str:
+    for line in text.splitlines():
+        name, separator, value = line.strip().partition("=")
+        if separator and name.strip() == key:
+            return value.strip().strip('"')
+    return ""
+
+
 def resolve_target(config_file: Path, fallback_directory: Path | None = None) -> AutoconfigTarget:
     """Descobre o diretório de perfis LENDO o `retroarch.cfg` — nunca escrevendo.
 
-    Quando a chave não está declarada, o diretório fica `declared=False`: o
-    arquivo até pode ser gravado, mas o estado não pode ser `aplicado`, porque
-    ninguém provou que o RetroArch lê dali.
+    Duas coisas medidas no RetroArch 1.22.2 Flatpak instalado neste host, ambas
+    fatais se ignoradas:
+
+    **O subdiretório do driver é obrigatório.** O RetroArch procura perfis em
+    ``<joypad_autoconfig_dir>/<input_joypad_driver>/``, não na raiz — a raiz do
+    pacote tem zero `.cfg` e `udev/` tem 420. Gravar na raiz geraria um arquivo
+    que nunca seria lido.
+
+    **O caminho declarado pode ser interno ao sandbox.** O config que o próprio
+    RetroArch cria declara ``/app/share/libretro/autoconfig``, e ``/app`` não
+    existe no host: é o ponto de montagem somente-leitura do Flatpak. Um
+    diretório declarado, portanto, não implica um diretório alcançável — e é por
+    isso que `declared` sozinho nunca autoriza dizer "aplicado".
     """
     text = _read_text_limited(config_file)
     if text is not None:
-        for line in text.splitlines():
-            key, separator, value = line.strip().partition("=")
-            if separator and key.strip() == "joypad_autoconfig_dir":
-                directory = value.strip().strip('"')
-                if directory:
-                    return AutoconfigTarget(Path(directory), declared=True)
-    return AutoconfigTarget(fallback_directory, declared=False)
+        directory = _setting(text, "joypad_autoconfig_dir")
+        if directory:
+            driver = _setting(text, "input_joypad_driver") or _DEFAULT_JOYPAD_DRIVER
+            expanded = Path(directory).expanduser()
+            return AutoconfigTarget(expanded / driver, declared=True)
+    return AutoconfigTarget(
+        None if fallback_directory is None else fallback_directory / _DEFAULT_JOYPAD_DRIVER,
+        declared=False,
+    )
 
 
 #: Onde o RetroArch Flatpak guarda configuração e onde empacota os autoconfigs.
@@ -454,15 +482,21 @@ class RetroArchControls:
         if not self._target.declared or self._target.path is None:
             return AutoconfigOutcome("awaiting-emulator", resolution, match, self._target)
         if self._target.directory is None or not self._target.directory.is_dir():
-            # O diretório declarado ainda não existe. Criá-lo seria construir
-            # dentro da configuração do RetroArch, que não é nossa; o estado
-            # honesto é que o emulador ainda não montou a árvore dele.
+            # Diretório declarado que não existe NO HOST. O caso concreto medido
+            # aqui não é "o RetroArch ainda não criou": o Flatpak 1.22.2 declara
+            # `/app/share/libretro/autoconfig`, que é o mount somente-leitura do
+            # sandbox e não existe fora dele. Abrir o RetroArch não resolve —
+            # falta uma integração de lançamento que aponte o emulador para um
+            # diretório gerenciado e gravável.
             return AutoconfigOutcome(
                 "awaiting-emulator",
                 resolution,
                 match,
                 self._target,
-                detail=f"{self._target.directory}: o diretório declarado ainda não existe",
+                detail=(
+                    f"{self._target.directory}: o diretório que o RetroArch declara não existe "
+                    "neste host (caminho interno do sandbox Flatpak); o perfil não tem onde valer"
+                ),
             )
 
         probe = _probe_target(self._target.path)
@@ -548,6 +582,10 @@ class RetroArchControls:
             root=path.parent,
             kind="controls.autoconfig.apply",
             skip_unchanged=True,
+            # O destino é a configuração do RetroArch. Só planos assim poupam o
+            # diretório preexistente do `chmod`; na árvore do SteamZero o modo
+            # seguro continua sendo normalizado, como sempre foi.
+            foreign_dir=True,
         )
 
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:

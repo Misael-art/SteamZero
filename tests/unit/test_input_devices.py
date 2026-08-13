@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import stat
+from pathlib import Path
 
 import pytest
 
@@ -198,7 +199,64 @@ class TestWhereRetroArchSaysItReadsProfiles:
         target = resolve_target(config)
 
         assert target.declared is True
-        assert target.path is not None and target.path.parent.name == "perfis"
+        # `perfis/udev`, nao `perfis`: o driver entra no caminho (ver o teste do
+        # subdiretorio abaixo, medido no pacote real).
+        assert target.path is not None
+        assert target.path.parent == Path("/casa/perfis/udev")
+
+    def test_the_driver_subdirectory_is_part_of_the_target(self, tmp_path) -> None:
+        """O RetroArch procura em `<dir>/<driver>/`, nao na raiz.
+
+        Medido no pacote 1.22.2 instalado: a raiz de `share/libretro/autoconfig`
+        tem ZERO `.cfg`, e `udev/` tem 420. Gravar na raiz produziria um arquivo
+        que nunca seria lido — falha silenciosa.
+        """
+        config = tmp_path / "retroarch.cfg"
+        config.write_text(
+            'joypad_autoconfig_dir = "/casa/perfis"\ninput_joypad_driver = "udev"\n',
+            encoding="utf-8",
+        )
+
+        target = resolve_target(config)
+
+        assert target.directory == Path("/casa/perfis/udev")
+
+    def test_the_driver_comes_from_the_config_not_from_a_guess(self, tmp_path) -> None:
+        config = tmp_path / "retroarch.cfg"
+        config.write_text(
+            'joypad_autoconfig_dir = "/casa/perfis"\ninput_joypad_driver = "sdl2"\n',
+            encoding="utf-8",
+        )
+
+        assert resolve_target(config).directory == Path("/casa/perfis/sdl2")
+
+    def test_the_sandbox_path_the_flatpak_really_declares_is_not_reachable(self, tmp_path) -> None:
+        """Valor LITERAL do config que o RetroArch Flatpak cria neste host.
+
+        `/app` e o mount somente-leitura do sandbox e nao existe fora dele.
+        Diretorio DECLARADO nao implica diretorio ALCANCAVEL, e abrir o
+        RetroArch nao resolve isso.
+        """
+        config = tmp_path / "retroarch.cfg"
+        config.write_text(
+            'joypad_autoconfig_dir = "/app/share/libretro/autoconfig"\n'
+            'input_joypad_driver = "udev"\n',
+            encoding="utf-8",
+        )
+        target = resolve_target(config)
+        assert target.declared is True
+        assert target.directory == Path("/app/share/libretro/autoconfig/udev")
+
+        controls = RetroArchControls(
+            devices=_Devices(_DECK),
+            catalog=_catalog(tmp_path, pad=_STEAM_CONTROLLER),
+            target=target,
+        )
+        outcome = _apply(controls)
+
+        assert outcome.state == "awaiting-emulator"
+        assert "sandbox" in outcome.detail
+        assert not Path("/app").exists()
 
     def test_an_absent_retroarch_cfg_never_claims_a_directory(self, tmp_path) -> None:
         """Este e o caso REAL deste host: o RetroArch nunca gravou configuracao."""
@@ -363,6 +421,79 @@ class TestTheFileOnDisk:
         assert girado.state == "applied"
         assert girado.target.path is not None
         assert 'input_b_btn = "2"' in girado.target.path.read_text(encoding="utf-8")
+
+
+class TestTheWindowInsideTheTransaction:
+    def test_an_intruder_created_after_staging_is_not_overwritten(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """A janela que a revalidação de preconditions NÃO cobria.
+
+        `_revalidate_preconditions` roda UMA vez, no início do apply, e depois
+        ainda acontecem staging e backup. Um arquivo estrangeiro criado nesse
+        intervalo era copiado para o backup e então sobrescrito pela escrita,
+        com a operação retornando `ok`: a garantia de nunca destruir arquivo
+        alheio valia só até o staging.
+
+        O teste anterior inseria o intruso ANTES de `apply()` e por isso passava
+        sem tocar nessa janela. Aqui ele é criado exatamente dentro dela.
+        """
+        controls = _controls(tmp_path, _Devices(_DECK))
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        intruso = 'input_device = "criado dentro da janela"\n'
+
+        original = transaction._stage
+
+        def stage_e_intruso(*args: object, **kwargs: object) -> object:
+            resultado = original(*args, **kwargs)  # type: ignore[arg-type]
+            alvo.write_text(intruso, encoding="utf-8")
+            return resultado
+
+        monkeypatch.setattr(transaction, "_stage", stage_e_intruso)
+
+        with pytest.raises(SteamZeroError) as erro:
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+        assert erro.value.code == "E-TX-STALE-PLAN"
+        assert alvo.read_text(encoding="utf-8") == intruso
+
+    def test_an_update_whose_target_changed_inside_the_window_is_refused(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """Mesma janela, agora com alvo que EXISTIA e mudou no meio."""
+        controls = _controls(tmp_path, _Devices(_DECK))
+        _apply(controls)
+        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+
+        plan = controls.plan(
+            bindings=[{"action": "game.primary", "input": "button.west"}],
+            profile_id="mega-drive-3-button",
+            profile_revision=1,
+            orientation="landscape",
+        )
+        alterado = f'{MANAGED_MARKER}\ninput_b_btn = "9"\n'
+
+        original = transaction._stage
+
+        def stage_e_alteracao(*args: object, **kwargs: object) -> object:
+            resultado = original(*args, **kwargs)  # type: ignore[arg-type]
+            alvo.write_text(alterado, encoding="utf-8")
+            return resultado
+
+        monkeypatch.setattr(transaction, "_stage", stage_e_alteracao)
+
+        with pytest.raises(SteamZeroError) as erro:
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+        assert erro.value.code == "E-TX-STALE-PLAN"
+        assert alvo.read_text(encoding="utf-8") == alterado
 
 
 class TestRollbackIsRealNotDeclared:
