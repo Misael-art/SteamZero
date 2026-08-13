@@ -13,6 +13,7 @@ as três formas de botão desonesto:
 
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -72,3 +73,57 @@ def test_platform_cards_offer_an_action_the_shell_can_dispatch(matrix: dict) -> 
     assert unrouted == [], "ações habilitadas que o shell não sabe despachar: " + ", ".join(
         unrouted
     )
+
+
+def test_a_partial_audit_never_publishes_contracts_as_orphans(matrix: dict) -> None:
+    """Orfandade é afirmação sobre o produto inteiro, não sobre o que foi visitado.
+
+    A passagem anterior publicou 117 `orphanContracts` tendo inventariado só a
+    Emulação. Quase todos eram contratos de telas que a auditoria nem abriu:
+    o número parecia um achado e não era nada.
+    """
+    coverage = matrix["coverage"]
+    assert coverage["covered"], "uma auditoria sem superfície coberta não prova nada"
+
+    if coverage["complete"]:
+        assert "orphanContracts" in matrix
+        assert "notCoveredContracts" not in matrix
+        return
+
+    assert "orphanContracts" not in matrix, (
+        "auditoria parcial não pode chamar de órfão o que não visitou; faltam: "
+        + ", ".join(coverage["missing"])
+    )
+    assert "notCoveredContracts" in matrix
+
+
+def test_coverage_is_measured_against_the_sections_the_shell_publishes() -> None:
+    """A régua de cobertura vem do produto, não de uma lista inventada aqui.
+
+    Toda seção de ``navigationSections`` em Main.qml precisa estar declarada,
+    senão a auditoria poderia declarar-se completa ignorando uma tela inteira.
+    """
+    main_qml = (ROOT / "src" / "steamzero" / "ui" / "qml" / "Main.qml").read_text(encoding="utf-8")
+    block = main_qml.split("readonly property var navigationSections:", 1)[1].split("]", 1)[0]
+    sections = re.findall(r'\{"id":\s*"([a-z-]+)"', block)
+
+    assert sections, "não foi possível ler navigationSections de Main.qml"
+    missing = [item for item in sections if item not in inventory.DECLARED_SURFACES]
+    assert missing == [], "seções do shell ausentes de DECLARED_SURFACES: " + ", ".join(missing)
+
+
+def test_claiming_an_undeclared_surface_is_refused() -> None:
+    """Cobrir "tudo" declarando um nome que não existe seria verde barato."""
+    with pytest.raises(SystemExit) as excinfo:
+        inventory.coverage_report(["emulators", "tela-que-nao-existe"])
+    assert "tela-que-nao-existe" in str(excinfo.value)
+
+
+def test_coverage_report_only_claims_completeness_when_nothing_is_missing() -> None:
+    partial = inventory.coverage_report(["emulators"])
+    assert partial["complete"] is False
+    assert "overview" in partial["missing"]
+
+    whole = inventory.coverage_report(inventory.DECLARED_SURFACES)
+    assert whole["complete"] is True
+    assert whole["missing"] == []
