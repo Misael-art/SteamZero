@@ -15,11 +15,14 @@ from pathlib import Path
 import pytest
 
 from steamzero.adapters.input_devices import (
+    _FLATPAK_CONFIG,
     MANAGED_BASENAME,
     AutoconfigCatalog,
     AutoconfigTarget,
+    ManagedRetroArchConfig,
     RetroArchControls,
     SysfsInputDevices,
+    managed_config,
     resolve_target,
 )
 from steamzero.core import transaction
@@ -79,14 +82,23 @@ def _catalog(tmp_path, **files: str) -> AutoconfigCatalog:
     return AutoconfigCatalog([directory])
 
 
+def _managed_at(tmp_path) -> ManagedRetroArchConfig:
+    """Arvore gerenciada do SteamZero — o unico alvo de escrita em producao."""
+    return ManagedRetroArchConfig(root=tmp_path / "steamzero-retroarch", driver="udev")
+
+
 def _controls(tmp_path, devices, *, declared: bool = True, **files: str) -> RetroArchControls:
-    target = tmp_path / "autoconfig"
-    target.mkdir(exist_ok=True)
+    managed = _managed_at(tmp_path)
     return RetroArchControls(
         devices=devices,
         catalog=_catalog(tmp_path, pad=files.get("pad", _STEAM_CONTROLLER)),
-        target=AutoconfigTarget(target, declared=declared),
+        target=managed.target if declared else AutoconfigTarget(None, declared=False),
+        managed=managed if declared else None,
     )
+
+
+def _status_of(controls):
+    return _status(controls)
 
 
 def _status(controls):
@@ -446,7 +458,8 @@ class TestTheWindowInsideTheTransaction:
             "orientation": "landscape",
         }
         plan = controls.plan(**argumentos)
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         intruso = 'input_device = "criado dentro da janela"\n'
 
         original = transaction._stage
@@ -470,7 +483,8 @@ class TestTheWindowInsideTheTransaction:
         """Mesma janela, agora com alvo que EXISTIA e mudou no meio."""
         controls = _controls(tmp_path, _Devices(_DECK))
         _apply(controls)
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
 
         plan = controls.plan(
             bindings=[{"action": "game.primary", "input": "button.west"}],
@@ -496,6 +510,112 @@ class TestTheWindowInsideTheTransaction:
         assert alvo.read_text(encoding="utf-8") == alterado
 
 
+class TestTheAppendconfigIntegration:
+    """O mecanismo que faz o perfil chegar ao RetroArch sem editar o config dele.
+
+    O RetroArch Flatpak procura perfis em `/app/share/libretro/autoconfig`, que
+    e interno ao sandbox e inalcancavel do host. `--appendconfig` sobrepoe a
+    chave apontando para uma arvore NOSSA.
+    """
+
+    def _managed(self, tmp_path, driver: str = "udev") -> ManagedRetroArchConfig:
+        return ManagedRetroArchConfig(root=tmp_path / "steamzero-retroarch", driver=driver)
+
+    def _controls_managed(self, tmp_path, managed) -> RetroArchControls:
+        return RetroArchControls(
+            devices=_Devices(_DECK),
+            catalog=_catalog(tmp_path, pad=_STEAM_CONTROLLER),
+            target=managed.target,
+            managed=managed,
+        )
+
+    def test_the_overlay_redirects_the_directory_retroarch_reads(self, tmp_path) -> None:
+        managed = self._managed(tmp_path)
+        conteudo = managed.overlay_content()
+
+        assert f'joypad_autoconfig_dir = "{managed.autoconfig_root}"' in conteudo
+        assert conteudo.splitlines()[0] == MANAGED_MARKER
+
+    def test_the_overlay_disables_save_on_exit(self, tmp_path) -> None:
+        """Sem isto, o RetroArch gravaria nossa injecao no config do USUARIO.
+
+        `config_save_on_exit` vem `true` de fabrica; ao sair, o RetroArch
+        reescreve o arquivo em uso com os valores efetivos — inclusive os que
+        vieram do `--appendconfig`. Isso equivaleria a editar permanentemente a
+        configuracao dele, que a AGENTS.md §5 proibe.
+        """
+        assert 'config_save_on_exit = "false"' in self._managed(tmp_path).overlay_content()
+
+    def test_the_profile_goes_under_the_driver_the_user_config_declares(self, tmp_path) -> None:
+        assert self._managed(tmp_path, "sdl2").target.directory == (
+            tmp_path / "steamzero-retroarch" / "autoconfig" / "sdl2"
+        )
+
+    def test_the_driver_is_read_from_the_user_config(self, tmp_path) -> None:
+        config = tmp_path / _FLATPAK_CONFIG
+        config.mkdir(parents=True)
+        (config / "retroarch.cfg").write_text('input_joypad_driver = "dinput"\n', encoding="utf-8")
+
+        assert managed_config(tmp_path).driver == "dinput"
+
+    def test_a_host_without_retroarch_config_falls_back_to_udev(self, tmp_path) -> None:
+        assert managed_config(tmp_path).driver == "udev"
+
+    def test_applying_writes_the_profile_AND_the_overlay(self, tmp_path) -> None:
+        """Um sem o outro nao vale: perfil sem overlay nunca e procurado, e
+        overlay sem perfil aponta para diretorio vazio."""
+        managed = self._managed(tmp_path)
+        controls = self._controls_managed(tmp_path, managed)
+
+        outcome = _apply(controls)
+
+        assert outcome.state == "applied"
+        assert managed.overlay_path.is_file()
+        assert (managed.autoconfig_root / "udev" / MANAGED_BASENAME).is_file()
+
+    def test_a_profile_without_the_overlay_is_not_applied(self, tmp_path) -> None:
+        managed = self._managed(tmp_path)
+        controls = self._controls_managed(tmp_path, managed)
+        _apply(controls)
+        managed.overlay_path.unlink()
+
+        assert _status_of(controls).state == "pending-write"
+
+    def test_a_foreign_overlay_is_never_overwritten(self, tmp_path) -> None:
+        managed = self._managed(tmp_path)
+        controls = self._controls_managed(tmp_path, managed)
+        _apply(controls)
+        alheio = 'joypad_autoconfig_dir = "/do/usuario"\n'
+        managed.overlay_path.write_text(alheio, encoding="utf-8")
+
+        outcome = _status_of(controls)
+
+        assert outcome.state == "conflict"
+        assert managed.overlay_path.read_text(encoding="utf-8") == alheio
+
+    def test_rolling_back_removes_the_overlay_too(self, tmp_path) -> None:
+        managed = self._managed(tmp_path)
+        controls = self._controls_managed(tmp_path, managed)
+        argumentos = {
+            "bindings": _PERFIL,
+            "profile_id": "standard-gamepad",
+            "profile_revision": 1,
+            "orientation": "landscape",
+        }
+        plan = controls.plan(**argumentos)
+        resultado = controls.apply(plan.plan_id, plan.confirm_token)
+        assert managed.overlay_path.is_file()
+
+        transaction.rollback(resultado.operation_id, reason="teste")
+
+        assert not managed.overlay_path.exists()
+
+    def test_the_launch_arguments_are_the_ones_retroarch_accepts(self, tmp_path) -> None:
+        managed = self._managed(tmp_path)
+
+        assert managed.launch_arguments() == ("--appendconfig", str(managed.overlay_path))
+
+
 class TestRollbackIsRealNotDeclared:
     def test_rolling_back_removes_the_file_it_created(self, tmp_path) -> None:
         """`G-FULL` precisa ser verdade, não rótulo.
@@ -515,7 +635,8 @@ class TestRollbackIsRealNotDeclared:
         }
         plan = controls.plan(**argumentos)
         resultado = controls.apply(plan.plan_id, plan.confirm_token)
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         assert alvo.is_file()
 
         transaction.rollback(resultado.operation_id, reason="teste")
@@ -526,7 +647,8 @@ class TestRollbackIsRealNotDeclared:
     def test_rolling_back_an_update_restores_the_previous_content(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
         _apply(controls)
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         anterior = alvo.read_text(encoding="utf-8")
 
         plan = controls.plan(
@@ -547,7 +669,8 @@ class TestWhatIsNotOursIsNotTouched:
     def test_a_file_without_the_marker_is_never_overwritten(self, tmp_path) -> None:
         """AGENTS.md §5: sem marcador, o arquivo e do usuario ou do RetroArch."""
         controls = _controls(tmp_path, _Devices(_DECK))
-        alheio = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alheio = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alheio.parent.mkdir(parents=True, exist_ok=True)
         original = 'input_device = "perfil do usuario"\ninput_b_btn = "9"\n'
         alheio.write_text(original, encoding="utf-8")
 
@@ -575,7 +698,8 @@ class TestWhatIsNotOursIsNotTouched:
         fosse conferido uma única vez.
         """
         controls = _controls(tmp_path, _Devices(_DECK))
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         if nome == "symlink":
             outro = tmp_path / "arquivo-do-usuario.cfg"
             outro.write_text('input_b_btn = "9"\n', encoding="utf-8")
@@ -605,7 +729,8 @@ class TestWhatIsNotOursIsNotTouched:
     @pytest.mark.skipif(os.geteuid() == 0, reason="root lê arquivo sem permissão")
     def test_an_unreadable_target_is_never_replaced(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         original = 'input_device = "perfil do usuario"\n'
         alvo.write_text(original, encoding="utf-8")
         os.chmod(alvo, 0)
@@ -642,7 +767,8 @@ class TestWhatIsNotOursIsNotTouched:
         }
         plan = controls.plan(**argumentos)
 
-        alvo = tmp_path / "autoconfig" / MANAGED_BASENAME
+        alvo = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        alvo.parent.mkdir(parents=True, exist_ok=True)
         intruso = 'input_device = "chegou entre o plano e o apply"\n'
         alvo.write_text(intruso, encoding="utf-8")
 
@@ -670,7 +796,9 @@ class TestWhatIsNotOursIsNotTouched:
 
         controls.apply(plan.plan_id, plan.confirm_token)
 
-        gravado = (tmp_path / "autoconfig" / MANAGED_BASENAME).read_text(encoding="utf-8")
+        gravado = (
+            tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        ).read_text(encoding="utf-8")
         assert 'input_b_btn = "2"' in gravado
         assert "mega-drive-3-button" in gravado
 
@@ -701,35 +829,36 @@ class TestWhatIsNotOursIsNotTouched:
             controls.apply(plan.plan_id, "token-errado")
 
         assert erro.value.code == "E-TX-CONFIRM-REQUIRED"
-        assert not (tmp_path / "autoconfig" / MANAGED_BASENAME).exists()
+        assert not (
+            tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME
+        ).exists()
 
     def test_a_conflict_is_reported_with_the_path_that_blocked(self, tmp_path) -> None:
         controls = _controls(tmp_path, _Devices(_DECK))
-        (tmp_path / "autoconfig" / MANAGED_BASENAME).write_text('input_b_btn = "9"\n')
+        (tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME).parent.mkdir(
+            parents=True, exist_ok=True
+        )
+        (tmp_path / "steamzero-retroarch" / "autoconfig" / "udev" / MANAGED_BASENAME).write_text(
+            'input_b_btn = "9"\n'
+        )
 
         assert MANAGED_BASENAME in _apply(controls).detail
 
-    def test_the_host_directory_keeps_its_own_permissions(self, tmp_path) -> None:
-        """Gravar um arquivo nao pode mudar o diretorio do RetroArch.
+    def test_the_managed_tree_is_created_with_our_own_secure_mode(self, tmp_path) -> None:
+        """A arvore de perfis e do SteamZero, entao cria-la e legitimo.
 
-        `core.fs.write_atomic` faz `chmod 0700` incondicional no pai; usada aqui,
-        mudaria a permissao da configuracao alheia (no host, 0750 → 0700) como
-        efeito colateral invisivel. AGENTS.md §5 proibe.
+        A versao anterior gravava dentro da configuracao do RetroArch e por isso
+        precisava poupar o diretorio alheio do `chmod`. Com o `--appendconfig`
+        apontando o emulador para uma arvore NOSSA, esse cuidado deixou de ser
+        necessario — e a mudanca ampla que ele exigia no nucleo transacional foi
+        revertida.
         """
-        directory = tmp_path / "autoconfig"
-        directory.mkdir(exist_ok=True)
-        # 0750 e a permissao REAL do diretorio de perfis do RetroArch neste host.
-        # O objetivo do teste e justamente provar que ela sobrevive intacta, entao
-        # o modo tem de ser reproduzido como esta la.
-        os.chmod(directory, 0o750)  # noqa: S103
-        controls = RetroArchControls(
-            devices=_Devices(_DECK),
-            catalog=_catalog(tmp_path, pad=_STEAM_CONTROLLER),
-            target=AutoconfigTarget(directory, declared=True),
-        )
+        controls = _controls(tmp_path, _Devices(_DECK))
 
         assert _apply(controls).state == "applied"
-        assert stat.S_IMODE(directory.stat().st_mode) == 0o750
+
+        arvore = tmp_path / "steamzero-retroarch" / "autoconfig" / "udev"
+        assert stat.S_IMODE(arvore.stat().st_mode) == 0o700
 
     def test_an_absent_host_directory_is_not_created_by_us(self, tmp_path) -> None:
         """Criar diretorio dentro da configuracao do RetroArch e passar do limite.
@@ -760,16 +889,12 @@ class TestWhatIsNotOursIsNotTouched:
 
 class TestFailureDegradesAndNeverBlocks:
     @pytest.mark.skipif(os.geteuid() == 0, reason="root ignora permissao de diretorio")
-    def test_a_read_only_directory_fails_the_operation_instead_of_committing(
-        self, tmp_path
-    ) -> None:
-        """Falha de escrita reprova a OPERAÇÃO, não devolve sucesso.
+    def test_a_read_only_root_fails_the_operation_instead_of_committing(self, tmp_path) -> None:
+        """Falha de escrita reprova a OPERACAO, nao devolve sucesso.
 
         Antes, o efeito acontecia depois do commit e seu resultado era
-        descartado: uma escrita impossível ainda devolvia sucesso transacional,
-        e o `write-failed` publicado no snapshot era ficção — a leitura seguinte
-        via o arquivo ausente e voltava a `pending-write`. Agora o efeito É a
-        transação: o commit só ocorre depois de gravar e verificar.
+        descartado: uma escrita impossivel ainda devolvia sucesso transacional.
+        Agora o efeito E a transacao.
         """
         controls = _controls(tmp_path, _Devices(_DECK))
         argumentos = {
@@ -779,21 +904,26 @@ class TestFailureDegradesAndNeverBlocks:
             "orientation": "landscape",
         }
         plan = controls.plan(**argumentos)
-        directory = tmp_path / "autoconfig"
-        os.chmod(directory, stat.S_IRUSR | stat.S_IXUSR)
+        raiz = tmp_path / "steamzero-retroarch"
+        raiz.mkdir(parents=True, exist_ok=True)
+        os.chmod(raiz, stat.S_IRUSR | stat.S_IXUSR)
         try:
             with pytest.raises(PermissionError):
                 controls.apply(plan.plan_id, plan.confirm_token)
         finally:
-            os.chmod(directory, stat.S_IRWXU)
+            os.chmod(raiz, stat.S_IRWXU)
 
-        # E o estado observado continua honesto: nada foi gravado.
         assert controls.status(**argumentos).state == "pending-write"
-        assert not (directory / MANAGED_BASENAME).exists()
+        assert not (raiz / "autoconfig" / "udev" / MANAGED_BASENAME).exists()
 
-    @pytest.mark.skipif(os.geteuid() == 0, reason="root ignora permissao de diretorio")
-    def test_a_failed_write_leaves_the_previous_managed_file_intact(self, tmp_path) -> None:
-        """Atomicidade: nunca existe estado intermediario meio gravado."""
+    def test_a_failed_write_leaves_the_previous_managed_file_intact(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """Atomicidade: nunca existe estado intermediario meio gravado.
+
+        A falha e injetada na propria escrita, que e o que a garantia cobre: o
+        nucleo fez backup antes de tocar no alvo e reverte ao falhar.
+        """
         controls = _controls(tmp_path, _Devices(_DECK))
         primeiro = _apply(controls)
         assert primeiro.target.path is not None
@@ -805,15 +935,22 @@ class TestFailureDegradesAndNeverBlocks:
             profile_revision=1,
             orientation="landscape",
         )
-        directory = primeiro.target.directory
-        assert directory is not None
-        os.chmod(directory, stat.S_IRUSR | stat.S_IXUSR)
-        try:
-            with pytest.raises(PermissionError):
-                controls.apply(plan.plan_id, plan.confirm_token)
-        finally:
-            os.chmod(directory, stat.S_IRWXU)
 
+        from steamzero.core import fs
+
+        original = fs.write_atomic
+
+        def falha_no_perfil(path, data, **kwargs):  # type: ignore[no-untyped-def]
+            if path.name == MANAGED_BASENAME and path.parent.name == "udev":
+                raise PermissionError("falha injetada na publicacao do perfil")
+            return original(path, data, **kwargs)
+
+        monkeypatch.setattr(fs, "write_atomic", falha_no_perfil)
+
+        with pytest.raises(PermissionError):
+            controls.apply(plan.plan_id, plan.confirm_token)
+
+        monkeypatch.undo()
         assert primeiro.target.path.read_text(encoding="utf-8") == bom
 
     def test_an_unreadable_catalog_directory_does_not_raise(self, tmp_path) -> None:
