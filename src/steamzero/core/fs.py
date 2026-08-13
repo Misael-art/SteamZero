@@ -141,6 +141,45 @@ def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
     write_atomic(path, text.encode("utf-8"), mode=mode)
 
 
+def write_atomic_in_foreign_dir(path: Path, data: bytes, *, mode: int = _FILE_MODE) -> None:
+    """Escreve atomicamente num diretório que NÃO é nosso, sem alterá-lo.
+
+    ``write_atomic`` chama ``ensure_dir``, que faz ``mkdir(parents=True)`` e um
+    ``chmod`` INCONDICIONAL no diretório pai. Isso é correto para a árvore de
+    estado do SteamZero, da qual somos donos, e errado para o diretório de
+    configuração de um terceiro (ex.: os perfis de controle do RetroArch):
+    gravar um arquivo passaria a criar diretórios na configuração alheia e a
+    mudar a permissão dela como efeito colateral invisível, que é o que a
+    AGENTS.md §5 proíbe.
+
+    Aqui o diretório precisa já existir e sai intocado — inclusive o modo. A
+    garantia atômica é a mesma: tmp + fsync + rename, e em falha no meio o
+    arquivo anterior fica íntegro.
+    """
+    parent = path.parent
+    tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        _write_all(fd, data)
+        os.fsync(fd)
+    except BaseException:
+        os.close(fd)
+        _silent_unlink(tmp)
+        raise
+    else:
+        os.close(fd)
+    try:
+        os.replace(tmp, path)
+    except OSError:
+        _silent_unlink(tmp)
+        raise
+    _fsync_dir(parent)
+
+
+def write_atomic_text_in_foreign_dir(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
+    write_atomic_in_foreign_dir(path, text.encode("utf-8"), mode=mode)
+
+
 def write_stream_atomic(
     path: Path,
     source: IO[bytes],
