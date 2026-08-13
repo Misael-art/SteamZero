@@ -241,6 +241,7 @@ def plan_write_files(
     removals: set[Path] | None = None,
     skip_unchanged: bool = False,
     requirements_extra: dict[str, Any] | None = None,
+    rollback_guarantee: str = "G-FULL",
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -307,11 +308,11 @@ def plan_write_files(
         created_at=now.isoformat(),
         expires_at=(now + timedelta(seconds=ttl_s)).isoformat(),
         status="pending",
-        rollback_guarantee="G-FULL",
+        rollback_guarantee=rollback_guarantee,
         requirements=requirements,
         actions=actions,
         preconditions=preconditions,
-        preview=_render_preview(kind, actions, "G-FULL"),
+        preview=_render_preview(kind, actions, rollback_guarantee),
     )
     _save_plan(plan)
     return plan
