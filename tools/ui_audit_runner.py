@@ -198,10 +198,15 @@ def _classify_warnings(stderr: str) -> dict[str, Any]:
     }
 
 
-def _parse_capture_records(stdout: str) -> list[dict[str, Any]]:
-    """Lê os registros AUDIT-META emitidos pelo harness (um JSON por captura)."""
+def _parse_capture_records(output: str) -> list[dict[str, Any]]:
+    """Lê os registros AUDIT-META emitidos pelo harness (um JSON por captura).
+
+    Recebe stdout e stderr juntos: com ``QT_FORCE_STDERR_LOGGING`` o
+    ``console.log`` do QML sai por stderr, e ler só stdout devolvia zero
+    registro para 55 capturas.
+    """
     records: list[dict[str, Any]] = []
-    for line in stdout.splitlines():
+    for line in output.splitlines():
         marker = line.find("AUDIT-META ")
         if marker < 0:
             continue
@@ -430,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
         if completed.stderr:
             print(completed.stderr, file=sys.stderr)
 
-        records = _parse_capture_records(completed.stdout)
+        records = _parse_capture_records(completed.stdout + "\n" + (completed.stderr or ""))
         pngs = _list_pngs(outdir, records)
         warnings = _classify_warnings(completed.stderr or "")
         process = _process_status(completed.returncode)
