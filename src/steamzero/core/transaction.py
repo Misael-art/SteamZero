@@ -139,6 +139,11 @@ class Plan:
     preconditions: list[Precondition]
     preview: str
     schema_version: int = 1
+    #: O alvo mora em diretório de TERCEIRO (ex.: config do RetroArch). Só então
+    #: um diretório preexistente é poupado do `chmod` de `ensure_dir`. O padrão
+    #: preserva o comportamento histórico: na árvore do SteamZero, da qual somos
+    #: donos, o modo seguro continua sendo normalizado.
+    foreign_dir: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -154,6 +159,7 @@ class Plan:
             "requirements": self.requirements,
             "actions": [a.to_dict() for a in self.actions],
             "preconditions": [p.to_dict() for p in self.preconditions],
+            "foreignDir": self.foreign_dir,
             "preview": self.preview,
         }
 
@@ -171,6 +177,7 @@ class Plan:
             requirements=d["requirements"],
             actions=[FileAction.from_dict(a) for a in d["actions"]],
             preconditions=[Precondition.from_dict(p) for p in d["preconditions"]],
+            foreign_dir=bool(d.get("foreignDir", False)),
             preview=d["preview"],
             schema_version=d.get("schemaVersion", 1),
         )
@@ -241,6 +248,7 @@ def plan_write_files(
     removals: set[Path] | None = None,
     skip_unchanged: bool = False,
     requirements_extra: dict[str, Any] | None = None,
+    foreign_dir: bool = False,
 ) -> Plan:
     """Gera (scan+plan) um plano de escrita de arquivos geridos. Não muta alvos.
 
@@ -312,6 +320,7 @@ def plan_write_files(
         actions=actions,
         preconditions=preconditions,
         preview=_render_preview(kind, actions, "G-FULL"),
+        foreign_dir=foreign_dir,
     )
     _save_plan(plan)
     return plan
@@ -845,6 +854,14 @@ def _write_backup_manifest(op_id: str, entries: list[fs.BackupEntry]) -> None:
     )
 
 
+_MISSING = object()
+
+
+def _expected_fingerprints(plan: Plan) -> dict[str, str | None]:
+    """Fingerprint que o PLANO registrou para cada alvo, por caminho."""
+    return {p.target: p.fingerprint for p in plan.preconditions}
+
+
 def _apply_actions(
     op_id: str, plan: Plan, jrnl: journal.Journal, undo_map: dict[str, dict[str, Any]]
 ) -> None:
@@ -872,7 +889,7 @@ def _apply_actions(
                 raise SteamZeroError(
                     "E-TX-STALE-PLAN", detail=f"cópia mudou durante apply: {a.source}"
                 )
-            fs.copy_file_atomic(staged, target, preserve_existing_dir=True)
+            fs.copy_file_atomic(staged, target, preserve_existing_dir=plan.foreign_dir)
         elif a.kind == "symlink":
             if a.source is None:  # defesa em profundidade; validado antes
                 raise SteamZeroError("E-TX-STALE-PLAN", detail="symlink sem origem")
@@ -886,7 +903,32 @@ def _apply_actions(
         elif a.kind == "delete":
             fs.remove_file(Path(a.target))
         else:
-            fs.write_atomic(Path(a.target), a.new_content(), preserve_existing_dir=True)
+            # A janela que a revalidação de preconditions NÃO cobre.
+            #
+            # `_revalidate_preconditions` roda uma vez, no início do apply, e
+            # depois ainda acontecem staging e backup. Um arquivo estrangeiro
+            # criado nesse intervalo era copiado para o backup e então
+            # SOBRESCRITO por esta linha, com a operação retornando `ok` — a
+            # garantia de nunca destruir arquivo alheio valia só até o staging.
+            #
+            # A política vem do próprio plano: quando a precondição registrou o
+            # alvo como AUSENTE, a publicação é uma criação exclusiva, que é a
+            # única forma atômica de garantir que não se sobrescreve nada.
+            # Quando o alvo existia, o fingerprint é reconferido imediatamente
+            # antes de publicar, em vez de só no começo da operação.
+            target = Path(a.target)
+            expected = _expected_fingerprints(plan).get(str(target), _MISSING)
+            if expected is not _MISSING and _fingerprint(target) != expected:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN",
+                    detail=f"alvo mudou durante apply: {a.target}",
+                )
+            fs.write_atomic(
+                target,
+                a.new_content(),
+                preserve_existing_dir=plan.foreign_dir,
+                must_not_exist=expected is None,
+            )
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
         _maybe_crash("apply.done")
