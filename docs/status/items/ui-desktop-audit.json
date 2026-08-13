@@ -10,27 +10,31 @@
   "operation": "degraded",
   "distribution": "not-packaged",
   "scopePaths": [
+    "docs/09-operations/evidence/2026-08-11-ui-audit",
     "src/steamzero/ui",
+    "tests/integration/test_ui_control_matrix.py",
+    "tests/qml/check_editorial_library.qml",
+    "tests/qml/check_emulation.qml",
+    "tests/qml/check_main_emulation.qml",
+    "tests/qml/check_theme_editor_aura.qml",
     "tools/ui_audit_capture.qml",
     "tools/ui_audit_runner.py",
-    "docs/09-operations/evidence/2026-08-11-ui-audit",
-    "tests/qml/check_main_emulation.qml",
-    "tests/qml/check_emulation.qml",
-    "tests/qml/check_editorial_library.qml",
-    "tests/qml/check_theme_editor_aura.qml"
+    "tools/ui_control_inventory.py",
+    "tools/ui_control_probe.qml"
   ],
-  "scopeDigest": "4faaa8ea1d4d5374dcbdd0c4bddfa268b8a8977da68a3d18a1ca90346d85f4e4",
+  "scopeDigest": "4f8de56547a573cec412a2a3800e9fc8553362dc50b69d81b827a21d635ab325",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
     "Instalar emulador nao e no-op silencioso.",
-    "Nenhuma acao habilitada do workspace fica sem rota no shell.",
-    "Toda acao desabilitada publica o motivo.",
+    "Nenhum controle habilitado da arvore QML fica sem efeito observavel.",
+    "Nenhum controle habilitado fica sem rota no shell.",
+    "Todo controle desabilitado que se apresenta como acionavel publica o motivo.",
+    "Auditoria parcial nao publica contrato como orfao.",
     "Card de plataforma travada por emulador ausente oferece instalar.",
     "Harness de auditoria termina sem crash e o manifesto usa a CLI publicada.",
     "DarkButton legivel no tema claro.",
-    "Tema aplica via plan+confirm na UI.",
-    "Harnesses QML de dispatch/tema/biblioteca verdes."
+    "Tema aplica via plan+confirm na UI."
   ],
   "evidence": [
     {
@@ -50,12 +54,18 @@
       "reference": "tests/unit/test_ui_audit_runner.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_audit_runner.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "A matriz de controles cobre so o workspace de emulacao: zero no-op, zero sem rota, zero desabilitada sem motivo. Estender a sonda as demais superficies antes de declarar a UI auditada; P0 visuais (DarkButton, capas, Home) e validacao fisica no Deck seguem abertos.",
+  "nextAction": "Medido em 2026-08-13: 288 controles em 12 superficies; 10 roteados, 49 locais, 14 bloqueados com motivo, 215 nao sondados (invisiveis no estado offline). Zero no-op silencioso, zero sem rota, zero bloqueado mudo. 7 defeitos encontrados e 7 corrigidos. 117 contratos ainda NAO COBERTOS por esta auditoria (nao sao orfaos: 1 de 17 superficies inventariada pela sonda de acoes). Falta tornar os controles invisiveis sondaveis por fixture de estado, cobrir dialogs/recovery/jobs e so entao atacar os P0 visuais (DarkButton, capas, Home).",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
   "updatedAt": "2026-08-13",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. Caminho compartilhado com WS-2026-08-HARMONIZE-A45, que reserva docs/status: este item so teve digest, evidencia e proxima acao atualizados."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. Caminho compartilhado com WS-2026-08-HARMONIZE-A45, que reserva docs/status: este item so teve escopo, criterios, evidencia e proxima acao atualizados."
 }

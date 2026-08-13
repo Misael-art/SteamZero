@@ -17,8 +17,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 271 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TOOLS | 31 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 272 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TOOLS | 33 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
@@ -35,6 +35,6 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-AURA | 11 | 2 | 2 | unit |  |
 | SZ-THEME-EDITOR | 8 | 4 | 4 | unit |  |
-| SZ-UI-DESKTOP-AUDIT | 213 | 3 | 3 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 216 | 4 | 4 | dev |  |
 
 Arquivos em `src/`: **443**. Sob agregador apenas, sem item de capacidade: **320** (72%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
