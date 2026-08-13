@@ -348,3 +348,34 @@ def test_scene_text_renders_what_the_adapter_emits() -> None:
         check=False,
     )
     _assert_qml_clean(completed, "check_scene_text.qml")
+
+
+@pytest.mark.visual
+def test_controls_profile_card_never_shows_green_without_proof() -> None:
+    """G45 — a tela precisa separar perfil salvo, traduzido e valendo.
+
+    O perfil de controle era resolvido, gravado e desenhado por ninguém, então
+    o usuário não tinha como distinguir "escolhi um perfil" de "o perfil vale no
+    emulador". O harness percorre os oito estados publicados e cobra a regra que
+    importa: só `applied` pode ficar verde. `pending-write` tem todos os bindings
+    resolvidos e mesmo assim não é pronto — o arquivo ainda não existe.
+
+    Sem `skip`: um verde num host onde nada foi renderizado é exatamente como a
+    regressão de ícones da a37 atravessou os gates (G13).
+    """
+    if QML is None:
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente. Os estados do cartão de "
+            "perfil de controle não podem ser verificados sem runtime QML, e "
+            "declarar verde sem renderizar é o defeito que a G45 registra."
+        )
+    completed = subprocess.run(
+        [str(QML), "tests/qml/check_controls_profile_card.qml"],
+        cwd=ROOT,
+        env=_qml_environment(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    _assert_qml_clean(completed, "check_controls_profile_card.qml")

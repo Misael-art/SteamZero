@@ -3858,6 +3858,26 @@ Item {
                             }
                         }
 
+                        // G45: o perfil de controle era resolvido e gravado sem
+                        // que QML nenhum o desenhasse — o usuário não tinha como
+                        // distinguir perfil escolhido de perfil valendo. O cartão
+                        // só fica verde quando o autoconfig foi de fato aplicado.
+                        ControlsProfileCard {
+                            objectName: "gameControlsProfileCard"
+                            visible: page.selectedGame.controlsProfile !== undefined
+                                && page.selectedGame.controlsProfile !== null
+                            Layout.fillWidth: true
+                            profile: page.selectedGame.controlsProfile || null
+                            surfaceColor: page.backgroundColor
+                            raisedColor: page.raisedColor
+                            borderColor: page.borderColor
+                            textColor: page.textColor
+                            mutedColor: page.mutedColor
+                            greenColor: page.greenColor
+                            amberColor: page.amberColor
+                            redColor: page.redColor
+                        }
+
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.minimumHeight: contentPanel.implicitHeight + 24
