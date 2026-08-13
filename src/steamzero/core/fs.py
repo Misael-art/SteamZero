@@ -118,6 +118,7 @@ def write_atomic(
     mode: int = _FILE_MODE,
     fsync_dir: bool = True,
     preserve_existing_dir: bool = False,
+    must_not_exist: bool = False,
 ) -> None:
     """Escreve ``data`` em ``path`` atomicamente (tmp+fsync+rename), 0600.
 
@@ -132,6 +133,11 @@ def write_atomic(
     Com ``preserve_existing_dir``, um pai que JÁ EXISTE sai intocado; um pai
     ausente continua sendo criado com o nosso modo, porque aí o diretório é
     nosso.
+
+    Com ``must_not_exist``, a publicação usa ``os.link`` e falha com
+    ``FileExistsError`` se o destino existir. É a única forma ATÔMICA de dizer
+    "crie, mas não sobrescreva": qualquer verificação anterior ao ``rename``
+    deixa uma janela, e é dentro dela que um arquivo alheio seria destruído.
     """
     parent = path.parent
     if preserve_existing_dir and parent.is_dir():
@@ -149,7 +155,15 @@ def write_atomic(
         raise
     else:
         os.close(fd)
-    os.replace(tmp, path)
+    try:
+        if must_not_exist:
+            os.link(tmp, path)
+            _silent_unlink(tmp)
+        else:
+            os.replace(tmp, path)
+    except OSError:
+        _silent_unlink(tmp)
+        raise
     if fsync_dir:
         _fsync_dir(parent)
 
