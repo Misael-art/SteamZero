@@ -25,8 +25,15 @@ O veredito por ação é um destes:
 ``blocked-explained`` / ``blocked-silent``
     desabilitada com e sem motivo. A segunda é defeito.
 
-Contratos publicados que nenhuma superfície alcança saem em ``orphanContracts``:
-capacidade que existe no backend e é invisível no produto.
+Contratos que nenhuma ação inventariada alcançou saem em um de dois campos, e a
+diferença entre eles é o ponto:
+
+``notCoveredContracts``
+    a auditoria é parcial. O contrato pode muito bem ser alcançável por uma tela
+    que esta execução nem abriu — não afirma nada sobre o produto.
+``orphanContracts``
+    só aparece quando ``coverage.complete`` é verdadeiro. Aí sim é capacidade
+    que existe no backend e está invisível no produto inteiro.
 
 Uso:
   .venv/bin/python tools/ui_action_inventory.py
@@ -42,6 +49,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -311,16 +319,71 @@ def classify(
     return rows
 
 
-def orphan_contracts(
+#: As seções que a central publica em ``Main.qml`` (``navigationSections``),
+#: mais as superfícies transversais que não são seção mas têm controles
+#: próprios. Esta é a régua de cobertura: enquanto faltar qualquer uma, o
+#: inventário não pode afirmar orfandade de contrato.
+DECLARED_SURFACES: tuple[str, ...] = (
+    "overview",
+    "emulators",
+    "steam",
+    "profiles",
+    "sync",
+    "cast",
+    "system",
+    "themes",
+    "library",
+    "sidebar",
+    "handheld-drawer",
+    "task-drawer",
+    "credentials",
+    "plan-dialogs",
+    "jobs",
+    "recovery",
+    "notifications",
+)
+
+
+def unreached_contracts(
     rows: list[dict[str, Any]], contracts_by_id: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Contratos publicados que nenhuma ação de read model alcança."""
+    """Contratos publicados que nenhuma ação inventariada alcançou.
+
+    Só isso. Se a ação que alcançaria o contrato vive numa superfície que o
+    inventário ainda não visita, o contrato aparece aqui sem ser órfão — e é
+    por isso que quem publica precisa dizer qual dos dois nomes está usando
+    (ver :func:`coverage_report`).
+    """
     reached = {row["contract"] for row in rows if row["contract"]}
     return [
         {"contract": key, "label": value.get("label", ""), "screen": value.get("screen", "")}
         for key, value in sorted(contracts_by_id.items())
         if key not in reached
     ]
+
+
+def coverage_report(covered: Sequence[str]) -> dict[str, Any]:
+    """Quanto da central o inventário realmente visitou."""
+    covered_set = {str(item) for item in covered}
+    unknown = sorted(covered_set - set(DECLARED_SURFACES))
+    if unknown:
+        raise SystemExit(
+            "superfície coberta que não está declarada em DECLARED_SURFACES: "
+            + ", ".join(unknown)
+            + ". Declare a superfície antes de afirmar cobertura sobre ela."
+        )
+    missing = [surface for surface in DECLARED_SURFACES if surface not in covered_set]
+    return {
+        "declared": list(DECLARED_SURFACES),
+        "covered": sorted(covered_set),
+        "missing": missing,
+        "complete": not missing,
+    }
+
+
+#: Superfícies que este inventário visita hoje. Cresce a cada incremento; é o
+#: que separa "não alcançado por esta auditoria" de "órfão no produto".
+COVERED_SURFACES: tuple[str, ...] = ("emulators",)
 
 
 def build_inventory() -> dict[str, Any]:
@@ -331,9 +394,13 @@ def build_inventory() -> dict[str, Any]:
     counts: dict[str, int] = {}
     for row in rows:
         counts[row["verdict"]] = counts.get(row["verdict"], 0) + 1
-    return {
-        "schemaVersion": 1,
+
+    coverage = coverage_report(COVERED_SURFACES)
+    unreached = unreached_contracts(rows, contracts_by_id)
+    inventory: dict[str, Any] = {
+        "schemaVersion": 2,
         "kind": "steamzero-ui-action-inventory",
+        "coverage": coverage,
         "contractCount": len(contracts_by_id),
         "publishedActionCount": len(rows),
         "verdictCounts": counts,
@@ -343,9 +410,17 @@ def build_inventory() -> dict[str, Any]:
         "unrouted": [row for row in rows if row["verdict"] == "unrouted"],
         # Desabilitado sem dizer por quê.
         "unexplainedBlocked": [row for row in rows if row["verdict"] == "blocked-silent"],
-        "orphanContracts": orphan_contracts(rows, contracts_by_id),
         "actions": rows,
     }
+    # Orfandade é uma afirmação sobre o produto inteiro. Uma auditoria que
+    # visitou 1 de 17 superfícies não pode fazê-la: os 117 contratos que ela
+    # não alcançou são, em quase todos os casos, contratos de telas que ela
+    # nem abriu. Enquanto a cobertura for parcial, o nome é outro.
+    if coverage["complete"]:
+        inventory["orphanContracts"] = unreached
+    else:
+        inventory["notCoveredContracts"] = unreached
+    return inventory
 
 
 def render_markdown(inventory: dict[str, Any]) -> str:
@@ -380,11 +455,22 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.markdown:
         args.markdown.write_text(render_markdown(inventory), encoding="utf-8")
+    coverage = inventory["coverage"]
     print(json.dumps(inventory["verdictCounts"], indent=2, ensure_ascii=False))
     print(f"no-op silencioso: {len(inventory['silentNoOps'])}")
     print(f"habilitada sem rota: {len(inventory['unrouted'])}")
     print(f"desabilitada sem motivo: {len(inventory['unexplainedBlocked'])}")
-    print(f"contratos órfãos: {len(inventory['orphanContracts'])}")
+    print(
+        f"cobertura: {len(coverage['covered'])}/{len(coverage['declared'])} superfícies"
+        + ("" if coverage["complete"] else f"; faltam {', '.join(coverage['missing'])}")
+    )
+    if coverage["complete"]:
+        print(f"contratos órfãos: {len(inventory['orphanContracts'])}")
+    else:
+        print(
+            f"contratos não cobertos por esta auditoria: "
+            f"{len(inventory['notCoveredContracts'])} (não são órfãos: a auditoria é parcial)"
+        )
     return 0
 
 
