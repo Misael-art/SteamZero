@@ -63,7 +63,7 @@ Item {
         var current = autoconfigState()
         if (current === "applied")
             return greenColor
-        if (current === "write-failed" || current === "conflict")
+        if (current === "conflict")
             return redColor
         if (current === "partial")
             return amberColor
@@ -88,9 +88,10 @@ Item {
         if (current === "partial")
             return qsTr("Parte do perfil foi aplicada. As ações abaixo sem índice físico não "
                 + "valem, porque o controle não as declara.")
-        if (current === "write-failed")
-            return qsTr("Não foi possível gravar o perfil. O emulador continua utilizável com os "
-                + "padrões dele.")
+        if (current === "unsupported-scope")
+            return qsTr("Este jogo usa um perfil próprio, e o autoconfig do RetroArch vale por "
+                + "CONTROLE, não por jogo. Aplicá-lo gravaria o perfil da plataforma — outro "
+                + "perfil. Perfil por jogo exigiria remap por jogo, ainda não implementado.")
         if (current === "conflict")
             return qsTr("Existe um arquivo de controle que não foi criado pelo SteamZero. Ele não "
                 + "será sobrescrito.")

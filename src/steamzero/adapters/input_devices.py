@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from steamzero.core import fs
+from steamzero.core import transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain import retroarch_autoconfig as autoconfig_mod
 from steamzero.domain.retroarch_autoconfig import (
@@ -58,8 +58,8 @@ STATE_LABELS: dict[str, str] = {
     "pending-write": "Perfil resolvido; ainda não gravado",
     "partial": "Perfil parcialmente aplicado",
     "applied": "Perfil aplicado",
-    "write-failed": "Falha ao gravar o perfil",
     "conflict": "Existe um arquivo de controle que não é do SteamZero",
+    "unsupported-scope": "Perfil por jogo não é aplicável ao autoconfig, que vale por controle",
 }
 
 
@@ -128,17 +128,6 @@ def _read_hex(path: Path) -> int | None:
         return int(raw, 16)
     except ValueError:
         return None
-
-
-def _write_managed(path: Path, text: str, *, must_not_exist: bool = False) -> None:
-    """Grava pelo porto de escrita, na variante que preserva diretório alheio.
-
-    `fs.write_atomic_text` chamaria `ensure_dir`, que faz `mkdir(parents=True)` e
-    `chmod` incondicional no pai — aqui, o diretório de perfis do RetroArch.
-    Gravar um arquivo não pode criar diretórios na configuração de terceiro nem
-    mudar a permissão dela (AGENTS.md §5).
-    """
-    fs.write_atomic_text_in_foreign_dir(path, text, must_not_exist=must_not_exist)
 
 
 @dataclass(frozen=True)
@@ -464,6 +453,17 @@ class RetroArchControls:
             )
         if not self._target.declared or self._target.path is None:
             return AutoconfigOutcome("awaiting-emulator", resolution, match, self._target)
+        if self._target.directory is None or not self._target.directory.is_dir():
+            # O diretório declarado ainda não existe. Criá-lo seria construir
+            # dentro da configuração do RetroArch, que não é nossa; o estado
+            # honesto é que o emulador ainda não montou a árvore dele.
+            return AutoconfigOutcome(
+                "awaiting-emulator",
+                resolution,
+                match,
+                self._target,
+                detail=f"{self._target.directory}: o diretório declarado ainda não existe",
+            )
 
         probe = _probe_target(self._target.path)
         if probe.kind == "foreign":
@@ -496,26 +496,34 @@ class RetroArchControls:
             return AutoconfigOutcome("pending-write", resolution, match, self._target)
         return AutoconfigOutcome("applied", resolution, match, self._target)
 
-    def apply(
+    def plan(
         self,
         *,
         bindings: Sequence[Mapping[str, Any]],
         profile_id: str,
         profile_revision: int,
         orientation: str,
-    ) -> AutoconfigOutcome:
-        """Materializa o arquivo gerenciado, e só ele.
+    ) -> transaction.Plan:
+        """Plano transacional REAL para materializar o autoconfig.
 
-        Grava exclusivamente a partir de `pending-write`, que por construção já
-        excluiu perfil incompleto e alvo de terceiro. Idempotente: com o
-        conteúdo esperado já em disco o estado é `applied` e nada é regravado —
-        um rename por cima mudaria o mtime sem mudar nada.
+        A versão anterior gravava aqui, por fora do núcleo transacional, e um
+        plano vazio servia só de portão de confirmação. Isso produzia quatro
+        defeitos que este desenho elimina de uma vez:
 
-        A recusa não depende só da checagem: quando o alvo foi observado como
-        AUSENTE, a criação é exclusiva (`must_not_exist`), então um arquivo que
-        apareça entre a observação e a escrita faz a operação falhar em vez de
-        ser substituído. Sem isso, "nunca sobrescrevemos arquivo alheio" seria
-        uma verificação com janela, não uma garantia.
+        - o plano não ficava ligado a perfil, revisão, orientação nem destino,
+          então dava para confirmar o perfil A, trocar de perfil e gravar o B;
+        - a operação era commitada ANTES do efeito, então falha de escrita
+          devolvia sucesso transacional;
+        - não havia backup, logo o `rollback` oferecido no histórico não
+          removia nem restaurava nada — rollback falso;
+        - a recusa a sobrescrever arquivo alheio dependia de uma verificação
+          feita antes da escrita, com janela entre as duas.
+
+        Com o conteúdo dentro do plano, o núcleo cuida de tudo: a precondição
+        grava o fingerprint do alvo e `apply` a revalida, então QUALQUER
+        mudança no destino entre planejar e aplicar — inclusive um arquivo
+        estrangeiro que apareça na janela — reprova como plano obsoleto em vez
+        de ser sobrescrita. O backup torna o rollback verdadeiro.
         """
         observed = self.status(
             bindings=bindings,
@@ -524,36 +532,32 @@ class RetroArchControls:
             orientation=orientation,
         )
         if observed.state != "pending-write":
-            return observed
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"perfil não está pronto para gravar: {observed.label}",
+            )
         resolution = observed.resolution
         path = self._target.path
-        if resolution is None or path is None:
-            # `pending-write` já implica ambos presentes; devolver o estado
-            # observado é mais honesto que estourar numa invariante interna.
-            return observed
-        expected = self._render(
+        if resolution is None or path is None:  # pragma: no cover - implicado por pending-write
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="destino do autoconfig indefinido")
+        content = self._render(
             resolution, observed.match, profile_id, profile_revision, orientation
+        ).encode("utf-8")
+        return transaction.plan_write_files(
+            {path: content},
+            root=path.parent,
+            kind="controls.autoconfig.apply",
+            skip_unchanged=True,
         )
-        try:
-            _write_managed(path, expected, must_not_exist=_probe_target(path).kind == "absent")
-        except FileExistsError:
-            return AutoconfigOutcome(
-                "conflict",
-                resolution,
-                observed.match,
-                self._target,
-                detail=f"{path}: apareceu um arquivo entre a verificação e a escrita",
+
+    def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:
+        """Aplica o plano pelo núcleo transacional, com backup e rollback."""
+        plan = transaction.load_plan(plan_id)
+        if plan.kind != "controls.autoconfig.apply":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="plano não pertence ao autoconfig de controles"
             )
-        except OSError as exc:
-            return AutoconfigOutcome(
-                "write-failed",
-                resolution,
-                observed.match,
-                self._target,
-                detail=str(exc),
-            )
-        state = "partial" if resolution.state == "partial" else "applied"
-        return AutoconfigOutcome(state, resolution, observed.match, self._target)
+        return transaction.apply(plan_id, confirm_token)
 
     def _render(
         self,
