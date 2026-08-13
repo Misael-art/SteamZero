@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ui-ux-functional-closure",
+  "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
+  "owner": "ui-ux-closure",
+  "state": "active",
+  "exclusivePaths": [
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
+    "tools/ui_audit_runner.py",
+    "tools/ui_audit_capture.qml",
+    "tests/unit/test_ui_audit_runner.py",
+    "tests/integration/test_ui_action_inventory.py"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "src/steamzero/domain/emulation_workspace.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "tests/qml/check_editorial_library.qml"
+  ],
+  "nextAction": "Matriz de controles verde para emulacao. Estender a sonda as demais superficies (Home, biblioteca, perfis, sync, cast, sistema, temas) e so entao atacar os P0 visuais; validacao fisica no Deck continua com o operador.",
+  "updatedAt": "2026-08-13"
+}

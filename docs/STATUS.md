@@ -34,6 +34,6 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
 | SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | degraded | installed | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
 | SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | degraded | installed | Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada sem diagnostico). |
-| SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
+| SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | A matriz de controles cobre so o workspace de emulacao: zero no-op, zero sem rota, zero desabilitada sem motivo. Estender a sonda as demais superficies antes de declarar a UI auditada; P0 visuais (DarkButton, capas, Home) e validacao fisica no Deck seguem abertos. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.
