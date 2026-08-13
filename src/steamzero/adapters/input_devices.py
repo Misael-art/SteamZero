@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from steamzero.core import transaction
+from steamzero.core import paths, transaction
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain import retroarch_autoconfig as autoconfig_mod
 from steamzero.domain.retroarch_autoconfig import (
@@ -378,6 +378,87 @@ def bundled_autoconfig_directories(home: Path | None = None) -> list[Path]:
     return found
 
 
+@dataclass(frozen=True)
+class ManagedRetroArchConfig:
+    """Config próprio do SteamZero, injetado no RetroArch em tempo de lançamento.
+
+    O RetroArch Flatpak declara `joypad_autoconfig_dir = /app/share/libretro/
+    autoconfig`: caminho INTERNO ao sandbox, inexistente no host e
+    somente-leitura. Não há onde gravar um perfil que ele leia, e abrir o
+    emulador não muda isso.
+
+    A saída é `--appendconfig`, que sobrepõe chaves sem tocar no arquivo do
+    usuário. Medido no host (evidência em
+    `docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`):
+
+    - o overlay redireciona `joypad_autoconfig_dir` para uma árvore NOSSA;
+    - o RetroArch tem `config_save_on_exit = "true"`, então sem cuidado ele
+      PERSISTIRIA nossa injeção dentro do `retroarch.cfg` do usuário — que é
+      editá-lo permanentemente, proibido pela AGENTS.md §5. Por isso o overlay
+      também desliga `config_save_on_exit`. Verificado: com o overlay, o
+      `retroarch.cfg` real do usuário sai da execução byte a byte idêntico.
+
+    O custo dessa escolha é real e não deve ser escondido: nas sessões lançadas
+    pelo SteamZero, ajustes que o usuário faça no menu do RetroArch não são
+    gravados. É o preço de não reescrever a configuração dele.
+
+    A árvore de perfis é NOSSA, então criá-la é legítimo — nada aqui escreve em
+    diretório de terceiro.
+    """
+
+    root: Path
+    driver: str = _DEFAULT_JOYPAD_DRIVER
+
+    @property
+    def overlay_path(self) -> Path:
+        return self.root / "steamzero.cfg"
+
+    @property
+    def autoconfig_root(self) -> Path:
+        return self.root / "autoconfig"
+
+    @property
+    def target(self) -> AutoconfigTarget:
+        # `declared=True` porque quem declara é o SteamZero, no lançamento: o
+        # diretório é nosso e o overlay aponta o emulador para ele.
+        return AutoconfigTarget(self.autoconfig_root / self.driver, declared=True)
+
+    def overlay_content(self) -> str:
+        return "\n".join(
+            [
+                autoconfig_mod.MANAGED_MARKER,
+                "# Sobreposto no RetroArch com --appendconfig pelo SteamZero.",
+                "# Não edite: este arquivo é regravado. Remova a primeira linha",
+                "# para assumir a propriedade dele.",
+                "",
+                f'joypad_autoconfig_dir = "{self.autoconfig_root}"',
+                "# Sem isto, o RetroArch gravaria a linha acima dentro do",
+                "# retroarch.cfg do usuário ao sair, editando-o em definitivo.",
+                'config_save_on_exit = "false"',
+                "",
+            ]
+        )
+
+    def launch_arguments(self) -> tuple[str, ...]:
+        """Argumentos a acrescentar ao `flatpak run` do RetroArch."""
+        return ("--appendconfig", str(self.overlay_path))
+
+
+def managed_config(home: Path | None = None) -> ManagedRetroArchConfig:
+    """Config gerenciado, com o driver de joypad LIDO do RetroArch do usuário.
+
+    O driver decide o subdiretório que o RetroArch varre; supor `udev` num host
+    que usa `sdl2` geraria um perfil que nunca seria lido.
+    """
+    base = home or Path.home()
+    text = _read_text_limited(base / _FLATPAK_CONFIG / "retroarch.cfg")
+    driver = _setting(text, "input_joypad_driver") if text else ""
+    return ManagedRetroArchConfig(
+        root=paths.config_home() / "retroarch",
+        driver=driver or _DEFAULT_JOYPAD_DRIVER,
+    )
+
+
 def host_controls(
     home: Path | None = None, devices: InputDevicePort | None = None
 ) -> RetroArchControls:
@@ -387,11 +468,12 @@ def host_controls(
     chamada explícita de `apply()`.
     """
     base = home or Path.home()
-    config = base / _FLATPAK_CONFIG
+    managed = managed_config(base)
     return RetroArchControls(
         devices=devices or SysfsInputDevices(),
         catalog=AutoconfigCatalog(bundled_autoconfig_directories(base)),
-        target=resolve_target(config / "retroarch.cfg", config / "autoconfig"),
+        target=managed.target,
+        managed=managed,
     )
 
 
@@ -449,10 +531,12 @@ class RetroArchControls:
         devices: InputDevicePort,
         catalog: AutoconfigCatalog,
         target: AutoconfigTarget,
+        managed: ManagedRetroArchConfig | None = None,
     ) -> None:
         self._devices = devices
         self._catalog = catalog
         self._target = target
+        self._managed = managed
 
     def status(
         self,
@@ -481,7 +565,12 @@ class RetroArchControls:
             )
         if not self._target.declared or self._target.path is None:
             return AutoconfigOutcome("awaiting-emulator", resolution, match, self._target)
-        if self._target.directory is None or not self._target.directory.is_dir():
+        # A recusa a criar diretório vale para configuração de TERCEIRO. Quando
+        # o alvo é a árvore gerenciada do SteamZero, criá-la é legítimo — e é a
+        # transação que cria, junto com o arquivo.
+        if self._managed is None and (
+            self._target.directory is None or not self._target.directory.is_dir()
+        ):
             # Diretório declarado que não existe NO HOST. O caso concreto medido
             # aqui não é "o RetroArch ainda não criou": o Flatpak 1.22.2 declara
             # `/app/share/libretro/autoconfig`, que é o mount somente-leitura do
@@ -528,6 +617,20 @@ class RetroArchControls:
         expected = self._render(resolution, match, profile_id, profile_revision, orientation)
         if probe.kind == "absent" or probe.text != expected:
             return AutoconfigOutcome("pending-write", resolution, match, self._target)
+        # Perfil gravado sem o overlay não vale: o RetroArch continuaria lendo o
+        # diretório interno do sandbox e nunca veria este arquivo.
+        if self._managed is not None:
+            overlay = _probe_target(self._managed.overlay_path)
+            if overlay.kind == "foreign":
+                return AutoconfigOutcome(
+                    "conflict",
+                    resolution,
+                    match,
+                    self._target,
+                    detail=f"{self._managed.overlay_path}: {overlay.detail}",
+                )
+            if overlay.kind == "absent" or overlay.text != self._managed.overlay_content():
+                return AutoconfigOutcome("pending-write", resolution, match, self._target)
         return AutoconfigOutcome("applied", resolution, match, self._target)
 
     def plan(
@@ -577,15 +680,19 @@ class RetroArchControls:
         content = self._render(
             resolution, observed.match, profile_id, profile_revision, orientation
         ).encode("utf-8")
+        # O overlay entra na MESMA transação. Gravar o perfil sem o overlay
+        # deixaria um arquivo que o RetroArch não procura; gravar o overlay sem
+        # o perfil apontaria para um diretório vazio. Os dois juntos, ou nenhum.
+        arquivos = {path: content}
+        root = path.parent
+        if self._managed is not None:
+            arquivos[self._managed.overlay_path] = self._managed.overlay_content().encode("utf-8")
+            root = self._managed.root
         return transaction.plan_write_files(
-            {path: content},
-            root=path.parent,
+            arquivos,
+            root=root,
             kind="controls.autoconfig.apply",
             skip_unchanged=True,
-            # O destino é a configuração do RetroArch. Só planos assim poupam o
-            # diretório preexistente do `chmod`; na árvore do SteamZero o modo
-            # seguro continua sendo normalizado, como sempre foi.
-            foreign_dir=True,
         )
 
     def apply(self, plan_id: str, confirm_token: str) -> transaction.ApplyResult:

@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
+from steamzero.adapters import input_devices
 from steamzero.adapters.flatpak import FlatpakState
 from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import (
@@ -174,6 +175,26 @@ def bundled_with_fake(flatpak: FakeFlatpak, store: state.StateStore) -> Componen
         store,
         registry,
         flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+    )
+
+
+def _retroarch_lifecycle(
+    store: state.StateStore,
+    spawned: list[tuple[object, ...]],
+    managed: input_devices.ManagedRetroArchConfig,
+) -> ComponentLifecycle:
+    """Lifecycle com o RetroArch reportado como instalado."""
+    registry = AdapterRegistry.bundled()
+    source = registry.get("retroarch").preferred_source("flatpak", allow_eol=True)
+    assert source.ref is not None
+    fake = FakeFlatpak(FlatpakState(True, source.ref, source.remote, source.version))
+    return ComponentLifecycle(
+        store,
+        registry,
+        flatpak_factory=lambda: fake,  # type: ignore[arg-type]
+        which=lambda _name: "/usr/bin/flatpak",
+        spawn=lambda argv: spawned.append(tuple(argv)) or 0,  # type: ignore[return-value]
+        retroarch_config=managed,
     )
 
 
@@ -619,6 +640,43 @@ class TestLaunchRouting:
         result = lifecycle.launch(EOL_ID)
         assert result["status"] == "started"
         assert spawned == [("/usr/bin/flatpak", "run", "--user", source.ref)]
+
+    def test_retroarch_launch_injects_the_managed_appendconfig(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        """A ponte entre o perfil gravado e o emulador que vai le-lo.
+
+        O RetroArch procura perfis de controle em `/app/share/libretro/
+        autoconfig`, interno ao sandbox Flatpak e inalcancavel do host.
+        `--appendconfig` aponta o emulador para a arvore gerenciada do SteamZero
+        sem tocar no `retroarch.cfg` do usuario.
+        """
+        managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+        managed.overlay_path.parent.mkdir(parents=True)
+        managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+        spawned: list[tuple[object, ...]] = []
+        lifecycle = _retroarch_lifecycle(store, spawned, managed)
+
+        lifecycle.launch("retroarch")
+
+        assert spawned[0][-2:] == ("--appendconfig", str(managed.overlay_path))
+
+    def test_retroarch_launch_is_unchanged_while_no_profile_was_applied(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        """Sem overlay, o lancamento continua exatamente como era.
+
+        Injetar `--appendconfig` apontando para arquivo inexistente faria o
+        RetroArch reclamar de config ausente sem que o usuario tivesse pedido
+        nada.
+        """
+        managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "vazio")
+        spawned: list[tuple[object, ...]] = []
+        lifecycle = _retroarch_lifecycle(store, spawned, managed)
+
+        lifecycle.launch("retroarch")
+
+        assert "--appendconfig" not in spawned[0]
 
     def test_stop_flatpak_eol_is_not_supported(self, store: state.StateStore) -> None:
         source = eol_registry().get(EOL_ID).preferred_source("flatpak", allow_eol=True)
