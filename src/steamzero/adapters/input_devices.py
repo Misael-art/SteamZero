@@ -155,6 +155,11 @@ class AutoconfigCatalog:
 
     def __init__(self, directories: Sequence[Path]) -> None:
         self._directories = tuple(directories)
+        # O catálogo empacotado tem 420 arquivos. Relê-los a cada consulta
+        # colocaria centenas de `open` no caminho do snapshot da dashboard, que
+        # já tem histórico de latência neste projeto. Carrega uma vez por
+        # instância; trocar de pad não muda o catálogo, só o casamento.
+        self._cache: list[tuple[Path, Autoconfig]] | None = None
 
     def match(self, identities: Sequence[DeviceIdentity]) -> CatalogMatch:
         if not identities:
@@ -193,6 +198,8 @@ class AutoconfigCatalog:
         )
 
     def _load(self) -> list[tuple[Path, Autoconfig]]:
+        if self._cache is not None:
+            return self._cache
         loaded: list[tuple[Path, Autoconfig]] = []
         for directory in self._directories:
             try:
@@ -204,6 +211,7 @@ class AutoconfigCatalog:
                 if text is None:
                     continue
                 loaded.append((path, autoconfig_mod.parse_autoconfig(text)))
+        self._cache = loaded
         return loaded
 
 
@@ -254,6 +262,52 @@ def resolve_target(config_file: Path, fallback_directory: Path | None = None) ->
                 if directory:
                     return AutoconfigTarget(Path(directory), declared=True)
     return AutoconfigTarget(fallback_directory, declared=False)
+
+
+#: Onde o RetroArch Flatpak guarda configuração e onde empacota os autoconfigs.
+#: São caminhos de LEITURA; o único caminho de escrita é o alvo resolvido.
+_FLATPAK_CONFIG = Path(".var/app/org.libretro.RetroArch/config/retroarch")
+_FLATPAK_BUNDLED = Path("share/libretro/autoconfig/udev")
+_FLATPAK_ROOTS = (
+    Path(".local/share/flatpak/app/org.libretro.RetroArch"),
+    Path("/var/lib/flatpak/app/org.libretro.RetroArch"),
+)
+
+
+def bundled_autoconfig_directories(home: Path | None = None) -> list[Path]:
+    """Diretórios de autoconfig empacotados pelo RetroArch instalado.
+
+    Cobre instalação por usuário e por sistema. Nenhum caminho é criado: o que
+    não existir simplesmente não entra, e um host sem RetroArch resulta em
+    catálogo vazio — que vira `awaiting-device`, não erro.
+    """
+    base = home or Path.home()
+    found: list[Path] = []
+    for root in _FLATPAK_ROOTS:
+        absolute = root if root.is_absolute() else base / root
+        try:
+            candidates = sorted(absolute.glob(f"*/*/active/files/{_FLATPAK_BUNDLED}"))
+        except OSError:
+            continue
+        found.extend(path for path in candidates if path.is_dir())
+    return found
+
+
+def host_controls(
+    home: Path | None = None, devices: InputDevicePort | None = None
+) -> RetroArchControls:
+    """Monta a integração contra os caminhos reais do host, somente leitura.
+
+    Construir isto NÃO grava nada: `status()` apenas observa. A gravação exige
+    chamada explícita de `apply()`.
+    """
+    base = home or Path.home()
+    config = base / _FLATPAK_CONFIG
+    return RetroArchControls(
+        devices=devices or SysfsInputDevices(),
+        catalog=AutoconfigCatalog(bundled_autoconfig_directories(base)),
+        target=resolve_target(config / "retroarch.cfg", config / "autoconfig"),
+    )
 
 
 @dataclass(frozen=True)

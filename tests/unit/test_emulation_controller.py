@@ -14,7 +14,7 @@ from pathlib import Path
 import jsonschema.exceptions
 import pytest
 
-from steamzero.adapters import emulation
+from steamzero.adapters import emulation, input_devices
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
 from steamzero.api.contracts import validate
@@ -23,7 +23,7 @@ from steamzero.core.state import StateStore
 from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
 
 
-def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ignore[no-untyped-def]
+def _controller(monkeypatch, tmp_path: Path, controls=None) -> EmulationController:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
@@ -35,6 +35,7 @@ def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ig
         which=lambda _command: None,
         spawn=lambda _argv: None,
         secret_store=emulation.SessionSecretStore(),
+        retroarch_controls=controls,
     )
 
 
@@ -885,6 +886,10 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                     },
                 ],
                 "clearAction": None,
+                # Sem perfil ativo não há binding para resolver contra pad
+                # nenhum, então o autoconfig é ausência honesta e não um objeto
+                # com estado inventado (G45).
+                "autoconfig": None,
             },
             "controlsReadiness": {
                 "state": "attention",
@@ -2687,8 +2692,8 @@ def test_conflicting_save_restore_preserves_both_versions(monkeypatch, tmp_path:
     assert len(after) == 2
 
 
-def _controls_game(monkeypatch, tmp_path: Path) -> tuple[EmulationController, str]:  # type: ignore[no-untyped-def]
-    controller = _controller(monkeypatch, tmp_path)
+def _controls_game(monkeypatch, tmp_path: Path, controls=None) -> tuple[EmulationController, str]:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path, controls=controls)
     roms = tmp_path / "roms"
     roms.mkdir()
     (roms / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"owned-game")
@@ -2697,6 +2702,109 @@ def _controls_game(monkeypatch, tmp_path: Path) -> tuple[EmulationController, st
     controller.scan_library()
     game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     return controller, str(game["id"])
+
+
+_AUTOCONFIG_PAD = """
+input_driver = "udev"
+input_device = "Pad de Teste"
+input_vendor_id = "10462"
+input_product_id = "1142"
+input_b_btn = "0"
+input_a_btn = "1"
+input_y_btn = "2"
+input_x_btn = "3"
+input_start_btn = "7"
+input_select_btn = "6"
+input_l_btn = "4"
+input_r_btn = "5"
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
+"""
+
+
+class _FakePad:
+    def identities(self) -> list[input_devices.DeviceIdentity]:
+        return [input_devices.DeviceIdentity("Pad de Teste", 10462, 1142)]
+
+
+def _controls_with_pad(monkeypatch, tmp_path: Path, *, declared: bool):  # type: ignore[no-untyped-def]
+    bundled = tmp_path / "bundled"
+    bundled.mkdir()
+    (bundled / "pad.cfg").write_text(_AUTOCONFIG_PAD, encoding="utf-8")
+    target = tmp_path / "perfis"
+    target.mkdir()
+    return input_devices.RetroArchControls(
+        devices=_FakePad(),
+        catalog=input_devices.AutoconfigCatalog([bundled]),
+        target=input_devices.AutoconfigTarget(target, declared=declared),
+    )
+
+
+def test_controls_profile_publishes_the_autoconfig_the_screen_needs(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """G45: a tela precisa distinguir perfil SALVO de perfil que vale de fato.
+
+    O perfil ativo aqui esta salvo e traduzido, e o pad e reconhecido — mas
+    nada foi gravado, entao o estado publicado e `pending-write`. Dizer
+    "configurado" neste ponto seria a promessa vazia que a G45 registra.
+    """
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=True)
+    )
+    plan = controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"})
+    _apply(controller, plan)
+
+    autoconfig = controller.snapshot({"context": {}})["platforms"][0]["games"][0][
+        "controlsProfile"
+    ]["autoconfig"]
+
+    assert autoconfig["state"] == "pending-write"
+    assert autoconfig["device"] == {
+        "name": "Pad de Teste",
+        "vendorId": 10462,
+        "productId": 1142,
+    }
+    assert autoconfig["unresolvedBindings"] == []
+    gravados = {row["key"]: row["value"] for row in autoconfig["resolvedBindings"]}
+    assert gravados["input_b_btn"] == "0"
+    # O direcional deste pad e BOTAO. A traducao abstrata publica
+    # `input_up_axis`; quem resolve contra o dispositivo corrige para `_btn`.
+    assert gravados["input_up_btn"] == "h0up"
+    assert "input_up_axis" not in gravados
+
+
+def test_controls_profile_never_says_applied_when_retroarch_did_not_declare_a_dir(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Caso REAL deste host: o RetroArch nunca gravou `retroarch.cfg`."""
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=False)
+    )
+    plan = controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"})
+    _apply(controller, plan)
+
+    autoconfig = controller.snapshot({"context": {}})["platforms"][0]["games"][0][
+        "controlsProfile"
+    ]["autoconfig"]
+
+    assert autoconfig["state"] == "awaiting-emulator"
+    assert autoconfig["directoryDeclared"] is False
+    assert autoconfig["statusLabel"]
+
+
+def test_controls_autoconfig_is_absent_while_no_profile_is_active(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=True)
+    )
+
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+
+    assert game["controlsProfile"]["autoconfig"] is None
 
 
 def test_game_row_exposes_controls_profile_inheritance_and_clear(

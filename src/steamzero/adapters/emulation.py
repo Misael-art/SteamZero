@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 from urllib.parse import unquote, urlsplit
 
-from steamzero.adapters import lifecycle
+from steamzero.adapters import input_devices, lifecycle
 from steamzero.adapters.cheats.cheat_installer import FsCheatInstaller
 from steamzero.adapters.cheats.nsecm_source import NsecmSource
 from steamzero.adapters.cheats.state_store_cheats import StateStoreCheatsAdapter
@@ -417,6 +417,7 @@ class EmulationController:
         mod_catalog: ModCatalogPort | None = None,
         cheat_catalog: CheatCatalogPort | None = None,
         input_profiles: InputProfileManager | None = None,
+        retroarch_controls: input_devices.RetroArchControls | None = None,
         cloud_platforms: CloudPlatformService | None = None,
         flatpak_factory: Callable[[], FlatpakCLI] = FlatpakCLI,
     ) -> None:
@@ -454,6 +455,11 @@ class EmulationController:
         self._input_profiles = input_profiles or InputProfileManager(
             paths.config_home() / "input-profiles"
         )
+        # Preguiçoso de propósito: montar a integração varre o catálogo de
+        # autoconfigs do RetroArch, e construir um controller não pode custar
+        # isso nem tocar o host de quem só quer outra parte da fachada.
+        self._retroarch_controls_override = retroarch_controls
+        self._retroarch_controls_cache: input_devices.RetroArchControls | None = None
         self._cloud = cloud_platforms or CloudPlatformService(
             self._shortcuts,
             which=which,
@@ -7004,6 +7010,10 @@ class EmulationController:
         não interdita (falha degrada, nunca trava)."""
         platform_status = self._input_profiles.status("switch")
         controllers = self._controller_count()
+        # O autoconfig é observado UMA vez por snapshot: o catálogo empacotado e
+        # o pad conectado não mudam entre jogos, e reabri-los por jogo colocaria
+        # centenas de leituras no caminho da dashboard.
+        autoconfig_by_profile: dict[str, dict[str, Any]] = {}
         for game in games:
             game_id = str(game.get("id", ""))
             game_status = self._input_profiles.status("switch", scope="game", scope_id=game_id)
@@ -7051,6 +7061,7 @@ class EmulationController:
                 ],
                 "activateActions": activate_actions,
                 "clearAction": clear_action,
+                "autoconfig": self._autoconfig_view(active, autoconfig_by_profile),
             }
             profile_configured = isinstance(active, Mapping)
             reasons: list[str] = []
@@ -7066,6 +7077,58 @@ class EmulationController:
                 "controllers": controllers,
             }
         return games
+
+    def _retroarch_controls(self) -> input_devices.RetroArchControls:
+        if self._retroarch_controls_override is not None:
+            return self._retroarch_controls_override
+        if self._retroarch_controls_cache is None:
+            self._retroarch_controls_cache = input_devices.host_controls()
+        return self._retroarch_controls_cache
+
+    def _autoconfig_view(
+        self, active: Any, cache: dict[str, dict[str, Any]]
+    ) -> dict[str, Any] | None:
+        """Estado do autoconfig efetivo para o perfil ativo — só OBSERVAÇÃO.
+
+        Nunca grava: a materialização é ação explícita. Enquanto o arquivo não
+        existir de fato, o estado publicado não diz "aplicado", que é o ponto da
+        G45 — a tela precisa distinguir perfil salvo, perfil traduzido e perfil
+        efetivamente valendo.
+        """
+        if not isinstance(active, Mapping):
+            return None
+        bindings = active.get("resolvedBindings")
+        if not isinstance(bindings, list) or not bindings:
+            return None
+        profile_id = str(active.get("id") or "")
+        orientation = str(active.get("orientation") or "")
+        key = f"{profile_id}\0{active.get('revision')}\0{orientation}"
+        if key not in cache:
+            try:
+                outcome = self._retroarch_controls().status(
+                    bindings=bindings,
+                    profile_id=profile_id,
+                    profile_revision=int(active.get("revision") or 0),
+                    orientation=orientation,
+                )
+                cache[key] = outcome.to_dict()
+            except (OSError, SteamZeroError) as exc:
+                # Observar o host não pode derrubar a dashboard inteira; o
+                # perfil segue visível e a linha diz por que não sabemos (§8).
+                cache[key] = {
+                    "state": "awaiting-device",
+                    "statusLabel": input_devices.STATE_LABELS["awaiting-device"],
+                    "detail": str(exc),
+                    "device": None,
+                    "deviceReason": "no-device",
+                    "autoconfigCandidates": [],
+                    "path": None,
+                    "directoryDeclared": False,
+                    "resolvedBindings": [],
+                    "unresolvedBindings": [],
+                    "withoutRetropadEquivalent": [],
+                }
+        return cache[key]
 
     def _current_game(self, game_id: str) -> dict[str, Any]:
         games, _unidentified = self._load_library_cache()
