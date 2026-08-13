@@ -59,6 +59,61 @@ def _project_platform(
     )
 
 
+def _open_platform_action(platform_id: str, label: str = "Abrir plataforma") -> dict[str, Any]:
+    """Navegar até a plataforma, com o alvo dentro do próprio id.
+
+    O id antes era o literal ``platform.open``, sem alvo. O botão do card
+    funcionava só porque chamava a navegação direto e ignorava o payload;
+    qualquer superfície que despachasse a ação publicada caía em "ação não
+    reconhecida". O alvo no id torna a ação despachável de verdade.
+    """
+    return {
+        "id": f"platform.open:{platform_id}",
+        "label": label,
+        "enabled": True,
+        "reason": None,
+        "requiresConfirmation": False,
+    }
+
+
+def _platform_card_actions(
+    platform: Mapping[str, Any], emulator_rows: Sequence[Mapping[str, Any]]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Escolhe o CTA do card conforme o que trava a plataforma.
+
+    "Abrir plataforma" como única ação era a resposta errada para o bloqueador
+    mais comum: a plataforma que não tem emulador instalado. Abrir não instala.
+    Quando existe um emulador ausente que o lifecycle declara instalável, ele
+    vira a ação primária e abrir passa a secundária.
+
+    Nada é fabricado: se nenhuma linha declara ``installable``, o card continua
+    oferecendo só abrir. Prometer instalação que o backend recusaria seria a
+    mesma mentira em outra casa.
+    """
+    platform_id = str(platform["id"])
+    installable = next(
+        (
+            row
+            for row in emulator_rows
+            if row.get("installable") is True and row.get("installState") != "installed"
+        ),
+        None,
+    )
+    if installable is None:
+        return _open_platform_action(platform_id), None
+
+    emulator_id = str(installable["id"])
+    name = str(installable.get("name") or installable.get("displayName") or emulator_id)
+    primary = {
+        "id": f"emulator.install:{emulator_id}",
+        "label": f"Instalar {name}",
+        "enabled": True,
+        "reason": None,
+        "requiresConfirmation": True,
+    }
+    return primary, _open_platform_action(platform_id)
+
+
 def build_global_management(
     *,
     platforms: Sequence[Mapping[str, Any]],
@@ -96,6 +151,7 @@ def build_global_management(
         ]
         blockers = list((platform.get("readiness") or {}).get("blockers") or ())
         blocker = str(platform.get("launchReason") or (blockers[0] if blockers else ""))
+        primary, secondary = _platform_card_actions(platform, emulator_rows)
         cards.append(
             {
                 "id": str(platform["id"]),
@@ -110,13 +166,8 @@ def build_global_management(
                 "firmwareStatus": dict(requirements.get("firmware") or {}),
                 "biosStatus": (dict(requirements["bios"]) if requirements.get("bios") else None),
                 "blocker": blocker or None,
-                "action": {
-                    "id": "platform.open",
-                    "label": "Abrir plataforma",
-                    "enabled": True,
-                    "reason": None,
-                    "requiresConfirmation": False,
-                },
+                "action": primary,
+                "secondaryAction": secondary,
             }
         )
     technical_count = len(platforms)
