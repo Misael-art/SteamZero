@@ -932,6 +932,7 @@ def _apply_actions(
                 a.new_content(),
                 must_not_exist=expected is None,
                 expect_hash=None if expected in {None, _MISSING} else str(expected),
+                holding=paths.quarantine_for(op_id),
             )
         _maybe_crash("apply.activate")
         jrnl.done(a.action_id)
@@ -1046,7 +1047,28 @@ def _do_rollback(operation_id: str, *, reason: str) -> RollbackResult:
                     operation_id=operation_id,
                     detail=f"rollback recusou remover arquivo alterado: {target}",
                 )
-            fs.remove_file(target)
+            # Symlink e move têm semântica de identidade própria (o "conteúdo"
+            # é o alvo do link) e guard próprio acima; a custódia é para
+            # arquivo REGULAR, onde a identidade é o hash.
+            if (
+                expected is None
+                or repairable_symlink
+                or undo.get("expectKind")
+                not in {
+                    "write",
+                    "copy",
+                }
+            ):
+                fs.remove_file(target)
+            else:
+                # A conferência acima é só triagem barata; a garantia está em
+                # tomar a entrada em custódia ANTES de removê-la, para que um
+                # arquivo criado depois do guard volte ao lugar em vez de sumir.
+                try:
+                    fs.delete_verified(target, expected, paths.quarantine_for(operation_id))
+                except SteamZeroError as exc:
+                    exc.operation_id = operation_id
+                    raise
         else:
             raise SteamZeroError(
                 "E-TX-ROLLBACK-FAILED",
@@ -1084,13 +1106,6 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
     # destruiria dado de terceiro — a mesma classe de defeito que o `delete`
     # incondicional tinha.
     applied = undo.get("appliedHash")
-    current = _fingerprint(target)
-    if current is not None and current != undo["expectHash"] and current != applied:
-        raise SteamZeroError(
-            "E-TX-ROLLBACK-FAILED",
-            operation_id=operation_id,
-            detail=f"rollback recusou sobrescrever arquivo alterado: {target}",
-        )
     backup_path = paths.backup_for(operation_id) / undo["backupRel"]
     if not backup_path.exists():
         raise SteamZeroError(
@@ -1104,7 +1119,12 @@ def _restore_one(operation_id: str, target: Path, undo: dict[str, Any]) -> None:
             operation_id=operation_id,
             detail=f"backup adulterado para {target}",
         )
-    fs.copy_file_atomic(backup_path, target)
+    aceitos = {undo["expectHash"]} | ({applied} if applied else set())
+    try:
+        fs.restore_verified(backup_path, target, aceitos, paths.quarantine_for(operation_id))
+    except SteamZeroError as exc:
+        exc.operation_id = operation_id
+        raise
     if fs.hash_file(target) != undo["expectHash"]:  # RB-4: rollback verificado
         raise SteamZeroError(
             "E-TX-ROLLBACK-FAILED",

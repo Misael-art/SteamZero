@@ -112,7 +112,98 @@ def set_mode(path: Path, mode: int) -> None:
 # Escrita atômica
 # ===========================================================================
 _AT_FDCWD = -100
+_RENAME_NOREPLACE = 1 << 0
 _RENAME_EXCHANGE = 1 << 1
+
+
+def _renameat2(first: Path, second: Path, flags: int) -> bool:
+    """``renameat2`` cru. ``False`` quando kernel/FS não suportam a flag."""
+    import ctypes
+    import ctypes.util
+
+    libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
+    try:
+        syscall = libc.renameat2
+    except AttributeError:  # pragma: no cover - glibc antiga
+        return False
+    result = syscall(
+        ctypes.c_int(_AT_FDCWD),
+        ctypes.c_char_p(bytes(first)),
+        ctypes.c_int(_AT_FDCWD),
+        ctypes.c_char_p(bytes(second)),
+        ctypes.c_uint(flags),
+    )
+    if result == 0:
+        return True
+    errno = ctypes.get_errno()
+    if errno in {38, 22, 95}:  # ENOSYS, EINVAL, EOPNOTSUPP
+        return False
+    raise OSError(errno, os.strerror(errno), str(first))
+
+
+def _rename_noreplace(src: Path, dst: Path) -> bool:
+    """Move ``src`` para ``dst`` SEM substituir. ``False`` se não suportado.
+
+    É a primitiva que sustenta a custódia: mover sem substituir é a única forma
+    de *tomar* uma entrada do sistema de arquivos sem correr o risco de destruir
+    o que estiver no destino.
+    """
+    if dst.exists() or dst.is_symlink():
+        raise FileExistsError(f"destino já existe: {dst}")
+    return _renameat2(src, dst, _RENAME_NOREPLACE)
+
+
+def take_custody(path: Path, holding: Path) -> Path | None:
+    """Retira ``path`` do lugar e o guarda, ATOMICAMENTE, sem substituir nada.
+
+    Devolve o caminho sob custódia, ou ``None`` se ``path`` não existia.
+
+    Existe porque conferir o alvo e só então destruí-lo nunca fecha a janela:
+    entre a conferência e o syscall cabe uma troca. Tomando a entrada primeiro,
+    tudo que vem depois — verificar, publicar, remover — acontece sobre algo que
+    já está sob nosso controle, e o que for inesperado pode ser devolvido
+    intacto.
+
+    Falha FECHADA quando o sistema de arquivos não oferece a primitiva: sem ela
+    não há como preservar o inesperado, e arriscar seria pior que recusar.
+    """
+    ensure_dir(holding)
+    destino = holding / f"custody.{os.getpid()}.{secrets.token_hex(8)}"
+    try:
+        if not _rename_noreplace(path, destino):
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=(
+                    "sistema de arquivos sem rename atômico sem substituição "
+                    f"(renameat2/RENAME_NOREPLACE); recusando tocar {path}"
+                ),
+            )
+    except FileNotFoundError:
+        return None
+    return destino
+
+
+def return_custody(custody: Path, path: Path) -> None:
+    """Devolve ao lugar o que foi tomado, sem substituir o que apareceu.
+
+    Se algo novo ocupou ``path`` nesse meio-tempo, a devolução falha e o
+    conteúdo PERMANECE sob custódia — nada é destruído, e o erro nomeia os dois
+    caminhos para que a recuperação seja possível.
+    """
+    try:
+        if not _rename_noreplace(custody, path):
+            raise SteamZeroError(
+                "E-TX-ROLLBACK-FAILED",
+                detail=f"não foi possível devolver {custody} para {path}",
+            )
+    except FileExistsError as exc:
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            detail=(
+                f"{path} foi ocupado durante a operação; o conteúdo anterior "
+                f"permanece preservado em {custody}"
+            ),
+        ) from exc
 
 
 def _rename_exchange(first: Path, second: Path) -> bool:
@@ -126,24 +217,7 @@ def _rename_exchange(first: Path, second: Path) -> bool:
     import ctypes
     import ctypes.util
 
-    libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True)
-    try:
-        renameat2 = libc.renameat2
-    except AttributeError:  # pragma: no cover - glibc antiga
-        return False
-    result = renameat2(
-        ctypes.c_int(_AT_FDCWD),
-        ctypes.c_char_p(bytes(first)),
-        ctypes.c_int(_AT_FDCWD),
-        ctypes.c_char_p(bytes(second)),
-        ctypes.c_uint(_RENAME_EXCHANGE),
-    )
-    if result == 0:
-        return True
-    errno = ctypes.get_errno()
-    if errno in {38, 22, 95}:  # ENOSYS, EINVAL, EOPNOTSUPP
-        return False
-    raise OSError(errno, os.strerror(errno), str(first))
+    return _renameat2(first, second, _RENAME_EXCHANGE)
 
 
 def write_atomic(
@@ -154,6 +228,7 @@ def write_atomic(
     fsync_dir: bool = True,
     must_not_exist: bool = False,
     expect_hash: str | None = None,
+    holding: Path | None = None,
 ) -> None:
     """Escreve ``data`` em ``path`` atomicamente (tmp+fsync+rename), 0600.
 
@@ -188,7 +263,11 @@ def write_atomic(
             os.link(tmp, path)
             _silent_unlink(tmp)
         elif expect_hash is not None:
-            _publish_verified(tmp, path, expect_hash)
+            if holding is None:
+                raise SteamZeroError(
+                    "E-TX-STALE-PLAN", detail="publicação verificada exige área de custódia"
+                )
+            _publish_verified(tmp, path, expect_hash, holding)
         else:
             os.replace(tmp, path)
     except BaseException:
@@ -198,23 +277,74 @@ def write_atomic(
         _fsync_dir(parent)
 
 
-def _publish_verified(tmp: Path, path: Path, expect_hash: str) -> None:
-    """Publica sobre um alvo existente só se ele ainda for o que esperávamos."""
-    if not _rename_exchange(tmp, path):
-        # Kernel/FS sem RENAME_EXCHANGE: resta conferir e publicar, com a janela
-        # residual que a troca atômica eliminaria. Melhor que não conferir.
-        if hash_file(path) != expect_hash:
-            raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
-        os.replace(tmp, path)
+def _publish_verified(tmp: Path, path: Path, expect_hash: str, holding: Path) -> None:
+    """Publica sobre um alvo existente tomando-o em custódia primeiro.
+
+    A ordem importa e é o ponto inteiro: primeiro TIRA o alvo do lugar (sem
+    substituir nada), depois confere o que tirou, e só então publica no lugar
+    agora vazio. Nada destrutivo acontece sobre uma entrada que ainda não
+    inspecionamos, então não existe janela entre conferir e destruir — que era o
+    defeito que três correções seguidas não fecharam.
+    """
+    custody = take_custody(path, holding)
+    if custody is None:
+        # Sumiu entre a decisão e a publicação: criar é seguro, e se algo
+        # aparecer no caminho a criação exclusiva recusa.
+        os.link(tmp, path)
+        _silent_unlink(tmp)
         return
-    # A troca já aconteceu: `tmp` agora carrega o conteúdo ANTIGO do alvo.
-    if hash_file(tmp) != expect_hash:
-        _rename_exchange(tmp, path)  # devolve o arquivo alheio ao lugar
+    if hash_file(custody) != expect_hash:
+        return_custody(custody, path)
         raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
-    # Publicou. O antigo ficou no temporário e precisa sair daqui: deixá-lo
-    # seria um órfão em diretório de configuração, que os gates de killproof
-    # cobram com razão.
+    try:
+        os.link(tmp, path)
+    except OSError:
+        return_custody(custody, path)
+        raise
     _silent_unlink(tmp)
+    _silent_unlink(custody)
+
+
+def delete_verified(path: Path, expect_hash: str | None, holding: Path) -> None:
+    """Remove ``path`` só se ele ainda for o que esperávamos — sem janela.
+
+    Toma a entrada em custódia antes de qualquer conferência. O que não for
+    reconhecido volta para o lugar intacto em vez de ser removido.
+    """
+    custody = take_custody(path, holding)
+    if custody is None:
+        return
+    if expect_hash is not None and hash_file(custody) != expect_hash:
+        return_custody(custody, path)
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED", detail=f"rollback recusou remover arquivo alterado: {path}"
+        )
+    _silent_unlink(custody)
+
+
+def restore_verified(
+    backup: Path, path: Path, accepted: set[str], holding: Path, *, mode: int = _FILE_MODE
+) -> None:
+    """Restaura ``backup`` sobre ``path`` sem sobrescrever o inesperado."""
+    custody = take_custody(path, holding)
+    if custody is not None and hash_file(custody) not in accepted:
+        return_custody(custody, path)
+        raise SteamZeroError(
+            "E-TX-ROLLBACK-FAILED",
+            detail=f"rollback recusou sobrescrever arquivo alterado: {path}",
+        )
+    tmp = path.parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
+    try:
+        copy_file_atomic(backup, tmp, mode=mode)
+        os.link(tmp, path)
+    except BaseException:
+        _silent_unlink(tmp)
+        if custody is not None:
+            return_custody(custody, path)
+        raise
+    _silent_unlink(tmp)
+    if custody is not None:
+        _silent_unlink(custody)
 
 
 def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
