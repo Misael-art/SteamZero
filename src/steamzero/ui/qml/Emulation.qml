@@ -1525,6 +1525,11 @@ Item {
                         textRole: "name"
                         currentIndex: page.globalManagementActive ? 0 : page.platformIndex + 1
                         enabled: page.platformChoices.length > 1
+                        Accessible.description: enabled ? ""
+                            : qsTr("Nenhuma plataforma de emulação publicada além da "
+                                + "gestão geral.")
+                        ToolTip.visible: hovered && !enabled
+                        ToolTip.text: Accessible.description
                         palette.button: page.raisedColor
                         palette.buttonText: page.textColor
                         palette.base: page.raisedColor

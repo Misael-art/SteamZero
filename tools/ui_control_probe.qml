@@ -249,6 +249,14 @@ Main {
     property var activationQueue: []
     property int activationCursor: 0
 
+    // O produto usa ToolButton desabilitado como ICONE: sem texto, sem nome
+    // acessivel, fundo vazio. Isso e decoracao, nao promessa ao usuario, e
+    // exigir dele um "motivo" produziria 35 acusacoes falsas. So e cobrado
+    // quem se apresenta como acionavel — quem tem rotulo ou nome acessivel.
+    function isPromise(record) {
+        return record.label !== "" || record.accessibleName !== ""
+    }
+
     function isActivatable(record) {
         return record.enabled && record.visible && record.kind !== "slider"
             && record.kind !== "combobox"
@@ -452,10 +460,19 @@ Main {
             record.changedState = false
             if (isActivatable(record)) {
                 activationQueue.push(record)
+            } else if (record.visible && !record.enabled && isPromise(record)) {
+                // Desabilitado é decisão de produto, não pendência de sondagem.
+                // Classificar como `not-probed` tornava o gate blocked-silent
+                // incapaz de medir o que existe para medir: um controle apagado
+                // que não diz por quê.
+                const reason = record.accessibleDescription !== ""
+                    ? record.accessibleDescription : record.probeReason || ""
+                record.message = reason
+                record.verdict = reason !== "" ? "blocked-explained" : "blocked-silent"
             } else {
                 record.verdict = "not-probed"
                 record.probeNote = !record.visible ? "invisível neste estado"
-                    : !record.enabled ? "desabilitado neste estado"
+                    : !record.enabled ? "ícone decorativo (sem rótulo nem nome acessível)"
                     : "tipo " + record.kind + " exige gesto, não clique"
             }
         }
