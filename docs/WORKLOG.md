@@ -6723,3 +6723,43 @@ Dois aprendizados que valem mais que o patch:
 
 Suíte: 4557 passed, com as duas reprovações pré-existentes deste worktree.
 Nenhuma ação de host, release ou privilégio.
+
+### 2026-08-13 — G45, oitava rodada: a custódia se torna durável e recuperável
+
+A sétima rodada trocou conferência por custódia (`RENAME_NOREPLACE`), mas a
+custódia — o backup — era efêmera: um crash entre tomar e devolver perdia a
+entrada, e o recovery podia declarar `kept` com COMMIT antigo ainda no journal.
+Esta rodada tornou a custódia DURÁVEL, com journaling e recovery que prioriza
+rollback incompleto.
+
+**Protocolo em três registros, com fsync entre eles** (`custody.intent` →
+`custody.taken` → `custody.released`), por actionId e caminho determinístico
+`quarantine/<op>/custody.<actionId>`: a intenção é gravada ANTES do primeiro
+rename, a tomada depois, e a liberação ao fim. Ponto de crash em qualquer um
+deles deixa a custódia registrada e endereçável.
+
+**Identidade conferida DEPOIS do rename**, sobre a entrada já fora do lugar:
+sha256 para regular, `symlink:<readlink>` para link — o que reverte o
+aprendizado `1` da rodada anterior ("symlink não cabe na custódia"): a janela
+dele era o `O_NOFOLLOW` seguir o hash; com identidade de alvo o link *cabe*, e
+a publicação de link agora é exclusiva (hard link sem seguir).
+
+**Exclusividade preservada:** publicação/remoção/restauração só operam sobre o
+lugar vazio; EXDEV (custódia em outro FS que não o alvo, reproduzido com
+`/dev/shm`) vira `E-TX-CUSTODY-CROSS-FS`, sem fallback com janela.
+
+**Recovery justo:** `keep` é decidido para trás — qualquer evidência de rollback
+interrompido (tomada pendente, custódia não devolvida, intenção remove/restore)
+executa `_do_rollback` antes de declarar; `_reconcile_custody` fecha pendências
+devolvendo ao lugar, liberando o reconhecido ou falhando FECHADO com as duas
+entradas preservadas. Estado terminal: zero custódias órfãs.
+
+**Vermelhos antes do patch:** 53 testes de injeção da FI-06 (crash em
+`custody.intent`/`taken`/`postlink`/`release`, SIGKILL real via subprocesso,
+symlink, move e cross-FS) escritos antes da implementação.
+
+**Gates:** suíte isolada completa 4573 passed (duas reprovações pré-existentes
+dos itens de status: `test_project_status`); `make independence boundaries`,
+`ruff check`, `ruff format --check` e `mypy src` verdes. Nenhuma ação de host,
+release ou privilégio. PR #78 segue empilhada, não mesclada — depende da prova
+física do operador com controle REAL.

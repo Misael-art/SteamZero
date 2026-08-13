@@ -28,6 +28,6 @@
     "src/steamzero/ui/qml/Emulation.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "HANDOFF 2026-08-13: branch codex/g45-custody-recovery (a partir de 38bc1b7) corrige a custodia transacional: journal de custodia durável, recovery pos-crash, rollback de operacao commitada priorizado, symlink e move seguros, EXDEV deliberado. A integracao --appendconfig da G45 ja esta provada; depois desta correcao do nucleo, a PR #78 so libera com a prova fisica com controle REAL e com a revisao confirmando crash recovery, symlink, move e cross-filesystem.",
+  "nextAction": "CONCLUIDA 2026-08-13 (branch codex/g45-custody-recovery): a custodia transacional durável esta implementada e green — journal de custodia, recovery pos-crash priorizando rollback, symlink e move seguros, EXDEV deliberado (E-TX-CUSTODY-CROSS-FS). 4573 passed na suite isolada; 53 testes FI-06 de injecao de crash. O que fica para o OPERADOR: prova fisica com controle REAL (descoberta automatica) e a revisao da PR #78 liberando a integracao --appendconfig; a PR fica empilhada e NAO mesclada ate essa prova.",
   "updatedAt": "2026-08-13"
 }
