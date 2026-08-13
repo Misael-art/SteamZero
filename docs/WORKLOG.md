@@ -6425,3 +6425,70 @@ visual de ~150 capturas não foi produzida: só as 55 offline existentes.
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-13 (2) — Ampliação da sonda: da matriz de ações à árvore QML viva
+
+Frente `codex/ui-ux-functional-closure-surface-audit`, base `b7ad818` (tip da
+passagem anterior). Workstream `WS-2026-08-UI-FUNCTIONAL-CLOSURE`, transferido
+de forma aditiva. **Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §1 | `9845db4` | auditoria parcial não chama contrato de órfão | 4 testes; régua lida de `Main.qml` |
+| §2 | `a7021f1` | sonda da árvore QML viva: 288 controles, 12 superfícies | 5 testes; 1 reprovando por desenho |
+| §3/§6 | `111fe7a` | 7 defeitos corrigidos | matriz zera as 3 classes |
+| §10 | `06de86b` | item e workstream com linguagem proporcional | `STATUS-CHECK: OK` |
+
+O achado que justifica a sonda nova: `SteamGameplay.qml` publicava
+**"Configurações avançadas"** — Button habilitado, largura total, 48 px,
+chevron `go-down`, `Accessible.name` definido — **sem nenhum `onClicked`**.
+Clicar nunca fez nada, na tela que a auditoria de 11/08 chamou de a melhor da
+central. Nenhuma matriz de ações jamais o veria: ele não nasce de payload.
+
+Mais seis controles apagados que não diziam por quê passaram a publicar a razão
+derivada da própria condição que os desabilita (cast sem receptor, Steam sem
+jogo inventariado, Gamescope/GameMode/MangoHud não prontos, GPU sem clock
+máximo publicado, emulação sem plataforma além da gestão geral).
+
+### Quatro vezes o instrumento acusou o inocente
+
+O padrão se repetiu e vale registrar, porque é o modo de errar desta bancada:
+
+1. observador de estado fixo → 24 no-ops, **20 falsos** (abas, presets e cards
+   de perfil mudam estado local); corrigido comparando a assinatura da árvore;
+2. popups fora da árvore → "Criar Novo Tema" acusado; corrigido observando o
+   overlay;
+3. clicar na seção em que já se está → "Visão geral" acusada; corrigido com
+   segunda tentativa a partir de outra posição;
+4. `ToolButton` desabilitado usado como **ícone** → 39 bloqueados mudos, **35
+   falsos**; decoração não é promessa, só responde quem tem rótulo ou nome
+   acessível.
+
+Sobrou **1** no-op real e **10** bloqueados mudos reais. Toda contagem publicada
+aqui é a que restou depois de derrubar os falsos.
+
+### Limites honestos
+
+- **215 dos 288 controles seguem `not-probed`**: são invisíveis no estado
+  offline. Estão declarados como não medidos, nunca como aprovados. Só `sync`
+  está integralmente sondada.
+- **117 contratos não cobertos**, e não órfãos: a sonda de ações visitou 1 de
+  17 superfícies.
+- **A matriz visual do §8 não foi produzida.** Resoluções, temas, escalas,
+  movimento reduzido e reconexão continuam sem medição nesta passagem.
+- Dialogs de plano, recovery e histórico de jobs não foram sondados.
+- Os P0 visuais (DarkButton no tema claro, capas, Home duplicada, footer)
+  **não foram reproduzidos** nesta passagem.
+
+Gate integral com a árvore parada: **4476 passaram, 10 skipados, exit 0**. Uma
+execução anterior teve 3 vermelhos; dois eram crashes do runtime QML sob
+pressão de memória (passam 20/20 isolados) e o terceiro era o digest de status,
+corrigido aqui.
+
+Workstream permanece `active`: fechá-lo afirmaria uma cobertura que os 215
+`not-probed` desmentem.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
