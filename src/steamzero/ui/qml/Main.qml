@@ -4850,6 +4850,12 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    // Apagado sem dizer por quê deixa o usuário
+                                    // procurando o defeito no lugar da condição.
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para parear.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: castPinDialog.open()
                                 }
                                 RowLayout {
@@ -4882,6 +4888,10 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para transmitir.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: {
                                         root.requestAction("cast.start", {
                                                 "receiverId": root.selectedReceiverId,
