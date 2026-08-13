@@ -91,13 +91,13 @@ class TestPublicacaoSobreAlvoExistente:
     ) -> None:
         """`renameat2` indisponivel nao autoriza publicar com janela.
 
-        Sem primitiva que troque ou mova sem substituir, nao ha como publicar
-        preservando o inesperado. A resposta correta e recusar, nao arriscar.
+        Sem rename atomico sem substituicao nao ha como tomar a entrada em
+        custodia, e sem custodia nao ha como preservar o inesperado. A resposta
+        correta e recusar, nao arriscar.
         """
         target, _ = _plan(tmp_path, b"antigo")
         target.write_bytes(b"antigo")
         _, plan = _plan(tmp_path, b"novo")
-        monkeypatch.setattr(fs, "_rename_exchange", lambda _a, _b: False)
         monkeypatch.setattr(fs, "_rename_noreplace", lambda _a, _b: False)
 
         with pytest.raises(SteamZeroError):
