@@ -1052,7 +1052,7 @@ class ComponentLifecycle:
             if executable is None or source.ref is None:
                 raise SteamZeroError("E-COMPONENT-DEGRADED", detail="runtime Flatpak indisponível")
             pid = self._spawn(
-                (executable, "run", "--user", source.ref, *self._launch_extras(adapter_id))
+                (executable, "run", "--user", source.ref, *self._launch_extras(source.ref))
             )
         else:
             pid = self._spawn([str(self._engine().payload_path(adapter_id))])
@@ -1065,25 +1065,9 @@ class ComponentLifecycle:
             self._retroarch_config_cache = input_devices.managed_config()
         return self._retroarch_config_cache
 
-    def _launch_extras(self, adapter_id: str) -> tuple[str, ...]:
-        """Argumentos adicionais por componente, hoje só do RetroArch.
-
-        O RetroArch procura perfis de controle num diretório interno ao sandbox
-        Flatpak, inalcançável do host. `--appendconfig` aponta o emulador para a
-        árvore gerenciada do SteamZero sem tocar no `retroarch.cfg` do usuário.
-
-        Só é passado quando o overlay EXISTE: enquanto ninguém aplicou um perfil,
-        o lançamento continua exatamente como era.
-        """
-        if adapter_id != "retroarch":
-            return ()
-        overlay = self._retroarch_config().overlay_path
-        try:
-            if not overlay.is_file():
-                return ()
-        except OSError:
-            return ()
-        return self._retroarch_config().launch_arguments()
+    def _launch_extras(self, flatpak_ref: str | None) -> tuple[str, ...]:
+        """Delegado ao ponto compartilhado (ver `input_devices`)."""
+        return input_devices.retroarch_launch_arguments(flatpak_ref, self._retroarch_config())
 
     def open_config(self, adapter_id: str) -> dict[str, Any]:
         """Abre a configuração nativa do emulador, com argv allowlisted.
