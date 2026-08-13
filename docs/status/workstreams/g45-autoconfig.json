@@ -6,7 +6,7 @@
   "branch": "codex/g45-custody-recovery",
   "baseRef": "38bc1b7",
   "owner": "g45-autoconfig",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "src/steamzero/adapters/input_devices.py",
