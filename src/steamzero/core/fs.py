@@ -141,7 +141,9 @@ def write_atomic_text(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
     write_atomic(path, text.encode("utf-8"), mode=mode)
 
 
-def write_atomic_in_foreign_dir(path: Path, data: bytes, *, mode: int = _FILE_MODE) -> None:
+def write_atomic_in_foreign_dir(
+    path: Path, data: bytes, *, mode: int = _FILE_MODE, must_not_exist: bool = False
+) -> None:
     """Escreve atomicamente num diretório que NÃO é nosso, sem alterá-lo.
 
     ``write_atomic`` chama ``ensure_dir``, que faz ``mkdir(parents=True)`` e um
@@ -155,6 +157,13 @@ def write_atomic_in_foreign_dir(path: Path, data: bytes, *, mode: int = _FILE_MO
     Aqui o diretório precisa já existir e sai intocado — inclusive o modo. A
     garantia atômica é a mesma: tmp + fsync + rename, e em falha no meio o
     arquivo anterior fica íntegro.
+
+    Com ``must_not_exist``, a publicação usa ``os.link`` em vez de ``os.replace``
+    e falha com ``FileExistsError`` se o destino existir. Serve a quem observou
+    o alvo como ausente e precisa que isso continue verdadeiro no instante da
+    escrita: sem essa variante, um arquivo criado entre a verificação e o
+    rename seria substituído em silêncio, e a recusa a sobrescrever arquivo de
+    terceiro seria uma checagem com janela em vez de garantia.
     """
     parent = path.parent
     tmp = parent / f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(6)}"
@@ -169,15 +178,23 @@ def write_atomic_in_foreign_dir(path: Path, data: bytes, *, mode: int = _FILE_MO
     else:
         os.close(fd)
     try:
-        os.replace(tmp, path)
+        if must_not_exist:
+            os.link(tmp, path)
+            _silent_unlink(tmp)
+        else:
+            os.replace(tmp, path)
     except OSError:
         _silent_unlink(tmp)
         raise
     _fsync_dir(parent)
 
 
-def write_atomic_text_in_foreign_dir(path: Path, text: str, *, mode: int = _FILE_MODE) -> None:
-    write_atomic_in_foreign_dir(path, text.encode("utf-8"), mode=mode)
+def write_atomic_text_in_foreign_dir(
+    path: Path, text: str, *, mode: int = _FILE_MODE, must_not_exist: bool = False
+) -> None:
+    write_atomic_in_foreign_dir(
+        path, text.encode("utf-8"), mode=mode, must_not_exist=must_not_exist
+    )
 
 
 def write_stream_atomic(

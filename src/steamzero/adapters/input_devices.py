@@ -30,6 +30,7 @@ falso verde que a G45 existe para não repetir.
 from __future__ import annotations
 
 import os
+import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -129,7 +130,7 @@ def _read_hex(path: Path) -> int | None:
         return None
 
 
-def _write_managed(path: Path, text: str) -> None:
+def _write_managed(path: Path, text: str, *, must_not_exist: bool = False) -> None:
     """Grava pelo porto de escrita, na variante que preserva diretório alheio.
 
     `fs.write_atomic_text` chamaria `ensure_dir`, que faz `mkdir(parents=True)` e
@@ -137,7 +138,7 @@ def _write_managed(path: Path, text: str) -> None:
     Gravar um arquivo não pode criar diretórios na configuração de terceiro nem
     mudar a permissão dela (AGENTS.md §5).
     """
-    fs.write_atomic_text_in_foreign_dir(path, text)
+    fs.write_atomic_text_in_foreign_dir(path, text, must_not_exist=must_not_exist)
 
 
 @dataclass(frozen=True)
@@ -224,6 +225,12 @@ def _binding_entries(parsed: Autoconfig) -> dict[str, str]:
 
 
 def _read_text_limited(path: Path) -> str | None:
+    """Leitura tolerante para dados de TERCEIRO que só são consultados.
+
+    Devolver `None` em qualquer problema é adequado aqui — um autoconfig
+    ilegível do catálogo simplesmente não entra na busca. NÃO serve para decidir
+    gravação: ver `_probe_target`, onde `None` significaria "pode escrever".
+    """
     try:
         if path.is_symlink() or not path.is_file():
             return None
@@ -232,6 +239,67 @@ def _read_text_limited(path: Path) -> str | None:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
+
+
+#: Por que um caminho existente NÃO é nosso. Cada motivo é dito ao usuário: um
+#: "conflito" sem causa não dá ação nenhuma a quem lê.
+FOREIGN_REASONS: dict[str, str] = {
+    "symlink": "o caminho é um link simbólico e não foi criado pelo SteamZero",
+    "not-regular": "o caminho existe e não é um arquivo regular",
+    "oversized": "o arquivo é grande demais para conferir o marcador",
+    "unreadable": "o arquivo não pôde ser lido para conferir o marcador",
+    "no-marker": "o arquivo não tem o marcador do SteamZero",
+}
+
+
+@dataclass(frozen=True)
+class TargetProbe:
+    """Classificação do alvo antes de qualquer escrita.
+
+    A regra é deliberadamente pessimista: **só a ausência comprovada (ENOENT)
+    autoriza gravar**. Symlink, arquivo especial, arquivo grande demais e
+    arquivo ilegível são ESTRANGEIROS, não ausentes.
+
+    A versão anterior usava `_read_text_limited`, que devolve `None` para todos
+    esses casos E para o arquivo inexistente. Quem lia o `None` concluía
+    "ausente, pode escrever", e um `steamzero.cfg` do usuário que fosse symlink,
+    passasse de 128 KiB ou não pudesse ser lido seria substituído sem que o
+    marcador jamais fosse conferido — exatamente a garantia que a AGENTS.md §5
+    exige e que esta entrega afirma dar.
+    """
+
+    kind: str  # absent | managed | foreign
+    text: str = ""
+    reason: str = ""
+
+    @property
+    def detail(self) -> str:
+        return FOREIGN_REASONS.get(self.reason, "")
+
+
+def _probe_target(path: Path) -> TargetProbe:
+    """Diz se o alvo é nosso, de terceiro, ou não existe — sem seguir symlink."""
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return TargetProbe("absent")
+    except OSError:
+        # Nem `lstat` funcionou: o caminho existe de alguma forma que não
+        # conseguimos inspecionar. Tratar como nosso seria a suposição errada.
+        return TargetProbe("foreign", reason="unreadable")
+    if stat.S_ISLNK(info.st_mode):
+        return TargetProbe("foreign", reason="symlink")
+    if not stat.S_ISREG(info.st_mode):
+        return TargetProbe("foreign", reason="not-regular")
+    if info.st_size > _MAX_AUTOCONFIG_BYTES:
+        return TargetProbe("foreign", reason="oversized")
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return TargetProbe("foreign", reason="unreadable")
+    if not autoconfig_mod.is_managed(text):
+        return TargetProbe("foreign", reason="no-marker")
+    return TargetProbe("managed", text=text)
 
 
 @dataclass(frozen=True)
@@ -397,22 +465,36 @@ class RetroArchControls:
         if not self._target.declared or self._target.path is None:
             return AutoconfigOutcome("awaiting-emulator", resolution, match, self._target)
 
-        expected = self._render(resolution, match, profile_id, profile_revision, orientation)
-        current = _read_text_limited(self._target.path)
-        if current is None:
-            return AutoconfigOutcome("pending-write", resolution, match, self._target)
-        if not autoconfig_mod.is_managed(current):
+        probe = _probe_target(self._target.path)
+        if probe.kind == "foreign":
             return AutoconfigOutcome(
                 "conflict",
                 resolution,
                 match,
                 self._target,
-                detail=f"{self._target.path} não tem o marcador do SteamZero",
+                detail=f"{self._target.path}: {probe.detail}",
             )
-        if current != expected:
+
+        # Perfil incompleto NÃO é gravado. O critério desta entrega é gerar o
+        # autoconfig somente quando todos os dados necessários estiverem
+        # resolvidos, e meio perfil em disco é pior que perfil nenhum: o
+        # RetroArch aceitaria o arquivo, as ações faltantes ficariam sem
+        # binding, e o usuário veria um controle que responde pela metade sem
+        # nada dizer por quê. `partial` é diagnóstico — o que falta aparece na
+        # tela com o motivo, e o emulador segue nos padrões dele.
+        if resolution.state == "partial":
+            return AutoconfigOutcome(
+                "partial",
+                resolution,
+                match,
+                self._target,
+                detail="o perfil não é gravado enquanto houver ação sem índice físico",
+            )
+
+        expected = self._render(resolution, match, profile_id, profile_revision, orientation)
+        if probe.kind == "absent" or probe.text != expected:
             return AutoconfigOutcome("pending-write", resolution, match, self._target)
-        state = "partial" if resolution.state == "partial" else "applied"
-        return AutoconfigOutcome(state, resolution, match, self._target)
+        return AutoconfigOutcome("applied", resolution, match, self._target)
 
     def apply(
         self,
@@ -422,10 +504,18 @@ class RetroArchControls:
         profile_revision: int,
         orientation: str,
     ) -> AutoconfigOutcome:
-        """Materializa o arquivo gerenciado, se e só se tudo estiver resolvido.
+        """Materializa o arquivo gerenciado, e só ele.
 
-        Idempotente: quando o conteúdo esperado já está em disco, não regrava —
-        `write_atomic` renomearia por cima e mudaria o mtime sem mudar nada.
+        Grava exclusivamente a partir de `pending-write`, que por construção já
+        excluiu perfil incompleto e alvo de terceiro. Idempotente: com o
+        conteúdo esperado já em disco o estado é `applied` e nada é regravado —
+        um rename por cima mudaria o mtime sem mudar nada.
+
+        A recusa não depende só da checagem: quando o alvo foi observado como
+        AUSENTE, a criação é exclusiva (`must_not_exist`), então um arquivo que
+        apareça entre a observação e a escrita faz a operação falhar em vez de
+        ser substituído. Sem isso, "nunca sobrescrevemos arquivo alheio" seria
+        uma verificação com janela, não uma garantia.
         """
         observed = self.status(
             bindings=bindings,
@@ -445,7 +535,15 @@ class RetroArchControls:
             resolution, observed.match, profile_id, profile_revision, orientation
         )
         try:
-            _write_managed(path, expected)
+            _write_managed(path, expected, must_not_exist=_probe_target(path).kind == "absent")
+        except FileExistsError:
+            return AutoconfigOutcome(
+                "conflict",
+                resolution,
+                observed.match,
+                self._target,
+                detail=f"{path}: apareceu um arquivo entre a verificação e a escrita",
+            )
         except OSError as exc:
             return AutoconfigOutcome(
                 "write-failed",
