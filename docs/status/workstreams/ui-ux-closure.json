@@ -3,13 +3,14 @@
   "kind": "workstream",
   "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
   "item": "SZ-UI-DESKTOP-AUDIT",
-  "branch": "codex/ui-ux-state-fixture-audit-clean",
-  "baseRef": "5be0aa718b0d0d0c93d1586c76ecef92cdf01d61",
-  "owner": "ui-ux-state-fixture-clean",
+  "branch": "codex/ui-ux-dialog-job-audit",
+  "baseRef": "3c9268816aa35909635dd8bf5e4eb544a0f4277a",
+  "owner": "ui-ux-dialog-job",
   "state": "active",
   "exclusivePaths": [
     "tests/integration/test_ui_action_inventory.py",
     "tests/integration/test_ui_control_matrix.py",
+    "tests/integration/test_ui_dialog_journeys.py",
     "tests/unit/test_ui_audit_runner.py",
     "tools/ui_action_inventory.py",
     "tools/ui_action_probe.qml",
@@ -17,6 +18,7 @@
     "tools/ui_audit_runner.py",
     "tools/ui_control_inventory.py",
     "tools/ui_control_probe.qml",
+    "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
   "sharedPaths": [
@@ -30,6 +32,6 @@
     "src/steamzero/ui/qml/SteamGameplay.qml",
     "tests/qml/check_editorial_library.qml"
   ],
-  "nextAction": "Historico reconstruido sem os 5,3 MB de fixtures geradas. Cenarios de estado entregues: 574 controles, 14 cenarios, 196 exercitados (era 73). Abertos: provar estabilidade real das identidades (label e indice ainda entram na chave), identidade semantica por objectName, drawers/dialogs/jobs/recovery, revalidacao do card de plataforma e P0 visuais. Fisica com o operador.",
-  "updatedAt": "2026-08-13"
+  "nextAction": "BASELINE DE 14 CENARIOS (cobertura): 574 controles, 378 not-probed, 17 roteados, 166 locais, 13 bloqueados com motivo. IDENTIDADE nos mesmos 14 cenarios: 80 explicitas, 494 fallback, 0 colisoes, 553 vistos em multiplos cenarios, 21 em um so. Nao misturar com a medicao de 3 cenarios (550/80/470) que a passagem anterior publicou lado a lado com cobertura de 14. Dialogos: 6 jornadas provadas (abrir, foco, fechar, retorno de foco, cancelamento sem plano sujo) por harness proprio, fora da matriz de controles — o fallback segue em 494 porque nenhum objectName novo foi adicionado nesta passagem. Abertos: task drawer, handheld drawer, jobs, recovery alem da abertura, credenciais por estado, clique repetido, revalidacao do card de plataforma e P0 visuais.",
+  "updatedAt": "2026-08-14"
 }
