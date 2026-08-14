@@ -6602,3 +6602,71 @@ A branch antiga não foi reescrita nem forçada.
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-14 — Higiene de histórico e identidade semântica
+
+Frente `codex/ui-ux-state-fixture-audit-clean`, base `5be0aa7`.
+**Nenhuma ação de host.** Branch anterior preservada, sem force-push.
+
+### Higiene
+
+A montagem anterior commitou 5,3 MB de fixtures JSON geradas e as removeu no
+commit seguinte; os blobs continuavam alcançáveis. Esta branch reconstrói a
+mesma entrega: três cherry-picks e o diff **líquido** dos dois commits de
+fixtures colapsado em um só.
+
+| prova | resultado |
+|---|---|
+| objetos sob `tests/fixtures/ui-scenarios` alcançáveis | **0** |
+| `e0e8c4e` / `8fe2953` / `7aeea06` como ancestrais | **não** |
+| diff contra `634a6b9` | só documentação — código idêntico |
+| diff total contra `5be0aa7` | 913 inserções (era 198.357) |
+
+Duas correções que o cherry-pick cego teria carregado:
+
+1. `test_ui_control_matrix.py` aparecia **duas vezes** na evidência do item;
+2. `/build/` acrescentado ao `.gitignore` era **redundante** — `build/` já está
+   ignorado desde a seção de Python. Pior: por ser arquivo de raiz sem item de
+   custódia, reprovava o `status-check`. Na branch antiga isso passou apenas
+   pela ordem dos commits, que tirou o arquivo da janela `HEAD^..HEAD`.
+
+### Identidade semântica
+
+Controles importantes declaram `objectName`, e quando ele existe a identidade é
+só ele: `id:overview.open-library`, `emulation.platform.<id>.primary`,
+`emulation.emulator.<id>.action`. Não depende de texto traduzido, coordenada,
+índice, endereço nem revisão do engine. O resto cai num fallback estrutural
+rotulado `fallback|...`, e a matriz publica quantos são.
+
+| métrica | valor |
+|---|---:|
+| controles (3 cenários) | 550 |
+| identidades explícitas | 80 |
+| fallback estrutural | 470 |
+| colisões | 0 |
+| vistos em mais de um cenário | 275 |
+
+Onze provas de estabilidade. Duas usam dado real: o CTA do card muda de
+"Instalar &lt;emulador&gt;" para "Abrir plataforma" entre cenários — mesmo botão,
+rótulo diferente; e o par `empty`/`emulation-ready` muda a contagem de
+controles visíveis, o que dá sentido a falar de irmãos.
+
+O teste de irmãos **reprovou na primeira escrita** porque o par escolhido dava
+506 controles dos dois lados e não provava nada. O par foi trocado; a asserção
+não foi afrouxada.
+
+### Aberto
+
+Identidade explícita nas demais superfícies (470 no fallback);
+drawers, dialogs, jobs e recovery; revalidação do card de plataforma —
+`07480ac` **continua sem poder ser fechado**; P0 visuais, nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência nas duas execuções integrais desta sessão
+(4483 e 4494 passando, exit 0). Memória antes 11358 MB usados / 3461 livres;
+depois 12475 / 2345. **Hipótese permanece aberta**: ausência de crash em duas
+execuções não é causa demonstrada.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
