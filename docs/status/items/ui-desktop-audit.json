@@ -31,7 +31,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "1cdfbc7a4f73596066ded3eaa7176a51f01fb15d99a63dbc22e233cce0646d69",
+  "scopeDigest": "c73c70a38cb642e15c422ad3b81d3ec9cf45f69a4f795ceb9fb4bfcd1a61ed03",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -55,7 +55,10 @@
     "Escape e Tab reais provados por evento de teclado Qt 6; recovery permanece aberto com NoAutoClose.",
     "Confirmacao por clique Qt contra a bridge loopback publica exatamente um apply durante clique repetido.",
     "Confirmacao, cancelamento, repeticao e recovery ficam indisponiveis enquanto a mutacao correspondente esta pendente.",
-    "Sucesso de confirmacao e recovery so e publicado apos refresh pela bridge."
+    "Sucesso de confirmacao e recovery so e publicado apos refresh pela bridge.",
+    "Task drawer distingue carregando, vazio e erro e oferece nova tentativa acionavel.",
+    "Cancelar e repetir jobs sao provados por cliques Qt reais contra a bridge.",
+    "Falha de recovery mantem o dialog aberto, anuncia o erro e permite nova tentativa."
   ],
   "evidence": [
     {
@@ -107,7 +110,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Confirmacao por clique Qt, deduplicacao, refresh e recovery pela bridge loopback foram provados. Cancelamento e repeticao exercitam o sinal dos controles reais do task drawer; o executor offscreen ainda nao injeta ponteiro no Popup do Drawer, portanto essa entrada fisica nao e declarada provada. A auditoria continua incompleta: 378 controles not-probed, dialogs/drawers restantes, card de plataforma e P0 visuais. Baseline de 14 cenários: 574 controles, 80 identidades explícitas, 494 fallback, 0 colisões.",
+  "nextAction": "Confirmacao, cancelamento e repeticao por cliques Qt, deduplicacao com resposta pendente controlada, estados carregando/vazio/erro do task drawer e recovery em sucesso/falha foram provados pela bridge loopback. A auditoria continua incompleta: 378 controles not-probed, handheld drawer e demais estados de dialogs/credenciais, card de plataforma e P0 visuais. Baseline recalculada de 14 cenarios: 574 controles, 80 identidades explicitas, 494 fallback, 0 colisoes, 553 multi-cenario e 21 de cenario unico.",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],

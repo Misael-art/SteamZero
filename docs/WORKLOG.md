@@ -6864,3 +6864,57 @@ essa entrada física permanece explicitamente aberta.
 Continua aberto: 378 controles `not-probed`, superfícies e drawers restantes,
 card de plataforma, P0 visuais, G45 e validação física. A auditoria não é
 declarada concluída nem certificada.
+
+---
+
+## 2026-08-14 (7) — Revisão crítica das jornadas assíncronas
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `23e0886`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade.
+
+### Duas conclusões anteriores corrigidas
+
+A primeira prova de clique repetido dependia de a bridge responder devagar por
+acaso. A fixture agora impõe uma barreira por evento: a requisição precisa
+chegar à bridge, o segundo clique acontece enquanto ela está comprovadamente
+pendente e só então a resposta é liberada. Não há `sleep`. A chave de mutação
+usa serialização canônica recursiva, independente da ordem dos campos e com a
+mesma semântica de omissão de `undefined` do JSON transmitido.
+
+Também estava errada a afirmação de que o executor offscreen não alcançava os
+controles do Drawer. O clique ocorria antes do fim da animação. Esperar
+`position >= 0.999` permitiu usar `mouseClick` Qt real em Cancelar e Tentar
+novamente; cada operação chega exatamente uma vez à bridge. O registro (6)
+acima é histórico e não foi reescrito; esta entrada o corrige explicitamente.
+
+### Robustez de estado e jornada
+
+A central de tarefas agora publica estados distintos de carregamento, vazio e
+erro, oferece nova tentativa e ignora respostas antigas por geração. A jornada
+QML + bridge cobre confirmação idempotente, cancelamento, repetição, erro e
+recuperação do carregamento, recovery bem-sucedido e recovery recusado sem
+fechar o diálogo nem bloquear uma nova tentativa.
+
+A matriz de 14 cenários foi recalculada: 574 controles, 17 roteados, 166
+locais, 13 bloqueados com explicação e 378 `not-probed`; identidade: 80
+explícitas, 494 fallback, 0 colisões, 553 multi-cenário e 21 de cenário único.
+Somente `sync` permanece integralmente sondada.
+
+### Gates e intermitência preservada
+
+Gate integral final, numa árvore parada: **4503 passaram, 10 skipados, exit
+0** em 721,03 s. O guard mediu estado real idêntico antes e depois. `ruff
+check`, `ruff format --check` (464 arquivos), `mypy` (220 arquivos),
+independência, fronteiras e `status-check`: verdes. `qmllint` saiu com código 0
+e manteve apenas o warning de layout preexistente em `Main.qml:5005`, fora do
+trecho alterado.
+
+Uma execução silenciosa anterior falhou em cascata e não reproduziu quando
+rodada detalhadamente nem no gate final. Não há coredump ou primeira falha
+estável; por isso o evento permanece registrado como intermitência sem causa
+atribuída, e não como defeito do código nem como problema "resolvido".
+
+Continua aberto: 378 controles `not-probed`, handheld drawer, estados restantes
+de credenciais e diálogos, revalidação do card de plataforma, P0 visuais, G45 e
+validação física. A auditoria continua `partial` e o workstream, `active`.
