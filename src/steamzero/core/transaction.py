@@ -878,8 +878,25 @@ def _expected_fingerprints(plan: Plan) -> dict[str, str | None]:
 # ===========================================================================
 
 
-def _custody_dest(holding: Path, action_id: str) -> Path:
-    return holding / f"custody.{action_id}"
+def _custody_dest(holding: Path, custody_id: str) -> Path:
+    """Caminho da entrada sob custódia da TENTATIVA ``custody_id``.
+
+    O nome carrega o custodyId (único por ciclo): dois ciclos do mesmo
+    ``action_id`` (apply e rollback) nunca compartilham caminho, então um
+    recovery não esbarra na entrada de uma tentativa anterior nem a libera por
+    engano correlacionando só o actionId.
+    """
+    return holding / f"custody.{custody_id}"
+
+
+def _next_custody_id(jrnl: journal.Journal, action_id: str) -> str:
+    """Identidade de tentativa de custódia: única dentro da operação.
+
+    Deriva da sequência do journal (barata, sem varrer registros) e é gravada
+    em ``intent``/``taken``/``released`` — a correlação de ciclos é por
+    custodyId, nunca por actionId.
+    """
+    return f"{action_id}.{jrnl.seq}"
 
 
 def _custody_identity(custody: Path) -> str:
@@ -906,22 +923,35 @@ def _accepted_identities(undo: dict[str, Any]) -> set[str]:
 def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None:
     """Resolve toda custódia pendente da operação; idempotente e não destrutivo.
 
-    Roda no início de qualquer rollback. Cada ``custody.taken`` sem o
-    ``custody.released`` correspondente é fechado de uma das três formas:
+    A reconciliação PARTE de todo ``custody.intent`` não terminado (sem
+    ``custody.released`` correspondente), NÃO só dos ``custody.taken``: um crash
+    entre o rename e o registro da tomada deixa a entrada na quarentena com
+    apenas o intent — e o recovery precisa saber que o rename aconteceu. A
+    correlação é por tentativa (caminho da custódia, que embute o custodyId),
+    nunca só por actionId: o mesmo actionId participa de ciclos distintos
+    (apply e rollback).
 
-    - devolução: a entrada volta ao lugar (alvo vago) — o rollback continua
-      sobre o estado original;
-    - conclusão: a entrada é a que o undo reconhece (hash/readlink) e a ação
-      em andamento era legítima — libera a custódia;
-    - falha FECHADA: a entrada não é reconhecida e o alvo está ocupado —
-      nada é destruído, a custódia permanece e o rollback falha com o caminho
-      preservado. Nunca se declara sucesso nesse caso.
+    Cada tentativa não terminada é fechada de uma destas formas:
+
+    - SEM custódia física (``custody`` não existe) e alvo intacto → a tomada
+      não aconteceu; fecha o intent como ``absent`` (nada a resolver);
+    - custódia existe (o rename aconteceu, mesmo sem ``custody.taken``) e o
+      alvo está vago → devolução: a entrada volta ao lugar;
+    - custódia existe e o alvo está ocupado: a entrada é a que o undo
+      reconhece (hash/readlink) → libera a custódia; senão → falha FECHADA
+      preservando AMBOS (alvo ocupado + custódia divergente nunca são
+      destruídos) e o rollback falha com o caminho preservado;
+    - ciclo terminal → nenhuma custódia pode permanecer: ao fechar, o arquivo
+      sob custódia é devolvido ou removido — nunca fica órfão.
+
+    Rodar de novo não muda estado e não destrói o que não reconhece.
     """
     undos = {r["actionId"]: r.get("undo", {}) for r in records if r.get("type") == "action.intent"}
-    intents = {r["actionId"]: r for r in records if r.get("type") == "custody.intent"}
-    taken = [r for r in records if r.get("type") == "custody.taken"]
-    released = {r.get("actionId") for r in records if r.get("type") == "custody.released"}
-    pendentes = [r for r in taken if r["actionId"] not in released]
+    intents = {r.get("custody") or "": r for r in records if r.get("type") == "custody.intent"}
+    released = {r.get("custody") for r in records if r.get("type") == "custody.released"}
+    pendentes = [
+        r for r in records if r.get("type") == "custody.intent" and r.get("custody") not in released
+    ]
     restos = [
         r
         for r in records
@@ -943,27 +973,46 @@ def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None
     with journal.Journal(operation_id) as jrnl:
         for rec in pendentes:
             action_id = rec["actionId"]
+            custody_id = rec.get("custodyId") or rec["actionId"]
             custody = Path(rec["custody"])
             target = Path(rec["target"])
             if not custody.exists() and not custody.is_symlink():
+                # case 1: sem entrada física => a tomada não aconteceu
                 jrnl.custody_released(
-                    action_id, custody=str(custody), returned=False, reason="absent"
+                    action_id,
+                    custody_id=custody_id,
+                    custody=str(custody),
+                    returned=False,
+                    reason="absent",
                 )
                 continue
-            intent = intents.get(action_id) or {}
+            intent = intents.get(str(custody)) or {}
             purpose = intent.get("purpose", "publish")
             undo = undos.get(action_id) or {}
             ocupado = target.exists() or target.is_symlink()
+            reconhecida = _custody_identity(custody) in _accepted_identities(undo)
             if purpose == "publish":
                 if not ocupado:
                     fs.return_custody(custody, target)
                     jrnl.custody_released(
-                        action_id, custody=str(custody), returned=True, reason="returned"
+                        action_id,
+                        custody_id=custody_id,
+                        custody=str(custody),
+                        returned=True,
+                        reason="returned",
                     )
-                elif _custody_identity(custody) in _accepted_identities(undo):
+                elif reconhecida:
+                    # A entrada é duplicata byte-a-byte do backup (identidade
+                    # aceita): liberá-la não destrói nada, e o estado final fica
+                    # SEM órfão. O alvo ocupado por terceiro sobrevive; quem
+                    # falhará é o undo da ação, que recusa sobrescrever intruso.
                     fs.release_custody(custody)
                     jrnl.custody_released(
-                        action_id, custody=str(custody), returned=False, reason="done"
+                        action_id,
+                        custody_id=custody_id,
+                        custody=str(custody),
+                        returned=False,
+                        reason="done",
                     )
                 else:
                     falha(f"alvo reocupado e custódia divergente do backup: {target}")
@@ -972,7 +1021,11 @@ def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None
                 if expected is None or _custody_identity(custody) == str(expected):
                     fs.release_custody(custody)
                     jrnl.custody_released(
-                        action_id, custody=str(custody), returned=False, reason="done"
+                        action_id,
+                        custody_id=custody_id,
+                        custody=str(custody),
+                        returned=False,
+                        reason="done",
                     )
                 else:
                     falha(f"custódia de remoção divergente: {custody}")
@@ -980,12 +1033,20 @@ def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None
                 if not ocupado:
                     fs.return_custody(custody, target)
                     jrnl.custody_released(
-                        action_id, custody=str(custody), returned=True, reason="returned"
+                        action_id,
+                        custody_id=custody_id,
+                        custody=str(custody),
+                        returned=True,
+                        reason="returned",
                     )
-                elif _custody_identity(custody) in _accepted_identities(undo):
+                elif reconhecida:
                     fs.release_custody(custody)
                     jrnl.custody_released(
-                        action_id, custody=str(custody), returned=False, reason="done"
+                        action_id,
+                        custody_id=custody_id,
+                        custody=str(custody),
+                        returned=False,
+                        reason="done",
                     )
                 else:
                     falha(f"alvo do restore reocupado e custódia divergente: {target}")
@@ -995,6 +1056,7 @@ def _reconcile_custody(operation_id: str, records: list[dict[str, Any]]) -> None
             if not custody.exists() and not custody.is_symlink():
                 continue
             undo = undos.get(action_id) or {}
+            custody_id = rec.get("custodyId") or rec["actionId"]
             if _custody_identity(custody) in _accepted_identities(undo):
                 fs.release_custody(custody)
             else:
@@ -1007,10 +1069,14 @@ def _has_rollback_evidence(records: list[dict[str, Any]]) -> bool:
     Uma operação commitada com custódia pendente, restos de liberação ou
     registros de propósito remove/restore NÃO pode ser declarada kept: algo foi
     retirado do lugar e o recovery precisa terminar o trabalho antes de decidir.
+
+    A correlação de ciclos é por tentativa (caminho da custódia, que embute o
+    custodyId), nunca por actionId: o mesmo actionId aparece em ciclos distintos
+    (apply e rollback) e correlacionar por ele mistura tentativas — o P1.
     """
     taken = [r for r in records if r.get("type") == "custody.taken"]
-    released = {r.get("actionId") for r in records if r.get("type") == "custody.released"}
-    if any(r["actionId"] not in released for r in taken):
+    released = {r.get("custody") for r in records if r.get("type") == "custody.released"}
+    if any(r.get("custody") not in released for r in taken):
         return True
     for r in records:
         if r.get("type") == "custody.released" and not r.get("returned"):
@@ -1035,9 +1101,11 @@ def _publish_verified_tx(
     O temporário só é criado DEPOIS da tomada da custódia: um crash nos pontos
     de custódia não deixa temporário órfão no diretório do alvo.
     """
-    custody_dest = _custody_dest(holding, action_id)
+    custody_id = _next_custody_id(jrnl, action_id)
+    custody_dest = _custody_dest(holding, custody_id)
     jrnl.custody_intent(
         action_id,
+        custody_id=custody_id,
         target=str(path),
         custody=str(custody_dest),
         purpose="publish",
@@ -1052,14 +1120,29 @@ def _publish_verified_tx(
         except BaseException:
             fs.discard_tmp(tmp)
             raise
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="absent",
+        )
         return
-    jrnl.custody_taken(action_id, target=str(path), custody=str(custody_dest))
+    jrnl.custody_taken(
+        action_id,
+        custody_id=custody_id,
+        target=str(path),
+        custody=str(custody_dest),
+    )
     _maybe_crash("custody.taken")
     if fs.hash_file(custody) != expect_hash:
         fs.return_custody(custody, path)
         jrnl.custody_released(
-            action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=True,
+            reason="mismatch",
         )
         raise SteamZeroError("E-TX-STALE-PLAN", detail=f"alvo mudou antes de publicar: {path}")
     tmp = fs.write_tmp(path.parent, content)
@@ -1069,11 +1152,21 @@ def _publish_verified_tx(
         fs.discard_tmp(tmp)
         fs.return_custody(custody, path)
         jrnl.custody_released(
-            action_id, custody=str(custody_dest), returned=True, reason="occupied"
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=True,
+            reason="occupied",
         )
         raise
     _maybe_crash("custody.postlink")
-    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    jrnl.custody_released(
+        action_id,
+        custody_id=custody_id,
+        custody=str(custody_dest),
+        returned=False,
+        reason="done",
+    )
     fs.release_custody(custody)
     _maybe_crash("custody.release")
 
@@ -1088,9 +1181,11 @@ def _remove_verified_tx(
     mismatch_code: str,
 ) -> None:
     """Remove ``path`` só se for o que esperávamos — com custódia registrada."""
-    custody_dest = _custody_dest(holding, action_id)
+    custody_id = _next_custody_id(jrnl, action_id)
+    custody_dest = _custody_dest(holding, custody_id)
     jrnl.custody_intent(
         action_id,
+        custody_id=custody_id,
         target=str(path),
         custody=str(custody_dest),
         purpose="remove",
@@ -1099,19 +1194,40 @@ def _remove_verified_tx(
     _maybe_crash("custody.intent")
     custody = fs.take_custody_named(path, custody_dest)
     if custody is None:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="absent",
+        )
         return
-    jrnl.custody_taken(action_id, target=str(path), custody=str(custody_dest))
+    jrnl.custody_taken(
+        action_id,
+        custody_id=custody_id,
+        target=str(path),
+        custody=str(custody_dest),
+    )
     _maybe_crash("custody.taken")
     if expected is not None and _custody_identity(custody) != expected:
         fs.return_custody(custody, path)
         jrnl.custody_released(
-            action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=True,
+            reason="mismatch",
         )
         raise SteamZeroError(
             mismatch_code, detail=f"rollback recusou remover arquivo alterado: {path}"
         )
-    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    jrnl.custody_released(
+        action_id,
+        custody_id=custody_id,
+        custody=str(custody_dest),
+        returned=False,
+        reason="done",
+    )
     fs.release_custody(custody)
     _maybe_crash("custody.release")
 
@@ -1127,9 +1243,11 @@ def _restore_verified_tx(
     undo: dict[str, Any],
 ) -> None:
     """Restaura ``backup`` sobre ``target`` sem sobrescrever o inesperado."""
-    custody_dest = _custody_dest(holding, action_id)
+    custody_id = _next_custody_id(jrnl, action_id)
+    custody_dest = _custody_dest(holding, custody_id)
     jrnl.custody_intent(
         action_id,
+        custody_id=custody_id,
         target=str(target),
         custody=str(custody_dest),
         purpose="restore",
@@ -1138,12 +1256,21 @@ def _restore_verified_tx(
     _maybe_crash("custody.intent")
     custody = fs.take_custody_named(target, custody_dest)
     if custody is not None:
-        jrnl.custody_taken(action_id, target=str(target), custody=str(custody_dest))
+        jrnl.custody_taken(
+            action_id,
+            custody_id=custody_id,
+            target=str(target),
+            custody=str(custody_dest),
+        )
         _maybe_crash("custody.taken")
         if _custody_identity(custody) not in accepted:
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="mismatch",
             )
             raise SteamZeroError(
                 "E-TX-ROLLBACK-FAILED",
@@ -1156,15 +1283,31 @@ def _restore_verified_tx(
         if custody is not None:
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="error"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="error",
             )
         raise
     _maybe_crash("custody.postlink")
     if custody is not None:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="done",
+        )
         fs.release_custody(custody)
     else:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="absent",
+        )
     _maybe_crash("custody.release")
 
 
@@ -1179,9 +1322,11 @@ def _publish_symlink_tx(
     purpose: str,
 ) -> None:
     """Publica symlink por link exclusivo, com custódia registrada."""
-    custody_dest = _custody_dest(holding, action_id)
+    custody_id = _next_custody_id(jrnl, action_id)
+    custody_dest = _custody_dest(holding, custody_id)
     jrnl.custody_intent(
         action_id,
+        custody_id=custody_id,
         target=str(target),
         custody=str(custody_dest),
         purpose=purpose,
@@ -1190,18 +1335,31 @@ def _publish_symlink_tx(
     _maybe_crash("custody.intent")
     custody = fs.take_custody_named(target, custody_dest)
     if custody is not None:
-        jrnl.custody_taken(action_id, target=str(target), custody=str(custody_dest))
+        jrnl.custody_taken(
+            action_id,
+            custody_id=custody_id,
+            target=str(target),
+            custody=str(custody_dest),
+        )
         _maybe_crash("custody.taken")
         if not custody.is_symlink():
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="mismatch",
             )
             raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}")
         if expected_readlink is not None and os.readlink(custody) != expected_readlink:
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="mismatch"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="mismatch",
             )
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail=f"link mudou antes de publicar: {target}"
@@ -1214,7 +1372,11 @@ def _publish_symlink_tx(
         if custody is not None:
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="occupied"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="occupied",
             )
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail=f"destino de link já existe: {target}"
@@ -1227,15 +1389,31 @@ def _publish_symlink_tx(
         if custody is not None:
             fs.return_custody(custody, target)
             jrnl.custody_released(
-                action_id, custody=str(custody_dest), returned=True, reason="error"
+                action_id,
+                custody_id=custody_id,
+                custody=str(custody_dest),
+                returned=True,
+                reason="error",
             )
         raise
     _maybe_crash("custody.postlink")
     if custody is not None:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="done",
+        )
         fs.release_custody(custody)
     else:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="absent")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="absent",
+        )
     _maybe_crash("custody.release")
 
 
@@ -1247,9 +1425,11 @@ def _publish_move_tx(
     holding: Path,
 ) -> None:
     """Move ``source`` para ``target`` sem substituir nada que apareça."""
-    custody_dest = _custody_dest(holding, action_id)
+    custody_id = _next_custody_id(jrnl, action_id)
+    custody_dest = _custody_dest(holding, custody_id)
     jrnl.custody_intent(
         action_id,
+        custody_id=custody_id,
         target=str(target),
         custody=str(custody_dest),
         purpose="publish",
@@ -1261,21 +1441,41 @@ def _publish_move_tx(
     if custody is not None:
         fs.return_custody(custody, target)
         jrnl.custody_released(
-            action_id, custody=str(custody_dest), returned=True, reason="occupied"
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=True,
+            reason="occupied",
         )
         raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {target}")
     try:
         fs.move_file_noreplace(source, target)
     except FileExistsError as exc:
         jrnl.custody_released(
-            action_id, custody=str(custody_dest), returned=False, reason="occupied"
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="occupied",
         )
         raise SteamZeroError("E-TX-STALE-PLAN", detail=f"destino já existe: {target}") from exc
     except BaseException:
-        jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="error")
+        jrnl.custody_released(
+            action_id,
+            custody_id=custody_id,
+            custody=str(custody_dest),
+            returned=False,
+            reason="error",
+        )
         raise
     _maybe_crash("custody.postlink")
-    jrnl.custody_released(action_id, custody=str(custody_dest), returned=False, reason="done")
+    jrnl.custody_released(
+        action_id,
+        custody_id=custody_id,
+        custody=str(custody_dest),
+        returned=False,
+        reason="done",
+    )
     _maybe_crash("custody.release")
 
 

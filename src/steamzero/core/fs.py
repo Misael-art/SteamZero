@@ -20,6 +20,7 @@ import errno
 import os
 import secrets
 import shutil
+import signal
 import stat
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -202,7 +203,20 @@ def take_custody_named(path: Path, custody: Path) -> Path | None:
                 ),
             ) from exc
         raise
+    _crash_apos_o_rename()
     return custody
+
+
+def _crash_apos_o_rename() -> None:
+    """Gate de crash DENTRO da janela rename→taken (somente teste).
+
+    Dispara logo após o rename da custódia ter executado, antes de
+    ``take_custody_named`` retornar ao chamador — o MESMO efeito de um SIGKILL
+    entre o syscall e o registro do ``custody.taken`` no journal. Sem a
+    variável de ambiente, não faz nada.
+    """
+    if os.environ.get("STEAMZERO_CRASH_AT") == "custody.after-rename":
+        os.kill(os.getpid(), signal.SIGKILL)
 
 
 def release_custody(custody: Path) -> None:
