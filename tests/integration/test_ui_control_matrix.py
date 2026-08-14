@@ -65,6 +65,25 @@ def test_every_disabled_control_explains_itself(inventory: dict) -> None:
     assert offenders == [], "controles desabilitados sem motivo:\n" + "\n".join(offenders)
 
 
+def test_the_matrix_runs_every_declared_scenario(inventory: dict) -> None:
+    """Um cenário só conta quando roda; fixture no disco não é evidência."""
+    declared = sorted(path.stem for path in matrix.scenario_paths())
+    assert declared, "nenhum cenário declarado em tests/fixtures/ui-scenarios"
+    assert sorted(inventory["scenarios"]) == declared
+
+
+def test_scenarios_reach_more_controls_than_offline_alone(inventory: dict) -> None:
+    """O motivo de existirem cenários: sem eles a maioria fica invisível.
+
+    Offline sozinho acionava 73 de 288. Se um refactor desligar o carregamento
+    da fixture, este gate percebe antes de a matriz voltar a medir quase nada.
+    """
+    probed = sum(
+        count for verdict, count in inventory["verdictCounts"].items() if verdict != "not-probed"
+    )
+    assert probed > 150, f"apenas {probed} controles exercitados; os cenários não carregaram"
+
+
 def test_the_probe_reached_every_declared_surface(inventory: dict) -> None:
     """Guarda contra matriz vazia passando por engano.
 

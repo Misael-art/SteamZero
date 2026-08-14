@@ -1920,6 +1920,10 @@ Item {
                                         }
                                         Button {
                                             text: modelData.action ? modelData.action.label : ""
+                                            Accessible.name: modelData.action
+                                                ? qsTr("%1: %2")
+                                                    .arg(modelData.displayName || modelData.id)
+                                                    .arg(modelData.action.label) : ""
                                             enabled: modelData.action && modelData.action.enabled !== false
                                             Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.description: modelData.action
@@ -2030,6 +2034,10 @@ Item {
                                             enabled: modelData.action.enabled !== false
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
+                                            // "Instalar" sozinho nao diz instalar o que:
+                                            // 36 cards repetem o mesmo rotulo.
+                                            Accessible.name: qsTr("%1: %2")
+                                                .arg(modelData.name).arg(modelData.action.label)
                                             Accessible.description: modelData.action.reason || modelData.blocker || ""
                                             onClicked: page.actionRequested(modelData.action)
                                         }
@@ -2041,6 +2049,9 @@ Item {
                                                 && modelData.secondaryAction.enabled !== false
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
+                                            Accessible.name: modelData.secondaryAction
+                                                ? qsTr("%1: %2").arg(modelData.name)
+                                                    .arg(modelData.secondaryAction.label) : ""
                                             Accessible.description: modelData.secondaryAction
                                                 ? (modelData.secondaryAction.reason || "") : ""
                                             onClicked: page.actionRequested(modelData.secondaryAction)
