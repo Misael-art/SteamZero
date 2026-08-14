@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
   "item": "SZ-UI-DESKTOP-AUDIT",
-  "branch": "codex/ui-ux-confirm-job-e2e",
-  "baseRef": "af312d6d95959e098697d99494c7d92b7e85b8bd",
-  "owner": "ui-ux-confirm-job-e2e",
+  "branch": "codex/ui-ux-confirm-job-takeover",
+  "baseRef": "512d8428315fac5bfda1d4b9206acd3748a63244",
+  "owner": "ui-ux-confirm-job-takeover",
   "state": "active",
   "exclusivePaths": [
     "tests/integration/test_ui_action_inventory.py",
