@@ -12,6 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-08-11-ui-audit",
     "src/steamzero/ui",
+    "src/steamzero/ui/qml/EditorialHome.qml",
     "tests/integration/test_ui_control_matrix.py",
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_emulation.qml",
@@ -20,9 +21,10 @@
     "tools/ui_audit_capture.qml",
     "tools/ui_audit_runner.py",
     "tools/ui_control_inventory.py",
-    "tools/ui_control_probe.qml"
+    "tools/ui_control_probe.qml",
+    "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "4f8de56547a573cec412a2a3800e9fc8553362dc50b69d81b827a21d635ab325",
+  "scopeDigest": "eb485a0a8840641f9e7b07ea66d9867c6c97c715b7caa76a1bda72be2c81ef84",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -34,7 +36,10 @@
     "Card de plataforma travada por emulador ausente oferece instalar.",
     "Harness de auditoria termina sem crash e o manifesto usa a CLI publicada.",
     "DarkButton legivel no tema claro.",
-    "Tema aplica via plan+confirm na UI."
+    "Tema aplica via plan+confirm na UI.",
+    "Todo controle acionavel visivel anuncia Accessible.name.",
+    "Todo alvo acionavel tem ao menos 48x48.",
+    "A matriz roda todos os cenarios declarados e funde por identidade estavel."
   ],
   "evidence": [
     {
@@ -60,9 +65,15 @@
       "reference": "tests/integration/test_ui_control_matrix.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Medido em 2026-08-13: 288 controles em 12 superficies; 10 roteados, 49 locais, 14 bloqueados com motivo, 215 nao sondados (invisiveis no estado offline). Zero no-op silencioso, zero sem rota, zero bloqueado mudo. 7 defeitos encontrados e 7 corrigidos. 117 contratos ainda NAO COBERTOS por esta auditoria (nao sao orfaos: 1 de 17 superficies inventariada pela sonda de acoes). Falta tornar os controles invisiveis sondaveis por fixture de estado, cobrir dialogs/recovery/jobs e so entao atacar os P0 visuais (DarkButton, capas, Home).",
+  "nextAction": "Medido em 2026-08-13 com 14 cenarios: 574 controles em 12 superficies; 17 roteados, 166 locais, 13 bloqueados com motivo, 378 nao sondados. 196 exercitados contra 73 na passagem anterior. Zero no-op silencioso, zero sem rota, zero bloqueado mudo, zero acionavel sem nome acessivel. 9 defeitos encontrados e 9 corrigidos nesta passagem. Somente 'sync' esta integralmente sondada. Abertos: dialogs/recovery/credenciais, revalidacao do card de plataforma, forense do crash QML e os P0 visuais.",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
