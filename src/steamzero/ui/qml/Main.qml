@@ -1003,6 +1003,17 @@ ApplicationWindow {
             refreshStatus(qsTr("Ambiente de emulação verificado"))
             return
         }
+        // Navegação para a plataforma. É tratada aqui, e não só no clique do
+        // card, para que a ação publicada tenha rota de verdade: qualquer
+        // superfície que despache o payload chega ao mesmo lugar.
+        if (action.id.indexOf("platform.open:") === 0) {
+            const platformId = action.id.slice("platform.open:".length)
+            sectionIndex = sectionIndexOf("emulators")
+            if (!emulationControl.openPlatformFromGlobal(platformId))
+                notify(qsTr("A plataforma %1 não está no workspace publicado; "
+                    + "nada foi alterado.").arg(platformId), true)
+            return
+        }
         if (action.id === "open-credential-dialog") {
             credentialDialog.refresh()
             credentialDialog.open()
@@ -4839,6 +4850,12 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    // Apagado sem dizer por quê deixa o usuário
+                                    // procurando o defeito no lugar da condição.
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para parear.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: castPinDialog.open()
                                 }
                                 RowLayout {
@@ -4871,6 +4888,10 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para transmitir.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: {
                                         root.requestAction("cast.start", {
                                                 "receiverId": root.selectedReceiverId,

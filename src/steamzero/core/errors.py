@@ -26,6 +26,7 @@ ERROR_CATALOG: dict[str, str] = {
     "E-TX-VERIFY-FAILED": "TX",
     "E-TX-ROLLBACK-FAILED": "TX",
     "E-TX-LOCKED": "TX",
+    "E-TX-CUSTODY-CROSS-FS": "TX",
     # SUPPLY
     "E-SUPPLY-NO-CHECKSUM": "SUPPLY",
     "E-SUPPLY-CHECKSUM": "SUPPLY",

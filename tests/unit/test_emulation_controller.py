@@ -14,7 +14,7 @@ from pathlib import Path
 import jsonschema.exceptions
 import pytest
 
-from steamzero.adapters import emulation
+from steamzero.adapters import emulation, input_devices
 from steamzero.adapters.converters import NszToolManager, nsz_tool_manifest
 from steamzero.adapters.emulation import EmulationController
 from steamzero.api.contracts import validate
@@ -23,7 +23,7 @@ from steamzero.core.state import StateStore
 from steamzero.ports import CheatCandidate, CheatIdentity, ModCandidate, ModIdentity
 
 
-def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ignore[no-untyped-def]
+def _controller(monkeypatch, tmp_path: Path, controls=None) -> EmulationController:  # type: ignore[no-untyped-def]
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     monkeypatch.setattr(Path, "home", classmethod(lambda _cls: home))
@@ -35,6 +35,7 @@ def _controller(monkeypatch, tmp_path: Path) -> EmulationController:  # type: ig
         which=lambda _command: None,
         spawn=lambda _argv: None,
         secret_store=emulation.SessionSecretStore(),
+        retroarch_controls=controls,
     )
 
 
@@ -102,7 +103,13 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     assert global_management["editorialSource"]["id"] == "steam"
     assert len(global_management["platformCards"]) == 36
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
-    assert switch["action"]["id"] == "platform.open"
+    # Contrato alterado em 2026-08-13: com `which` devolvendo None, nenhum
+    # emulador do Switch está instalado. O bloqueador do card é exatamente esse,
+    # e "Abrir plataforma" não o resolve — o CTA primário passa a instalar o
+    # emulador ausente, com abrir preservado como secundário.
+    assert switch["action"]["id"] == "emulator.install:eden"
+    assert switch["action"]["requiresConfirmation"] is True
+    assert switch["secondaryAction"]["id"] == "platform.open:switch"
     assert switch["keysStatus"]["kind"] == "keys"
     # 15, e não 13, desde 2026-08-12: `duckstation` e `pcsx2` passaram a ser
     # apresentáveis. Eles sempre estiveram declarados por PlayStation e
@@ -885,6 +892,13 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                     },
                 ],
                 "clearAction": None,
+                # Sem perfil ativo não há binding para resolver contra pad
+                # nenhum, então o autoconfig é ausência honesta e não um objeto
+                # com estado inventado (G45).
+                "autoconfig": None,
+                # E sem nada resolvido não se oferece a confirmação de gravar:
+                # ela não poderia resultar em perfil valendo.
+                "applyAutoconfigAction": None,
             },
             "controlsReadiness": {
                 "state": "attention",
@@ -896,6 +910,9 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
                 ),
                 "profileConfigured": False,
                 "controllers": published[0]["controlsReadiness"]["controllers"],
+                # A prontidão passou a publicar o estado do EFEITO, não só o da
+                # intenção: perfil salvo não é perfil valendo.
+                "autoconfigState": "not-configured",
             },
         }
     ]
@@ -1160,6 +1177,108 @@ def test_launch_argv_flatpak_standalone_from_platform_profile(monkeypatch, tmp_p
         rom=rom,
     )
     assert argv == ["flatpak", "run", "--user", "net.pcsx2.PCSX2", "--fullscreen", str(rom)]
+
+
+def _retroarch_profile(adapter_id: str = "retroarch"):  # type: ignore[no-untyped-def]
+    from steamzero.domain.launch_profile import LaunchProfile
+
+    return LaunchProfile(
+        platform_id="switch",
+        adapter_id=adapter_id,
+        game_args=("{rom}",),
+    )
+
+
+def test_retroarch_launch_carries_the_controls_overlay(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """O caminho que o usuario realmente percorre: "Abrir emulador" / "Jogar".
+
+    A injecao do `--appendconfig` tinha sido posta so no `ComponentLifecycle`,
+    mas a tela de emulacao monta o argv por aqui. O RetroArch subia sem o perfil
+    de controle — a integracao provada no A/B nao chegava ao botao real.
+    """
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.nsp"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile(),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert argv[:4] == ["flatpak", "run", "--user", "org.libretro.RetroArch"]
+    assert argv[4:6] == ["--appendconfig", str(managed.overlay_path)]
+    # A ROM continua sendo o ultimo argumento, atomico.
+    assert argv[-1] == str(rom)
+
+
+def test_a_libretro_core_launch_also_carries_the_overlay(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Core libretro roda DENTRO do RetroArch, entao precisa do mesmo overlay.
+
+    Chavear pelo id do adapter deixaria os jogos de fora; a chave e a ref.
+    """
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.sfc"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile("libretro-mesen"),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert "--appendconfig" in argv
+
+
+def test_a_non_retroarch_emulator_is_launched_unchanged(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "gerenciado")
+    managed.overlay_path.parent.mkdir(parents=True)
+    managed.overlay_path.write_text(managed.overlay_content(), encoding="utf-8")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.iso"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile("pcsx2"),
+        source_type="flatpak",
+        flatpak_ref="net.pcsx2.PCSX2",
+        payload=None,
+        rom=rom,
+    )
+
+    assert "--appendconfig" not in argv
+
+
+def test_without_an_applied_profile_the_launch_is_untouched(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """Sem overlay, nao se passa `--appendconfig` para arquivo inexistente."""
+    controller = EmulationController(store_factory=lambda: StateStore(tmp_path / "state.db"))
+    managed = input_devices.ManagedRetroArchConfig(root=tmp_path / "vazio")
+    monkeypatch.setattr(input_devices, "managed_config", lambda *_a, **_k: managed)
+    rom = tmp_path / "jogo.nsp"
+    rom.write_bytes(b"rom")
+
+    argv = controller._build_exec_argv(  # type: ignore[attr-defined]
+        _retroarch_profile(),
+        source_type="flatpak",
+        flatpak_ref="org.libretro.RetroArch",
+        payload=None,
+        rom=rom,
+    )
+
+    assert argv == ["flatpak", "run", "--user", "org.libretro.RetroArch", str(rom)]
 
 
 def test_launch_core_missing_refuses_jogar_before_spawn(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
@@ -2687,8 +2806,8 @@ def test_conflicting_save_restore_preserves_both_versions(monkeypatch, tmp_path:
     assert len(after) == 2
 
 
-def _controls_game(monkeypatch, tmp_path: Path) -> tuple[EmulationController, str]:  # type: ignore[no-untyped-def]
-    controller = _controller(monkeypatch, tmp_path)
+def _controls_game(monkeypatch, tmp_path: Path, controls=None) -> tuple[EmulationController, str]:  # type: ignore[no-untyped-def]
+    controller = _controller(monkeypatch, tmp_path, controls=controls)
     roms = tmp_path / "roms"
     roms.mkdir()
     (roms / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"owned-game")
@@ -2697,6 +2816,242 @@ def _controls_game(monkeypatch, tmp_path: Path) -> tuple[EmulationController, st
     controller.scan_library()
     game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
     return controller, str(game["id"])
+
+
+_AUTOCONFIG_PAD = """
+input_driver = "udev"
+input_device = "Pad de Teste"
+input_vendor_id = "10462"
+input_product_id = "1142"
+input_b_btn = "0"
+input_a_btn = "1"
+input_y_btn = "2"
+input_x_btn = "3"
+input_start_btn = "7"
+input_select_btn = "6"
+input_l_btn = "4"
+input_r_btn = "5"
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
+"""
+
+
+class _FakePad:
+    def identities(self) -> list[input_devices.DeviceIdentity]:
+        return [input_devices.DeviceIdentity("Pad de Teste", 10462, 1142)]
+
+
+def _controls_with_pad(monkeypatch, tmp_path: Path, *, declared: bool):  # type: ignore[no-untyped-def]
+    bundled = tmp_path / "bundled"
+    bundled.mkdir()
+    (bundled / "pad.cfg").write_text(_AUTOCONFIG_PAD, encoding="utf-8")
+    target = tmp_path / "perfis"
+    target.mkdir()
+    return input_devices.RetroArchControls(
+        devices=_FakePad(),
+        catalog=input_devices.AutoconfigCatalog([bundled]),
+        target=input_devices.AutoconfigTarget(target, declared=declared),
+    )
+
+
+def test_controls_profile_publishes_the_autoconfig_the_screen_needs(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """G45: a tela precisa distinguir perfil SALVO de perfil que vale de fato.
+
+    O perfil ativo aqui esta salvo e traduzido, e o pad e reconhecido — mas
+    nada foi gravado, entao o estado publicado e `pending-write`. Dizer
+    "configurado" neste ponto seria a promessa vazia que a G45 registra.
+    """
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=True)
+    )
+    plan = controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"})
+    _apply(controller, plan)
+
+    autoconfig = controller.snapshot({"context": {}})["platforms"][0]["games"][0][
+        "controlsProfile"
+    ]["autoconfig"]
+
+    assert autoconfig["state"] == "pending-write"
+    assert autoconfig["device"] == {
+        "name": "Pad de Teste",
+        "vendorId": 10462,
+        "productId": 1142,
+    }
+    assert autoconfig["unresolvedBindings"] == []
+    gravados = {row["key"]: row["value"] for row in autoconfig["resolvedBindings"]}
+    assert gravados["input_b_btn"] == "0"
+    # O direcional deste pad e BOTAO. A traducao abstrata publica
+    # `input_up_axis`; quem resolve contra o dispositivo corrige para `_btn`.
+    assert gravados["input_up_btn"] == "h0up"
+    assert "input_up_axis" not in gravados
+
+
+def test_the_autoconfig_reaches_disk_through_a_confirmed_action(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """G45: o writer precisa ter rota de PRODUÇÃO, não só de teste.
+
+    Antes desta ação o perfil chegava a `pending-write` e ninguém materializava
+    o arquivo: a ativação só gravava a seleção, e o dashboard apenas observava.
+    A integração inteira ficava inerte — e `write-failed` era inalcançável.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+
+    def _profile() -> dict:
+        return controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsProfile"]
+
+    antes = _profile()
+    assert antes["autoconfig"]["state"] == "pending-write"
+    assert antes["applyAutoconfigAction"]["id"] == "controls.autoconfig.apply"
+    assert antes["applyAutoconfigAction"]["requiresConfirmation"] is True
+
+    plano = controller.plan_action({"actionId": "controls.autoconfig.apply"})
+    _apply(controller, plano)
+
+    depois = _profile()
+    assert depois["autoconfig"]["state"] == "applied"
+    # A ação some quando não há mais o que gravar: oferecer confirmação que não
+    # muda nada seria ruído.
+    assert depois["applyAutoconfigAction"] is None
+    gravado = Path(depois["autoconfig"]["path"])
+    assert gravado.is_file()
+    assert gravado.read_text(encoding="utf-8").splitlines()[0] == "# SteamZero-Managed: true"
+
+
+def test_applying_the_autoconfig_twice_is_idempotent(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+    _apply(controller, controller.plan_action({"actionId": "controls.autoconfig.apply"}))
+
+    # Já aplicado: planejar de novo é recusado com causa, em vez de oferecer uma
+    # confirmação que não mudaria nada.
+    with pytest.raises(SteamZeroError, match="não está pronto para gravar"):
+        controller.plan_action({"actionId": "controls.autoconfig.apply"})
+
+
+def test_applying_the_autoconfig_is_refused_without_an_active_profile(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+
+    with pytest.raises(SteamZeroError, match="nenhum perfil de controle ativo"):
+        controller.plan_action({"actionId": "controls.autoconfig.apply"})
+
+
+def test_readiness_is_not_ready_until_the_autoconfig_is_applied(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Perfil salvo com controle plugado NÃO é perfil valendo.
+
+    A prontidão olhava só "existe perfil" e "existe controle", então dizia
+    `ready` enquanto o emulador ainda rodava nos padrões dele — o falso verde
+    que a G45 existe para não repetir.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, _game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+
+    def _readiness() -> dict:
+        return controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsReadiness"]
+
+    antes = _readiness()
+    assert antes["state"] == "attention"
+    assert antes["autoconfigState"] == "pending-write"
+    assert antes["reason"]
+
+    _apply(controller, controller.plan_action({"actionId": "controls.autoconfig.apply"}))
+
+    depois = _readiness()
+    assert depois["autoconfigState"] == "applied"
+    # `ready` continua exigindo controle detectado; num host sem joystick o
+    # estado permanece honesto.
+    assert depois["state"] == ("ready" if depois["controllers"] > 0 else "attention")
+
+
+def test_a_game_scoped_profile_never_offers_to_write_the_platform_one(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """O autoconfig vale por CONTROLE; o perfil por jogo nao cabe nele.
+
+    O cartao mostra o perfil efetivo do jogo, mas a gravacao usa o perfil de
+    PLATAFORMA — sao arquivos por dispositivo, sem nocao de qual jogo roda. Se a
+    acao fosse oferecida aqui, confirmar "aplicar" gravaria silenciosamente OUTRO
+    perfil. Melhor dizer que o mecanismo nao alcanca esse caso.
+    """
+    controls = _controls_with_pad(monkeypatch, tmp_path, declared=True)
+    controller, game_id = _controls_game(monkeypatch, tmp_path, controls=controls)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"}),
+    )
+    # Perfil especifico do jogo, diferente do da plataforma.
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": "controls.profile.activate:joycon-pair",
+                "gameId": game_id,
+                "scope": "game",
+                "scopeId": game_id,
+            }
+        ),
+    )
+
+    profile = controller.snapshot({"context": {}})["platforms"][0]["games"][0]["controlsProfile"]
+
+    assert profile["source"] == "game"
+    assert profile["active"]["id"] == "joycon-pair"
+    assert profile["autoconfig"]["state"] == "unsupported-scope"
+    assert profile["applyAutoconfigAction"] is None
+    assert "por jogo" in profile["autoconfig"]["detail"]
+
+
+def test_controls_profile_never_says_applied_when_retroarch_did_not_declare_a_dir(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Caso REAL deste host: o RetroArch nunca gravou `retroarch.cfg`."""
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=False)
+    )
+    plan = controller.plan_action({"actionId": "controls.profile.activate:standard-gamepad"})
+    _apply(controller, plan)
+
+    autoconfig = controller.snapshot({"context": {}})["platforms"][0]["games"][0][
+        "controlsProfile"
+    ]["autoconfig"]
+
+    assert autoconfig["state"] == "awaiting-emulator"
+    assert autoconfig["directoryDeclared"] is False
+    assert autoconfig["statusLabel"]
+
+
+def test_controls_autoconfig_is_absent_while_no_profile_is_active(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    controller, _game_id = _controls_game(
+        monkeypatch, tmp_path, controls=_controls_with_pad(monkeypatch, tmp_path, declared=True)
+    )
+
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+
+    assert game["controlsProfile"]["autoconfig"] is None
 
 
 def test_game_row_exposes_controls_profile_inheritance_and_clear(

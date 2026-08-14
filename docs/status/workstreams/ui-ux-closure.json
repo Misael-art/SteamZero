@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ui-ux-functional-closure-surface-audit",
+  "baseRef": "b7ad8183efc6244426e598ddc6ab8b59900f1247",
+  "owner": "ui-ux-surface-audit",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_action_inventory.py",
+    "tests/integration/test_ui_control_matrix.py",
+    "tests/unit/test_ui_audit_runner.py",
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
+    "tools/ui_audit_capture.qml",
+    "tools/ui_audit_runner.py",
+    "tools/ui_control_inventory.py",
+    "tools/ui_control_probe.qml"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "docs/status",
+    "src/steamzero/domain/emulation_workspace.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/SteamGameplay.qml",
+    "tests/qml/check_editorial_library.qml"
+  ],
+  "nextAction": "Matriz de controles verde nas 3 classes de defeito (288 controles, 12 superficies), mas 215 controles seguem not-probed por serem invisiveis no estado offline e so 'sync' esta integralmente sondada. Proximo: injetar fixtures de estado (empty, stale, degraded, ready) para tornar os controles visiveis e sondaveis, depois dialogs/recovery/jobs, e so entao os P0 visuais. Validacao fisica no Deck segue com o operador.",
+  "updatedAt": "2026-08-13"
+}

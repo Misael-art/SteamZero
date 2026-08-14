@@ -33,6 +33,25 @@ Window {
         return Qt.application.arguments.indexOf(value) >= 0
     }
 
+    // Sair de dentro do callback que ainda está mexendo na cena derruba o
+    // processo por sinal. Este harness passava a checagem, imprimia a geometria
+    // e morria com SIGSEGV de forma intermitente sob carga — sempre depois de
+    // tocar o carrossel virtualizado de 1200 títulos. O pedido de saída passa a
+    // atravessar o event loop, com a cena já estabilizada.
+    property int pendingExitCode: 0
+
+    function requestExit(code) {
+        pendingExitCode = code
+        exitTimer.restart()
+    }
+
+    Timer {
+        id: exitTimer
+        interval: 0
+        repeat: false
+        onTriggered: Qt.exit(harness.pendingExitCode)
+    }
+
     function optionNumber(prefix, fallback) {
         const args = Qt.application.arguments
         for (let i = 0; i < args.length; ++i) {
@@ -161,7 +180,7 @@ Window {
         onTriggered: {
             contentItem.grabToImage(function(result) {
                 result.saveToFile(captureOutput)
-                Qt.exit(0)
+                harness.requestExit(0)
             })
         }
     }
@@ -264,7 +283,7 @@ Window {
                 if (geometryOnly) {
                     check(!library.contextualBackdropVisible === library.highContrast,
                           "alto contraste deve preservar a geometria sem mostrar backdrop")
-                    Qt.exit(failures === 0 ? 0 : 1)
+                    harness.requestExit(failures === 0 ? 0 : 1)
                     return
                 }
                 check(library.handleNavigationIntent("next")
@@ -419,7 +438,7 @@ Window {
                   "biblioteca grande deve preservar todos os títulos publicados")
             check(library.carouselControl.contentItem.children.length < 80,
                   "carrossel virtualizado não deve materializar a biblioteca inteira")
-            Qt.exit(failures === 0 ? 0 : 1)
+            harness.requestExit(failures === 0 ? 0 : 1)
         }
     }
 }

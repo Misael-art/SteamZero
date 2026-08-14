@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-G45-AUTOCONFIG",
+  "item": "SZ-EMULATION-M10",
+  "branch": "codex/g45-custody-recovery",
+  "baseRef": "38bc1b7",
+  "owner": "g45-autoconfig",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+    "src/steamzero/adapters/input_devices.py",
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "src/steamzero/ui/qml/ControlsProfileCard.qml",
+    "tests/qml/check_controls_profile_card.qml",
+    "tests/unit/test_input_devices.py",
+    "tests/unit/test_retroarch_autoconfig.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/core/fs.py",
+    "src/steamzero/core/transaction.py",
+    "src/steamzero/domain/input_profiles.py",
+    "src/steamzero/domain/retropad.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
+  ],
+  "nextAction": "EM ANDAMENTO (branch codex/g45-custody-recovery): P1 rename→taken corrigido — custodyId por tentativa (custody.<actionId>.<seq>), recovery parte de todo intent nao finalizado (inclusive sem custody.taken), apply e rollback nao colidem mais. 7 testes novos da janela rename→taken e 60 testes de failure injection no total (nao declarar green antes do CI remoto). PR #79 atualizada e empilhada sobre codex/g45-autoconfig-gerenciado; novo CI ainda precisa ficar verde (Python 3.11/3.12/3.14, wheel/supply chain, Smoke Ubuntu/Arch/Manjaro, Gate visual QML). Harmonizacao dos documentos globais (STATUS.md, COVERAGE.md, digests) depende da branch de UI codex/ui-ux-functional-closure-surface-audit e de WS-2026-08-HARMONIZE-A45 — nao invadir arquivos reservados. Falta prova fisica: controle real com autoconfig empacotado pelo RetroArch, descoberta automatica via botao da UI, leitura do autoconfig gerado e retroarch.cfg byte a byte identico. PRs #78 e #79 NAO devem ser mescladas antes disso.",
+  "updatedAt": "2026-08-13"
+}

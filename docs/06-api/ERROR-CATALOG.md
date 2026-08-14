@@ -14,6 +14,7 @@ Todo erro carrega: `code, title (humano), what (o que aconteceu), impact, probab
 - `E-TX-VERIFY-FAILED` pós-condição falhou; rollback automático executado.
 - `E-TX-ROLLBACK-FAILED` rollback não restaurou o estado; recurso congelado (FM-17).
 - `E-TX-LOCKED` recurso em uso por outra operação (inclui dono e idade do lock).
+- `E-TX-CUSTODY-CROSS-FS` custódia/backup num sistema de arquivos diferente do alvo (EXDEV); operação liberada sem publicar.
 
 ### SUPPLY — obtenção de artefatos
 - `E-SUPPLY-NO-CHECKSUM` manifesto sem sha256 para artefato não-flatpak.

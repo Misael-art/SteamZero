@@ -57,6 +57,7 @@ from typing import Any
 
 from jsonschema import ValidationError
 
+from steamzero.adapters import input_devices
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.libretro_cores import (
@@ -442,7 +443,12 @@ class ComponentLifecycle:
         now: Callable[[], datetime] | None = None,
         libretro_core_root: Path | None = None,
         libretro_archive_reader: ArchiveReader | None = None,
+        retroarch_config: input_devices.ManagedRetroArchConfig | None = None,
     ) -> None:
+        # Preguiçoso: resolver o config gerenciado lê o `retroarch.cfg` do
+        # usuário, e construir um lifecycle não pode custar isso.
+        self._retroarch_config_override = retroarch_config
+        self._retroarch_config_cache: input_devices.ManagedRetroArchConfig | None = None
         self._store = store
         self._registry = registry
         self._artifacts = artifacts if artifacts is not None else HttpsArtifactPort()
@@ -1045,10 +1051,23 @@ class ComponentLifecycle:
             executable = self._which("flatpak")
             if executable is None or source.ref is None:
                 raise SteamZeroError("E-COMPONENT-DEGRADED", detail="runtime Flatpak indisponível")
-            pid = self._spawn((executable, "run", "--user", source.ref))
+            pid = self._spawn(
+                (executable, "run", "--user", source.ref, *self._launch_extras(source.ref))
+            )
         else:
             pid = self._spawn([str(self._engine().payload_path(adapter_id))])
         return {"status": "started", "componentId": adapter_id, "pid": pid}
+
+    def _retroarch_config(self) -> input_devices.ManagedRetroArchConfig:
+        if self._retroarch_config_override is not None:
+            return self._retroarch_config_override
+        if self._retroarch_config_cache is None:
+            self._retroarch_config_cache = input_devices.managed_config()
+        return self._retroarch_config_cache
+
+    def _launch_extras(self, flatpak_ref: str | None) -> tuple[str, ...]:
+        """Delegado ao ponto compartilhado (ver `input_devices`)."""
+        return input_devices.retroarch_launch_arguments(flatpak_ref, self._retroarch_config())
 
     def open_config(self, adapter_id: str) -> dict[str, Any]:
         """Abre a configuração nativa do emulador, com argv allowlisted.

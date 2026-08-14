@@ -46,14 +46,64 @@ _ACTION_TO_RETROPAD: dict[str, str] = {
 #: Entradas direcionais chegam como eixo nos autoconfigs reais; botões, como
 #: botão. Escolher o sufixo errado produz um perfil que o RetroArch aceita e
 #: ignora — falha silenciosa, o pior resultado possível aqui.
+#:
+#: Este palpite só vale enquanto NÃO há dispositivo. Medindo os 420 autoconfigs
+#: empacotados com casamento exato de chave (que exclui as linhas `*_label`, as
+#: quais contaminaram a contagem original), `input_up_btn` aparece em 296
+#: arquivos contra 134 de `input_up_axis`: para a MAIORIA dos pads reais o
+#: direcional é botão, não eixo. Por isso o sufixo aqui é PROVISÓRIO e
+#: `steamzero.domain.retroarch_autoconfig` o substitui pelo que o dispositivo
+#: declara antes de gravar qualquer coisa.
 _AXIS_ACTIONS = frozenset({"game.up", "game.down", "game.left", "game.right"})
 
+#: Entrada abstrata → slot RetroPad. É a mesma nomenclatura de
+#: `_ACTION_TO_RETROPAD`, mas indexada pela POSIÇÃO FÍSICA em vez da ação: é
+#: esta tabela que diz em qual chave do arquivo do dispositivo procurar o índice
+#: real. Sem ela, remapear (mandar `game.primary` para a posição leste) não
+#: teria como saber qual índice copiar.
+_INPUT_TO_RETROPAD: dict[str, str] = {
+    "button.south": "b",
+    "button.east": "a",
+    "button.west": "y",
+    "button.north": "x",
+    "button.start": "start",
+    "button.select": "select",
+    "button.shoulder-left": "l",
+    "button.shoulder-right": "r",
+    "hat.up": "up",
+    "hat.down": "down",
+    "hat.left": "left",
+    "hat.right": "right",
+}
 
-def retropad_key(action: str) -> str:
-    """Chave de autoconfig do RetroArch para uma ação do SteamZero."""
+
+def action_slot(action: str) -> str:
+    """Slot RetroPad de uma ação, sem sufixo.
+
+    O sufixo depende do dispositivo, não da ação; separar os dois é o que
+    permite gravar `input_up_btn` num pad que declara o direcional como botão.
+    """
     button = _ACTION_TO_RETROPAD.get(action)
     if button is None:
         raise SteamZeroError("E-API-SCHEMA", detail=f"ação sem equivalente RetroPad: {action}")
+    return button
+
+
+def retropad_slot(entrada: str) -> str:
+    """Slot RetroPad de uma entrada abstrata (posição física)."""
+    slot = _INPUT_TO_RETROPAD.get(entrada)
+    if slot is None:
+        raise SteamZeroError("E-API-SCHEMA", detail=f"entrada sem equivalente RetroPad: {entrada}")
+    return slot
+
+
+def retropad_key(action: str) -> str:
+    """Chave de autoconfig do RetroArch para uma ação do SteamZero.
+
+    Sufixo PROVISÓRIO: ver `_AXIS_ACTIONS`. Serve à visão sem dispositivo; quem
+    grava arquivo usa `retroarch_autoconfig.resolve`.
+    """
+    button = action_slot(action)
     suffix = "axis" if action in _AXIS_ACTIONS else "btn"
     return f"input_{button}_{suffix}"
 
