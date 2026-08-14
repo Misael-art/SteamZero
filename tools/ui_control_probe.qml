@@ -131,6 +131,8 @@ Main {
             "libraryView": editorialLibraryControl ? editorialLibraryControl.view : "",
             "libraryMode": editorialLibraryControl ? editorialLibraryControl.libraryView : "",
             "librarySelected": editorialLibraryControl ? editorialLibraryControl.selectedIndex : -1,
+            "librarySystem": editorialLibraryControl
+                ? editorialLibraryControl.selectedSystemIndex : -1,
             "drawer": responsiveDrawer ? responsiveDrawer.visible : false,
             "taskDrawer": responsiveTaskDrawer ? responsiveTaskDrawer.visible : false,
             "credentials": credentialDialogControl ? credentialDialogControl.visible : false,
@@ -310,6 +312,24 @@ Main {
             responsiveTaskDrawer.close()
         if (credentialDialogControl && credentialDialogControl.visible)
             credentialDialogControl.close()
+        // Restaurar so a secao nao basta. Um card de sistema poe a biblioteca
+        // em view="system" e a deixa la: do segundo clique em diante o estado
+        // "antes" ja era o estado "depois", e 37 cards viraram falso no-op.
+        if (editorialLibraryControl) {
+            editorialLibraryControl.view = "systems"
+            editorialLibraryControl.libraryView = "carousel"
+            editorialLibraryControl.selectedSystemIndex = 0
+            editorialLibraryControl.selectedIndex = 0
+            editorialLibraryControl.systemFilter = "all"
+            editorialLibraryControl.collectionFilter = ""
+        }
+        if (emulationControl) {
+            emulationControl.globalManagementActive = true
+            emulationControl.platformIndex = 0
+            emulationControl.areaIndex = 0
+            emulationControl.gameDetailsOpen = false
+        }
+        steamArea = "performance"
         sectionIndex = sectionIdx
         lastRequest = ""
         lastRequestIsError = false
@@ -512,6 +532,7 @@ Main {
     // sobrevive ao redirecionamento de log do Qt.
     function finish() {
         console.log("PROBE-CONTEXT " + JSON.stringify({
+            "scenario": scenarioName,
             "viewport": width + "x" + height,
             "themeId": _themeBridge.themeId,
             "highContrast": highContrast,
@@ -520,7 +541,7 @@ Main {
         }))
         for (let i = 0; i < collected.length; i++) {
             const record = collected[i]
-            const copy = {}
+            const copy = {"scenario": scenarioName}
             for (const key in record) {
                 if (key !== "item")
                     copy[key] = record[key]
@@ -531,8 +552,30 @@ Main {
         requestExit(0)
     }
 
+    property string scenarioName: "offline"
+
+    // Carrega um cenario determinista em desktopStatus. Sem isto, 215 dos 288
+    // controles ficam invisiveis: sem bridge o shell cai nos fallbacks vazios,
+    // e um controle invisivel nao e prova de nada.
+    function loadScenario(path) {
+        const request = new XMLHttpRequest()
+        request.open("GET", "file://" + path, false)
+        request.send(null)
+        const fixture = JSON.parse(request.responseText)
+        scenarioName = String(fixture.scenario || "desconhecido")
+        if (fixture.status === null || fixture.status === undefined)
+            return
+        const payload = fixture.status
+        if (fixture.dashboard)
+            payload.dashboard = fixture.dashboard
+        desktopStatus = payload
+    }
+
     Component.onCompleted: {
         outPath = argumentValue("--steamzero-out")
+        const scenario = argumentValue("--steamzero-scenario")
+        if (scenario !== "")
+            loadScenario(scenario)
         Qt.callLater(nextSection)
     }
 }

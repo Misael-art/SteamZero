@@ -1,0 +1,11 @@
+{
+  "dashboard": null,
+  "description": "Sem bridge: o shell cai nos fallbacks embutidos.",
+  "kind": "steamzero-ui-scenario",
+  "origin": "nenhuma; ausência de payload é o próprio cenário",
+  "scenario": "offline",
+  "schema": null,
+  "schemaCovers": null,
+  "schemaVersion": 1,
+  "status": null
+}

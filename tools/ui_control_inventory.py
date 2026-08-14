@@ -37,7 +37,26 @@ QML = shutil.which("qml6") or shutil.which("qml")
 FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent")
 
 
-def run_probe(timeout: int = 400) -> dict[str, Any]:
+SCENARIO_DIR = ROOT / "tests" / "fixtures" / "ui-scenarios"
+
+#: Ordem de precedencia do veredito ao fundir cenarios. O pior resultado vence:
+#: um botao que funciona num cenario e morre em outro continua sendo defeito.
+_VERDICT_RANK = {
+    "silent-no-op": 0,
+    "unrouted": 1,
+    "blocked-silent": 2,
+    "not-probed": 3,
+    "blocked-explained": 4,
+    "handled-locally": 5,
+    "routed": 6,
+}
+
+
+def scenario_paths() -> list[Path]:
+    return sorted(SCENARIO_DIR.glob("*.json"))
+
+
+def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any]:
     """Executa a sonda offscreen e devolve contexto + registros por controle."""
     if not QML:
         raise SystemExit("qml6 ausente; a matriz de controles exige o runtime QML")
@@ -51,8 +70,13 @@ def run_probe(timeout: int = 400) -> dict[str, Any]:
             "QT_LOGGING_RULES": "",
         }
     )
+    argv = [QML, str(ROOT / "tools" / "ui_control_probe.qml")]
+    if scenario is not None:
+        # A sonda le a fixture do proprio repo por file://.
+        env["QML_XHR_ALLOW_FILE_READ"] = "1"
+        argv += ["--", "--steamzero-scenario", str(scenario)]
     completed = subprocess.run(
-        [QML, str(ROOT / "tools" / "ui_control_probe.qml")],
+        argv,
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -97,9 +121,40 @@ def run_probe(timeout: int = 400) -> dict[str, Any]:
     }
 
 
-def build_inventory() -> dict[str, Any]:
-    probe = run_probe()
-    controls = probe["controls"]
+def merge_scenarios(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Funde os cenarios pela identidade estavel do controle.
+
+    Casar por rotulo nao serve: o mesmo botao muda de texto entre estados, e
+    dois botoes diferentes compartilham rotulo. A identidade estrutural e o que
+    permite dizer "este controle foi exercitado em algum cenario".
+    """
+    merged: dict[str, dict[str, Any]] = {}
+    for run in runs:
+        scenario = str(run["context"].get("scenario", "?"))
+        for control in run["controls"]:
+            key = control["controlId"]
+            control = {**control, "scenario": scenario}
+            current = merged.get(key)
+            if current is None:
+                merged[key] = {**control, "scenarios": [scenario]}
+                continue
+            current["scenarios"].append(scenario)
+            # O pior veredito vence; empate mantem o primeiro visto.
+            if _VERDICT_RANK.get(control["verdict"], 9) < _VERDICT_RANK.get(current["verdict"], 9):
+                scenarios = current["scenarios"]
+                merged[key] = {**control, "scenarios": scenarios}
+    return list(merged.values())
+
+
+def build_inventory(scenarios: bool = True) -> dict[str, Any]:
+    paths = scenario_paths() if scenarios else []
+    if paths:
+        runs = [run_probe(scenario=path) for path in paths]
+        controls = merge_scenarios(runs)
+        probe = {"context": {**runs[0]["context"], "scenarioCount": len(runs)}}
+    else:
+        probe = run_probe()
+        controls = probe["controls"]
 
     by_verdict: dict[str, int] = {}
     by_surface: dict[str, dict[str, int]] = {}
@@ -118,9 +173,10 @@ def build_inventory() -> dict[str, Any]:
         surface for surface, counts in by_surface.items() if counts.get("not-probed", 0) == 0
     )
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "kind": "steamzero-ui-control-matrix",
         "context": probe["context"],
+        "scenarios": [path.stem for path in paths],
         "controlCount": len(controls),
         "surfaceCount": len(by_surface),
         "verdictCounts": by_verdict,
