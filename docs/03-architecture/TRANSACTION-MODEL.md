@@ -32,6 +32,19 @@ commit    journal selado; staging limpo; backup retido por política de GC
 7. **Quarentena:** conteúdo suspeito/deslocado nunca é deletado — vai para `quarantine/<operationId>/` com manifesto e ação de restauração.
 8. **Dry-run universal:** toda operação aceita dry-run que percorre scan→plan→preview sem tocar backup/stage/apply (AC-TX-03).
 9. **Idempotência:** plan sobre estado já-alvo produz plano vazio (`no-op`); apply de plano vazio é sucesso imediato.
+10. **Custódia durável (G45, FI-06):** antes de destruir/substituir qualquer entrada, o núcleo a TIRA do lugar com rename atômico sem substituição (`RENAME_NOREPLACE`) para `quarantine/<operationId>/custody.<custodyId>` e registra no journal, NESTA ordem, com fsync após cada registro:
+
+    - `custody.intent(actionId, custodyId, target, custody, purpose, expected)` — caminho exato da custódia, destino, finalidade (publish/remove/restore) e identidade esperada (sha256 para regular; `symlink:<readlink>` para link) — gravado ANTES do primeiro rename;
+    - `custody.taken(actionId, custodyId, target, custody)` — a entrada está fora do lugar;
+    - `custody.released(actionId, custodyId, custody, returned, reason)` — a entrada foi devolvida (`returned=true`), liberada (`returned=false, reason="done"`), nunca existiu (`reason="absent"`) ou a ação falhou com conservação (`reason` nomeia o motivo).
+
+    **`custodyId` identifica uma TENTATIVA, não apenas uma ação:** cada ciclo (apply e rollback da MESMA ação, e cada re-tentativa) deriva um id novo (`custody.<actionId>.<seq>`), de modo que os registros do journal e o caminho físico da custódia são correlacionados por `custodyId`/caminho — nunca somente por `actionId`, que se repete em ciclos distintos e colidiria no mesmo caminho determinístico.
+
+    **Recovery parte de intents NÃO finalizados:** `_reconcile_custody` considera todo `custody.intent` sem `custody.released` correspondente — inclusive intent SEM `custody.taken`. A existência física da entrada em `quarantine/<operationId>/custody.<custodyId>` prova que o rename aconteceu mesmo sem o registro da tomada (crash entre os dois); a entrada pendente é devolvida, liberada (identidade aceita pelo undo) ou preservada com falha fechada.
+
+    Nenhuma janela de conferência: a identidade é conferida DEPOIS do rename, sobre a própria entrada em custódia. Identidade divergente ⇒ devolução sem substituição (`E-TX-STALE-PLAN` em apply, `E-TX-ROLLBACK-FAILED` em rollback) e a operação termina com as duas entradas preservadas. Ponto de crash em `postlink`/`release` deixa a custódia registrada e recuperável.
+11. **Recovery prioriza rollback (G45, FI-06):** `recover_operation` só declara `kept` quando não há evidência de rollback interrompido; custódia pendente (intent sem released, mesmo sem taken), custódia não devolvida ou intenção remove/restore ⇒ o recovery executa `_do_rollback` antes de decidir, e jamais publica pendências cegamente. Estado terminal da operação: zero custódias órfãs (`_reconcile_custody`, idempotente e não destrutivo).
+12. **Publicação exclusiva:** todo alvo vago é publicado por hard link exclusivo (`publish_link`) no MESMO filesystem, e a custódia devolvida por rename sem substituição; `EXDEV` (custódia/alvo em filesystems diferentes) é fechado com `E-TX-CUSTODY-CROSS-FS` — nunca fallback com janela residual.
 
 ## Layout em disco
 

@@ -653,14 +653,14 @@ class TestTheWindowsBetweenCheckAndWrite:
 
         from steamzero.core import fs
 
-        original = fs.write_atomic
+        original = fs.publish_link
 
-        def troca_e_publica(path, data, **kwargs):  # type: ignore[no-untyped-def]
+        def intruso_no_link(tmp, path, **kwargs):  # type: ignore[no-untyped-def]
             if path.name == MANAGED_BASENAME:
                 alvo.write_text(intruso, encoding="utf-8")
-            return original(path, data, **kwargs)
+            return original(tmp, path, **kwargs)
 
-        monkeypatch.setattr(fs, "write_atomic", troca_e_publica)
+        monkeypatch.setattr(fs, "publish_link", intruso_no_link)
 
         with pytest.raises(SteamZeroError):
             controls.apply(plan.plan_id, plan.confirm_token)
@@ -1020,14 +1020,14 @@ class TestFailureDegradesAndNeverBlocks:
 
         from steamzero.core import fs
 
-        original = fs.write_atomic
+        original = fs.write_tmp
 
-        def falha_no_perfil(path, data, **kwargs):  # type: ignore[no-untyped-def]
-            if path.name == MANAGED_BASENAME and path.parent.name == "udev":
+        def falha_no_perfil(parent, data, **kwargs):  # type: ignore[no-untyped-def]
+            if parent.name == "udev":
                 raise PermissionError("falha injetada na publicacao do perfil")
-            return original(path, data, **kwargs)
+            return original(parent, data, **kwargs)
 
-        monkeypatch.setattr(fs, "write_atomic", falha_no_perfil)
+        monkeypatch.setattr(fs, "write_tmp", falha_no_perfil)
 
         with pytest.raises(PermissionError):
             controls.apply(plan.plan_id, plan.confirm_token)

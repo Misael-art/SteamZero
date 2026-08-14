@@ -230,17 +230,17 @@ def test_handheld_journey_from_root_to_transactional_steam_publication(
     publish_plan = controller.plan_action(
         {"actionId": f"game.media.publish-steam:{game_id}", "steamUserId": "123"}
     )
-    original_symlink = fs.symlink_atomic
+    original_symlink = fs.make_symlink_tmp
 
-    def fail_publication(_source: Path, _target: Path) -> None:
+    def fail_publication(parent, name, source):  # type: ignore[no-untyped-def]
         raise OSError("falha Steam simulada")
 
-    monkeypatch.setattr(fs, "symlink_atomic", fail_publication)
+    monkeypatch.setattr(fs, "make_symlink_tmp", fail_publication)
     with pytest.raises(OSError, match="falha Steam simulada"):
         _apply(controller, publish_plan)
     steam_grid = steam_config / "grid"
     assert not steam_grid.exists() or not any(steam_grid.iterdir())
-    monkeypatch.setattr(fs, "symlink_atomic", original_symlink)
+    monkeypatch.setattr(fs, "make_symlink_tmp", original_symlink)
 
     published_media = _apply(
         controller,

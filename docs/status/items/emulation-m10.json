@@ -10,12 +10,14 @@
   "operation": "degraded",
   "distribution": "installed",
   "scopePaths": [
+    "docs/03-architecture/TRANSACTION-MODEL.md",
+    "docs/06-api/ERROR-CATALOG.md",
     "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "src/steamzero/adapters/flatpak.py",
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
-  "scopeDigest": "ffc63aec92cc58f0f0d0311745edcd2932157f75cd3795aa98d87272b8853149",
+  "scopeDigest": "ee1fde1b6925987eded19eda6c32232cc2e44dbe72deb69006a5a5952d9f230f",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-A7",
@@ -56,9 +58,21 @@
       "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/README.md",
       "command": "A/B com joypad virtual uinput: sem overlay vs --appendconfig",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/WORKLOG.md",
+      "command": "tests/failure_injection (FI-05 + FI-06: 53 testes, custodia durável, recovery pos-crash, symlink e move seguros, EXDEV)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/WORKLOG.md",
+      "command": "suíte isolada completa do repo: 4573 passed",
+      "result": "passed"
     }
   ],
-  "nextAction": "Provar a descoberta automatica com um CONTROLE FISICO que tenha autoconfig empacotado. A integracao --appendconfig ja esta provada ponta a ponta e chega aos botoes reais, mas o pad do uinput nao recebe symlink -event-joystick (onde a descoberta procura) e o pad interno deste Deck nao tem autoconfig.",
+  "nextAction": "G45 (custodia transacional, 2026-08-13, oitava rodada): a custodia durável do nucleo — TIRA a entrada com rename atomico sem substituicao, confere a identidade DEPOIS, publica/remove/restaura so sobre lugar vazio, journaliza intent/taken/released com fsync, e o recovery so declara kept sem evidencia de rollback interrompido — esta implementada e GREEN na suíte isolada completa (4573 passed) com 53 testes de injecao da FI-06 (crash em custody.intent/taken/postlink/release, SIGKILL real, symlink, move, cross-FS). PR #78 NAO mesclada ate a prova fisica: descoberta automatica com um CONTROLE FISICO com autoconfig empacotado e revisao de crash recovery/symlink/move do nucleo. A integracao --appendconfig ja esta provada ponta a ponta.",
   "activeWorkstreams": [
     "WS-2026-08-G45-AUTOCONFIG",
     "WS-2026-08-M10"

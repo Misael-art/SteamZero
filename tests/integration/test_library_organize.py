@@ -118,7 +118,7 @@ def test_mid_apply_failure_rolls_back_prior_moves(
         root,
         {"first.nes": "nes/first.nes", "second.nes": "nes/second.nes"},
     )
-    real_move = fs.move_file
+    real_move = fs.move_file_noreplace
     calls = 0
 
     def fail_second(source: Path, target: Path) -> None:
@@ -128,7 +128,7 @@ def test_mid_apply_failure_rolls_back_prior_moves(
             raise OSError("falha sintética no segundo movimento")
         real_move(source, target)
 
-    monkeypatch.setattr(fs, "move_file", fail_second)
+    monkeypatch.setattr(fs, "move_file_noreplace", fail_second)
     with pytest.raises(OSError, match="falha sintética"):
         LibraryOrganizer.apply(plan.plan_id, plan.confirm_token)
 
