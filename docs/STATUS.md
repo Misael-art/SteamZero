@@ -36,8 +36,14 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-MEDIA-SCRAPING | Metadados e midia por scraping controlado | implemented | complete | integrated | unit | degraded | installed | Mostrar o estado vaultVolatile na UI com texto acionavel (o cofre perdeu o valor, nao voce esqueceu) e fechar a G40 (systemeid do ScreenScraper). |
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
+<<<<<<< HEAD
 | SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | verified-hw | partial | integrated | hw | degraded | installed | Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada. |
 | SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | verified-hw | partial | integrated | hw | degraded | installed | Capturar o canvas desenhando a cena na proxima release instalada e, depois, avaliar edicao direta no canvas — hoje o Studio e somente leitura. |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
+=======
+| SZ-THEME-AURA | Tema nativo AURA | implemented | complete | integrated | unit | degraded | installed | Validacao visual e operacional no host (operador): aplicar AURA, preview e rollback no boot direto. |
+| SZ-THEME-EDITOR | Editor e marketplace de temas | partial | partial | integrated | unit | degraded | installed | Fechar a G39 (cadeia extends acima de MAX_EXTENDS_DEPTH degrada sem diagnostico). |
+| SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Dialogos: abertura e cancelamento PROGRAMATICOS de 6 modais provados, com 2 defeitos corrigidos na passagem anterior (foco nao entrava; Escape deixava plano pendurado). NAO e jornada completa: confirmar nao foi exercido e o 'Escape' provado era dialog.close(). Escape/Tab reais bloqueados por QML-KEY-INJECTION-001. Baseline de 14 cenarios inalterada: 574 controles, 378 not-probed, 80 identidades explicitas, 494 fallback, 0 colisoes. |
+>>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.

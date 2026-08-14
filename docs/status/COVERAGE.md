@@ -17,10 +17,15 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 48 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+<<<<<<< HEAD
 | SZ-AGG-TESTS | 338 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 30 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 27 | 7 | 7 | none |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
+=======
+| SZ-AGG-TESTS | 276 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TOOLS | 35 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+>>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
@@ -37,8 +42,14 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
+<<<<<<< HEAD
 | SZ-THEME-ENGINE | 77 | 33 | 31 | hw |  |
 | SZ-THEME-STUDIO | 12 | 10 | 10 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 226 | 1 | 1 | dev |  |
+=======
+| SZ-THEME-AURA | 11 | 2 | 2 | unit |  |
+| SZ-THEME-EDITOR | 8 | 4 | 4 | unit |  |
+| SZ-UI-DESKTOP-AUDIT | 223 | 7 | 6 | dev |  |
+>>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
 
 Arquivos em `src/`: **487**. Sob agregador apenas, sem item de capacidade: **289** (59%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

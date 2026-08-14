@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
+  "item": "SZ-UI-DESKTOP-AUDIT",
+  "branch": "codex/ui-ux-confirm-job-recovery-audit",
+  "baseRef": "5d015413a39e45bb79d538190a1c94528ef6c48c",
+  "owner": "ui-ux-confirm-job",
+  "state": "active",
+  "exclusivePaths": [
+    "tests/integration/test_ui_action_inventory.py",
+    "tests/integration/test_ui_control_matrix.py",
+    "tests/integration/test_ui_dialog_journeys.py",
+    "tests/integration/test_ui_dialog_keys.py",
+    "tests/qml/check_dialog_keys.qml",
+    "tests/unit/test_ui_audit_runner.py",
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
+    "tools/ui_audit_capture.qml",
+    "tools/ui_audit_runner.py",
+    "tools/ui_control_inventory.py",
+    "tools/ui_control_probe.qml",
+    "tools/ui_dialog_probe.qml",
+    "tools/ui_scenario_fixtures.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "docs/status",
+    "src/steamzero/domain/emulation_workspace.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "src/steamzero/ui/qml/EditorialHome.qml",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "src/steamzero/ui/qml/Main.qml",
+    "src/steamzero/ui/qml/SteamGameplay.qml",
+    "tests/qml/check_editorial_library.qml"
+  ],
+  "nextAction": "CORRECAO DE REGISTRO: a passagem anterior chamou dialog.close() de 'Escape'. Nao e. close() ignora closePolicy: recoveryDialog declara Popup.NoAutoClose e fecha por close(), entao o teste antigo daria verde mesmo se Escape estivesse errado. O que existe hoje e abertura e cancelamento PROGRAMATICOS de 6 modais, nao jornada completa: confirmar nao foi exercido. Escape/Tab reais: NAO PROVADOS. Causa medida (QML-KEY-INJECTION-001): o QuickTest do Qt6 usa QQuickView, que exige raiz Item, e Main e uma Window; o qmltestrunner do PATH e do qt5-declarative 5.15 e recusa os imports versionless do produto. Harness pronto em tests/qml/check_dialog_keys.qml, pulando com o motivo. Abertos: confirmacao com bridge, clique repetido, jobs, recovery alem da abertura, drawers, card de plataforma e P0 visuais. Harmonizacao futura com a PR #80 continua necessaria em docs/WORKLOG.md, docs/status/COVERAGE.md e docs/status/items/ui-desktop-audit.json.",
+  "updatedAt": "2026-08-14"
+}
