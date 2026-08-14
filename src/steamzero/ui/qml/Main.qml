@@ -332,6 +332,10 @@ ApplicationWindow {
     property string lastRequest: ""
     property bool lastRequestIsError: false
     property int pendingRequests: 0
+    // Mutacoes confirmadas podem demorar (o backend faz verificacao e rollback).
+    // A chave fica no shell, e nao no botao, para que dois controles que
+    // representam a mesma acao nao possam publicar a mesma requisicao.
+    property var pendingActionKeys: ({})
     property bool bridgeUnavailable: false
     property var activeErrors: []
     property var castReceivers: []
@@ -792,6 +796,24 @@ ApplicationWindow {
         return actions[actionId] || null
     }
 
+    function actionRequestKey(actionId, payload) {
+        return String(actionId) + ":" + JSON.stringify(payload || {})
+    }
+
+    function actionIsPending(actionId, payload) {
+        return pendingActionKeys[actionRequestKey(actionId, payload)] === true
+    }
+
+    function setActionPending(actionId, payload, pending) {
+        const key = actionRequestKey(actionId, payload)
+        const next = Object.assign({}, pendingActionKeys)
+        if (pending)
+            next[key] = true
+        else
+            delete next[key]
+        pendingActionKeys = next
+    }
+
     function requestAction(actionId, payload, callback, errorCallback) {
         const action = backendAction(actionId)
         if (!action || action.applicability !== "applicable" || action.enabled !== true
@@ -803,9 +825,20 @@ ApplicationWindow {
             if (errorCallback)
                 errorCallback(message)
             notify(message, true)
-            return
+            return false
         }
-        request(action.method, action.endpoint, payload, callback, function(errArg) {
+        const mutation = String(action.method).toUpperCase() !== "GET"
+        if (mutation && actionIsPending(actionId, payload))
+            return false
+        if (mutation)
+            setActionPending(actionId, payload, true)
+        request(action.method, action.endpoint, payload, function(response) {
+            if (mutation)
+                setActionPending(actionId, payload, false)
+            callback(response)
+        }, function(errArg) {
+            if (mutation)
+                setActionPending(actionId, payload, false)
             var errObj = (errArg && typeof errArg === "object" && errArg.code) ? errArg : null
             var msg = errObj
                 ? root.errorMessage({"error": errObj}, qsTr("Ação recusada"))
@@ -818,6 +851,7 @@ ApplicationWindow {
             if (errorCallback)
                 errorCallback(msg)
         })
+        return true
     }
 
     function localPath(url) {
@@ -1360,18 +1394,23 @@ ApplicationWindow {
                     onClicked: componentDialog.close()
                 }
                 Button {
-                    text: root.componentPlan && root.componentPlan.action === "install"
-                        ? qsTr("Instalar com rollback") : qsTr("Aplicar atualização")
+                    objectName: "component-plan-apply"
+                    readonly property var applyPayload: root.componentPlan ? ({
+                        "planId": root.componentPlan.planId,
+                        "confirmToken": root.componentPlan.confirmToken
+                    }) : ({})
+                    readonly property bool applying: root.actionIsPending("component.apply", applyPayload)
+                    text: applying ? qsTr("Aplicando e verificando…")
+                        : root.componentPlan && root.componentPlan.action === "install"
+                            ? qsTr("Instalar com rollback") : qsTr("Aplicar atualização")
+                    enabled: root.componentPlan !== null && !applying
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     Accessible.name: text
                     onClicked: {
                         if (!root.componentPlan)
                             return
-                        root.requestAction("component.apply", {
-                            "planId": root.componentPlan.planId,
-                            "confirmToken": root.componentPlan.confirmToken
-                        }, function(response) {
+                        root.requestAction("component.apply", applyPayload, function(response) {
                             componentDialog.close()
                             root.componentPlan = null
                             root.refreshStatus(qsTr("Componente verificado e pronto"))
@@ -1528,7 +1567,18 @@ ApplicationWindow {
                     onClicked: emulationDialog.prepareQuarantine()
                 }
                 Button {
-                    text: qsTr("Aplicar com rollback")
+                    objectName: "emulation-plan-apply"
+                    readonly property var applyPayload: root.emulationPlan ? ({
+                        "planId": root.emulationPlan.planId,
+                        "confirmToken": root.emulationPlan.confirmToken
+                    }) : ({})
+                    readonly property string actionId: root.emulationPlan
+                        && String(root.emulationPlan.action).indexOf("emulator.") === 0
+                        ? "emulator.apply" : "emulation.action.apply"
+                    readonly property bool applying: root.actionIsPending(actionId, applyPayload)
+                    text: applying ? qsTr("Aplicando e verificando…")
+                        : qsTr("Aplicar com rollback")
+                    enabled: root.emulationPlan !== null && !applying
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     onClicked: {
@@ -1536,12 +1586,9 @@ ApplicationWindow {
                             return
                         const emulatorLifecycle = String(root.emulationPlan.action)
                             .indexOf("emulator.") === 0
-                        const actionId = emulatorLifecycle
+                        const applyAction = emulatorLifecycle
                             ? "emulator.apply" : "emulation.action.apply"
-                        root.requestAction(actionId, {
-                            "planId": root.emulationPlan.planId,
-                            "confirmToken": root.emulationPlan.confirmToken
-                        }, function(response) {
+                        root.requestAction(applyAction, applyPayload, function(response) {
                             emulationDialog.close()
                             root.emulationPlan = null
                             root.refreshStatus(qsTr("Operação aplicada e verificada"))
@@ -1969,7 +2016,11 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Button {
-                text: qsTr("Restaurar último estado seguro")
+                objectName: "desktop-recovery-apply"
+                readonly property bool recovering: root.actionIsPending("desktop.recover", {})
+                text: recovering ? qsTr("Restaurando e verificando…")
+                    : qsTr("Restaurar último estado seguro")
+                enabled: !recovering
                 Layout.fillWidth: true
                 Layout.minimumHeight: 52
                 Accessible.name: text
@@ -2724,25 +2775,31 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Item { Layout.fillWidth: true }
                                     Button {
+                                        objectName: "task-cancel-" + modelData.jobId
+                                        readonly property var cancelPayload: ({"jobId": modelData.jobId})
+                                        readonly property bool cancelling: root.actionIsPending(
+                                            "job.cancel", cancelPayload)
                                         visible: modelData.canCancel
-                                        text: qsTr("Cancelar")
+                                        text: cancelling ? qsTr("Cancelando…") : qsTr("Cancelar")
+                                        enabled: !cancelling
                                         Layout.minimumHeight: 48
                                         Accessible.name: qsTr("Cancelar %1").arg(root.taskLabel(modelData.type))
-                                        onClicked: root.requestAction("job.cancel", {
-                                            "jobId": modelData.jobId
-                                        }, function() {
+                                        onClicked: root.requestAction("job.cancel", cancelPayload, function() {
                                             root.refreshTasks()
                                             root.refreshStatus(qsTr("Cancelamento registrado"))
                                         })
                                     }
                                     Button {
+                                        objectName: "task-retry-" + modelData.jobId
+                                        readonly property var retryPayload: ({"jobId": modelData.jobId})
+                                        readonly property bool retrying: root.actionIsPending(
+                                            "job.retry", retryPayload)
                                         visible: modelData.canRetry
-                                        text: qsTr("Tentar novamente")
+                                        text: retrying ? qsTr("Reiniciando…") : qsTr("Tentar novamente")
+                                        enabled: !retrying
                                         Layout.minimumHeight: 48
                                         Accessible.name: qsTr("Tentar novamente %1").arg(root.taskLabel(modelData.type))
-                                        onClicked: root.requestAction("job.retry", {
-                                            "jobId": modelData.jobId
-                                        }, function() {
+                                        onClicked: root.requestAction("job.retry", retryPayload, function() {
                                             root.refreshTasks()
                                             root.refreshStatus(qsTr("Nova tentativa concluída"))
                                         })
