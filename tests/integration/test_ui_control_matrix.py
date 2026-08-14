@@ -142,7 +142,7 @@ def test_every_actionable_control_announces_a_name(inventory: dict) -> None:
 
 
 def test_every_actionable_target_is_at_least_48px(inventory: dict) -> None:
-    """48×48 é o alvo mínimo do produto — o Deck é operado com o polegar."""
+    """48x48 é o alvo mínimo do produto — o Deck é operado com o polegar."""
     offenders = [
         f"{control['surface']} → {control['label'] or control['accessibleName']!r} "
         f"({control['width']}x{control['height']})"
