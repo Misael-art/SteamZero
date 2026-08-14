@@ -110,3 +110,64 @@ def test_identity_does_not_carry_engine_revision_numbers(inventory: dict) -> Non
         {control["type"] for control in inventory["controls"] if "_QML_" in control["type"]}
     )
     assert leaked == [], "tipo com revisão do engine na identidade: " + ", ".join(leaked)
+
+
+def _actionable(inventory: dict) -> list[dict]:
+    """Controles que se apresentam ao usuário como acionáveis agora.
+
+    Invisível não é promessa, e ToolButton sem rótulo nem nome acessível é
+    ícone decorativo — o produto usa esse padrão de propósito.
+    """
+    return [
+        control
+        for control in inventory["controls"]
+        if control.get("visible")
+        and control.get("enabled")
+        and (control.get("label") or control.get("accessibleName"))
+    ]
+
+
+def test_every_actionable_control_announces_a_name(inventory: dict) -> None:
+    """Sem `Accessible.name`, um leitor de tela anuncia o botão como nada.
+
+    Rótulo visível não substitui: ele não é exposto à árvore de acessibilidade
+    quando o controle desenha o próprio contentItem, que é o caso do shell.
+    """
+    offenders = [
+        f"{control['surface']} → {control['label']!r} ({control['type']})"
+        for control in _actionable(inventory)
+        if not control.get("accessibleName")
+    ]
+    assert offenders == [], "controles acionáveis sem Accessible.name:\n" + "\n".join(offenders)
+
+
+def test_every_actionable_target_is_at_least_48px(inventory: dict) -> None:
+    """48×48 é o alvo mínimo do produto — o Deck é operado com o polegar."""
+    offenders = [
+        f"{control['surface']} → {control['label'] or control['accessibleName']!r} "
+        f"({control['width']}x{control['height']})"
+        for control in _actionable(inventory)
+        if control["width"] < 48 or control["height"] < 48
+    ]
+    assert offenders == [], "alvos acionáveis abaixo de 48x48:\n" + "\n".join(offenders)
+
+
+def test_decorative_icons_are_not_announced_as_actionable(inventory: dict) -> None:
+    """O inverso do gate acima: ícone decorativo não pode virar botão anunciado.
+
+    Um `ToolButton` desabilitado, sem rótulo e sem nome acessível é decoração
+    legítima. Se ganhar `Accessible.name` sem ficar acionável, passa a mentir
+    para o leitor de tela.
+    """
+    offenders = [
+        f"{control['surface']} → {control['accessibleName']!r} ({control['type']})"
+        for control in inventory["controls"]
+        if control.get("visible")
+        and not control.get("enabled")
+        and control.get("accessibleName")
+        and not control.get("label")
+        and not control.get("accessibleDescription")
+    ]
+    assert offenders == [], (
+        "controles apagados anunciados por nome mas sem dizer o porquê:\n" + "\n".join(offenders)
+    )
