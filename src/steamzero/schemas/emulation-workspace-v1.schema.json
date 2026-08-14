@@ -128,7 +128,7 @@
       "required": [
         "id", "name", "identity", "gameCount", "state", "readiness",
         "runtime", "coreRequired", "keysStatus", "firmwareStatus", "biosStatus",
-        "blocker", "action"
+        "blocker", "action", "secondaryAction"
       ],
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
@@ -143,7 +143,8 @@
         "firmwareStatus": { "$ref": "#/$defs/requirement" },
         "biosStatus": { "oneOf": [{ "$ref": "#/$defs/requirement" }, { "type": "null" }] },
         "blocker": { "type": ["string", "null"] },
-        "action": { "$ref": "#/$defs/action" }
+        "action": { "$ref": "#/$defs/action" },
+        "secondaryAction": { "oneOf": [{ "$ref": "#/$defs/action" }, { "type": "null" }] }
       }
     },
     "editorialPlatform": {

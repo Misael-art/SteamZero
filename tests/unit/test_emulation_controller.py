@@ -103,7 +103,13 @@ def test_snapshot_publishes_global_management_without_a_synthetic_platform(
     assert global_management["editorialSource"]["id"] == "steam"
     assert len(global_management["platformCards"]) == 36
     switch = next(card for card in global_management["platformCards"] if card["id"] == "switch")
-    assert switch["action"]["id"] == "platform.open"
+    # Contrato alterado em 2026-08-13: com `which` devolvendo None, nenhum
+    # emulador do Switch está instalado. O bloqueador do card é exatamente esse,
+    # e "Abrir plataforma" não o resolve — o CTA primário passa a instalar o
+    # emulador ausente, com abrir preservado como secundário.
+    assert switch["action"]["id"] == "emulator.install:eden"
+    assert switch["action"]["requiresConfirmation"] is True
+    assert switch["secondaryAction"]["id"] == "platform.open:switch"
     assert switch["keysStatus"]["kind"] == "keys"
     # 15, e não 13, desde 2026-08-12: `duckstation` e `pcsx2` passaram a ser
     # apresentáveis. Eles sempre estiveram declarados por PlayStation e
