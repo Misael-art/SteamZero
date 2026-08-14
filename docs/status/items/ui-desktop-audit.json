@@ -22,7 +22,7 @@
     "tools/ui_control_inventory.py",
     "tools/ui_control_probe.qml"
   ],
-  "scopeDigest": "4f8de56547a573cec412a2a3800e9fc8553362dc50b69d81b827a21d635ab325",
+  "scopeDigest": "44a6628475e7c8e87630302bc0562f9f40794ae0cbc2e89fe6fa72f326ceadce",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
