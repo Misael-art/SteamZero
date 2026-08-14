@@ -6734,3 +6734,65 @@ aberta.**
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-14 (3) — A prova de Escape que não era Escape
+
+Frente `codex/ui-ux-confirm-job-recovery-audit`, base `5d01541`.
+**Nenhuma ação de host.**
+
+Contaminação verificada antes de qualquer edição: `3c92688` é ancestral;
+`2235ce9` (PR #79) e `66d7ac1` (PR #80) **não** são. Nenhum merge, rebase ou
+cherry-pick dessas PRs.
+
+### A correção
+
+A passagem anterior chamou `dialog.close()` de "Escape". Não é, e a diferença
+decide o teste: `close()` ignora `closePolicy` inteiro. `recoveryDialog`
+declara `Popup.NoAutoClose` justamente para que recovery não seja dispensado
+por engano — e fecha por `close()` sem reclamar. O teste antigo daria o mesmo
+verde se Escape estivesse quebrado.
+
+`tests/qml/check_dialog_keys.qml` faz a prova certa com `QtTest.keyClick`:
+Escape fecha quem permite, Escape **não** fecha recovery, plano fica limpo,
+foco volta ao originador, Tab/Shift+Tab dão volta inteira sem escapar.
+
+### O bloqueio, medido e não suposto
+
+`QML-KEY-INJECTION-001`:
+
+- `qmltestrunner` do PATH → `qt5-declarative 5.15.19`, recusa os imports
+  versionless do produto (Qt 6.11.1);
+- `qmltestrunner` do Qt6 em `/usr/lib/qt6/bin` → carrega numa `QQuickView`,
+  que exige raiz `Item`, e `Main` é uma `Window`.
+
+**Escape e Tab reais permanecem NÃO PROVADOS.** O teste pula com esse texto e
+volta a valer sozinho quando houver executor. Um segundo teste, que roda
+sempre, impede que alguém "conserte" o bloqueio trocando o evento real por
+chamada programática.
+
+Saída conhecida para a próxima passagem: harness com raiz `Item` hospedando os
+diálogos, ou teste de teclado pelo lado C++.
+
+### Registro corrigido
+
+`test_ui_dialog_journeys.py` deixa de se chamar "jornada completa". É abertura
+e cancelamento **programáticos**. Confirmar não foi exercido em nenhum modal.
+
+### Não feito
+
+Confirmação com bridge (§4), clique repetido (§5), central de tarefas e jobs
+(§6), recovery além da abertura (§7), melhorias de jornada (§8). Baseline de
+14 cenários inalterada: 574 controles, 378 not-probed, 80 explícitas, 494
+fallback, 0 colisões — nenhum fallback reduzido artificialmente.
+
+Conflito futuro com a PR #80 continua previsto em `docs/WORKLOG.md`,
+`docs/status/COVERAGE.md` e `docs/status/items/ui-desktop-audit.json`. Não
+tentei resolvê-lo incorporando a #80.
+
+Gate integral: **4501 passaram, 11 skipados, exit 0** (678 s). Sem crash.
+Memória antes 9685 MB usados / 5135 livres; depois 10353 / 4466.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
