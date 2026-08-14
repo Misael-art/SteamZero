@@ -6492,3 +6492,99 @@ Workstream permanece `active`: fechá-lo afirmaria uma cobertura que os 215
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-13 (3) — Cenários de estado: tornar sondável o que estava invisível
+
+Frente `codex/ui-ux-state-fixture-audit`, base `5be0aa7`. Workstream
+`WS-2026-08-UI-FUNCTIONAL-CLOSURE`, transferido de forma aditiva.
+**Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §2 | `a14e334` | identidade estável de controle | 288 ids, zero colisões, idêntico entre execuções |
+| §6 | `7759a28` → `6af3442` | 8 defeitos de acessibilidade | 3 gates novos; 10 testes verdes |
+| §1/§2/§3 | `e0e8c4e` | 14 cenários determinísticos, fusão por identidade | 12 testes; 196 exercitados contra 73 |
+| — | `8fe2953` | fixtures deixam de ser commitadas | 5,3 MB de JSON derivado fora do repo |
+| §10 | `7aeea06` | item e workstream | `STATUS-CHECK: OK` |
+
+### Medição por superfície
+
+| Superfície | Controles | Routed | Local | Blocked | Not-probed |
+|---|---:|---:|---:|---:|---:|
+| overview | 52 | 0 | 47 | 1 | 4 |
+| library | 120 | 0 | 38 | 0 | 82 |
+| emulators | 198 | 4 | 36 | 0 | 158 |
+| steam | 118 | 1 | 18 | 10 | 89 |
+| profiles | 9 | 1 | 5 | 0 | 3 |
+| cast | 7 | 4 | 0 | 2 | 1 |
+| system | 25 | 6 | 4 | 0 | 15 |
+| themes | 4 | 0 | 1 | 0 | 3 |
+| sync | 1 | 0 | 1 | 0 | 0 |
+| sidebar | 28 | 1 | 16 | 0 | 11 |
+| handheld-drawer | 10 | 0 | 0 | 0 | 10 |
+| task-drawer | 2 | 0 | 0 | 0 | 2 |
+| **total** | **574** | **17** | **166** | **13** | **378** |
+
+O total subiu de 288 para 574 porque os cenários revelaram telas que a sonda
+antes não conseguia sequer ver. Por isso os `not-probed` **sobem** em número
+absoluto ao mesmo tempo que a cobertura real quase triplica (73 → 196
+exercitados): o denominador cresceu junto. Publicar só a queda seria enganoso.
+
+### Nove defeitos corrigidos
+
+Sete de acessibilidade (`6af3442`): quatro botões da Home e três de Sistema sem
+`Accessible.name` — inclusive os únicos três caminhos de diagnóstico da tela — e
+um alvo de 79×32 em Steam, abaixo do mínimo de 48 do produto. Mais dois em
+`e0e8c4e`: 36 botões "Abrir plataforma" e 4 de linha de emulador anunciando
+apenas o verbo, sem dizer de qual plataforma ou emulador.
+
+O botão "Abrir plataforma" foi adicionado por esta mesma frente na passagem
+anterior, sem nome acessível. Ficou registrado.
+
+### O quinto e o sexto falso positivo
+
+O padrão não parou. Desta vez:
+
+5. **37 cards de sistema da Biblioteca acusados de no-op.** Todos falsos. A
+   culpa era do restauro: `openSystemDetails` põe a biblioteca em
+   `view="system"` e a deixava lá, então do segundo clique em diante o estado
+   "antes" já era o estado "depois". O restauro passa a devolver biblioteca,
+   emulação e área Steam ao ponto de partida.
+6. A primeira tentativa de fixtures deixou o `dashboard` quase vazio e mal moveu
+   a fila de ativação. Só quando o workspace de emulação passou a vir das
+   funções de domínio REAIS a cobertura saltou de 60 para 169 acionáveis num
+   único cenário.
+
+### Crash QML (§8) — correlação, não causa
+
+Nenhum crash nesta execução do gate integral: **4483 passaram, 10 skipados,
+exit 0, em 599 s**. Memória do host antes: 10195 MB usados / 4625 disponíveis;
+depois: 11350 / 3470. A suíte consome ~1,1 GB líquido num host de 14,8 GB que
+já opera com swap.
+
+Isto **não prova** que os crashes anteriores foram causados por pressão de
+memória. Prova apenas que, nesta execução, sem concorrência, não houve crash.
+Coredump não foi coletado. Registrado como correlação medida.
+
+### Limites honestos
+
+- **378 controles seguem `not-probed`**: invisíveis em todos os 14 cenários.
+  Só `sync` está integralmente sondada — e com 1 controle, o que é pouco para
+  chamar de cobertura.
+- **§4 parcial**: a espera é por condição com orçamento de quadros, sem `sleep`.
+  Mas os dez eventos nomeados (dialog aberto/fechado, foco restaurado, job
+  criado, verify, refresh, clique repetido sem duplicar) **não** foram provados
+  um a um.
+- **§5 não feito**: dialogs de plano, confirmação, cancelamento, credenciais,
+  recovery e histórico de jobs não foram sondados.
+- **§7 não feito**: a revalidação do card de plataforma com duas plataformas de
+  defaults distintos continua aberta. `07480ac` **não** deve ser considerado
+  fechado.
+- **§9 não feito**: nenhum P0 visual foi reproduzido.
+
+Workstream permanece `active`.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
