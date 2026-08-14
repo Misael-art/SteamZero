@@ -208,7 +208,17 @@ Main {
     // cenarios diferentes. O que entra e superficie + tipo + objectName + rotulo
     // ou nome acessivel + posicao ESTRUTURAL na arvore (cadeia de indices).
     function controlIdentity(record) {
-        return [record.surface, record.type, record.objectName,
+        // Identidade EXPLICITA quando o controle declara `objectName`. Ela nao
+        // depende de texto traduzido, coordenada, indice visual, endereco de
+        // objeto nem revisao do engine — e por isso sobrevive a troca de estado
+        // e a insercao de irmaos. Delegates usam o id factual da entidade.
+        if (record.objectName !== "")
+            return "id:" + record.objectName
+        // Fallback ESTRUTURAL para quem ainda nao declara identidade. Carrega
+        // rotulo e caminho de indices, entao muda quando o rotulo muda ou um
+        // irmao entra na arvore. A matriz publica quantos controles ainda
+        // dependem disto.
+        return ["fallback", record.surface, record.type,
                 record.label || record.accessibleName, record.path].join("|")
     }
 

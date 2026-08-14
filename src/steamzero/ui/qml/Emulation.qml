@@ -1920,6 +1920,8 @@ Item {
                                         }
                                         Button {
                                             text: modelData.action ? modelData.action.label : ""
+                                            objectName: "emulation.emulator."
+                                                + modelData.id + ".action"
                                             Accessible.name: modelData.action
                                                 ? qsTr("%1: %2")
                                                     .arg(modelData.displayName || modelData.id)
@@ -2036,6 +2038,8 @@ Item {
                                             Layout.minimumHeight: page.minimumTouchTarget
                                             // "Instalar" sozinho nao diz instalar o que:
                                             // 36 cards repetem o mesmo rotulo.
+                                            objectName: "emulation.platform."
+                                                + modelData.id + ".primary"
                                             Accessible.name: qsTr("%1: %2")
                                                 .arg(modelData.name).arg(modelData.action.label)
                                             Accessible.description: modelData.action.reason || modelData.blocker || ""
@@ -2049,6 +2053,8 @@ Item {
                                                 && modelData.secondaryAction.enabled !== false
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
+                                            objectName: "emulation.platform."
+                                                + modelData.id + ".secondary"
                                             Accessible.name: modelData.secondaryAction
                                                 ? qsTr("%1: %2").arg(modelData.name)
                                                     .arg(modelData.secondaryAction.label) : ""

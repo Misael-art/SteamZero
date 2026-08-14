@@ -157,8 +157,16 @@ def merge_scenarios(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(merged.values())
 
 
-def build_inventory(scenarios: bool = True) -> dict[str, Any]:
+def build_inventory(scenarios: bool = True, only: list[str] | None = None) -> dict[str, Any]:
+    """``only`` escolhe e ORDENA os cenarios; repetir um nome roda-o duas vezes.
+
+    Os testes de estabilidade dependem disso: reordenar ou duplicar um cenario
+    nao pode mudar identidade nem contagem.
+    """
     paths = scenario_paths() if scenarios else []
+    if only is not None:
+        by_name = {path.stem: path for path in paths}
+        paths = [by_name[name] for name in only]
     if paths:
         runs = [run_probe(scenario=path) for path in paths]
         controls = merge_scenarios(runs)
@@ -183,11 +191,21 @@ def build_inventory(scenarios: bool = True) -> dict[str, Any]:
     fully_probed = sorted(
         surface for surface, counts in by_surface.items() if counts.get("not-probed", 0) == 0
     )
+    explicit = [c for c in controls if c.get("objectName")]
+    seen_counts = [len(set(c.get("scenarios", []))) for c in controls]
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "kind": "steamzero-ui-control-matrix",
         "context": probe["context"],
         "scenarios": [path.stem for path in paths],
+        # Metricas de identidade: sem elas nao da para saber quanto da matriz
+        # se apoia no fallback estrutural, que e o pedaco fragil.
+        "explicitIdentityCount": len(explicit),
+        "fallbackIdentityCount": len(controls) - len(explicit),
+        "identityCollisionCount": len(controls) - len({c["controlId"] for c in controls}),
+        "controlsSeenInMultipleScenarios": sum(1 for n in seen_counts if n > 1),
+        "controlsSeenInOneScenario": sum(1 for n in seen_counts if n == 1),
+        "notProbedCount": by_verdict.get("not-probed", 0),
         "controlCount": len(controls),
         "surfaceCount": len(by_surface),
         "verdictCounts": by_verdict,
