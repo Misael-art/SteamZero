@@ -29,7 +29,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "8f685d739f307b3d42207c888372dc56ba5b60343f767b424d188681442f255f",
+  "scopeDigest": "609f9f46c53009cc635a56b1ebec667d21258fe933852cddad1056e5e481e758",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -50,7 +50,7 @@
     "Fechar modal por Escape nao deixa plano pendurado.",
     "Fechar modal devolve o foco ao originador.",
     "Modal recebe o foco ao abrir (verificado com abertura programatica).",
-    "Escape e Tab reais provados por evento de teclado (PENDENTE)."
+    "Escape e Tab reais provados por evento de teclado Qt 6; recovery permanece aberto com NoAutoClose."
   ],
   "evidence": [
     {
@@ -93,10 +93,10 @@
       "kind": "test",
       "reference": "tests/integration/test_ui_dialog_keys.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -q",
-      "result": "recorded"
+      "result": "passed"
     }
   ],
-  "nextAction": "Dialogos: abertura e cancelamento PROGRAMATICOS de 6 modais provados, com 2 defeitos corrigidos na passagem anterior (foco nao entrava; Escape deixava plano pendurado). NAO e jornada completa: confirmar nao foi exercido e o 'Escape' provado era dialog.close(). Escape/Tab reais bloqueados por QML-KEY-INJECTION-001. Baseline de 14 cenarios inalterada: 574 controles, 378 not-probed, 80 identidades explicitas, 494 fallback, 0 colisoes.",
+  "nextAction": "QML-KEY-INJECTION-001 fechado: QuickTest Qt 6 com raiz Item hospeda Main e executa Escape/Tab reais, incluindo recovery NoAutoClose, retorno de foco e focus trap. A auditoria ainda não está completa: faltam confirmação por bridge, clique repetido, jobs/task drawer e recovery ponta a ponta. Baseline de 14 cenários permanece: 574 controles, 378 not-probed, 80 identidades explícitas, 494 fallback, 0 colisões.",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],

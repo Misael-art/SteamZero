@@ -6796,3 +6796,35 @@ Memória antes 9685 MB usados / 5135 livres; depois 10353 / 4466.
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-14 (4) — Fechamento do executor Qt 6 para teclado
+
+Frente `codex/ui-ux-key-confirm-job-closure`, base `4033e80`.
+**Nenhuma ação de host; nenhum dado do operador tocado.**
+
+### QML-KEY-INJECTION-001 fechado
+
+O QuickTest Qt 6 em `/usr/lib/qt6/bin/qmltestrunner` executou com raiz `Item`
+hospedando `Main`. O harness espera janela ativa, visibilidade, foco no
+originador e foco interno antes de cada `keyClick`; não há espera arbitrária.
+A fixture inclui os campos consumidos pelos planos sintéticos e não houve
+warning próprio do SteamZero.
+
+O detector enumera a árvore visual a partir de `contentItem`, em vez de confiar
+apenas em `parent`: reconhece foco inicial, cada focável, subitens internos e o
+controle conhecido atrás do popup como externo. A prova Qt 6 passou (7 testes):
+Escape fecha o diálogo permissivo e limpa o plano, Escape não fecha recovery
+`NoAutoClose`, Tab/Shift+Tab permanecem no modal, e Escape e Cancelar visível
+chegam ao mesmo estado e devolvem foco.
+
+### Limite honesto
+
+`test_ui_dialog_keys.py` e `test_ui_dialog_journeys.py`: 8 passaram; bridge e
+jobs existentes: 44 passaram. Esta sessão **não declara a auditoria completa**:
+confirmação por botão real com resposta pendente, clique repetido, task drawer
+por eventos reais e recovery ponta a ponta continuam exigindo as provas
+dedicadas. O item de status registra teclado provado e essas jornadas abertas.
+Conflitos futuros com a PR #80 continuam conhecidos em WORKLOG, COVERAGE e no
+item de auditoria; a PR não foi incorporada.
