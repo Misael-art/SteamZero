@@ -557,6 +557,40 @@ ApplicationWindow {
             dialogInvoker = active
     }
 
+    // Um modal que abre sem levar o foco deixa quem navega por teclado ou pelo
+    // controle do lado de fora: o Tab segue percorrendo a tela atras do modal, e
+    // nao ha focus trap nenhum porque o foco nunca entrou.
+    function focusDialogContent(dialog) {
+        if (!dialog)
+            return
+        Qt.callLater(function() {
+            if (!dialog.visible || !dialog.contentItem)
+                return
+            const target = firstFocusableIn(dialog.contentItem, 0)
+            if (target)
+                target.forceActiveFocus(Qt.TabFocusReason)
+            else
+                dialog.contentItem.forceActiveFocus(Qt.TabFocusReason)
+        })
+    }
+
+    function firstFocusableIn(item, depth) {
+        if (!item || depth > 30)
+            return null
+        if (item.enabled === true && item.visible === true
+                && item.activeFocusOnTab === true)
+            return item
+        const kids = item.children
+        if (!kids)
+            return null
+        for (let i = 0; i < kids.length; i++) {
+            const found = firstFocusableIn(kids[i], depth + 1)
+            if (found)
+                return found
+        }
+        return null
+    }
+
     function restoreDialogFocus() {
         const invoker = dialogInvoker
         Qt.callLater(function() {
@@ -1197,7 +1231,13 @@ ApplicationWindow {
     Dialog {
         id: conflictDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(conflictDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.conflictPlan = null
+            root.restoreDialogFocus()
+        }
         title: qsTr("Resolver conflito de controle")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -1275,7 +1315,13 @@ ApplicationWindow {
     Dialog {
         id: componentDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(componentDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.componentPlan = null
+            root.restoreDialogFocus()
+        }
         title: root.componentPlan
             ? (root.componentPlan.action === "install" ? qsTr("Revisar instalação") : qsTr("Revisar atualização"))
             : qsTr("Revisar componente")
@@ -1339,8 +1385,12 @@ ApplicationWindow {
     Dialog {
         id: emulationDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(emulationDialog)
         onClosed: {
             auditSelections = []
+            // Sair por Escape deixava o plano pendurado como uma confirmacao
+            // sem dono, pronta para ser reaproveitada pela proxima abertura.
+            root.emulationPlan = null
             root.restoreDialogFocus()
         }
         property var auditSelections: []
@@ -1554,7 +1604,13 @@ ApplicationWindow {
     Dialog {
         id: resetDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(resetDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.currentPlan = null
+            root.restoreDialogFocus()
+        }
         title: qsTr("Quick Reset")
         modal: true
         width: Math.min(root.width - 48, 620)
@@ -1706,6 +1762,7 @@ ApplicationWindow {
     Dialog {
         id: credentialDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(credentialDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Credenciais de scraping")
         modal: true
@@ -1892,6 +1949,7 @@ ApplicationWindow {
     Dialog {
         id: recoveryDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(recoveryDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Alteração incompleta detectada")
         modal: true
