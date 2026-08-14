@@ -6883,3 +6883,64 @@ Workstream permanece `active`: fechá-lo afirmaria uma cobertura que os 215
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-14 — Harmonização A45: integração G45+UI e digests recalculados
+
+Branch `codex/harmonize-a45-integration`, nascida de `origin/main` em `e71d9b4`.
+Frente WS-2026-08-HARMONIZE-A45, item SZ-GOVERNANCE-STATUS.
+
+### Auditoria read-only (sem trocar de branch)
+
+Tips confirmados por fetch, todos idênticos aos registrados: main `e71d9b4`,
+g45-autoconfig-gerenciado `38bc1b7`, g45-custody-recovery `2235ce9`,
+ui-ux-functional-closure-surface-audit `5be0aa7`. PR #78: 9 checks verdes, 0
+vermelhos. PR #79: só as três falhas conhecidas de digest de governança
+(`test_project_status`), resto verde. `merge-tree` com ancestral real
+(`e71d9b4`): zero conflitos textuais entre G45 e UI; 8 arquivos "changed in
+both" auto-mesclaram; adições exclusivas da UI (inventários/probes) intactas.
+
+A branch remota `codex/harmonize-main-a45` (tip `864d698`) é órfã de rodada
+anterior: base `245e8d8e`, e o conteúdo dela (fix envelope, M11, ADRs, digests)
+já foi absorvido pelo main via PRs #65/#66 — diff de `api/envelope.py` vazio
+contra o main. Não foi usada como base.
+
+### Integração
+
+Dois merges na branch própria: G45 (78+79 completos, custódia durável intacta)
+e a branch de UI (matriz de controles, ações primária/secundária, acessibilidade
+e harness de auditoria). Três conflitos textuais resolvidos à mão:
+`docs/WORKLOG.md` (append-only, ambas as sessões preservadas em ordem
+cronológica), `docs/status/COVERAGE.md` (gerado; regenerado pelo render) e
+`docs/status/items/ui-desktop-audit.json` (fonte: versão funcional da UI — os
+criterios, evidencias e proxima ação do dono da UI foram preservados; só o
+digest foi recalculado para a árvore integrada). Funcionais auto-mesclados
+(`emulation-workspace-v1.schema.json`, `Emulation.qml`,
+`test_emulation_controller.py`) contêm os dois lados: contrato/UI do autoconfig
+da G45 + ações primária/secundária e acessibilidade da UI; os 83 testes da UI
+mais 12 da G45 = 95 no controller integrado.
+
+### Digests (calculados da árvore real, nunca copiados)
+
+- SZ-GOVERNANCE-STATUS: `88200b06…` → `6ed3dc15…` (KNOWN-GAPS e WORKLOG
+  alterados pela G45 no escopo do item).
+- SZ-UI-DESKTOP-AUDIT: `4f8de565…` → `44a66284…` (ControlsProfileCard.qml da
+  G45 dentro de `src/steamzero/ui`, escopo do item da UI).
+- SZ-MEDIA-SCRAPING: NÃO alterado — o "atual 82953bc…" local era artefato
+  git-ignored (`tests/fixtures/scraping/screenscraper/raw/`) gerado por testes;
+  em árvore git limpa o digest permanece `484fe509…`.
+- SZ-EMULATION-M10: permanece `ee1fde1b…` (já reatestado pela G45; a UI não
+  toca o escopo).
+
+`STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md` regenerados pelo render. Workstream
+WS-2026-08-HARMONIZE-A45 atualizado para a nova branch; G45 e UI permanecem
+`active` (CI remoto da G45 ainda não está verde; prova física pendente).
+
+### Gates
+
+Suíte isolada completa 4606 passed, 10 skipped; `test_project_status` 10/10;
+108 testes UI+controller verdes; 60 failure-injection verdes; `ruff check`,
+`ruff format --check`, `mypy src` (222 arquivos), `make independence
+boundaries`, `make status-check` — todos OK. Nenhuma ação de host, release,
+wheel ou privilégio. PRs #78 e #79 não foram tocadas nem mescladas.
