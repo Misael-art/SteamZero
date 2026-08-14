@@ -13,6 +13,8 @@ import queue
 import shutil
 import subprocess
 import threading
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +63,9 @@ class _JourneyDashboard:
         self.apply_calls = 0
         self.cancel_calls = 0
         self.retry_calls = 0
+        self.started = {name: threading.Event() for name in ("apply", "cancel", "retry", "list")}
+        self.release = {name: threading.Event() for name in ("apply", "cancel", "retry", "list")}
+        self.block_first_list = True
         self.jobs: list[dict[str, Any]] = [
             {
                 "jobId": "running-job",
@@ -100,28 +105,75 @@ class _JourneyDashboard:
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, object]:
         assert (plan_id, confirm_token) == ("component-e2e-plan", "component-e2e-token")
         self.apply_calls += 1
+        self._await_release("apply")
         return {"status": "ok", "verified": True}
 
     def list_emulation_jobs(self) -> list[dict[str, object]]:
+        if self.block_first_list:
+            self.block_first_list = False
+            self._await_release("list")
         return self.jobs
 
     def cancel_emulation_job(self, job_id: str) -> dict[str, object]:
         assert job_id == "running-job"
         self.cancel_calls += 1
+        self._await_release("cancel")
         self.jobs[0] = {**self.jobs[0], "state": "cancelled", "canCancel": False}
         return self.jobs[0]
 
     def retry_emulation_job(self, job_id: str) -> dict[str, object]:
         assert job_id == "failed-job"
         self.retry_calls += 1
+        self._await_release("retry")
         self.jobs[1] = {**self.jobs[1], "state": "succeeded", "canRetry": False}
         return self.jobs[1]
 
+    def _await_release(self, name: str) -> None:
+        self.started[name].set()
+        assert self.release[name].wait(timeout=5), f"a barreira não liberou {name}"
+
+
+class _SyncServer(ThreadingHTTPServer):
+    dashboard: _JourneyDashboard
+
+    def __init__(self, dashboard: _JourneyDashboard) -> None:
+        self.dashboard = dashboard
+        super().__init__(("127.0.0.1", 0), _SyncHandler)
+
+
+class _SyncHandler(BaseHTTPRequestHandler):
+    def do_POST(self) -> None:
+        server = self.server
+        assert isinstance(server, _SyncServer)
+        if self.path == "/jobs/empty":
+            server.dashboard.jobs = []
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        name = self.path.removeprefix("/release/")
+        if name not in server.dashboard.started:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        if not server.dashboard.started[name].wait(timeout=3):
+            self.send_error(HTTPStatus.CONFLICT, "mutação ainda não chegou à bridge")
+            return
+        server.dashboard.release[name].set()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, _format: str, *args: object) -> None:
+        pass
+
 
 @pytest.fixture
-def journey_bridge(tmp_path: Path) -> tuple[str, str, _JourneyDashboard]:
+def journey_bridge(tmp_path: Path) -> tuple[str, str, _JourneyDashboard, str]:
     ready: queue.Queue[DesktopControlServer] = queue.Queue()
     dashboard = _JourneyDashboard()
+    sync_server = _SyncServer(dashboard)
+    sync_thread = threading.Thread(target=sync_server.serve_forever, daemon=True)
+    sync_thread.start()
 
     def run_server() -> None:
         store = StateStore(tmp_path / "journey.db")
@@ -139,19 +191,30 @@ def journey_bridge(tmp_path: Path) -> tuple[str, str, _JourneyDashboard]:
     thread = threading.Thread(target=run_server, daemon=True)
     thread.start()
     server = ready.get(timeout=3)
-    yield f"http://127.0.0.1:{server.server_port}", "journey-token", dashboard
+    yield (
+        f"http://127.0.0.1:{server.server_port}",
+        "journey-token",
+        dashboard,
+        f"http://127.0.0.1:{sync_server.server_port}",
+    )
     server.shutdown()
     thread.join(timeout=2)
+    sync_server.shutdown()
+    sync_server.server_close()
+    sync_thread.join(timeout=2)
 
 
 def test_confirm_job_and_recovery_journeys_use_qml_and_the_real_bridge(
-    journey_bridge: tuple[str, str, _JourneyDashboard],
+    journey_bridge: tuple[str, str, _JourneyDashboard, str],
 ) -> None:
-    """Cada clique passa por contratos HTTP; duplo clique não duplica apply."""
+    """Confirmação e jobs usam cliques Qt reais contra a bridge loopback."""
     assert RUNNER is not None, "qmltestrunner Qt 6 é obrigatório para esta prova"
-    api_url, api_token, dashboard = journey_bridge
+    api_url, api_token, dashboard, sync_url = journey_bridge
     CONFIG.parent.mkdir(exist_ok=True)
-    CONFIG.write_text(json.dumps({"apiUrl": api_url, "apiToken": api_token}), encoding="utf-8")
+    CONFIG.write_text(
+        json.dumps({"apiUrl": api_url, "apiToken": api_token, "syncUrl": sync_url}),
+        encoding="utf-8",
+    )
     env = os.environ.copy()
     env.update(
         {

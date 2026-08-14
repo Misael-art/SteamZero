@@ -266,6 +266,17 @@ def main(argv: list[str] | None = None) -> int:
 
     print(json.dumps(inventory["verdictCounts"], indent=2, ensure_ascii=False))
     print(f"controles: {inventory['controlCount']} em {inventory['surfaceCount']} superfícies")
+    print(
+        "identidade: "
+        f"{inventory['explicitIdentityCount']} explícitas, "
+        f"{inventory['fallbackIdentityCount']} fallback, "
+        f"{inventory['identityCollisionCount']} colisões"
+    )
+    print(
+        "presença: "
+        f"{inventory['controlsSeenInMultipleScenarios']} multi-cenário, "
+        f"{inventory['controlsSeenInOneScenario']} cenário único"
+    )
     print(f"superfícies sem pendência de sondagem: {inventory['fullyProbedSurfaces']}")
     for failure in inventory["failures"]:
         print(
