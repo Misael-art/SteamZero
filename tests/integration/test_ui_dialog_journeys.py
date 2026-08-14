@@ -1,10 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Jornada completa de cada diálogo, não apenas `visible === true`.
+"""Abertura e cancelamento PROGRAMÁTICOS de cada diálogo.
+
+Deliberadamente NÃO é "jornada completa". Confirmar não é exercido aqui, e o
+fechamento usa `dialog.close()`, que é uma chamada programática — não Escape.
+`close()` ignora `closePolicy` inteiro: um modal com `Popup.NoAutoClose` fecha
+por `close()` e não deveria fechar por Escape, e este arquivo daria o mesmo
+verde nos dois casos. A prova de tecla real vive em `test_ui_dialog_keys.py`,
+hoje bloqueada e registrada como tal.
 
 A sonda de controles percorre a árvore visual das seções. Diálogos não estão
 nela enquanto fechados, então nada do que acontece dentro de um modal era
 verificado: nem se o foco entra, nem se cancelar deixa plano sujo, nem se
-fechar devolve o foco a quem abriu.
+fechar devolve o foco a quem abriu. Isto cobre esse recorte.
 
 Cada asserção aqui nomeia o evento observado — abertura, fechamento, retorno de
 foco — e a espera é por condição com orçamento de frames, nunca por `sleep`.
