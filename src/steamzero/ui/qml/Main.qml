@@ -281,6 +281,9 @@ ApplicationWindow {
         && desktopStatus.dashboard.resources
         ? desktopStatus.dashboard.resources : fallbackResources
     property var liveTasks: null
+    property bool taskLoading: false
+    property string taskLoadError: ""
+    property int taskRequestGeneration: 0
     readonly property var taskItems: liveTasks !== null ? liveTasks
         : emulationData && emulationData.jobs ? emulationData.jobs : []
     readonly property var uiContracts: desktopStatus.dashboard
@@ -528,8 +531,20 @@ ApplicationWindow {
     }
 
     function refreshTasks() {
+        const generation = ++taskRequestGeneration
+        taskLoading = true
+        taskLoadError = ""
         requestAction("jobs.list", {}, function(response) {
+            if (generation !== root.taskRequestGeneration)
+                return
             liveTasks = response.jobs || []
+            taskLoading = false
+        }, function(message) {
+            if (generation !== root.taskRequestGeneration)
+                return
+            liveTasks = []
+            taskLoadError = String(message || qsTr("Não foi possível carregar as tarefas"))
+            taskLoading = false
         })
     }
 
@@ -796,8 +811,30 @@ ApplicationWindow {
         return actions[actionId] || null
     }
 
+    function stableActionValue(value) {
+        if (value === null)
+            return "null"
+        if (Array.isArray(value)) {
+            return "[" + value.map(function(item) {
+                const serialized = stableActionValue(item)
+                return serialized === undefined ? "null" : serialized
+            }).join(",") + "]"
+        }
+        if (typeof value === "object") {
+            const keys = Object.keys(value).sort()
+            const fields = []
+            keys.forEach(function(key) {
+                const serialized = stableActionValue(value[key])
+                if (serialized !== undefined)
+                    fields.push(JSON.stringify(key) + ":" + serialized)
+            })
+            return "{" + fields.join(",") + "}"
+        }
+        return JSON.stringify(value)
+    }
+
     function actionRequestKey(actionId, payload) {
-        return String(actionId) + ":" + JSON.stringify(payload || {})
+        return String(actionId) + ":" + stableActionValue(payload || {})
     }
 
     function actionIsPending(actionId, payload) {
@@ -2673,7 +2710,8 @@ ApplicationWindow {
                     }
                 }
                 Button {
-                    text: qsTr("Atualizar")
+                    text: root.taskLoading ? qsTr("Atualizando…") : qsTr("Atualizar")
+                    enabled: !root.taskLoading
                     Layout.minimumHeight: 48
                     Accessible.name: text
                     onClicked: root.refreshTasks()
@@ -2701,7 +2739,56 @@ ApplicationWindow {
                     spacing: 10
 
                     Rectangle {
-                        visible: root.taskItems.length === 0
+                        objectName: "task-loading-state"
+                        visible: root.taskLoading
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 12
+                        implicitHeight: 100
+                        color: root.surfaceColor
+                        border.color: root.cyanColor
+                        radius: 8
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: true }
+                            Label { text: qsTr("Carregando tarefas…"); color: root.textColor }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "task-error-state"
+                        visible: !root.taskLoading && root.taskLoadError.length > 0
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 12
+                        implicitHeight: taskErrorContent.implicitHeight + 24
+                        color: root.surfaceColor
+                        border.color: root.redColor
+                        radius: 8
+                        ColumnLayout {
+                            id: taskErrorContent
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            Label { text: qsTr("Não foi possível carregar as tarefas"); color: root.textColor; font.bold: true }
+                            Label { text: root.taskLoadError; color: root.mutedColor; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Button {
+                                objectName: "task-error-retry"
+                                text: qsTr("Tentar novamente")
+                                Layout.minimumHeight: 48
+                                Accessible.name: qsTr("Tentar carregar tarefas novamente")
+                                onClicked: root.refreshTasks()
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "task-empty-state"
+                        visible: !root.taskLoading && root.taskLoadError.length === 0
+                            && root.taskItems.length === 0
                         Layout.fillWidth: true
                         Layout.leftMargin: 12
                         Layout.rightMargin: 12
@@ -2719,6 +2806,7 @@ ApplicationWindow {
                     }
 
                     Repeater {
+                        visible: !root.taskLoading && root.taskLoadError.length === 0
                         model: root.taskItems
                         delegate: Rectangle {
                             required property int index
