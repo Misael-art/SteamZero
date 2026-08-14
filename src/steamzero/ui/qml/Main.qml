@@ -124,6 +124,15 @@ ApplicationWindow {
     property alias collectionManagerControl: collectionManageDialog
     property alias libraryHealthPlanControl: libraryHealthPlanDialog
     property alias credentialDialogControl: credentialDialog
+    // Alias para os dialogs que a auditoria de jornada precisa alcancar. Ids
+    // declarados dentro de Main nao sao visiveis de um harness que estende
+    // Main, entao sem isto nao ha como provar foco inicial, trap, cancelamento
+    // sem mutacao nem retorno de foco.
+    property alias emulationPlanDialogControl: emulationDialog
+    property alias componentPlanDialogControl: componentDialog
+    property alias safeResetDialogControl: resetDialog
+    property alias conflictDialogControl: conflictDialog
+    property alias recoveryDialogControl: recoveryDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
     property alias credentialCloseControl: credentialCloseButton
