@@ -6828,3 +6828,39 @@ por eventos reais e recovery ponta a ponta continuam exigindo as provas
 dedicadas. O item de status registra teclado provado e essas jornadas abertas.
 Conflitos futuros com a PR #80 continuam conhecidos em WORKLOG, COVERAGE e no
 item de auditoria; a PR não foi incorporada.
+
+---
+
+## 2026-08-14 (6) — Confirmação idempotente pela bridge
+
+Frente `codex/ui-ux-confirm-job-takeover`, base `512d842`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** As PRs #79 e #80
+permaneceram fora da ancestralidade.
+
+### Entrega
+
+`Main.qml` passa a manter uma chave de mutação pendente no shell. Uma segunda
+confirmação com o mesmo contrato e payload não publica nova requisição até que
+a primeira termine. Os CTAs de aplicar componente/emulador, recovery,
+cancelamento e repetição mostram o estado pendente e ficam desabilitados;
+sucesso de aplicar/recovery continua condicionado ao refresh da bridge.
+
+`tests/qml/check_confirm_job_recovery_e2e.qml` usa `Main` real e
+`DesktopControlServer` em loopback, sem mock no QML. O QuickTest clica duas
+vezes na confirmação e a fixture observa exatamente um `apply`; também cobre
+plano, refresh, recovery, cancelamento e repetição. O Drawer é um Popup em
+janela separada no executor offscreen: a injeção física de ponteiro não o
+alcança nesse ambiente, por isso jobs exercitam o sinal dos controles reais e
+essa entrada física permanece explicitamente aberta.
+
+### Verificação
+
+- jornada QML + bridge, diálogos de teclado e bridge: **28 passaram**;
+- `ruff check`, `ruff format --check`, `mypy` (220 arquivos), independência,
+  fronteiras e `status-check`: verdes;
+- `qmllint` não introduziu alerta novo; permanece o alerta pré-existente de
+  layout em `Main.qml:4917`.
+
+Continua aberto: 378 controles `not-probed`, superfícies e drawers restantes,
+card de plataforma, P0 visuais, G45 e validação física. A auditoria não é
+declarada concluída nem certificada.

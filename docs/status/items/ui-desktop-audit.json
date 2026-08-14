@@ -17,7 +17,9 @@
     "tests/integration/test_ui_control_matrix.py",
     "tests/integration/test_ui_dialog_journeys.py",
     "tests/integration/test_ui_dialog_keys.py",
+    "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/qml/check_dialog_keys.qml",
+    "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_emulation.qml",
     "tests/qml/check_main_emulation.qml",
@@ -29,7 +31,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "609f9f46c53009cc635a56b1ebec667d21258fe933852cddad1056e5e481e758",
+  "scopeDigest": "1cdfbc7a4f73596066ded3eaa7176a51f01fb15d99a63dbc22e233cce0646d69",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -50,7 +52,10 @@
     "Fechar modal por Escape nao deixa plano pendurado.",
     "Fechar modal devolve o foco ao originador.",
     "Modal recebe o foco ao abrir (verificado com abertura programatica).",
-    "Escape e Tab reais provados por evento de teclado Qt 6; recovery permanece aberto com NoAutoClose."
+    "Escape e Tab reais provados por evento de teclado Qt 6; recovery permanece aberto com NoAutoClose.",
+    "Confirmacao por clique Qt contra a bridge loopback publica exatamente um apply durante clique repetido.",
+    "Confirmacao, cancelamento, repeticao e recovery ficam indisponiveis enquanto a mutacao correspondente esta pendente.",
+    "Sucesso de confirmacao e recovery so e publicado apos refresh pela bridge."
   ],
   "evidence": [
     {
@@ -94,9 +99,15 @@
       "reference": "tests/integration/test_ui_dialog_keys.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_confirm_job_recovery_e2e.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_confirm_job_recovery_e2e.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "QML-KEY-INJECTION-001 fechado: QuickTest Qt 6 com raiz Item hospeda Main e executa Escape/Tab reais, incluindo recovery NoAutoClose, retorno de foco e focus trap. A auditoria ainda não está completa: faltam confirmação por bridge, clique repetido, jobs/task drawer e recovery ponta a ponta. Baseline de 14 cenários permanece: 574 controles, 378 not-probed, 80 identidades explícitas, 494 fallback, 0 colisões.",
+  "nextAction": "Confirmacao por clique Qt, deduplicacao, refresh e recovery pela bridge loopback foram provados. Cancelamento e repeticao exercitam o sinal dos controles reais do task drawer; o executor offscreen ainda nao injeta ponteiro no Popup do Drawer, portanto essa entrada fisica nao e declarada provada. A auditoria continua incompleta: 378 controles not-probed, dialogs/drawers restantes, card de plataforma e P0 visuais. Baseline de 14 cenários: 574 controles, 80 identidades explícitas, 494 fallback, 0 colisões.",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
