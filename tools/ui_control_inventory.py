@@ -37,7 +37,11 @@ QML = shutil.which("qml6") or shutil.which("qml")
 FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent")
 
 
-SCENARIO_DIR = ROOT / "tests" / "fixtures" / "ui-scenarios"
+#: As fixtures sao DERIVADAS: `ui_scenario_fixtures` as gera deterministicamente
+#: a partir do dominio real e dos contratos publicados. Commitar 5 MB de JSON
+#: gerado seria guardar a saida em vez da fonte, e o `uiContracts` repetido em
+#: cada arquivo responde por quase tudo isso.
+SCENARIO_DIR = ROOT / "build" / "ui-scenarios"
 
 #: Ordem de precedencia do veredito ao fundir cenarios. O pior resultado vence:
 #: um botao que funciona num cenario e morre em outro continua sendo defeito.
@@ -53,7 +57,14 @@ _VERDICT_RANK = {
 
 
 def scenario_paths() -> list[Path]:
-    return sorted(SCENARIO_DIR.glob("*.json"))
+    """Gera (ou regenera) as fixtures e devolve os caminhos.
+
+    Regenerar sempre e de proposito: uma fixture obsoleta em disco mediria um
+    contrato que o produto ja nao publica.
+    """
+    import ui_scenario_fixtures
+
+    return ui_scenario_fixtures.write_all(SCENARIO_DIR)
 
 
 def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any]:

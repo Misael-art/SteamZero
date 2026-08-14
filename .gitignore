@@ -75,3 +75,7 @@ src/steamzero/_build_info.py
 # mapeamento run→evidência + hashes está em docs/diagnostics/INDEX-M10.md.
 # Overlays de falha preservados no disco são referenciados por aquele índice.
 .zcode/vm-harness/
+
+# Fixtures de cenario da matriz de UI: derivadas, geradas por
+# tools/ui_scenario_fixtures.py a cada execucao.
+/build/

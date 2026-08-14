@@ -47,7 +47,7 @@ from steamzero.domain.emulation_workspace import (  # noqa: E402
 )
 from steamzero.domain.keys_firmware import RequirementCheck  # noqa: E402
 
-FIXTURE_DIR = ROOT / "tests" / "fixtures" / "ui-scenarios"
+FIXTURE_DIR = ROOT / "build" / "ui-scenarios"
 STATUS_SCHEMA = "desktop-status-v1.schema.json"
 
 
