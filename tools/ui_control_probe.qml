@@ -189,6 +189,27 @@ Main {
             + "##" + treeSignature(responsiveShell)
     }
 
+    // Nome do tipo QML sem o endereco: "Button_QMLTYPE_42(0x55f...)" vira
+    // "Button". O endereco muda a cada execucao e nao serve como identidade.
+    function typeNameOf(item) {
+        const raw = String(item)
+        const cut = raw.indexOf("_QMLTYPE_")
+        let base = cut >= 0 ? raw.slice(0, cut) : raw.split("(")[0]
+        // Componentes do proprio produto vem como "EditorialButton_QML_148":
+        // o numero e um contador de revisao do engine e muda entre execucoes.
+        base = base.replace(/_QML_\d+$/, "")
+        return base.replace(/^QQuick/, "")
+    }
+
+    // Identidade estavel do controle. Coordenada visual nao entra: ela muda com
+    // viewport, escala e tema, e a matriz precisa casar o mesmo botao entre
+    // cenarios diferentes. O que entra e superficie + tipo + objectName + rotulo
+    // ou nome acessivel + posicao ESTRUTURAL na arvore (cadeia de indices).
+    function controlIdentity(record) {
+        return [record.surface, record.type, record.objectName,
+                record.label || record.accessibleName, record.path].join("|")
+    }
+
     function describe(item, kind, surface) {
         let label = ""
         if (item.text !== undefined && item.text !== null)
@@ -210,6 +231,9 @@ Main {
         return {
             "surface": surface,
             "kind": kind,
+            "type": typeNameOf(item),
+            "path": "",
+            "controlId": "",
             "objectName": String(item.objectName || ""),
             "label": label,
             "accessibleName": accessible,
@@ -223,21 +247,23 @@ Main {
 
     // Percorre filhos visuais. Popups (diálogos, drawers) não estão aqui
     // enquanto fechados; são visitados à parte, abertos de propósito.
-    function walk(item, surface, out, depth) {
+    function walk(item, surface, out, depth, path) {
         if (!item || depth > 40)
             return
         const kind = controlKind(item)
         if (kind !== "") {
             const record = describe(item, kind, surface)
             record.item = item
+            record.path = path
             record.sectionIndex = sectionIndexFor(surface)
+            record.controlId = controlIdentity(record)
             out.push(record)
         }
         const kids = item.children
         if (!kids)
             return
         for (let i = 0; i < kids.length; i++)
-            walk(kids[i], surface, out, depth + 1)
+            walk(kids[i], surface, out, depth + 1, path + "/" + i)
     }
 
     // ---- Ativação -----------------------------------------------------------
@@ -329,7 +355,7 @@ Main {
     function collectSection(sectionId, index) {
         const page = responsiveContent.children[index]
         const out = []
-        walk(page, sectionId, out, 0)
+        walk(page, sectionId, out, 0, "")
         for (let i = 0; i < out.length; i++)
             collected.push(out[i])
         console.log("PROBE-SECTION " + JSON.stringify({
@@ -353,7 +379,7 @@ Main {
             const out = []
             const base = entry.root.contentItem !== undefined && entry.root.contentItem
                 ? entry.root.contentItem : entry.root
-            walk(base, entry.id, out, 0)
+            walk(base, entry.id, out, 0, "")
             for (let i = 0; i < out.length; i++)
                 collected.push(out[i])
             console.log("PROBE-SECTION " + JSON.stringify({

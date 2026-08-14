@@ -84,3 +84,29 @@ def test_probe_context_is_recorded(inventory: dict) -> None:
     assert context.get("viewport")
     assert context.get("themeId")
     assert context.get("dataOrigin") in {"bridge-live", "fallback-qml"}
+
+
+def test_every_control_has_a_stable_identity(inventory: dict) -> None:
+    """Casar o mesmo botão entre cenários exige identidade, não rótulo.
+
+    Nenhum dos 288 controles tem `objectName`, e coordenada visual muda com
+    viewport, escala e tema. A identidade é estrutural: superfície, tipo QML,
+    objectName quando existe, rótulo ou nome acessível, e a cadeia de índices
+    até a raiz da superfície.
+    """
+    identities = [control["controlId"] for control in inventory["controls"]]
+    assert all(identities), "controle sem identidade calculada"
+
+    duplicates = sorted({item for item in identities if identities.count(item) > 1})
+    assert duplicates == [], "identidades colidindo entre controles:\n" + "\n".join(duplicates)
+
+
+def test_identity_does_not_carry_engine_revision_numbers(inventory: dict) -> None:
+    """`EditorialButton_QML_148` traz um contador do engine que muda entre execuções.
+
+    Deixá-lo na identidade faria a matriz de dois cenários nunca casar.
+    """
+    leaked = sorted(
+        {control["type"] for control in inventory["controls"] if "_QML_" in control["type"]}
+    )
+    assert leaked == [], "tipo com revisão do engine na identidade: " + ", ".join(leaked)
