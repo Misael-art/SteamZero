@@ -1155,7 +1155,10 @@ Item {
                                             visible: modelData.id === "gamemode" && modelData.state !== "ready"
                                             text: qsTr("Ver instruções")
                                             font.pixelSize: 10
-                                            Layout.preferredHeight: 32
+                                            // 32px nao alcanca o polegar no Deck;
+                                            // o minimo do produto e 48.
+                                            Layout.preferredHeight: page.minimumTouchTarget
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.name: text
                                             onClicked: {
                                                 page.gamemodeGuidance = modelData

@@ -5416,18 +5416,21 @@ ApplicationWindow {
                                     Button {
                                         text: qsTr("Exportar estado")
                                         icon.name: "document-export"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.beginDiagnosticsExport("state")
                                     }
                                     Button {
                                         text: qsTr("Pacote de suporte")
                                         icon.name: "tools-report-bug"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.beginDiagnosticsExport("support")
                                     }
                                     Button {
                                         text: qsTr("Saúde administrativa")
                                         icon.name: "security-high"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.requestAction("admin.health", {}, function(response) {
                                             root.notify(response.detail || response.state, false)
