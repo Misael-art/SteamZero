@@ -6670,3 +6670,67 @@ execuções não é causa demonstrada.
 
 Verificado em desenvolvimento/offscreen; instalação e certificação física
 pendentes.
+
+---
+
+## 2026-08-14 (2) — Jornada dos diálogos
+
+Frente `codex/ui-ux-dialog-job-audit`, base `3c92688`. **Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §4 | `7b31546` | sonda de jornada de 6 modais + 5 aliases | 4 de 6 verdes, 2 reprovando defeito real |
+| §4 | `fcc1230` | foco entra no modal; Escape limpa o plano | 6 de 6 verdes |
+| §1 | `b9c39cd` | registro corrigido, cobertura separada de identidade | `STATUS-CHECK: OK` |
+
+### O registro corrigido
+
+O relatório anterior publicou, na mesma tabela, cobertura de 14 cenários e
+identidade de 3. Denominadores diferentes. Remedido com os 14 cenários:
+
+| medição | valores |
+|---|---|
+| cobertura | 574 controles · 378 not-probed · 17 roteados · 166 locais · 13 bloqueados |
+| identidade | 80 explícitas · 494 fallback · 0 colisões · 553 multi-cenário · 21 único |
+
+Os seis números da identidade conferem exatamente com a baseline do operador.
+
+### Dois defeitos
+
+**Cinco dos seis modais abriam sem levar o foco.** Quem navega por teclado ou
+pelo controle seguia com o Tab percorrendo a tela *atrás* do modal, e não havia
+focus trap porque o foco nunca entrara. Havia de 1 a 3 controles focáveis
+esperando ninguém.
+
+**Quatro planos sobreviviam ao Escape.** O botão "Cancelar" anulava o plano;
+`onClosed` só restaurava foco. Sair pelo teclado ou pelo botão B deixava a
+confirmação pendurada, pronta para ser reaproveitada na próxima abertura.
+
+Os dois caminhos de cancelamento passam a deixar o mesmo estado.
+
+### Espera determinística
+
+Cada jornada nomeia o evento que observou: `dialog-aberto`, `dialog-fechado`,
+`foco-restaurado`. Espera por condição com orçamento de frames; esgotar o
+orçamento **é** o resultado "o evento não aconteceu", nunca motivo para
+aumentá-lo. Nenhum `sleep`.
+
+### Fallback: sem redução, e isso é registro, não desculpa
+
+O fallback estrutural **segue em 494**. Os diálogos foram cobertos por harness
+próprio, fora da matriz de controles, e nenhum `objectName` novo entrou. Contar
+isso como redução seria creditar trabalho não feito.
+
+### Aberto
+
+Task drawer, handheld drawer, jobs (todos os doze estados), recovery além da
+abertura, credenciais por estado, clique repetido sem duplicar; revalidação do
+card de plataforma — `07480ac` **continua sem poder ser fechado**; P0 visuais,
+nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência (4500 passando, exit 0). Memória antes
+11935 MB usados / 2884 livres; depois 12096 / 2724. **Hipótese permanece
+aberta.**
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
