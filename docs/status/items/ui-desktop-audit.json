@@ -33,10 +33,11 @@
     "tools/ui_scenario_fixtures.py",
     "tests/integration/test_ui_credential_journey_e2e.py",
     "tests/integration/test_desktop_ui_bridge.py",
+    "tests/unit/test_desktop_contracts.py",
     "tests/qml/check_credential_journey_e2e.qml",
     "tests/qml/check_darkbutton_theme.qml"
   ],
-  "scopeDigest": "d8560a9f6421888d6b96b5b0311911e4317dc2d4e6fd5af4cedb0bc690ff5f09",
+  "scopeDigest": "59772d7971494f2d95d19d6d8f0c0ba17dbcd434d90a4f2e1d38c94fc7585f2a",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -150,6 +151,12 @@
       "reference": "tests/integration/test_desktop_ui_bridge.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_theme_effects.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_desktop_contracts.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_desktop_contracts.py tests/integration/test_ui_dialog_keys.py -q",
+      "result": "passed"
     }
   ],
   "nextAction": "Jornadas de credenciais (salvar/testar/revogar) provadas pela bridge loopback com cliques Qt reais; card de plataforma revalidado com fix de dominio (emulador degradado oferece Reparar) e provas unit/QML; P0 visuais reavaliados contra a arvore atual: P0-1/P0-2 (DarkButton no tema claro) corrigidos e provados por pixels, P0-4/P0-5 (instalacao no-op e fragmentada) fechados pelo wiring componente+card, P0-6 (jornada de temas) fechada pelo redesenho (Aplicar, Duplicar e exportar desabilitado com motivo), P0-3 (biblioteca sem capas) e dado: a UI renderiza a capa quando o read model publica coverUrl (provado) e mantem placeholder honesto sem arte quando nao ha; a bridge enriquece coverUrl a partir dos metadados do jogo. Auditoria ainda incompleta: 378 controles not-probed, handheld drawer e demais estados de dialogs, alem de G45 e validacao fisica (operador).",
@@ -157,5 +164,5 @@
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A segunda execucao do CI revelou que QtQuick.Effects so existe desde Qt 6.5; o renderer agora isola MultiEffect, mantem imagem, opacidade e vinheta no fallback Qt 6.4 e ativa a pilha avancada somente quando o launcher prova a capacidade. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A segunda execucao do CI revelou que QtQuick.Effects so existe desde Qt 6.5; o renderer agora isola MultiEffect, mantem imagem, opacidade e vinheta no fallback Qt 6.4 e ativa a pilha avancada somente quando o launcher prova a capacidade. A terceira execucao revelou palette.accent ausente no Qt 6.4; a atribuicao redundante foi removida, palette.highlight preserva o realce, e Main.qml passou 7 jornadas reais em Ubuntu 24.04/Qt 6.4.2 isolado. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
 }

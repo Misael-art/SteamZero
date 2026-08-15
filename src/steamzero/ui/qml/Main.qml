@@ -21,7 +21,6 @@ ApplicationWindow {
     palette.button: raisedColor
     palette.buttonText: textColor
     palette.highlight: cyanDarkColor
-    palette.accent: cyanColor
     palette.highlightedText: textColor
     palette.toolTipBase: raisedColor
     palette.toolTipText: textColor
@@ -5010,7 +5009,7 @@ ApplicationWindow {
                                 }
                                 Pane {
                                     visible: root.castReceivers.length > 0
-                                    width: parent.width
+                                    Layout.fillWidth: true
                                     padding: 16
                                     background: Rectangle { color: root.surfaceColor; radius: 6 }
                                     ColumnLayout { spacing: 8
