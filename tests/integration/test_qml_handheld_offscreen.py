@@ -253,6 +253,31 @@ def test_qml_handheld_harness_offscreen(harness: str) -> None:
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
+    """P0-1/P0-2 da auditoria: DarkButton legível no tema claro.
+
+    O label segue a paleta do pai (nada de texto claro hardcodado sobre fundo
+    claro) e o texto renderiza escuro sobre o fundo claro: o harness salva a
+    cena e este teste conta os pixels escuros dentro do retângulo do botão da
+    sidebar (x220-420, y100-148 no canvas 640x300).
+    """
+    output = tmp_path / "darkbutton-theme.png"
+    _run_qml("check_darkbutton_theme.qml", f"--capture-output={output}")
+    from PIL import Image
+
+    im = Image.open(output).convert("RGB")
+    dark = 0
+    for y in range(100, 148):
+        for x in range(220, 420):
+            r, g, b = im.getpixel((x, y))
+            if 0.299 * r + 0.587 * g + 0.114 * b < 115:
+                dark += 1
+    assert dark > 40, (
+        f"texto do botão não aparece escuro sobre o fundo claro (pixels escuros: {dark})"
+    )
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_editorial_library_renders_at_logical_scale_200() -> None:
     """A composição editorial continua utilizável em 4K físico a 200% lógico."""
     _run_qml("check_editorial_library.qml", scale_factor=2)
