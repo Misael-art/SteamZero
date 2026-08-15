@@ -18,7 +18,7 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
-  "scopeDigest": "c6ab101dd863f505121dd4b3443505ba7e064ca31fc53851c93d1b40416a056f",
+  "scopeDigest": "a416820814a9c7d429b8bcdf552964a6c6f64732017fb67773b1f1efc38fc742",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
@@ -30,7 +30,8 @@
     "Falha apos ativacao aciona rollback automatico para a release previamente verificada e comprova a recuperacao.",
     "Reexecucao recupera uma transacao interrompida sem iniciar uma segunda ativacao concorrente.",
     "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica.",
-    "Todo artefato de cadeia de suprimentos publicado pelo CI possui checksum validado antes do plano de instalacao."
+    "Todo artefato de cadeia de suprimentos publicado pelo CI possui checksum validado antes do plano de instalacao.",
+    "Falha comprovada antes da preparacao do bundle terminaliza o journal sem chamada privilegiada, enquanto estados ambiguos continuam exigindo recuperacao do commit original."
   ],
   "evidence": [
     {
@@ -51,5 +52,5 @@
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Operacao real e certificacao fisica continuam pendentes."
+  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. Operacao real e certificacao fisica continuam pendentes."
 }

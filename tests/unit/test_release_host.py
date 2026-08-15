@@ -955,8 +955,116 @@ def test_update_writes_discovery_before_bundle_download(
 
     journal_path = next((tmp_path / "state" / "transactions").glob("*.json"))
     journal = json.loads(journal_path.read_text(encoding="utf-8"))
-    assert journal["phase"] == "discovered"
+    assert journal["phase"] == "failed-before-activation"
     assert journal["sourceCommit"] == commit
+    assert journal["events"][-1]["data"] == {
+        "errorType": "AutomationError",
+        "failedPhase": "discovered",
+    }
+
+
+def test_new_commit_supersedes_only_pristine_discovery(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    old_commit = "b" * 40
+    root, _version, new_commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    state_dir = tmp_path / "state"
+    old = release_host._start_update_journal(
+        old_commit,
+        current_release="0.1.0a41-bbbbbbbbbbbb",
+        state_dir=state_dir,
+    )
+    runner = _Runner({})
+    monkeypatch.setattr(
+        release_host,
+        "_resolve_update_target",
+        lambda *_args, **_kwargs: new_commit,
+    )
+    monkeypatch.setattr(release_host, "_prepare_update_bundle", lambda *_args, **_kwargs: bundle)
+    monkeypatch.setattr(release_host, "_require_checkout", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(release_host, "_require_not_quarantined", lambda *_args: None)
+    monkeypatch.setattr(
+        release_host,
+        "_git",
+        lambda args, _runner: new_commit if args[-1] == "HEAD" else "",
+    )
+    monkeypatch.setattr(
+        release_host,
+        "_read_host_truth",
+        lambda _root: {"ok": True, "release": "0.1.0a41-bbbbbbbbbbbb"},
+    )
+    monkeypatch.setattr(
+        release_host,
+        "_host_preflight",
+        lambda **_kwargs: {"release": "0.1.0a41-bbbbbbbbbbbb"},
+    )
+
+    result = release_host.update(
+        plan_only=True,
+        cache_dir=tmp_path / "cache",
+        state_dir=state_dir,
+        runner=runner,
+    )
+
+    assert result["plan"]["sourceCommit"] == new_commit
+    old_document = json.loads(old.path.read_text(encoding="utf-8"))
+    assert old_document["phase"] == "failed-before-activation"
+    assert old_document["events"][-1]["data"]["reason"] == (
+        "source-advanced-before-bundle-verification"
+    )
+    assert len(list((state_dir / "transactions").glob("*.json"))) == 2
+    assert not [call for call in runner.calls if call and call[0] == "bigsudo"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "current_release"),
+    [
+        ({"targetRelease": "0.1.0a42-aaaaaaaaaaaa"}, "0.1.0a41-bbbbbbbbbbbb"),
+        ({}, "0.1.0a40-cccccccccccc"),
+    ],
+)
+def test_new_commit_never_supersedes_ambiguous_discovery(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    mutation: dict[str, object],
+    current_release: str,
+) -> None:
+    old_commit = "b" * 40
+    new_commit = "a" * 40
+    state_dir = tmp_path / "state"
+    old = release_host._start_update_journal(
+        old_commit,
+        current_release="0.1.0a41-bbbbbbbbbbbb",
+        state_dir=state_dir,
+    )
+    old.document.update(mutation)
+    release_host._atomic_json(old.path, old.document)
+    monkeypatch.setattr(
+        release_host,
+        "_resolve_update_target",
+        lambda *_args, **_kwargs: new_commit,
+    )
+    monkeypatch.setattr(
+        release_host,
+        "_git",
+        lambda args, _runner: new_commit if args[-1] == "HEAD" else "",
+    )
+    monkeypatch.setattr(
+        release_host,
+        "_read_host_truth",
+        lambda _root: {"ok": True, "release": current_release},
+    )
+
+    with pytest.raises(release_host.AutomationError, match="exige checkout"):
+        release_host.update(
+            plan_only=True,
+            state_dir=state_dir,
+            runner=_Runner({}),
+        )
+
+    assert old.phase == "discovered"
 
 
 def test_update_transaction_commits_only_after_convergence_and_smokes(

@@ -354,6 +354,54 @@ def _load_unfinished_journal(state_dir: Path | None = None) -> UpdateJournal | N
     return unfinished[0] if unfinished else None
 
 
+def _discovery_can_be_superseded(
+    journal: UpdateJournal,
+    *,
+    next_commit: str,
+    current_release: str | None,
+    runner: CommandRunner,
+) -> bool:
+    """Confirma que um journal antigo nunca alcançou preparação ou ativação."""
+    if journal.phase != "discovered" or journal.document.get("sourceCommit") == next_commit:
+        return False
+    if any(
+        journal.document.get(key) is not None
+        for key in ("targetRelease", "rollbackRelease", "wheelSha256", "runId")
+    ):
+        return False
+    events = journal.document.get("events")
+    if not isinstance(events, list) or len(events) != 1:
+        return False
+    discovery = events[0]
+    if not isinstance(discovery, dict) or discovery.get("phase") != "discovered":
+        return False
+    if discovery.get("currentRelease") != current_release:
+        return False
+    if _git(["rev-parse", "HEAD"], runner) != next_commit:
+        return False
+    return not _git(["status", "--porcelain"], runner)
+
+
+def _record_pre_activation_failure(
+    journal: UpdateJournal,
+    *,
+    current_release: str | None,
+    error: Exception,
+) -> None:
+    """Terminaliza uma falha comprovadamente anterior à instalação."""
+    failed_phase = journal.phase
+    try:
+        journal.event(
+            "failed-before-activation",
+            current_release=current_release,
+            data={"failedPhase": failed_phase, "errorType": type(error).__name__},
+        )
+    except Exception as evidence_error:
+        raise AutomationError(
+            "a preparação falhou antes da ativação e o journal não pôde ser terminalizado"
+        ) from evidence_error
+
+
 def _default_runner(
     argv: Sequence[str],
     cwd: Path,
@@ -1957,6 +2005,26 @@ def update(
     """Executa ou recupera uma atualização inteira sob um único lock global."""
     with _update_lock(state_dir):
         unfinished = _load_unfinished_journal(state_dir)
+        resolved_commit: str | None = None
+        if unfinished is not None and unfinished.phase == "discovered":
+            resolved_commit = _resolve_update_target(to_ref, runner=runner)
+            current = _read_host_truth(host_root).get("release")
+            current_release = str(current) if current else None
+            if _discovery_can_be_superseded(
+                unfinished,
+                next_commit=resolved_commit,
+                current_release=current_release,
+                runner=runner,
+            ):
+                unfinished.event(
+                    "failed-before-activation",
+                    current_release=current_release,
+                    data={
+                        "failedPhase": "discovered",
+                        "reason": "source-advanced-before-bundle-verification",
+                    },
+                )
+                unfinished = None
         if unfinished is not None:
             commit = str(unfinished.document.get("sourceCommit") or "")
             source_ref = str(unfinished.document.get("sourceRef") or "refs/heads/main")
@@ -1965,19 +2033,28 @@ def update(
             _require_recovery_checkout(commit, runner)
             bundle_root = (cache_dir or _cache_dir()).expanduser().resolve() / commit
             if unfinished.phase == "discovered":
-                bundle = _prepare_update_bundle(
-                    commit,
-                    cache_dir=cache_dir,
-                    repository=repository,
-                    source_ref=source_ref,
-                    runner=runner,
-                )
                 current = _read_host_truth(host_root).get("release")
-                _bind_journal_bundle(
-                    unfinished,
-                    bundle,
-                    current_release=str(current) if current else None,
-                )
+                current_release = str(current) if current else None
+                try:
+                    bundle = _prepare_update_bundle(
+                        commit,
+                        cache_dir=cache_dir,
+                        repository=repository,
+                        source_ref=source_ref,
+                        runner=runner,
+                    )
+                    _bind_journal_bundle(
+                        unfinished,
+                        bundle,
+                        current_release=current_release,
+                    )
+                except Exception as exc:
+                    _record_pre_activation_failure(
+                        unfinished,
+                        current_release=current_release,
+                        error=exc,
+                    )
+                    raise
             else:
                 bundle = load_bundle(bundle_root, expected_ref=source_ref)
             _require_checkout(bundle, runner)
@@ -2019,43 +2096,52 @@ def update(
             )
 
         source_ref = _source_ref_for_update(to_ref)
-        commit = _resolve_update_target(to_ref, runner=runner)
+        commit = resolved_commit or _resolve_update_target(to_ref, runner=runner)
         current = _read_host_truth(host_root).get("release")
+        current_release = str(current) if current else None
         journal = _start_update_journal(
             commit,
             source_ref=source_ref,
-            current_release=str(current) if current else None,
+            current_release=current_release,
             state_dir=state_dir,
         )
-        bundle = _prepare_update_bundle(
-            commit,
-            cache_dir=cache_dir,
-            repository=repository,
-            source_ref=source_ref,
-            runner=runner,
-        )
-        _bind_journal_bundle(
-            journal,
-            bundle,
-            current_release=str(current) if current else None,
-        )
-        _require_checkout(bundle, runner)
-        _require_not_quarantined(bundle.release, state_dir)
-        preflight = _host_preflight(
-            runner=runner,
-            host_root=host_root,
-            check_ownership=check_ownership,
-        )
-        plan = _plan_update(bundle, preflight)
-        _bind_journal_preflight(journal, plan)
-        if plan_only:
-            journal.event("planned", current_release=plan.current_release)
-            return {
-                "plan": plan.public(),
-                "deploymentHealthy": False,
-                "physicalCertification": False,
-                "journal": str(journal.path),
-            }
+        try:
+            bundle = _prepare_update_bundle(
+                commit,
+                cache_dir=cache_dir,
+                repository=repository,
+                source_ref=source_ref,
+                runner=runner,
+            )
+            _bind_journal_bundle(
+                journal,
+                bundle,
+                current_release=current_release,
+            )
+            _require_checkout(bundle, runner)
+            _require_not_quarantined(bundle.release, state_dir)
+            preflight = _host_preflight(
+                runner=runner,
+                host_root=host_root,
+                check_ownership=check_ownership,
+            )
+            plan = _plan_update(bundle, preflight)
+            _bind_journal_preflight(journal, plan)
+            if plan_only:
+                journal.event("planned", current_release=plan.current_release)
+                return {
+                    "plan": plan.public(),
+                    "deploymentHealthy": False,
+                    "physicalCertification": False,
+                    "journal": str(journal.path),
+                }
+        except Exception as exc:
+            _record_pre_activation_failure(
+                journal,
+                current_release=current_release,
+                error=exc,
+            )
+            raise
 
         supplied = confirmation
         if supplied is None and input_fn is not None:
