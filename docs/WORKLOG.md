@@ -6918,3 +6918,67 @@ atribuída, e não como defeito do código nem como problema "resolvido".
 Continua aberto: 378 controles `not-probed`, handheld drawer, estados restantes
 de credenciais e diálogos, revalidação do card de plataforma, P0 visuais, G45 e
 validação física. A auditoria continua `partial` e o workstream, `active`.
+
+---
+
+## 2026-08-15 (8) — Fechamento: credenciais, card de plataforma e P0 visuais
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `a871559`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade (verificado antes de cada
+commit). Esta sessão substitui a reserva (7) anterior como fechamento da frente.
+
+### Jornada de credenciais com bridge real
+
+`check_credential_journey_e2e.qml` + `test_ui_credential_journey_e2e.py`
+provam, com o `Main` real e cliques Qt contra a bridge loopback: abrir o diálogo
+pela ação publicada e filtrar providers; salvar bloqueia duplicidade e limpa o
+segredo; testar valida e aceita rejeição lógica; falha de rede preserva o
+segredo e oferece nova tentativa; revogar volta a não configurado. O servidor de
+teste impõe barreiras por evento (`/release/{nome}`) e um modo
+`/credential/reject-tests` para a rejeição determinística. Duas armadilhas
+registradas para a próxima vez: tokens HTTP precisam ser ASCII
+(`secrets.compare_digest` quebra com acentuação) e contagem de botões em QML
+exige `instanceof Button` para não dobrar o `contentItem`.
+
+### Card de plataforma: reparo de emulador degradado
+
+A auditoria apontava o card de plataforma com CTA apenas "Abrir plataforma"
+quando o emulador está ausente. O workspace agora publica `emulator.repair:<id>`
+("Reparar <emulador>") quando a linha declara `installState: degraded`,
+preservando a secundária `platform.open:<id>`; nada é fabricado quando a linha
+não declara `installable`. Provas unit (reparo, cloud-open-only e
+compatibilidade com o `PlatformRegistry`) e QML (cliques primário/secundário
+publicando os payloads exatos, nomes acessíveis, e a transição Instalar →
+Abrir plataforma após o modelo republicar o card pronto).
+
+### P0 visuais reavaliados contra a árvore atual
+
+Recaptura da auditoria (55 PNGs, modo offline = tema claro fallback) e
+comparação pixel a pixel com a base de 2026-08-11. Os botões "AÇÕES DO SISTEMA"
+passaram de 0 para 494 pixels escuros de texto: P0-1/P0-2 (DarkButton no tema
+claro) estão corrigidos. A prova entra na suíte como
+`check_darkbutton_theme.qml` (label segue a paleta; o runner conta os pixels
+escuros do botão na cena salva). P0-3 (biblioteca sem capas) é dado: a UI
+renderiza a capa quando o read model publica `coverUrl` — agora provado no
+carrossel com `MediaEffectLayer` visível e `sourceStatus == Image.Ready` — e
+mantém placeholder honesto sem arte quando não há; a bridge enriquece `coverUrl`
+a partir dos metadados do jogo. P0-6 (jornada de temas) já estava fechada pelo
+redesenho: Aplicar, Duplicar e exportar desabilitado com motivo. O item
+`SZ-UI-DESKTOP-AUDIT` recebeu as novas provas, o digest do escopo e o ajuste
+mecânico do `SZ-THEME-AURA` (cujo escopo inclui `test_qml_handheld_offscreen.py`).
+
+### Gates
+
+Por item: ruff, ruff format --check, mypy e qmllint verdes; suíte offscreen
+(27 provas) verde. Gate integral numa árvore parada: **4513 passaram, 10
+skipados**; falha única pré-existente e não reproduzida após a reconciliação
+dos digests (`test_committed_catalog_and_generated_views_are_consistent`
+acusava digest obsoleto de `SZ-THEME-AURA`, corrigido nesta sessão; segunda
+execução integral sem a falha). `status-check` verde; `docs/STATUS.md`,
+`docs/ACTIVE-WORK.md` e `docs/status/COVERAGE.md` regenerados.
+
+Continua aberto: 378 controles `not-probed`, handheld drawer e demais estados
+de diálogos, G45 e validação física (operador), e a harmonização final com as
+PRs #78/#79/#80. A auditoria continua `partial`; o workstream sai `active` com
+a frente concluída na branch.
