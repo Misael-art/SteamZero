@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-HOST-RELEASE-UPDATE",
+  "title": "Atualizacao transacional e recuperavel do host",
+  "domain": "distribution",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "tools/release_host.py",
+    "tests/unit/test_release_host.py",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Um unico comando resolve o commit verde, valida o bundle e apresenta um plano imutavel antes da autorizacao.",
+    "A transacao mantem lock global e journal write-ahead atomico sem registrar segredos ou caminhos de dados do usuario.",
+    "Falha apos ativacao aciona rollback automatico para a release previamente verificada e comprova a recuperacao.",
+    "Reexecucao recupera uma transacao interrompida sem iniciar uma segunda ativacao concorrente.",
+    "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica."
+  ],
+  "evidence": [],
+  "nextAction": "Implementar o controlador update, failure injection e documentar a certificacao fisica separada.",
+  "activeWorkstreams": [
+    "WS-2026-08-HOST-RELEASE-UPDATE"
+  ],
+  "updatedAt": "2026-08-15",
+  "notes": "A autoridade privilegiada permanece exclusivamente em tools/install_host.py; esta frente nao instala nem constroi releases durante desenvolvimento."
+}

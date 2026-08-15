@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-HOST-RELEASE-UPDATE",
+  "item": "SZ-HOST-RELEASE-UPDATE",
+  "branch": "codex/transactional-host-update",
+  "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
+  "owner": "codex-host-update",
+  "state": "active",
+  "exclusivePaths": [
+    "tools/release_host.py",
+    "tests/unit/test_release_host.py",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Implementar update transacional sem tocar no host real e provar recuperacao por testes com injeção de falha.",
+  "updatedAt": "2026-08-15"
+}
