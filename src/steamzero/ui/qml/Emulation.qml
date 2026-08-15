@@ -2259,7 +2259,6 @@ Item {
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Buscar jogos")
                                 activeFocusOnTab: true
-                                focusPolicy: Qt.StrongFocus
                                 inputMethodHints: Qt.ImhNoPredictiveText
                                 onTextChanged: page.gameSearchText = text
                                 onActiveFocusChanged: {
@@ -2340,7 +2339,6 @@ Item {
                                 placeholderTextColor: page.mutedColor
                                 selectByMouse: true
                                 activeFocusOnTab: true
-                                focusPolicy: Qt.StrongFocus
                                 inputMethodHints: Qt.ImhNoPredictiveText
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: page.minimumTouchTarget
