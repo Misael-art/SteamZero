@@ -11,7 +11,9 @@
   "distribution": "not-packaged",
   "scopePaths": [
     "tools/release_host.py",
+    "tools/install_host.py",
     "tests/unit/test_release_host.py",
+    "tests/integration/test_host_installer.py",
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],

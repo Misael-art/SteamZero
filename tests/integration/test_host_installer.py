@@ -220,6 +220,15 @@ def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
     assert captured["dir"] == install_host._SMOKE_TMPDIR
 
 
+def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    release.chmod(0o777)
+
+    with pytest.raises(RuntimeError, match="permissões inseguras"):
+        install_host._verify_release(release, require_root_ownership=True)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")
