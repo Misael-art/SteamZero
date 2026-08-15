@@ -18,7 +18,7 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
-  "scopeDigest": "b07fd2070fe5fd99f42d20eeae33eb8f11884e5e98c874410a28f629fd8dab12",
+  "scopeDigest": "3288a281711a619d8b504f32916b0bfdac742ae19f5798c2ba30461db2c1dfe2",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
