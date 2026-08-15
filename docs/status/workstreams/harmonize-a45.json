@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-HARMONIZE-A45",
   "item": "SZ-GOVERNANCE-STATUS",
-  "branch": "codex/harmonize-a45-integration",
-  "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
-  "owner": "harmonize-a45-agent",
+  "branch": "codex/harmonize-ui-g45-release-candidate",
+  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
+  "owner": "release-candidate-integration",
   "state": "active",
   "exclusivePaths": [
     "docs/status",
@@ -30,6 +30,6 @@
     "src/steamzero/ui",
     "docs/KNOWN-GAPS.md"
   ],
-  "nextAction": "Integracao funcional G45+UI concluida em codex/harmonize-a45-integration (merge-tree sem conflito textual; schema/QML/controller com os dois lados; 108 testes UI+controller e 60 failure-injection verdes). Digests GOVERNANCE e UI-DESKTOP-AUDIT recalculados da arvore integrada; STATUS/COVERAGE/ACTIVE-WORK regenerados. Falta: validacao completa da suite isolada e CI da PR de harmonizacao. Branch anterior codex/harmonize-main-a45 (864d698) ficou orfa: conteudo ja absorvido pelo main via #65/#66.",
-  "updatedAt": "2026-08-14"
+  "nextAction": "Integrar a entrega final de UI 2993413 e a automacao transacional corrigida sobre a PR #80 sem mesclar em main; recalcular digests, executar gates completos e preparar candidato para CI e certificacao fisica obrigatoria.",
+  "updatedAt": "2026-08-15"
 }

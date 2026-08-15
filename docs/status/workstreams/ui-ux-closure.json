@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-UI-FUNCTIONAL-CLOSURE",
   "item": "SZ-UI-DESKTOP-AUDIT",
-  "branch": "codex/ui-ux-functional-closure-surface-audit",
-  "baseRef": "b7ad8183efc6244426e598ddc6ab8b59900f1247",
-  "owner": "ui-ux-surface-audit",
+  "branch": "codex/harmonize-ui-g45-release-candidate",
+  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
+  "owner": "release-candidate-integration",
   "state": "active",
   "exclusivePaths": [
     "tests/integration/test_ui_action_inventory.py",
@@ -28,6 +28,6 @@
     "src/steamzero/ui/qml/SteamGameplay.qml",
     "tests/qml/check_editorial_library.qml"
   ],
-  "nextAction": "Matriz de controles verde nas 3 classes de defeito (288 controles, 12 superficies), mas 215 controles seguem not-probed por serem invisiveis no estado offline e so 'sync' esta integralmente sondada. Proximo: injetar fixtures de estado (empty, stale, degraded, ready) para tornar os controles visiveis e sondaveis, depois dialogs/recovery/jobs, e so entao os P0 visuais. Validacao fisica no Deck segue com o operador.",
-  "updatedAt": "2026-08-13"
+  "nextAction": "Integrar 2993413 sobre a PR #80, preservar jornadas de dialogs, jobs, recovery, credenciais, card de plataforma e provas visuais; recalcular cobertura real e manter gaps not-probed explicitamente abertos.",
+  "updatedAt": "2026-08-15"
 }
