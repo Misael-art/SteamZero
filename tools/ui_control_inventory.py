@@ -49,10 +49,12 @@ _VERDICT_RANK = {
     "silent-no-op": 0,
     "unrouted": 1,
     "blocked-silent": 2,
-    "not-probed": 3,
-    "blocked-explained": 4,
-    "handled-locally": 5,
-    "routed": 6,
+    "blocked-explained": 3,
+    "handled-locally": 4,
+    "routed": 5,
+    # Invisível num cenário não desfaz a prova obtida em outro. Este veredito
+    # só permanece quando o controle nunca foi exercitado em cenário algum.
+    "not-probed": 6,
 }
 
 

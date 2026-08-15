@@ -37,6 +37,14 @@ def _describe(control: dict) -> str:
     return f"{control['surface']} → {label!r} ({control['kind']})"
 
 
+def _diagnose(control: dict) -> str:
+    return (
+        f"{_describe(control)} id={control.get('objectName')!r} "
+        f"path={control.get('path')!r} visible={control.get('visible')} "
+        f"enabled={control.get('enabled')} note={control.get('probeNote')!r}"
+    )
+
+
 def test_no_enabled_control_is_a_silent_no_op(inventory: dict) -> None:
     """Um controle habilitado que não produz efeito nem erro é uma promessa falsa."""
     offenders = [
@@ -95,6 +103,52 @@ def test_the_probe_reached_every_declared_surface(inventory: dict) -> None:
     assert inventory["surfaceCount"] >= 12
     assert inventory["verdictCounts"].get("routed", 0) > 0
     assert inventory["verdictCounts"].get("handled-locally", 0) > 0
+
+
+@pytest.mark.parametrize("surface", ["handheld-drawer", "task-drawer"])
+def test_drawer_controls_are_exercised_while_the_drawer_is_open(
+    inventory: dict, surface: str
+) -> None:
+    """Contar controles de um Drawer fechado não é sondar sua jornada.
+
+    O inventário anterior publicava todos os dez controles do drawer portátil
+    e os dois do drawer de tarefas como ``not-probed`` porque percorria os
+    Popups fechados. A sonda precisa abrir a superfície, esperar sua animação e
+    só então ativar cada controle.
+    """
+    verdicts = inventory["bySurface"].get(surface, {})
+    unprobed = [
+        _diagnose(control)
+        for control in inventory["controls"]
+        if control.get("surface") == surface and control.get("verdict") == "not-probed"
+    ]
+    assert sum(verdicts.values()) > 0, f"{surface} não entrou no inventário"
+    assert verdicts.get("not-probed", 0) == 0, (
+        f"{surface} ainda tem controles não exercitados: {verdicts}\n" + "\n".join(unprobed)
+    )
+
+
+def _scenario_run(verdict: str) -> dict:
+    return {
+        "context": {"scenario": verdict},
+        "controls": [{"controlId": "id:shared", "verdict": verdict}],
+    }
+
+
+def test_a_probe_in_one_scenario_outweighs_invisibility_in_another() -> None:
+    """Um controle oculto em `ready` continua coberto se foi exercitado em `error`."""
+    controls = matrix.merge_scenarios(
+        [_scenario_run("handled-locally"), _scenario_run("not-probed")]
+    )
+    assert controls[0]["verdict"] == "handled-locally"
+
+
+@pytest.mark.parametrize("failure", matrix.FAILING_VERDICTS)
+def test_a_real_failure_still_outweighs_a_successful_scenario(failure: str) -> None:
+    controls = matrix.merge_scenarios(
+        [_scenario_run("routed"), _scenario_run(failure), _scenario_run("not-probed")]
+    )
+    assert controls[0]["verdict"] == failure
 
 
 def test_probe_context_is_recorded(inventory: dict) -> None:
