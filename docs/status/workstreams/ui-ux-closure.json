@@ -36,6 +36,6 @@
     "src/steamzero/ui/qml/SteamGameplay.qml",
     "tests/qml/check_editorial_library.qml"
   ],
-  "nextAction": "Entrega 2993413 integrada ao candidato G45: preservar cliques Qt contra a bridge loopback, deduplicacao, task drawer, credenciais, card de plataforma e provas visuais; recalcular a cobertura na arvore harmonizada e manter 378 controles not-probed, handheld drawer e demais estados explicitamente abertos ate nova medicao. Teste fisico e merge das PRs #78/#79/#80 permanecem bloqueados ate certificacao do operador.",
+  "nextAction": "Release 0.1.0a46-a02dae5f60ac instalada com smoke QML saudavel; executar teste fisico, manter 378 controles not-probed e handheld drawer abertos e nao integrar #78/#79/#80/#81 antes da certificacao do operador.",
   "updatedAt": "2026-08-15"
 }

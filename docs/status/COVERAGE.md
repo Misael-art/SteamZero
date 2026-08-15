@@ -30,12 +30,12 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 18 | 1 | 1 | dev |  |
-| SZ-HOST-RELEASE-UPDATE | 7 | 2 | 2 | dev |  |
+| SZ-HOST-RELEASE-UPDATE | 8 | 3 | 3 | dev |  |
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-AURA | 11 | 2 | 2 | unit |  |
 | SZ-THEME-EDITOR | 8 | 4 | 4 | unit |  |
-| SZ-UI-DESKTOP-AUDIT | 233 | 15 | 15 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 233 | 16 | 16 | dev |  |
 
 Arquivos em `src/`: **447**. Sob agregador apenas, sem item de capacidade: **321** (71%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

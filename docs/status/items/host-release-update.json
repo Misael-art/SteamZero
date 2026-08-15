@@ -4,11 +4,11 @@
   "id": "SZ-HOST-RELEASE-UPDATE",
   "title": "Atualizacao transacional e recuperavel do host",
   "domain": "distribution",
-  "implementation": "partial",
+  "implementation": "complete",
   "integration": "feature-branch",
   "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "operation": "ready",
+  "distribution": "installed",
   "scopePaths": [
     ".github/workflows/ci.yml",
     "tools/release_host.py",
@@ -16,9 +16,10 @@
     "tests/unit/test_release_host.py",
     "tests/integration/test_host_installer.py",
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
-    "docs/09-operations/UPDATE-AND-ROLLBACK.md"
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md",
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md"
   ],
-  "scopeDigest": "6a31431e5f84830517150ee2bf90f40e1478ee04b3183d883c0f6e40edbd85ce",
+  "scopeDigest": "30eba4815b847d49404ef2b2d6ee4c6149c9606be51fbc0dc44fda2f43748b6a",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
@@ -48,12 +49,18 @@
       "reference": "tests/integration/test_host_installer.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py tests/integration/test_host_installer.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+      "command": "tools/release_host.py update --to origin/codex/harmonize-ui-g45-release-candidate --confirm-update <token-exato>",
+      "result": "passed"
     }
   ],
-  "nextAction": "Executar os gates integrais, obter CI verde da candidata corrigida, repetir a atualizacao transacional em ambiente real e recolher a certificacao fisica do operador antes de integrar em main.",
+  "nextAction": "Recolher a certificacao fisica de boot, G45, controle, Game Mode e fallback para a release 0.1.0a46-a02dae5f60ac antes de integrar em main ou publicar a tag.",
   "activeWorkstreams": [
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "A candidata fecha com testes os riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. Duas instalacoes reais ativaram candidatas, reprovaram na convergencia e restauraram/verificaram automaticamente 0.1.0a46-40aa9bafa062. A segunda preservou a causa estruturada E-HOST-CURRENT-UNREADABLE: o smoke da release nova observava current ja apontado para a candidata e o daemon ainda antigo antes de a convergencia poder reinicia-lo, criando uma pre-condicao circular. O smoke agora recebe um link current isolado e inexistente, enquanto a verificacao real posterior a convergencia continua observando o host ativo. O CI seguinte ficou preso por mais de dez minutos no apt opcional de Qt/Python 3.11; esse passo best-effort agora tem timeout de cinco minutos e guarda automatizada, sem enfraquecer os gates obrigatorios. Operacao real permanece em investigacao e certificacao fisica continua pendente."
+  "notes": "A candidata fecha com testes os riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. Duas instalacoes reais ativaram candidatas, reprovaram na convergencia e restauraram/verificaram automaticamente 0.1.0a46-40aa9bafa062. A segunda preservou a causa estruturada E-HOST-CURRENT-UNREADABLE: o smoke da release nova observava current ja apontado para a candidata e o daemon ainda antigo antes de a convergencia poder reinicia-lo, criando uma pre-condicao circular. O smoke agora recebe um link current isolado e inexistente, enquanto a verificacao real posterior a convergencia continua observando o host ativo. O CI seguinte ficou preso por mais de dez minutos no apt opcional de Qt/Python 3.11; esse passo best-effort agora tem timeout de cinco minutos e guarda automatizada, sem enfraquecer os gates obrigatorios. Em 2026-08-15 o SHA a02dae5f60acd6bc2df50fee462f2134b8891f47 passou em dois runs CI completos e foi ativado como 0.1.0a46-a02dae5f60ac: daemon convergido e idempotente, doctor sem blockers, schema 20, state.db preservado, Game Mode ready, QML offscreen vivo, service/socket ativos e rollback 0.1.0a46-40aa9bafa062 disponivel. O ciclo legado recusou corretamente proveniencia fora de refs/heads/main e nao foi contornado. deploymentHealthy e verdadeiro; physicalCertification permanece falso, portanto merge e tag continuam proibidos."
 }

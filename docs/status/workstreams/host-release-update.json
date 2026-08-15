@@ -14,7 +14,8 @@
     "tests/unit/test_release_host.py",
     "tests/integration/test_host_installer.py",
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
-    "docs/09-operations/UPDATE-AND-ROLLBACK.md"
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md",
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md"
   ],
   "sharedPaths": [
     "docs/status",
@@ -22,6 +23,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Provar em CI a isolacao do smoke, repetir a atualizacao transacional e validar a release ativa; manter publish e merge em main bloqueados ate instalacao saudavel e certificacao fisica.",
+  "nextAction": "Release 0.1.0a46-a02dae5f60ac ativa e saudavel; recolher certificacao fisica do operador e somente entao coordenar integracao e publicacao.",
   "updatedAt": "2026-08-15"
 }

@@ -8,7 +8,7 @@
   "integration": "feature-branch",
   "verification": "dev",
   "operation": "degraded",
-  "distribution": "not-packaged",
+  "distribution": "installed",
   "scopePaths": [
     "docs/09-operations/evidence/2026-08-11-ui-audit",
     "src/steamzero/adapters/desktop_ui.py",
@@ -157,6 +157,12 @@
       "reference": "tests/unit/test_desktop_contracts.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_desktop_contracts.py tests/integration/test_ui_dialog_keys.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+      "command": "tools/release_host.py update --to origin/codex/harmonize-ui-g45-release-candidate --confirm-update <token-exato>",
+      "result": "passed"
     }
   ],
   "nextAction": "Jornadas de credenciais (salvar/testar/revogar) provadas pela bridge loopback com cliques Qt reais; card de plataforma revalidado com fix de dominio (emulador degradado oferece Reparar) e provas unit/QML; P0 visuais reavaliados contra a arvore atual: P0-1/P0-2 (DarkButton no tema claro) corrigidos e provados por pixels, P0-4/P0-5 (instalacao no-op e fragmentada) fechados pelo wiring componente+card, P0-6 (jornada de temas) fechada pelo redesenho (Aplicar, Duplicar e exportar desabilitado com motivo), P0-3 (biblioteca sem capas) e dado: a UI renderiza a capa quando o read model publica coverUrl (provado) e mantem placeholder honesto sem arte quando nao ha; a bridge enriquece coverUrl a partir dos metadados do jogo. Auditoria ainda incompleta: 378 controles not-probed, handheld drawer e demais estados de dialogs, alem de G45 e validacao fisica (operador).",
@@ -164,5 +170,5 @@
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A segunda execucao do CI revelou que QtQuick.Effects so existe desde Qt 6.5; o renderer agora isola MultiEffect, mantem imagem, opacidade e vinheta no fallback Qt 6.4 e ativa a pilha avancada somente quando o launcher prova a capacidade. A terceira execucao revelou palette.accent ausente no Qt 6.4; a atribuicao redundante foi removida, palette.highlight preserva o realce, e Main.qml passou 7 jornadas reais em Ubuntu 24.04/Qt 6.4.2 isolado. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A segunda execucao do CI revelou que QtQuick.Effects so existe desde Qt 6.5; o renderer agora isola MultiEffect, mantem imagem, opacidade e vinheta no fallback Qt 6.4 e ativa a pilha avancada somente quando o launcher prova a capacidade. A terceira execucao revelou palette.accent ausente no Qt 6.4; a atribuicao redundante foi removida, palette.highlight preserva o realce, e Main.qml passou 7 jornadas reais em Ubuntu 24.04/Qt 6.4.2 isolado. O codigo harmonizado foi instalado no host como 0.1.0a46-a02dae5f60ac e o smoke QML da release permaneceu vivo offscreen; isso prova distribuicao instalada, nao experiencia fisica. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
 }
