@@ -28,6 +28,35 @@ from steamzero.domain.desktop import (
 from steamzero.ports import CaptureConsent
 
 
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ("Qml Runtime 6.11.1", True),
+        ("Qml Runtime 6.5.0", True),
+        ("Qml Runtime 6.4.2", False),
+        ("versão desconhecida", False),
+    ],
+)
+def test_quick_effects_capability_follows_qt_runtime(
+    monkeypatch: pytest.MonkeyPatch, output: str, expected: bool
+) -> None:
+    completed = desktop_ui.subprocess.CompletedProcess(
+        args=["qml6", "--version"], returncode=0, stdout=output, stderr=""
+    )
+    monkeypatch.setattr(desktop_ui.subprocess, "run", lambda *_args, **_kwargs: completed)
+    assert desktop_ui._qml_supports_quick_effects("/usr/bin/qml6") is expected
+
+
+def test_quick_effects_probe_failure_degrades_without_blocking_ui(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_probe(*_args: object, **_kwargs: object) -> None:
+        raise OSError("runtime indisponível durante a sonda")
+
+    monkeypatch.setattr(desktop_ui.subprocess, "run", fail_probe)
+    assert desktop_ui._qml_supports_quick_effects("/usr/bin/qml6") is False
+
+
 class Context:
     def snapshot(self) -> DesktopContext:
         return DesktopContext(
@@ -140,6 +169,7 @@ def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
     monkeypatch.setattr(desktop_ui.shutil, "which", lambda _name: "/usr/bin/qml6")
     monkeypatch.setattr(desktop_ui, "DesktopDashboard", lambda: object())
     monkeypatch.setattr(desktop_ui, "DesktopControlServer", Server)
+    monkeypatch.setattr(desktop_ui, "_qml_supports_quick_effects", lambda _executable: True)
     monkeypatch.setattr(desktop_ui.subprocess, "Popen", popen)
 
     assert desktop_ui.launch_desktop_ui(Coordinator()) == 0  # type: ignore[arg-type]
@@ -147,6 +177,7 @@ def test_ui_bootstrap_does_not_put_snapshot_in_process_arguments(
     assert argv[0] == "/usr/bin/qml6"
     assert "--steamzero-api" in argv
     assert "--steamzero-token" in argv
+    assert "--steamzero-qtquick-effects" in argv
     assert sum(len(value) for value in argv) < 4096
     assert launch_env["QT_QUICK_BACKEND"] == "software"
 

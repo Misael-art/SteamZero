@@ -50,6 +50,7 @@ Item {
         }
 
         MultiEffect {
+            id: reflectionEffect
             anchors.fill: parent
             source: root.sourceItem
             opacity: root.reflectionOpacity
@@ -59,8 +60,8 @@ Item {
                 hideSource: true
             }
             transform: Scale {
-                origin.x: width / 2
-                origin.y: height / 2
+                origin.x: reflectionEffect.width / 2
+                origin.y: reflectionEffect.height / 2
                 yScale: -1
             }
         }

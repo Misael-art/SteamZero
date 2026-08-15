@@ -154,11 +154,20 @@ def test_effect_namespace_round_trips_with_its_own_version() -> None:
 
 def test_renderer_uses_one_source_and_never_accepts_a_theme_shader() -> None:
     component = Path("src/steamzero/ui/qml/MediaEffectLayer.qml").read_text(encoding="utf-8")
+    advanced = Path("src/steamzero/ui/qml/MediaMultiEffectRenderer.qml").read_text(encoding="utf-8")
     assert component.count("source: root.source") == 1
-    assert "source: mediaTexture" in component
-    assert "ShaderEffect {" not in component
-    assert "ReflectionLayer" in component
+    assert 'source: active ? "MediaMultiEffectRenderer.qml" : ""' in component
+    assert "source: root.sourceItem" in advanced
+    assert "ShaderEffect {" not in component + advanced
+    assert "ReflectionLayer" in advanced
     assert "VignetteLayer" in component
+
+
+def test_renderer_keeps_qt_64_fallback_free_of_qtquick_effects() -> None:
+    component = Path("src/steamzero/ui/qml/MediaEffectLayer.qml").read_text(encoding="utf-8")
+    assert "import QtQuick.Effects" not in component
+    assert "hideSource: root.advancedEffectsLoaded" in component
+    assert "--steamzero-qtquick-effects" in component
 
 
 def test_default_renderer_negotiates_trusted_reflection_and_gradient_mask() -> None:

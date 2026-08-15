@@ -11,6 +11,7 @@
   "distribution": "not-packaged",
   "scopePaths": [
     "docs/09-operations/evidence/2026-08-11-ui-audit",
+    "src/steamzero/adapters/desktop_ui.py",
     "src/steamzero/ui",
     "src/steamzero/ui/qml/EditorialHome.qml",
     "tests/integration/test_ui_control_identity.py",
@@ -31,10 +32,11 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py",
     "tests/integration/test_ui_credential_journey_e2e.py",
+    "tests/integration/test_desktop_ui_bridge.py",
     "tests/qml/check_credential_journey_e2e.qml",
     "tests/qml/check_darkbutton_theme.qml"
   ],
-  "scopeDigest": "683291dc03174e474f707ae9bc0b9e76826138139ae44ca7646b93865003fa64",
+  "scopeDigest": "d8560a9f6421888d6b96b5b0311911e4317dc2d4e6fd5af4cedb0bc690ff5f09",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -61,7 +63,8 @@
     "Sucesso de confirmacao e recovery so e publicado apos refresh pela bridge.",
     "Task drawer distingue carregando, vazio e erro e oferece nova tentativa acionavel.",
     "Cancelar e repetir jobs sao provados por cliques Qt reais contra a bridge.",
-    "Falha de recovery mantem o dialog aberto, anuncia o erro e permite nova tentativa."
+    "Falha de recovery mantem o dialog aberto, anuncia o erro e permite nova tentativa.",
+    "A biblioteca permanece carregavel no Qt 6.4 sem QtQuick.Effects e preserva os efeitos avancados em Qt 6.5+."
   ],
   "evidence": [
     {
@@ -141,6 +144,12 @@
       "reference": "tests/qml/check_editorial_library.qml",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_desktop_ui_bridge.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_desktop_ui_bridge.py tests/unit/test_theme_effects.py -q",
+      "result": "passed"
     }
   ],
   "nextAction": "Jornadas de credenciais (salvar/testar/revogar) provadas pela bridge loopback com cliques Qt reais; card de plataforma revalidado com fix de dominio (emulador degradado oferece Reparar) e provas unit/QML; P0 visuais reavaliados contra a arvore atual: P0-1/P0-2 (DarkButton no tema claro) corrigidos e provados por pixels, P0-4/P0-5 (instalacao no-op e fragmentada) fechados pelo wiring componente+card, P0-6 (jornada de temas) fechada pelo redesenho (Aplicar, Duplicar e exportar desabilitado com motivo), P0-3 (biblioteca sem capas) e dado: a UI renderiza a capa quando o read model publica coverUrl (provado) e mantem placeholder honesto sem arte quando nao ha; a bridge enriquece coverUrl a partir dos metadados do jogo. Auditoria ainda incompleta: 378 controles not-probed, handheld drawer e demais estados de dialogs, alem de G45 e validacao fisica (operador).",
@@ -148,5 +157,5 @@
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A segunda execucao do CI revelou que QtQuick.Effects so existe desde Qt 6.5; o renderer agora isola MultiEffect, mantem imagem, opacidade e vinheta no fallback Qt 6.4 e ativa a pilha avancada somente quando o launcher prova a capacidade. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
 }
