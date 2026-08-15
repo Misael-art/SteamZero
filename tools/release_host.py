@@ -83,6 +83,16 @@ class AutomationError(RuntimeError):
     """Falha pública e acionável da automação."""
 
 
+class ConvergenceError(AutomationError):
+    """Falha estruturada devolvida pelo convergidor estável do host."""
+
+    def __init__(self, report: dict[str, object]) -> None:
+        self.state = str(report.get("state") or "unknown")
+        self.code = str(report.get("code") or "E-HOST-CONVERGENCE")
+        self.detail = str(report.get("detail") or "convergência sem detalhe")[:400]
+        super().__init__(f"{self.code}: {self.detail}")
+
+
 @dataclass(frozen=True)
 class Bundle:
     root: Path
@@ -1238,23 +1248,28 @@ def _converge(
     *,
     runner: CommandRunner,
 ) -> dict[str, object]:
-    first = _run(
-        [str(HOST_MANAGER), "converge", "--expect-release", release],
-        timeout=120,
-        runner=runner,
-        purpose=f"convergência {release}",
-    )
-    second = _run(
-        [str(HOST_MANAGER), "converge", "--expect-release", release],
-        timeout=120,
-        runner=runner,
-        purpose=f"idempotência {release}",
-    )
-    try:
-        first_data = json.loads(first.stdout)
-        second_data = json.loads(second.stdout)
-    except json.JSONDecodeError as exc:
-        raise AutomationError("steamzero-host converge devolveu JSON inválido") from exc
+    def execute(purpose: str) -> dict[str, object]:
+        argv = [str(HOST_MANAGER), "converge", "--expect-release", release]
+        try:
+            completed = runner(argv, ROOT, 120)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise AutomationError(f"{purpose}: {exc}") from exc
+        try:
+            payload = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            detail = (completed.stderr or completed.stdout).strip()[-1200:]
+            raise AutomationError(
+                f"{purpose} devolveu JSON inválido (exit {completed.returncode}): {detail}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise AutomationError(f"{purpose} não devolveu objeto JSON")
+        report = _convergence_report(payload)
+        if completed.returncode != 0:
+            raise ConvergenceError(report)
+        return payload
+
+    first_data = execute(f"convergência {release}")
+    second_data = execute(f"idempotência {release}")
     first_report = _convergence_report(first_data)
     second_report = _convergence_report(second_data)
     if first_report.get("state") != "converged":
@@ -1706,7 +1721,19 @@ def _finish_failed_update(
     record(
         "rollback-required",
         current_release=str(current) if current else None,
-        data={"failedPhase": failed_phase, "errorType": type(original_error).__name__},
+        data={
+            "failedPhase": failed_phase,
+            "errorType": type(original_error).__name__,
+            **(
+                {
+                    "failureState": original_error.state,
+                    "failureCode": original_error.code,
+                    "failureDetail": original_error.detail,
+                }
+                if isinstance(original_error, ConvergenceError)
+                else {}
+            ),
+        },
     )
     try:
         _mark_quarantined(

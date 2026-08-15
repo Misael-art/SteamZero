@@ -1133,6 +1133,63 @@ def test_failure_after_activation_rolls_back_and_quarantines_target(
     assert json.loads(quarantine.read_text(encoding="utf-8"))["state"] == "failed-verification"
 
 
+def test_structured_convergence_failure_is_preserved_in_rollback_journal(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    _patch_update_runtime(monkeypatch, runner)
+    original_runner = runner.__call__
+
+    def structured_failure(
+        argv: Sequence[str],
+        cwd: Path,
+        timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        if (
+            tuple(argv[:3]) == (str(release_host.HOST_MANAGER), "converge", "--expect-release")
+            and runner.current == bundle.release
+        ):
+            payload = {
+                "ok": False,
+                "data": {
+                    "state": "restartFailed",
+                    "code": "E-HOST-RESTART-FAILED",
+                    "detail": "daemon-reload falhou: transporte indisponível",
+                    "restarted": False,
+                    "attempts": 0,
+                },
+            }
+            return subprocess.CompletedProcess(argv, 1, json.dumps(payload), "")
+        return original_runner(argv, cwd, timeout)
+
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=structured_failure,
+            state_dir=tmp_path / "state",
+        )
+
+    rollback_required = next(
+        event for event in journal.document["events"] if event["phase"] == "rollback-required"
+    )
+    assert rollback_required["data"] == {
+        "errorType": "ConvergenceError",
+        "failedPhase": "activated",
+        "failureCode": "E-HOST-RESTART-FAILED",
+        "failureDetail": "daemon-reload falhou: transporte indisponível",
+        "failureState": "restartFailed",
+    }
+    assert runner.current == plan.rollback_release
+
+
 def test_failure_before_activation_does_not_attempt_rollback(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

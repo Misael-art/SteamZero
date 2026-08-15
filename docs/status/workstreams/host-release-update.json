@@ -22,6 +22,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Rodar gates integrais, publicar a branch candidata sem force-push, exigir CI push verde e somente entao planejar o ciclo real com token exato; manter publish e merge em main bloqueados ate a certificacao fisica.",
+  "nextAction": "Validar a evidencia estruturada da falha de convergencia, obter novo CI verde e repetir a atualizacao transacional; manter publish e merge em main bloqueados ate instalacao saudavel e certificacao fisica.",
   "updatedAt": "2026-08-15"
 }
