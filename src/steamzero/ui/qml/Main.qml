@@ -2779,6 +2779,7 @@ ApplicationWindow {
                                 objectName: "task-error-retry"
                                 text: qsTr("Tentar novamente")
                                 Layout.minimumHeight: 48
+                                Layout.preferredHeight: 48
                                 Accessible.name: qsTr("Tentar carregar tarefas novamente")
                                 onClicked: root.refreshTasks()
                             }
@@ -2861,6 +2862,9 @@ ApplicationWindow {
                                 RowLayout {
                                     visible: modelData.canCancel || modelData.canRetry
                                     Layout.fillWidth: true
+                                    Layout.minimumHeight: 48
+                                    Layout.preferredHeight: 48
+                                    implicitHeight: 48
                                     Item { Layout.fillWidth: true }
                                     Button {
                                         objectName: "task-cancel-" + modelData.jobId
@@ -2871,6 +2875,8 @@ ApplicationWindow {
                                         text: cancelling ? qsTr("Cancelando…") : qsTr("Cancelar")
                                         enabled: !cancelling
                                         Layout.minimumHeight: 48
+                                        Layout.preferredHeight: 48
+                                        implicitHeight: 48
                                         Accessible.name: qsTr("Cancelar %1").arg(root.taskLabel(modelData.type))
                                         onClicked: root.requestAction("job.cancel", cancelPayload, function() {
                                             root.refreshTasks()
@@ -2886,6 +2892,8 @@ ApplicationWindow {
                                         text: retrying ? qsTr("Reiniciando…") : qsTr("Tentar novamente")
                                         enabled: !retrying
                                         Layout.minimumHeight: 48
+                                        Layout.preferredHeight: 48
+                                        implicitHeight: 48
                                         Accessible.name: qsTr("Tentar novamente %1").arg(root.taskLabel(modelData.type))
                                         onClicked: root.requestAction("job.retry", retryPayload, function() {
                                             root.refreshTasks()

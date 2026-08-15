@@ -2066,6 +2066,7 @@ Item {
                                             visible: page.platformMissingEmulator(modelData)
                                                 && !modelData.secondaryAction
                                             text: qsTr("Ver emuladores")
+                                            Accessible.name: text
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.description: qsTr("Rola até a lista de instalação e reparo")
