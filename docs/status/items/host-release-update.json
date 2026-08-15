@@ -18,7 +18,7 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
-  "scopeDigest": "3288a281711a619d8b504f32916b0bfdac742ae19f5798c2ba30461db2c1dfe2",
+  "scopeDigest": "c6ab101dd863f505121dd4b3443505ba7e064ca31fc53851c93d1b40416a056f",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
@@ -29,7 +29,8 @@
     "A transacao mantem lock global e journal write-ahead atomico sem registrar segredos ou caminhos de dados do usuario.",
     "Falha apos ativacao aciona rollback automatico para a release previamente verificada e comprova a recuperacao.",
     "Reexecucao recupera uma transacao interrompida sem iniciar uma segunda ativacao concorrente.",
-    "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica."
+    "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica.",
+    "Todo artefato de cadeia de suprimentos publicado pelo CI possui checksum validado antes do plano de instalacao."
   ],
   "evidence": [
     {
@@ -50,5 +51,5 @@
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. Operacao real e certificacao fisica continuam pendentes."
+  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Operacao real e certificacao fisica continuam pendentes."
 }

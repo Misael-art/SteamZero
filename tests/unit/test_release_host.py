@@ -224,6 +224,15 @@ def test_bundle_requires_checksummed_sbom_and_audit(tmp_path: Path) -> None:
         release_host.load_bundle(root)
 
 
+def test_ci_checksums_the_uploaded_vulnerability_audit() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    checksum_step = workflow.split("- name: Gerar proveniência local e checksums", 1)[1].split(
+        "- name: Atestar proveniência assinada em tags", 1
+    )[0]
+    assert "sha256sum dist/*.whl build/pip-audit.json build/sbom.cdx.json" in checksum_step
+    assert "build/provenance.json > build/SHA256SUMS" in checksum_step
+
+
 @pytest.mark.parametrize(
     "listing",
     [
