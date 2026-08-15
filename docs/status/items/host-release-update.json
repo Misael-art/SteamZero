@@ -4,9 +4,9 @@
   "id": "SZ-HOST-RELEASE-UPDATE",
   "title": "Atualizacao transacional e recuperavel do host",
   "domain": "distribution",
-  "implementation": "partial",
+  "implementation": "complete",
   "integration": "feature-branch",
-  "verification": "none",
+  "verification": "dev",
   "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
@@ -17,6 +17,7 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
+  "scopeDigest": "25c079b1cf8bfd4e21445b98fac40328fd6094aa8920c42267b2f7ff44f0af5e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -26,11 +27,22 @@
     "Reexecucao recupera uma transacao interrompida sem iniciar uma segunda ativacao concorrente.",
     "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica."
   ],
-  "evidence": [],
-  "nextAction": "Implementar o controlador update, failure injection e documentar a certificacao fisica separada.",
-  "activeWorkstreams": [
-    "WS-2026-08-HOST-RELEASE-UPDATE"
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_release_host.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_host_installer.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py tests/integration/test_host_installer.py -q",
+      "result": "passed"
+    }
   ],
+  "nextAction": "Integrar a branch, aguardar CI verde e executar VM install-rollback-roll-forward antes de qualquer uso no host.",
+  "activeWorkstreams": [],
   "updatedAt": "2026-08-15",
-  "notes": "A autoridade privilegiada permanece exclusivamente em tools/install_host.py; esta frente nao instala nem constroi releases durante desenvolvimento."
+  "notes": "Commit funcional 71c026b: lock global, journal write-ahead, retomada, smokes, quarentena e rollback automatico verificado. A autoridade privilegiada permanece exclusivamente em tools/install_host.py. Suite local: 4472 passed, 10 skipped; nenhum build ou instalacao de release foi executado."
 }

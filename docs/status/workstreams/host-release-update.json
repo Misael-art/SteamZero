@@ -6,7 +6,7 @@
   "branch": "codex/transactional-host-update",
   "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
   "owner": "codex-host-update",
-  "state": "active",
+  "state": "closed",
   "exclusivePaths": [
     "tools/release_host.py",
     "tools/install_host.py",
@@ -21,6 +21,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Implementar update transacional sem tocar no host real e provar recuperacao por testes com injeção de falha.",
+  "nextAction": "Implementacao concluida em 71c026b; integrar, validar CI/VM e manter certificacao fisica sob responsabilidade do operador.",
   "updatedAt": "2026-08-15"
 }
