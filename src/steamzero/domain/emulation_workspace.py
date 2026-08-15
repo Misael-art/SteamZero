@@ -104,6 +104,19 @@ def _platform_card_actions(
 
     emulator_id = str(installable["id"])
     name = str(installable.get("name") or installable.get("displayName") or emulator_id)
+    if installable.get("installState") == "degraded":
+        # G27: degradado não é "não instalado" — arquivos existem e o drift tem
+        # causa preservada. Reinstalar não corrige drift; o lifecycle declara a
+        # ação de reparo e o card a anuncia com o mesmo verbo do painel de
+        # gestão, em vez de prometer instalação.
+        primary = {
+            "id": f"emulator.repair:{emulator_id}",
+            "label": f"Reparar {name}",
+            "enabled": True,
+            "reason": None,
+            "requiresConfirmation": True,
+        }
+        return primary, _open_platform_action(platform_id)
     primary = {
         "id": f"emulator.install:{emulator_id}",
         "label": f"Instalar {name}",

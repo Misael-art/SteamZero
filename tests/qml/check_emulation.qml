@@ -30,6 +30,43 @@ Window {
         return object
     }
 
+    function allChildren(item, result) {
+        if (!item)
+            return result
+        const children = item.childItems !== undefined ? item.childItems : item.children
+        if (!children)
+            return result
+        for (let index = 0; index < children.length; index++) {
+            const child = children[index]
+            result.push(child)
+            allChildren(child, result)
+        }
+        return result
+    }
+
+    function itemWithObjectName(root, name, requireGeometry) {
+        const children = allChildren(root, [])
+        for (let index = 0; index < children.length; index++) {
+            const candidate = children[index]
+            if (candidate.objectName !== name)
+                continue
+            if (requireGeometry && (candidate.width <= 0 || candidate.height <= 0))
+                continue
+            let current = candidate
+            let visible = true
+            while (current) {
+                if (current.visible === false) {
+                    visible = false
+                    break
+                }
+                current = current.parent
+            }
+            if (visible)
+                return candidate
+        }
+        return null
+    }
+
     function testHierarchy() {
         const object = makePage({
             "platforms": [{
@@ -293,6 +330,190 @@ Window {
         check(!object.platformMissingEmulator({"blocker": ""}),
               "card sem bloqueador não deve exigir Ver emuladores")
         object.destroy()
+    }
+
+    function testPlatformCardJourney() {
+        const object = makePage({
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "attention",
+                "technicalPlatformCount": 1,
+                "editorialDestinationCount": 2,
+                "editorialExperienceCount": 0,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": ""},
+                "platformCards": [{
+                    "id": "gamecube", "name": "Nintendo GameCube", "identity": "emulated",
+                    "gameCount": 0, "state": "attention",
+                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                    "runtime": "Dolphin", "coreRequired": [],
+                    "keysStatus": {"status": "not-required"},
+                    "firmwareStatus": {"status": "not-required"},
+                    "biosStatus": null,
+                    "blocker": "o emulador desta plataforma não está instalado",
+                    "action": {"id": "emulator.install:dolphin", "label": "Instalar Dolphin",
+                        "enabled": true, "reason": null, "requiresConfirmation": true},
+                    "secondaryAction": {"id": "platform.open:gamecube",
+                        "label": "Abrir plataforma", "enabled": true}
+                }],
+                "emulators": [], "directories": [], "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "gamecube", "name": "Nintendo GameCube", "state": "attention",
+                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                "emulators": [], "games": []
+            }]
+        }, true)
+        if (!object)
+            return
+        let dispatched = null
+        object.actionRequested.connect(function(action) {
+            dispatched = action
+        })
+        const primary = itemWithObjectName(object, "emulation.platform.gamecube.primary", true)
+        check(primary !== null && primary.text === "Instalar Dolphin",
+              "card sem emulador deve oferecer Instalar <emulador> como primária")
+        check(primary !== null && primary.Accessible.name === "Nintendo GameCube: Instalar Dolphin",
+              "primária precisa de nome acessível específico do card")
+        if (primary)
+            primary.clicked()
+        check(dispatched !== null && dispatched.id === "emulator.install:dolphin",
+              "Instalar <emulador> deve despachar a ação publicada do lifecycle")
+        const secondary = itemWithObjectName(object, "emulation.platform.gamecube.secondary", true)
+        check(secondary !== null && secondary.text === "Abrir plataforma",
+              "Instalar deve manter Abrir plataforma como secundária")
+        check(secondary !== null
+              && secondary.Accessible.name === "Nintendo GameCube: Abrir plataforma",
+              "secundária precisa de nome acessível específico do card")
+        if (secondary)
+            secondary.clicked()
+        check(dispatched !== null && dispatched.id === "platform.open:gamecube",
+              "Abrir plataforma deve despachar o alvo da própria plataforma")
+        object.destroy()
+    }
+
+    function testEmulatorRepairRowDispatchesRepairAction() {
+        const object = makePage({
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "attention",
+                "technicalPlatformCount": 1,
+                "editorialDestinationCount": 2,
+                "editorialExperienceCount": 0,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": ""},
+                "platformCards": [],
+                "emulators": [
+                    {"id": "eden", "name": "Eden", "displayName": "Eden", "state": "attention",
+                        "installState": "degraded", "statusLabel": "Reparar",
+                        "action": {"id": "emulator.repair:eden", "label": "Reparar",
+                            "enabled": true, "reason": null, "requiresConfirmation": true}}
+                ],
+                "directories": [], "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "switch", "name": "Nintendo Switch", "state": "attention",
+                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                "emulators": [], "games": []
+            }]
+        }, true)
+        if (!object)
+            return
+        let component = null
+        object.componentActionRequested.connect(function(candidate) {
+            component = candidate
+        })
+        const repair = itemWithObjectName(object, "emulation.emulator.eden.action", true)
+        check(repair !== null && repair.text === "Reparar",
+              "linha degradada deve oferecer Reparar na gestão")
+        check(repair !== null && repair.Accessible.name === "Eden: Reparar",
+              "linha degradada precisa de nome acessível específico")
+        if (repair)
+            repair.clicked()
+        check(component !== null && component.action.id === "emulator.repair:eden",
+              "Reparar deve despachar a ação de reparo do lifecycle")
+        object.destroy()
+    }
+
+    function testPlatformCardTransitionAfterInstall() {
+        const payload = {
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "attention",
+                "technicalPlatformCount": 1,
+                "editorialDestinationCount": 2,
+                "editorialExperienceCount": 0,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": ""},
+                "platformCards": [{
+                    "id": "gamecube", "name": "Nintendo GameCube", "identity": "emulated",
+                    "gameCount": 0, "state": "attention",
+                    "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                    "runtime": "Dolphin", "coreRequired": [],
+                    "keysStatus": {"status": "not-required"},
+                    "firmwareStatus": {"status": "not-required"},
+                    "biosStatus": null,
+                    "blocker": "o emulador desta plataforma não está instalado",
+                    "action": {"id": "emulator.install:dolphin", "label": "Instalar Dolphin",
+                        "enabled": true, "reason": null, "requiresConfirmation": true},
+                    "secondaryAction": {"id": "platform.open:gamecube",
+                        "label": "Abrir plataforma", "enabled": true}
+                }],
+                "emulators": [], "directories": [], "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "gamecube", "name": "Nintendo GameCube", "state": "attention",
+                "readiness": {"percent": 10, "title": "Bloqueado", "blockers": []},
+                "emulators": [], "games": []
+            }]
+        }
+        const object = makePage(payload, true)
+        if (!object) {
+            Qt.exit(failures === 0 ? 0 : firstFailure)
+            return
+        }
+        object.emulation = {
+            "globalManagement": {
+                "id": "emulation-global",
+                "name": "Gestão geral",
+                "iconKey": "applications-games",
+                "state": "ready",
+                "technicalPlatformCount": 1,
+                "editorialDestinationCount": 2,
+                "editorialExperienceCount": 0,
+                "editorialSource": {"id": "steam", "name": "Steam", "detail": ""},
+                "platformCards": [{
+                    "id": "gamecube", "name": "Nintendo GameCube", "identity": "emulated",
+                    "gameCount": 0, "state": "ready",
+                    "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                    "runtime": "Dolphin", "coreRequired": [],
+                    "keysStatus": {"status": "not-required"},
+                    "firmwareStatus": {"status": "not-required"},
+                    "biosStatus": null,
+                    "blocker": null,
+                    "action": {"id": "platform.open:gamecube", "label": "Abrir plataforma",
+                        "enabled": true, "reason": null, "requiresConfirmation": false}
+                }],
+                "emulators": [], "directories": [], "mediaProviders": []
+            },
+            "platforms": [{
+                "id": "gamecube", "name": "Nintendo GameCube", "state": "ready",
+                "readiness": {"percent": 100, "title": "Pronto", "blockers": []},
+                "emulators": [], "games": []
+            }]
+        }
+        const primary = itemWithObjectName(object, "emulation.platform.gamecube.primary", false)
+        check(primary !== null && primary.text === "Abrir plataforma",
+              "após instalar, o card deve trocar o CTA para Abrir plataforma")
+        check(itemWithObjectName(object, "emulation.platform.gamecube.secondary", false) === null,
+              "após instalar, a ação secundária deve desaparecer")
+        object.destroy()
+        if (failures === 0)
+            console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
+        Qt.exit(failures === 0 ? 0 : firstFailure)
     }
 
     function testPublishedPrimaryAndPlatformArtwork() {
@@ -747,6 +968,8 @@ Window {
             testManifestDrivenPlatformSelection()
             testGlobalManagementOpensPlatformWithoutCreatingAnotherTechnicalId()
             testGlobalInstallPanelHelpers()
+            testPlatformCardJourney()
+            testEmulatorRepairRowDispatchesRepairAction()
             testPublishedPrimaryAndPlatformArtwork()
             testBackendArea()
             testGameLibraryJourney()
@@ -756,9 +979,7 @@ Window {
             testPublishedStateFixtures()
             testRemoteExtrasCatalogPresentation()
             testLargeLibraryUsesBoundedWindow()
-            if (failures === 0)
-                console.log("PASS: hierarquia, fallback seguro e contrato de áreas")
-            Qt.exit(failures === 0 ? 0 : firstFailure)
+            testPlatformCardTransitionAfterInstall()
         }
     }
 }
