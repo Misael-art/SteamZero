@@ -34,7 +34,7 @@
     "tests/qml/check_credential_journey_e2e.qml",
     "tests/qml/check_darkbutton_theme.qml"
   ],
-  "scopeDigest": "223a927414631b9fa94e4fbd0b3d5069cdf75c3d603d78183b11d02cfc0867ce",
+  "scopeDigest": "683291dc03174e474f707ae9bc0b9e76826138139ae44ca7646b93865003fa64",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -148,5 +148,5 @@
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. Caminho compartilhado com WS-2026-08-HARMONIZE-A45, que reserva docs/status: este item so teve escopo, criterios, evidencia e proxima acao atualizados."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. A harmonizacao removeu focusPolicy redundante dos TextField: Qt 6.4 nao oferece essa propriedade; activeFocusOnTab e a prova funcional de forceActiveFocus preservam teclado, navegacao e foco. A validacao fisica e a cobertura dos 378 controles not-probed continuam abertas."
 }
