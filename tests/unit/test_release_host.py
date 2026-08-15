@@ -180,6 +180,23 @@ def test_bundle_rejects_symlink_even_when_target_exists(tmp_path: Path) -> None:
         release_host.load_bundle(root)
 
 
+def test_bundle_requires_checksummed_sbom_and_audit(tmp_path: Path) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    checksums = root / "build" / "SHA256SUMS"
+    checksums.write_text(
+        "\n".join(
+            line
+            for line in checksums.read_text(encoding="utf-8").splitlines()
+            if not line.endswith("build/pip-audit.json")
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(release_host.AutomationError, match="cadeia de suprimentos"):
+        release_host.load_bundle(root)
+
+
 @pytest.mark.parametrize(
     "listing",
     [
@@ -617,6 +634,557 @@ def test_state_log_refuses_to_overwrite_corruption(tmp_path: Path) -> None:
         release_host._record(release, "install", {"ok": True}, state_dir=state_dir)
 
     assert path.read_text(encoding="utf-8") == "{broken"
+
+
+def _update_plan(bundle: release_host.Bundle) -> release_host.UpdatePlan:
+    rollback = "0.1.0a41-bbbbbbbbbbbb"
+    return release_host.UpdatePlan(
+        current_release=rollback,
+        target_release=bundle.release,
+        source_commit=bundle.commit,
+        rollback_release=rollback,
+        run_id=bundle.run_id,
+        wheel_sha256=bundle.wheel_sha256,
+        data_schema_version=release_host.DATA_SCHEMA_VERSION,
+        confirmation_token=f"ATUALIZAR-{rollback}-PARA-{bundle.release}",
+    )
+
+
+class _UpdateRunner:
+    def __init__(
+        self,
+        *,
+        target: str,
+        rollback: str,
+        fail_target_convergence: bool = False,
+        fail_install: bool = False,
+        fail_rollback: bool = False,
+    ) -> None:
+        self.target = target
+        self.rollback = rollback
+        self.current = rollback
+        self.fail_target_convergence = fail_target_convergence
+        self.fail_install = fail_install
+        self.fail_rollback = fail_rollback
+        self.calls: list[tuple[str, ...]] = []
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        _cwd: Path,
+        _timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        call = tuple(argv)
+        self.calls.append(call)
+        if call[:3] == (
+            "bigsudo",
+            "/usr/bin/python3",
+            str(release_host.ROOT / "tools" / "install_host.py"),
+        ):
+            action = call[3]
+            if action == "install":
+                if self.fail_install:
+                    return subprocess.CompletedProcess(call, 1, "", "falha injetada")
+                self.current = self.target
+                return subprocess.CompletedProcess(call, 0, json.dumps({"ok": True}), "")
+            if action == "rollback":
+                if self.fail_rollback:
+                    return subprocess.CompletedProcess(call, 1, "", "falha injetada")
+                self.current = self.rollback
+                return subprocess.CompletedProcess(call, 0, json.dumps({"ok": True}), "")
+        if call[:3] == (str(release_host.HOST_MANAGER), "converge", "--expect-release"):
+            if self.current == self.target and self.fail_target_convergence:
+                return subprocess.CompletedProcess(call, 1, "", "timeout injetado")
+            payload = {
+                "ok": True,
+                "data": {
+                    "state": "converged",
+                    "restarted": False,
+                    "attempts": 0,
+                    "daemonRelease": self.current,
+                    "daemonCommit": "a" * 40,
+                },
+            }
+            return subprocess.CompletedProcess(call, 0, json.dumps(payload), "")
+        if call[:3] == ("systemctl", "--user", "stop"):
+            return subprocess.CompletedProcess(call, 0, "", "")
+        return subprocess.CompletedProcess(call, 127, "", f"inesperado: {call}")
+
+
+def _patch_update_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: _UpdateRunner,
+) -> None:
+    monkeypatch.setattr(
+        release_host,
+        "_read_host_truth",
+        lambda _host_root=release_host.HOST_ROOT: {
+            "installed": True,
+            "ok": True,
+            "release": runner.current,
+            "sourceCommit": "a" * 40,
+            "packageVersion": "0.1.0a42",
+        },
+    )
+    monkeypatch.setattr(release_host, "_state_db_fingerprint", lambda: "stable-state")
+    monkeypatch.setattr(
+        release_host,
+        "_activation_smokes",
+        lambda active_release, **_kwargs: {
+            "host": {"release": active_release},
+            "doctor": {"ok": True},
+            "gameMode": "ready",
+            "qml": {"state": "started"},
+        },
+    )
+
+
+def test_update_plan_requires_exact_token_before_privileged_call(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    runner = _Runner({})
+    monkeypatch.setattr(release_host, "_resolve_update_target", lambda *_args, **_kwargs: commit)
+    monkeypatch.setattr(release_host, "_prepare_update_bundle", lambda *_args, **_kwargs: bundle)
+    monkeypatch.setattr(release_host, "_require_checkout", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(release_host, "_require_not_quarantined", lambda *_args: None)
+    monkeypatch.setattr(
+        release_host,
+        "_host_preflight",
+        lambda **_kwargs: {"release": "0.1.0a41-bbbbbbbbbbbb"},
+    )
+
+    with pytest.raises(release_host.AutomationError, match="confirmação inválida"):
+        release_host.update(
+            confirmation="sim",
+            cache_dir=tmp_path / "cache",
+            state_dir=tmp_path / "state",
+            runner=runner,
+        )
+
+    assert not [call for call in runner.calls if call and call[0] == "bigsudo"]
+    journal_path = next((tmp_path / "state" / "transactions").glob("*.json"))
+    journal = json.loads(journal_path.read_text(encoding="utf-8"))
+    assert journal["phase"] == "cancelled"
+
+
+def test_update_plan_only_is_terminal_and_never_calls_bigsudo(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    runner = _Runner({})
+    monkeypatch.setattr(release_host, "_resolve_update_target", lambda *_args, **_kwargs: commit)
+    monkeypatch.setattr(release_host, "_prepare_update_bundle", lambda *_args, **_kwargs: bundle)
+    monkeypatch.setattr(release_host, "_require_checkout", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(release_host, "_require_not_quarantined", lambda *_args: None)
+    monkeypatch.setattr(
+        release_host,
+        "_host_preflight",
+        lambda **_kwargs: {"release": "0.1.0a41-bbbbbbbbbbbb"},
+    )
+
+    result = release_host.update(
+        plan_only=True,
+        cache_dir=tmp_path / "cache",
+        state_dir=tmp_path / "state",
+        runner=runner,
+    )
+
+    assert result["plan"]["targetRelease"] == bundle.release
+    assert result["physicalCertification"] is False
+    assert not [call for call in runner.calls if call and call[0] == "bigsudo"]
+    journal = json.loads(Path(result["journal"]).read_text(encoding="utf-8"))
+    assert journal["phase"] == "planned"
+
+
+def test_update_writes_discovery_before_bundle_download(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    commit = "a" * 40
+    monkeypatch.setattr(release_host, "_resolve_update_target", lambda *_args, **_kwargs: commit)
+    monkeypatch.setattr(
+        release_host,
+        "_read_host_truth",
+        lambda _root: {"ok": True, "release": "0.1.0a41-bbbbbbbbbbbb"},
+    )
+
+    def interrupted(*_args: object, **_kwargs: object) -> release_host.Bundle:
+        raise release_host.AutomationError("download interrompido")
+
+    monkeypatch.setattr(release_host, "_prepare_update_bundle", interrupted)
+
+    with pytest.raises(release_host.AutomationError, match="download interrompido"):
+        release_host.update(
+            plan_only=True,
+            state_dir=tmp_path / "state",
+            runner=_Runner({}),
+        )
+
+    journal_path = next((tmp_path / "state" / "transactions").glob("*.json"))
+    journal = json.loads(journal_path.read_text(encoding="utf-8"))
+    assert journal["phase"] == "discovered"
+    assert journal["sourceCommit"] == commit
+
+
+def test_update_transaction_commits_only_after_convergence_and_smokes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    result = release_host._execute_update_transaction(
+        bundle,
+        plan,
+        journal,
+        runner=runner,
+        state_dir=tmp_path / "state",
+    )
+
+    phases = [event["phase"] for event in journal.document["events"]]
+    assert phases == [
+        "discovered",
+        "bundle-verified",
+        "preflight-passed",
+        "approved",
+        "install-started",
+        "activated",
+        "convergence-passed",
+        "smokes-passed",
+        "committed",
+    ]
+    assert result["deploymentHealthy"] is True
+    assert result["physicalCertification"] is False
+    assert runner.current == bundle.release
+
+
+def test_failure_after_activation_rolls_back_and_quarantines_target(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(
+        target=bundle.release,
+        rollback=plan.rollback_release,
+        fail_target_convergence=True,
+    )
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    assert runner.current == plan.rollback_release
+    assert journal.phase == "failed-safe"
+    quarantine = release_host._quarantine_path(bundle.release, tmp_path / "state")
+    assert json.loads(quarantine.read_text(encoding="utf-8"))["state"] == "failed-verification"
+
+
+def test_failure_before_activation_does_not_attempt_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(
+        target=bundle.release,
+        rollback=plan.rollback_release,
+        fail_install=True,
+    )
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="instalação"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    assert privileged_actions == ["install"]
+    assert journal.phase == "failed-before-activation"
+
+
+def test_rollback_failure_stops_units_and_records_critical_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(
+        target=bundle.release,
+        rollback=plan.rollback_release,
+        fail_target_convergence=True,
+        fail_rollback=True,
+    )
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="ATENÇÃO"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    stopped = [call[-1] for call in runner.calls if call[:3] == ("systemctl", "--user", "stop")]
+    assert stopped == ["steamzero-core.service", "steamzero-core.socket"]
+    assert journal.phase == "rollback-failed"
+
+
+def test_resume_after_activation_verifies_without_reinstalling(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    runner.current = bundle.release
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+    journal.event(
+        "approved",
+        current_release=plan.rollback_release,
+        data={"stateFingerprint": "stable-state"},
+    )
+    journal.event("install-started", current_release=plan.rollback_release)
+    journal.event("activated", current_release=bundle.release)
+
+    result = release_host._execute_update_transaction(
+        bundle,
+        plan,
+        journal,
+        runner=runner,
+        state_dir=tmp_path / "state",
+    )
+
+    assert not [call for call in runner.calls if call and call[0] == "bigsudo"]
+    assert result["activation"] == {"recovered": True}
+    assert journal.phase == "committed"
+
+
+def test_resume_after_rollback_verification_never_reactivates_failed_target(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+    journal.event(
+        "approved",
+        current_release=plan.rollback_release,
+        data={"stateFingerprint": "stable-state"},
+    )
+    journal.event("install-started", current_release=plan.rollback_release)
+    journal.event("activated", current_release=bundle.release)
+    journal.event(
+        "rollback-required",
+        current_release=bundle.release,
+        data={"failedPhase": "convergence-passed"},
+    )
+    journal.event("rollback-started", current_release=bundle.release)
+    journal.event("rollback-activated", current_release=plan.rollback_release)
+    journal.event("rollback-verified", current_release=plan.rollback_release)
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    assert privileged_actions == ["rollback"]
+    assert journal.phase == "failed-safe"
+
+
+def test_transaction_journal_redacts_sensitive_event_fields(tmp_path: Path) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    journal = release_host._new_update_journal(_update_plan(bundle), state_dir=tmp_path / "state")
+
+    journal.event(
+        "cancelled",
+        current_release="0.1.0a41-bbbbbbbbbbbb",
+        data={
+            "password": "never",
+            "romPath": "/home/player/roms/game.iso",
+            "detail": "/home/player/private",
+            "errorType": "Expected",
+        },
+    )
+
+    serialized = journal.path.read_text(encoding="utf-8")
+    assert "never" not in serialized
+    assert "game.iso" not in serialized
+    assert "/home/player" not in serialized
+    assert "<redacted>" in serialized
+
+
+def test_global_update_lock_rejects_concurrent_transaction(tmp_path: Path) -> None:
+    state_dir = tmp_path / "state"
+
+    with (
+        release_host._update_lock(state_dir),
+        pytest.raises(release_host.AutomationError, match="já está em andamento"),
+        release_host._update_lock(state_dir),
+    ):
+        pytest.fail("lock concorrente não deveria ser adquirido")
+
+
+def test_recovery_requires_fresh_exact_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    cache = tmp_path / "cache"
+    shutil.copytree(root, cache / commit)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+    journal.event(
+        "approved",
+        current_release=plan.rollback_release,
+        data={"stateFingerprint": "stable-state"},
+    )
+    monkeypatch.setattr(release_host, "_require_checkout", lambda *_args, **_kwargs: None)
+    runner = _Runner(
+        {
+            ("git", "rev-parse", "HEAD"): (0, commit + "\n", ""),
+            ("git", "status", "--porcelain"): (0, "", ""),
+        }
+    )
+
+    with pytest.raises(release_host.AutomationError, match="recuperação exige"):
+        release_host.update(
+            cache_dir=cache,
+            state_dir=tmp_path / "state",
+            runner=runner,
+        )
+
+    assert journal.phase == "approved"
+    assert not [call for call in runner.calls if call and call[0] == "bigsudo"]
+
+
+def test_plan_rejects_reinstalling_the_active_release(tmp_path: Path) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+
+    with pytest.raises(release_host.AutomationError, match="já está ativa"):
+        release_host._plan_update(bundle, {"release": bundle.release})
+
+
+def test_quarantined_release_is_not_eligible_for_update(tmp_path: Path) -> None:
+    release = "0.1.0a42-aaaaaaaaaaaa"
+    release_host._mark_quarantined(
+        release,
+        source_commit="a" * 40,
+        failed_phase="smokes-passed",
+        state_dir=tmp_path,
+    )
+
+    with pytest.raises(release_host.AutomationError, match="quarentena"):
+        release_host._require_not_quarantined(release, tmp_path)
+
+
+def test_host_preflight_rejects_incompatible_data_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    release = "0.1.0a41-bbbbbbbbbbbb"
+    monkeypatch.setattr(
+        release_host,
+        "_read_host_truth",
+        lambda _root: {"ok": True, "release": release},
+    )
+    monkeypatch.setattr(
+        release_host,
+        "_installed_release_manifest",
+        lambda _release, _root: {"release": _release},
+    )
+    active_cli = release_host.HOST_ROOT / "current" / "venv" / "bin" / "steamzero"
+    runner = _Runner(
+        {
+            (str(active_cli), "doctor", "--json"): (
+                0,
+                json.dumps(
+                    {
+                        "ok": True,
+                        "data": {
+                            "schemaVersion": release_host.DATA_SCHEMA_VERSION + 1,
+                            "pendingOperations": [],
+                        },
+                    }
+                ),
+                "",
+            )
+        }
+    )
+
+    with pytest.raises(release_host.AutomationError, match="compatível"):
+        release_host._host_preflight(runner=runner, check_ownership=False)
+
+
+@pytest.mark.parametrize("returncode", [0, 124])
+def test_qml_smoke_accepts_clean_exit_or_alive_timeout(returncode: int) -> None:
+    runner = _Runner({})
+    runner.responses = {}
+
+    def smoke_runner(
+        argv: Sequence[str], cwd: Path, timeout: int
+    ) -> subprocess.CompletedProcess[str]:
+        runner.calls.append(tuple(argv))
+        runner.cwds.append(cwd)
+        assert timeout == 10
+        return subprocess.CompletedProcess(argv, returncode, "", "")
+
+    result = release_host._qml_offscreen_smoke(
+        "0.1.0a42-aaaaaaaaaaaa",
+        runner=smoke_runner,
+    )
+
+    assert result["state"] == "started"
+    assert "QT_QPA_PLATFORM=offscreen" in runner.calls[0]
+
+
+def test_cache_space_preflight_rejects_low_disk(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    usage = type("Usage", (), {"free": 1})()
+    monkeypatch.setattr(release_host.shutil, "disk_usage", lambda _path: usage)
+
+    with pytest.raises(release_host.AutomationError, match="espaço livre insuficiente"):
+        release_host._require_cache_space(tmp_path)
 
 
 @pytest.mark.parametrize(

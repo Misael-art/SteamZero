@@ -30,6 +30,22 @@ em `/opt/steamzero/releases` e o ponteiro atômico `/opt/steamzero/current`. O c
 permissões e smokes antes da troca. O procedimento reproduzível e seus limites estão
 em [HOST-INSTALL.md](HOST-INSTALL.md).
 
+O fluxo operacional recomendado é agora o controlador transacional, sem build
+local e sem uma segunda implementação do instalador:
+
+```bash
+rtk .venv/bin/python tools/release_host.py update --to origin/main --plan
+rtk .venv/bin/python tools/release_host.py update --to origin/main
+```
+
+Ele mantém lock global, journal write-ahead, escolhe automaticamente como
+rollback a release ativa integralmente verificada e reverte se qualquer prova
+pós-ativação falhar. Reexecução recupera a transação incompleta. O resultado
+`deploymentHealthy=true` cobre release, daemon, CLI, doctor, units, Game Mode e
+QML offscreen; certificação física continua separada e exige o operador. O
+contrato completo está em
+[RELEASE-HOST-AUTOMATION.md](RELEASE-HOST-AUTOMATION.md).
+
 Novas instalações usam manifesto v2 e ID canônico `<versão>-<commit[0:12]>`; o
 commit completo e o estado limpo da fonte são obrigatórios. Manifests v1 permanecem
 aceitos apenas para verificar e reverter releases legadas já instaladas. Eles não
