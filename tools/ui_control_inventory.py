@@ -37,7 +37,39 @@ QML = shutil.which("qml6") or shutil.which("qml")
 FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent")
 
 
-def run_probe(timeout: int = 400) -> dict[str, Any]:
+#: As fixtures sao DERIVADAS: `ui_scenario_fixtures` as gera deterministicamente
+#: a partir do dominio real e dos contratos publicados. Commitar 5 MB de JSON
+#: gerado seria guardar a saida em vez da fonte, e o `uiContracts` repetido em
+#: cada arquivo responde por quase tudo isso.
+SCENARIO_DIR = ROOT / "build" / "ui-scenarios"
+
+#: Ordem de precedencia do veredito ao fundir cenarios. O pior resultado vence:
+#: um botao que funciona num cenario e morre em outro continua sendo defeito.
+_VERDICT_RANK = {
+    "silent-no-op": 0,
+    "unrouted": 1,
+    "blocked-silent": 2,
+    "blocked-explained": 3,
+    "handled-locally": 4,
+    "routed": 5,
+    # Invisível num cenário não desfaz a prova obtida em outro. Este veredito
+    # só permanece quando o controle nunca foi exercitado em cenário algum.
+    "not-probed": 6,
+}
+
+
+def scenario_paths() -> list[Path]:
+    """Gera (ou regenera) as fixtures e devolve os caminhos.
+
+    Regenerar sempre e de proposito: uma fixture obsoleta em disco mediria um
+    contrato que o produto ja nao publica.
+    """
+    import ui_scenario_fixtures
+
+    return ui_scenario_fixtures.write_all(SCENARIO_DIR)
+
+
+def run_probe(timeout: int = 400, scenario: Path | None = None) -> dict[str, Any]:
     """Executa a sonda offscreen e devolve contexto + registros por controle."""
     if not QML:
         raise SystemExit("qml6 ausente; a matriz de controles exige o runtime QML")
@@ -51,8 +83,13 @@ def run_probe(timeout: int = 400) -> dict[str, Any]:
             "QT_LOGGING_RULES": "",
         }
     )
+    argv = [QML, str(ROOT / "tools" / "ui_control_probe.qml")]
+    if scenario is not None:
+        # A sonda le a fixture do proprio repo por file://.
+        env["QML_XHR_ALLOW_FILE_READ"] = "1"
+        argv += ["--", "--steamzero-scenario", str(scenario)]
     completed = subprocess.run(
-        [QML, str(ROOT / "tools" / "ui_control_probe.qml")],
+        argv,
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -97,9 +134,48 @@ def run_probe(timeout: int = 400) -> dict[str, Any]:
     }
 
 
-def build_inventory() -> dict[str, Any]:
-    probe = run_probe()
-    controls = probe["controls"]
+def merge_scenarios(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Funde os cenarios pela identidade estavel do controle.
+
+    Casar por rotulo nao serve: o mesmo botao muda de texto entre estados, e
+    dois botoes diferentes compartilham rotulo. A identidade estrutural e o que
+    permite dizer "este controle foi exercitado em algum cenario".
+    """
+    merged: dict[str, dict[str, Any]] = {}
+    for run in runs:
+        scenario = str(run["context"].get("scenario", "?"))
+        for control in run["controls"]:
+            key = control["controlId"]
+            control = {**control, "scenario": scenario}
+            current = merged.get(key)
+            if current is None:
+                merged[key] = {**control, "scenarios": [scenario]}
+                continue
+            current["scenarios"].append(scenario)
+            # O pior veredito vence; empate mantem o primeiro visto.
+            if _VERDICT_RANK.get(control["verdict"], 9) < _VERDICT_RANK.get(current["verdict"], 9):
+                scenarios = current["scenarios"]
+                merged[key] = {**control, "scenarios": scenarios}
+    return list(merged.values())
+
+
+def build_inventory(scenarios: bool = True, only: list[str] | None = None) -> dict[str, Any]:
+    """``only`` escolhe e ORDENA os cenarios; repetir um nome roda-o duas vezes.
+
+    Os testes de estabilidade dependem disso: reordenar ou duplicar um cenario
+    nao pode mudar identidade nem contagem.
+    """
+    paths = scenario_paths() if scenarios else []
+    if only is not None:
+        by_name = {path.stem: path for path in paths}
+        paths = [by_name[name] for name in only]
+    if paths:
+        runs = [run_probe(scenario=path) for path in paths]
+        controls = merge_scenarios(runs)
+        probe = {"context": {**runs[0]["context"], "scenarioCount": len(runs)}}
+    else:
+        probe = run_probe()
+        controls = probe["controls"]
 
     by_verdict: dict[str, int] = {}
     by_surface: dict[str, dict[str, int]] = {}
@@ -117,10 +193,21 @@ def build_inventory() -> dict[str, Any]:
     fully_probed = sorted(
         surface for surface, counts in by_surface.items() if counts.get("not-probed", 0) == 0
     )
+    explicit = [c for c in controls if c.get("objectName")]
+    seen_counts = [len(set(c.get("scenarios", []))) for c in controls]
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 3,
         "kind": "steamzero-ui-control-matrix",
         "context": probe["context"],
+        "scenarios": [path.stem for path in paths],
+        # Metricas de identidade: sem elas nao da para saber quanto da matriz
+        # se apoia no fallback estrutural, que e o pedaco fragil.
+        "explicitIdentityCount": len(explicit),
+        "fallbackIdentityCount": len(controls) - len(explicit),
+        "identityCollisionCount": len(controls) - len({c["controlId"] for c in controls}),
+        "controlsSeenInMultipleScenarios": sum(1 for n in seen_counts if n > 1),
+        "controlsSeenInOneScenario": sum(1 for n in seen_counts if n == 1),
+        "notProbedCount": by_verdict.get("not-probed", 0),
         "controlCount": len(controls),
         "surfaceCount": len(by_surface),
         "verdictCounts": by_verdict,
@@ -181,6 +268,17 @@ def main(argv: list[str] | None = None) -> int:
 
     print(json.dumps(inventory["verdictCounts"], indent=2, ensure_ascii=False))
     print(f"controles: {inventory['controlCount']} em {inventory['surfaceCount']} superfícies")
+    print(
+        "identidade: "
+        f"{inventory['explicitIdentityCount']} explícitas, "
+        f"{inventory['fallbackIdentityCount']} fallback, "
+        f"{inventory['identityCollisionCount']} colisões"
+    )
+    print(
+        "presença: "
+        f"{inventory['controlsSeenInMultipleScenarios']} multi-cenário, "
+        f"{inventory['controlsSeenInOneScenario']} cenário único"
+    )
     print(f"superfícies sem pendência de sondagem: {inventory['fullyProbedSurfaces']}")
     for failure in inventory["failures"]:
         print(

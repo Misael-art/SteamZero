@@ -30,6 +30,8 @@ Main {
     property var collected: []
     property int pendingExitCode: 0
     property int sectionCursor: 0
+    property var scenarioJobs: []
+    property string scenarioTaskError: ""
 
     // Espera por condição, nunca por tempo arbitrário. Se a condição não
     // acontecer dentro do orçamento de quadros, a sonda REPROVA — aumentar o
@@ -131,6 +133,8 @@ Main {
             "libraryView": editorialLibraryControl ? editorialLibraryControl.view : "",
             "libraryMode": editorialLibraryControl ? editorialLibraryControl.libraryView : "",
             "librarySelected": editorialLibraryControl ? editorialLibraryControl.selectedIndex : -1,
+            "librarySystem": editorialLibraryControl
+                ? editorialLibraryControl.selectedSystemIndex : -1,
             "drawer": responsiveDrawer ? responsiveDrawer.visible : false,
             "taskDrawer": responsiveTaskDrawer ? responsiveTaskDrawer.visible : false,
             "credentials": credentialDialogControl ? credentialDialogControl.visible : false,
@@ -189,6 +193,37 @@ Main {
             + "##" + treeSignature(responsiveShell)
     }
 
+    // Nome do tipo QML sem o endereco: "Button_QMLTYPE_42(0x55f...)" vira
+    // "Button". O endereco muda a cada execucao e nao serve como identidade.
+    function typeNameOf(item) {
+        const raw = String(item)
+        const cut = raw.indexOf("_QMLTYPE_")
+        let base = cut >= 0 ? raw.slice(0, cut) : raw.split("(")[0]
+        // Componentes do proprio produto vem como "EditorialButton_QML_148":
+        // o numero e um contador de revisao do engine e muda entre execucoes.
+        base = base.replace(/_QML_\d+$/, "")
+        return base.replace(/^QQuick/, "")
+    }
+
+    // Identidade estavel do controle. Coordenada visual nao entra: ela muda com
+    // viewport, escala e tema, e a matriz precisa casar o mesmo botao entre
+    // cenarios diferentes. O que entra e superficie + tipo + objectName + rotulo
+    // ou nome acessivel + posicao ESTRUTURAL na arvore (cadeia de indices).
+    function controlIdentity(record) {
+        // Identidade EXPLICITA quando o controle declara `objectName`. Ela nao
+        // depende de texto traduzido, coordenada, indice visual, endereco de
+        // objeto nem revisao do engine — e por isso sobrevive a troca de estado
+        // e a insercao de irmaos. Delegates usam o id factual da entidade.
+        if (record.objectName !== "")
+            return "id:" + record.objectName
+        // Fallback ESTRUTURAL para quem ainda nao declara identidade. Carrega
+        // rotulo e caminho de indices, entao muda quando o rotulo muda ou um
+        // irmao entra na arvore. A matriz publica quantos controles ainda
+        // dependem disto.
+        return ["fallback", record.surface, record.type,
+                record.label || record.accessibleName, record.path].join("|")
+    }
+
     function describe(item, kind, surface) {
         let label = ""
         if (item.text !== undefined && item.text !== null)
@@ -210,6 +245,9 @@ Main {
         return {
             "surface": surface,
             "kind": kind,
+            "type": typeNameOf(item),
+            "path": "",
+            "controlId": "",
             "objectName": String(item.objectName || ""),
             "label": label,
             "accessibleName": accessible,
@@ -221,23 +259,51 @@ Main {
         }
     }
 
+    function effectivelyVisible(item) {
+        let current = item
+        while (current) {
+            if (current.visible === false)
+                return false
+            current = current.parent
+        }
+        return true
+    }
+
+    function findObjectName(item, name) {
+        if (!item)
+            return null
+        if (String(item.objectName || "") === name)
+            return item
+        const kids = item.children
+        if (!kids)
+            return null
+        for (let i = 0; i < kids.length; i++) {
+            const found = findObjectName(kids[i], name)
+            if (found)
+                return found
+        }
+        return null
+    }
+
     // Percorre filhos visuais. Popups (diálogos, drawers) não estão aqui
     // enquanto fechados; são visitados à parte, abertos de propósito.
-    function walk(item, surface, out, depth) {
-        if (!item || depth > 40)
+    function walk(item, surface, out, depth, path) {
+        if (!item || depth > 40 || !effectivelyVisible(item))
             return
         const kind = controlKind(item)
         if (kind !== "") {
             const record = describe(item, kind, surface)
             record.item = item
+            record.path = path
             record.sectionIndex = sectionIndexFor(surface)
+            record.controlId = controlIdentity(record)
             out.push(record)
         }
         const kids = item.children
         if (!kids)
             return
         for (let i = 0; i < kids.length; i++)
-            walk(kids[i], surface, out, depth + 1)
+            walk(kids[i], surface, out, depth + 1, path + "/" + i)
     }
 
     // ---- Ativação -----------------------------------------------------------
@@ -263,12 +329,26 @@ Main {
     }
 
     function activate(record) {
-        const item = record.item
+        let item = record.item
+        if (record.objectName !== "") {
+            let rootItem = null
+            if (record.surface === "handheld-drawer")
+                rootItem = responsiveDrawer.contentItem
+            else if (record.surface === "task-drawer")
+                rootItem = responsiveTaskDrawer.contentItem
+            else if (record.surface === "sidebar")
+                rootItem = responsiveNavigation ? responsiveNavigation.parent : null
+            else
+                rootItem = responsiveContent.children[record.sectionIndex]
+            const current = findObjectName(rootItem, record.objectName)
+            if (current)
+                item = current
+        }
         if (record.kind === "toggle" && item.toggle !== undefined) {
             item.toggle()
             return true
         }
-        if (item.clicked !== undefined && typeof item.clicked === "function") {
+        if (item.clicked !== undefined && typeof item.clicked.connect === "function") {
             item.clicked()
             return true
         }
@@ -284,6 +364,24 @@ Main {
             responsiveTaskDrawer.close()
         if (credentialDialogControl && credentialDialogControl.visible)
             credentialDialogControl.close()
+        // Restaurar so a secao nao basta. Um card de sistema poe a biblioteca
+        // em view="system" e a deixa la: do segundo clique em diante o estado
+        // "antes" ja era o estado "depois", e 37 cards viraram falso no-op.
+        if (editorialLibraryControl) {
+            editorialLibraryControl.view = "systems"
+            editorialLibraryControl.libraryView = "carousel"
+            editorialLibraryControl.selectedSystemIndex = 0
+            editorialLibraryControl.selectedIndex = 0
+            editorialLibraryControl.systemFilter = "all"
+            editorialLibraryControl.collectionFilter = ""
+        }
+        if (emulationControl) {
+            emulationControl.globalManagementActive = true
+            emulationControl.platformIndex = 0
+            emulationControl.areaIndex = 0
+            emulationControl.gameDetailsOpen = false
+        }
+        steamArea = "performance"
         sectionIndex = sectionIdx
         lastRequest = ""
         lastRequestIsError = false
@@ -329,7 +427,7 @@ Main {
     function collectSection(sectionId, index) {
         const page = responsiveContent.children[index]
         const out = []
-        walk(page, sectionId, out, 0)
+        walk(page, sectionId, out, 0, "")
         for (let i = 0; i < out.length; i++)
             collected.push(out[i])
         console.log("PROBE-SECTION " + JSON.stringify({
@@ -340,34 +438,120 @@ Main {
     }
 
     // A sidebar vive fora da pilha e serve todas as seções: é contada uma vez.
-    function collectChrome() {
-        const surfaces = [
-            {"id": "sidebar", "root": responsiveNavigation ? responsiveNavigation.parent : null},
-            {"id": "handheld-drawer", "root": responsiveDrawer},
-            {"id": "task-drawer", "root": responsiveTaskDrawer}
-        ]
-        for (let s = 0; s < surfaces.length; s++) {
-            const entry = surfaces[s]
-            if (!entry.root)
-                continue
-            const out = []
-            const base = entry.root.contentItem !== undefined && entry.root.contentItem
-                ? entry.root.contentItem : entry.root
-            walk(base, entry.id, out, 0)
-            for (let i = 0; i < out.length; i++)
-                collected.push(out[i])
-            console.log("PROBE-SECTION " + JSON.stringify({
-                "surface": entry.id,
-                "controls": out.length,
-                "enabled": out.filter(function(c) { return c.enabled }).length
-            }))
+    function collectChromeSurface(surface, rootItem) {
+        if (!rootItem)
+            return
+        const out = []
+        const base = rootItem.contentItem !== undefined && rootItem.contentItem
+            ? rootItem.contentItem : rootItem
+        walk(base, surface, out, 0, "")
+        for (let i = 0; i < out.length; i++)
+            collected.push(out[i])
+        console.log("PROBE-SECTION " + JSON.stringify({
+            "surface": surface,
+            "controls": out.length,
+            "enabled": out.filter(function(c) { return c.enabled }).length
+        }))
+    }
+
+    // Assinatura da GEOMETRIA dos controles visíveis da superfície. Trocar um
+    // estado e medir no mesmo quadro devolve a geometria da passada de layout
+    // ANTERIOR — foi assim que o botão de nova tentativa do task drawer saiu
+    // medido com a altura do seu implicitHeight (25) em vez dos 48 que o layout
+    // aplica no quadro seguinte. A coleta só registra quando duas passadas
+    // consecutivas concordam; esgotar o orçamento reprova, não silencia.
+    function surfaceGeometrySignature(rootItem) {
+        const out = []
+        const base = rootItem.contentItem !== undefined && rootItem.contentItem
+            ? rootItem.contentItem : rootItem
+        walk(base, "", out, 0, "")
+        let signature = ""
+        for (let i = 0; i < out.length; i++) {
+            const record = out[i]
+            signature += String(record.objectName || "") + "|" + record.width + "x"
+                + record.height + "|" + record.visible + ";"
         }
+        return signature
+    }
+
+    function collectChromeSurfaceStable(surface, rootItem, then) {
+        if (!rootItem) {
+            then()
+            return
+        }
+        let previous = ""
+        waitFor(surface + " com geometria estável",
+                function() {
+                    const signature = window.surfaceGeometrySignature(rootItem)
+                    if (signature === previous)
+                        return true
+                    previous = signature
+                    return false
+                },
+                function() {
+                    window.collectChromeSurface(surface, rootItem)
+                    then()
+                })
+    }
+
+    function applyScenarioTaskState(then) {
+        liveTasks = scenarioJobs ? scenarioJobs.slice() : []
+        taskLoadError = scenarioTaskError
+        taskLoading = false
+        // A sonda mede geometria no passo seguinte; aqui só garantimos que o
+        // refresh pendente não sobrescreverá o cenário declarado.
+        Qt.callLater(then)
+    }
+
+    function collectChrome() {
+        collectChromeSurface("sidebar",
+                             responsiveNavigation ? responsiveNavigation.parent : null)
+
+        // Drawer fechado deixa seus filhos fora da superfície visual. Contá-los
+        // nesse estado produzia doze `not-probed` por construção. Abra, espere a
+        // transição real e só então capture geometria, visibilidade e controles.
+        responsiveDrawer.open()
+        waitFor("drawer portátil aberto para inventário",
+                function() { return responsiveDrawer.position >= 0.999 },
+                function() {
+                    window.collectChromeSurfaceStable("handheld-drawer", responsiveDrawer,
+                        function() {
+                            responsiveDrawer.close()
+                            window.waitFor("drawer portátil fechado após inventário",
+                                           function() { return responsiveDrawer.position <= 0.001 },
+                                           function() {
+                                               responsiveTaskDrawer.open()
+                                               window.waitFor("drawer de tarefas aberto para inventário",
+                                                              function() {
+                                                                  return responsiveTaskDrawer.position
+                                                                      >= 0.999 && !window.taskLoading
+                                                              },
+                                                              function() {
+                                                                  window.applyScenarioTaskState(
+                                                                      function() {
+                                                                          window.collectChromeSurfaceStable(
+                                                                              "task-drawer",
+                                                                              responsiveTaskDrawer,
+                                                                              function() {
+                                                                                  responsiveTaskDrawer.close()
+                                                                                  window.waitFor(
+                                                                                      "drawer de tarefas fechado após inventário",
+                                                                                      function() {
+                                                                                          return responsiveTaskDrawer.position
+                                                                                              <= 0.001
+                                                                                      },
+                                                                                      window.beginActivation)
+                                                                              })
+                                                                      })
+                                                              })
+                                           })
+                        })
+                })
     }
 
     function nextSection() {
         if (sectionCursor >= navigationSections.length) {
             collectChrome()
-            beginActivation()
             return
         }
         const section = navigationSections[sectionCursor]
@@ -413,42 +597,81 @@ Main {
         onTriggered: if (tick) tick()
     }
 
+    function prepareControl(record, then) {
+        restoreShell(record.sectionIndex)
+
+        function openTargetDrawer() {
+            let drawer = null
+            if (record.surface === "handheld-drawer")
+                drawer = responsiveDrawer
+            else if (record.surface === "task-drawer")
+                drawer = responsiveTaskDrawer
+            if (!drawer) {
+                then()
+                return
+            }
+            drawer.open()
+            waitFor(record.surface + " aberto para ativação",
+                    function() {
+                        return drawer.position >= 0.999
+                            && (record.surface !== "task-drawer" || !window.taskLoading)
+                    }, function() {
+                        if (record.surface === "task-drawer")
+                            window.applyScenarioTaskState(then)
+                        else
+                            then()
+                    })
+        }
+
+        if (responsiveDrawer.position > 0.001
+                || responsiveTaskDrawer.position > 0.001) {
+            waitFor("drawers fechados antes da próxima ativação",
+                    function() {
+                        return responsiveDrawer.position <= 0.001
+                            && responsiveTaskDrawer.position <= 0.001
+                    }, openTargetDrawer)
+            return
+        }
+        openTargetDrawer()
+    }
+
     function probeNextControl() {
         if (activationCursor >= activationQueue.length) {
             finish()
             return
         }
         const record = activationQueue[activationCursor]
-        restoreShell(record.sectionIndex)
-        const before = fullState(record.sectionIndex)
-        const fired = activate(record)
-        if (!fired) {
-            record.verdict = "not-probed"
-            record.probeNote = "sem sinal de ativação conhecido"
-            activationCursor += 1
-            Qt.callLater(probeNextControl)
-            return
-        }
-        waitForEffect(before, record.sectionIndex, function(changed) {
-            // Um controle pode legitimamente não mudar nada a partir de um
-            // estado — o item de navegação da seção em que já estamos é o caso
-            // óbvio. Antes de acusar no-op, tenta de outra posição.
-            if (!changed && String(window.lastRequest || "") === "" && !record.retried) {
-                record.retried = true
-                record.sectionIndex = (record.sectionIndex + 4)
-                    % window.navigationSections.length
-                Qt.callLater(window.probeNextControl)
+        prepareControl(record, function() {
+            const before = fullState(record.sectionIndex)
+            const fired = activate(record)
+            if (!fired) {
+                record.verdict = "not-probed"
+                record.probeNote = "sem sinal de ativação conhecido"
+                activationCursor += 1
+                Qt.callLater(probeNextControl)
                 return
             }
-            const message = String(window.lastRequest || "")
-            record.attemptedContract = (window.liveTasks && window.liveTasks.length > 0
-                && window.liveTasks[0].result)
-                ? String(window.liveTasks[0].result.actionId || "") : ""
-            record.message = message
-            record.changedState = changed
-            record.verdict = window.verdictFor(record, changed, message)
-            window.activationCursor += 1
-            Qt.callLater(window.probeNextControl)
+            waitForEffect(before, record.sectionIndex, function(changed) {
+                // Um controle pode legitimamente não mudar nada a partir de um
+                // estado — o item de navegação da seção em que já estamos é o caso
+                // óbvio. Antes de acusar no-op, tenta de outra posição.
+                if (!changed && String(window.lastRequest || "") === "" && !record.retried) {
+                    record.retried = true
+                    record.sectionIndex = (record.sectionIndex + 4)
+                        % window.navigationSections.length
+                    Qt.callLater(window.probeNextControl)
+                    return
+                }
+                const message = String(window.lastRequest || "")
+                record.attemptedContract = (window.liveTasks && window.liveTasks.length > 0
+                    && window.liveTasks[0].result)
+                    ? String(window.liveTasks[0].result.actionId || "") : ""
+                record.message = message
+                record.changedState = changed
+                record.verdict = window.verdictFor(record, changed, message)
+                window.activationCursor += 1
+                Qt.callLater(window.probeNextControl)
+            })
         })
     }
 
@@ -486,6 +709,7 @@ Main {
     // sobrevive ao redirecionamento de log do Qt.
     function finish() {
         console.log("PROBE-CONTEXT " + JSON.stringify({
+            "scenario": scenarioName,
             "viewport": width + "x" + height,
             "themeId": _themeBridge.themeId,
             "highContrast": highContrast,
@@ -494,7 +718,7 @@ Main {
         }))
         for (let i = 0; i < collected.length; i++) {
             const record = collected[i]
-            const copy = {}
+            const copy = {"scenario": scenarioName}
             for (const key in record) {
                 if (key !== "item")
                     copy[key] = record[key]
@@ -505,8 +729,33 @@ Main {
         requestExit(0)
     }
 
+    property string scenarioName: "offline"
+
+    // Carrega um cenario determinista em desktopStatus. Sem isto, 215 dos 288
+    // controles ficam invisiveis: sem bridge o shell cai nos fallbacks vazios,
+    // e um controle invisivel nao e prova de nada.
+    function loadScenario(path) {
+        const request = new XMLHttpRequest()
+        request.open("GET", "file://" + path, false)
+        request.send(null)
+        const fixture = JSON.parse(request.responseText)
+        scenarioName = String(fixture.scenario || "desconhecido")
+        scenarioJobs = fixture.dashboard && fixture.dashboard.jobs
+            ? fixture.dashboard.jobs : []
+        scenarioTaskError = String(fixture.taskError || "")
+        if (fixture.status === null || fixture.status === undefined)
+            return
+        const payload = fixture.status
+        if (fixture.dashboard)
+            payload.dashboard = fixture.dashboard
+        desktopStatus = payload
+    }
+
     Component.onCompleted: {
         outPath = argumentValue("--steamzero-out")
+        const scenario = argumentValue("--steamzero-scenario")
+        if (scenario !== "")
+            loadScenario(scenario)
         Qt.callLater(nextSection)
     }
 }

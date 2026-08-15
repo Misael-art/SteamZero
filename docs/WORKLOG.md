@@ -6944,3 +6944,493 @@ Suíte isolada completa 4606 passed, 10 skipped; `test_project_status` 10/10;
 `ruff format --check`, `mypy src` (222 arquivos), `make independence
 boundaries`, `make status-check` — todos OK. Nenhuma ação de host, release,
 wheel ou privilégio. PRs #78 e #79 não foram tocadas nem mescladas.
+
+---
+
+## 2026-08-13 (3) — Cenários de estado: tornar sondável o que estava invisível
+
+Frente `codex/ui-ux-state-fixture-audit-clean`, base `5be0aa7`. Workstream
+`WS-2026-08-UI-FUNCTIONAL-CLOSURE`, transferido de forma aditiva.
+**Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §2 | `a14e334` | identidade estável de controle | 288 ids, zero colisões, idêntico entre execuções |
+| §6 | `7759a28` → `6af3442` | 8 defeitos de acessibilidade | 3 gates novos; 10 testes verdes |
+| §1/§2/§3 | `e0e8c4e` | 14 cenários determinísticos, fusão por identidade | 12 testes; 196 exercitados contra 73 |
+| — | `8fe2953` | fixtures deixam de ser commitadas | 5,3 MB de JSON derivado fora do repo |
+| §10 | `7aeea06` | item e workstream | `STATUS-CHECK: OK` |
+
+### Medição por superfície
+
+| Superfície | Controles | Routed | Local | Blocked | Not-probed |
+|---|---:|---:|---:|---:|---:|
+| overview | 52 | 0 | 47 | 1 | 4 |
+| library | 120 | 0 | 38 | 0 | 82 |
+| emulators | 198 | 4 | 36 | 0 | 158 |
+| steam | 118 | 1 | 18 | 10 | 89 |
+| profiles | 9 | 1 | 5 | 0 | 3 |
+| cast | 7 | 4 | 0 | 2 | 1 |
+| system | 25 | 6 | 4 | 0 | 15 |
+| themes | 4 | 0 | 1 | 0 | 3 |
+| sync | 1 | 0 | 1 | 0 | 0 |
+| sidebar | 28 | 1 | 16 | 0 | 11 |
+| handheld-drawer | 10 | 0 | 0 | 0 | 10 |
+| task-drawer | 2 | 0 | 0 | 0 | 2 |
+| **total** | **574** | **17** | **166** | **13** | **378** |
+
+O total subiu de 288 para 574 porque os cenários revelaram telas que a sonda
+antes não conseguia sequer ver. Por isso os `not-probed` **sobem** em número
+absoluto ao mesmo tempo que a cobertura real quase triplica (73 → 196
+exercitados): o denominador cresceu junto. Publicar só a queda seria enganoso.
+
+### Nove defeitos corrigidos
+
+Sete de acessibilidade (`6af3442`): quatro botões da Home e três de Sistema sem
+`Accessible.name` — inclusive os únicos três caminhos de diagnóstico da tela — e
+um alvo de 79×32 em Steam, abaixo do mínimo de 48 do produto. Mais dois em
+`e0e8c4e`: 36 botões "Abrir plataforma" e 4 de linha de emulador anunciando
+apenas o verbo, sem dizer de qual plataforma ou emulador.
+
+O botão "Abrir plataforma" foi adicionado por esta mesma frente na passagem
+anterior, sem nome acessível. Ficou registrado.
+
+### O quinto e o sexto falso positivo
+
+O padrão não parou. Desta vez:
+
+5. **37 cards de sistema da Biblioteca acusados de no-op.** Todos falsos. A
+   culpa era do restauro: `openSystemDetails` põe a biblioteca em
+   `view="system"` e a deixava lá, então do segundo clique em diante o estado
+   "antes" já era o estado "depois". O restauro passa a devolver biblioteca,
+   emulação e área Steam ao ponto de partida.
+6. A primeira tentativa de fixtures deixou o `dashboard` quase vazio e mal moveu
+   a fila de ativação. Só quando o workspace de emulação passou a vir das
+   funções de domínio REAIS a cobertura saltou de 60 para 169 acionáveis num
+   único cenário.
+
+### Crash QML (§8) — correlação, não causa
+
+Nenhum crash nesta execução do gate integral: **4483 passaram, 10 skipados,
+exit 0, em 599 s**. Memória do host antes: 10195 MB usados / 4625 disponíveis;
+depois: 11350 / 3470. A suíte consome ~1,1 GB líquido num host de 14,8 GB que
+já opera com swap.
+
+Isto **não prova** que os crashes anteriores foram causados por pressão de
+memória. Prova apenas que, nesta execução, sem concorrência, não houve crash.
+Coredump não foi coletado. Registrado como correlação medida.
+
+### Limites honestos
+
+- **378 controles seguem `not-probed`**: invisíveis em todos os 14 cenários.
+  Só `sync` está integralmente sondada — e com 1 controle, o que é pouco para
+  chamar de cobertura.
+- **§4 parcial**: a espera é por condição com orçamento de quadros, sem `sleep`.
+  Mas os dez eventos nomeados (dialog aberto/fechado, foco restaurado, job
+  criado, verify, refresh, clique repetido sem duplicar) **não** foram provados
+  um a um.
+- **§5 não feito**: dialogs de plano, confirmação, cancelamento, credenciais,
+  recovery e histórico de jobs não foram sondados.
+- **§7 não feito**: a revalidação do card de plataforma com duas plataformas de
+  defaults distintos continua aberta. `07480ac` **não** deve ser considerado
+  fechado.
+- **§9 não feito**: nenhum P0 visual foi reproduzido.
+
+Workstream permanece `active`.
+
+### Higiene de histórico
+
+A primeira montagem desta entrega commitou 5,3 MB de fixtures JSON geradas e
+as removeu no commit seguinte. Os blobs continuavam alcançáveis no histórico.
+
+Esta branch reconstrói a mesma entrega a partir de `5be0aa7`: os três primeiros
+commits vieram por cherry-pick, e os dois de fixtures foram colapsados no diff
+líquido — nenhum JSON gerado entra no histórico. Provado: zero objetos sob
+`tests/fixtures/ui-scenarios` alcançáveis, `e0e8c4e` e `8fe2953` não são
+ancestrais, e o único diff contra `634a6b9` é documentação, o que significa que
+o código entregue é idêntico.
+
+A branch antiga não foi reescrita nem forçada.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 — Higiene de histórico e identidade semântica
+
+Frente `codex/ui-ux-state-fixture-audit-clean`, base `5be0aa7`.
+**Nenhuma ação de host.** Branch anterior preservada, sem force-push.
+
+### Higiene
+
+A montagem anterior commitou 5,3 MB de fixtures JSON geradas e as removeu no
+commit seguinte; os blobs continuavam alcançáveis. Esta branch reconstrói a
+mesma entrega: três cherry-picks e o diff **líquido** dos dois commits de
+fixtures colapsado em um só.
+
+| prova | resultado |
+|---|---|
+| objetos sob `tests/fixtures/ui-scenarios` alcançáveis | **0** |
+| `e0e8c4e` / `8fe2953` / `7aeea06` como ancestrais | **não** |
+| diff contra `634a6b9` | só documentação — código idêntico |
+| diff total contra `5be0aa7` | 913 inserções (era 198.357) |
+
+Duas correções que o cherry-pick cego teria carregado:
+
+1. `test_ui_control_matrix.py` aparecia **duas vezes** na evidência do item;
+2. `/build/` acrescentado ao `.gitignore` era **redundante** — `build/` já está
+   ignorado desde a seção de Python. Pior: por ser arquivo de raiz sem item de
+   custódia, reprovava o `status-check`. Na branch antiga isso passou apenas
+   pela ordem dos commits, que tirou o arquivo da janela `HEAD^..HEAD`.
+
+### Identidade semântica
+
+Controles importantes declaram `objectName`, e quando ele existe a identidade é
+só ele: `id:overview.open-library`, `emulation.platform.<id>.primary`,
+`emulation.emulator.<id>.action`. Não depende de texto traduzido, coordenada,
+índice, endereço nem revisão do engine. O resto cai num fallback estrutural
+rotulado `fallback|...`, e a matriz publica quantos são.
+
+| métrica | valor |
+|---|---:|
+| controles (3 cenários) | 550 |
+| identidades explícitas | 80 |
+| fallback estrutural | 470 |
+| colisões | 0 |
+| vistos em mais de um cenário | 275 |
+
+Onze provas de estabilidade. Duas usam dado real: o CTA do card muda de
+"Instalar &lt;emulador&gt;" para "Abrir plataforma" entre cenários — mesmo botão,
+rótulo diferente; e o par `empty`/`emulation-ready` muda a contagem de
+controles visíveis, o que dá sentido a falar de irmãos.
+
+O teste de irmãos **reprovou na primeira escrita** porque o par escolhido dava
+506 controles dos dois lados e não provava nada. O par foi trocado; a asserção
+não foi afrouxada.
+
+### Aberto
+
+Identidade explícita nas demais superfícies (470 no fallback);
+drawers, dialogs, jobs e recovery; revalidação do card de plataforma —
+`07480ac` **continua sem poder ser fechado**; P0 visuais, nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência nas duas execuções integrais desta sessão
+(4483 e 4494 passando, exit 0). Memória antes 11358 MB usados / 3461 livres;
+depois 12475 / 2345. **Hipótese permanece aberta**: ausência de crash em duas
+execuções não é causa demonstrada.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (2) — Jornada dos diálogos
+
+Frente `codex/ui-ux-dialog-job-audit`, base `3c92688`. **Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §4 | `7b31546` | sonda de jornada de 6 modais + 5 aliases | 4 de 6 verdes, 2 reprovando defeito real |
+| §4 | `fcc1230` | foco entra no modal; Escape limpa o plano | 6 de 6 verdes |
+| §1 | `b9c39cd` | registro corrigido, cobertura separada de identidade | `STATUS-CHECK: OK` |
+
+### O registro corrigido
+
+O relatório anterior publicou, na mesma tabela, cobertura de 14 cenários e
+identidade de 3. Denominadores diferentes. Remedido com os 14 cenários:
+
+| medição | valores |
+|---|---|
+| cobertura | 574 controles · 378 not-probed · 17 roteados · 166 locais · 13 bloqueados |
+| identidade | 80 explícitas · 494 fallback · 0 colisões · 553 multi-cenário · 21 único |
+
+Os seis números da identidade conferem exatamente com a baseline do operador.
+
+### Dois defeitos
+
+**Cinco dos seis modais abriam sem levar o foco.** Quem navega por teclado ou
+pelo controle seguia com o Tab percorrendo a tela *atrás* do modal, e não havia
+focus trap porque o foco nunca entrara. Havia de 1 a 3 controles focáveis
+esperando ninguém.
+
+**Quatro planos sobreviviam ao Escape.** O botão "Cancelar" anulava o plano;
+`onClosed` só restaurava foco. Sair pelo teclado ou pelo botão B deixava a
+confirmação pendurada, pronta para ser reaproveitada na próxima abertura.
+
+Os dois caminhos de cancelamento passam a deixar o mesmo estado.
+
+### Espera determinística
+
+Cada jornada nomeia o evento que observou: `dialog-aberto`, `dialog-fechado`,
+`foco-restaurado`. Espera por condição com orçamento de frames; esgotar o
+orçamento **é** o resultado "o evento não aconteceu", nunca motivo para
+aumentá-lo. Nenhum `sleep`.
+
+### Fallback: sem redução, e isso é registro, não desculpa
+
+O fallback estrutural **segue em 494**. Os diálogos foram cobertos por harness
+próprio, fora da matriz de controles, e nenhum `objectName` novo entrou. Contar
+isso como redução seria creditar trabalho não feito.
+
+### Aberto
+
+Task drawer, handheld drawer, jobs (todos os doze estados), recovery além da
+abertura, credenciais por estado, clique repetido sem duplicar; revalidação do
+card de plataforma — `07480ac` **continua sem poder ser fechado**; P0 visuais,
+nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência (4500 passando, exit 0). Memória antes
+11935 MB usados / 2884 livres; depois 12096 / 2724. **Hipótese permanece
+aberta.**
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (3) — A prova de Escape que não era Escape
+
+Frente `codex/ui-ux-confirm-job-recovery-audit`, base `5d01541`.
+**Nenhuma ação de host.**
+
+Contaminação verificada antes de qualquer edição: `3c92688` é ancestral;
+`2235ce9` (PR #79) e `66d7ac1` (PR #80) **não** são. Nenhum merge, rebase ou
+cherry-pick dessas PRs.
+
+### A correção
+
+A passagem anterior chamou `dialog.close()` de "Escape". Não é, e a diferença
+decide o teste: `close()` ignora `closePolicy` inteiro. `recoveryDialog`
+declara `Popup.NoAutoClose` justamente para que recovery não seja dispensado
+por engano — e fecha por `close()` sem reclamar. O teste antigo daria o mesmo
+verde se Escape estivesse quebrado.
+
+`tests/qml/check_dialog_keys.qml` faz a prova certa com `QtTest.keyClick`:
+Escape fecha quem permite, Escape **não** fecha recovery, plano fica limpo,
+foco volta ao originador, Tab/Shift+Tab dão volta inteira sem escapar.
+
+### O bloqueio, medido e não suposto
+
+`QML-KEY-INJECTION-001`:
+
+- `qmltestrunner` do PATH → `qt5-declarative 5.15.19`, recusa os imports
+  versionless do produto (Qt 6.11.1);
+- `qmltestrunner` do Qt6 em `/usr/lib/qt6/bin` → carrega numa `QQuickView`,
+  que exige raiz `Item`, e `Main` é uma `Window`.
+
+**Escape e Tab reais permanecem NÃO PROVADOS.** O teste pula com esse texto e
+volta a valer sozinho quando houver executor. Um segundo teste, que roda
+sempre, impede que alguém "conserte" o bloqueio trocando o evento real por
+chamada programática.
+
+Saída conhecida para a próxima passagem: harness com raiz `Item` hospedando os
+diálogos, ou teste de teclado pelo lado C++.
+
+### Registro corrigido
+
+`test_ui_dialog_journeys.py` deixa de se chamar "jornada completa". É abertura
+e cancelamento **programáticos**. Confirmar não foi exercido em nenhum modal.
+
+### Não feito
+
+Confirmação com bridge (§4), clique repetido (§5), central de tarefas e jobs
+(§6), recovery além da abertura (§7), melhorias de jornada (§8). Baseline de
+14 cenários inalterada: 574 controles, 378 not-probed, 80 explícitas, 494
+fallback, 0 colisões — nenhum fallback reduzido artificialmente.
+
+Conflito futuro com a PR #80 continua previsto em `docs/WORKLOG.md`,
+`docs/status/COVERAGE.md` e `docs/status/items/ui-desktop-audit.json`. Não
+tentei resolvê-lo incorporando a #80.
+
+Gate integral: **4501 passaram, 11 skipados, exit 0** (678 s). Sem crash.
+Memória antes 9685 MB usados / 5135 livres; depois 10353 / 4466.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (4) — Fechamento do executor Qt 6 para teclado
+
+Frente `codex/ui-ux-key-confirm-job-closure`, base `4033e80`.
+**Nenhuma ação de host; nenhum dado do operador tocado.**
+
+### QML-KEY-INJECTION-001 fechado
+
+O QuickTest Qt 6 em `/usr/lib/qt6/bin/qmltestrunner` executou com raiz `Item`
+hospedando `Main`. O harness espera janela ativa, visibilidade, foco no
+originador e foco interno antes de cada `keyClick`; não há espera arbitrária.
+A fixture inclui os campos consumidos pelos planos sintéticos e não houve
+warning próprio do SteamZero.
+
+O detector enumera a árvore visual a partir de `contentItem`, em vez de confiar
+apenas em `parent`: reconhece foco inicial, cada focável, subitens internos e o
+controle conhecido atrás do popup como externo. A prova Qt 6 passou (7 testes):
+Escape fecha o diálogo permissivo e limpa o plano, Escape não fecha recovery
+`NoAutoClose`, Tab/Shift+Tab permanecem no modal, e Escape e Cancelar visível
+chegam ao mesmo estado e devolvem foco.
+
+### Limite honesto
+
+`test_ui_dialog_keys.py` e `test_ui_dialog_journeys.py`: 8 passaram; bridge e
+jobs existentes: 44 passaram. Esta sessão **não declara a auditoria completa**:
+confirmação por botão real com resposta pendente, clique repetido, task drawer
+por eventos reais e recovery ponta a ponta continuam exigindo as provas
+dedicadas. O item de status registra teclado provado e essas jornadas abertas.
+Conflitos futuros com a PR #80 continuam conhecidos em WORKLOG, COVERAGE e no
+item de auditoria; a PR não foi incorporada.
+
+---
+
+## 2026-08-14 (6) — Confirmação idempotente pela bridge
+
+Frente `codex/ui-ux-confirm-job-takeover`, base `512d842`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** As PRs #79 e #80
+permaneceram fora da ancestralidade.
+
+### Entrega
+
+`Main.qml` passa a manter uma chave de mutação pendente no shell. Uma segunda
+confirmação com o mesmo contrato e payload não publica nova requisição até que
+a primeira termine. Os CTAs de aplicar componente/emulador, recovery,
+cancelamento e repetição mostram o estado pendente e ficam desabilitados;
+sucesso de aplicar/recovery continua condicionado ao refresh da bridge.
+
+`tests/qml/check_confirm_job_recovery_e2e.qml` usa `Main` real e
+`DesktopControlServer` em loopback, sem mock no QML. O QuickTest clica duas
+vezes na confirmação e a fixture observa exatamente um `apply`; também cobre
+plano, refresh, recovery, cancelamento e repetição. O Drawer é um Popup em
+janela separada no executor offscreen: a injeção física de ponteiro não o
+alcança nesse ambiente, por isso jobs exercitam o sinal dos controles reais e
+essa entrada física permanece explicitamente aberta.
+
+### Verificação
+
+- jornada QML + bridge, diálogos de teclado e bridge: **28 passaram**;
+- `ruff check`, `ruff format --check`, `mypy` (220 arquivos), independência,
+  fronteiras e `status-check`: verdes;
+- `qmllint` não introduziu alerta novo; permanece o alerta pré-existente de
+  layout em `Main.qml:4917`.
+
+Continua aberto: 378 controles `not-probed`, superfícies e drawers restantes,
+card de plataforma, P0 visuais, G45 e validação física. A auditoria não é
+declarada concluída nem certificada.
+
+---
+
+## 2026-08-14 (7) — Revisão crítica das jornadas assíncronas
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `23e0886`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade.
+
+### Duas conclusões anteriores corrigidas
+
+A primeira prova de clique repetido dependia de a bridge responder devagar por
+acaso. A fixture agora impõe uma barreira por evento: a requisição precisa
+chegar à bridge, o segundo clique acontece enquanto ela está comprovadamente
+pendente e só então a resposta é liberada. Não há `sleep`. A chave de mutação
+usa serialização canônica recursiva, independente da ordem dos campos e com a
+mesma semântica de omissão de `undefined` do JSON transmitido.
+
+Também estava errada a afirmação de que o executor offscreen não alcançava os
+controles do Drawer. O clique ocorria antes do fim da animação. Esperar
+`position >= 0.999` permitiu usar `mouseClick` Qt real em Cancelar e Tentar
+novamente; cada operação chega exatamente uma vez à bridge. O registro (6)
+acima é histórico e não foi reescrito; esta entrada o corrige explicitamente.
+
+### Robustez de estado e jornada
+
+A central de tarefas agora publica estados distintos de carregamento, vazio e
+erro, oferece nova tentativa e ignora respostas antigas por geração. A jornada
+QML + bridge cobre confirmação idempotente, cancelamento, repetição, erro e
+recuperação do carregamento, recovery bem-sucedido e recovery recusado sem
+fechar o diálogo nem bloquear uma nova tentativa.
+
+A matriz de 14 cenários foi recalculada: 574 controles, 17 roteados, 166
+locais, 13 bloqueados com explicação e 378 `not-probed`; identidade: 80
+explícitas, 494 fallback, 0 colisões, 553 multi-cenário e 21 de cenário único.
+Somente `sync` permanece integralmente sondada.
+
+### Gates e intermitência preservada
+
+Gate integral final, numa árvore parada: **4503 passaram, 10 skipados, exit
+0** em 721,03 s. O guard mediu estado real idêntico antes e depois. `ruff
+check`, `ruff format --check` (464 arquivos), `mypy` (220 arquivos),
+independência, fronteiras e `status-check`: verdes. `qmllint` saiu com código 0
+e manteve apenas o warning de layout preexistente em `Main.qml:5005`, fora do
+trecho alterado.
+
+Uma execução silenciosa anterior falhou em cascata e não reproduziu quando
+rodada detalhadamente nem no gate final. Não há coredump ou primeira falha
+estável; por isso o evento permanece registrado como intermitência sem causa
+atribuída, e não como defeito do código nem como problema "resolvido".
+
+Continua aberto: 378 controles `not-probed`, handheld drawer, estados restantes
+de credenciais e diálogos, revalidação do card de plataforma, P0 visuais, G45 e
+validação física. A auditoria continua `partial` e o workstream, `active`.
+
+---
+
+## 2026-08-15 (8) — Fechamento: credenciais, card de plataforma e P0 visuais
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `a871559`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade (verificado antes de cada
+commit). Esta sessão substitui a reserva (7) anterior como fechamento da frente.
+
+### Jornada de credenciais com bridge real
+
+`check_credential_journey_e2e.qml` + `test_ui_credential_journey_e2e.py`
+provam, com o `Main` real e cliques Qt contra a bridge loopback: abrir o diálogo
+pela ação publicada e filtrar providers; salvar bloqueia duplicidade e limpa o
+segredo; testar valida e aceita rejeição lógica; falha de rede preserva o
+segredo e oferece nova tentativa; revogar volta a não configurado. O servidor de
+teste impõe barreiras por evento (`/release/{nome}`) e um modo
+`/credential/reject-tests` para a rejeição determinística. Duas armadilhas
+registradas para a próxima vez: tokens HTTP precisam ser ASCII
+(`secrets.compare_digest` quebra com acentuação) e contagem de botões em QML
+exige `instanceof Button` para não dobrar o `contentItem`.
+
+### Card de plataforma: reparo de emulador degradado
+
+A auditoria apontava o card de plataforma com CTA apenas "Abrir plataforma"
+quando o emulador está ausente. O workspace agora publica `emulator.repair:<id>`
+("Reparar <emulador>") quando a linha declara `installState: degraded`,
+preservando a secundária `platform.open:<id>`; nada é fabricado quando a linha
+não declara `installable`. Provas unit (reparo, cloud-open-only e
+compatibilidade com o `PlatformRegistry`) e QML (cliques primário/secundário
+publicando os payloads exatos, nomes acessíveis, e a transição Instalar →
+Abrir plataforma após o modelo republicar o card pronto).
+
+### P0 visuais reavaliados contra a árvore atual
+
+Recaptura da auditoria (55 PNGs, modo offline = tema claro fallback) e
+comparação pixel a pixel com a base de 2026-08-11. Os botões "AÇÕES DO SISTEMA"
+passaram de 0 para 494 pixels escuros de texto: P0-1/P0-2 (DarkButton no tema
+claro) estão corrigidos. A prova entra na suíte como
+`check_darkbutton_theme.qml` (label segue a paleta; o runner conta os pixels
+escuros do botão na cena salva). P0-3 (biblioteca sem capas) é dado: a UI
+renderiza a capa quando o read model publica `coverUrl` — agora provado no
+carrossel com `MediaEffectLayer` visível e `sourceStatus == Image.Ready` — e
+mantém placeholder honesto sem arte quando não há; a bridge enriquece `coverUrl`
+a partir dos metadados do jogo. P0-6 (jornada de temas) já estava fechada pelo
+redesenho: Aplicar, Duplicar e exportar desabilitado com motivo. O item
+`SZ-UI-DESKTOP-AUDIT` recebeu as novas provas, o digest do escopo e o ajuste
+mecânico do `SZ-THEME-AURA` (cujo escopo inclui `test_qml_handheld_offscreen.py`).
+
+### Gates
+
+Por item: ruff, ruff format --check, mypy e qmllint verdes; suíte offscreen
+(27 provas) verde. Gate integral numa árvore parada: **4513 passaram, 10
+skipados**; falha única pré-existente e não reproduzida após a reconciliação
+dos digests (`test_committed_catalog_and_generated_views_are_consistent`
+acusava digest obsoleto de `SZ-THEME-AURA`, corrigido nesta sessão; segunda
+execução integral sem a falha). `status-check` verde; `docs/STATUS.md`,
+`docs/ACTIVE-WORK.md` e `docs/status/COVERAGE.md` regenerados.
+
+Continua aberto: 378 controles `not-probed`, handheld drawer e demais estados
+de diálogos, G45 e validação física (operador), e a harmonização final com as
+PRs #78/#79/#80. A auditoria continua `partial`; o workstream sai `active` com
+a frente concluída na branch.

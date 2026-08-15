@@ -12,7 +12,14 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-08-11-ui-audit",
     "src/steamzero/ui",
+    "src/steamzero/ui/qml/EditorialHome.qml",
+    "tests/integration/test_ui_control_identity.py",
     "tests/integration/test_ui_control_matrix.py",
+    "tests/integration/test_ui_dialog_journeys.py",
+    "tests/integration/test_ui_dialog_keys.py",
+    "tests/integration/test_ui_confirm_job_recovery_e2e.py",
+    "tests/qml/check_dialog_keys.qml",
+    "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_emulation.qml",
     "tests/qml/check_main_emulation.qml",
@@ -20,9 +27,14 @@
     "tools/ui_audit_capture.qml",
     "tools/ui_audit_runner.py",
     "tools/ui_control_inventory.py",
-    "tools/ui_control_probe.qml"
+    "tools/ui_control_probe.qml",
+    "tools/ui_dialog_probe.qml",
+    "tools/ui_scenario_fixtures.py",
+    "tests/integration/test_ui_credential_journey_e2e.py",
+    "tests/qml/check_credential_journey_e2e.qml",
+    "tests/qml/check_darkbutton_theme.qml"
   ],
-  "scopeDigest": "44a6628475e7c8e87630302bc0562f9f40794ae0cbc2e89fe6fa72f326ceadce",
+  "scopeDigest": "223a927414631b9fa94e4fbd0b3d5069cdf75c3d603d78183b11d02cfc0867ce",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -34,7 +46,22 @@
     "Card de plataforma travada por emulador ausente oferece instalar.",
     "Harness de auditoria termina sem crash e o manifesto usa a CLI publicada.",
     "DarkButton legivel no tema claro.",
-    "Tema aplica via plan+confirm na UI."
+    "Tema aplica via plan+confirm na UI.",
+    "Todo controle acionavel visivel anuncia Accessible.name.",
+    "Todo alvo acionavel tem ao menos 48x48.",
+    "A matriz roda todos os cenarios declarados e funde por identidade estavel.",
+    "Identidade explicita nao carrega rotulo nem posicao.",
+    "A matriz publica quanto da identidade repousa no fallback estrutural.",
+    "Fechar modal por Escape nao deixa plano pendurado.",
+    "Fechar modal devolve o foco ao originador.",
+    "Modal recebe o foco ao abrir (verificado com abertura programatica).",
+    "Escape e Tab reais provados por evento de teclado Qt 6; recovery permanece aberto com NoAutoClose.",
+    "Confirmacao por clique Qt contra a bridge loopback publica exatamente um apply durante clique repetido.",
+    "Confirmacao, cancelamento, repeticao e recovery ficam indisponiveis enquanto a mutacao correspondente esta pendente.",
+    "Sucesso de confirmacao e recovery so e publicado apos refresh pela bridge.",
+    "Task drawer distingue carregando, vazio e erro e oferece nova tentativa acionavel.",
+    "Cancelar e repetir jobs sao provados por cliques Qt reais contra a bridge.",
+    "Falha de recovery mantem o dialog aberto, anuncia o erro e permite nova tentativa."
   ],
   "evidence": [
     {
@@ -60,12 +87,66 @@
       "reference": "tests/integration/test_ui_control_matrix.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_identity.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_identity.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_journeys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_keys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_confirm_job_recovery_e2e.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_confirm_job_recovery_e2e.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_credential_journey_e2e.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_credential_journey_e2e.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_workspace.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_workspace.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_emulation.qml",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_darkbutton_theme.qml",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_editorial_library.qml",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Medido em 2026-08-13: 288 controles em 12 superficies; 10 roteados, 49 locais, 14 bloqueados com motivo, 215 nao sondados (invisiveis no estado offline). Zero no-op silencioso, zero sem rota, zero bloqueado mudo. 7 defeitos encontrados e 7 corrigidos. 117 contratos ainda NAO COBERTOS por esta auditoria (nao sao orfaos: 1 de 17 superficies inventariada pela sonda de acoes). Falta tornar os controles invisiveis sondaveis por fixture de estado, cobrir dialogs/recovery/jobs e so entao atacar os P0 visuais (DarkButton, capas, Home).",
+  "nextAction": "Jornadas de credenciais (salvar/testar/revogar) provadas pela bridge loopback com cliques Qt reais; card de plataforma revalidado com fix de dominio (emulador degradado oferece Reparar) e provas unit/QML; P0 visuais reavaliados contra a arvore atual: P0-1/P0-2 (DarkButton no tema claro) corrigidos e provados por pixels, P0-4/P0-5 (instalacao no-op e fragmentada) fechados pelo wiring componente+card, P0-6 (jornada de temas) fechada pelo redesenho (Aplicar, Duplicar e exportar desabilitado com motivo), P0-3 (biblioteca sem capas) e dado: a UI renderiza a capa quando o read model publica coverUrl (provado) e mantem placeholder honesto sem arte quando nao ha; a bridge enriquece coverUrl a partir dos metadados do jogo. Auditoria ainda incompleta: 378 controles not-probed, handheld drawer e demais estados de dialogs, alem de G45 e validacao fisica (operador).",
   "activeWorkstreams": [
     "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
   ],
-  "updatedAt": "2026-08-13",
+  "updatedAt": "2026-08-15",
   "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. Caminho compartilhado com WS-2026-08-HARMONIZE-A45, que reserva docs/status: este item so teve escopo, criterios, evidencia e proxima acao atualizados."
 }
