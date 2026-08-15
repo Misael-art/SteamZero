@@ -18,7 +18,7 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
-  "scopeDigest": "f71c64133acf41dcd34ea7429b5fc4e58ed901b54c6fcd6156d6f53f8fece89c",
+  "scopeDigest": "05f9a30571d091dff34f063b15568e2725b8dbeb7b01ee61767a973d97f6db00",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
@@ -32,7 +32,8 @@
     "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica.",
     "Todo artefato de cadeia de suprimentos publicado pelo CI possui checksum validado antes do plano de instalacao.",
     "Falha comprovada antes da preparacao do bundle terminaliza o journal sem chamada privilegiada, enquanto estados ambiguos continuam exigindo recuperacao do commit original.",
-    "Falha estruturada de convergencia preserva estado, codigo e detalhe sanitizado no journal antes do rollback automatico."
+    "Falha estruturada de convergencia preserva estado, codigo e detalhe sanitizado no journal antes do rollback automatico.",
+    "A provisao opcional do runtime QML no CI possui prazo finito e nao pode bloquear indefinidamente os gates obrigatorios."
   ],
   "evidence": [
     {
@@ -53,5 +54,5 @@
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. A primeira instalacao real de fc43344 ativou a candidata, reprovou na convergencia e restaurou/verificou automaticamente 0.1.0a46-40aa9bafa062; a ausencia de restart do daemon aponta para falha do gerenciador de servicos, mas o journal antigo reteve apenas AutomationError. A proxima candidata preserva estado, codigo e detalhe sanitizado do convergidor antes do rollback. Operacao real permanece em investigacao e certificacao fisica continua pendente."
+  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. A primeira instalacao real de fc43344 ativou a candidata, reprovou na convergencia e restaurou/verificou automaticamente 0.1.0a46-40aa9bafa062; a ausencia de restart do daemon aponta para falha do gerenciador de servicos, mas o journal antigo reteve apenas AutomationError. A proxima candidata preserva estado, codigo e detalhe sanitizado do convergidor antes do rollback. O CI seguinte ficou preso por mais de dez minutos no apt opcional de Qt/Python 3.11; esse passo best-effort agora tem timeout de cinco minutos e guarda automatizada, sem enfraquecer os gates obrigatorios. Operacao real permanece em investigacao e certificacao fisica continua pendente."
 }

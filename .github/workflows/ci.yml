@@ -60,6 +60,7 @@ jobs:
         # derrubar o job. Se a provisão falhar, o passo registra o diagnóstico e
         # segue; a cobertura não depende destes testes.
         continue-on-error: true
+        timeout-minutes: 5
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \

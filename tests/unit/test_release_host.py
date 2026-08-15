@@ -233,6 +233,15 @@ def test_ci_checksums_the_uploaded_vulnerability_audit() -> None:
     assert "build/provenance.json > build/SHA256SUMS" in checksum_step
 
 
+def test_optional_qml_runtime_provision_cannot_hang_the_ci_job() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    qml_step = workflow.split("- name: Runtime QML para os harnesses offscreen", 1)[1].split(
+        "- name: Gerador de ISO cloud-init", 1
+    )[0]
+    assert "continue-on-error: true" in qml_step
+    assert "timeout-minutes: 5" in qml_step
+
+
 @pytest.mark.parametrize(
     "listing",
     [
