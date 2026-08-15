@@ -46,6 +46,12 @@ QML offscreen; certificação física continua separada e exige o operador. O
 contrato completo está em
 [RELEASE-HOST-AUTOMATION.md](RELEASE-HOST-AUTOMATION.md).
 
+Uma candidata que precisa de certificação antes do merge usa `--to
+origin/codex/<branch>` e precisa do SHA remoto exato, CI `push` verde e
+proveniência vinculada ao mesmo ref. Ela pode passar pelo ciclo real de
+install/rollback, mas não pode ser publicada; `publish` aceita apenas artifact
+de `refs/heads/main` depois da integração e da evidência física aprovada.
+
 Novas instalações usam manifesto v2 e ID canônico `<versão>-<commit[0:12]>`; o
 commit completo e o estado limpo da fonte são obrigatórios. Manifests v1 permanecem
 aceitos apenas para verificar e reverter releases legadas já instaladas. Eles não

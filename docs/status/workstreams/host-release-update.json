@@ -8,6 +8,7 @@
   "owner": "release-candidate-integration",
   "state": "active",
   "exclusivePaths": [
+    ".github/workflows/ci.yml",
     "tools/release_host.py",
     "tools/install_host.py",
     "tests/unit/test_release_host.py",
@@ -21,6 +22,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir os caminhos em que estado de ativacao ilegivel ou falha de journal/quarentena suprime rollback; vincular cache a evidencia externa, provar preservacao logica SQLite WAL, endurecer smoke QML e serializar todos os mutadores antes de qualquer uso no host.",
+  "nextAction": "Rodar gates integrais, publicar a branch candidata sem force-push, exigir CI push verde e somente entao planejar o ciclo real com token exato; manter publish e merge em main bloqueados ate a certificacao fisica.",
   "updatedAt": "2026-08-15"
 }

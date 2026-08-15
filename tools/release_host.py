@@ -26,6 +26,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -94,6 +95,7 @@ class Bundle:
     wheelhouse: Path
     manifest: Path
     run_id: str | None
+    source_ref: str
 
     def public(self) -> dict[str, object]:
         data = asdict(self)
@@ -247,6 +249,7 @@ def _update_lock(state_dir: Path | None = None) -> Iterator[IO[str]]:
 def _start_update_journal(
     source_commit: str,
     *,
+    source_ref: str = "refs/heads/main",
     current_release: str | None,
     state_dir: Path | None,
 ) -> UpdateJournal:
@@ -260,6 +263,7 @@ def _start_update_journal(
         "targetRelease": None,
         "rollbackRelease": None,
         "sourceCommit": source_commit,
+        "sourceRef": source_ref,
         "wheelSha256": None,
         "runId": None,
         "phase": "",
@@ -476,7 +480,7 @@ def _verify_checksums(root: Path) -> set[str]:
     return checked
 
 
-def load_bundle(root: Path) -> Bundle:
+def load_bundle(root: Path, *, expected_ref: str = "refs/heads/main") -> Bundle:
     root = root.expanduser().resolve()
     _reject_bundle_symlinks(root)
     manifest_path = root / "dist" / "runtime-wheelhouse" / "WHEELHOUSE-MANIFEST.json"
@@ -547,8 +551,8 @@ def load_bundle(root: Path) -> Bundle:
         raise AutomationError(
             f"commit diverge entre manifesto e proveniência: {commit} != {provenance_commit}"
         )
-    if not isinstance(source, dict) or source.get("ref") != "refs/heads/main":
-        raise AutomationError("proveniência não pertence a refs/heads/main")
+    if not isinstance(source, dict) or source.get("ref") != expected_ref:
+        raise AutomationError(f"proveniência não pertence a {expected_ref}")
     build = provenance.get("build")
     if not isinstance(build, dict) or build.get("sourceTreeState") != "clean":
         raise AutomationError("proveniência não declara sourceTreeState=clean")
@@ -573,7 +577,9 @@ def load_bundle(root: Path) -> Bundle:
 
     run_id = manifest_data.get("githubRunId")
     provenance_run_id = build.get("runId")
-    if run_id and provenance_run_id and str(run_id) != str(provenance_run_id):
+    if not run_id or not provenance_run_id:
+        raise AutomationError("bundle não vincula um run de CI ao manifesto e à proveniência")
+    if str(run_id) != str(provenance_run_id):
         raise AutomationError(
             f"run diverge entre manifesto e proveniência: {run_id} != {provenance_run_id}"
         )
@@ -591,6 +597,7 @@ def load_bundle(root: Path) -> Bundle:
         wheelhouse=root / "dist" / "runtime-wheelhouse",
         manifest=manifest_path,
         run_id=str(run_id) if run_id else None,
+        source_ref=expected_ref,
     )
 
 
@@ -672,22 +679,41 @@ def inspect(
     }
 
 
+def _source_ref_for_update(to_ref: str) -> str:
+    if to_ref == DEFAULT_UPDATE_REF:
+        return "refs/heads/main"
+    prefix = "origin/codex/"
+    if not to_ref.startswith(prefix):
+        raise AutomationError(
+            f"update aceita {DEFAULT_UPDATE_REF} ou uma candidata explícita origin/codex/*"
+        )
+    branch = to_ref.removeprefix("origin/")
+    if (
+        branch.endswith(("/", "."))
+        or ".." in branch
+        or "@{" in branch
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", branch) is None
+    ):
+        raise AutomationError(f"referência candidata inválida: {to_ref}")
+    return f"refs/heads/{branch}"
+
+
 def _resolve_update_target(
     to_ref: str,
     *,
     runner: CommandRunner = _default_runner,
 ) -> str:
-    if to_ref != DEFAULT_UPDATE_REF:
-        raise AutomationError(f"update aceita somente --to {DEFAULT_UPDATE_REF}")
+    source_ref = _source_ref_for_update(to_ref)
+    remote_ref = f"refs/remotes/origin/{source_ref.removeprefix('refs/heads/')}"
     _run(
-        ["git", "fetch", "origin", "refs/heads/main:refs/remotes/origin/main"],
+        ["git", "fetch", "origin", f"{source_ref}:{remote_ref}"],
         timeout=120,
         runner=runner,
-        purpose="atualizar referência origin/main",
+        purpose=f"atualizar referência {to_ref}",
     )
-    commit = _git(["rev-parse", "refs/remotes/origin/main^{commit}"], runner)
+    commit = _git(["rev-parse", f"{remote_ref}^{{commit}}"], runner)
     if COMMIT_RE.fullmatch(commit) is None:
-        raise AutomationError("origin/main não resolveu para um commit completo")
+        raise AutomationError(f"{to_ref} não resolveu para um commit completo")
     head = _git(["rev-parse", "HEAD"], runner)
     if head != commit:
         raise AutomationError(f"HEAD {head} difere do destino imutável {commit}")
@@ -711,24 +737,68 @@ def _prepare_update_bundle(
     cache_dir: Path | None,
     repository: str,
     runner: CommandRunner,
+    source_ref: str = "refs/heads/main",
 ) -> Bundle:
     cache = (cache_dir or _cache_dir()).expanduser().resolve()
     _require_cache_space(cache)
     output = cache / commit
     if output.is_dir() and any(output.iterdir()):
-        bundle = load_bundle(output)
+        bundle = load_bundle(output, expected_ref=source_ref)
         if bundle.commit != commit:
             raise AutomationError("bundle em cache pertence a outro commit")
+        _validate_cached_bundle_ci(
+            bundle,
+            repository=repository,
+            source_ref=source_ref,
+            runner=runner,
+        )
         return bundle
     bundle = prepare(
         commit=commit,
         output=output,
         repository=repository,
+        source_ref=source_ref,
         runner=runner,
     )
     bundle_bytes = sum(path.stat().st_size for path in bundle.root.rglob("*") if path.is_file())
     _require_cache_space(cache, max(512 * 1024 * 1024, bundle_bytes * 2))
     return bundle
+
+
+def _validate_cached_bundle_ci(
+    bundle: Bundle,
+    *,
+    repository: str,
+    source_ref: str,
+    runner: CommandRunner,
+) -> None:
+    """Revalida no GitHub a autoridade de um artifact mantido em cache local."""
+    manifest_path = bundle.root / "AUTOMATION-MANIFEST.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AutomationError(f"manifesto da automação em cache ilegível: {exc}") from exc
+    if not isinstance(manifest, dict) or manifest.get("schemaVersion") != 1:
+        raise AutomationError("manifesto da automação em cache inválido")
+    expected = {
+        "repository": repository,
+        "sourceCommit": bundle.commit,
+        "release": bundle.release,
+        "runId": str(bundle.run_id or ""),
+        "sourceRef": source_ref,
+    }
+    actual = {
+        "repository": manifest.get("repository"),
+        "sourceCommit": manifest.get("sourceCommit"),
+        "release": manifest.get("release"),
+        "runId": str(manifest.get("runId") or ""),
+        "sourceRef": manifest.get("sourceRef"),
+    }
+    if actual != expected:
+        raise AutomationError("manifesto da automação em cache diverge do bundle ou repositório")
+    run = _discover_run(bundle.commit, repository, runner=runner)
+    if str(run.get("databaseId") or "") != expected["runId"]:
+        raise AutomationError("run verde atual diverge da proveniência do bundle em cache")
 
 
 def _parse_json_object(
@@ -920,6 +990,7 @@ def prepare(
     output: Path,
     repository: str = DEFAULT_REPOSITORY,
     run_id: str | None = None,
+    source_ref: str = "refs/heads/main",
     runner: CommandRunner = _default_runner,
 ) -> Bundle:
     if COMMIT_RE.fullmatch(commit) is None:
@@ -929,7 +1000,7 @@ def prepare(
             "git",
             "fetch",
             "origin",
-            "refs/heads/main:refs/remotes/origin/main",
+            f"{source_ref}:refs/remotes/origin/{source_ref.removeprefix('refs/heads/')}",
         ],
         timeout=120,
         runner=runner,
@@ -940,9 +1011,10 @@ def prepare(
         raise AutomationError(f"checkout {head} difere do commit solicitado {commit}")
     if _git(["status", "--porcelain"], runner):
         raise AutomationError("prepare recusa worktree suja")
-    origin_main = _git(["rev-parse", "refs/remotes/origin/main"], runner)
-    if origin_main != commit:
-        raise AutomationError("prepare aceita somente o tip exato de origin/main")
+    remote_ref = f"refs/remotes/origin/{source_ref.removeprefix('refs/heads/')}"
+    origin_source = _git(["rev-parse", remote_ref], runner)
+    if origin_source != commit:
+        raise AutomationError(f"prepare aceita somente o tip exato de {source_ref}")
     _run(
         ["gh", "auth", "status", "-h", "github.com"],
         runner=runner,
@@ -1002,7 +1074,7 @@ def prepare(
             runner=runner,
             purpose="extração do wheelhouse",
         )
-        bundle = load_bundle(temporary)
+        bundle = load_bundle(temporary, expected_ref=source_ref)
         if bundle.commit != commit:
             raise AutomationError(
                 f"artifact pertence a {bundle.commit}, não ao commit solicitado {commit}"
@@ -1014,6 +1086,7 @@ def prepare(
             "runId": run_id,
             "runUrl": run.get("url"),
             "sourceCommit": commit,
+            "sourceRef": source_ref,
             "release": bundle.release,
         }
         (temporary / "AUTOMATION-MANIFEST.json").write_text(
@@ -1023,7 +1096,7 @@ def prepare(
         if output.exists():
             output.rmdir()
         temporary.replace(output)
-        return load_bundle(output)
+        return load_bundle(output, expected_ref=source_ref)
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
@@ -1188,10 +1261,10 @@ def _qml_offscreen_smoke(
             completed = runner(command, ROOT, 10)
         except (OSError, subprocess.SubprocessError) as exc:
             raise AutomationError(f"smoke QML offscreen: {exc}") from exc
-    if completed.returncode not in {0, 124}:
+    if completed.returncode != 124:
         detail = (completed.stderr or completed.stdout).strip()[-600:]
         raise AutomationError(
-            f"smoke QML offscreen encerrou antes da janela de prova "
+            f"smoke QML offscreen não permaneceu ativo durante a janela de prova "
             f"(exit {completed.returncode}): {detail}"
         )
     return {"state": "started", "windowSeconds": 5, "exitCode": completed.returncode}
@@ -1248,14 +1321,22 @@ def _activation_smokes(
     if doctor_data.get("ok") is not True:
         raise AutomationError("doctor pós-ativação não declarou ok=true")
     doctor_payload = doctor_data.get("data")
+    if not isinstance(doctor_payload, dict):
+        raise AutomationError("doctor pós-ativação não declarou data")
+    if doctor_payload.get("schemaVersion") != DATA_SCHEMA_VERSION:
+        raise AutomationError(
+            "doctor pós-ativação declarou schema incompatível: "
+            f"host={doctor_payload.get('schemaVersion')}, alvo={DATA_SCHEMA_VERSION}"
+        )
+    if doctor_payload.get("pendingOperations") not in (None, [], 0):
+        raise AutomationError("doctor pós-ativação declarou operações críticas pendentes")
     doctor_summary: dict[str, object] = {
         "ok": True,
         "status": doctor_data.get("status"),
     }
-    if isinstance(doctor_payload, dict):
-        for key in ("schemaVersion", "pendingOperations", "version"):
-            if key in doctor_payload:
-                doctor_summary[key] = doctor_payload[key]
+    for key in ("schemaVersion", "pendingOperations", "version"):
+        if key in doctor_payload:
+            doctor_summary[key] = doctor_payload[key]
     return {
         "manifest": manifest,
         "version": version.stdout.strip(),
@@ -1337,7 +1418,7 @@ def _rollback_only(release: str, *, runner: CommandRunner) -> dict[str, object]:
     return activation_data
 
 
-def install(
+def _install_unlocked(
     bundle: Bundle,
     *,
     rollback_release: str,
@@ -1357,7 +1438,7 @@ def install(
         expected_commit=bundle.commit,
         expected_version=bundle.version,
     )
-    result = {
+    result: dict[str, object] = {
         "release": bundle.release,
         "sourceCommit": bundle.commit,
         "rollbackRelease": rollback_release,
@@ -1369,7 +1450,25 @@ def install(
     return result
 
 
-def rollback(
+def install(
+    bundle: Bundle,
+    *,
+    rollback_release: str,
+    confirmation: str,
+    runner: CommandRunner = _default_runner,
+    state_dir: Path | None = None,
+) -> dict[str, object]:
+    with _update_lock(state_dir):
+        return _install_unlocked(
+            bundle,
+            rollback_release=rollback_release,
+            confirmation=confirmation,
+            runner=runner,
+            state_dir=state_dir,
+        )
+
+
+def _rollback_unlocked(
     release: str,
     *,
     confirmation: str,
@@ -1383,11 +1482,33 @@ def rollback(
     _require_rollback(release)
     activation_data = _rollback_only(release, runner=runner)
     verified = _post_activation(release, runner=runner)
-    result = {"release": release, "activation": activation_data, "verification": verified}
+    result: dict[str, object] = {
+        "release": release,
+        "activation": activation_data,
+        "verification": verified,
+    }
     evidence_release = state_release or release
     evidence = _record(evidence_release, "rollback", result, state_dir=state_dir)
     result["evidence"] = str(evidence)
     return result
+
+
+def rollback(
+    release: str,
+    *,
+    confirmation: str,
+    runner: CommandRunner = _default_runner,
+    state_release: str | None = None,
+    state_dir: Path | None = None,
+) -> dict[str, object]:
+    with _update_lock(state_dir):
+        return _rollback_unlocked(
+            release,
+            confirmation=confirmation,
+            runner=runner,
+            state_release=state_release,
+            state_dir=state_dir,
+        )
 
 
 def _state_db_fingerprint() -> str:
@@ -1397,7 +1518,24 @@ def _state_db_fingerprint() -> str:
         return "absent"
     if database.is_symlink() or not database.is_file():
         raise AutomationError("state.db não é um arquivo regular")
-    return _sha256(database)
+    snapshot: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix="steamzero-state-snapshot-", suffix=".db", dir="/tmp", delete=False
+        ) as handle:
+            snapshot = Path(handle.name)
+        source_uri = f"{database.resolve().as_uri()}?mode=ro"
+        with (
+            sqlite3.connect(source_uri, uri=True) as source,
+            sqlite3.connect(snapshot) as destination,
+        ):
+            source.backup(destination)
+        return _sha256(snapshot)
+    except sqlite3.Error as exc:
+        raise AutomationError(f"não foi possível fotografar state.db com WAL: {exc}") from exc
+    finally:
+        if snapshot is not None:
+            snapshot.unlink(missing_ok=True)
 
 
 def _quarantine_path(release: str, state_dir: Path | None) -> Path:
@@ -1504,23 +1642,39 @@ def _finish_failed_update(
     host_root: Path,
 ) -> None:
     current = _read_host_truth(host_root).get("release")
-    journal.event(
+    evidence_errors: list[Exception] = []
+
+    def record(
+        phase: str,
+        *,
+        current_release: str | None,
+        data: dict[str, object] | None = None,
+    ) -> None:
+        try:
+            journal.event(phase, current_release=current_release, data=data)
+        except Exception as exc:  # A segurança do host prevalece sobre a telemetria.
+            evidence_errors.append(exc)
+
+    record(
         "rollback-required",
         current_release=str(current) if current else None,
         data={"failedPhase": failed_phase, "errorType": type(original_error).__name__},
     )
-    _mark_quarantined(
-        bundle.release,
-        source_commit=bundle.commit,
-        failed_phase=failed_phase,
-        state_dir=state_dir,
-    )
     try:
-        journal.event("rollback-started", current_release=str(current) if current else None)
+        _mark_quarantined(
+            bundle.release,
+            source_commit=bundle.commit,
+            failed_phase=failed_phase,
+            state_dir=state_dir,
+        )
+    except Exception as exc:
+        evidence_errors.append(exc)
+    try:
+        record("rollback-started", current_release=str(current) if current else None)
         _rollback_only(plan.rollback_release, runner=runner)
-        journal.event("rollback-activated", current_release=plan.rollback_release)
+        record("rollback-activated", current_release=plan.rollback_release)
         convergence = _converge(plan.rollback_release, runner=runner)
-        journal.event(
+        record(
             "convergence-passed",
             current_release=plan.rollback_release,
             data={"direction": "rollback"},
@@ -1533,7 +1687,7 @@ def _finish_failed_update(
         expected_state = _journal_event_data(journal, "stateFingerprint")
         if isinstance(expected_state, str) and _state_db_fingerprint() != expected_state:
             raise AutomationError("state.db divergiu após o rollback")
-        journal.event(
+        record(
             "rollback-verified",
             current_release=plan.rollback_release,
             data={
@@ -1543,7 +1697,17 @@ def _finish_failed_update(
                 "doctorOk": bool(smokes.get("doctor")),
             },
         )
-        journal.event(
+        if not _quarantine_path(bundle.release, state_dir).is_file():
+            try:
+                _mark_quarantined(
+                    bundle.release,
+                    source_commit=bundle.commit,
+                    failed_phase=failed_phase,
+                    state_dir=state_dir,
+                )
+            except Exception as exc:
+                evidence_errors.append(exc)
+        record(
             "failed-safe",
             current_release=plan.rollback_release,
             data={"deploymentHealthy": False, "rollbackHealthy": True},
@@ -1551,7 +1715,7 @@ def _finish_failed_update(
     except Exception as rollback_error:
         units = _stop_inconsistent_units(runner)
         current_after = _read_host_truth(host_root).get("release")
-        journal.event(
+        record(
             "rollback-failed",
             current_release=str(current_after) if current_after else None,
             data={
@@ -1565,6 +1729,11 @@ def _finish_failed_update(
             f"Recupere com tools/release_host.py rollback --release "
             f"{plan.rollback_release} --confirm-rollback REVERTER-{plan.rollback_release}"
         ) from rollback_error
+    if evidence_errors:
+        raise AutomationError(
+            f"update {bundle.release} falhou em {failed_phase}; rollback "
+            f"{plan.rollback_release} foi verificado, mas a evidência local ficou incompleta"
+        ) from original_error
     raise AutomationError(
         f"update {bundle.release} falhou em {failed_phase}; rollback "
         f"{plan.rollback_release} foi ativado e verificado"
@@ -1621,12 +1790,13 @@ def _execute_update_transaction(
             activation_data = _install_only(bundle, runner=runner)
         except Exception as exc:
             after_error = _read_host_truth(host_root).get("release")
-            if after_error != bundle.release:
+            if after_error == plan.rollback_release:
                 journal.event(
                     "failed-before-activation",
                     current_release=str(after_error) if after_error else None,
                     data={"errorType": type(exc).__name__},
                 )
+                raise
                 raise
             _finish_failed_update(
                 bundle=bundle,
@@ -1640,13 +1810,29 @@ def _execute_update_transaction(
             )
         current = _read_host_truth(host_root).get("release")
         if current != bundle.release:
-            journal.event(
-                "failed-before-activation",
-                current_release=str(current) if current else None,
-                data={"errorType": "ActivationMismatch"},
+            _finish_failed_update(
+                bundle=bundle,
+                plan=plan,
+                journal=journal,
+                failed_phase="activation-mismatch",
+                original_error=AutomationError("install_host retornou sucesso sem ativar o target"),
+                runner=runner,
+                state_dir=state_dir,
+                host_root=host_root,
             )
-            raise AutomationError("install_host retornou sucesso sem ativar o target")
-        journal.event("activated", current_release=bundle.release)
+        try:
+            journal.event("activated", current_release=bundle.release)
+        except Exception as exc:
+            _finish_failed_update(
+                bundle=bundle,
+                plan=plan,
+                journal=journal,
+                failed_phase="activated-evidence",
+                original_error=exc,
+                runner=runner,
+                state_dir=state_dir,
+                host_root=host_root,
+            )
 
     try:
         convergence = _converge(bundle.release, runner=runner)
@@ -1773,6 +1959,7 @@ def update(
         unfinished = _load_unfinished_journal(state_dir)
         if unfinished is not None:
             commit = str(unfinished.document.get("sourceCommit") or "")
+            source_ref = str(unfinished.document.get("sourceRef") or "refs/heads/main")
             if COMMIT_RE.fullmatch(commit) is None:
                 raise AutomationError("journal incompleto não possui sourceCommit válido")
             _require_recovery_checkout(commit, runner)
@@ -1782,6 +1969,7 @@ def update(
                     commit,
                     cache_dir=cache_dir,
                     repository=repository,
+                    source_ref=source_ref,
                     runner=runner,
                 )
                 current = _read_host_truth(host_root).get("release")
@@ -1791,7 +1979,7 @@ def update(
                     current_release=str(current) if current else None,
                 )
             else:
-                bundle = load_bundle(bundle_root)
+                bundle = load_bundle(bundle_root, expected_ref=source_ref)
             _require_checkout(bundle, runner)
             if not _journal_has_phase(unfinished, "rollback-required"):
                 _require_not_quarantined(bundle.release, state_dir)
@@ -1830,10 +2018,12 @@ def update(
                 host_root=host_root,
             )
 
+        source_ref = _source_ref_for_update(to_ref)
         commit = _resolve_update_target(to_ref, runner=runner)
         current = _read_host_truth(host_root).get("release")
         journal = _start_update_journal(
             commit,
+            source_ref=source_ref,
             current_release=str(current) if current else None,
             state_dir=state_dir,
         )
@@ -1841,6 +2031,7 @@ def update(
             commit,
             cache_dir=cache_dir,
             repository=repository,
+            source_ref=source_ref,
             runner=runner,
         )
         _bind_journal_bundle(
@@ -1896,28 +2087,29 @@ def cycle(
     expected = f"{bundle.release}->{rollback_release}->{bundle.release}"
     if confirmation != expected:
         raise AutomationError(f"confirmação inválida; esperado --confirm-cycle {expected}")
-    target = install(
-        bundle,
-        rollback_release=rollback_release,
-        confirmation=f"INSTALAR-{bundle.release}",
-        runner=runner,
-        state_dir=state_dir,
-    )
-    previous = rollback(
-        rollback_release,
-        confirmation=f"REVERTER-{rollback_release}",
-        runner=runner,
-        state_release=bundle.release,
-        state_dir=state_dir,
-    )
-    restored = install(
-        bundle,
-        rollback_release=rollback_release,
-        confirmation=f"INSTALAR-{bundle.release}",
-        runner=runner,
-        state_dir=state_dir,
-    )
-    result = {
+    with _update_lock(state_dir):
+        target = _install_unlocked(
+            bundle,
+            rollback_release=rollback_release,
+            confirmation=f"INSTALAR-{bundle.release}",
+            runner=runner,
+            state_dir=state_dir,
+        )
+        previous = _rollback_unlocked(
+            rollback_release,
+            confirmation=f"REVERTER-{rollback_release}",
+            runner=runner,
+            state_release=bundle.release,
+            state_dir=state_dir,
+        )
+        restored = _install_unlocked(
+            bundle,
+            rollback_release=rollback_release,
+            confirmation=f"INSTALAR-{bundle.release}",
+            runner=runner,
+            state_dir=state_dir,
+        )
+    result: dict[str, object] = {
         "release": bundle.release,
         "sourceCommit": bundle.commit,
         "rollbackRelease": rollback_release,
@@ -2051,6 +2243,10 @@ def publish(
     runner: CommandRunner = _default_runner,
     state_dir: Path | None = None,
 ) -> dict[str, object]:
+    if bundle.source_ref != "refs/heads/main":
+        raise AutomationError(
+            "publicação final aceita somente bundle proveniente de refs/heads/main"
+        )
     tag = f"v{bundle.version}"
     if TAG_RE.fullmatch(tag) is None:
         raise AutomationError(f"tag inválida: {tag}")
@@ -2165,7 +2361,7 @@ def publish(
         "tagName": verified_data.get("tagName"),
         "assetCount": len(assets),
     }
-    result = {
+    result: dict[str, object] = {
         "release": bundle.release,
         "sourceCommit": bundle.commit,
         "tag": tag,

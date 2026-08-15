@@ -10,6 +10,7 @@
   "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
+    ".github/workflows/ci.yml",
     "tools/release_host.py",
     "tools/install_host.py",
     "tests/unit/test_release_host.py",
@@ -17,14 +18,11 @@
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md"
   ],
-  "scopeDigest": "25c079b1cf8bfd4e21445b98fac40328fd6094aa8920c42267b2f7ff44f0af5e",
+  "scopeDigest": "b07fd2070fe5fd99f42d20eeae33eb8f11884e5e98c874410a28f629fd8dab12",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-HOST-UPDATE-ROLLBACK-SAFETY",
-    "GAP-HOST-UPDATE-CACHE-PROVENANCE",
-    "GAP-HOST-UPDATE-SQLITE-WAL",
-    "GAP-HOST-UPDATE-QML-SMOKE",
-    "GAP-HOST-UPDATE-GLOBAL-LOCK"
+    "GAP-HOST-UPDATE-VM-CYCLE",
+    "GAP-HOST-UPDATE-PHYSICAL-CERTIFICATION"
   ],
   "acceptanceCriteria": [
     "Um unico comando resolve o commit verde, valida o bundle e apresenta um plano imutavel antes da autorizacao.",
@@ -47,10 +45,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Corrigir e provar os cinco gaps de robustez no candidato harmonizado; depois executar CI verde e VM install-rollback-roll-forward antes de qualquer uso no host.",
+  "nextAction": "Executar os gates integrais, obter CI push verde da candidata, validar install-rollback-roll-forward em ambiente real e recolher a certificacao fisica do operador antes de integrar em main.",
   "activeWorkstreams": [
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
   "updatedAt": "2026-08-15",
-  "notes": "A base 71c026b foi integrada para correcao. Auditoria independente reproduziu: rollback suprimido quando current fica ilegivel; falha ao persistir quarentena impede rollback; cache autoconsistente e aceito sem nova verificacao externa; hash de state.db ignora WAL; exit 0 prematuro do QML e aceito; lock cobre apenas update no mesmo XDG_STATE_HOME. Nenhuma instalacao pode usar esta automacao antes do fechamento desses gaps."
+  "notes": "A candidata fecha com testes os cinco riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. Operacao real e certificacao fisica continuam pendentes."
 }
