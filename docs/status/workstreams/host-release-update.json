@@ -22,6 +22,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Obter CI verde com timeout finito no runtime QML opcional e repetir a atualizacao transacional com evidencia estruturada; manter publish e merge em main bloqueados ate instalacao saudavel e certificacao fisica.",
+  "nextAction": "Provar em CI a isolacao do smoke, repetir a atualizacao transacional e validar a release ativa; manter publish e merge em main bloqueados ate instalacao saudavel e certificacao fisica.",
   "updatedAt": "2026-08-15"
 }

@@ -220,6 +220,33 @@ def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
     assert captured["dir"] == install_host._SMOKE_TMPDIR
 
 
+def test_release_smoke_never_observes_real_current_before_daemon_convergence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    observed: list[dict[str, str]] = []
+    original_run = install_host._run
+
+    def capture(
+        argv: list[str], *, env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        if env is not None:
+            observed.append(env)
+        return original_run(argv, env=env)
+
+    monkeypatch.setattr(install_host, "_run", capture)
+
+    install_host._verify_release(release)
+
+    assert observed
+    for environment in observed:
+        isolated_current = Path(environment["STEAMZERO_CURRENT_LINK"])
+        assert isolated_current.name == "isolated-current"
+        assert isolated_current.parent.name.startswith("steamzero-host-smoke-")
+        assert not isolated_current.exists()
+
+
 def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     release = _release(layout, "release-a")

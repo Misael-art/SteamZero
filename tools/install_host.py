@@ -1019,6 +1019,11 @@ def _verify_release(
             "XDG_STATE_HOME": str(smoke_root / "state"),
             "XDG_DATA_HOME": str(smoke_root / "data"),
             "XDG_CONFIG_HOME": str(smoke_root / "config"),
+            # O smoke certifica os arquivos da release antes da convergência.
+            # Se observar /opt/steamzero/current neste ponto, doctor compara a
+            # candidata recém-ativada ao daemon antigo e impede o restart que
+            # resolveria exatamente essa divergência (ciclo de pré-condição).
+            "STEAMZERO_CURRENT_LINK": str(smoke_root / "isolated-current"),
             "PYTHONNOUSERSITE": "1",
         }
         version = _run([str(executable), "--version"], env=environment).stdout.strip()
