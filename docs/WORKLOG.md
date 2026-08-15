@@ -7434,3 +7434,29 @@ Continua aberto: 378 controles `not-probed`, handheld drawer e demais estados
 de diálogos, G45 e validação física (operador), e a harmonização final com as
 PRs #78/#79/#80. A auditoria continua `partial`; o workstream sai `active` com
 a frente concluída na branch.
+---
+
+## 2026-08-15 — Update transacional e recuperável do host
+
+Frente `codex/transactional-host-update`, baseada no tip `origin/main`
+`e71d9b41982de74328cd9956b447f6009cbee509`. Reserva registrada em `772dc49` e
+implementação funcional em `71c026b`.
+
+O novo `tools/release_host.py update --to origin/main` consolida descoberta do
+único CI push verde, cache e validação da cadeia de suprimentos, preflight do
+host/rollback/ownership/schema, plano com token exato, lock global, journal
+write-ahead, ativação, duas convergências, doctor, units, Game Mode, QML
+offscreen e preservação do hash de `state.db`. Falha pós-ativação põe o target
+em quarentena, reverte e verifica a release anterior; falha do rollback para as
+units e registra recuperação exata. Retomada após interrupção nunca inicia uma
+segunda transação e exige nova confirmação.
+
+Provas locais: **4472 passed, 10 skipped** na suíte isolada completa; `ruff
+check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
+`make status-check` verdes. O snapshot do estado real permaneceu idêntico antes
+e depois da suíte. Nenhum wheel/wheelhouse foi construído, nenhum `bigsudo` foi
+executado e nenhuma release foi instalada, revertida ou publicada. Inspeção
+read-only mostrou o host ainda em `0.1.0a46-40aa9bafa062`, com rollback conhecido
+`0.1.0a45-e2049b4999d5`. CI, ciclo em VM e certificação física no Deck continuam
+pendentes; `deploymentHealthy` automatizado nunca implica
+`physicalCertification`.

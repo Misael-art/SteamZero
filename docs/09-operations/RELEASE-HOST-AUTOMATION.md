@@ -1,4 +1,4 @@
-# RELEASE-HOST-AUTOMATION — promoção e ativação retomáveis
+# RELEASE-HOST-AUTOMATION — promoção e atualização transacional
 
 `tools/release_host.py` reduz o fluxo repetitivo de identificar versão, localizar
 o artifact correto, instalar, convergir e publicar sem criar uma segunda
@@ -9,6 +9,11 @@ implementação do instalador. A autoridade continua nos contratos existentes:
 - `tools/install_host.py` é o único escritor privilegiado do host;
 - `/usr/local/sbin/steamzero-host converge` confirma geração e idempotência;
 - uma certificação separada decide se tag e pre-release podem ser publicadas.
+
+O caminho recomendado para atualizar um host existente é `update`. Os comandos
+`prepare`, `install` e `rollback` continuam disponíveis para diagnóstico e
+recuperação explícita, mas não precisam mais ser encadeados manualmente no fluxo
+normal.
 
 ## Invariantes
 
@@ -28,8 +33,112 @@ implementação do instalador. A autoridade continua nos contratos existentes:
 6. Checkout, manifesto, wheel, lock, proveniência e run precisam declarar o
    mesmo commit e versão.
 7. Toda ativação executa convergência e uma segunda chamada idempotente.
-8. Falha interrompe o fluxo. Não há fallback silencioso, tag antecipada ou
-   troca automática de emulador padrão.
+8. `update` mantém um lock durante a transação inteira; duas atualizações nunca
+   planejam ou ativam simultaneamente.
+9. Falha anterior à ativação mantém o host intocado. Falha posterior à ativação
+   executa rollback automático, duas convergências e todos os smokes novamente.
+10. Cada nova execução, inclusive recuperação, exige o token exato do plano;
+    autorização não é inferida do journal de uma execução anterior.
+11. Não há fallback silencioso, tag antecipada ou troca automática de emulador
+    padrão.
+
+## Atualizar em um comando
+
+Primeiro, conferir o plano sem mutar o host:
+
+```bash
+rtk .venv/bin/python tools/release_host.py update --to origin/main --plan
+```
+
+Para executar interativamente:
+
+```bash
+rtk .venv/bin/python tools/release_host.py update --to origin/main
+```
+
+O controlador atualiza `origin/main`, exige `HEAD == origin/main` e worktree
+limpa, localiza exatamente um run `push` verde, baixa ou reutiliza o bundle do
+cache por SHA completo e valida wheel, wheelhouse, checksums, proveniência, SBOM
+e auditoria. Antes de pedir confirmação, ele ainda prova:
+
+- espaço livre com margem;
+- release ativa integralmente verificável e apta a rollback;
+- ownership de todos os destinos que o instalador pode publicar;
+- doctor saudável, nenhuma operação pendente e schema de dados compatível;
+- socket e serviço ativos;
+- daemon convergido com `current`.
+
+O plano mostra release atual, destino, SHA, rollback, preservação dos dados XDG
+e que boot não será alterado. O token contém as duas releases completas:
+
+```text
+ATUALIZAR-<rollback>-PARA-<target>
+```
+
+Automação não interativa deve fornecer o mesmo token exibido pelo `--plan`:
+
+```bash
+rtk .venv/bin/python tools/release_host.py update \
+  --to origin/main \
+  --confirm-update ATUALIZAR-<rollback>-PARA-<target>
+```
+
+Somente dois argv privilegiados existem no controlador, ambos delegados ao
+instalador canônico:
+
+```text
+bigsudo /usr/bin/python3 tools/install_host.py install ...
+bigsudo /usr/bin/python3 tools/install_host.py rollback ...
+```
+
+O sucesso automático declara `deploymentHealthy=true` e sempre mantém
+`physicalCertification=false`. Boot físico, controles, vídeo, áudio e jogo real
+continuam sendo gates do operador, nunca inferidos do offscreen ou do daemon.
+
+### Journal, retomada e quarentena
+
+O lock e os journals ficam em
+`${XDG_STATE_HOME:-~/.local/state}/steamzero/release-automation/transactions`.
+O evento `discovered` é persistido antes do download. Depois são gravados,
+atomicamente e com `fsync`, os estados:
+
+```text
+discovered → bundle-verified → preflight-passed → approved → install-started
+→ activated → convergence-passed → smokes-passed → committed
+```
+
+Em falha pós-ativação:
+
+```text
+rollback-required → rollback-started → rollback-activated
+→ convergence-passed → rollback-verified → failed-safe
+```
+
+Se o rollback também falhar, serviço e socket são parados e o terminal é
+`rollback-failed`, com comando exato de recuperação. Journals registram somente
+identidade de release/commit, hashes, fase, horário e resumo allowlisted; senha,
+token, credencial, ROM e caminhos de biblioteca/usuário são descartados.
+
+Reexecutar `update` encontra a transação não terminal sob o mesmo lock. Se o
+target já estiver ativo, ele é verificado e commitado somente se saudável; caso
+contrário, o rollback é completado idempotentemente. Uma release que falha após
+ativação recebe estado `failed-verification` em `quarantine/` e deixa de ser
+elegível para nova ativação automática.
+
+### Provas antes do commit
+
+Depois da ativação, `update` exige:
+
+- `current`, manifesto, versão, commit e hashes da release esperada;
+- duas convergências, sendo a segunda sem restart nem nova tentativa;
+- identidade do daemon e executável pertencentes ao venv ativo;
+- doctor `ok=true`, socket e serviço ativos;
+- `steamzero-gamemode-session --check` verde;
+- `Main.qml` iniciado por cinco segundos em Qt offscreen e estado XDG temporário;
+- hash de `state.db` do usuário inalterado.
+
+Qualquer reprovação nessa etapa inicia o rollback automático. O target permanece
+instalado para diagnóstico, sem voltar a ser candidato silenciosamente.
 
 ## Diagnóstico read-only
 
@@ -93,7 +202,9 @@ rtk .venv/bin/python tools/release_host.py install \
   --confirm-install INSTALAR-0.1.0a42-SHA12
 ```
 
-A automação exige que o rollback já exista com manifesto. Depois do instalador:
+A automação exige que o rollback já exista com manifesto. Este comando legado
+não possui rollback automático; prefira `update` para uma ativação supervisionada.
+Depois do instalador:
 
 1. converge para a release esperada;
 2. repete o converge e exige idempotência;
@@ -188,5 +299,7 @@ arquivo local; asset ausente é retomado, asset divergente reprova sem
 - converge, idempotência, doctor ou unit reprovados;
 - certificação ausente, parcial ou de outra release.
 
-Depois de uma dessas falhas, preserve o state/evidência e diagnostique a causa.
+Depois de uma dessas falhas, preserve o journal/evidência e diagnostique a
+causa. Se `update` terminou `failed-safe`, o host já voltou à release anterior e
+o comando ainda retorna erro para que a release reprovada não pareça aprovada.
 Não substitua a automação por uma sequência manual que pule o gate reprovado.

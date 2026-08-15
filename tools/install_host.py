@@ -876,7 +876,12 @@ def _sync_admin(layout: Layout, release_path: Path) -> None:
         layout.polkit_policy.unlink()
 
 
-def _verify_release(release_path: Path, *, expected_release: str | None = None) -> dict[str, Any]:
+def _verify_release(
+    release_path: Path,
+    *,
+    expected_release: str | None = None,
+    require_root_ownership: bool | None = None,
+) -> dict[str, Any]:
     if release_path.is_symlink() or not release_path.is_dir():
         raise RuntimeError(f"diretório de release inválido: {release_path}")
     manifest_path = release_path / "manifest.json"
@@ -961,7 +966,10 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             raise RuntimeError(f"{label} ausente na release")
         if not isinstance(expected_hash, str) or _sha256(artifact) != expected_hash:
             raise RuntimeError(f"integridade inválida: {label}")
-    if os.geteuid() == 0:
+    ownership_required = (
+        os.geteuid() == 0 if require_root_ownership is None else require_root_ownership
+    )
+    if ownership_required:
         protected_paths = [
             release_path,
             release_path / "artifacts",
@@ -1049,11 +1057,13 @@ def _require_boot_chain(layout: Layout, target: Path) -> None:
         )
 
 
-def _activate(layout: Layout, release: str) -> None:
-    release = _release_id(release)
-    target = layout.releases / release
-    _verify_release(target)
-    _require_boot_chain(layout, target)
+def require_managed_activation_targets(layout: Layout) -> None:
+    """Recusa qualquer destino de publicação que não pertença ao SteamZero.
+
+    Este preflight é deliberadamente read-only e público para o controlador de
+    release. Mantê-lo aqui garante que o plano e a ativação usem exatamente a
+    mesma definição de ownership, sem uma segunda lista que possa divergir.
+    """
     if layout.current.exists() and not layout.current.is_symlink():
         raise RuntimeError(f"recusando substituir current não gerenciado: {layout.current}")
     if layout.command.exists() and not layout.command.is_symlink():
@@ -1088,6 +1098,14 @@ def _activate(layout: Layout, release: str) -> None:
         )
     if not _managed_admin(layout):
         raise RuntimeError("recusando substituir helper/policy privilegiado não gerenciado")
+
+
+def _activate(layout: Layout, release: str) -> None:
+    release = _release_id(release)
+    target = layout.releases / release
+    _verify_release(target)
+    _require_boot_chain(layout, target)
+    require_managed_activation_targets(layout)
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)

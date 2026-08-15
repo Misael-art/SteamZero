@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-HOST-RELEASE-UPDATE",
+  "item": "SZ-HOST-RELEASE-UPDATE",
+  "branch": "codex/harmonize-ui-g45-release-candidate",
+  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
+  "owner": "release-candidate-integration",
+  "state": "active",
+  "exclusivePaths": [
+    "tools/release_host.py",
+    "tools/install_host.py",
+    "tests/unit/test_release_host.py",
+    "tests/integration/test_host_installer.py",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Corrigir os caminhos em que estado de ativacao ilegivel ou falha de journal/quarentena suprime rollback; vincular cache a evidencia externa, provar preservacao logica SQLite WAL, endurecer smoke QML e serializar todos os mutadores antes de qualquer uso no host.",
+  "updatedAt": "2026-08-15"
+}
