@@ -439,6 +439,13 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             ]
         ),
     },
+    "task-error": {
+        "description": "Central de tarefas falhou e oferece nova tentativa.",
+        "origin": "sintético declarado + uiContracts reais",
+        "status": _status(),
+        "dashboard": _dashboard(),
+        "taskError": "A central local não respondeu; o estado foi preservado.",
+    },
     "long-error": {
         "description": "Erro com texto longo, para provar wrap e clipping.",
         "origin": "sintético declarado + uiContracts reais",
@@ -473,6 +480,7 @@ def build(name: str) -> dict[str, Any]:
         "schemaCovers": "status" if status is not None else None,
         "status": status,
         "dashboard": spec["dashboard"],
+        "taskError": spec.get("taskError", ""),
     }
 
 
