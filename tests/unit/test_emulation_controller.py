@@ -3175,10 +3175,14 @@ def test_game_row_exposes_controls_profile_inheritance_and_clear(
     assert profile["active"]["scope"] == "game"
     assert profile["active"]["scopeId"] == game_id
     assert profile["clearAction"]["id"] == f"controls.profile.clear:{game_id}"
-    assert game["controlsReadiness"]["profileConfigured"] is True
-    assert (game["controlsReadiness"]["state"] == "ready") == (
-        game["controlsReadiness"]["controllers"] > 0
-    )
+    readiness = game["controlsReadiness"]
+    assert readiness["profileConfigured"] is True
+    # Um perfil por jogo não pode virar autoconfig do RetroArch: esse arquivo
+    # vale por dispositivo, não por jogo. Mesmo com controle presente, a UI
+    # precisa manter atenção em vez de publicar um falso "pronto".
+    assert readiness["state"] == "attention"
+    assert readiness["autoconfigState"] == "unsupported-scope"
+    assert readiness["reason"]
 
     clear = controller.plan_action({"actionId": f"controls.profile.clear:{game_id}"})
     clear_result = _apply(controller, clear)

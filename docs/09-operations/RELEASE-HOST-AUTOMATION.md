@@ -28,13 +28,16 @@ normal.
 
 4. O subprocesso privilegiado sempre usa `cwd` na raiz descoberta a partir do
    próprio script. O diretório de onde o agente chamou a automação é irrelevante.
-5. O bundle precisa vir de exatamente um run `push` verde de `origin/main`, no
-   SHA completo solicitado.
+5. O bundle precisa vir de exatamente um run `push` verde do ref remoto
+   solicitado, no SHA completo. O fluxo normal aceita `origin/main`; antes de
+   uma certificação física, aceita somente uma candidata explícita
+   `origin/codex/*`.
 6. Checkout, manifesto, wheel, lock, proveniência e run precisam declarar o
    mesmo commit e versão.
 7. Toda ativação executa convergência e uma segunda chamada idempotente.
-8. `update` mantém um lock durante a transação inteira; duas atualizações nunca
-   planejam ou ativam simultaneamente.
+8. O controlador mantém um lock durante cada mutação e o instalador privilegiado
+   usa um segundo lock em `/run/lock`; `install`, `rollback`, `cycle` e `update`
+   não ativam simultaneamente, nem quando iniciados por usuários diferentes.
 9. Falha anterior à ativação mantém o host intocado. Falha posterior à ativação
    executa rollback automático, duas convergências e todos os smokes novamente.
 10. Cada nova execução, inclusive recuperação, exige o token exato do plano;
@@ -59,7 +62,9 @@ rtk .venv/bin/python tools/release_host.py update --to origin/main
 O controlador atualiza `origin/main`, exige `HEAD == origin/main` e worktree
 limpa, localiza exatamente um run `push` verde, baixa ou reutiliza o bundle do
 cache por SHA completo e valida wheel, wheelhouse, checksums, proveniência, SBOM
-e auditoria. Antes de pedir confirmação, ele ainda prova:
+e auditoria. Ao reutilizar cache, consulta novamente o GitHub e exige que
+repositório, SHA, ref, release e run verde continuem idênticos ao manifesto da
+automação. Antes de pedir confirmação, ele ainda prova:
 
 - espaço livre com margem;
 - release ativa integralmente verificável e apta a rollback;
@@ -95,6 +100,23 @@ O sucesso automático declara `deploymentHealthy=true` e sempre mantém
 `physicalCertification=false`. Boot físico, controles, vídeo, áudio e jogo real
 continuam sendo gates do operador, nunca inferidos do offscreen ou do daemon.
 
+### Candidata anterior ao merge
+
+Quando uma frente precisa de prova física antes de entrar em `main`, use o nome
+remoto completo da branch `codex/*`:
+
+```bash
+rtk .venv/bin/python tools/release_host.py update \
+  --to origin/codex/harmonize-ui-g45-release-candidate \
+  --plan
+```
+
+O controlador exige `HEAD` igual ao tip remoto, worktree limpa, run `push` verde
+desse SHA e proveniência com o mesmo `refs/heads/codex/...`. O journal conserva
+esse ref para retomada. Um bundle de candidata pode ser instalado e revertido,
+mas `publish` o recusa: tag e pre-release continuam reservadas a um artifact de
+`refs/heads/main` depois da certificação física e da integração final.
+
 ### Journal, retomada e quarentena
 
 O lock e os journals ficam em
@@ -125,6 +147,13 @@ contrário, o rollback é completado idempotentemente. Uma release que falha ap�
 ativação recebe estado `failed-verification` em `quarantine/` e deixa de ser
 elegível para nova ativação automática.
 
+Erros ao gravar journal ou quarentena nunca substituem a ação de segurança: o
+rollback é tentado primeiro, depois convergido e verificado. A execução ainda
+termina em erro se a evidência local não puder ser completada. Depois de uma
+tentativa privilegiada, somente a comprovação de que `current` permaneceu
+exatamente na release anterior permite classificar a falha como anterior à
+ativação; estado ilegível ou terceiro target força rollback defensivo.
+
 ### Provas antes do commit
 
 Depois da ativação, `update` exige:
@@ -132,10 +161,12 @@ Depois da ativação, `update` exige:
 - `current`, manifesto, versão, commit e hashes da release esperada;
 - duas convergências, sendo a segunda sem restart nem nova tentativa;
 - identidade do daemon e executável pertencentes ao venv ativo;
-- doctor `ok=true`, socket e serviço ativos;
+- doctor `ok=true`, schema exato, nenhuma operação pendente, socket e serviço ativos;
 - `steamzero-gamemode-session --check` verde;
-- `Main.qml` iniciado por cinco segundos em Qt offscreen e estado XDG temporário;
-- hash de `state.db` do usuário inalterado.
+- `Main.qml` permanecendo ativo por cinco segundos em Qt offscreen e estado XDG
+  temporário — encerramento antecipado, inclusive exit `0`, reprova;
+- fingerprint de um snapshot lógico SQLite de `state.db`, incluindo commits que
+  ainda estejam no WAL, inalterado.
 
 Qualquer reprovação nessa etapa inicia o rollback automático. O target permanece
 instalado para diagnóstico, sem voltar a ser candidato silenciosamente.

@@ -332,6 +332,17 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
     assert install_host.status(layout)["release"] == "release-b"
 
 
+def test_host_mutation_lock_rejects_a_second_writer(tmp_path: Path) -> None:
+    lock = tmp_path / "steamzero-release.lock"
+
+    with (
+        install_host._host_mutation_lock(lock),
+        pytest.raises(RuntimeError, match="outra mutação"),
+        install_host._host_mutation_lock(lock),
+    ):
+        pytest.fail("a segunda mutação não deveria adquirir o lock global")
+
+
 def test_stable_host_gate_accepts_legacy_daemon_by_version_and_process_path(
     tmp_path: Path,
 ) -> None:

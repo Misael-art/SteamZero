@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fcntl
 import hashlib
 import json
 import os
@@ -26,12 +27,13 @@ import sys
 import tempfile
 import time
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.parser import Parser
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 _RELEASE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 _SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -48,6 +50,19 @@ _HOST_CONVERGENCE_ATTEMPTS = 10
 _HOST_CONVERGENCE_INTERVAL = 0.3
 _MAX_HOST_RESPONSE = 1 << 20
 _SYSTEMCTL = "/usr/bin/systemctl"
+_HOST_MUTATION_LOCK = Path("/run/lock/steamzero-release.lock")
+
+
+@contextmanager
+def _host_mutation_lock(path: Path = _HOST_MUTATION_LOCK) -> Iterator[IO[str]]:
+    """Serializa install/rollback no host, inclusive entre usuários."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as lock:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError("outra mutação de release SteamZero está em andamento") from exc
+        yield lock
 
 
 @dataclass(frozen=True)
@@ -1485,20 +1500,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if ok else 1
         _require_root()
         if args.action == "install":
-            result = _activation_notice(
-                install(
+            with _host_mutation_lock():
+                result = _activation_notice(
+                    install(
+                        layout,
+                        release=args.release,
+                        wheel=args.wheel,
+                        wheel_sha256=args.wheel_sha256,
+                        requirements=args.requirements,
+                        wheelhouse=args.wheelhouse,
+                        source_commit=args.source_commit,
+                    ),
                     layout,
-                    release=args.release,
-                    wheel=args.wheel,
-                    wheel_sha256=args.wheel_sha256,
-                    requirements=args.requirements,
-                    wheelhouse=args.wheelhouse,
-                    source_commit=args.source_commit,
-                ),
-                layout,
-            )
+                )
         elif args.action == "rollback":
-            result = _activation_notice(rollback(layout, args.release), layout)
+            with _host_mutation_lock():
+                result = _activation_notice(rollback(layout, args.release), layout)
         else:
             result = status(layout)
     except Exception as exc:

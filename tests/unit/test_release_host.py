@@ -7,9 +7,11 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import sqlite3
 import subprocess
 import zipfile
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -94,8 +96,10 @@ def _bundle(tmp_path: Path) -> tuple[Path, str, str]:
         json.dumps(
             {
                 "schemaVersion": 1,
+                "repository": release_host.DEFAULT_REPOSITORY,
                 "runId": "42",
                 "sourceCommit": commit,
+                "sourceRef": "refs/heads/main",
                 "release": f"{version}-{commit[:12]}",
             }
         ),
@@ -113,6 +117,29 @@ def test_valid_bundle_binds_version_commit_and_run(tmp_path: Path) -> None:
     assert bundle.commit == commit
     assert bundle.release == f"{version}-{commit[:12]}"
     assert bundle.run_id == "42"
+
+
+def test_bundle_requires_ci_run_in_manifest_and_provenance(tmp_path: Path) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    manifest = root / "dist" / "runtime-wheelhouse" / "WHEELHOUSE-MANIFEST.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data.pop("githubRunId")
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    checksums = root / "build" / "SHA256SUMS"
+    lines = checksums.read_text(encoding="utf-8").splitlines()
+    checksums.write_text(
+        "\n".join(
+            f"{_sha256(manifest)}  dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json"
+            if line.endswith("dist/runtime-wheelhouse/WHEELHOUSE-MANIFEST.json")
+            else line
+            for line in lines
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(release_host.AutomationError, match="run de CI"):
+        release_host.load_bundle(root)
 
 
 def test_package_version_reads_the_real_source() -> None:
@@ -218,6 +245,38 @@ def test_archive_listing_accepts_only_the_wheelhouse_tree() -> None:
     )
 
 
+def test_candidate_update_ref_resolves_exact_remote_tip() -> None:
+    commit = "a" * 40
+    to_ref = "origin/codex/harmonize-ui-g45-release-candidate"
+    source_ref = "refs/heads/codex/harmonize-ui-g45-release-candidate"
+    remote_ref = "refs/remotes/origin/codex/harmonize-ui-g45-release-candidate"
+    runner = _Runner(
+        {
+            ("git", "fetch", "origin", f"{source_ref}:{remote_ref}"): (0, "", ""),
+            ("git", "rev-parse", f"{remote_ref}^{{commit}}"): (0, commit + "\n", ""),
+            ("git", "rev-parse", "HEAD"): (0, commit + "\n", ""),
+            ("git", "status", "--porcelain"): (0, "", ""),
+        }
+    )
+
+    assert release_host._resolve_update_target(to_ref, runner=runner) == commit
+
+
+@pytest.mark.parametrize(
+    "to_ref",
+    ["origin/feature/untrusted", "origin/codex/../main", "refs/heads/main"],
+)
+def test_candidate_update_ref_rejects_unscoped_or_unsafe_names(to_ref: str) -> None:
+    with pytest.raises(release_host.AutomationError):
+        release_host._source_ref_for_update(to_ref)
+
+
+def test_ci_builds_push_artifact_for_explicit_release_candidates() -> None:
+    workflow = (release_host.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    assert 'branches: [main, "codex/*release-candidate*"]' in workflow
+
+
 class _Runner:
     def __init__(self, responses: dict[tuple[str, ...], tuple[int, str, str]]) -> None:
         self.responses = responses
@@ -306,6 +365,49 @@ def test_prepare_downloads_exact_run_and_publishes_directory_atomically(tmp_path
     assert automation["runId"] == "42"
     assert automation["sourceCommit"] == commit
     assert not list(output.parent.glob(f".{output.name}.*"))
+
+
+def test_cached_bundle_is_revalidated_against_current_green_ci(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fixture, _version, commit = _bundle(tmp_path)
+    cache = tmp_path / "cache"
+    shutil.copytree(fixture, cache / commit)
+    runner = _PrepareRunner(fixture, commit)
+    monkeypatch.setattr(release_host, "_require_cache_space", lambda *_args, **_kwargs: None)
+
+    bundle = release_host._prepare_update_bundle(
+        commit,
+        cache_dir=cache,
+        repository=release_host.DEFAULT_REPOSITORY,
+        runner=runner,
+    )
+
+    assert bundle.commit == commit
+    assert any(call[:3] == ("gh", "run", "list") for call in runner.calls)
+
+
+def test_cached_bundle_rejects_manifest_from_another_repository(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fixture, _version, commit = _bundle(tmp_path)
+    cache = tmp_path / "cache"
+    shutil.copytree(fixture, cache / commit)
+    manifest = cache / commit / "AUTOMATION-MANIFEST.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["repository"] = "attacker/fork"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(release_host, "_require_cache_space", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(release_host.AutomationError, match="diverge"):
+        release_host._prepare_update_bundle(
+            commit,
+            cache_dir=cache,
+            repository=release_host.DEFAULT_REPOSITORY,
+            runner=_PrepareRunner(fixture, commit),
+        )
 
 
 def test_discover_run_accepts_only_exact_successful_push() -> None:
@@ -561,6 +663,23 @@ def test_certification_rejects_omitting_a_required_physical_gate(tmp_path: Path)
 
     with pytest.raises(release_host.AutomationError, match="requiredGates"):
         release_host._load_certification(path, bundle)
+
+
+def test_candidate_bundle_cannot_be_published_as_final_release(tmp_path: Path) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = replace(
+        release_host.load_bundle(root),
+        source_ref="refs/heads/codex/harmonize-ui-g45-release-candidate",
+    )
+
+    with pytest.raises(release_host.AutomationError, match="refs/heads/main"):
+        release_host.publish(
+            bundle,
+            certification=tmp_path / "certification.json",
+            notes=tmp_path / "notes.md",
+            confirmation=f"PUBLICAR-v{bundle.version}",
+            runner=_Runner({}),
+        )
 
 
 def test_release_asset_state_requires_every_name_and_digest(tmp_path: Path) -> None:
@@ -926,6 +1045,110 @@ def test_failure_before_activation_does_not_attempt_rollback(
     assert journal.phase == "failed-before-activation"
 
 
+def test_install_failure_with_unreadable_current_rolls_back_defensively(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(
+        target=bundle.release,
+        rollback=plan.rollback_release,
+        fail_install=True,
+    )
+    _patch_update_runtime(monkeypatch, runner)
+    reads = iter(
+        [
+            {"ok": True, "release": plan.rollback_release},
+            {"installed": True, "ok": False},
+            {"installed": True, "ok": False},
+        ]
+    )
+    monkeypatch.setattr(release_host, "_read_host_truth", lambda *_args: next(reads))
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    assert privileged_actions == ["install", "rollback"]
+
+
+def test_quarantine_write_failure_never_suppresses_verified_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(
+        target=bundle.release,
+        rollback=plan.rollback_release,
+        fail_target_convergence=True,
+    )
+    _patch_update_runtime(monkeypatch, runner)
+    monkeypatch.setattr(
+        release_host,
+        "_mark_quarantined",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("disco somente leitura")),
+    )
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="evidência local ficou incompleta"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    assert runner.current == plan.rollback_release
+    privileged_actions = [call[3] for call in runner.calls if call and call[0] == "bigsudo"]
+    assert privileged_actions == ["install", "rollback"]
+
+
+def test_activated_journal_failure_rolls_back_instead_of_leaving_target_active(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    _patch_update_runtime(monkeypatch, runner)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+    original_event = journal.event
+    failed = False
+
+    def event(phase: str, **kwargs: object) -> None:
+        nonlocal failed
+        if phase == "activated" and not failed:
+            failed = True
+            raise OSError("journal indisponível")
+        original_event(phase, **kwargs)
+
+    monkeypatch.setattr(journal, "event", event)
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    assert runner.current == plan.rollback_release
+
+
 def test_rollback_failure_stops_units_and_records_critical_state(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -1154,8 +1377,7 @@ def test_host_preflight_rejects_incompatible_data_schema(
         release_host._host_preflight(runner=runner, check_ownership=False)
 
 
-@pytest.mark.parametrize("returncode", [0, 124])
-def test_qml_smoke_accepts_clean_exit_or_alive_timeout(returncode: int) -> None:
+def test_qml_smoke_accepts_only_alive_timeout() -> None:
     runner = _Runner({})
     runner.responses = {}
 
@@ -1165,7 +1387,7 @@ def test_qml_smoke_accepts_clean_exit_or_alive_timeout(returncode: int) -> None:
         runner.calls.append(tuple(argv))
         runner.cwds.append(cwd)
         assert timeout == 10
-        return subprocess.CompletedProcess(argv, returncode, "", "")
+        return subprocess.CompletedProcess(argv, 124, "", "")
 
     result = release_host._qml_offscreen_smoke(
         "0.1.0a42-aaaaaaaaaaaa",
@@ -1174,6 +1396,45 @@ def test_qml_smoke_accepts_clean_exit_or_alive_timeout(returncode: int) -> None:
 
     assert result["state"] == "started"
     assert "QT_QPA_PLATFORM=offscreen" in runner.calls[0]
+
+
+def test_qml_smoke_rejects_premature_clean_exit() -> None:
+    def smoke_runner(
+        argv: Sequence[str], _cwd: Path, _timeout: int
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    with pytest.raises(release_host.AutomationError, match="não permaneceu ativo"):
+        release_host._qml_offscreen_smoke(
+            "0.1.0a42-aaaaaaaaaaaa",
+            runner=smoke_runner,
+        )
+
+
+def test_state_db_fingerprint_includes_wal_commits(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    state_home = tmp_path / "state"
+    database = state_home / "steamzero" / "state.db"
+    database.parent.mkdir(parents=True)
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA wal_autocheckpoint=0")
+        connection.execute("CREATE TABLE proof (value TEXT)")
+        connection.commit()
+        before = release_host._state_db_fingerprint()
+        connection.execute("INSERT INTO proof VALUES ('wal-only-change')")
+        connection.commit()
+        assert (database.parent / "state.db-wal").is_file()
+
+        after = release_host._state_db_fingerprint()
+    finally:
+        connection.close()
+
+    assert before != after
 
 
 def test_cache_space_preflight_rejects_low_disk(
