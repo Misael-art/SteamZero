@@ -42,6 +42,11 @@ MESSAGES: dict[str, str] = {
     "error.E-TX-LOCKED.impact": "A operação foi bloqueada e não iniciou.",
     "error.E-TX-LOCKED.cause": "Um job concorrente está usando o mesmo recurso.",
     "error.E-TX-LOCKED.action": "Aguarde o término do outro job ou verifique bloqueios órfãos com o doctor.",
+    "error.E-TX-CUSTODY-CROSS-FS.title": "Custódia cruzou filesystems",
+    "error.E-TX-CUSTODY-CROSS-FS.what": "A quarentena fica em outro sistema de arquivos e a tomada atômica da entrada é impossível.",
+    "error.E-TX-CUSTODY-CROSS-FS.impact": "A operação foi recusada sem tocar no alvo.",
+    "error.E-TX-CUSTODY-CROSS-FS.cause": "O arquivo-alvo vive em um filesystem diferente do diretório de estado do SteamZero.",
+    "error.E-TX-CUSTODY-CROSS-FS.action": "Mova o diretório de estado para o mesmo filesystem do alvo ou aponte o plano para um alvo no mesmo filesystem.",
     # ---- SUPPLY -----------------------------------------------------------
     "error.E-SUPPLY-NO-CHECKSUM.title": "Checksum ausente",
     "error.E-SUPPLY-NO-CHECKSUM.what": "O manifesto não declara sha256 para um artefato não-flatpak.",

@@ -258,15 +258,19 @@ Item {
         syncGameSelection()
     }
 
+    // Devolve se a navegação aconteceu. Antes saía em silêncio quando a
+    // plataforma não estava no workspace publicado: o clique não produzia efeito
+    // nem aviso. Quem chama decide como contar a falha.
     function openPlatformFromGlobal(platformId) {
         const index = platforms.findIndex(function(item) {
             return String(item.id || "") === String(platformId || "")
         })
         if (index < 0)
-            return
+            return false
         platformIndex = index
         globalManagementActive = false
         resetContext()
+        return true
     }
 
     function syncGameSelection() {
@@ -1521,6 +1525,11 @@ Item {
                         textRole: "name"
                         currentIndex: page.globalManagementActive ? 0 : page.platformIndex + 1
                         enabled: page.platformChoices.length > 1
+                        Accessible.description: enabled ? ""
+                            : qsTr("Nenhuma plataforma de emulação publicada além da "
+                                + "gestão geral.")
+                        ToolTip.visible: hovered && !enabled
+                        ToolTip.text: Accessible.description
                         palette.button: page.raisedColor
                         palette.buttonText: page.textColor
                         palette.base: page.raisedColor
@@ -1911,6 +1920,12 @@ Item {
                                         }
                                         Button {
                                             text: modelData.action ? modelData.action.label : ""
+                                            objectName: "emulation.emulator."
+                                                + modelData.id + ".action"
+                                            Accessible.name: modelData.action
+                                                ? qsTr("%1: %2")
+                                                    .arg(modelData.displayName || modelData.id)
+                                                    .arg(modelData.action.label) : ""
                                             enabled: modelData.action && modelData.action.enabled !== false
                                             Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.description: modelData.action
@@ -2011,17 +2026,47 @@ Item {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 8
+                                        // A ação primária vem do payload e passa pelo
+                                        // despachante real. Quando a plataforma está
+                                        // travada por emulador ausente e instalável, o
+                                        // workspace publica "Instalar <emulador>" aqui —
+                                        // abrir a plataforma não resolveria o bloqueador.
                                         Button {
                                             text: modelData.action.label
                                             enabled: modelData.action.enabled !== false
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
+                                            // "Instalar" sozinho nao diz instalar o que:
+                                            // 36 cards repetem o mesmo rotulo.
+                                            objectName: "emulation.platform."
+                                                + modelData.id + ".primary"
+                                            Accessible.name: qsTr("%1: %2")
+                                                .arg(modelData.name).arg(modelData.action.label)
                                             Accessible.description: modelData.action.reason || modelData.blocker || ""
-                                            onClicked: page.openPlatformFromGlobal(modelData.id)
+                                            onClicked: page.actionRequested(modelData.action)
+                                        }
+                                        Button {
+                                            visible: !!modelData.secondaryAction
+                                            text: modelData.secondaryAction
+                                                ? modelData.secondaryAction.label : ""
+                                            enabled: !!modelData.secondaryAction
+                                                && modelData.secondaryAction.enabled !== false
+                                            Layout.fillWidth: true
+                                            Layout.minimumHeight: page.minimumTouchTarget
+                                            objectName: "emulation.platform."
+                                                + modelData.id + ".secondary"
+                                            Accessible.name: modelData.secondaryAction
+                                                ? qsTr("%1: %2").arg(modelData.name)
+                                                    .arg(modelData.secondaryAction.label) : ""
+                                            Accessible.description: modelData.secondaryAction
+                                                ? (modelData.secondaryAction.reason || "") : ""
+                                            onClicked: page.actionRequested(modelData.secondaryAction)
                                         }
                                         Button {
                                             visible: page.platformMissingEmulator(modelData)
+                                                && !modelData.secondaryAction
                                             text: qsTr("Ver emuladores")
+                                            Accessible.name: text
                                             Layout.fillWidth: true
                                             Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.description: qsTr("Rola até a lista de instalação e reparo")
@@ -2215,7 +2260,6 @@ Item {
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Buscar jogos")
                                 activeFocusOnTab: true
-                                focusPolicy: Qt.StrongFocus
                                 inputMethodHints: Qt.ImhNoPredictiveText
                                 onTextChanged: page.gameSearchText = text
                                 onActiveFocusChanged: {
@@ -2296,7 +2340,6 @@ Item {
                                 placeholderTextColor: page.mutedColor
                                 selectByMouse: true
                                 activeFocusOnTab: true
-                                focusPolicy: Qt.StrongFocus
                                 inputMethodHints: Qt.ImhNoPredictiveText
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: page.minimumTouchTarget
@@ -3856,6 +3899,30 @@ Item {
                                     onClicked: page.openGameArea("graphicsPerformance")
                                 }
                             }
+                        }
+
+                        // G45: o perfil de controle era resolvido e gravado sem
+                        // que QML nenhum o desenhasse — o usuário não tinha como
+                        // distinguir perfil escolhido de perfil valendo. O cartão
+                        // só fica verde quando o autoconfig foi de fato aplicado.
+                        ControlsProfileCard {
+                            objectName: "gameControlsProfileCard"
+                            visible: page.selectedGame.controlsProfile !== undefined
+                                && page.selectedGame.controlsProfile !== null
+                            Layout.fillWidth: true
+                            profile: page.selectedGame.controlsProfile || null
+                            onApplyAutoconfigRequested: function (action) {
+                                if (action)
+                                    page.actionRequested(action)
+                            }
+                            surfaceColor: page.backgroundColor
+                            raisedColor: page.raisedColor
+                            borderColor: page.borderColor
+                            textColor: page.textColor
+                            mutedColor: page.mutedColor
+                            greenColor: page.greenColor
+                            amberColor: page.amberColor
+                            redColor: page.redColor
                         }
 
                         Rectangle {

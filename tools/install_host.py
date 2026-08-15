@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fcntl
 import hashlib
 import json
 import os
@@ -26,12 +27,13 @@ import sys
 import tempfile
 import time
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.parser import Parser
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 _RELEASE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 _SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -48,6 +50,19 @@ _HOST_CONVERGENCE_ATTEMPTS = 10
 _HOST_CONVERGENCE_INTERVAL = 0.3
 _MAX_HOST_RESPONSE = 1 << 20
 _SYSTEMCTL = "/usr/bin/systemctl"
+_HOST_MUTATION_LOCK = Path("/run/lock/steamzero-release.lock")
+
+
+@contextmanager
+def _host_mutation_lock(path: Path = _HOST_MUTATION_LOCK) -> Iterator[IO[str]]:
+    """Serializa install/rollback no host, inclusive entre usuários."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as lock:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError("outra mutação de release SteamZero está em andamento") from exc
+        yield lock
 
 
 @dataclass(frozen=True)
@@ -876,7 +891,12 @@ def _sync_admin(layout: Layout, release_path: Path) -> None:
         layout.polkit_policy.unlink()
 
 
-def _verify_release(release_path: Path, *, expected_release: str | None = None) -> dict[str, Any]:
+def _verify_release(
+    release_path: Path,
+    *,
+    expected_release: str | None = None,
+    require_root_ownership: bool | None = None,
+) -> dict[str, Any]:
     if release_path.is_symlink() or not release_path.is_dir():
         raise RuntimeError(f"diretório de release inválido: {release_path}")
     manifest_path = release_path / "manifest.json"
@@ -961,7 +981,10 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             raise RuntimeError(f"{label} ausente na release")
         if not isinstance(expected_hash, str) or _sha256(artifact) != expected_hash:
             raise RuntimeError(f"integridade inválida: {label}")
-    if os.geteuid() == 0:
+    ownership_required = (
+        os.geteuid() == 0 if require_root_ownership is None else require_root_ownership
+    )
+    if ownership_required:
         protected_paths = [
             release_path,
             release_path / "artifacts",
@@ -996,6 +1019,11 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
             "XDG_STATE_HOME": str(smoke_root / "state"),
             "XDG_DATA_HOME": str(smoke_root / "data"),
             "XDG_CONFIG_HOME": str(smoke_root / "config"),
+            # O smoke certifica os arquivos da release antes da convergência.
+            # Se observar /opt/steamzero/current neste ponto, doctor compara a
+            # candidata recém-ativada ao daemon antigo e impede o restart que
+            # resolveria exatamente essa divergência (ciclo de pré-condição).
+            "STEAMZERO_CURRENT_LINK": str(smoke_root / "isolated-current"),
             "PYTHONNOUSERSITE": "1",
         }
         version = _run([str(executable), "--version"], env=environment).stdout.strip()
@@ -1049,11 +1077,13 @@ def _require_boot_chain(layout: Layout, target: Path) -> None:
         )
 
 
-def _activate(layout: Layout, release: str) -> None:
-    release = _release_id(release)
-    target = layout.releases / release
-    _verify_release(target)
-    _require_boot_chain(layout, target)
+def require_managed_activation_targets(layout: Layout) -> None:
+    """Recusa qualquer destino de publicação que não pertença ao SteamZero.
+
+    Este preflight é deliberadamente read-only e público para o controlador de
+    release. Mantê-lo aqui garante que o plano e a ativação usem exatamente a
+    mesma definição de ownership, sem uma segunda lista que possa divergir.
+    """
     if layout.current.exists() and not layout.current.is_symlink():
         raise RuntimeError(f"recusando substituir current não gerenciado: {layout.current}")
     if layout.command.exists() and not layout.command.is_symlink():
@@ -1088,6 +1118,14 @@ def _activate(layout: Layout, release: str) -> None:
         )
     if not _managed_admin(layout):
         raise RuntimeError("recusando substituir helper/policy privilegiado não gerenciado")
+
+
+def _activate(layout: Layout, release: str) -> None:
+    release = _release_id(release)
+    target = layout.releases / release
+    _verify_release(target)
+    _require_boot_chain(layout, target)
+    require_managed_activation_targets(layout)
 
     previous_current = _readlink(layout.current)
     previous_command = _readlink(layout.command)
@@ -1407,20 +1445,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if ok else 1
         _require_root()
         if args.action == "install":
-            result = _activation_notice(
-                install(
+            with _host_mutation_lock():
+                result = _activation_notice(
+                    install(
+                        layout,
+                        release=args.release,
+                        wheel=args.wheel,
+                        wheel_sha256=args.wheel_sha256,
+                        requirements=args.requirements,
+                        wheelhouse=args.wheelhouse,
+                        source_commit=args.source_commit,
+                    ),
                     layout,
-                    release=args.release,
-                    wheel=args.wheel,
-                    wheel_sha256=args.wheel_sha256,
-                    requirements=args.requirements,
-                    wheelhouse=args.wheelhouse,
-                    source_commit=args.source_commit,
-                ),
-                layout,
-            )
+                )
         elif args.action == "rollback":
-            result = _activation_notice(rollback(layout, args.release), layout)
+            with _host_mutation_lock():
+                result = _activation_notice(rollback(layout, args.release), layout)
         else:
             result = status(layout)
     except Exception as exc:

@@ -220,6 +220,42 @@ def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
     assert captured["dir"] == install_host._SMOKE_TMPDIR
 
 
+def test_release_smoke_never_observes_real_current_before_daemon_convergence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    observed: list[dict[str, str]] = []
+    original_run = install_host._run
+
+    def capture(
+        argv: list[str], *, env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        if env is not None:
+            observed.append(env)
+        return original_run(argv, env=env)
+
+    monkeypatch.setattr(install_host, "_run", capture)
+
+    install_host._verify_release(release)
+
+    assert observed
+    for environment in observed:
+        isolated_current = Path(environment["STEAMZERO_CURRENT_LINK"])
+        assert isolated_current.name == "isolated-current"
+        assert isolated_current.parent.name.startswith("steamzero-host-smoke-")
+        assert not isolated_current.exists()
+
+
+def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    release.chmod(0o777)
+
+    with pytest.raises(RuntimeError, match="permissões inseguras"):
+        install_host._verify_release(release, require_root_ownership=True)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")
@@ -234,6 +270,17 @@ def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> No
     assert result["release"] == "release-b"
     assert layout.current.readlink() == Path("releases/release-b")
     assert install_host.status(layout)["release"] == "release-b"
+
+
+def test_host_mutation_lock_rejects_a_second_writer(tmp_path: Path) -> None:
+    lock = tmp_path / "steamzero-release.lock"
+
+    with (
+        install_host._host_mutation_lock(lock),
+        pytest.raises(RuntimeError, match="outra mutação"),
+        install_host._host_mutation_lock(lock),
+    ):
+        pytest.fail("a segunda mutação não deveria adquirir o lock global")
 
 
 def test_stable_host_gate_accepts_legacy_daemon_by_version_and_process_path(

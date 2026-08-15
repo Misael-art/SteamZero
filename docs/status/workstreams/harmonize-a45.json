@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-HARMONIZE-A45",
   "item": "SZ-GOVERNANCE-STATUS",
-  "branch": "codex/harmonize-main-a45",
-  "baseRef": "245e8d8e9dd3977f15f9402143d6e432966e7202",
-  "owner": "harmonize-a45-agent",
+  "branch": "codex/harmonize-ui-g45-release-candidate",
+  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
+  "owner": "release-candidate-integration",
   "state": "active",
   "exclusivePaths": [
     "docs/status",
@@ -30,6 +30,6 @@
     "src/steamzero/ui",
     "docs/KNOWN-GAPS.md"
   ],
-  "nextAction": "UI audit preservada via cherry-pick; corrigir status-check WORKLOG append-only e doctor falso verde; depois ADRs/M11/G37.",
-  "updatedAt": "2026-08-11"
+  "nextAction": "Integrar a entrega final de UI 2993413 e a automacao transacional corrigida sobre a PR #80 sem mesclar em main; recalcular digests, executar gates completos e preparar candidato para CI e certificacao fisica obrigatoria.",
+  "updatedAt": "2026-08-15"
 }

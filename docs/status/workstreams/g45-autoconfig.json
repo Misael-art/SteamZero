@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-G45-AUTOCONFIG",
+  "item": "SZ-EMULATION-M10",
+  "branch": "codex/harmonize-ui-g45-release-candidate",
+  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
+  "owner": "release-candidate-integration",
+  "state": "active",
+  "exclusivePaths": [
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
+    "src/steamzero/adapters/input_devices.py",
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "src/steamzero/ui/qml/ControlsProfileCard.qml",
+    "tests/qml/check_controls_profile_card.qml",
+    "tests/unit/test_input_devices.py",
+    "tests/unit/test_retroarch_autoconfig.py"
+  ],
+  "sharedPaths": [
+    "docs/WORKLOG.md",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/core/fs.py",
+    "src/steamzero/core/transaction.py",
+    "src/steamzero/domain/input_profiles.py",
+    "src/steamzero/domain/retropad.py",
+    "src/steamzero/schemas/emulation-workspace-v1.schema.json",
+    "src/steamzero/ui/qml/Emulation.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
+  ],
+  "nextAction": "Validar a G45 na arvore harmonizada, preservar os testes de custodia e failure injection e preparar prova fisica com controle real. PRs #78, #79 e #80 permanecem fora de main ate a certificacao do operador.",
+  "updatedAt": "2026-08-15"
+}

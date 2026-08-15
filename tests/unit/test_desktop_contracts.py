@@ -223,3 +223,9 @@ def test_qml_cast_start_transports_explicit_capture_intent() -> None:
     assert '"value": "window"' in qml
     assert '"granted": true' in qml
     assert '"scope": root.castCaptureScope' in qml
+
+
+def test_main_palette_remains_loadable_on_supported_qt_64() -> None:
+    qml = Path("src/steamzero/ui/qml/Main.qml").read_text(encoding="utf-8")
+    assert "palette.highlight:" in qml
+    assert "palette.accent:" not in qml

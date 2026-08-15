@@ -6371,3 +6371,1092 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+## 2026-08-12 — G45, segundo incremento: o índice físico deixa de faltar
+
+Branch `codex/g45-autoconfig-gerenciado`, nascida de `origin/main` em `e71d9b4`
+(merge da PR #77). Quatro commits funcionais mais este fechamento.
+
+A PR #77 traduziu a ação abstrata para a chave RetroPad e parou de propósito
+onde o índice do botão começa, porque o índice pertence ao dispositivo. Este
+incremento resolve o índice LENDO o autoconfig que descreve o pad real — o
+RetroArch empacota 420 desses arquivos, e cada um é a tabela "posição física →
+índice" declarada pelo fabricante. Sem arquivo para o pad conectado, o resultado
+é não resolvido e visível.
+
+### Correção de medição da própria série
+
+A #77 registrou que "entradas direcionais chegam como eixo nos autoconfigs
+reais". Medindo com casamento exato de chave — `^input_up_btn[[:space:]]*=`, que
+exclui as linhas `*_label` que contaminaram a contagem original — são **296
+arquivos com `input_up_btn` contra 134 com `input_up_axis`**: o oposto. Fixar
+`_axis` até a gravação daria à maioria dos pads um arquivo que o RetroArch
+aceita e IGNORA, que é a falha silenciosa que a própria #77 identificou como o
+pior resultado possível. `retropad_key` ficou como está, documentado como
+provisório e restrito à visão sem dispositivo.
+
+Outras medições que viraram regra: 239 arquivos usam notação de hat (`h0up`),
+`-0` e `+0` são entradas opostas (o valor é token opaco, nunca `int`), 44
+arquivos gravam `nul` e 27 gravam string vazia (ausência declarada, não valor),
+dois gravam `"ZR Button"` no lugar do índice (a gramática do valor é fechada), e
+12 declaram btn e axis para o mesmo direcional (ambiguidade explícita, não
+escolha).
+
+### O que este incremento NÃO afirma
+
+- **Nada foi gravado no host.** O writer só rodou em `tmp_path`. Nenhuma
+  instalação de Flatpak, release ou wheel foi executada.
+- **O `retroarch.cfg` deste host não existe** — o RetroArch nunca foi executado
+  até gravar configuração. Sem ele não há como saber em que diretório ele
+  procura perfis, então o estado real aqui é `awaiting-emulator` e nenhum perfil
+  pode ser declarado aplicado. Esse é o sexto estado, além dos cinco pedidos, e
+  existe porque medir o host mostrou o caso.
+- **O pad interno deste Steam Deck (10462:4613) não tem autoconfig empacotado**
+  e cai em `no-autoconfig`. Falta decidir a fonte de índice para pads sem
+  arquivo.
+- **Nenhuma instalação de emulador foi vista concluir no host.** O fluxo isolado
+  foi exercitado (274 testes verdes em lifecycle, flatpak executor e
+  conformance), o que é o limite do que teste isolado alcança.
+
+### Um defeito encontrado no caminho
+
+`fs.write_atomic` chama `ensure_dir`, que faz `mkdir(parents=True)` e `chmod`
+incondicional no diretório pai. Usá-la para gravar o perfil teria mudado a
+permissão do diretório de configuração do RetroArch (0750 → 0700) e criado
+diretórios dentro da configuração alheia — efeito colateral invisível de gravar
+um arquivo. O gate de fronteiras recusou, com razão, um writer local no adapter;
+a variante que preserva o diretório entrou em `core.fs`, que é o porto de
+escrita. Dois testes fixam o comportamento.
+
+### Estado dos gates neste checkout
+
+Os quatro gates de código passam. `make status-check` reprova por **um** item,
+`SZ-MEDIA-SCRAPING`, e a causa não é este trabalho: quatro arquivos
+`tests/fixtures/scraping/screenscraper/raw/*_error.txt`, datados de 26/07 e
+cobertos por `.gitignore`, existem neste worktree e entram no `scopeDigest`.
+Prova: numa árvore limpa de `origin/main` o digest calculado é
+`484fe509d2e7…`, idêntico ao declarado no item. Os arquivos foram preservados
+por instrução. O mesmo vale para `src/steamzero/_build_info.py` (01/08,
+gitignored), que faz `test_every_tracked_file_has_a_custodian_item` reprovar
+apesar de o arquivo não ser rastreado — o teste varre o sistema de arquivos, não
+o índice do git.
+
+Os digests de `SZ-GOVERNANCE-STATUS`, `SZ-THEME-AURA` e `SZ-UI-DESKTOP-AUDIT`
+foram reatestados porque este trabalho alterou conteúdo dentro do escopo deles
+(`docs/KNOWN-GAPS.md`, `tests/integration/test_qml_handheld_offscreen.py` e
+`src/steamzero/ui`, respectivamente).
+
+### Pendente do operador
+
+Abrir o RetroArch uma vez no host para que ele declare `joypad_autoconfig_dir`;
+sem isso nenhum perfil pode passar de `awaiting-emulator`. Depois disso, provar
+fisicamente que o RetroArch aplica o arquivo gerado. Nenhuma ação de host ou de
+release foi executada nesta sessão.
+
+### 2026-08-12 — G45, segunda rodada: resposta à revisão
+
+A primeira rodada entregou a resolução, o writer e a tela — e deixou o writer
+**sem rota de produção**. `apply()` só era chamado por teste: a ativação do
+perfil gravava a seleção, o dashboard apenas observava, e o estado parava em
+`pending-write` sem que ninguém materializasse o arquivo. A integração inteira
+ficava inerte, e `write-failed` era inalcançável. Fechado por uma ação explícita
+e confirmada, `controls.autoconfig.apply`, exposta no cartão.
+
+O plano dessa ação é vazio de propósito. O núcleo transacional grava com
+`fs.write_atomic`, que faz `chmod` incondicional no diretório pai — aqui, a
+configuração do RetroArch. Deixá-lo executar a escrita reintroduziria o defeito
+que esta mesma frente tinha corrigido. Então ele fornece o portão (token,
+expiração, uso único, journal) e a escrita fica com o writer que preserva o
+diretório alheio. O `rollbackGuarantee` diz isso em vez de alegar G-FULL:
+`plan_write_files` ganhou o parâmetro para não mentir no payload.
+
+**Brecha de ownership (a mais séria).** `_read_text_limited` devolvia `None`
+tanto para arquivo inexistente quanto para symlink, arquivo acima de 128 KiB ou
+ilegível — e `status()` lia esse `None` como "ausente, pode escrever". Um
+`steamzero.cfg` do usuário em qualquer dessas formas seria substituído sem que o
+marcador fosse conferido uma única vez, violando a garantia central da entrega.
+Agora `_probe_target` classifica em ausente / nosso / estrangeiro, **só ENOENT
+autoriza gravar**, e cada recusa diz o motivo. A criação usa `os.link`
+(`must_not_exist`), então um arquivo que apareça entre a verificação e a escrita
+faz a operação falhar em vez de ser substituído: a recusa virou garantia, não
+checagem com janela.
+
+**Perfil parcial deixou de ser gravado.** O texto dizia "somente quando tudo
+estiver resolvido" e o código exigia apenas um binding. Meio perfil em disco é
+pior que perfil nenhum: o RetroArch aceita o arquivo, as ações faltantes ficam
+sem binding, e o controle responde pela metade sem nada dizer por quê. `partial`
+virou diagnóstico — aparece na tela com o motivo, e o emulador segue nos padrões
+dele. Um teste prova que recusar gravar não apaga o perfil que já valia.
+
+**`controlsReadiness` deixou de dar falso verde.** Dizia `ready` com perfil salvo
+e controle plugado, ignorando `awaiting-emulator`, `pending-write`, `conflict` e
+`no-autoconfig` — exatamente o falso verde que a G45 existe para não repetir.
+Agora deriva do estado efetivo e publica `autoconfigState`.
+
+**Contagem de testes reconciliada.** Não havia divergência: a PR #77 relatou
+4452 e minha baseline mediu 4450 *passed* mais 2 *failed*, que somam os mesmos
+4452. As duas falhas são os arquivos gitignored perdidos deste worktree, já
+documentados acima.
+
+O que continua exigindo o operador não mudou: abrir o RetroArch uma vez para que
+ele declare `joypad_autoconfig_dir`, e decidir a fonte de índice para pads sem
+autoconfig empacotado — o pad interno deste Deck é um deles. Nenhuma ação de
+host ou release foi executada nesta rodada.
+
+### 2026-08-13 — G45, terceira rodada: o efeito passa a ser a transação
+
+A segunda rodada apanhou em quatro P1 com uma causa comum: eu tinha pendurado um
+efeito colateral num plano VAZIO, usando o núcleo transacional só como portão de
+confirmação. Cada defeito era sintoma dessa forma errada, e todos somem quando o
+CONTEÚDO vai para dentro do plano.
+
+**A corrida estava invertida, não apenas aberta.** O writer escolhia entre
+criação exclusiva e `os.replace` reconsultando o alvo imediatamente antes de
+gravar. Se um arquivo estrangeiro aparecesse na janela, a checagem passava a
+dizer "foreign", o que DESLIGAVA a exclusividade e caía no `os.replace` —
+sobrescrevendo justamente o arquivo que devia proteger. O teste que eu tinha
+escrito só exercitava a primitiva `must_not_exist=True`, nunca a sequência
+integrada; por isso passou verde sobre um defeito. Hoje a precondição do plano
+guarda o fingerprint do destino e `apply` a revalida, e o teste é a sequência
+inteira.
+
+**`write-failed` era ficção.** A operação era commitada antes do writer rodar, o
+resultado era descartado e as exceções engolidas; depois da falha, a leitura
+seguinte via arquivo ausente e voltava a `pending-write`. O estado saiu do
+vocabulário: falha levanta e reverte.
+
+**O rollback era falso.** Plano sem ações ⇒ desfazer marcava a operação como
+revertida e deixava o autoconfig no disco, enquanto o histórico anunciava
+`G-FULL`. Agora `G-FULL` é verdade, com teste: desfazer remove o arquivo criado
+e restaura o conteúdo anterior numa atualização. O parâmetro
+`rollback_guarantee` que eu havia acrescentado a `plan_write_files` foi
+revertido — ele só servia para declarar um `G-NONE` que o histórico exibiria
+como `G-FULL`.
+
+**Perfil por jogo aplicaria o da plataforma.** O cartão mostrava o perfil
+efetivo do jogo e a gravação usava o da plataforma. A raiz é de mecanismo: o
+autoconfig do RetroArch é por DISPOSITIVO e não sabe qual jogo está rodando;
+dois jogos com perfis diferentes disputariam o mesmo arquivo. Perfil por jogo
+exigiria remap por jogo, que não está implementado. O estado
+`unsupported-scope` diz isso e a ação não é oferecida — em vez de gravar
+silenciosamente outro perfil.
+
+O que viabilizou usar o núcleo: `write_atomic` e `copy_file_atomic` ganharam
+`preserve_existing_dir`, usado ao publicar ALVOS DE PLANO. O `chmod`
+incondicional de `ensure_dir` teria mudado a permissão da configuração do
+RetroArch ao gravar um perfil. Pai ausente segue sendo criado com o nosso modo;
+pai preexistente sai intocado. Diretório declarado mas inexistente virou
+`awaiting-emulator`, porque construir dentro da configuração alheia continua
+fora de escopo.
+
+Suíte: 4527 passed, com as mesmas duas reprovações pré-existentes deste worktree
+(arquivos gitignored perdidos). Nenhuma ação de host ou release.
+
+Segue exigindo o operador: abrir o RetroArch uma vez para que ele declare
+`joypad_autoconfig_dir`, e um controle externo com autoconfig conhecido para o
+teste físico — o pad interno deste Deck continua em `no-autoconfig`.
+
+### 2026-08-13 — G45, quarta rodada: a janela interna e o caminho do Flatpak
+
+Duas reprovações minhas, ambas reproduzidas antes de corrigir.
+
+**A corrida continuava — dentro da transação.** Eu havia declarado que "qualquer
+mudança entre planejar e aplicar reprova". Falso: `_revalidate_preconditions`
+roda UMA vez, no início do `apply`, e depois ainda acontecem staging e backup.
+Um arquivo estrangeiro criado nesse intervalo era copiado para o backup e então
+sobrescrito pela escrita, com a operação retornando `ok`. Meu teste inseria o
+intruso ANTES de `apply()` e por isso nunca tocou a janela real.
+
+Reproduzido com um hook em `_stage`; a correção põe a política no PLANO: quando
+a precondição registrou o alvo como AUSENTE, a publicação é criação exclusiva
+(`os.link`, atômica); quando o alvo existia, o fingerprint é reconferido
+imediatamente antes de publicar, e não só no começo da operação. Dois testes
+cobrem a janela — criação e atualização.
+
+**`preserve_existing_dir` estava global.** Eu o passei incondicionalmente em
+`_apply_actions`, mudando em silêncio a política de TODAS as capacidades que
+usam o núcleo: diretórios do SteamZero deixariam de ter o modo seguro
+normalizado. Agora é uma propriedade do plano (`foreign_dir`), declarada só por
+quem escreve em diretório de terceiro; o padrão restaura o comportamento
+histórico.
+
+**O caminho do Flatpak não era o que eu supunha.** Medi o pacote e executei o
+RetroArch uma vez (evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`):
+
+- o config que ele cria declara `joypad_autoconfig_dir = "/app/share/libretro/
+  autoconfig"`, e `/app` **não existe no host** — é o mount do sandbox;
+- os perfis ficam em `<dir>/<input_joypad_driver>/` (`udev`, 420 arquivos); a
+  raiz tem ZERO. O código gravava na raiz, o que geraria arquivo nunca lido. O
+  driver é `input_joypad_driver`, não `input_driver` (que aqui é `x`);
+- `--appendconfig` funciona, mas `config_save_on_exit = "true"` PERSISTE o valor
+  no arquivo usado — aplicá-lo ao `retroarch.cfg` do usuário seria editá-lo
+  permanentemente, o que a AGENTS.md §5 proíbe.
+
+Portanto "abrir o RetroArch uma vez" **não** destrava a gravação, e eu estava
+errado ao pedir isso ao operador. O workstream volta a `active`: falta decidir e
+provar o mecanismo de integração. O código hoje degrada para `awaiting-emulator`
+dizendo que o diretório declarado é interno ao sandbox, e não tenta escrever.
+
+Artefatos do teste foram removidos; o `retroarch.cfg` criado permanece com o
+valor original do pacote. Nenhuma ação de host ou release, nenhum uso de
+`bigsudo` — nada aqui exigiu privilégio.
+
+### 2026-08-13 — G45, quinta rodada: a integração `--appendconfig`, provada
+
+O bloqueio da rodada anterior era o caminho: o RetroArch Flatpak procura perfis
+em `/app/share/libretro/autoconfig`, interno ao sandbox e inalcançável do host.
+A saída implementada é `--appendconfig` com um config PRÓPRIO do SteamZero.
+
+**O desenho.** O overlay (`<config>/retroarch/steamzero.cfg`, com marcador)
+redireciona `joypad_autoconfig_dir` para uma árvore nossa e **desliga
+`config_save_on_exit`**. Sem isso, o RetroArch — que vem com a chave em `true` —
+gravaria nossa injeção dentro do `retroarch.cfg` do usuário ao sair, editando-o
+em definitivo. Verificado: com o overlay, o config real sai da execução byte a
+byte idêntico. O custo, que a UI declara, é que nas sessões lançadas pelo
+SteamZero os ajustes feitos no menu do emulador não persistem.
+
+Perfil e overlay entram na MESMA transação: perfil sem overlay nunca é
+procurado, overlay sem perfil aponta para diretório vazio. O `lifecycle.launch`
+só passa `--appendconfig` quando o overlay existe — enquanto ninguém aplicou um
+perfil, o lançamento continua idêntico ao que era.
+
+**A prova.** A/B no host com joypad virtual (`uinput`, ids de um 8BitDo
+empacotado) e o perfil gerado pelo código de produção:
+
+| execução | o que o RetroArch reportou |
+|---|---|
+| sem overlay | `[Autoconf] 8BitDo SF30 2.4G conectado na porta 1.` |
+| com overlay | `[Autoconf] SteamZero Virtual Pad conectado na porta 1.` |
+
+O nome publicado em B só existe no arquivo que o SteamZero gerou. Evidência em
+`docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/`.
+
+**Efeito colateral bom:** como o diretório passou a ser NOSSO, a escrita em
+diretório de terceiro deixou de existir, e com ela a mudança ampla de núcleo
+(`preserve_existing_dir`) que a revisão pediu para isolar — foi **revertida**.
+Do núcleo permanece apenas a correção da corrida, que é defeito de verdade e
+vale para qualquer plano.
+
+**Limite conhecido:** o pad do `uinput` não recebe symlink `-event-joystick` em
+`/dev/input/by-id`, que é onde a descoberta procura; a identidade foi injetada
+no teste. Provar a descoberta automática ponta a ponta exige controle físico.
+
+Artefatos de teste removidos; `retroarch.cfg` do usuário intocado. Nenhuma ação
+de host ou release, e `bigsudo` não foi necessário em momento algum.
+
+### 2026-08-13 — G45, sexta rodada: a integração chega aos botões reais
+
+Três reprovações minhas, todas reproduzidas antes de corrigir.
+
+**O overlay não chegava a quem aperta o botão.** Eu havia injetado
+`--appendconfig` só no `ComponentLifecycle.launch()`, mas a tela de emulação
+monta o argv em `EmulationController._build_exec_argv` — então "Abrir emulador"
+e "Jogar" subiam o RetroArch sem o perfil. A prova A/B validava o mecanismo do
+emulador, não a integração do produto. A composição virou ponto único
+(`input_devices.retroarch_launch_arguments`), usado pelos dois. A chave é a REF
+do Flatpak, não o id do adapter: um core libretro roda DENTRO do RetroArch, e
+chavear pelo adapter deixaria justamente os jogos de fora.
+
+**A janela de atualização continuava aberta.** Entre conferir o fingerprint e o
+`os.replace` havia intervalo, e o intruso era sobrescrito (`UPDATE_RACE ok`).
+Fechada com `renameat2`/`RENAME_EXCHANGE`: a troca é atômica e o conteúdo que
+saiu é conferido depois; se não for o esperado, a troca é DESFEITA e a operação
+falha, devolvendo o arquivo alheio ao lugar. Sem suporte do kernel, cai para
+conferir-e-publicar, o que é pior mas ainda melhor que não conferir.
+
+**O rollback removia arquivo estrangeiro.** Para ações `write` o `expectHash`
+saía `None`, o que PULAVA o guard do `delete` — o guard existia e nunca era
+consultado. Corrigido incluindo `write` no registro do hash esperado.
+
+Ao verificar isso apareceu uma QUARTA instância da mesma classe, que a revisão
+não listou: o `restore` do rollback sobrescrevia o alvo sem conferir identidade.
+Agora só restaura sobre o que reconhece — o backup (nada mudou) ou o que o
+próprio plano gravou. Reprodução final: `E-TX-ROLLBACK-FAILED` com o intruso
+preservado nos dois casos.
+
+**Documentação contradizia a evidência.** O item afirmava que o `retroarch.cfg`
+não existia; ele passou a existir quando executei o RetroArch na investigação, e
+o problema nunca foi ausência de config — era caminho inalcançável. Corrigido.
+
+O workstream volta a `active`: falta repetir a prova pelo botão real da UI com um
+controle FÍSICO que tenha autoconfig empacotado. Nenhuma ação de host ou release.
+
+### 2026-08-13 — G45, sétima rodada: custódia em vez de conferência
+
+A revisão derrubou o padrão inteiro das minhas três correções anteriores, e com
+razão. Todas faziam a mesma coisa: conferir o alvo imediatamente antes de
+destruí-lo. Isso nunca fecha a janela — entre a conferência e o syscall cabe uma
+troca —, e as três reproduções mostraram o dado alheio sendo perdido:
+
+    FALLBACK_RACE ok b'new'
+    DELETE_RACE   rolled-back exists=False
+    RESTORE_RACE  rolled-back b'old'
+
+**A ordem inverteu.** Agora se TIRA a entrada do lugar primeiro, com rename
+atômico sem substituição (`RENAME_NOREPLACE`), e só depois se confere o que foi
+tirado. Publicação, remoção e restauração passam a operar sobre algo já sob
+custódia; o que não for reconhecido volta intacto. Não existe mais janela entre
+conferir e destruir porque a conferência deixou de vir antes da destruição.
+
+**Sem primitiva, falha fechada.** Nada de fallback com janela residual: um FS
+sem rename sem substituição não permite preservar o inesperado, e recusar é a
+resposta certa.
+
+**Quando o alvo é ocupado enquanto está vazio**, as duas entradas são
+conservadas — a nova onde está, a antiga sob custódia, com o erro nomeando os
+caminhos. Apagar qualquer uma seria a perda que o desenho evita.
+
+Escrevi os cinco testes VERMELHOS antes de mexer no código, como a revisão
+exigiu, cada um injetando na janela real e cobrando erro explícito + intruso
+byte a byte + ausência de órfão da própria operação + journal que não alega
+rollback completo.
+
+Dois aprendizados que valem mais que o patch:
+
+1. **Symlink não cabe na custódia.** A identidade dele é o alvo do link, não um
+   hash; rotear symlink por lá fez o `O_NOFOLLOW` estourar `ELOOP`. Ficou de
+   fora, com o guard que já existia.
+2. **O helper de órfãos precisa ser por operação.** Varrendo a quarentena
+   inteira, um caso de falha fechada — que CONSERVA a custódia de propósito —
+   fazia os outros testes reprovarem.
+
+Suíte: 4557 passed, com as duas reprovações pré-existentes deste worktree.
+Nenhuma ação de host, release ou privilégio.
+
+### 2026-08-13 — G45, oitava rodada: a custódia se torna durável e recuperável
+
+A sétima rodada trocou conferência por custódia (`RENAME_NOREPLACE`), mas a
+custódia — o backup — era efêmera: um crash entre tomar e devolver perdia a
+entrada, e o recovery podia declarar `kept` com COMMIT antigo ainda no journal.
+Esta rodada tornou a custódia DURÁVEL, com journaling e recovery que prioriza
+rollback incompleto.
+
+**Protocolo em três registros, com fsync entre eles** (`custody.intent` →
+`custody.taken` → `custody.released`), por actionId e caminho determinístico
+`quarantine/<op>/custody.<actionId>`: a intenção é gravada ANTES do primeiro
+rename, a tomada depois, e a liberação ao fim. Ponto de crash em qualquer um
+deles deixa a custódia registrada e endereçável.
+
+**Identidade conferida DEPOIS do rename**, sobre a entrada já fora do lugar:
+sha256 para regular, `symlink:<readlink>` para link — o que reverte o
+aprendizado `1` da rodada anterior ("symlink não cabe na custódia"): a janela
+dele era o `O_NOFOLLOW` seguir o hash; com identidade de alvo o link *cabe*, e
+a publicação de link agora é exclusiva (hard link sem seguir).
+
+**Exclusividade preservada:** publicação/remoção/restauração só operam sobre o
+lugar vazio; EXDEV (custódia em outro FS que não o alvo, reproduzido com
+`/dev/shm`) vira `E-TX-CUSTODY-CROSS-FS`, sem fallback com janela.
+
+**Recovery justo:** `keep` é decidido para trás — qualquer evidência de rollback
+interrompido (tomada pendente, custódia não devolvida, intenção remove/restore)
+executa `_do_rollback` antes de declarar; `_reconcile_custody` fecha pendências
+devolvendo ao lugar, liberando o reconhecido ou falhando FECHADO com as duas
+entradas preservadas. Estado terminal: zero custódias órfãs.
+
+**Vermelhos antes do patch:** 53 testes de injeção da FI-06 (crash em
+`custody.intent`/`taken`/`postlink`/`release`, SIGKILL real via subprocesso,
+symlink, move e cross-FS) escritos antes da implementação.
+
+**Gates:** suíte isolada completa 4573 passed (duas reprovações pré-existentes
+dos itens de status: `test_project_status`); `make independence boundaries`,
+`ruff check`, `ruff format --check` e `mypy src` verdes. Nenhuma ação de host,
+release ou privilégio. PR #78 segue empilhada, não mesclada — depende da prova
+física do operador com controle REAL.
+---
+
+## 2026-08-13 — Fechamento funcional da UI: matriz de controles e harness
+
+Frente `codex/ui-ux-functional-closure`, base `origin/main` em `e71d9b4`.
+Workstream `WS-2026-08-UI-FUNCTIONAL-CLOSURE`. **Nenhuma ação de host
+executada**: só `tools/release_host.py inspect`, que é read-only.
+
+O pedido cobria as seções A–P (Home, biblioteca, destaque persistente,
+lifecycle de emuladores, perfis, sync, cast, sistema, temas, acessibilidade e
+uma matriz visual de ~150 capturas). O operador priorizou fundação e P0
+funcional. O que segue é o que foi medido, não o que foi planejado.
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §6 | `26da453` | sonda comportamental de despacho + inventário de ações | 4 testes; mede 0 no-op silencioso em `e71d9b4` |
+| §4 | `26da453` | harness: CLI publicada, warnings não silenciados, manifesto com commit/branch/SHA-256 | 8 testes unitários |
+| P3-6 | `d2e3e53` | `Qt.exit` atravessa o event loop nos harnesses | combinação que reprovava passa 3/3 (38 testes) |
+| P0-5 | `07480ac` | card de plataforma oferece instalar o emulador ausente | 93 testes de emulação; 3 novos cobrem ausente/instalado/não instalável |
+| §4 | `6a3755e` | manifesto volta a registrar contexto por captura | as 4 verificações programáticas passam |
+
+Três defeitos que o próprio instrumento denunciou:
+
+1. **Classificação por forma inventava controles.** Um escopo de plataforma
+   (`{id, label, enabled, reason}`) é indistinguível de uma ação. A primeira
+   medição acusou 76 ações sem rota; 40 delas não existiam. O discriminador é
+   a posição na árvore — a QML só despacha o que está sob `action`/`actions[]`.
+2. **`openPlatformFromGlobal` saía em silêncio** quando a plataforma não estava
+   no workspace publicado. O clique não produzia efeito nem aviso. Só apareceu
+   porque a sonda passou a medir efeito observável além da notificação.
+3. **O parse do manifesto lia só stdout.** Com `QT_FORCE_STDERR_LOGGING` o
+   `console.log` do QML sai por stderr: 0 registros para 55 PNGs. Quem apontou
+   foi a verificação `toda-captura-declara-contexto`, que existe para isso.
+
+Contaminações minhas, registradas para não virarem folclore: a primeira
+execução da suíte teve `release_host.py inspect` rodando junto (exit 86 do
+guard de estado, mais dois SIGSEGV sob carga); a segunda teve edições de
+arquivo no meio (digest de status vermelho). Nenhuma das duas era defeito do
+código. O gate definitivo rodou com a árvore parada: **4467 passaram, 10
+skipados, exit 0**.
+
+O SIGSEGV de `check_editorial_library.qml` é anterior a esta frente — apareceu
+na primeira execução, antes de qualquer alteração minha. Sozinho passava 12/12,
+o que o escondia; só reproduzia em sessão pytest com outros harnesses.
+
+Limite honesto do que foi verificado: a matriz cobre **o workspace de emulação**,
+não a central inteira. Home, biblioteca, perfis, sync, cast, sistema e temas
+não foram sondados. Os P0 visuais da auditoria (DarkButton ilegível no tema
+claro, biblioteca sem capas, Home duplicada) continuam **abertos**. A matriz
+visual de ~150 capturas não foi produzida: só as 55 offline existentes.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-13 (2) — Ampliação da sonda: da matriz de ações à árvore QML viva
+
+Frente `codex/ui-ux-functional-closure-surface-audit`, base `b7ad818` (tip da
+passagem anterior). Workstream `WS-2026-08-UI-FUNCTIONAL-CLOSURE`, transferido
+de forma aditiva. **Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §1 | `9845db4` | auditoria parcial não chama contrato de órfão | 4 testes; régua lida de `Main.qml` |
+| §2 | `a7021f1` | sonda da árvore QML viva: 288 controles, 12 superfícies | 5 testes; 1 reprovando por desenho |
+| §3/§6 | `111fe7a` | 7 defeitos corrigidos | matriz zera as 3 classes |
+| §10 | `06de86b` | item e workstream com linguagem proporcional | `STATUS-CHECK: OK` |
+
+O achado que justifica a sonda nova: `SteamGameplay.qml` publicava
+**"Configurações avançadas"** — Button habilitado, largura total, 48 px,
+chevron `go-down`, `Accessible.name` definido — **sem nenhum `onClicked`**.
+Clicar nunca fez nada, na tela que a auditoria de 11/08 chamou de a melhor da
+central. Nenhuma matriz de ações jamais o veria: ele não nasce de payload.
+
+Mais seis controles apagados que não diziam por quê passaram a publicar a razão
+derivada da própria condição que os desabilita (cast sem receptor, Steam sem
+jogo inventariado, Gamescope/GameMode/MangoHud não prontos, GPU sem clock
+máximo publicado, emulação sem plataforma além da gestão geral).
+
+### Quatro vezes o instrumento acusou o inocente
+
+O padrão se repetiu e vale registrar, porque é o modo de errar desta bancada:
+
+1. observador de estado fixo → 24 no-ops, **20 falsos** (abas, presets e cards
+   de perfil mudam estado local); corrigido comparando a assinatura da árvore;
+2. popups fora da árvore → "Criar Novo Tema" acusado; corrigido observando o
+   overlay;
+3. clicar na seção em que já se está → "Visão geral" acusada; corrigido com
+   segunda tentativa a partir de outra posição;
+4. `ToolButton` desabilitado usado como **ícone** → 39 bloqueados mudos, **35
+   falsos**; decoração não é promessa, só responde quem tem rótulo ou nome
+   acessível.
+
+Sobrou **1** no-op real e **10** bloqueados mudos reais. Toda contagem publicada
+aqui é a que restou depois de derrubar os falsos.
+
+### Limites honestos
+
+- **215 dos 288 controles seguem `not-probed`**: são invisíveis no estado
+  offline. Estão declarados como não medidos, nunca como aprovados. Só `sync`
+  está integralmente sondada.
+- **117 contratos não cobertos**, e não órfãos: a sonda de ações visitou 1 de
+  17 superfícies.
+- **A matriz visual do §8 não foi produzida.** Resoluções, temas, escalas,
+  movimento reduzido e reconexão continuam sem medição nesta passagem.
+- Dialogs de plano, recovery e histórico de jobs não foram sondados.
+- Os P0 visuais (DarkButton no tema claro, capas, Home duplicada, footer)
+  **não foram reproduzidos** nesta passagem.
+
+Gate integral com a árvore parada: **4476 passaram, 10 skipados, exit 0**. Uma
+execução anterior teve 3 vermelhos; dois eram crashes do runtime QML sob
+pressão de memória (passam 20/20 isolados) e o terceiro era o digest de status,
+corrigido aqui.
+
+Workstream permanece `active`: fechá-lo afirmaria uma cobertura que os 215
+`not-probed` desmentem.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 — Harmonização A45: integração G45+UI e digests recalculados
+
+Branch `codex/harmonize-a45-integration`, nascida de `origin/main` em `e71d9b4`.
+Frente WS-2026-08-HARMONIZE-A45, item SZ-GOVERNANCE-STATUS.
+
+### Auditoria read-only (sem trocar de branch)
+
+Tips confirmados por fetch, todos idênticos aos registrados: main `e71d9b4`,
+g45-autoconfig-gerenciado `38bc1b7`, g45-custody-recovery `2235ce9`,
+ui-ux-functional-closure-surface-audit `5be0aa7`. PR #78: 9 checks verdes, 0
+vermelhos. PR #79: só as três falhas conhecidas de digest de governança
+(`test_project_status`), resto verde. `merge-tree` com ancestral real
+(`e71d9b4`): zero conflitos textuais entre G45 e UI; 8 arquivos "changed in
+both" auto-mesclaram; adições exclusivas da UI (inventários/probes) intactas.
+
+A branch remota `codex/harmonize-main-a45` (tip `864d698`) é órfã de rodada
+anterior: base `245e8d8e`, e o conteúdo dela (fix envelope, M11, ADRs, digests)
+já foi absorvido pelo main via PRs #65/#66 — diff de `api/envelope.py` vazio
+contra o main. Não foi usada como base.
+
+### Integração
+
+Dois merges na branch própria: G45 (78+79 completos, custódia durável intacta)
+e a branch de UI (matriz de controles, ações primária/secundária, acessibilidade
+e harness de auditoria). Três conflitos textuais resolvidos à mão:
+`docs/WORKLOG.md` (append-only, ambas as sessões preservadas em ordem
+cronológica), `docs/status/COVERAGE.md` (gerado; regenerado pelo render) e
+`docs/status/items/ui-desktop-audit.json` (fonte: versão funcional da UI — os
+criterios, evidencias e proxima ação do dono da UI foram preservados; só o
+digest foi recalculado para a árvore integrada). Funcionais auto-mesclados
+(`emulation-workspace-v1.schema.json`, `Emulation.qml`,
+`test_emulation_controller.py`) contêm os dois lados: contrato/UI do autoconfig
+da G45 + ações primária/secundária e acessibilidade da UI; os 83 testes da UI
+mais 12 da G45 = 95 no controller integrado.
+
+### Digests (calculados da árvore real, nunca copiados)
+
+- SZ-GOVERNANCE-STATUS: `88200b06…` → `6ed3dc15…` (KNOWN-GAPS e WORKLOG
+  alterados pela G45 no escopo do item).
+- SZ-UI-DESKTOP-AUDIT: `4f8de565…` → `44a66284…` (ControlsProfileCard.qml da
+  G45 dentro de `src/steamzero/ui`, escopo do item da UI).
+- SZ-MEDIA-SCRAPING: NÃO alterado — o "atual 82953bc…" local era artefato
+  git-ignored (`tests/fixtures/scraping/screenscraper/raw/`) gerado por testes;
+  em árvore git limpa o digest permanece `484fe509…`.
+- SZ-EMULATION-M10: permanece `ee1fde1b…` (já reatestado pela G45; a UI não
+  toca o escopo).
+
+`STATUS.md`, `ACTIVE-WORK.md` e `COVERAGE.md` regenerados pelo render. Workstream
+WS-2026-08-HARMONIZE-A45 atualizado para a nova branch; G45 e UI permanecem
+`active` (CI remoto da G45 ainda não está verde; prova física pendente).
+
+### Gates
+
+Suíte isolada completa 4606 passed, 10 skipped; `test_project_status` 10/10;
+108 testes UI+controller verdes; 60 failure-injection verdes; `ruff check`,
+`ruff format --check`, `mypy src` (222 arquivos), `make independence
+boundaries`, `make status-check` — todos OK. Nenhuma ação de host, release,
+wheel ou privilégio. PRs #78 e #79 não foram tocadas nem mescladas.
+
+---
+
+## 2026-08-13 (3) — Cenários de estado: tornar sondável o que estava invisível
+
+Frente `codex/ui-ux-state-fixture-audit-clean`, base `5be0aa7`. Workstream
+`WS-2026-08-UI-FUNCTIONAL-CLOSURE`, transferido de forma aditiva.
+**Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §2 | `a14e334` | identidade estável de controle | 288 ids, zero colisões, idêntico entre execuções |
+| §6 | `7759a28` → `6af3442` | 8 defeitos de acessibilidade | 3 gates novos; 10 testes verdes |
+| §1/§2/§3 | `e0e8c4e` | 14 cenários determinísticos, fusão por identidade | 12 testes; 196 exercitados contra 73 |
+| — | `8fe2953` | fixtures deixam de ser commitadas | 5,3 MB de JSON derivado fora do repo |
+| §10 | `7aeea06` | item e workstream | `STATUS-CHECK: OK` |
+
+### Medição por superfície
+
+| Superfície | Controles | Routed | Local | Blocked | Not-probed |
+|---|---:|---:|---:|---:|---:|
+| overview | 52 | 0 | 47 | 1 | 4 |
+| library | 120 | 0 | 38 | 0 | 82 |
+| emulators | 198 | 4 | 36 | 0 | 158 |
+| steam | 118 | 1 | 18 | 10 | 89 |
+| profiles | 9 | 1 | 5 | 0 | 3 |
+| cast | 7 | 4 | 0 | 2 | 1 |
+| system | 25 | 6 | 4 | 0 | 15 |
+| themes | 4 | 0 | 1 | 0 | 3 |
+| sync | 1 | 0 | 1 | 0 | 0 |
+| sidebar | 28 | 1 | 16 | 0 | 11 |
+| handheld-drawer | 10 | 0 | 0 | 0 | 10 |
+| task-drawer | 2 | 0 | 0 | 0 | 2 |
+| **total** | **574** | **17** | **166** | **13** | **378** |
+
+O total subiu de 288 para 574 porque os cenários revelaram telas que a sonda
+antes não conseguia sequer ver. Por isso os `not-probed` **sobem** em número
+absoluto ao mesmo tempo que a cobertura real quase triplica (73 → 196
+exercitados): o denominador cresceu junto. Publicar só a queda seria enganoso.
+
+### Nove defeitos corrigidos
+
+Sete de acessibilidade (`6af3442`): quatro botões da Home e três de Sistema sem
+`Accessible.name` — inclusive os únicos três caminhos de diagnóstico da tela — e
+um alvo de 79×32 em Steam, abaixo do mínimo de 48 do produto. Mais dois em
+`e0e8c4e`: 36 botões "Abrir plataforma" e 4 de linha de emulador anunciando
+apenas o verbo, sem dizer de qual plataforma ou emulador.
+
+O botão "Abrir plataforma" foi adicionado por esta mesma frente na passagem
+anterior, sem nome acessível. Ficou registrado.
+
+### O quinto e o sexto falso positivo
+
+O padrão não parou. Desta vez:
+
+5. **37 cards de sistema da Biblioteca acusados de no-op.** Todos falsos. A
+   culpa era do restauro: `openSystemDetails` põe a biblioteca em
+   `view="system"` e a deixava lá, então do segundo clique em diante o estado
+   "antes" já era o estado "depois". O restauro passa a devolver biblioteca,
+   emulação e área Steam ao ponto de partida.
+6. A primeira tentativa de fixtures deixou o `dashboard` quase vazio e mal moveu
+   a fila de ativação. Só quando o workspace de emulação passou a vir das
+   funções de domínio REAIS a cobertura saltou de 60 para 169 acionáveis num
+   único cenário.
+
+### Crash QML (§8) — correlação, não causa
+
+Nenhum crash nesta execução do gate integral: **4483 passaram, 10 skipados,
+exit 0, em 599 s**. Memória do host antes: 10195 MB usados / 4625 disponíveis;
+depois: 11350 / 3470. A suíte consome ~1,1 GB líquido num host de 14,8 GB que
+já opera com swap.
+
+Isto **não prova** que os crashes anteriores foram causados por pressão de
+memória. Prova apenas que, nesta execução, sem concorrência, não houve crash.
+Coredump não foi coletado. Registrado como correlação medida.
+
+### Limites honestos
+
+- **378 controles seguem `not-probed`**: invisíveis em todos os 14 cenários.
+  Só `sync` está integralmente sondada — e com 1 controle, o que é pouco para
+  chamar de cobertura.
+- **§4 parcial**: a espera é por condição com orçamento de quadros, sem `sleep`.
+  Mas os dez eventos nomeados (dialog aberto/fechado, foco restaurado, job
+  criado, verify, refresh, clique repetido sem duplicar) **não** foram provados
+  um a um.
+- **§5 não feito**: dialogs de plano, confirmação, cancelamento, credenciais,
+  recovery e histórico de jobs não foram sondados.
+- **§7 não feito**: a revalidação do card de plataforma com duas plataformas de
+  defaults distintos continua aberta. `07480ac` **não** deve ser considerado
+  fechado.
+- **§9 não feito**: nenhum P0 visual foi reproduzido.
+
+Workstream permanece `active`.
+
+### Higiene de histórico
+
+A primeira montagem desta entrega commitou 5,3 MB de fixtures JSON geradas e
+as removeu no commit seguinte. Os blobs continuavam alcançáveis no histórico.
+
+Esta branch reconstrói a mesma entrega a partir de `5be0aa7`: os três primeiros
+commits vieram por cherry-pick, e os dois de fixtures foram colapsados no diff
+líquido — nenhum JSON gerado entra no histórico. Provado: zero objetos sob
+`tests/fixtures/ui-scenarios` alcançáveis, `e0e8c4e` e `8fe2953` não são
+ancestrais, e o único diff contra `634a6b9` é documentação, o que significa que
+o código entregue é idêntico.
+
+A branch antiga não foi reescrita nem forçada.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 — Higiene de histórico e identidade semântica
+
+Frente `codex/ui-ux-state-fixture-audit-clean`, base `5be0aa7`.
+**Nenhuma ação de host.** Branch anterior preservada, sem force-push.
+
+### Higiene
+
+A montagem anterior commitou 5,3 MB de fixtures JSON geradas e as removeu no
+commit seguinte; os blobs continuavam alcançáveis. Esta branch reconstrói a
+mesma entrega: três cherry-picks e o diff **líquido** dos dois commits de
+fixtures colapsado em um só.
+
+| prova | resultado |
+|---|---|
+| objetos sob `tests/fixtures/ui-scenarios` alcançáveis | **0** |
+| `e0e8c4e` / `8fe2953` / `7aeea06` como ancestrais | **não** |
+| diff contra `634a6b9` | só documentação — código idêntico |
+| diff total contra `5be0aa7` | 913 inserções (era 198.357) |
+
+Duas correções que o cherry-pick cego teria carregado:
+
+1. `test_ui_control_matrix.py` aparecia **duas vezes** na evidência do item;
+2. `/build/` acrescentado ao `.gitignore` era **redundante** — `build/` já está
+   ignorado desde a seção de Python. Pior: por ser arquivo de raiz sem item de
+   custódia, reprovava o `status-check`. Na branch antiga isso passou apenas
+   pela ordem dos commits, que tirou o arquivo da janela `HEAD^..HEAD`.
+
+### Identidade semântica
+
+Controles importantes declaram `objectName`, e quando ele existe a identidade é
+só ele: `id:overview.open-library`, `emulation.platform.<id>.primary`,
+`emulation.emulator.<id>.action`. Não depende de texto traduzido, coordenada,
+índice, endereço nem revisão do engine. O resto cai num fallback estrutural
+rotulado `fallback|...`, e a matriz publica quantos são.
+
+| métrica | valor |
+|---|---:|
+| controles (3 cenários) | 550 |
+| identidades explícitas | 80 |
+| fallback estrutural | 470 |
+| colisões | 0 |
+| vistos em mais de um cenário | 275 |
+
+Onze provas de estabilidade. Duas usam dado real: o CTA do card muda de
+"Instalar &lt;emulador&gt;" para "Abrir plataforma" entre cenários — mesmo botão,
+rótulo diferente; e o par `empty`/`emulation-ready` muda a contagem de
+controles visíveis, o que dá sentido a falar de irmãos.
+
+O teste de irmãos **reprovou na primeira escrita** porque o par escolhido dava
+506 controles dos dois lados e não provava nada. O par foi trocado; a asserção
+não foi afrouxada.
+
+### Aberto
+
+Identidade explícita nas demais superfícies (470 no fallback);
+drawers, dialogs, jobs e recovery; revalidação do card de plataforma —
+`07480ac` **continua sem poder ser fechado**; P0 visuais, nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência nas duas execuções integrais desta sessão
+(4483 e 4494 passando, exit 0). Memória antes 11358 MB usados / 3461 livres;
+depois 12475 / 2345. **Hipótese permanece aberta**: ausência de crash em duas
+execuções não é causa demonstrada.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (2) — Jornada dos diálogos
+
+Frente `codex/ui-ux-dialog-job-audit`, base `3c92688`. **Nenhuma ação de host.**
+
+| item | commit | entrega | prova |
+|---|---|---|---|
+| §4 | `7b31546` | sonda de jornada de 6 modais + 5 aliases | 4 de 6 verdes, 2 reprovando defeito real |
+| §4 | `fcc1230` | foco entra no modal; Escape limpa o plano | 6 de 6 verdes |
+| §1 | `b9c39cd` | registro corrigido, cobertura separada de identidade | `STATUS-CHECK: OK` |
+
+### O registro corrigido
+
+O relatório anterior publicou, na mesma tabela, cobertura de 14 cenários e
+identidade de 3. Denominadores diferentes. Remedido com os 14 cenários:
+
+| medição | valores |
+|---|---|
+| cobertura | 574 controles · 378 not-probed · 17 roteados · 166 locais · 13 bloqueados |
+| identidade | 80 explícitas · 494 fallback · 0 colisões · 553 multi-cenário · 21 único |
+
+Os seis números da identidade conferem exatamente com a baseline do operador.
+
+### Dois defeitos
+
+**Cinco dos seis modais abriam sem levar o foco.** Quem navega por teclado ou
+pelo controle seguia com o Tab percorrendo a tela *atrás* do modal, e não havia
+focus trap porque o foco nunca entrara. Havia de 1 a 3 controles focáveis
+esperando ninguém.
+
+**Quatro planos sobreviviam ao Escape.** O botão "Cancelar" anulava o plano;
+`onClosed` só restaurava foco. Sair pelo teclado ou pelo botão B deixava a
+confirmação pendurada, pronta para ser reaproveitada na próxima abertura.
+
+Os dois caminhos de cancelamento passam a deixar o mesmo estado.
+
+### Espera determinística
+
+Cada jornada nomeia o evento que observou: `dialog-aberto`, `dialog-fechado`,
+`foco-restaurado`. Espera por condição com orçamento de frames; esgotar o
+orçamento **é** o resultado "o evento não aconteceu", nunca motivo para
+aumentá-lo. Nenhum `sleep`.
+
+### Fallback: sem redução, e isso é registro, não desculpa
+
+O fallback estrutural **segue em 494**. Os diálogos foram cobertos por harness
+próprio, fora da matriz de controles, e nenhum `objectName` novo entrou. Contar
+isso como redução seria creditar trabalho não feito.
+
+### Aberto
+
+Task drawer, handheld drawer, jobs (todos os doze estados), recovery além da
+abertura, credenciais por estado, clique repetido sem duplicar; revalidação do
+card de plataforma — `07480ac` **continua sem poder ser fechado**; P0 visuais,
+nenhum reproduzido.
+
+Crash QML: nenhuma ocorrência (4500 passando, exit 0). Memória antes
+11935 MB usados / 2884 livres; depois 12096 / 2724. **Hipótese permanece
+aberta.**
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (3) — A prova de Escape que não era Escape
+
+Frente `codex/ui-ux-confirm-job-recovery-audit`, base `5d01541`.
+**Nenhuma ação de host.**
+
+Contaminação verificada antes de qualquer edição: `3c92688` é ancestral;
+`2235ce9` (PR #79) e `66d7ac1` (PR #80) **não** são. Nenhum merge, rebase ou
+cherry-pick dessas PRs.
+
+### A correção
+
+A passagem anterior chamou `dialog.close()` de "Escape". Não é, e a diferença
+decide o teste: `close()` ignora `closePolicy` inteiro. `recoveryDialog`
+declara `Popup.NoAutoClose` justamente para que recovery não seja dispensado
+por engano — e fecha por `close()` sem reclamar. O teste antigo daria o mesmo
+verde se Escape estivesse quebrado.
+
+`tests/qml/check_dialog_keys.qml` faz a prova certa com `QtTest.keyClick`:
+Escape fecha quem permite, Escape **não** fecha recovery, plano fica limpo,
+foco volta ao originador, Tab/Shift+Tab dão volta inteira sem escapar.
+
+### O bloqueio, medido e não suposto
+
+`QML-KEY-INJECTION-001`:
+
+- `qmltestrunner` do PATH → `qt5-declarative 5.15.19`, recusa os imports
+  versionless do produto (Qt 6.11.1);
+- `qmltestrunner` do Qt6 em `/usr/lib/qt6/bin` → carrega numa `QQuickView`,
+  que exige raiz `Item`, e `Main` é uma `Window`.
+
+**Escape e Tab reais permanecem NÃO PROVADOS.** O teste pula com esse texto e
+volta a valer sozinho quando houver executor. Um segundo teste, que roda
+sempre, impede que alguém "conserte" o bloqueio trocando o evento real por
+chamada programática.
+
+Saída conhecida para a próxima passagem: harness com raiz `Item` hospedando os
+diálogos, ou teste de teclado pelo lado C++.
+
+### Registro corrigido
+
+`test_ui_dialog_journeys.py` deixa de se chamar "jornada completa". É abertura
+e cancelamento **programáticos**. Confirmar não foi exercido em nenhum modal.
+
+### Não feito
+
+Confirmação com bridge (§4), clique repetido (§5), central de tarefas e jobs
+(§6), recovery além da abertura (§7), melhorias de jornada (§8). Baseline de
+14 cenários inalterada: 574 controles, 378 not-probed, 80 explícitas, 494
+fallback, 0 colisões — nenhum fallback reduzido artificialmente.
+
+Conflito futuro com a PR #80 continua previsto em `docs/WORKLOG.md`,
+`docs/status/COVERAGE.md` e `docs/status/items/ui-desktop-audit.json`. Não
+tentei resolvê-lo incorporando a #80.
+
+Gate integral: **4501 passaram, 11 skipados, exit 0** (678 s). Sem crash.
+Memória antes 9685 MB usados / 5135 livres; depois 10353 / 4466.
+
+Verificado em desenvolvimento/offscreen; instalação e certificação física
+pendentes.
+
+---
+
+## 2026-08-14 (4) — Fechamento do executor Qt 6 para teclado
+
+Frente `codex/ui-ux-key-confirm-job-closure`, base `4033e80`.
+**Nenhuma ação de host; nenhum dado do operador tocado.**
+
+### QML-KEY-INJECTION-001 fechado
+
+O QuickTest Qt 6 em `/usr/lib/qt6/bin/qmltestrunner` executou com raiz `Item`
+hospedando `Main`. O harness espera janela ativa, visibilidade, foco no
+originador e foco interno antes de cada `keyClick`; não há espera arbitrária.
+A fixture inclui os campos consumidos pelos planos sintéticos e não houve
+warning próprio do SteamZero.
+
+O detector enumera a árvore visual a partir de `contentItem`, em vez de confiar
+apenas em `parent`: reconhece foco inicial, cada focável, subitens internos e o
+controle conhecido atrás do popup como externo. A prova Qt 6 passou (7 testes):
+Escape fecha o diálogo permissivo e limpa o plano, Escape não fecha recovery
+`NoAutoClose`, Tab/Shift+Tab permanecem no modal, e Escape e Cancelar visível
+chegam ao mesmo estado e devolvem foco.
+
+### Limite honesto
+
+`test_ui_dialog_keys.py` e `test_ui_dialog_journeys.py`: 8 passaram; bridge e
+jobs existentes: 44 passaram. Esta sessão **não declara a auditoria completa**:
+confirmação por botão real com resposta pendente, clique repetido, task drawer
+por eventos reais e recovery ponta a ponta continuam exigindo as provas
+dedicadas. O item de status registra teclado provado e essas jornadas abertas.
+Conflitos futuros com a PR #80 continuam conhecidos em WORKLOG, COVERAGE e no
+item de auditoria; a PR não foi incorporada.
+
+---
+
+## 2026-08-14 (6) — Confirmação idempotente pela bridge
+
+Frente `codex/ui-ux-confirm-job-takeover`, base `512d842`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** As PRs #79 e #80
+permaneceram fora da ancestralidade.
+
+### Entrega
+
+`Main.qml` passa a manter uma chave de mutação pendente no shell. Uma segunda
+confirmação com o mesmo contrato e payload não publica nova requisição até que
+a primeira termine. Os CTAs de aplicar componente/emulador, recovery,
+cancelamento e repetição mostram o estado pendente e ficam desabilitados;
+sucesso de aplicar/recovery continua condicionado ao refresh da bridge.
+
+`tests/qml/check_confirm_job_recovery_e2e.qml` usa `Main` real e
+`DesktopControlServer` em loopback, sem mock no QML. O QuickTest clica duas
+vezes na confirmação e a fixture observa exatamente um `apply`; também cobre
+plano, refresh, recovery, cancelamento e repetição. O Drawer é um Popup em
+janela separada no executor offscreen: a injeção física de ponteiro não o
+alcança nesse ambiente, por isso jobs exercitam o sinal dos controles reais e
+essa entrada física permanece explicitamente aberta.
+
+### Verificação
+
+- jornada QML + bridge, diálogos de teclado e bridge: **28 passaram**;
+- `ruff check`, `ruff format --check`, `mypy` (220 arquivos), independência,
+  fronteiras e `status-check`: verdes;
+- `qmllint` não introduziu alerta novo; permanece o alerta pré-existente de
+  layout em `Main.qml:4917`.
+
+Continua aberto: 378 controles `not-probed`, superfícies e drawers restantes,
+card de plataforma, P0 visuais, G45 e validação física. A auditoria não é
+declarada concluída nem certificada.
+
+---
+
+## 2026-08-14 (7) — Revisão crítica das jornadas assíncronas
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `23e0886`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade.
+
+### Duas conclusões anteriores corrigidas
+
+A primeira prova de clique repetido dependia de a bridge responder devagar por
+acaso. A fixture agora impõe uma barreira por evento: a requisição precisa
+chegar à bridge, o segundo clique acontece enquanto ela está comprovadamente
+pendente e só então a resposta é liberada. Não há `sleep`. A chave de mutação
+usa serialização canônica recursiva, independente da ordem dos campos e com a
+mesma semântica de omissão de `undefined` do JSON transmitido.
+
+Também estava errada a afirmação de que o executor offscreen não alcançava os
+controles do Drawer. O clique ocorria antes do fim da animação. Esperar
+`position >= 0.999` permitiu usar `mouseClick` Qt real em Cancelar e Tentar
+novamente; cada operação chega exatamente uma vez à bridge. O registro (6)
+acima é histórico e não foi reescrito; esta entrada o corrige explicitamente.
+
+### Robustez de estado e jornada
+
+A central de tarefas agora publica estados distintos de carregamento, vazio e
+erro, oferece nova tentativa e ignora respostas antigas por geração. A jornada
+QML + bridge cobre confirmação idempotente, cancelamento, repetição, erro e
+recuperação do carregamento, recovery bem-sucedido e recovery recusado sem
+fechar o diálogo nem bloquear uma nova tentativa.
+
+A matriz de 14 cenários foi recalculada: 574 controles, 17 roteados, 166
+locais, 13 bloqueados com explicação e 378 `not-probed`; identidade: 80
+explícitas, 494 fallback, 0 colisões, 553 multi-cenário e 21 de cenário único.
+Somente `sync` permanece integralmente sondada.
+
+### Gates e intermitência preservada
+
+Gate integral final, numa árvore parada: **4503 passaram, 10 skipados, exit
+0** em 721,03 s. O guard mediu estado real idêntico antes e depois. `ruff
+check`, `ruff format --check` (464 arquivos), `mypy` (220 arquivos),
+independência, fronteiras e `status-check`: verdes. `qmllint` saiu com código 0
+e manteve apenas o warning de layout preexistente em `Main.qml:5005`, fora do
+trecho alterado.
+
+Uma execução silenciosa anterior falhou em cascata e não reproduziu quando
+rodada detalhadamente nem no gate final. Não há coredump ou primeira falha
+estável; por isso o evento permanece registrado como intermitência sem causa
+atribuída, e não como defeito do código nem como problema "resolvido".
+
+Continua aberto: 378 controles `not-probed`, handheld drawer, estados restantes
+de credenciais e diálogos, revalidação do card de plataforma, P0 visuais, G45 e
+validação física. A auditoria continua `partial` e o workstream, `active`.
+
+---
+
+## 2026-08-15 (8) — Fechamento: credenciais, card de plataforma e P0 visuais
+
+Frente `codex/ui-ux-confirm-job-takeover`, base operacional `a871559`.
+**Nenhuma ação de host; nenhum dado do operador tocado.** `2235ce9` (PR #79)
+e `66d7ac1` (PR #80) continuam fora da ancestralidade (verificado antes de cada
+commit). Esta sessão substitui a reserva (7) anterior como fechamento da frente.
+
+### Jornada de credenciais com bridge real
+
+`check_credential_journey_e2e.qml` + `test_ui_credential_journey_e2e.py`
+provam, com o `Main` real e cliques Qt contra a bridge loopback: abrir o diálogo
+pela ação publicada e filtrar providers; salvar bloqueia duplicidade e limpa o
+segredo; testar valida e aceita rejeição lógica; falha de rede preserva o
+segredo e oferece nova tentativa; revogar volta a não configurado. O servidor de
+teste impõe barreiras por evento (`/release/{nome}`) e um modo
+`/credential/reject-tests` para a rejeição determinística. Duas armadilhas
+registradas para a próxima vez: tokens HTTP precisam ser ASCII
+(`secrets.compare_digest` quebra com acentuação) e contagem de botões em QML
+exige `instanceof Button` para não dobrar o `contentItem`.
+
+### Card de plataforma: reparo de emulador degradado
+
+A auditoria apontava o card de plataforma com CTA apenas "Abrir plataforma"
+quando o emulador está ausente. O workspace agora publica `emulator.repair:<id>`
+("Reparar <emulador>") quando a linha declara `installState: degraded`,
+preservando a secundária `platform.open:<id>`; nada é fabricado quando a linha
+não declara `installable`. Provas unit (reparo, cloud-open-only e
+compatibilidade com o `PlatformRegistry`) e QML (cliques primário/secundário
+publicando os payloads exatos, nomes acessíveis, e a transição Instalar →
+Abrir plataforma após o modelo republicar o card pronto).
+
+### P0 visuais reavaliados contra a árvore atual
+
+Recaptura da auditoria (55 PNGs, modo offline = tema claro fallback) e
+comparação pixel a pixel com a base de 2026-08-11. Os botões "AÇÕES DO SISTEMA"
+passaram de 0 para 494 pixels escuros de texto: P0-1/P0-2 (DarkButton no tema
+claro) estão corrigidos. A prova entra na suíte como
+`check_darkbutton_theme.qml` (label segue a paleta; o runner conta os pixels
+escuros do botão na cena salva). P0-3 (biblioteca sem capas) é dado: a UI
+renderiza a capa quando o read model publica `coverUrl` — agora provado no
+carrossel com `MediaEffectLayer` visível e `sourceStatus == Image.Ready` — e
+mantém placeholder honesto sem arte quando não há; a bridge enriquece `coverUrl`
+a partir dos metadados do jogo. P0-6 (jornada de temas) já estava fechada pelo
+redesenho: Aplicar, Duplicar e exportar desabilitado com motivo. O item
+`SZ-UI-DESKTOP-AUDIT` recebeu as novas provas, o digest do escopo e o ajuste
+mecânico do `SZ-THEME-AURA` (cujo escopo inclui `test_qml_handheld_offscreen.py`).
+
+### Gates
+
+Por item: ruff, ruff format --check, mypy e qmllint verdes; suíte offscreen
+(27 provas) verde. Gate integral numa árvore parada: **4513 passaram, 10
+skipados**; falha única pré-existente e não reproduzida após a reconciliação
+dos digests (`test_committed_catalog_and_generated_views_are_consistent`
+acusava digest obsoleto de `SZ-THEME-AURA`, corrigido nesta sessão; segunda
+execução integral sem a falha). `status-check` verde; `docs/STATUS.md`,
+`docs/ACTIVE-WORK.md` e `docs/status/COVERAGE.md` regenerados.
+
+Continua aberto: 378 controles `not-probed`, handheld drawer e demais estados
+de diálogos, G45 e validação física (operador), e a harmonização final com as
+PRs #78/#79/#80. A auditoria continua `partial`; o workstream sai `active` com
+a frente concluída na branch.
+---
+
+## 2026-08-15 — Update transacional e recuperável do host
+
+Frente `codex/transactional-host-update`, baseada no tip `origin/main`
+`e71d9b41982de74328cd9956b447f6009cbee509`. Reserva registrada em `772dc49` e
+implementação funcional em `71c026b`.
+
+O novo `tools/release_host.py update --to origin/main` consolida descoberta do
+único CI push verde, cache e validação da cadeia de suprimentos, preflight do
+host/rollback/ownership/schema, plano com token exato, lock global, journal
+write-ahead, ativação, duas convergências, doctor, units, Game Mode, QML
+offscreen e preservação do hash de `state.db`. Falha pós-ativação põe o target
+em quarentena, reverte e verifica a release anterior; falha do rollback para as
+units e registra recuperação exata. Retomada após interrupção nunca inicia uma
+segunda transação e exige nova confirmação.
+
+Provas locais: **4472 passed, 10 skipped** na suíte isolada completa; `ruff
+check`, `ruff format --check`, `mypy src`, `make independence boundaries` e
+`make status-check` verdes. O snapshot do estado real permaneceu idêntico antes
+e depois da suíte. Nenhum wheel/wheelhouse foi construído, nenhum `bigsudo` foi
+executado e nenhuma release foi instalada, revertida ou publicada. Inspeção
+read-only mostrou o host ainda em `0.1.0a46-40aa9bafa062`, com rollback conhecido
+`0.1.0a45-e2049b4999d5`. CI, ciclo em VM e certificação física no Deck continuam
+pendentes; `deploymentHealthy` automatizado nunca implica
+`physicalCertification`.

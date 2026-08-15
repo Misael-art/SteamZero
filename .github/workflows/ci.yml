@@ -3,7 +3,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/*release-candidate*"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -60,6 +60,7 @@ jobs:
         # derrubar o job. Se a provisão falhar, o passo registra o diagnóstico e
         # segue; a cobertura não depende destes testes.
         continue-on-error: true
+        timeout-minutes: 5
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -171,7 +172,8 @@ jobs:
             --ref "${{ github.ref }}" \
             --run-id "${{ github.run_id }}" \
             --output build/provenance.json
-          sha256sum dist/*.whl build/sbom.cdx.json build/provenance.json > build/SHA256SUMS
+          sha256sum dist/*.whl build/pip-audit.json build/sbom.cdx.json \
+            build/provenance.json > build/SHA256SUMS
       - name: Atestar proveniência assinada em tags
         if: >-
           startsWith(github.ref, 'refs/tags/') &&

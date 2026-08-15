@@ -21,7 +21,6 @@ ApplicationWindow {
     palette.button: raisedColor
     palette.buttonText: textColor
     palette.highlight: cyanDarkColor
-    palette.accent: cyanColor
     palette.highlightedText: textColor
     palette.toolTipBase: raisedColor
     palette.toolTipText: textColor
@@ -124,6 +123,15 @@ ApplicationWindow {
     property alias collectionManagerControl: collectionManageDialog
     property alias libraryHealthPlanControl: libraryHealthPlanDialog
     property alias credentialDialogControl: credentialDialog
+    // Alias para os dialogs que a auditoria de jornada precisa alcancar. Ids
+    // declarados dentro de Main nao sao visiveis de um harness que estende
+    // Main, entao sem isto nao ha como provar foco inicial, trap, cancelamento
+    // sem mutacao nem retorno de foco.
+    property alias emulationPlanDialogControl: emulationDialog
+    property alias componentPlanDialogControl: componentDialog
+    property alias safeResetDialogControl: resetDialog
+    property alias conflictDialogControl: conflictDialog
+    property alias recoveryDialogControl: recoveryDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
     property alias credentialCloseControl: credentialCloseButton
@@ -272,6 +280,9 @@ ApplicationWindow {
         && desktopStatus.dashboard.resources
         ? desktopStatus.dashboard.resources : fallbackResources
     property var liveTasks: null
+    property bool taskLoading: false
+    property string taskLoadError: ""
+    property int taskRequestGeneration: 0
     readonly property var taskItems: liveTasks !== null ? liveTasks
         : emulationData && emulationData.jobs ? emulationData.jobs : []
     readonly property var uiContracts: desktopStatus.dashboard
@@ -323,6 +334,10 @@ ApplicationWindow {
     property string lastRequest: ""
     property bool lastRequestIsError: false
     property int pendingRequests: 0
+    // Mutacoes confirmadas podem demorar (o backend faz verificacao e rollback).
+    // A chave fica no shell, e nao no botao, para que dois controles que
+    // representam a mesma acao nao possam publicar a mesma requisicao.
+    property var pendingActionKeys: ({})
     property bool bridgeUnavailable: false
     property var activeErrors: []
     property var castReceivers: []
@@ -515,8 +530,20 @@ ApplicationWindow {
     }
 
     function refreshTasks() {
+        const generation = ++taskRequestGeneration
+        taskLoading = true
+        taskLoadError = ""
         requestAction("jobs.list", {}, function(response) {
+            if (generation !== root.taskRequestGeneration)
+                return
             liveTasks = response.jobs || []
+            taskLoading = false
+        }, function(message) {
+            if (generation !== root.taskRequestGeneration)
+                return
+            liveTasks = []
+            taskLoadError = String(message || qsTr("Não foi possível carregar as tarefas"))
+            taskLoading = false
         })
     }
 
@@ -546,6 +573,40 @@ ApplicationWindow {
         const active = root.activeFocusItem
         if (active)
             dialogInvoker = active
+    }
+
+    // Um modal que abre sem levar o foco deixa quem navega por teclado ou pelo
+    // controle do lado de fora: o Tab segue percorrendo a tela atras do modal, e
+    // nao ha focus trap nenhum porque o foco nunca entrou.
+    function focusDialogContent(dialog) {
+        if (!dialog)
+            return
+        Qt.callLater(function() {
+            if (!dialog.visible || !dialog.contentItem)
+                return
+            const target = firstFocusableIn(dialog.contentItem, 0)
+            if (target)
+                target.forceActiveFocus(Qt.TabFocusReason)
+            else
+                dialog.contentItem.forceActiveFocus(Qt.TabFocusReason)
+        })
+    }
+
+    function firstFocusableIn(item, depth) {
+        if (!item || depth > 30)
+            return null
+        if (item.enabled === true && item.visible === true
+                && item.activeFocusOnTab === true)
+            return item
+        const kids = item.children
+        if (!kids)
+            return null
+        for (let i = 0; i < kids.length; i++) {
+            const found = firstFocusableIn(kids[i], depth + 1)
+            if (found)
+                return found
+        }
+        return null
     }
 
     function restoreDialogFocus() {
@@ -749,6 +810,46 @@ ApplicationWindow {
         return actions[actionId] || null
     }
 
+    function stableActionValue(value) {
+        if (value === null)
+            return "null"
+        if (Array.isArray(value)) {
+            return "[" + value.map(function(item) {
+                const serialized = stableActionValue(item)
+                return serialized === undefined ? "null" : serialized
+            }).join(",") + "]"
+        }
+        if (typeof value === "object") {
+            const keys = Object.keys(value).sort()
+            const fields = []
+            keys.forEach(function(key) {
+                const serialized = stableActionValue(value[key])
+                if (serialized !== undefined)
+                    fields.push(JSON.stringify(key) + ":" + serialized)
+            })
+            return "{" + fields.join(",") + "}"
+        }
+        return JSON.stringify(value)
+    }
+
+    function actionRequestKey(actionId, payload) {
+        return String(actionId) + ":" + stableActionValue(payload || {})
+    }
+
+    function actionIsPending(actionId, payload) {
+        return pendingActionKeys[actionRequestKey(actionId, payload)] === true
+    }
+
+    function setActionPending(actionId, payload, pending) {
+        const key = actionRequestKey(actionId, payload)
+        const next = Object.assign({}, pendingActionKeys)
+        if (pending)
+            next[key] = true
+        else
+            delete next[key]
+        pendingActionKeys = next
+    }
+
     function requestAction(actionId, payload, callback, errorCallback) {
         const action = backendAction(actionId)
         if (!action || action.applicability !== "applicable" || action.enabled !== true
@@ -760,9 +861,20 @@ ApplicationWindow {
             if (errorCallback)
                 errorCallback(message)
             notify(message, true)
-            return
+            return false
         }
-        request(action.method, action.endpoint, payload, callback, function(errArg) {
+        const mutation = String(action.method).toUpperCase() !== "GET"
+        if (mutation && actionIsPending(actionId, payload))
+            return false
+        if (mutation)
+            setActionPending(actionId, payload, true)
+        request(action.method, action.endpoint, payload, function(response) {
+            if (mutation)
+                setActionPending(actionId, payload, false)
+            callback(response)
+        }, function(errArg) {
+            if (mutation)
+                setActionPending(actionId, payload, false)
             var errObj = (errArg && typeof errArg === "object" && errArg.code) ? errArg : null
             var msg = errObj
                 ? root.errorMessage({"error": errObj}, qsTr("Ação recusada"))
@@ -775,6 +887,7 @@ ApplicationWindow {
             if (errorCallback)
                 errorCallback(msg)
         })
+        return true
     }
 
     function localPath(url) {
@@ -1003,6 +1116,17 @@ ApplicationWindow {
             refreshStatus(qsTr("Ambiente de emulação verificado"))
             return
         }
+        // Navegação para a plataforma. É tratada aqui, e não só no clique do
+        // card, para que a ação publicada tenha rota de verdade: qualquer
+        // superfície que despache o payload chega ao mesmo lugar.
+        if (action.id.indexOf("platform.open:") === 0) {
+            const platformId = action.id.slice("platform.open:".length)
+            sectionIndex = sectionIndexOf("emulators")
+            if (!emulationControl.openPlatformFromGlobal(platformId))
+                notify(qsTr("A plataforma %1 não está no workspace publicado; "
+                    + "nada foi alterado.").arg(platformId), true)
+            return
+        }
         if (action.id === "open-credential-dialog") {
             credentialDialog.refresh()
             credentialDialog.open()
@@ -1177,7 +1301,13 @@ ApplicationWindow {
     Dialog {
         id: conflictDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(conflictDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.conflictPlan = null
+            root.restoreDialogFocus()
+        }
         title: qsTr("Resolver conflito de controle")
         modal: true
         width: Math.min(root.width - 48, 720)
@@ -1255,7 +1385,13 @@ ApplicationWindow {
     Dialog {
         id: componentDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(componentDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.componentPlan = null
+            root.restoreDialogFocus()
+        }
         title: root.componentPlan
             ? (root.componentPlan.action === "install" ? qsTr("Revisar instalação") : qsTr("Revisar atualização"))
             : qsTr("Revisar componente")
@@ -1294,18 +1430,23 @@ ApplicationWindow {
                     onClicked: componentDialog.close()
                 }
                 Button {
-                    text: root.componentPlan && root.componentPlan.action === "install"
-                        ? qsTr("Instalar com rollback") : qsTr("Aplicar atualização")
+                    objectName: "component-plan-apply"
+                    readonly property var applyPayload: root.componentPlan ? ({
+                        "planId": root.componentPlan.planId,
+                        "confirmToken": root.componentPlan.confirmToken
+                    }) : ({})
+                    readonly property bool applying: root.actionIsPending("component.apply", applyPayload)
+                    text: applying ? qsTr("Aplicando e verificando…")
+                        : root.componentPlan && root.componentPlan.action === "install"
+                            ? qsTr("Instalar com rollback") : qsTr("Aplicar atualização")
+                    enabled: root.componentPlan !== null && !applying
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     Accessible.name: text
                     onClicked: {
                         if (!root.componentPlan)
                             return
-                        root.requestAction("component.apply", {
-                            "planId": root.componentPlan.planId,
-                            "confirmToken": root.componentPlan.confirmToken
-                        }, function(response) {
+                        root.requestAction("component.apply", applyPayload, function(response) {
                             componentDialog.close()
                             root.componentPlan = null
                             root.refreshStatus(qsTr("Componente verificado e pronto"))
@@ -1319,8 +1460,12 @@ ApplicationWindow {
     Dialog {
         id: emulationDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(emulationDialog)
         onClosed: {
             auditSelections = []
+            // Sair por Escape deixava o plano pendurado como uma confirmacao
+            // sem dono, pronta para ser reaproveitada pela proxima abertura.
+            root.emulationPlan = null
             root.restoreDialogFocus()
         }
         property var auditSelections: []
@@ -1458,7 +1603,18 @@ ApplicationWindow {
                     onClicked: emulationDialog.prepareQuarantine()
                 }
                 Button {
-                    text: qsTr("Aplicar com rollback")
+                    objectName: "emulation-plan-apply"
+                    readonly property var applyPayload: root.emulationPlan ? ({
+                        "planId": root.emulationPlan.planId,
+                        "confirmToken": root.emulationPlan.confirmToken
+                    }) : ({})
+                    readonly property string actionId: root.emulationPlan
+                        && String(root.emulationPlan.action).indexOf("emulator.") === 0
+                        ? "emulator.apply" : "emulation.action.apply"
+                    readonly property bool applying: root.actionIsPending(actionId, applyPayload)
+                    text: applying ? qsTr("Aplicando e verificando…")
+                        : qsTr("Aplicar com rollback")
+                    enabled: root.emulationPlan !== null && !applying
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     onClicked: {
@@ -1466,12 +1622,9 @@ ApplicationWindow {
                             return
                         const emulatorLifecycle = String(root.emulationPlan.action)
                             .indexOf("emulator.") === 0
-                        const actionId = emulatorLifecycle
+                        const applyAction = emulatorLifecycle
                             ? "emulator.apply" : "emulation.action.apply"
-                        root.requestAction(actionId, {
-                            "planId": root.emulationPlan.planId,
-                            "confirmToken": root.emulationPlan.confirmToken
-                        }, function(response) {
+                        root.requestAction(applyAction, applyPayload, function(response) {
                             emulationDialog.close()
                             root.emulationPlan = null
                             root.refreshStatus(qsTr("Operação aplicada e verificada"))
@@ -1534,7 +1687,13 @@ ApplicationWindow {
     Dialog {
         id: resetDialog
         onAboutToShow: root.rememberDialogInvoker()
-        onClosed: root.restoreDialogFocus()
+        onOpened: root.focusDialogContent(resetDialog)
+        onClosed: {
+            // Fechar por Escape ou pelo botao B tem de deixar o estado tao
+            // limpo quanto o botao Cancelar deixa.
+            root.currentPlan = null
+            root.restoreDialogFocus()
+        }
         title: qsTr("Quick Reset")
         modal: true
         width: Math.min(root.width - 48, 620)
@@ -1686,6 +1845,7 @@ ApplicationWindow {
     Dialog {
         id: credentialDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(credentialDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Credenciais de scraping")
         modal: true
@@ -1872,6 +2032,7 @@ ApplicationWindow {
     Dialog {
         id: recoveryDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(recoveryDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Alteração incompleta detectada")
         modal: true
@@ -1891,7 +2052,11 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             Button {
-                text: qsTr("Restaurar último estado seguro")
+                objectName: "desktop-recovery-apply"
+                readonly property bool recovering: root.actionIsPending("desktop.recover", {})
+                text: recovering ? qsTr("Restaurando e verificando…")
+                    : qsTr("Restaurar último estado seguro")
+                enabled: !recovering
                 Layout.fillWidth: true
                 Layout.minimumHeight: 52
                 Accessible.name: text
@@ -2544,7 +2709,8 @@ ApplicationWindow {
                     }
                 }
                 Button {
-                    text: qsTr("Atualizar")
+                    text: root.taskLoading ? qsTr("Atualizando…") : qsTr("Atualizar")
+                    enabled: !root.taskLoading
                     Layout.minimumHeight: 48
                     Accessible.name: text
                     onClicked: root.refreshTasks()
@@ -2572,7 +2738,57 @@ ApplicationWindow {
                     spacing: 10
 
                     Rectangle {
-                        visible: root.taskItems.length === 0
+                        objectName: "task-loading-state"
+                        visible: root.taskLoading
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 12
+                        implicitHeight: 100
+                        color: root.surfaceColor
+                        border.color: root.cyanColor
+                        radius: 8
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            BusyIndicator { anchors.horizontalCenter: parent.horizontalCenter; running: true }
+                            Label { text: qsTr("Carregando tarefas…"); color: root.textColor }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "task-error-state"
+                        visible: !root.taskLoading && root.taskLoadError.length > 0
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 12
+                        Layout.topMargin: 12
+                        implicitHeight: taskErrorContent.implicitHeight + 24
+                        color: root.surfaceColor
+                        border.color: root.redColor
+                        radius: 8
+                        ColumnLayout {
+                            id: taskErrorContent
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
+                            Label { text: qsTr("Não foi possível carregar as tarefas"); color: root.textColor; font.bold: true }
+                            Label { text: root.taskLoadError; color: root.mutedColor; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Button {
+                                objectName: "task-error-retry"
+                                text: qsTr("Tentar novamente")
+                                Layout.minimumHeight: 48
+                                Layout.preferredHeight: 48
+                                Accessible.name: qsTr("Tentar carregar tarefas novamente")
+                                onClicked: root.refreshTasks()
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        objectName: "task-empty-state"
+                        visible: !root.taskLoading && root.taskLoadError.length === 0
+                            && root.taskItems.length === 0
                         Layout.fillWidth: true
                         Layout.leftMargin: 12
                         Layout.rightMargin: 12
@@ -2590,6 +2806,7 @@ ApplicationWindow {
                     }
 
                     Repeater {
+                        visible: !root.taskLoading && root.taskLoadError.length === 0
                         model: root.taskItems
                         delegate: Rectangle {
                             required property int index
@@ -2644,27 +2861,40 @@ ApplicationWindow {
                                 RowLayout {
                                     visible: modelData.canCancel || modelData.canRetry
                                     Layout.fillWidth: true
+                                    Layout.minimumHeight: 48
+                                    Layout.preferredHeight: 48
+                                    implicitHeight: 48
                                     Item { Layout.fillWidth: true }
                                     Button {
+                                        objectName: "task-cancel-" + modelData.jobId
+                                        readonly property var cancelPayload: ({"jobId": modelData.jobId})
+                                        readonly property bool cancelling: root.actionIsPending(
+                                            "job.cancel", cancelPayload)
                                         visible: modelData.canCancel
-                                        text: qsTr("Cancelar")
+                                        text: cancelling ? qsTr("Cancelando…") : qsTr("Cancelar")
+                                        enabled: !cancelling
                                         Layout.minimumHeight: 48
+                                        Layout.preferredHeight: 48
+                                        implicitHeight: 48
                                         Accessible.name: qsTr("Cancelar %1").arg(root.taskLabel(modelData.type))
-                                        onClicked: root.requestAction("job.cancel", {
-                                            "jobId": modelData.jobId
-                                        }, function() {
+                                        onClicked: root.requestAction("job.cancel", cancelPayload, function() {
                                             root.refreshTasks()
                                             root.refreshStatus(qsTr("Cancelamento registrado"))
                                         })
                                     }
                                     Button {
+                                        objectName: "task-retry-" + modelData.jobId
+                                        readonly property var retryPayload: ({"jobId": modelData.jobId})
+                                        readonly property bool retrying: root.actionIsPending(
+                                            "job.retry", retryPayload)
                                         visible: modelData.canRetry
-                                        text: qsTr("Tentar novamente")
+                                        text: retrying ? qsTr("Reiniciando…") : qsTr("Tentar novamente")
+                                        enabled: !retrying
                                         Layout.minimumHeight: 48
+                                        Layout.preferredHeight: 48
+                                        implicitHeight: 48
                                         Accessible.name: qsTr("Tentar novamente %1").arg(root.taskLabel(modelData.type))
-                                        onClicked: root.requestAction("job.retry", {
-                                            "jobId": modelData.jobId
-                                        }, function() {
+                                        onClicked: root.requestAction("job.retry", retryPayload, function() {
                                             root.refreshTasks()
                                             root.refreshStatus(qsTr("Nova tentativa concluída"))
                                         })
@@ -4779,7 +5009,7 @@ ApplicationWindow {
                                 }
                                 Pane {
                                     visible: root.castReceivers.length > 0
-                                    width: parent.width
+                                    Layout.fillWidth: true
                                     padding: 16
                                     background: Rectangle { color: root.surfaceColor; radius: 6 }
                                     ColumnLayout { spacing: 8
@@ -4839,6 +5069,12 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    // Apagado sem dizer por quê deixa o usuário
+                                    // procurando o defeito no lugar da condição.
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para parear.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: castPinDialog.open()
                                 }
                                 RowLayout {
@@ -4871,6 +5107,10 @@ ApplicationWindow {
                                     Layout.leftMargin: 28
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("Escolha um receptor na lista para transmitir.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: {
                                         root.requestAction("cast.start", {
                                                 "receiverId": root.selectedReceiverId,
@@ -5395,18 +5635,21 @@ ApplicationWindow {
                                     Button {
                                         text: qsTr("Exportar estado")
                                         icon.name: "document-export"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.beginDiagnosticsExport("state")
                                     }
                                     Button {
                                         text: qsTr("Pacote de suporte")
                                         icon.name: "tools-report-bug"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.beginDiagnosticsExport("support")
                                     }
                                     Button {
                                         text: qsTr("Saúde administrativa")
                                         icon.name: "security-high"
+                                        Accessible.name: text
                                         Layout.minimumHeight: 48
                                         onClicked: root.requestAction("admin.health", {}, function(response) {
                                             root.notify(response.detail || response.state, false)
