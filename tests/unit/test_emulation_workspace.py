@@ -6,6 +6,7 @@ from pathlib import Path
 from steamzero.api import contracts
 from steamzero.domain.emulation_workspace import build_global_management, build_switch_workspace
 from steamzero.domain.keys_firmware import RequirementCheck
+from steamzero.domain.platforms import PlatformRegistry
 
 
 def test_switch_workspace_matches_versioned_contract() -> None:
@@ -234,3 +235,102 @@ def test_platform_card_does_not_promise_an_install_the_backend_refuses() -> None
 
     assert card["action"]["id"] == "platform.open:gamecube"
     assert card["secondaryAction"] is None
+
+
+def test_platform_card_repairs_a_degraded_emulator_instead_of_reinstalling() -> None:
+    """Degradado não é ausente: reinstalar não corrige drift (G27).
+
+    A gestão já anuncia "Reparar" para a linha degradada; o card da plataforma
+    precisa do mesmo verbo, e não "Instalar" — arquivos existem e a causa do
+    drift veio preservada.
+    """
+    card = _card_for(
+        [{"id": "dolphin", "name": "Dolphin", "installable": True, "installState": "degraded"}]
+    )
+
+    assert card["action"]["id"] == "emulator.repair:dolphin"
+    assert card["action"]["label"] == "Reparar Dolphin"
+    assert card["action"]["requiresConfirmation"] is True
+    assert card["secondaryAction"]["id"] == "platform.open:gamecube"
+
+
+def test_cloud_platform_card_offers_only_open_and_never_an_install() -> None:
+    """Plataforma de streaming não usa emulador local: nenhum CTA de instalação."""
+    platform = {
+        "id": "amazon-luna",
+        "name": "Amazon Luna",
+        "kind": "cloud",
+        "state": "ready",
+        "readiness": {"percent": 100, "blockers": []},
+        "requirements": {},
+        "emulators": [],
+    }
+    management = build_global_management(
+        platforms=[platform],
+        editorial_platforms=[],
+        canonical_experiences=[],
+        truth_state="ready",
+        emulators=[],
+        directories=[],
+        media_providers=[],
+    )
+    card = management["platformCards"][0]
+
+    assert card["identity"] == "cloud"
+    assert card["action"]["id"] == "platform.open:amazon-luna"
+    assert card["action"]["label"] == "Abrir plataforma"
+    assert card["secondaryAction"] is None
+
+
+def test_platform_card_actions_stay_within_the_platform_registry() -> None:
+    """Compatibilidade emulador↔plataforma: o card só oferece o que a plataforma declara.
+
+    A fonte das linhas é o registro de plataformas; um emulador de outra
+    plataforma nunca pode virar CTA do card, e o alvo de abrir é sempre a
+    própria plataforma do card.
+    """
+    registry = PlatformRegistry.bundled()
+    platforms = []
+    for manifest in list(registry.list())[:8]:
+        platforms.append(
+            {
+                "id": manifest.id,
+                "name": manifest.name,
+                "kind": manifest.kind,
+                "state": "attention",
+                "readiness": {"percent": 0, "blockers": []},
+                "requirements": {},
+                "emulators": [
+                    {
+                        "id": emulator_id,
+                        "name": emulator_id,
+                        "installable": True,
+                        "installState": "not-installed",
+                    }
+                    for emulator_id in registry.emulator_ids_for(manifest.id)
+                ],
+            }
+        )
+    management = build_global_management(
+        platforms=platforms,
+        editorial_platforms=[],
+        canonical_experiences=[],
+        truth_state="attention",
+        emulators=[],
+        directories=[],
+        media_providers=[],
+    )
+    declared = {
+        str(manifest.id): set(registry.emulator_ids_for(manifest.id))
+        for manifest in registry.list()
+    }
+
+    for card in management["platformCards"]:
+        action = card["action"]
+        if action["id"].startswith(("emulator.install:", "emulator.repair:")):
+            emulator_id = action["id"].split(":", 1)[1]
+            assert emulator_id in declared[card["id"]], (
+                f"card de {card['id']} oferece emulador fora do registro: {emulator_id}"
+            )
+        if card["secondaryAction"]:
+            assert card["secondaryAction"]["id"] == f"platform.open:{card['id']}"
