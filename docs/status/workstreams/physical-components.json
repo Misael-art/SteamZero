@@ -38,6 +38,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Reproduzir e corrigir a ausência de progresso por bytes e cancelamento cooperativo no download; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Provar recovery/retomada de jobs após reinício e fechar etapas/cancelamento Flatpak; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }
