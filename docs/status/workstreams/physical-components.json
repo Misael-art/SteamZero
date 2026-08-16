@@ -43,6 +43,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Reproduzir e corrigir progresso por etapas e cancelamento cooperativo do subprocesso Flatpak; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Adicionar telemetria local sanitizada e provar terminalização física por família; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }

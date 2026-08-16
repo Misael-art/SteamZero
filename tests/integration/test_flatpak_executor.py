@@ -17,6 +17,7 @@ from steamzero.adapters.registry import AdapterRegistry, load_manifest
 from steamzero.api import contracts
 from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
+from steamzero.jobs.manager import JobCancelled
 
 TARGET = "a" * 64
 PREVIOUS = "b" * 64
@@ -377,6 +378,48 @@ def test_install_apply_and_manual_rollback_preserve_app_data_scope(
     assert flatpak.current == FlatpakState(False, REF)
     assert store.get_component("demo-flatpak")["state"] == "missing"  # type: ignore[index]
     assert ("uninstall", REF) in flatpak.calls
+
+
+def test_apply_publishes_ordered_flatpak_stages(store: state.StateStore) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    stages: list[tuple[str, int, int]] = []
+
+    with flatpak_module.flatpak_operation_observer(
+        progress=lambda stage, current, total: stages.append((stage, current, total)),
+        cancel_check=lambda: None,
+    ):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert stages == [
+        ("installing", 1, 5),
+        ("deploying", 2, 5),
+        ("verifying", 3, 5),
+        ("smoke", 4, 5),
+        ("persisting", 5, 5),
+    ]
+
+
+def test_job_cancellation_rolls_back_and_preserves_cancel_signal(
+    store: state.StateStore,
+) -> None:
+    class CancellingFlatpak(FakeFlatpak):
+        def install(self, remote: str, ref: str) -> None:
+            super().install(remote, ref)
+            raise JobCancelled
+
+    flatpak = CancellingFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+
+    with pytest.raises(JobCancelled):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert flatpak.current == FlatpakState(False, REF)
+    operation = next(paths.component_operations_dir().glob("*.json"))
+    payload = json.loads(operation.read_text(encoding="utf-8"))
+    assert payload["status"] == "rolled-back"
 
 
 @pytest.mark.rt

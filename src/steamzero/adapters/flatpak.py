@@ -15,7 +15,10 @@ import re
 import secrets
 import shutil
 import subprocess
-from collections.abc import Callable, Sequence
+import time
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -29,6 +32,7 @@ from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.core.lock import ResourceLock
 from steamzero.core.state import StateStore
+from steamzero.jobs.manager import JobCancelled
 
 _COMMIT_RE = re.compile(r"^[a-f0-9]{64}$")
 _REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,254}$")
@@ -56,6 +60,48 @@ class CommandResult:
 
 
 Runner = Callable[[Sequence[str], float], CommandResult]
+StageProgress = Callable[[str, int, int], None]
+CancelCheck = Callable[[], None]
+
+
+@dataclass(frozen=True)
+class _FlatpakOperationObserver:
+    progress: StageProgress
+    cancel_check: CancelCheck
+
+
+_FLATPAK_OPERATION_OBSERVER: ContextVar[_FlatpakOperationObserver | None] = ContextVar(
+    "steamzero_flatpak_operation_observer", default=None
+)
+
+
+@contextmanager
+def flatpak_operation_observer(
+    *, progress: StageProgress, cancel_check: CancelCheck
+) -> Iterator[None]:
+    """Liga etapas e cancelamento do job à operação Flatpak desta thread."""
+    token = _FLATPAK_OPERATION_OBSERVER.set(_FlatpakOperationObserver(progress, cancel_check))
+    try:
+        yield
+    finally:
+        _FLATPAK_OPERATION_OBSERVER.reset(token)
+
+
+def report_flatpak_stage(stage: str, *, current: int, total: int) -> None:
+    observer = _FLATPAK_OPERATION_OBSERVER.get()
+    if observer is None:
+        return
+    observer.cancel_check()
+    observer.progress(stage, current, total)
+
+
+def _stop_flatpak_process(process: subprocess.Popen[str]) -> tuple[str, str]:
+    process.terminate()
+    try:
+        return process.communicate(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        return process.communicate()
 
 
 def run_flatpak_command(argv: Sequence[str], timeout: float) -> CommandResult:
@@ -65,26 +111,37 @@ def run_flatpak_command(argv: Sequence[str], timeout: float) -> CommandResult:
     executable = shutil.which("flatpak")
     if executable is None:
         return CommandResult(127, "", "flatpak não encontrado")
+    observer = _FLATPAK_OPERATION_OBSERVER.get()
+    if observer is not None:
+        observer.cancel_check()
     try:
-        completed = subprocess.run(  # noqa: S603
+        process = subprocess.Popen(  # noqa: S603
             [executable, *argv[1:]],
             stdin=subprocess.DEVNULL,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
-            check=False,
+            start_new_session=True,
         )
-    except subprocess.TimeoutExpired as exc:
-        stdout = (
-            exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout
-        )
-        stderr = (
-            exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
-        )
-        return CommandResult(124, stdout or "", stderr or "timeout")
     except OSError as exc:
         return CommandResult(127, "", str(exc))
-    return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+    deadline = time.monotonic() + timeout
+    while True:
+        if observer is not None:
+            try:
+                observer.cancel_check()
+            except Exception:
+                _stop_flatpak_process(process)
+                raise
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            stdout, stderr = _stop_flatpak_process(process)
+            return CommandResult(124, stdout or "", stderr or "timeout")
+        try:
+            stdout, stderr = process.communicate(timeout=min(0.25, remaining))
+        except subprocess.TimeoutExpired:
+            continue
+        return CommandResult(process.returncode, stdout, stderr)
 
 
 @dataclass(frozen=True)
@@ -573,6 +630,8 @@ class FlatpakExecutor:
             if current != plan.before:
                 raise SteamZeroError("E-TX-STALE-PLAN", detail="deployment mudou após o plano")
             if plan.action == "noop":
+                report_flatpak_stage("verifying", current=1, total=2)
+                report_flatpak_stage("persisting", current=2, total=2)
                 self._save_plan(replace(plan, status="applied"))
                 self._persist(manifest, current)
                 return FlatpakApplyResult("", "noop", plan.adapter_id, current.commit)
@@ -591,21 +650,34 @@ class FlatpakExecutor:
             self._save_operation(operation)
             try:
                 if plan.action == "uninstall":
+                    report_flatpak_stage("uninstalling", current=1, total=3)
                     self._flatpak.uninstall(plan.ref)
+                    report_flatpak_stage("verifying", current=2, total=3)
                     final = self._flatpak.status(plan.ref)
                     if final.installed:
                         raise SteamZeroError(
                             "E-TX-VERIFY-FAILED",
                             detail=f"{plan.ref} continua implantado após a remoção",
                         )
+                    report_flatpak_stage("persisting", current=3, total=3)
                     self._persist(manifest, final)
                     self._save_operation(replace(operation, status="committed"))
                     self._save_plan(replace(plan, status="applied"))
                     return FlatpakApplyResult(operation.operation_id, "ok", plan.adapter_id, None)
+                total = 5 if not plan.before.installed else 4
+                current_stage = 0
                 if not plan.before.installed:
+                    current_stage += 1
+                    report_flatpak_stage("installing", current=current_stage, total=total)
                     self._flatpak.install(plan.remote, plan.ref)
+                current_stage += 1
+                report_flatpak_stage("deploying", current=current_stage, total=total)
                 self._flatpak.deploy(plan.ref, plan.target_commit)
+                current_stage += 1
+                report_flatpak_stage("verifying", current=current_stage, total=total)
                 self._verify_target(plan.ref, plan.remote, plan.target_commit)
+                current_stage += 1
+                report_flatpak_stage("smoke", current=current_stage, total=total)
                 self._flatpak.smoke(
                     plan.ref,
                     manifest.verify_smoke_test,
@@ -614,6 +686,8 @@ class FlatpakExecutor:
                     manifest.verify_smoke_match,
                 )
                 final = self._flatpak.status(plan.ref)
+                current_stage += 1
+                report_flatpak_stage("persisting", current=current_stage, total=total)
                 self._persist(manifest, final)
                 self._save_operation(replace(operation, status="committed"))
                 self._save_plan(replace(plan, status="applied"))
@@ -731,6 +805,8 @@ class FlatpakExecutor:
                 operation_id=operation.operation_id,
                 detail=f"apply falhou ({cause}); rollback falhou ({rollback_exc})",
             ) from rollback_exc
+        if isinstance(cause, JobCancelled):
+            raise cause
         raise SteamZeroError(
             "E-COMPONENT-UPDATE-ROLLEDBACK",
             operation_id=operation.operation_id,
