@@ -210,6 +210,8 @@ def handheld_ui_contracts() -> dict[str, Any]:
             control="component-confirm",
             schema=_schema("planId", "confirmToken", planId="string", confirmToken="string"),
             confirmation="token",
+            job="asynchronous",
+            poll_endpoint="/emulation/job/status/{jobId}",
         ),
         _action(
             "component.launch",

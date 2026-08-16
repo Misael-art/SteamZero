@@ -172,8 +172,8 @@ Item {
             tryVerify(function() { return !shell.componentPlanDialogControl.visible }, 3000,
                       "a confirmação válida não fechou o diálogo")
             tryVerify(function() {
-                return shell.lastRequest === "Componente verificado e pronto"
-            }, 3000, "o retorno positivo foi exibido antes de atualizar o estado")
+                return shell.lastRequest === "Tarefa iniciada; acompanhe o progresso em Tarefas"
+            }, 3000, "a UI não distinguiu job iniciado de componente já verificado")
         }
 
         function test_02_task_cancel_and_retry_use_the_real_drawer_controls() {

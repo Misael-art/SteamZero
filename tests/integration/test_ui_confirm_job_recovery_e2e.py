@@ -106,7 +106,7 @@ class _JourneyDashboard:
         assert (plan_id, confirm_token) == ("component-e2e-plan", "component-e2e-token")
         self.apply_calls += 1
         self._await_release("apply")
-        return {"status": "ok", "verified": True}
+        return {"jobId": "component-e2e-job", "state": "queued"}
 
     def list_emulation_jobs(self) -> list[dict[str, object]]:
         if self.block_first_list:

@@ -138,6 +138,15 @@ def test_async_scan_contract_publishes_polling_and_terminal_states() -> None:
     }
 
 
+def test_component_apply_contract_is_asynchronous_and_pollable() -> None:
+    apply = handheld_ui_contracts()["byId"]["component.apply"]
+    assert apply["jobSemantics"] == {
+        "kind": "asynchronous",
+        "states": ["queued", "running", "succeeded", "failed", "cancelled"],
+        "pollEndpoint": "/emulation/job/status/{jobId}",
+    }
+
+
 def test_cloud_launch_contract_is_closed_and_routes_to_allowlisted_bridge() -> None:
     action = handheld_ui_contracts()["byId"]["cloud.launch"]
     assert action["endpoint"] == "/cloud/launch"
@@ -205,6 +214,7 @@ def test_qml_resolves_operational_routes_from_backend_catalog() -> None:
         "library.health.apply",
         "steam.game.launch",
     } <= static_action_ids
+    assert "1900000" not in qml
 
 
 def test_qml_fallback_rows_do_not_publish_decorative_actions() -> None:

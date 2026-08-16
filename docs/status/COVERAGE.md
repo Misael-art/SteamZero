@@ -28,9 +28,14 @@ onde uma alegacao nao tem evidencia que a sustente.
 >>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
+<<<<<<< HEAD
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
 | SZ-EMULATION-LONG-OPERATIONS | 20 | 3 | 3 | dev |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
+=======
+| SZ-COMPONENT-LIFECYCLE | 25 | 4 | 3 | dev |  |
+| SZ-EMULATION-M10 | 9 | 7 | 5 | vm |  |
+>>>>>>> bdf49da (feat(components): expose async apply jobs in desktop UI)
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |
