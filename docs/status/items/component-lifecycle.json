@@ -13,6 +13,7 @@
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component_jobs.py",
     "src/steamzero/jobs",
+    "src/steamzero/core/net.py",
     "src/steamzero/schemas/component-plan-v2.schema.json",
     "src/steamzero/schemas/component-plan-v3.schema.json",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -23,6 +24,7 @@
     "tests/integration/test_jobs.py",
     "tests/unit/test_libretro_cores.py",
     "tests/unit/test_component_jobs.py",
+    "tests/unit/test_core_net.py",
     "tests/unit/test_desktop_dashboard.py",
     "tests/integration/test_desktop_ui_bridge.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
@@ -32,9 +34,10 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
-    "docs/09-operations/evidence/2026-08-16-component-apply-async"
+    "docs/09-operations/evidence/2026-08-16-component-apply-async",
+    "docs/09-operations/evidence/2026-08-16-component-transfer-control"
   ],
-  "scopeDigest": "38d30dc60e1b49038b6c57d37f3ac724e869dd5c73ee15b0335514b9ea01a344",
+  "scopeDigest": "e25c5e7953758d9a7e7e313e8fcef69ec7649e40655128893fb95b813ff51371",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
