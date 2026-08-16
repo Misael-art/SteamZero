@@ -6,24 +6,28 @@
   "domain": "emulation",
   "implementation": "partial",
   "integration": "feature-branch",
-  "verification": "none",
+  "verification": "dev",
   "operation": "degraded",
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/jobs",
     "src/steamzero/schemas/component-plan-v2.schema.json",
+    "src/steamzero/schemas/component-plan-v3.schema.json",
     "src/steamzero/adapters/desktop_dashboard.py",
     "src/steamzero/adapters/desktop_ui.py",
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/ui/qml/Main.qml",
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_jobs.py",
+    "tests/unit/test_libretro_cores.py",
     "tests/integration/test_desktop_ui_bridge.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/unit/test_lifecycle_routing.py",
-    "tests/qml/check_confirm_job_recovery_e2e.qml"
+    "tests/qml/check_confirm_job_recovery_e2e.qml",
+    "docs/09-operations/evidence/2026-08-16-component-plan-metadata"
   ],
+  "scopeDigest": "e27cf894a92d64719b9d3c1a7de508d1e0dd9cfc02c4f7e386fe282f8a90d2b4",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -34,11 +38,24 @@
     "Verificação comprova versão e hash, e cada uma das 33 entradas possui resultado físico individual para install, verify, idempotência, repair, falha, rollback e uninstall com dados preservados.",
     "Telemetria local registra DNS, proxy, ambiente e executor sem expor segredos."
   ],
-  "evidence": [],
-  "nextAction": "Capturar baseline limpa e escrever reprodução vermelha provando que plan executa I/O remoto e que apply bloqueia a requisição.",
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-plan-metadata/README.md",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q && .venv/bin/ruff check src tools tests && .venv/bin/ruff format --check src tools tests && .venv/bin/mypy src && make independence boundaries status-check && git diff --check",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-plan-metadata/README.md",
+      "command": ".venv/bin/python tools/release_host.py --json inspect",
+      "result": "recorded"
+    }
+  ],
+  "nextAction": "Commitar a fonte limpa, promover pelo fluxo governado e validar no host instalado que os 33 planos são metadata-only e inferiores a dois segundos; depois corrigir component.apply síncrono como job.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],
-  "updatedAt": "2026-08-15",
-  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. A release instalada 0.1.0a46-a02dae5f60ac já demonstrou planejamento lento, aplicação síncrona e planos pendentes após rollback; nenhuma dessas lacunas é considerada certificada por existência de código ou teste isolado."
+  "updatedAt": "2026-08-16",
+  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O primeiro incremento introduz o envelope v3 metadata-only com compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. A aplicação síncrona, jobs/progresso/cancelamento/retry/retomada, telemetria, terminalização e a matriz física 33/33 continuam abertas; nenhuma dessas lacunas é considerada certificada por existência de código ou teste isolado."
 }

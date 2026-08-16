@@ -11,9 +11,12 @@
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/jobs",
     "src/steamzero/schemas/component-plan-v2.schema.json",
+    "src/steamzero/schemas/component-plan-v3.schema.json",
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_jobs.py",
-    "tests/unit/test_lifecycle_routing.py"
+    "tests/unit/test_libretro_cores.py",
+    "tests/unit/test_lifecycle_routing.py",
+    "docs/09-operations/evidence/2026-08-16-component-plan-metadata"
   ],
   "sharedPaths": [
     "docs/status",
@@ -26,6 +29,6 @@
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/qml/check_confirm_job_recovery_e2e.qml"
   ],
-  "nextAction": "Reproduzir em teste o I/O remoto durante plan e a aplicação síncrona antes de implementar a terminalização e os jobs assíncronos.",
-  "updatedAt": "2026-08-15"
+  "nextAction": "Validar o envelope v3 na release instalada e então reproduzir a aplicação síncrona antes de implementar terminalização e jobs assíncronos.",
+  "updatedAt": "2026-08-16"
 }
