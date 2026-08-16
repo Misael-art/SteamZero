@@ -68,3 +68,30 @@ autorização e reexecutar todas as validações do apply.
 
 Nenhum build de release, instalação, rollback, reboot ou mutação do host foi
 executado neste incremento.
+
+## Validação read-only no host real
+
+Fonte limpa: `b32ac7e7ab6408c95d599011bac86880d52bf6d9`.
+
+A sonda executou o código diretamente deste worktree, sem usar a release
+instalada. Duas URLs brutas preliminares devolveram `E-NET-HTTP: HTTP 404` e
+foram descartadas como alvo inválido; a prova válida usou uma página pública
+pequena e um domínio `.invalid` reservado:
+
+- sucesso HTTPS real: `11506` bytes e `2` amostras de progresso;
+- DNS do sucesso: `resolved` para `www.python.org`;
+- DNS negativo real: `failed`, `E-NET-OFFLINE`, apenas o hostname reservado;
+- ambiente: somente o nome permitido `FLATPAK_ID`, nunca seu valor;
+- query, caminhos e três valores-canário ausentes do JSON (`secretLeak=false`).
+
+Uma segunda sonda criou o State Store em diretório XDG temporário e executou um
+`component.apply` real pelo `ComponentJobService`:
+
+- estado final `completed` / projeção `succeeded`;
+- executor persistido e publicado: `engine`;
+- chaves persistidas: `action`, `adapterId`, `executor`, `planId`;
+- `confirmToken` ausente de `params_json` e de toda a projeção;
+- diretório temporário removido automaticamente ao final.
+
+As sondas não usaram endpoint mutável do daemon instalado, não tocaram o State
+Store do operador e não instalaram, repararam ou removeram componente.

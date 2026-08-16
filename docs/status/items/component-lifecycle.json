@@ -43,7 +43,7 @@
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
     "docs/09-operations/evidence/2026-08-16-component-telemetry"
   ],
-  "scopeDigest": "89d01c48a194a48d247da0bb181359756e67e48b7858e19f0cba253f2b277075",
+  "scopeDigest": "eecf650fd14c0e8a14cb66edaa44fa7308d8e6925c4b2be4af2bba6d0e2bbf2d",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -107,6 +107,12 @@
       "kind": "test",
       "reference": "docs/09-operations/evidence/2026-08-16-component-telemetry/README.md",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests -q",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-telemetry/README.md",
+      "command": "PYTHONPATH=<worktree>/src .venv/bin/python <sondas read-only de rede real e ComponentJobService com XDG temporário>",
       "result": "passed"
     }
   ],
