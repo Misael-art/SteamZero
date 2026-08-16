@@ -612,6 +612,16 @@ class FlatpakExecutor:
         return plan
 
     def apply(self, plan_id: str, confirm_token: str) -> FlatpakApplyResult:
+        """Aplica uma confirmação e fecha o plano em toda saída não-crash."""
+        plan = self._load_plan(plan_id)
+        self._validate_pending(plan, confirm_token)
+        try:
+            return self._apply_unterminalized(plan_id, confirm_token)
+        except Exception:
+            self._abort_plan(plan_id)
+            raise
+
+    def _apply_unterminalized(self, plan_id: str, confirm_token: str) -> FlatpakApplyResult:
         # A leitura externa ao lock serve apenas para resolver o recurso. Toda
         # precondição que autoriza efeito é recarregada e revalidada sob o lock.
         plan = self._load_plan(plan_id)
@@ -771,6 +781,7 @@ class FlatpakExecutor:
                     final = self._flatpak.status(operation.ref)
                     self._save_operation(replace(operation, status="rolled-back", error=None))
                     self._persist(manifest, final)
+                    self._abort_plan(operation.plan_id)
             except Exception as exc:
                 self._save_operation(replace(operation, status="recovery-required", error=str(exc)))
                 raise SteamZeroError(
@@ -787,6 +798,40 @@ class FlatpakExecutor:
                 )
             )
         return recovered
+
+    def recover_plan(self, plan_id: str) -> str:
+        """Terminaliza um plano pela operação Flatpak durável que o referencia."""
+        plan = self._load_plan(plan_id)
+        if plan.status != "pending":
+            return plan.status
+        operations = self._operations_for_plan(plan_id)
+        if any(
+            operation.status in {"applying", "rolling-back", "recovery-required"}
+            for operation in operations
+        ):
+            self.recover()
+            operations = self._operations_for_plan(plan_id)
+        terminal = (
+            "applied"
+            if any(operation.status == "committed" for operation in operations)
+            else "aborted"
+        )
+        self._save_plan(replace(plan, status=terminal))
+        return terminal
+
+    def _operations_for_plan(self, plan_id: str) -> list[FlatpakOperation]:
+        operations: list[FlatpakOperation] = []
+        fs.ensure_dir(paths.component_operations_dir())
+        for entry in sorted(paths.component_operations_dir().glob("*.json")):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            try:
+                raw = json.loads(entry.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if raw.get("schemaVersion") == 1 and raw.get("planId") == plan_id:
+                operations.append(self._load_operation_file(entry))
+        return operations
 
     def _rollback_failed_apply(
         self, operation: FlatpakOperation, manifest: AdapterManifest, cause: Exception
@@ -854,7 +899,13 @@ class FlatpakExecutor:
         except ValueError as exc:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano inválida") from exc
         if self._utc_now() > expires_at:
+            self._save_plan(replace(plan, status="aborted"))
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
+
+    def _abort_plan(self, plan_id: str) -> None:
+        plan = self._load_plan(plan_id)
+        if plan.status == "pending":
+            self._save_plan(replace(plan, status="aborted"))
 
     def _flatpak_source(
         self, adapter_id: str, *, allow_eol: bool = False

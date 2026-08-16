@@ -24,6 +24,9 @@ class BlockingLifecycle:
         self.release = threading.Event()
         self.apply_calls = 0
         self.store: state.StateStore | None = None
+        self.plan_status = {"01M000000000000000000000AA": "pending"}
+        self.retry_count = 0
+        self.recover_as_applied = False
 
     def bind(self, store: state.StateStore) -> BlockingLifecycle:
         self.store = store
@@ -41,6 +44,7 @@ class BlockingLifecycle:
             raise RuntimeError("teste não liberou o lifecycle")
         assert self.store is not None
         self.store.save_operation("01M000000000000000000000BB", state="committed")
+        self.plan_status[plan_id] = "applied"
         return {
             "status": "ok",
             "operationId": "01M000000000000000000000BB",
@@ -49,6 +53,32 @@ class BlockingLifecycle:
 
     def _apply_validated(self, plan_id: str) -> dict[str, str]:
         return self.apply(plan_id, "confirm-token")
+
+    def _abort_apply(self, plan_id: str) -> None:
+        if self.plan_status.get(plan_id) == "pending":
+            self.plan_status[plan_id] = "aborted"
+
+    def _retry_apply(self, plan_id: str) -> dict[str, str]:
+        self._abort_apply(plan_id)
+        assert self.plan_status.get(plan_id) == "aborted"
+        self.retry_count += 1
+        replacement = f"01M000000000000000000000A{self.retry_count}"
+        self.plan_status[replacement] = "pending"
+        return {
+            "planId": replacement,
+            "adapterId": "demo-emulator",
+            "action": "install",
+            "executor": "engine",
+        }
+
+    def _apply_status(self, plan_id: str) -> str:
+        return self.plan_status[plan_id]
+
+    def recover(self) -> list[dict[str, object]]:
+        if self.recover_as_applied:
+            self.plan_status["01M000000000000000000000AA"] = "applied"
+            return [{"status": "reconciled"}]
+        return []
 
 
 class RetryLifecycle(BlockingLifecycle):
@@ -60,6 +90,7 @@ class RetryLifecycle(BlockingLifecycle):
         self.apply_calls += 1
         if self.apply_calls == 1:
             raise SteamZeroError("E-SUPPLY-OFFLINE", detail="rede indisponível")
+        self.plan_status[plan_id] = "applied"
         return {"status": "ok", "operationId": "", "adapterId": "demo-emulator"}
 
 
@@ -100,8 +131,10 @@ class DownloadingLifecycle(BlockingLifecycle):
             client=net.HttpClient(transport=net.FakeTransport([self.response])),
         )
         self.applied = True
+        self.plan_status[plan_id] = "applied"
         assert self.store is not None
         self.store.save_operation("01M000000000000000000000BB", state="committed")
+        self.plan_status[plan_id] = "applied"
         return {
             "status": "ok",
             "operationId": "01M000000000000000000000BB",
@@ -250,11 +283,17 @@ def test_failed_job_retries_as_a_new_auditable_job(job_env: None) -> None:
     assert failed["rawState"] == "rolled-back"
     assert failed["errorCode"] == "E-SUPPLY-OFFLINE"
     assert failed["canRetry"] is True
+    assert failed["planId"] == "01M000000000000000000000AA"
+    assert lifecycle.plan_status[str(failed["planId"])] == "aborted"
 
     retried = service.retry(str(first["jobId"]))
     assert retried["jobId"] != first["jobId"]
+    assert retried["planId"] != failed["planId"]
+    assert retried["retryOfJobId"] == first["jobId"]
+    assert lifecycle.plan_status[str(failed["planId"])] == "aborted"
     completed = _wait_terminal(service, str(retried["jobId"]))
     assert completed["state"] == "succeeded"
+    assert lifecycle.plan_status[str(completed["planId"])] == "applied"
     assert lifecycle.apply_calls == 2
 
 
@@ -304,6 +343,7 @@ def test_cancel_during_download_stops_before_apply_and_terminalizes(job_env: Non
     assert cancelled["canRetry"] is True
     assert response.bytes_read < 6
     assert lifecycle.applied is False
+    assert lifecycle.plan_status["01M000000000000000000000AA"] == "aborted"
 
 
 def test_recover_resumes_legacy_persisted_component_job(job_env: None) -> None:
@@ -333,9 +373,25 @@ def test_recover_terminalizes_interrupted_component_and_retry_is_auditable(
     interrupted = next(job for job in recovered if job["jobId"] == job_id)
     assert interrupted["rawState"] == "cancelled"
     assert interrupted["errorCode"] == "recovered"
+    assert lifecycle.plan_status["01M000000000000000000000AA"] == "aborted"
     replacement = service.retry(job_id)
     assert replacement["jobId"] != job_id
+    assert replacement["planId"] != interrupted["planId"]
     assert _wait_terminal(service, str(replacement["jobId"]))["state"] == "succeeded"
+
+
+def test_recover_rolls_forward_job_when_component_commit_is_durable(job_env: None) -> None:
+    job_id = _persist_component_job("running")
+    lifecycle = BlockingLifecycle()
+    lifecycle.recover_as_applied = True
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    recovered = service.recover()
+
+    committed = next(job for job in recovered if job["jobId"] == job_id)
+    assert committed["rawState"] == "completed"
+    assert committed["state"] == "succeeded"
+    assert lifecycle.plan_status["01M000000000000000000000AA"] == "applied"
 
 
 def test_flatpak_stage_is_persisted_by_component_job(job_env: None) -> None:

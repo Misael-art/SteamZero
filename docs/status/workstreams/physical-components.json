@@ -47,6 +47,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Terminalizar planos em falha, cancelamento, expiração e recovery com retry em novo plano; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Provar terminalização física por família e completar a matriz individual 33/33; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }

@@ -758,13 +758,8 @@ class ComponentLifecycle:
         return envelope
 
     # ------------------------------------------------------------------ apply
-    def validate_apply(self, plan_id: str, confirm_token: str) -> dict[str, str]:
-        """Valida confirmação e contexto sem iniciar preparo ou efeito.
-
-        A bridge usa esta leitura antes de enfileirar o job. A validação é
-        repetida pelo worker em :meth:`apply`, sob o contexto efetivo, então
-        uma mudança entre enqueue e execução continua falhando fechada.
-        """
+    def _validated_confirmation(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        """Valida schema, token e expiração sem observar manifesto/executor."""
         raw = self._read_plan_file(plan_id)
         schema_version = int(raw.get("schemaVersion", 0))
         schema_name = {
@@ -781,13 +776,26 @@ class ComponentLifecycle:
             ) from exc
         if schema_version == 1:
             self._validate_confirmation_fields(raw, confirm_token)
+        else:
+            self._validate_pending(ComponentPlan.from_dict(raw), confirm_token)
+        return raw
+
+    def validate_apply(self, plan_id: str, confirm_token: str) -> dict[str, str]:
+        """Valida confirmação e contexto sem iniciar preparo ou efeito.
+
+        A bridge usa esta leitura antes de enfileirar o job. A validação é
+        repetida pelo worker em :meth:`apply`, sob o contexto efetivo, então
+        uma mudança entre enqueue e execução continua falhando fechada.
+        """
+        raw = self._validated_confirmation(plan_id, confirm_token)
+        schema_version = int(raw.get("schemaVersion", 0))
+        if schema_version == 1:
             return {
                 "adapterId": str(raw["adapterId"]),
                 "action": str(raw["action"]),
                 "executor": "flatpak",
             }
         envelope = ComponentPlan.from_dict(raw)
-        self._validate_pending(envelope, confirm_token)
         manifest = self._registry.get(envelope.adapter_id)
         tombstone = self._registry.retired(envelope.adapter_id)
         if tombstone is not None and envelope.action != "uninstall":
@@ -796,6 +804,17 @@ class ComponentLifecycle:
                 detail=f"{envelope.adapter_id} foi retirado após o plano",
             )
         route = route_for(manifest)
+        if schema_version == 3 and envelope.delegated:
+            expected_key = "flatpakPlanId" if route.executor == "flatpak" else "transactionPlanId"
+            if set(envelope.delegated) != {expected_key}:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY",
+                    detail="plano v3 contém executor delegado incompatível",
+                )
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail="tentativa interrompida; execute recovery antes de replanejar",
+            )
         if route.executor != envelope.executor:
             raise SteamZeroError(
                 "E-TX-STALE-PLAN", detail="executor do componente mudou após o plano"
@@ -809,6 +828,17 @@ class ComponentLifecycle:
         }
 
     def apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
+        """Aplica uma confirmação e fecha o envelope em toda saída não-crash."""
+        self._validated_confirmation(plan_id, confirm_token)
+        with ResourceLock(f"component-plan:{plan_id}", job_id=ids.new_ulid(), lease_seconds=3600):
+            try:
+                self.validate_apply(plan_id, confirm_token)
+                return self._apply_unterminalized(plan_id, confirm_token)
+            except Exception:
+                self._abort_apply(plan_id)
+                raise
+
+    def _apply_unterminalized(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         """Aplica um plano v2 (ou Flatpak v1 legado) e devolve o resultado.
 
         O fingerprint da fonte é recalculado contra o manifesto ATUAL: fonte ou
@@ -965,6 +995,47 @@ class ComponentLifecycle:
             )
         return self.apply(plan_id, confirm_token)
 
+    def _abort_apply(self, plan_id: str) -> None:
+        """Fecha idempotentemente uma autorização confiada que não concluiu."""
+        raw = self._read_plan_file(plan_id)
+        if raw.get("status") != "pending":
+            return
+        raw["status"] = "aborted"
+        self._save_raw_plan(raw)
+
+    def _apply_status(self, plan_id: str) -> str:
+        """Retorna o estado durável usado para reconciliar o job owner."""
+        status = self._read_plan_file(plan_id).get("status")
+        if status not in {"pending", "applied", "aborted"}:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail=f"estado inválido do plano de componente: {status}"
+            )
+        return str(status)
+
+    def _retry_apply(self, plan_id: str) -> dict[str, str]:
+        """Cria nova autorização auditável para um job terminal anterior."""
+        raw = self._read_plan_file(plan_id)
+        status = raw.get("status")
+        if status == "pending":
+            # Compatibilidade: jobs falhos de releases antigas terminaram sem
+            # fechar o plano. O estado terminal do job autoriza esta migração.
+            self._abort_apply(plan_id)
+        elif status != "aborted":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"plano não pode ser repetido ({status})"
+            )
+        action = str(raw.get("action", ""))
+        replacement = self.plan(
+            str(raw.get("adapterId", "")),
+            "install" if action == "noop" else action,
+        )
+        return {
+            "planId": replacement.plan_id,
+            "adapterId": replacement.adapter_id,
+            "action": replacement.action,
+            "executor": replacement.executor,
+        }
+
     def _apply_deferred(
         self,
         envelope: ComponentPlan,
@@ -1016,6 +1087,8 @@ class ComponentLifecycle:
                 if envelope.action == "uninstall"
                 else executor.plan_install(envelope.adapter_id)
             )
+            envelope = replace(envelope, delegated={"flatpakPlanId": delegated.plan_id})
+            self._save_plan(envelope)
             if envelope.action == "repair":
                 repair_op_id = self._mark_repairing(
                     manifest, repair_observed or {}, envelope.plan_id
@@ -1047,6 +1120,11 @@ class ComponentLifecycle:
                     force=envelope.action == "repair",
                 )
             )
+            envelope = replace(
+                envelope,
+                delegated={"transactionPlanId": prepared_core.plan.plan_id},
+            )
+            self._save_plan(envelope)
             with ResourceLock(
                 f"component:libretro:{envelope.adapter_id}",
                 job_id=ids.new_ulid(),
@@ -1076,6 +1154,11 @@ class ComponentLifecycle:
                 force=envelope.action == "repair",
             )
         )
+        envelope = replace(
+            envelope,
+            delegated={"transactionPlanId": prepared.plan.plan_id},
+        )
+        self._save_plan(envelope)
 
         def smoke() -> None:
             self._engine_smoke(engine, manifest)
@@ -1380,6 +1463,7 @@ class ComponentLifecycle:
             }
             for result in self._flatpak().recover()
         ]
+        recovered.extend(self._recover_delegated_plans())
         fs.ensure_dir(paths.component_operations_dir())
         for entry in sorted(paths.component_operations_dir().glob("*.json")):
             if entry.is_symlink() or not entry.is_file():
@@ -1408,6 +1492,13 @@ class ComponentLifecycle:
                     }
                 )
                 self._save_repair_operation(replace(operation, state=final))
+                if final == _REPAIR_OP_COMMITTED:
+                    raw_plan = self._read_plan_file(operation.plan_id)
+                    if raw_plan.get("status") == "pending":
+                        raw_plan["status"] = "applied"
+                        self._save_raw_plan(raw_plan)
+                else:
+                    self._abort_apply(operation.plan_id)
                 recovered.append(
                     {
                         "status": "reconciled",
@@ -1501,6 +1592,67 @@ class ComponentLifecycle:
         return hashlib.sha256(encoded).hexdigest()
 
     # ------------------------------------------------------------- internals
+    def _recover_delegated_plans(self) -> list[dict[str, Any]]:
+        """Reconcilia envelopes interrompidos usando o vínculo persistido."""
+        recovered: list[dict[str, Any]] = []
+        fs.ensure_dir(paths.plans_dir())
+        for entry in sorted(paths.plans_dir().glob("*.json")):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            try:
+                raw = json.loads(entry.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if (
+                not isinstance(raw, dict)
+                or raw.get("schemaVersion") not in {2, 3}
+                or raw.get("status") not in {"pending", "aborted"}
+                or not isinstance(raw.get("delegated"), dict)
+                or not raw["delegated"]
+                or not isinstance(raw.get("adapterId"), str)
+            ):
+                continue
+            outer_status = str(raw["status"])
+            delegated = dict(raw["delegated"])
+            executor: str
+            if set(delegated) == {"transactionPlanId"}:
+                delegated_plan_id = str(delegated["transactionPlanId"])
+                delegated_was_pending = transaction.load_plan(delegated_plan_id).status == "pending"
+                if delegated_was_pending:
+                    transaction.recover_plan(delegated_plan_id)
+                delegated_status = transaction.load_plan(delegated_plan_id).status
+                executor = "transaction"
+            elif set(delegated) == {"flatpakPlanId"}:
+                delegated_plan_id = str(delegated["flatpakPlanId"])
+                delegated_raw = self._read_plan_file(delegated_plan_id)
+                delegated_was_pending = delegated_raw.get("status") == "pending"
+                if delegated_was_pending:
+                    delegated_status = self._flatpak().recover_plan(delegated_plan_id)
+                else:
+                    delegated_status = str(delegated_raw.get("status"))
+                executor = "flatpak"
+            else:
+                continue
+            if not delegated_was_pending and outer_status != "pending":
+                continue
+            raw["status"] = (
+                "applied"
+                if outer_status == "pending" and delegated_status == "applied"
+                else "aborted"
+            )
+            self._save_raw_plan(raw)
+            recovered.append(
+                {
+                    "status": "reconciled",
+                    "planId": str(raw["planId"]),
+                    "delegatedPlanId": delegated_plan_id,
+                    "adapterId": str(raw["adapterId"]),
+                    "executor": executor,
+                    "state": str(raw["status"]),
+                }
+            )
+        return recovered
+
     def _engine(self) -> AdapterEngine:
         return AdapterEngine(self._store, self._registry, self._artifacts)
 
@@ -1771,6 +1923,7 @@ class ComponentLifecycle:
         if expires_at.tzinfo is None:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano sem timezone")
         if self._utc_now() > expires_at:
+            self._mark_aborted(envelope)
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
 
     def _validate_confirmation_fields(self, raw: dict[str, Any], confirm_token: str) -> None:
@@ -1788,6 +1941,8 @@ class ComponentLifecycle:
         if expires_at.tzinfo is None:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano sem timezone")
         if self._utc_now() > expires_at:
+            raw["status"] = "aborted"
+            self._save_raw_plan(raw)
             raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
 
     def _save_plan(self, envelope: ComponentPlan) -> None:
@@ -1805,8 +1960,35 @@ class ComponentLifecycle:
             json.dumps(data, ensure_ascii=False, sort_keys=True),
         )
 
+    def _save_raw_plan(self, raw: dict[str, Any]) -> None:
+        schema_version = int(raw.get("schemaVersion", 0))
+        schema_name = {
+            1: _PLAN_SCHEMA_V1,
+            2: _PLAN_SCHEMA_V2,
+            3: _PLAN_SCHEMA_V3,
+        }.get(schema_version)
+        if schema_name is None:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="plano não é de componente")
+        try:
+            contracts.validate(raw, schema_name)
+        except ValidationError as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY",
+                detail=f"plano de componente v{schema_version} inválido: {exc}",
+            ) from exc
+        plan_id = str(raw.get("planId", ""))
+        if not ids.is_ulid(plan_id):
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="planId persistido inválido")
+        fs.write_atomic_text(
+            paths.plan_path(plan_id),
+            json.dumps(raw, ensure_ascii=False, sort_keys=True),
+        )
+
     def _mark_applied(self, envelope: ComponentPlan) -> None:
         self._save_plan(replace(envelope, status="applied"))
+
+    def _mark_aborted(self, envelope: ComponentPlan) -> None:
+        self._save_plan(replace(envelope, status="aborted"))
 
     def _read_plan_file(self, plan_id: str) -> dict[str, Any]:
         if not ids.is_ulid(plan_id):
