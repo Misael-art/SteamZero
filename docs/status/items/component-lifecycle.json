@@ -35,9 +35,10 @@
     "tools/audit_desktop_bridge.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
-    "docs/09-operations/evidence/2026-08-16-component-transfer-control"
+    "docs/09-operations/evidence/2026-08-16-component-transfer-control",
+    "docs/09-operations/evidence/2026-08-16-component-job-recovery"
   ],
-  "scopeDigest": "25faffaa3a6b71aa9f2cbe62536965798dacd9d284cc7b26e2f2d524d967e62b",
+  "scopeDigest": "7d3589ea7b5d32ed777008e62fb2819965fb05a2e3dfdd1e19b59c1611479ed9",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

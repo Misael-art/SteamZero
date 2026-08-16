@@ -22,7 +22,8 @@
     "tests/unit/test_lifecycle_routing.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
-    "docs/09-operations/evidence/2026-08-16-component-transfer-control"
+    "docs/09-operations/evidence/2026-08-16-component-transfer-control",
+    "docs/09-operations/evidence/2026-08-16-component-job-recovery"
   ],
   "sharedPaths": [
     "docs/status",
@@ -38,6 +39,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Provar recovery/retomada de jobs após reinício e fechar etapas/cancelamento Flatpak; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Reproduzir e corrigir recovery/retomada seletiva de jobs após reinício; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }
