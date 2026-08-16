@@ -40,9 +40,10 @@
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-transfer-control",
     "docs/09-operations/evidence/2026-08-16-component-job-recovery",
-    "docs/09-operations/evidence/2026-08-16-component-flatpak-control"
+    "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
+    "docs/09-operations/evidence/2026-08-16-component-telemetry"
   ],
-  "scopeDigest": "55627652013c591de7c4938a697e3bdc3a5c02d083291c582b80cf4f81f608cc",
+  "scopeDigest": "e76af3257f1d5a255f0cb687098bc7f38f0fb32bc862a26a90e9445da42df0b0",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

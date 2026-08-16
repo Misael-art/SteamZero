@@ -27,7 +27,8 @@
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-transfer-control",
     "docs/09-operations/evidence/2026-08-16-component-job-recovery",
-    "docs/09-operations/evidence/2026-08-16-component-flatpak-control"
+    "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
+    "docs/09-operations/evidence/2026-08-16-component-telemetry"
   ],
   "sharedPaths": [
     "docs/status",
@@ -43,6 +44,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Adicionar telemetria local sanitizada e provar terminalização física por família; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Reproduzir e corrigir telemetria sanitizada de DNS/proxy/ambiente/executor e remover token dos jobs; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }
