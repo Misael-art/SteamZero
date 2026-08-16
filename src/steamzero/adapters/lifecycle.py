@@ -955,6 +955,23 @@ class ComponentLifecycle:
             "planVersion": 2,
         }
 
+    def _apply_validated(self, plan_id: str) -> dict[str, Any]:
+        """Executa um plano já confirmado sem duplicar o token no job.
+
+        A autorização continua no envelope protegido do plano. O worker relê o
+        valor e passa pela validação completa de :meth:`apply`, inclusive TTL,
+        uso único, fingerprint e contexto efetivo.
+        """
+        raw = self._read_plan_file(plan_id)
+        confirm_token = raw.get("confirmToken")
+        if not isinstance(confirm_token, str) or not confirm_token:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="confirmToken persistido inválido")
+        if not all(ord(char) < 128 for char in confirm_token):
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY", detail="confirmToken persistido deve ser ASCII"
+            )
+        return self.apply(plan_id, confirm_token)
+
     def _apply_deferred(
         self,
         envelope: ComponentPlan,

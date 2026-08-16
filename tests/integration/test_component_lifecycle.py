@@ -543,6 +543,22 @@ class TestPlanSurvivesProcess:
         assert result["status"] == "ok"
         assert second.status("demo-emulator")["state"] == "installed"
 
+    def test_validated_worker_reloads_confirmation_from_protected_plan(
+        self, store: state.StateStore
+    ) -> None:
+        payload = executable_payload()
+        _first, envelope = self._install(store, payload)
+        worker = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({"https://fixtures.invalid/demo-1.0.0.AppImage": payload}),
+        )
+
+        result = worker._apply_validated(envelope.plan_id)
+
+        assert result["status"] == "ok"
+        assert worker.status("demo-emulator")["state"] == "installed"
+
     def test_flatpak_plan_applies_from_a_new_instance(self, store: state.StateStore) -> None:
         fake = FakeFlatpak()
         first = bundled_with_fake(fake, store)
