@@ -279,6 +279,23 @@ def test_recover_is_idempotent(env: tuple[JobManager, state.StateStore, Path]) -
     assert second == []
 
 
+def test_recover_filters_job_types_without_touching_other_workers(
+    env: tuple[JobManager, state.StateStore, Path],
+) -> None:
+    mgr, store, _ = env
+    component = mgr.create("component.apply")
+    media = mgr.create("media.global")
+    for job in (component, media):
+        job.state = "running"
+        store.save_job(job.to_row())
+
+    recovered = mgr.recover(job_types={"component.apply"})
+
+    assert [job.id for job in recovered] == [component.id]
+    assert mgr.get(component.id).state == "cancelled"  # type: ignore[union-attr]
+    assert mgr.get(media.id).state == "running"  # type: ignore[union-attr]
+
+
 def test_cancel_runnerless_running_forces_terminal(
     env: tuple[JobManager, state.StateStore, Path],
 ) -> None:

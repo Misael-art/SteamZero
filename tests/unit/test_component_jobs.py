@@ -14,6 +14,7 @@ import pytest
 from steamzero.adapters.component_jobs import ComponentJobService
 from steamzero.core import fs, net, state
 from steamzero.core.errors import SteamZeroError
+from steamzero.jobs.manager import JobManager
 
 
 class BlockingLifecycle:
@@ -127,6 +128,28 @@ def _wait_terminal(service: ComponentJobService, job_id: str) -> dict[str, objec
     raise AssertionError("job não terminalizou")
 
 
+def _persist_component_job(raw_state: str = "queued") -> str:
+    with state.open_state() as store:
+        store.migrate()
+        job = JobManager(store).create(
+            "component.apply",
+            params={
+                "planId": "01M000000000000000000000AA",
+                "confirmToken": "confirm-token",
+                "adapterId": "demo-emulator",
+                "action": "install",
+                "executor": "engine",
+            },
+            priority="interactive",
+            created_by="ui",
+            constraints={"requiresNetwork": True},
+        )
+        if raw_state != "queued":
+            job.state = raw_state
+            store.save_job(job.to_row())
+        return job.id
+
+
 def test_start_returns_immediately_and_deduplicates_repeated_confirmation(job_env: None) -> None:
     lifecycle = BlockingLifecycle()
     service = ComponentJobService(lifecycle_factory=lifecycle.bind)
@@ -229,3 +252,35 @@ def test_cancel_during_download_stops_before_apply_and_terminalizes(job_env: Non
     assert cancelled["canRetry"] is True
     assert response.bytes_read < 6
     assert lifecycle.applied is False
+
+
+def test_recover_resumes_persisted_queued_component_job(job_env: None) -> None:
+    job_id = _persist_component_job()
+    lifecycle = BlockingLifecycle()
+    lifecycle.release.set()
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    recovered = service.recover()
+
+    assert any(job["jobId"] == job_id for job in recovered)
+    completed = _wait_terminal(service, job_id)
+    assert completed["state"] == "succeeded"
+    assert lifecycle.apply_calls == 1
+
+
+def test_recover_terminalizes_interrupted_component_and_retry_is_auditable(
+    job_env: None,
+) -> None:
+    job_id = _persist_component_job("running")
+    lifecycle = BlockingLifecycle()
+    lifecycle.release.set()
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    recovered = service.recover()
+
+    interrupted = next(job for job in recovered if job["jobId"] == job_id)
+    assert interrupted["rawState"] == "cancelled"
+    assert interrupted["errorCode"] == "recovered"
+    replacement = service.retry(job_id)
+    assert replacement["jobId"] != job_id
+    assert _wait_terminal(service, str(replacement["jobId"]))["state"] == "succeeded"

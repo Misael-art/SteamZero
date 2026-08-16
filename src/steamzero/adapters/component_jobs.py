@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import builtins
 import threading
 from collections.abc import Callable
 from typing import Any, Protocol
@@ -45,9 +46,12 @@ class ComponentJobService:
         self._background_lock = threading.Lock()
         self._background_runners: dict[str, JobManager] = {}
         self._background_threads: dict[str, threading.Thread] = {}
+        self._recovery_lock = threading.Lock()
+        self._recovered = False
 
     def start(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         """Valida, deduplica e devolve antes de executar aquisição/aplicação."""
+        self._ensure_recovered()
         with self._store_factory() as store:
             store.migrate()
             manager = JobManager(store)
@@ -74,6 +78,10 @@ class ComponentJobService:
         return current or view
 
     def get(self, job_id: str) -> dict[str, Any] | None:
+        self._ensure_recovered()
+        return self._load(job_id)
+
+    def _load(self, job_id: str) -> dict[str, Any] | None:
         with self._store_factory() as store:
             store.migrate()
             job = JobManager(store).get(job_id)
@@ -82,12 +90,14 @@ class ComponentJobService:
         return self._view(job)
 
     def list(self) -> list[dict[str, Any]]:
+        self._ensure_recovered()
         with self._store_factory() as store:
             store.migrate()
             jobs = [job for job in JobManager(store).list_jobs() if job.type == _JOB_TYPE]
         return [self._view(job) for job in reversed(jobs)]
 
     def cancel(self, job_id: str) -> dict[str, Any]:
+        self._ensure_recovered()
         with self._background_lock:
             runner = self._background_runners.get(job_id)
         if runner is not None:
@@ -105,6 +115,7 @@ class ComponentJobService:
             return self._view(manager.cancel(job_id))
 
     def retry(self, job_id: str) -> dict[str, Any]:
+        self._ensure_recovered()
         with self._store_factory() as store:
             store.migrate()
             manager = JobManager(store)
@@ -126,6 +137,33 @@ class ComponentJobService:
             view = self._view(replacement)
         self._start_background(replacement.id)
         return self.get(replacement.id) or view
+
+    def recover(self) -> builtins.list[dict[str, Any]]:
+        """Reconcilia workers órfãos e retoma apenas confirmações ainda queued."""
+        with self._recovery_lock:
+            if self._recovered:
+                return []
+            with self._store_factory() as store:
+                store.migrate()
+                manager = JobManager(store)
+                recovered = manager.recover(job_types={_JOB_TYPE})
+                queued_ids = [
+                    job.id for job in manager.list_jobs(states=["queued"]) if job.type == _JOB_TYPE
+                ]
+                observed_ids = [job.id for job in recovered]
+            self._recovered = True
+        for job_id in queued_ids:
+            self._start_background(job_id)
+        views: builtins.list[dict[str, Any]] = []
+        for job_id in dict.fromkeys([*observed_ids, *queued_ids]):
+            view = self._load(job_id)
+            if view is not None:
+                views.append(view)
+        return views
+
+    def _ensure_recovered(self) -> None:
+        if not self._recovered:
+            self.recover()
 
     def _start_background(self, job_id: str) -> None:
         with self._background_lock:

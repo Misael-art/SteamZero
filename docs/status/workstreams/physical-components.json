@@ -39,6 +39,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Reproduzir e corrigir recovery/retomada seletiva de jobs após reinício; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Fechar progresso por etapas e cancelamento Flatpak, depois provar terminalização física por família; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }
