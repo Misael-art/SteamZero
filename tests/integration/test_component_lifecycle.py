@@ -495,6 +495,25 @@ class TestMetadataOnlyPlanning:
         assert artifacts.requests == []
         assert flatpak.calls == []
 
+    def test_apply_validation_is_read_only_and_rejects_wrong_token(
+        self, store: state.StateStore
+    ) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+        plan = lifecycle.plan("retroarch", "install")
+
+        metadata = lifecycle.validate_apply(plan.plan_id, plan.confirm_token)
+
+        assert metadata == {
+            "adapterId": "retroarch",
+            "action": "install",
+            "executor": "flatpak",
+        }
+        assert flatpak.calls == []
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.validate_apply(plan.plan_id, "token-incorreto")
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+
 
 class TestPlanSurvivesProcess:
     """Envelope persistido: plan e apply em instâncias/processos diferentes."""

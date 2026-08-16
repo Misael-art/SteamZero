@@ -761,6 +761,56 @@ class ComponentLifecycle:
         return envelope
 
     # ------------------------------------------------------------------ apply
+    def validate_apply(self, plan_id: str, confirm_token: str) -> dict[str, str]:
+        """Valida confirmação e contexto sem iniciar preparo ou efeito.
+
+        A bridge usa esta leitura antes de enfileirar o job. A validação é
+        repetida pelo worker em :meth:`apply`, sob o contexto efetivo, então
+        uma mudança entre enqueue e execução continua falhando fechada.
+        """
+        raw = self._read_plan_file(plan_id)
+        schema_version = int(raw.get("schemaVersion", 0))
+        schema_name = {
+            1: _PLAN_SCHEMA_V1,
+            2: _PLAN_SCHEMA_V2,
+            3: _PLAN_SCHEMA_V3,
+        }[schema_version]
+        try:
+            contracts.validate(raw, schema_name)
+        except ValidationError as exc:
+            raise SteamZeroError(
+                "E-STATE-INTEGRITY",
+                detail=f"plano de componente v{schema_version} inválido: {exc}",
+            ) from exc
+        if schema_version == 1:
+            self._validate_confirmation_fields(raw, confirm_token)
+            return {
+                "adapterId": str(raw["adapterId"]),
+                "action": str(raw["action"]),
+                "executor": "flatpak",
+            }
+        envelope = ComponentPlan.from_dict(raw)
+        self._validate_pending(envelope, confirm_token)
+        manifest = self._registry.get(envelope.adapter_id)
+        tombstone = self._registry.retired(envelope.adapter_id)
+        if tombstone is not None and envelope.action != "uninstall":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN",
+                detail=f"{envelope.adapter_id} foi retirado após o plano",
+            )
+        route = route_for(manifest)
+        if route.executor != envelope.executor:
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail="executor do componente mudou após o plano"
+            )
+        if self._source_fingerprint(manifest, route) != envelope.source_fingerprint:
+            raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
+        return {
+            "adapterId": envelope.adapter_id,
+            "action": envelope.action,
+            "executor": envelope.executor,
+        }
+
     def apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]:
         """Aplica um plano v2 (ou Flatpak v1 legado) e devolve o resultado.
 
@@ -1708,6 +1758,23 @@ class ComponentLifecycle:
             expires_at = datetime.fromisoformat(envelope.expires_at)
         except ValueError as exc:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano inválida") from exc
+        if expires_at.tzinfo is None:
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano sem timezone")
+        if self._utc_now() > expires_at:
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
+
+    def _validate_confirmation_fields(self, raw: dict[str, Any], confirm_token: str) -> None:
+        """Valida os campos de confirmação comuns ao plano Flatpak v1."""
+        expected = str(raw["confirmToken"])
+        if str(raw["status"]) != "pending":
+            raise SteamZeroError(
+                "E-TX-STALE-PLAN", detail=f"plano não está pendente ({raw['status']})"
+            )
+        if not all(ord(char) < 128 for char in confirm_token + expected):
+            raise SteamZeroError("E-STATE-INTEGRITY", detail="confirmToken deve ser ASCII")
+        if not secrets.compare_digest(confirm_token, expected):
+            raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken incorreto")
+        expires_at = datetime.fromisoformat(str(raw["expiresAt"]))
         if expires_at.tzinfo is None:
             raise SteamZeroError("E-STATE-INTEGRITY", detail="expiração do plano sem timezone")
         if self._utc_now() > expires_at:
