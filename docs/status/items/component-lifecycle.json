@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-COMPONENT-LIFECYCLE",
+  "title": "Ciclo funcional assíncrono de componentes",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "none",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopePaths": [
+    "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/jobs",
+    "src/steamzero/schemas/component-plan-v2.schema.json",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "src/steamzero/adapters/desktop_contracts.py",
+    "src/steamzero/ui/qml/Main.qml",
+    "tests/integration/test_component_lifecycle.py",
+    "tests/integration/test_jobs.py",
+    "tests/integration/test_desktop_ui_bridge.py",
+    "tests/integration/test_ui_confirm_job_recovery_e2e.py",
+    "tests/unit/test_lifecycle_routing.py",
+    "tests/qml/check_confirm_job_recovery_e2e.qml"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Planejamento de Flatpak, AppImage/engine, Libretro/archive e native é metadata-only e preferencialmente conclui em menos de dois segundos.",
+    "Download, instalação, reparo, rollback e desinstalação executam como jobs assíncronos com progresso real por bytes e etapas.",
+    "Jobs suportam cancelamento, retry, retomada e recovery sem deixar planos ou operações em estado não terminal.",
+    "Cliques repetidos não criam aplicações duplicadas e a UI mostra erro acionável sem bloquear por timeout longo.",
+    "Verificação comprova versão e hash, e cada uma das 33 entradas possui resultado físico individual para install, verify, idempotência, repair, falha, rollback e uninstall com dados preservados.",
+    "Telemetria local registra DNS, proxy, ambiente e executor sem expor segredos."
+  ],
+  "evidence": [],
+  "nextAction": "Capturar baseline limpa e escrever reprodução vermelha provando que plan executa I/O remoto e que apply bloqueia a requisição.",
+  "activeWorkstreams": [
+    "WS-2026-08-PHYSICAL-COMPONENTS"
+  ],
+  "updatedAt": "2026-08-15",
+  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. A release instalada 0.1.0a46-a02dae5f60ac já demonstrou planejamento lento, aplicação síncrona e planos pendentes após rollback; nenhuma dessas lacunas é considerada certificada por existência de código ou teste isolado."
+}
