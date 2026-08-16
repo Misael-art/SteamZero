@@ -890,7 +890,20 @@ class DesktopDashboard:
         return self._emulation.get_job_status(job_id)
 
     def list_emulation_jobs(self) -> list[dict[str, Any]]:
-        return self._emulation.list_jobs()
+        emulation_jobs = self._emulation.list_jobs()
+        component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))
+        if component_jobs is None:
+            return emulation_jobs
+        combined: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for job in [*component_jobs.list(), *emulation_jobs]:
+            job_id = str(job.get("jobId", ""))
+            if job_id and job_id in seen:
+                continue
+            if job_id:
+                seen.add(job_id)
+            combined.append(job)
+        return combined
 
     def cancel_emulation_job(self, job_id: str) -> dict[str, Any]:
         component_jobs = cast(ComponentJobService | None, getattr(self, "_component_jobs", None))

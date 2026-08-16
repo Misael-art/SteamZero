@@ -935,10 +935,17 @@ def test_component_apply_and_job_controls_use_async_component_service(
         "jobId": "component-retry",
         "state": "queued",
     }
+    component_jobs.list.return_value = [
+        {"jobId": "component-job", "state": "running"},
+    ]
     emulation = MagicMock()
     emulation.get_job_status.return_value = {"jobId": "emulation-job", "state": "running"}
     emulation.cancel_job.return_value = {"jobId": "emulation-job", "state": "cancelled"}
     emulation.retry_job.return_value = {"jobId": "emulation-retry", "state": "queued"}
+    emulation.list_jobs.return_value = [
+        {"jobId": "component-job", "state": "running"},
+        {"jobId": "emulation-job", "state": "running"},
+    ]
     dashboard = DesktopDashboard(
         store_factory=lambda: StateStore(tmp_path / "state.db"),
         component_jobs=component_jobs,
@@ -961,13 +968,19 @@ def test_component_apply_and_job_controls_use_async_component_service(
     }
     assert dashboard.cancel_emulation_job("emulation-job")["state"] == "cancelled"
     assert dashboard.retry_emulation_job("emulation-job")["jobId"] == "emulation-retry"
+    assert dashboard.list_emulation_jobs() == [
+        {"jobId": "component-job", "state": "running"},
+        {"jobId": "emulation-job", "state": "running"},
+    ]
 
     component_jobs.start.assert_called_once_with("plan", "token")
     component_jobs.cancel.assert_called_once_with("component-job")
     component_jobs.retry.assert_called_once_with("component-job")
+    component_jobs.list.assert_called_once_with()
     emulation.get_job_status.assert_called_once_with("emulation-job")
     emulation.cancel_job.assert_called_once_with("emulation-job")
     emulation.retry_job.assert_called_once_with("emulation-job")
+    emulation.list_jobs.assert_called_once_with()
 
 
 class TestCastDashboardIntegration:
