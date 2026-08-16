@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
@@ -113,6 +114,7 @@ def portable_manifest(
     payload: bytes,
     *,
     capabilities: list[str] | None = None,
+    source_type: str = "appimage",
 ) -> dict:
     return {
         "schemaVersion": 1,
@@ -123,7 +125,7 @@ def portable_manifest(
         or ["detect", "status", "install", "update", "verify", "uninstall"],
         "sources": [
             {
-                "type": "appimage",
+                "type": source_type,
                 "version": version,
                 "priority": 1,
                 "url": f"https://fixtures.invalid/demo-{version}.AppImage",
@@ -421,8 +423,81 @@ class TestFailureAggregation:
         assert "boom" in (status["detail"] or "")
 
 
+class TestMetadataOnlyPlanning:
+    """Planejar congela intenção e metadados; aquisição começa só no apply."""
+
+    @pytest.mark.parametrize("source_type", ["appimage", "native"])
+    def test_portable_plan_never_fetches_remote_payload(
+        self, store: state.StateStore, source_type: str
+    ) -> None:
+        payload = executable_payload()
+        artifacts = FakeArtifacts({})
+        registry = AdapterRegistry(
+            [load_manifest(portable_manifest("1.0.0", payload, source_type=source_type))]
+        )
+        lifecycle = ComponentLifecycle(store, registry, artifacts=artifacts)
+
+        plan = lifecycle.plan("demo-emulator", "install")
+
+        assert plan.status == "pending"
+        assert plan.executor == "engine"
+        assert artifacts.requests == []
+
+    def test_flatpak_plan_never_resolves_remote_commit(self, store: state.StateStore) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+
+        plan = lifecycle.plan("retroarch", "install")
+
+        assert plan.status == "pending"
+        assert not [call for call in flatpak.calls if call[0] == "resolve"]
+
+    def test_libretro_plan_never_downloads_archive(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        artifacts = FakeArtifacts({})
+        lifecycle = ComponentLifecycle(
+            store,
+            AdapterRegistry.bundled(),
+            artifacts=artifacts,
+            libretro_core_root=tmp_path / "cores",
+        )
+
+        plan = lifecycle.plan("libretro-genesis-plus-gx", "install")
+
+        assert plan.status == "pending"
+        assert plan.executor == "libretro"
+        assert artifacts.requests == []
+
+    def test_all_33_bundled_components_plan_below_two_seconds_without_remote_io(
+        self, store: state.StateStore
+    ) -> None:
+        registry = AdapterRegistry.bundled()
+        manifests = registry.list()
+        assert len(manifests) == 33
+        artifacts = FakeArtifacts({})
+        flatpak = FakeFlatpak()
+        lifecycle = ComponentLifecycle(
+            store,
+            registry,
+            artifacts=artifacts,
+            flatpak_factory=lambda: flatpak,  # type: ignore[arg-type]
+        )
+
+        durations: dict[str, float] = {}
+        for manifest in manifests:
+            started = time.monotonic()
+            plan = lifecycle.plan(manifest.id, "install")
+            durations[manifest.id] = time.monotonic() - started
+            assert plan.status == "pending"
+
+        assert max(durations.values()) < 2.0, durations
+        assert artifacts.requests == []
+        assert flatpak.calls == []
+
+
 class TestPlanSurvivesProcess:
-    """Envelope v2 persistido: plan e apply em instâncias/processos diferentes."""
+    """Envelope persistido: plan e apply em instâncias/processos diferentes."""
 
     def _install(self, store: state.StateStore, payload: bytes, version: str = "1.0.0"):
         url = f"https://fixtures.invalid/demo-{version}.AppImage"
@@ -437,7 +512,8 @@ class TestPlanSurvivesProcess:
         payload = executable_payload()
         _first, envelope = self._install(store, payload)
         assert envelope.executor == "engine"
-        assert envelope.delegated["transactionPlanId"]
+        assert envelope.schema_version == 3
+        assert envelope.delegated == {}
 
         second = ComponentLifecycle(
             store,
@@ -453,6 +529,7 @@ class TestPlanSurvivesProcess:
         first = bundled_with_fake(fake, store)
         envelope = first.plan("retroarch", "install")
         assert envelope.executor == "flatpak"
+        assert envelope.schema_version == 3
         assert envelope.delegated["flatpakPlanId"]
         assert envelope.plan_id != envelope.delegated["flatpakPlanId"]
 
@@ -481,6 +558,28 @@ class TestPlanSurvivesProcess:
         result = lifecycle.apply(v1.plan_id, v1.confirm_token)
         assert result["status"] == "ok"
         assert result["planVersion"] == 1
+
+    def test_legacy_component_v2_plan_still_applies(self, store: state.StateStore) -> None:
+        payload = executable_payload()
+        url = "https://fixtures.invalid/demo-1.0.0.AppImage"
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({url: payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        prepared = lifecycle._engine().plan_install("demo-emulator")  # type: ignore[attr-defined]
+        plan_path = paths.plan_path(envelope.plan_id)
+        raw = json.loads(plan_path.read_text(encoding="utf-8"))
+        raw["schemaVersion"] = 2
+        raw["confirmToken"] = prepared.plan.confirm_token
+        raw["delegated"] = {"transactionPlanId": prepared.plan.plan_id}
+        plan_path.write_text(json.dumps(raw), encoding="utf-8")
+
+        result = lifecycle.apply(envelope.plan_id, prepared.plan.confirm_token)
+
+        assert result["status"] == "ok"
+        assert result["planVersion"] == 2
 
     def test_manifest_change_yields_stale_plan(self, store: state.StateStore) -> None:
         payload = executable_payload()
