@@ -15,6 +15,7 @@
     "src/steamzero/adapters/flatpak.py",
     "src/steamzero/jobs",
     "src/steamzero/core/net.py",
+    "src/steamzero/core/transaction.py",
     "src/steamzero/schemas/component-plan-v2.schema.json",
     "src/steamzero/schemas/component-plan-v3.schema.json",
     "src/steamzero/adapters/desktop_dashboard.py",
@@ -22,6 +23,7 @@
     "src/steamzero/adapters/desktop_contracts.py",
     "src/steamzero/ui/qml/Main.qml",
     "tests/integration/test_component_lifecycle.py",
+    "tests/integration/test_transaction.py",
     "tests/integration/test_jobs.py",
     "tests/unit/test_libretro_cores.py",
     "tests/unit/test_component_jobs.py",
@@ -41,9 +43,10 @@
     "docs/09-operations/evidence/2026-08-16-component-transfer-control",
     "docs/09-operations/evidence/2026-08-16-component-job-recovery",
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
-    "docs/09-operations/evidence/2026-08-16-component-telemetry"
+    "docs/09-operations/evidence/2026-08-16-component-telemetry",
+    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
   ],
-  "scopeDigest": "eecf650fd14c0e8a14cb66edaa44fa7308d8e6925c4b2be4af2bba6d0e2bbf2d",
+  "scopeDigest": "54b03da3a19821f7b9b8b3723f73c6d157922a3a929861920aba8ea6218e08c1",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -116,7 +119,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Provar terminalização física por família e completar a matriz individual 33/33.",
+  "nextAction": "Terminalizar planos em falha, cancelamento, expiração e recovery com retry em novo plano; depois provar a matriz física 33/33.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],
