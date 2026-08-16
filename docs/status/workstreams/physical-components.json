@@ -29,6 +29,6 @@
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/qml/check_confirm_job_recovery_e2e.qml"
   ],
-  "nextAction": "Validar o envelope v3 na release instalada e então reproduzir a aplicação síncrona antes de implementar terminalização e jobs assíncronos.",
+  "nextAction": "Reproduzir a aplicação síncrona e implementar terminalização e jobs assíncronos; instalação da candidata permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }

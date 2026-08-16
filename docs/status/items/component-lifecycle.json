@@ -27,7 +27,7 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata"
   ],
-  "scopeDigest": "e27cf894a92d64719b9d3c1a7de508d1e0dd9cfc02c4f7e386fe282f8a90d2b4",
+  "scopeDigest": "2f8f46149b5d74500d2270e4606bf44aedee9f63f4e80c686de906546048cad5",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -50,9 +50,15 @@
       "reference": "docs/09-operations/evidence/2026-08-16-component-plan-metadata/README.md",
       "command": ".venv/bin/python tools/release_host.py --json inspect",
       "result": "recorded"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-plan-metadata/README.md",
+      "command": "PYTHONPATH=<worktree>/src .venv/bin/python <sonda metadata-only com XDG temporário>",
+      "result": "passed"
     }
   ],
-  "nextAction": "Commitar a fonte limpa, promover pelo fluxo governado e validar no host instalado que os 33 planos são metadata-only e inferiores a dois segundos; depois corrigir component.apply síncrono como job.",
+  "nextAction": "Reproduzir e corrigir component.apply síncrono como job persistente; preservar a validação da release instalada para o ciclo governado após o push final.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],

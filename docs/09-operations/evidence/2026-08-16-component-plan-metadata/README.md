@@ -69,11 +69,36 @@ antes de aceitar esse `noop`, impedindo sucesso falso por metadado obsoleto.
 Os 10 skips são do contrato existente: Flatpak fixa commit e a prova de
 checksum pertence ao executor portátil.
 
+## Validação no host real
+
+O commit limpo `6f70be85544a1f9f813af4088490c42f1f99ea36` foi executado no
+host físico com `PYTHONPATH` fixado explicitamente no `src` deste worktree e
+quatro diretórios XDG temporários. Portas sentinela reprovariam qualquer acesso
+ao downloader ou executor Flatpak durante `plan`.
+
+Resultado para os 33 manifests:
+
+```json
+{
+  "count": 33,
+  "families": {"appimage": 5, "archive": 17, "flatpak": 10, "native": 1},
+  "artifactCalls": 0,
+  "flatpakCalls": 0,
+  "maxMs": 0.954,
+  "medianMs": 0.306,
+  "totalMs": 12.091
+}
+```
+
+O mais lento foi Azahar, com 0,954 ms. O limite preferencial de 2 segundos foi
+atendido por margem superior a 2.000 vezes. O diretório temporário foi removido
+automaticamente e o harness não alterou o estado XDG real.
+
 ## Limite desta evidência
 
-Este incremento fecha somente o planejamento metadata-only. O endpoint de
+Este incremento fecha o planejamento metadata-only em código, suíte completa e
+host físico executando o commit. O endpoint de
 aplicação ainda é síncrono; job assíncrono, progresso, cancelamento, retry,
 retomada, telemetria e terminalização de falha permanecem abertos no mesmo item.
-A validação da release instalada será acrescentada depois do commit limpo e do
-fluxo governado de `tools/release_host.py`, pois o instalador recusa artefato
-construído de árvore não commitada.
+A validação da release instalada permanece no ciclo final governado: o fluxo
+exige push/CI verde, e o pedido reserva o push para depois da certificação.
