@@ -12,6 +12,7 @@
   "scopePaths": [
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/flatpak.py",
     "src/steamzero/jobs",
     "src/steamzero/core/net.py",
     "src/steamzero/schemas/component-plan-v2.schema.json",
@@ -25,20 +26,23 @@
     "tests/unit/test_libretro_cores.py",
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_core_net.py",
+    "tests/unit/test_flatpak.py",
     "tests/unit/test_desktop_dashboard.py",
     "tests/integration/test_desktop_ui_bridge.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/unit/test_lifecycle_routing.py",
     "tests/unit/test_desktop_contracts.py",
     "tests/unit/test_audit_desktop_bridge.py",
+    "tests/integration/test_flatpak_executor.py",
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-transfer-control",
-    "docs/09-operations/evidence/2026-08-16-component-job-recovery"
+    "docs/09-operations/evidence/2026-08-16-component-job-recovery",
+    "docs/09-operations/evidence/2026-08-16-component-flatpak-control"
   ],
-  "scopeDigest": "5d465b6c2d65d9ba9869039915ed0dcf29928235cb50fcb9b7d8c38459e495fb",
+  "scopeDigest": "cea89fef20c8ffce96821046f02123d061aa4561063ba6dbf0fb46439373df99",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

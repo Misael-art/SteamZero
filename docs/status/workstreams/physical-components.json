@@ -10,6 +10,7 @@
   "exclusivePaths": [
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/flatpak.py",
     "src/steamzero/jobs",
     "src/steamzero/core/net.py",
     "src/steamzero/schemas/component-plan-v2.schema.json",
@@ -19,11 +20,14 @@
     "tests/unit/test_libretro_cores.py",
     "tests/unit/test_component_jobs.py",
     "tests/unit/test_core_net.py",
+    "tests/unit/test_flatpak.py",
+    "tests/integration/test_flatpak_executor.py",
     "tests/unit/test_lifecycle_routing.py",
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-transfer-control",
-    "docs/09-operations/evidence/2026-08-16-component-job-recovery"
+    "docs/09-operations/evidence/2026-08-16-component-job-recovery",
+    "docs/09-operations/evidence/2026-08-16-component-flatpak-control"
   ],
   "sharedPaths": [
     "docs/status",
@@ -39,6 +43,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Fechar progresso por etapas e cancelamento Flatpak, depois provar terminalização física por família; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Reproduzir e corrigir progresso por etapas e cancelamento cooperativo do subprocesso Flatpak; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }
