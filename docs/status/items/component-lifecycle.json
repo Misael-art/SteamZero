@@ -11,6 +11,7 @@
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/adapters/component_jobs.py",
     "src/steamzero/jobs",
     "src/steamzero/schemas/component-plan-v2.schema.json",
     "src/steamzero/schemas/component-plan-v3.schema.json",
@@ -21,13 +22,15 @@
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_jobs.py",
     "tests/unit/test_libretro_cores.py",
+    "tests/unit/test_component_jobs.py",
     "tests/integration/test_desktop_ui_bridge.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/unit/test_lifecycle_routing.py",
     "tests/qml/check_confirm_job_recovery_e2e.qml",
-    "docs/09-operations/evidence/2026-08-16-component-plan-metadata"
+    "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
+    "docs/09-operations/evidence/2026-08-16-component-apply-async"
   ],
-  "scopeDigest": "2f8f46149b5d74500d2270e4606bf44aedee9f63f4e80c686de906546048cad5",
+  "scopeDigest": "892e89b23fb73d6f59103eeae162379ee78a452094fbff2748a2efb554b8d132",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -56,12 +59,18 @@
       "reference": "docs/09-operations/evidence/2026-08-16-component-plan-metadata/README.md",
       "command": "PYTHONPATH=<worktree>/src .venv/bin/python <sonda metadata-only com XDG temporário>",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-apply-async/README.md",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_component_jobs.py tests/integration/test_component_lifecycle.py -q",
+      "result": "passed"
     }
   ],
-  "nextAction": "Reproduzir e corrigir component.apply síncrono como job persistente; preservar a validação da release instalada para o ciclo governado após o push final.",
+  "nextAction": "Integrar ComponentJobService ao dashboard, contrato HTTP e QML em commit compartilhado final, provar polling e remover o timeout de 31 minutos.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],
   "updatedAt": "2026-08-16",
-  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O primeiro incremento introduz o envelope v3 metadata-only com compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. A aplicação síncrona, jobs/progresso/cancelamento/retry/retomada, telemetria, terminalização e a matriz física 33/33 continuam abertas; nenhuma dessas lacunas é considerada certificada por existência de código ou teste isolado."
+  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O primeiro incremento introduz o envelope v3 metadata-only com compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. O núcleo de component.apply agora cria job persistente, deduplica confirmação e suporta retry, mas a integração HTTP/QML ainda está pendente. Progresso real por bytes, cancelamento durante I/O, retomada, telemetria, terminalização e a matriz física 33/33 continuam abertas."
 }
