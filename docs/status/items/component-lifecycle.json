@@ -44,9 +44,10 @@
     "docs/09-operations/evidence/2026-08-16-component-job-recovery",
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
     "docs/09-operations/evidence/2026-08-16-component-telemetry",
-    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
+    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
+    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar"
   ],
-  "scopeDigest": "567c80e1e30441271372febbf83231176a60a42b4545bdf1a589efd04957b8ae",
+  "scopeDigest": "da474f8bea40bece9bb0ea7a609054ccba58360bc10336e317b40e817f23fea6",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

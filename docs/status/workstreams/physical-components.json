@@ -31,7 +31,8 @@
     "docs/09-operations/evidence/2026-08-16-component-job-recovery",
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
     "docs/09-operations/evidence/2026-08-16-component-telemetry",
-    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
+    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
+    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar"
   ],
   "sharedPaths": [
     "docs/status",
