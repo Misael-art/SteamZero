@@ -742,7 +742,7 @@ ApplicationWindow {
         xhr.open(method, apiUrl + path + query)
         xhr.setRequestHeader("Content-Type", "application/json")
         xhr.setRequestHeader("X-SteamZero-Token", apiToken)
-        xhr.timeout = path === "/component/apply" ? 1900000 : 60000
+        xhr.timeout = 60000
 
         function finish() {
             if (completed)
@@ -1436,7 +1436,7 @@ ApplicationWindow {
                         "confirmToken": root.componentPlan.confirmToken
                     }) : ({})
                     readonly property bool applying: root.actionIsPending("component.apply", applyPayload)
-                    text: applying ? qsTr("Aplicando e verificando…")
+                    text: applying ? qsTr("Iniciando tarefa…")
                         : root.componentPlan && root.componentPlan.action === "install"
                             ? qsTr("Instalar com rollback") : qsTr("Aplicar atualização")
                     enabled: root.componentPlan !== null && !applying
@@ -1447,9 +1447,13 @@ ApplicationWindow {
                         if (!root.componentPlan)
                             return
                         root.requestAction("component.apply", applyPayload, function(response) {
+                            if (!response.jobId) {
+                                root.notify(qsTr("A central não publicou a tarefa; verifique o estado antes de repetir"), true)
+                                return
+                            }
                             componentDialog.close()
                             root.componentPlan = null
-                            root.refreshStatus(qsTr("Componente verificado e pronto"))
+                            root.refreshStatus(qsTr("Tarefa iniciada; acompanhe o progresso em Tarefas"))
                         })
                     }
                 }

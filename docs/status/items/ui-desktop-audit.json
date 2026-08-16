@@ -37,7 +37,7 @@
     "tests/qml/check_credential_journey_e2e.qml",
     "tests/qml/check_darkbutton_theme.qml"
   ],
-  "scopeDigest": "59772d7971494f2d95d19d6d8f0c0ba17dbcd434d90a4f2e1d38c94fc7585f2a",
+  "scopeDigest": "20dd5ef598ce1180724d63176cf7d6ac38ae9d601572bd243f758d9751611124",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

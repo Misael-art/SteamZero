@@ -910,6 +910,58 @@ def _refuses_to_build(*_args: object, **_kwargs: object) -> None:
     raise OSError("sem compositor de captura")
 
 
+def test_component_apply_and_job_controls_use_async_component_service(
+    tmp_path: Path,
+) -> None:
+    component_jobs = MagicMock()
+    component_jobs.start.return_value = {"jobId": "component-job", "state": "queued"}
+    component_jobs.get.side_effect = lambda job_id: (
+        {"jobId": job_id, "state": "running"} if job_id == "component-job" else None
+    )
+    component_jobs.cancel.return_value = {
+        "jobId": "component-job",
+        "state": "running",
+        "rawState": "cancelling",
+    }
+    component_jobs.retry.return_value = {
+        "jobId": "component-retry",
+        "state": "queued",
+    }
+    emulation = MagicMock()
+    emulation.get_job_status.return_value = {"jobId": "emulation-job", "state": "running"}
+    emulation.cancel_job.return_value = {"jobId": "emulation-job", "state": "cancelled"}
+    emulation.retry_job.return_value = {"jobId": "emulation-retry", "state": "queued"}
+    dashboard = DesktopDashboard(
+        store_factory=lambda: StateStore(tmp_path / "state.db"),
+        component_jobs=component_jobs,
+        emulation=emulation,
+    )
+
+    assert dashboard.apply_component("plan", "token") == {
+        "jobId": "component-job",
+        "state": "queued",
+    }
+    assert dashboard.get_emulation_job_status("component-job") == {
+        "jobId": "component-job",
+        "state": "running",
+    }
+    assert dashboard.cancel_emulation_job("component-job")["rawState"] == "cancelling"
+    assert dashboard.retry_emulation_job("component-job")["jobId"] == "component-retry"
+    assert dashboard.get_emulation_job_status("emulation-job") == {
+        "jobId": "emulation-job",
+        "state": "running",
+    }
+    assert dashboard.cancel_emulation_job("emulation-job")["state"] == "cancelled"
+    assert dashboard.retry_emulation_job("emulation-job")["jobId"] == "emulation-retry"
+
+    component_jobs.start.assert_called_once_with("plan", "token")
+    component_jobs.cancel.assert_called_once_with("component-job")
+    component_jobs.retry.assert_called_once_with("component-job")
+    emulation.get_job_status.assert_called_once_with("emulation-job")
+    emulation.cancel_job.assert_called_once_with("emulation-job")
+    emulation.retry_job.assert_called_once_with("emulation-job")
+
+
 class TestCastDashboardIntegration:
     """Testes de integração entre DesktopDashboard e CastOrchestrator."""
 

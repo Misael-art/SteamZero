@@ -199,7 +199,7 @@ class FakeDashboard:
 
     def apply_component(self, plan_id: str, confirm_token: str) -> dict[str, object]:
         self.calls.append(("apply", plan_id, confirm_token))
-        return {"status": "ok"}
+        return {"jobId": "component-job", "state": "queued"}
 
     def launch_component(self, component_id: str) -> dict[str, object]:
         self.calls.append(("launch", component_id))
@@ -1035,12 +1035,13 @@ def test_bridge_exposes_dashboard_component_and_steam_actions(
         base, token, "/component/plan", {"componentId": "dolphin", "action": "install"}
     )
     assert planned["plan"] == {"planId": "component-plan", "confirmToken": "confirm"}
-    request_json(
+    applied = request_json(
         base,
         token,
         "/component/apply",
         {"planId": "component-plan", "confirmToken": "confirm"},
     )
+    assert applied == {"jobId": "component-job", "state": "queued"}
     request_json(base, token, "/component/launch", {"componentId": "dolphin"})
     assert request_json(base, token, "/component/history", {"componentId": "dolphin"}) == {
         "componentId": "dolphin",

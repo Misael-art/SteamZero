@@ -30,8 +30,11 @@
     "src/steamzero/ui/qml/Main.qml",
     "tests/integration/test_desktop_ui_bridge.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
-    "tests/qml/check_confirm_job_recovery_e2e.qml"
+    "tests/unit/test_desktop_dashboard.py",
+    "tests/unit/test_desktop_contracts.py",
+    "tests/qml/check_confirm_job_recovery_e2e.qml",
+    "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Integrar o núcleo assíncrono ao dashboard, contrato HTTP e QML em commit compartilhado final; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Adicionar progresso por bytes e cancelamento cooperativo ao caminho de aquisição; instalação permanece no ciclo governado após o push final.",
   "updatedAt": "2026-08-16"
 }

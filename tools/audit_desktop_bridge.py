@@ -48,6 +48,11 @@ LIFECYCLE_SURFACES: dict[str, SurfaceDecision] = {
     "status_all": SurfaceDecision("bridge-now", ("component.list",), "lista sanitizada"),
     "verify": SurfaceDecision("read-only", ("component.verify",), "verificação sem efeito"),
     "plan": SurfaceDecision("plan-apply", ("component.plan",), "plano persistido e token"),
+    "validate_apply": SurfaceDecision(
+        "service-internal",
+        ("component.apply",),
+        "preflight sem efeito antes de enfileirar o job confirmado",
+    ),
     "apply": SurfaceDecision("plan-apply", ("component.apply",), "efeito confirmado"),
     "rollback": SurfaceDecision(
         "plan-apply",
