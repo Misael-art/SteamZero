@@ -97,6 +97,31 @@ Os dez skips pertencem à conformance Flatpak que fixa o commit e usa o checksum
 do executor portátil como garantia. O runner confirmou que o estado real do
 usuário não foi alterado.
 
+## Validação física read-only do caminho HTTP
+
+Com o worktree limpo no commit `bdf49da`, uma sonda no host iniciou a bridge
+loopback real (`DesktopControlServer`) e o dashboard real, injetando somente um
+lifecycle bloqueável e um State Store temporário. Nenhum componente, serviço ou
+arquivo do host foi alterado.
+
+```json
+{
+  "applyCalls": 1,
+  "deduplicated": true,
+  "firstState": "queued",
+  "hostMutation": false,
+  "httpReturnMs": 53.552,
+  "operationLinked": true,
+  "polledState": "running",
+  "sourceCommit": "bdf49da",
+  "terminalState": "succeeded"
+}
+```
+
+A prova percorreu `POST /component/apply`, repetiu a confirmação, consultou
+`GET /emulation/job/status/{jobId}` durante a execução e depois da liberação do
+worker, e confirmou o vínculo persistido com a operação terminal.
+
 ## Limites honestos deste incremento
 
 O job já é persistente e independente da requisição HTTP, mas este incremento

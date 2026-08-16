@@ -34,7 +34,7 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
     "docs/09-operations/evidence/2026-08-16-component-apply-async"
   ],
-  "scopeDigest": "75c30d732fb86edd2a42494e7e9ca6889a0eecb0eed018053e13eab53dfe29f7",
+  "scopeDigest": "38d30dc60e1b49038b6c57d37f3ac724e869dd5c73ee15b0335514b9ea01a344",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -68,6 +68,12 @@
       "kind": "test",
       "reference": "docs/09-operations/evidence/2026-08-16-component-apply-async/README.md",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_component_jobs.py tests/integration/test_component_lifecycle.py tests/unit/test_desktop_dashboard.py tests/unit/test_desktop_contracts.py tests/integration/test_desktop_ui_bridge.py tests/integration/test_ui_confirm_job_recovery_e2e.py -q && qmllint src/steamzero/ui/qml/Main.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-apply-async/README.md",
+      "command": "PYTHONPATH=<worktree>/src .venv/bin/python <sonda HTTP assíncrona com State Store temporário>",
       "result": "passed"
     }
   ],
