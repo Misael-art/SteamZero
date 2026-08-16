@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters import flatpak as flatpak_module
 from steamzero.adapters.component_jobs import ComponentJobService
 from steamzero.core import fs, net, state
 from steamzero.core.errors import SteamZeroError
@@ -96,6 +97,22 @@ class DownloadingLifecycle(BlockingLifecycle):
             client=net.HttpClient(transport=net.FakeTransport([self.response])),
         )
         self.applied = True
+        assert self.store is not None
+        self.store.save_operation("01M000000000000000000000BB", state="committed")
+        return {
+            "status": "ok",
+            "operationId": "01M000000000000000000000BB",
+            "adapterId": "demo-emulator",
+        }
+
+
+class StagedFlatpakLifecycle(BlockingLifecycle):
+    def apply(self, plan_id: str, confirm_token: str) -> dict[str, str]:
+        self.apply_calls += 1
+        flatpak_module.report_flatpak_stage("installing", current=1, total=5)
+        self.started.set()
+        if not self.release.wait(timeout=5):
+            raise RuntimeError("teste não liberou o lifecycle Flatpak")
         assert self.store is not None
         self.store.save_operation("01M000000000000000000000BB", state="committed")
         return {
@@ -284,3 +301,24 @@ def test_recover_terminalizes_interrupted_component_and_retry_is_auditable(
     replacement = service.retry(job_id)
     assert replacement["jobId"] != job_id
     assert _wait_terminal(service, str(replacement["jobId"]))["state"] == "succeeded"
+
+
+def test_flatpak_stage_is_persisted_by_component_job(job_env: None) -> None:
+    lifecycle = StagedFlatpakLifecycle()
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    job = service.start("01M000000000000000000000AA", "confirm-token")
+    assert lifecycle.started.wait(timeout=1)
+    try:
+        observed = service.get(str(job["jobId"]))
+        assert observed is not None
+        assert observed["progress"] == {
+            "stage": "installing",
+            "current": 1,
+            "total": 5,
+            "unit": "steps",
+            "currentItem": "demo-emulator",
+        }
+    finally:
+        lifecycle.release.set()
+    assert _wait_terminal(service, str(job["jobId"]))["state"] == "succeeded"

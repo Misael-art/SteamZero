@@ -9,6 +9,7 @@ import threading
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from steamzero.adapters.flatpak import flatpak_operation_observer
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.core.errors import SteamZeroError
@@ -212,9 +213,25 @@ class ComponentJobService:
                     current_item=adapter_id,
                 )
 
-            with transfer_observer(
-                progress=transfer_progress,
-                cancel_check=context.safepoint,
+            def flatpak_progress(stage: str, current: int, total: int) -> None:
+                context.safepoint()
+                context.set_progress(
+                    stage,
+                    current=current,
+                    total=total,
+                    unit="steps",
+                    current_item=adapter_id,
+                )
+
+            with (
+                transfer_observer(
+                    progress=transfer_progress,
+                    cancel_check=context.safepoint,
+                ),
+                flatpak_operation_observer(
+                    progress=flatpak_progress,
+                    cancel_check=context.safepoint,
+                ),
             ):
                 result = lifecycle.apply(
                     str(job.params["planId"]),
