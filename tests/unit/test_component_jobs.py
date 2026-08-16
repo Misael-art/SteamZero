@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from steamzero.adapters.component_jobs import ComponentJobService
-from steamzero.core import fs, state
+from steamzero.core import fs, net, state
 from steamzero.core.errors import SteamZeroError
 
 
@@ -56,6 +56,52 @@ class RetryLifecycle(BlockingLifecycle):
         if self.apply_calls == 1:
             raise SteamZeroError("E-SUPPLY-OFFLINE", detail="rede indisponível")
         return {"status": "ok", "operationId": "", "adapterId": "demo-emulator"}
+
+
+class PausingResponse(net.FakeResponse):
+    def __init__(self) -> None:
+        super().__init__(
+            b"abcdef",
+            "https://downloads.example/artifact",
+            headers={"Content-Length": "6"},
+            chunk_size=2,
+        )
+        self.blocked = threading.Event()
+        self.release = threading.Event()
+        self.bytes_read = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if self.bytes_read:
+            self.blocked.set()
+            if not self.release.wait(timeout=5):
+                raise RuntimeError("teste não liberou o segundo chunk")
+        chunk = super().read(size)
+        self.bytes_read += len(chunk)
+        return chunk
+
+
+class DownloadingLifecycle(BlockingLifecycle):
+    def __init__(self, response: PausingResponse) -> None:
+        super().__init__()
+        self.response = response
+        self.applied = False
+
+    def apply(self, plan_id: str, confirm_token: str) -> dict[str, str]:
+        self.apply_calls += 1
+        self.started.set()
+        net.fetch_bytes(
+            "https://downloads.example/artifact",
+            max_bytes=8,
+            client=net.HttpClient(transport=net.FakeTransport([self.response])),
+        )
+        self.applied = True
+        assert self.store is not None
+        self.store.save_operation("01M000000000000000000000BB", state="committed")
+        return {
+            "status": "ok",
+            "operationId": "01M000000000000000000000BB",
+            "adapterId": "demo-emulator",
+        }
 
 
 @pytest.fixture
@@ -144,3 +190,42 @@ def test_failed_job_retries_as_a_new_auditable_job(job_env: None) -> None:
     completed = _wait_terminal(service, str(retried["jobId"]))
     assert completed["state"] == "succeeded"
     assert lifecycle.apply_calls == 2
+
+
+def test_download_persists_real_byte_progress_while_job_is_running(job_env: None) -> None:
+    response = PausingResponse()
+    lifecycle = DownloadingLifecycle(response)
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    job = service.start("01M000000000000000000000AA", "confirm-token")
+    assert response.blocked.wait(timeout=1)
+    try:
+        observed = service.get(str(job["jobId"]))
+        assert observed is not None
+        assert observed["progress"] == {
+            "stage": "downloading",
+            "current": 2,
+            "total": 6,
+            "unit": "bytes",
+            "currentItem": "demo-emulator",
+        }
+    finally:
+        response.release.set()
+    assert _wait_terminal(service, str(job["jobId"]))["state"] == "succeeded"
+
+
+def test_cancel_during_download_stops_before_apply_and_terminalizes(job_env: None) -> None:
+    response = PausingResponse()
+    lifecycle = DownloadingLifecycle(response)
+    service = ComponentJobService(lifecycle_factory=lifecycle.bind)
+
+    job = service.start("01M000000000000000000000AA", "confirm-token")
+    assert response.blocked.wait(timeout=1)
+    service.cancel(str(job["jobId"]))
+    response.release.set()
+
+    cancelled = _wait_terminal(service, str(job["jobId"]))
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["canRetry"] is True
+    assert response.bytes_read < 6
+    assert lifecycle.applied is False

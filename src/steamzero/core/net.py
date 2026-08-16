@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
@@ -27,6 +28,30 @@ from steamzero.core import fs
 
 _CHUNK = 1 << 20
 _USER_AGENT = "SteamZero/0.1"
+
+TransferProgress = Callable[[int, int | None], None]
+CancelCheck = Callable[[], None]
+
+
+@dataclass(frozen=True)
+class _TransferObserver:
+    progress: TransferProgress
+    cancel_check: CancelCheck
+
+
+_TRANSFER_OBSERVER: ContextVar[_TransferObserver | None] = ContextVar(
+    "steamzero_transfer_observer", default=None
+)
+
+
+@contextmanager
+def transfer_observer(*, progress: TransferProgress, cancel_check: CancelCheck) -> Iterator[None]:
+    """Liga progresso/cancelamento do chamador à transferência desta thread."""
+    token = _TRANSFER_OBSERVER.set(_TransferObserver(progress, cancel_check))
+    try:
+        yield
+    finally:
+        _TRANSFER_OBSERVER.reset(token)
 
 
 @dataclass
@@ -338,16 +363,17 @@ def _response_url(response: ResponsePort, requested_url: str) -> str:
     return value if isinstance(value, str) and value else requested_url
 
 
-def _validate_declared_size(response: ResponsePort, max_bytes: int) -> None:
+def _validate_declared_size(response: ResponsePort, max_bytes: int) -> int | None:
     declared = _response_headers(response).get("Content-Length")
     if declared is None:
-        return
+        return None
     try:
         value = int(declared)
     except ValueError as exc:
         raise NetworkFailure("E-NET-CONTENT-LIMIT", "Content-Length inválido") from exc
     if value < 0 or value > max_bytes:
         raise NetworkFailure("E-NET-CONTENT-LIMIT", "conteúdo declarado excede o limite")
+    return value
 
 
 def _response_headers(response: ResponsePort) -> Mapping[str, str]:
@@ -360,9 +386,16 @@ def _read_limited(
 ) -> bytes:
     chunks: list[bytes] = []
     received = 0
+    observer = _TRANSFER_OBSERVER.get()
+    total = _validate_declared_size(response, max_bytes)
+    if observer is not None:
+        observer.cancel_check()
+        observer.progress(0, total)
     while True:
         if cancel is not None:
             cancel.raise_if_cancelled()
+        if observer is not None:
+            observer.cancel_check()
         chunk = response.read(min(_CHUNK, max_bytes + 1 - received))
         if not chunk:
             return b"".join(chunks)
@@ -370,6 +403,8 @@ def _read_limited(
         if received > max_bytes:
             raise NetworkFailure("E-NET-CONTENT-LIMIT", "download excedeu o limite")
         chunks.append(chunk)
+        if observer is not None:
+            observer.progress(received, total)
 
 
 @dataclass

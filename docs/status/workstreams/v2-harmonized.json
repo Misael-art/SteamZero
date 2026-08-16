@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-V2-HARMONIZED",
+  "item": "SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE",
+  "branch": "codex/v2-harmonized-functional-release",
+  "baseRef": "c2a1ff1abc98fbffd04175c81010009872476893",
+  "owner": "v2-harmonized-agent",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/ui/qml/",
+    "src/steamzero/domain/library.py",
+    "src/steamzero/adapters/library_scan.py",
+    "src/steamzero/domain/scraping.py",
+    "src/steamzero/adapters/launcher/",
+    "src/steamzero/ui/launcher/",
+    "docs/09-operations/evidence/2026-08-23-v2-harmonization-baseline"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/WORKLOG.md",
+    "pyproject.toml",
+    "src/steamzero/cli/main.py",
+    "src/steamzero/adapters/desktop_dashboard.py",
+    "src/steamzero/adapters/desktop_ui.py",
+    "tools/install_host.py"
+  ],
+  "nextAction": "Matriz de harmonização capacidade→origem→decisão→commit→prova; portar capacidades válidas de codex/physical-functional-closure sobre main c2a1ff1 antes das entregas funcionais 6.1–6.7.",
+  "notes": "Base c2a1ff1 (origin/main tip). Release instalada no baseline: 0.1.0a46-5b41f2edbf78; rollback 0.1.0a46-bd598c516bce. Não mergeia PRs antigas #78/#79/#80/#81/#82/#92 diretamente."
+}

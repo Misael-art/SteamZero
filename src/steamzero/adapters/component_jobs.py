@@ -11,6 +11,7 @@ from typing import Any, Protocol
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.core.errors import SteamZeroError
+from steamzero.core.net import transfer_observer
 from steamzero.core.state import StateStore
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
@@ -161,10 +162,27 @@ class ComponentJobService:
         def apply_component(job: Job, context: JobContext) -> dict[str, Any]:
             context.safepoint()
             context.set_progress("preparing", current=0, total=1, unit="steps")
-            result = lifecycle.apply(
-                str(job.params["planId"]),
-                str(job.params["confirmToken"]),
-            )
+            adapter_id = str(job.params["adapterId"])
+
+            def transfer_progress(current: int, total: int | None) -> None:
+                context.safepoint()
+                context.set_progress(
+                    "downloading",
+                    current=current,
+                    total=total,
+                    unit="bytes",
+                    current_item=adapter_id,
+                )
+
+            with transfer_observer(
+                progress=transfer_progress,
+                cancel_check=context.safepoint,
+            ):
+                result = lifecycle.apply(
+                    str(job.params["planId"]),
+                    str(job.params["confirmToken"]),
+                )
+            context.safepoint()
             operation_id = result.get("operationId")
             if isinstance(operation_id, str) and operation_id:
                 job.operation_id = operation_id
