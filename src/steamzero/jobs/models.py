@@ -20,7 +20,9 @@ VALID_TRANSITIONS: dict[str, frozenset[str]] = {
     "blocked": frozenset({"queued", "cancelled"}),
     "running": frozenset({"completed", "paused", "cancelling", "failed", "interrupted"}),
     "paused": frozenset({"running", "cancelling"}),
-    "cancelling": frozenset({"cancelled"}),
+    # Um cancelamento pode cruzar o commit durável. Recovery deve registrar o
+    # fato observado (completed), nunca afirmar cancelled depois do efeito.
+    "cancelling": frozenset({"cancelled", "completed"}),
     "failed": frozenset({"rolling-back"}),
     "rolling-back": frozenset({"rolled-back", "rollback-failed"}),
     # G25: "interrupted -> cancelled" permite que recover() termine jobs

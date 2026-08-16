@@ -28,6 +28,14 @@ class LifecyclePort(Protocol):
 
     def _apply_validated(self, plan_id: str) -> dict[str, Any]: ...
 
+    def _abort_apply(self, plan_id: str) -> None: ...
+
+    def _retry_apply(self, plan_id: str) -> dict[str, str]: ...
+
+    def _apply_status(self, plan_id: str) -> str: ...
+
+    def recover(self) -> list[dict[str, Any]]: ...
+
 
 StoreFactory = Callable[[], StateStore]
 LifecycleFactory = Callable[[StateStore], LifecyclePort]
@@ -114,7 +122,10 @@ class ComponentJobService:
             job = manager.get(job_id)
             if job is None or job.type != _JOB_TYPE:
                 raise SteamZeroError("E-API-SCHEMA", detail=f"job inexistente: {job_id}")
-            return self._view(manager.cancel(job_id))
+            cancelled = manager.cancel(job_id)
+            if cancelled.state == "cancelled":
+                self._lifecycle_factory(store)._abort_apply(str(cancelled.params["planId"]))
+            return self._view(cancelled)
 
     def retry(self, job_id: str) -> dict[str, Any]:
         self._ensure_recovered()
@@ -128,12 +139,24 @@ class ComponentJobService:
                 raise SteamZeroError(
                     "E-API-SCHEMA", detail=f"job não repetível no estado {previous.state}"
                 )
+            previous_plan_id = str(previous.params["planId"])
+            metadata = self._lifecycle_factory(store)._retry_apply(previous_plan_id)
             replacement = manager.create(
                 _JOB_TYPE,
-                params=dict(previous.params),
+                params={
+                    "planId": metadata["planId"],
+                    "adapterId": metadata["adapterId"],
+                    "action": metadata["action"],
+                    "executor": metadata["executor"],
+                    "retryOfJobId": previous.id,
+                    "retryOfPlanId": previous_plan_id,
+                },
                 priority=previous.priority,
                 created_by="ui",
-                constraints=dict(previous.constraints),
+                constraints={
+                    **previous.constraints,
+                    "requiresNetwork": metadata["action"] not in {"uninstall", "stop"},
+                },
                 correlation_id=previous.correlation_id,
             )
             view = self._view(replacement)
@@ -148,7 +171,24 @@ class ComponentJobService:
             with self._store_factory() as store:
                 store.migrate()
                 manager = JobManager(store)
-                recovered = manager.recover(job_types={_JOB_TYPE})
+                lifecycle = self._lifecycle_factory(store)
+                lifecycle.recover()
+                active = [
+                    job
+                    for job in manager.list_jobs(states=["running", "cancelling"])
+                    if job.type == _JOB_TYPE
+                ]
+                committed_job_ids = {
+                    job.id
+                    for job in active
+                    if lifecycle._apply_status(str(job.params["planId"])) == "applied"
+                }
+                recovered = manager.recover(
+                    job_types={_JOB_TYPE}, completed_job_ids=committed_job_ids
+                )
+                for job in recovered:
+                    if job.state in {"cancelled", "rolled-back", "rollback-failed"}:
+                        lifecycle._abort_apply(str(job.params["planId"]))
                 queued_ids = [
                     job.id for job in manager.list_jobs(states=["queued"]) if job.type == _JOB_TYPE
                 ]
@@ -200,74 +240,77 @@ class ComponentJobService:
     @staticmethod
     def _handler(lifecycle: LifecyclePort) -> Callable[[Job, JobContext], dict[str, Any]]:
         def apply_component(job: Job, context: JobContext) -> dict[str, Any]:
-            context.safepoint()
-            context.set_progress("preparing", current=0, total=1, unit="steps")
+            plan_id = str(job.params["planId"])
             adapter_id = str(job.params["adapterId"])
             executor = str(job.params["executor"])
-            snapshot = network_environment_snapshot()
-            context.checkpoint(
-                {
-                    "kind": "component-diagnostic",
-                    "adapterId": adapter_id,
-                    "executor": executor,
-                    "network": {
-                        "phase": "not-observed",
-                        "host": None,
-                        "dns": "not-observed",
-                        "proxy": snapshot["proxy"],
-                        "environment": snapshot["environment"],
-                    },
-                }
-            )
-
-            def transfer_progress(current: int, total: int | None) -> None:
+            try:
                 context.safepoint()
-                context.set_progress(
-                    "downloading",
-                    current=current,
-                    total=total,
-                    unit="bytes",
-                    current_item=adapter_id,
-                )
-
-            def flatpak_progress(stage: str, current: int, total: int) -> None:
-                context.safepoint()
-                context.set_progress(
-                    stage,
-                    current=current,
-                    total=total,
-                    unit="steps",
-                    current_item=adapter_id,
-                )
-
-            def network_diagnostic(diagnostic: dict[str, object]) -> None:
+                context.set_progress("preparing", current=0, total=1, unit="steps")
+                snapshot = network_environment_snapshot()
                 context.checkpoint(
                     {
                         "kind": "component-diagnostic",
                         "adapterId": adapter_id,
                         "executor": executor,
-                        "network": diagnostic,
+                        "network": {
+                            "phase": "not-observed",
+                            "host": None,
+                            "dns": "not-observed",
+                            "proxy": snapshot["proxy"],
+                            "environment": snapshot["environment"],
+                        },
                     }
                 )
 
-            with (
-                transfer_observer(
-                    progress=transfer_progress,
-                    cancel_check=context.safepoint,
-                    diagnostic=network_diagnostic,
-                ),
-                flatpak_operation_observer(
-                    progress=flatpak_progress,
-                    cancel_check=context.safepoint,
-                ),
-            ):
-                plan_id = str(job.params["planId"])
-                legacy_token = job.params.get("confirmToken")
-                if isinstance(legacy_token, str) and legacy_token:
-                    result = lifecycle.apply(plan_id, legacy_token)
-                else:
-                    result = lifecycle._apply_validated(plan_id)
-            context.safepoint()
+                def transfer_progress(current: int, total: int | None) -> None:
+                    context.safepoint()
+                    context.set_progress(
+                        "downloading",
+                        current=current,
+                        total=total,
+                        unit="bytes",
+                        current_item=adapter_id,
+                    )
+
+                def flatpak_progress(stage: str, current: int, total: int) -> None:
+                    context.safepoint()
+                    context.set_progress(
+                        stage,
+                        current=current,
+                        total=total,
+                        unit="steps",
+                        current_item=adapter_id,
+                    )
+
+                def network_diagnostic(diagnostic: dict[str, object]) -> None:
+                    context.checkpoint(
+                        {
+                            "kind": "component-diagnostic",
+                            "adapterId": adapter_id,
+                            "executor": executor,
+                            "network": diagnostic,
+                        }
+                    )
+
+                with (
+                    transfer_observer(
+                        progress=transfer_progress,
+                        cancel_check=context.safepoint,
+                        diagnostic=network_diagnostic,
+                    ),
+                    flatpak_operation_observer(
+                        progress=flatpak_progress,
+                        cancel_check=context.safepoint,
+                    ),
+                ):
+                    legacy_token = job.params.get("confirmToken")
+                    if isinstance(legacy_token, str) and legacy_token:
+                        result = lifecycle.apply(plan_id, legacy_token)
+                    else:
+                        result = lifecycle._apply_validated(plan_id)
+            except Exception:
+                lifecycle._abort_apply(plan_id)
+                raise
             operation_id = result.get("operationId")
             if isinstance(operation_id, str) and operation_id:
                 job.operation_id = operation_id
@@ -309,6 +352,9 @@ class ComponentJobService:
             "state": state,
             "rawState": job.state,
             "priority": job.priority,
+            "planId": job.params.get("planId"),
+            "retryOfJobId": job.params.get("retryOfJobId"),
+            "retryOfPlanId": job.params.get("retryOfPlanId"),
             "progress": job.progress,
             "errorCode": job.error_code,
             "result": job.result,

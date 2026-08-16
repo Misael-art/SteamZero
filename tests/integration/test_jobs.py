@@ -296,6 +296,20 @@ def test_recover_filters_job_types_without_touching_other_workers(
     assert mgr.get(media.id).state == "running"  # type: ignore[union-attr]
 
 
+@pytest.mark.parametrize("raw_state", ["running", "cancelling"])
+def test_recover_accepts_durable_commit_resolved_by_job_owner(
+    env: tuple[JobManager, state.StateStore, Path], raw_state: str
+) -> None:
+    mgr, store, _ = env
+    job = mgr.create("component.apply")
+    job.state = raw_state
+    store.save_job(job.to_row())
+
+    recovered = mgr.recover(job_types={"component.apply"}, completed_job_ids={job.id})
+
+    assert recovered[0].state == "completed"
+
+
 def test_cancel_runnerless_running_forces_terminal(
     env: tuple[JobManager, state.StateStore, Path],
 ) -> None:

@@ -20,7 +20,7 @@ import pytest
 
 from fixtures.eol_adapter import EOL_ID, EOL_REF, eol_registry
 from steamzero.adapters import input_devices
-from steamzero.adapters.flatpak import FlatpakState
+from steamzero.adapters.flatpak import FlatpakExecutor, FlatpakPlan, FlatpakState
 from steamzero.adapters.lifecycle import ComponentLifecycle, route_for
 from steamzero.adapters.registry import (
     AdapterRegistry,
@@ -452,6 +452,43 @@ class TestMetadataOnlyPlanning:
         assert plan.status == "pending"
         assert not [call for call in flatpak.calls if call[0] == "resolve"]
 
+    def test_flatpak_commit_crash_rolls_outer_plan_and_job_fact_forward(
+        self,
+        store: state.StateStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        flatpak = FakeFlatpak()
+        lifecycle = bundled_with_fake(flatpak, store)
+        envelope = lifecycle.plan("retroarch", "install")
+        save_plan = FlatpakExecutor._save_plan
+
+        def lose_power_before_plan(self: FlatpakExecutor, candidate: FlatpakPlan) -> None:
+            if candidate.status == "applied":
+                raise SimulatedKill()
+            save_plan(self, candidate)
+
+        monkeypatch.setattr(FlatpakExecutor, "_save_plan", lose_power_before_plan)
+        with pytest.raises(SimulatedKill):
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        monkeypatch.setattr(FlatpakExecutor, "_save_plan", save_plan)
+
+        outer_before = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        delegated_id = outer_before["delegated"]["flatpakPlanId"]
+        assert outer_before["status"] == "pending"
+        assert (
+            json.loads(paths.plan_path(delegated_id).read_text(encoding="utf-8"))["status"]
+            == "pending"
+        )
+
+        recovered = lifecycle.recover()
+
+        assert any(item.get("planId") == envelope.plan_id for item in recovered)
+        assert lifecycle._apply_status(envelope.plan_id) == "applied"
+        assert (
+            json.loads(paths.plan_path(delegated_id).read_text(encoding="utf-8"))["status"]
+            == "applied"
+        )
+
     def test_libretro_plan_never_downloads_archive(
         self, store: state.StateStore, tmp_path: Path
     ) -> None:
@@ -513,6 +550,26 @@ class TestMetadataOnlyPlanning:
         with pytest.raises(SteamZeroError) as error:
             lifecycle.validate_apply(plan.plan_id, "token-incorreto")
         assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+
+    def test_expired_confirmation_aborts_plan_without_effect(self, store: state.StateStore) -> None:
+        from dataclasses import replace as dataclass_replace
+
+        payload = executable_payload()
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({}),
+        )
+        plan = lifecycle.plan("demo-emulator", "install")
+        lifecycle._save_plan(dataclass_replace(plan, expires_at="2020-01-01T00:00:00+00:00"))
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.validate_apply(plan.plan_id, plan.confirm_token)
+
+        assert error.value.code == "E-TX-CONFIRM-REQUIRED"
+        saved = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+        assert lifecycle.status("demo-emulator")["state"] == "missing"
 
 
 class TestPlanSurvivesProcess:
@@ -637,6 +694,8 @@ class TestPlanSurvivesProcess:
         assert second.status("demo-emulator")["state"] == "missing", (
             "plano stale não pode ter efeito"
         )
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
 
     def test_corrupt_v2_plan_is_rejected_before_deserialization(
         self, store: state.StateStore, tmp_path: Path
@@ -1101,7 +1160,7 @@ class TestRepairTransactionality:
         assert row["operation_id"] is None
         assert lifecycle.status("demo-emulator")["state"] == "degraded"
 
-    def test_interruption_after_effect_is_committed_and_idempotent(
+    def test_interruption_before_commit_is_rolled_back_and_idempotent(
         self, store: state.StateStore, tmp_path: Path
     ) -> None:
         lifecycle = self._corrupted(store, tmp_path)
@@ -1116,12 +1175,35 @@ class TestRepairTransactionality:
         assert lifecycle.status("demo-emulator")["state"] == "repairing"
         recovered = lifecycle.recover()
         repair = next(item for item in recovered if item["executor"] == "repair")
+        assert repair["state"] == "rolled-back"
+        assert repair["observedState"] == "degraded"
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+        assert lifecycle.recover() == [], "recovery é idempotente"
+
+    def test_interruption_after_durable_commit_is_kept_and_idempotent(
+        self, store: state.StateStore, tmp_path: Path
+    ) -> None:
+        lifecycle = self._corrupted(store, tmp_path)
+        envelope = self._repair_plan(lifecycle)
+        self._crash_at("apply.after-commit")
+        try:
+            with pytest.raises(SimulatedKill):
+                lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        finally:
+            set_crash_hook(None)
+
+        recovered = lifecycle.recover()
+        repair = next(item for item in recovered if item["executor"] == "repair")
         assert repair["state"] == "committed"
         assert repair["observedState"] == "installed"
         assert lifecycle.status("demo-emulator")["state"] == "installed"
-        assert lifecycle.recover() == [], "recovery é idempotente"
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "applied"
+        assert lifecycle.recover() == []
 
-    def test_restart_reuses_existing_repair_operation(
+    def test_restart_requires_recovery_and_retry_uses_new_plan(
         self, store: state.StateStore, tmp_path: Path
     ) -> None:
         lifecycle = self._corrupted(store, tmp_path)
@@ -1135,15 +1217,25 @@ class TestRepairTransactionality:
 
         first_id = str(store.get_component("demo-emulator")["operation_id"])  # type: ignore[index]
 
-        # Reaplicar o mesmo plano (ainda pendente) reusa a operação em curso.
-        result = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        with pytest.raises(SteamZeroError) as interrupted:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert interrupted.value.code == "E-TX-STALE-PLAN"
+
+        recovered = lifecycle.recover()
+        assert any(item["executor"] == "transaction" for item in recovered)
+        assert any(item["executor"] == "repair" for item in recovered)
+        saved = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert saved["status"] == "aborted"
+
+        replacement = lifecycle._retry_apply(envelope.plan_id)
+        assert replacement["planId"] != envelope.plan_id
+        result = lifecycle._apply_validated(replacement["planId"])
         assert result["status"] == "ok"
 
         operation_files = sorted(paths.component_operations_dir().glob("*.json"))
-        assert [p.stem for p in operation_files] == [first_id], (
-            "restart não pode criar operação nova"
-        )
-        assert json.loads(operation_files[0].read_text(encoding="utf-8"))["state"] == "committed"
+        assert first_id in {path.stem for path in operation_files}
+        states = {json.loads(path.read_text(encoding="utf-8"))["state"] for path in operation_files}
+        assert states == {"rolled-back", "committed"}
         row = store.get_component("demo-emulator")
         assert row is not None and row["state"] == "installed"
         assert row["operation_id"] is None
@@ -1236,6 +1328,12 @@ class TestRepairTransactionality:
         )
         assert row["operation_id"] is None
         assert lifecycle.status("retroarch")["state"] == "degraded"
+        statuses = {
+            path.name: json.loads(path.read_text(encoding="utf-8"))["status"]
+            for path in paths.plans_dir().glob("*.json")
+        }
+        assert statuses[paths.plan_path(envelope.plan_id).name] == "aborted"
+        assert set(statuses.values()) == {"aborted"}
 
 
 class TestAdversarialLifecycleClosure:
@@ -1355,5 +1453,5 @@ class TestAdversarialLifecycleClosure:
         assert config.read_bytes() == before_config
         assert (
             json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"]
-            == "pending"
+            == "aborted"
         )

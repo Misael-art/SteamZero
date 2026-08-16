@@ -664,6 +664,45 @@ def apply(
     smoke: Callable[[], None] | None = None,
     dry_run: bool = False,
 ) -> ApplyResult:
+    """Aplica e encerra a autorização após qualquer tentativa confirmada."""
+    plan = load_plan(plan_id)
+    if plan.status != "pending":
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN", detail=f"plano não está pendente (status={plan.status})"
+        )
+    if confirm_token != plan.confirm_token:
+        raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken ausente ou incorreto")
+    if _now() > datetime.fromisoformat(plan.expires_at):
+        _mark_plan(plan, "aborted")
+        raise SteamZeroError("E-TX-CONFIRM-REQUIRED", detail="confirmToken expirado")
+    if _operation_ids_for_plan(plan_id):
+        raise SteamZeroError(
+            "E-TX-STALE-PLAN",
+            detail="tentativa interrompida; execute recovery antes de replanejar",
+        )
+    if dry_run:
+        return _apply_unterminalized(
+            plan_id,
+            confirm_token,
+            smoke=smoke,
+            dry_run=True,
+        )
+    try:
+        return _apply_unterminalized(plan_id, confirm_token, smoke=smoke)
+    except Exception:
+        current = load_plan(plan_id)
+        if current.status == "pending":
+            _mark_plan(current, "aborted")
+        raise
+
+
+def _apply_unterminalized(
+    plan_id: str,
+    confirm_token: str,
+    *,
+    smoke: Callable[[], None] | None = None,
+    dry_run: bool = False,
+) -> ApplyResult:
     """Aplica o plano após validar token e precondições. Ver módulo para garantias."""
     plan = load_plan(plan_id)
     if plan.status != "pending":
@@ -1938,6 +1977,41 @@ def recover_operation(operation_id: str) -> RecoveryResult:
         if exc.code == "E-TX-ROLLBACK-FAILED":
             return RecoveryResult(operation_id, "rollback-failed")
         raise
+
+
+def _operation_ids_for_plan(plan_id: str) -> list[str]:
+    """Localiza operações iniciadas pela identidade durável do plano."""
+    journal_dir = paths.journal_dir()
+    if not journal_dir.is_dir():
+        return []
+    operation_ids: list[str] = []
+    for entry in sorted(journal_dir.glob("*.jsonl")):
+        records = journal.read_records(entry.stem)
+        if any(
+            record.get("type") == "operation.begin" and record.get("planId") == plan_id
+            for record in records
+        ):
+            operation_ids.append(entry.stem)
+    return operation_ids
+
+
+def recover_plan(plan_id: str) -> list[RecoveryResult]:
+    """Recupera somente operações de um plano e encerra sua autorização.
+
+    Usado por owners que persistem uma referência ao plano delegado. Um crash
+    real (``BaseException``/SIGKILL) deixa o plano pending até este ponto; após
+    reconciliar os journals correspondentes, o plano vira applied quando o
+    commit foi mantido e aborted em qualquer outra saída.
+    """
+    plan = load_plan(plan_id)
+    if plan.status != "pending":
+        return []
+    results = [recover_operation(operation_id) for operation_id in _operation_ids_for_plan(plan_id)]
+    current = load_plan(plan_id)
+    if current.status == "pending":
+        terminal = "applied" if any(result.outcome == "kept" for result in results) else "aborted"
+        _mark_plan(current, terminal)
+    return results
 
 
 def recover_all() -> list[RecoveryResult]:

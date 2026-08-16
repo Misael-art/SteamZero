@@ -13,7 +13,13 @@ from types import TracebackType
 import pytest
 
 from steamzero.adapters import flatpak as flatpak_module
-from steamzero.adapters.flatpak import CommandResult, FlatpakCLI, FlatpakExecutor, FlatpakState
+from steamzero.adapters.flatpak import (
+    CommandResult,
+    FlatpakCLI,
+    FlatpakExecutor,
+    FlatpakPlan,
+    FlatpakState,
+)
 from steamzero.adapters.registry import AdapterRegistry, load_manifest
 from steamzero.api import contracts
 from steamzero.core import fs, paths, state
@@ -522,6 +528,8 @@ def test_job_cancellation_rolls_back_and_preserves_cancel_signal(
     operation = next(paths.component_operations_dir().glob("*.json"))
     payload = json.loads(operation.read_text(encoding="utf-8"))
     assert payload["status"] == "rolled-back"
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
 
 
 @pytest.mark.rt
@@ -589,6 +597,8 @@ def test_smoke_failure_rolls_back_automatically(store: state.StateStore) -> None
     assert error.value.code == "E-COMPONENT-UPDATE-ROLLEDBACK"
     assert error.value.operation_id is not None
     assert flatpak.current == before
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
 
 
 @pytest.mark.fi
@@ -609,7 +619,41 @@ def test_power_loss_after_deploy_is_recovered_to_snapshot(store: state.StateStor
     assert len(recovered) == 1
     assert recovered[0].status == "rolled-back"
     assert flatpak.current == before
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
     assert executor(store, flatpak).recover() == []
+
+
+@pytest.mark.fi
+@pytest.mark.rt
+def test_power_loss_after_flatpak_commit_rolls_plan_forward(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    save_plan = service._save_plan
+
+    def lose_power_before_plan(candidate: FlatpakPlan) -> None:
+        if candidate.status == "applied":
+            raise SimulatedPowerLoss()
+        save_plan(candidate)
+
+    monkeypatch.setattr(service, "_save_plan", lose_power_before_plan)
+    with pytest.raises(SimulatedPowerLoss):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    operation = next(paths.component_operations_dir().glob("*.json"))
+    saved_operation = json.loads(operation.read_text(encoding="utf-8"))
+    assert saved_operation["status"] == "committed"
+    assert json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"] == (
+        "pending"
+    )
+
+    recovered_status = executor(store, flatpak).recover_plan(plan.plan_id)
+    assert recovered_status == "applied"
+    assert flatpak.current.commit == TARGET
 
 
 @pytest.mark.fi

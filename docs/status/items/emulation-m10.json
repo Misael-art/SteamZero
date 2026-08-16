@@ -14,7 +14,11 @@
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
+<<<<<<< HEAD
   "scopeDigest": "a616b110a476776f0217e5a8b7fd86959b53509457593276671769240975ca5a",
+=======
+  "scopeDigest": "78af5fdc47b47176f05d956cf7a23cf2b05073c9fb9930f97699924a496a086d",
+>>>>>>> bacb5b8 (fix(components): terminalize interrupted plans)
   "dependsOn": [],
   "knownGaps": [
     "DEBT-A7",

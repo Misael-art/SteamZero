@@ -308,11 +308,23 @@ class JobManager:
         self._transition(job, terminal)
 
     # -- recuperação pós-reboot --------------------------------------------
-    def recover(self, *, job_types: set[str] | None = None) -> list[Job]:
+    def recover(
+        self,
+        *,
+        job_types: set[str] | None = None,
+        completed_job_ids: set[str] | None = None,
+    ) -> list[Job]:
         """Jobs 'running' viram 'interrupted' e são resolvidos (JOB-LIFECYCLE §Recuperação)."""
         recovered: list[Job] = []
+        committed = completed_job_ids or set()
         for job in self.list_jobs(states=["running", "cancelling"]):
             if job_types is not None and job.type not in job_types:
+                continue
+            if job.id in committed:
+                if job.state == "running":
+                    self._transition(job, "interrupted")
+                self._transition(job, "completed")
+                recovered.append(self._require(job.id))
                 continue
             if job.state == "cancelling":
                 self._transition(job, "cancelled")

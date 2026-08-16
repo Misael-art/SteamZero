@@ -47,7 +47,17 @@
     "delegated": {
       "type": "object",
       "additionalProperties": false,
-      "maxProperties": 0
+      "maxProperties": 1,
+      "properties": {
+        "flatpakPlanId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "transactionPlanId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        }
+      }
     },
     "preview": {"type": "string", "minLength": 1}
   }
