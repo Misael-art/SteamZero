@@ -21,7 +21,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-TOOLS | 35 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 34 | 8 | 7 | dev |  |
+| SZ-COMPONENT-LIFECYCLE | 34 | 9 | 8 | dev |  |
 | SZ-EMULATION-M10 | 9 | 7 | 5 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |

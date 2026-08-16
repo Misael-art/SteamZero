@@ -13,7 +13,7 @@ from steamzero.adapters.flatpak import flatpak_operation_observer
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.registry import AdapterRegistry
 from steamzero.core.errors import SteamZeroError
-from steamzero.core.net import transfer_observer
+from steamzero.core.net import network_environment_snapshot, transfer_observer
 from steamzero.core.state import StateStore
 from steamzero.jobs.manager import JobContext, JobManager
 from steamzero.jobs.models import Job
@@ -25,6 +25,8 @@ class LifecyclePort(Protocol):
     def validate_apply(self, plan_id: str, confirm_token: str) -> dict[str, str]: ...
 
     def apply(self, plan_id: str, confirm_token: str) -> dict[str, Any]: ...
+
+    def _apply_validated(self, plan_id: str) -> dict[str, Any]: ...
 
 
 StoreFactory = Callable[[], StateStore]
@@ -64,7 +66,6 @@ class ComponentJobService:
                 _JOB_TYPE,
                 params={
                     "planId": plan_id,
-                    "confirmToken": confirm_token,
                     "adapterId": metadata["adapterId"],
                     "action": metadata["action"],
                     "executor": metadata["executor"],
@@ -202,6 +203,22 @@ class ComponentJobService:
             context.safepoint()
             context.set_progress("preparing", current=0, total=1, unit="steps")
             adapter_id = str(job.params["adapterId"])
+            executor = str(job.params["executor"])
+            snapshot = network_environment_snapshot()
+            context.checkpoint(
+                {
+                    "kind": "component-diagnostic",
+                    "adapterId": adapter_id,
+                    "executor": executor,
+                    "network": {
+                        "phase": "not-observed",
+                        "host": None,
+                        "dns": "not-observed",
+                        "proxy": snapshot["proxy"],
+                        "environment": snapshot["environment"],
+                    },
+                }
+            )
 
             def transfer_progress(current: int, total: int | None) -> None:
                 context.safepoint()
@@ -223,20 +240,33 @@ class ComponentJobService:
                     current_item=adapter_id,
                 )
 
+            def network_diagnostic(diagnostic: dict[str, object]) -> None:
+                context.checkpoint(
+                    {
+                        "kind": "component-diagnostic",
+                        "adapterId": adapter_id,
+                        "executor": executor,
+                        "network": diagnostic,
+                    }
+                )
+
             with (
                 transfer_observer(
                     progress=transfer_progress,
                     cancel_check=context.safepoint,
+                    diagnostic=network_diagnostic,
                 ),
                 flatpak_operation_observer(
                     progress=flatpak_progress,
                     cancel_check=context.safepoint,
                 ),
             ):
-                result = lifecycle.apply(
-                    str(job.params["planId"]),
-                    str(job.params["confirmToken"]),
-                )
+                plan_id = str(job.params["planId"])
+                legacy_token = job.params.get("confirmToken")
+                if isinstance(legacy_token, str) and legacy_token:
+                    result = lifecycle.apply(plan_id, legacy_token)
+                else:
+                    result = lifecycle._apply_validated(plan_id)
             context.safepoint()
             operation_id = result.get("operationId")
             if isinstance(operation_id, str) and operation_id:
@@ -282,6 +312,11 @@ class ComponentJobService:
             "progress": job.progress,
             "errorCode": job.error_code,
             "result": job.result,
+            "diagnostics": [
+                checkpoint
+                for checkpoint in job.checkpoints
+                if isinstance(checkpoint, dict) and checkpoint.get("kind") == "component-diagnostic"
+            ],
             "canCancel": job.state in {"queued", "blocked", "paused", "running"},
             "canRetry": job.state in {"cancelled", "rolled-back", "rollback-failed"},
             "createdAt": job.created_at,

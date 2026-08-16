@@ -47,6 +47,9 @@ class BlockingLifecycle:
             "adapterId": "demo-emulator",
         }
 
+    def _apply_validated(self, plan_id: str) -> dict[str, str]:
+        return self.apply(plan_id, "confirm-token")
+
 
 class RetryLifecycle(BlockingLifecycle):
     def __init__(self) -> None:
@@ -180,6 +183,29 @@ def test_start_returns_immediately_and_deduplicates_repeated_confirmation(job_en
     assert first["state"] in {"queued", "running"}
     assert lifecycle.started.wait(timeout=1)
 
+    with state.open_state() as store:
+        persisted = JobManager(store).get(str(first["jobId"]))
+    assert persisted is not None
+    assert persisted.params == {
+        "planId": "01M000000000000000000000AA",
+        "adapterId": "demo-emulator",
+        "action": "install",
+        "executor": "engine",
+    }
+
+    observed = service.get(str(first["jobId"]))
+    assert observed is not None
+    assert len(observed["diagnostics"]) == 1
+    diagnostic = observed["diagnostics"][0]
+    assert diagnostic["kind"] == "component-diagnostic"
+    assert diagnostic["adapterId"] == "demo-emulator"
+    assert diagnostic["executor"] == "engine"
+    assert diagnostic["network"]["phase"] == "not-observed"
+    assert diagnostic["network"]["host"] is None
+    assert diagnostic["network"]["dns"] == "not-observed"
+    assert set(diagnostic["network"]["proxy"]) == {"configured", "schemes"}
+    assert set(diagnostic["network"]["environment"]) == {"sandboxed", "variables"}
+
     repeated = service.start("01M000000000000000000000AA", "confirm-token")
     assert repeated["jobId"] == first["jobId"]
     assert lifecycle.apply_calls == 1
@@ -251,7 +277,16 @@ def test_download_persists_real_byte_progress_while_job_is_running(job_env: None
         }
     finally:
         response.release.set()
-    assert _wait_terminal(service, str(job["jobId"]))["state"] == "succeeded"
+    completed = _wait_terminal(service, str(job["jobId"]))
+    assert completed["state"] == "succeeded"
+    network = [item["network"] for item in completed["diagnostics"]]
+    assert [item["phase"] for item in network] == [
+        "not-observed",
+        "starting",
+        "completed",
+    ]
+    assert network[-1]["host"] == "downloads.example"
+    assert network[-1]["dns"] == "resolved"
 
 
 def test_cancel_during_download_stops_before_apply_and_terminalizes(job_env: None) -> None:
@@ -271,7 +306,7 @@ def test_cancel_during_download_stops_before_apply_and_terminalizes(job_env: Non
     assert lifecycle.applied is False
 
 
-def test_recover_resumes_persisted_queued_component_job(job_env: None) -> None:
+def test_recover_resumes_legacy_persisted_component_job(job_env: None) -> None:
     job_id = _persist_component_job()
     lifecycle = BlockingLifecycle()
     lifecycle.release.set()
