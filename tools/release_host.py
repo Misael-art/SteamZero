@@ -1609,6 +1609,26 @@ def _state_db_fingerprint() -> str:
             sqlite3.connect(snapshot) as destination,
         ):
             source.backup(destination)
+        # O daemon amostra o ambiente do host a cada poucos segundos. Reiniciá-lo
+        # durante a ativação pode registrar somente uma nova observação de rede,
+        # energia ou tela; isso não é uma mutação do estado funcional que o
+        # update precisa preservar. Normalizamos apenas esses registros efêmeros
+        # na cópia, mantendo jobs, operações, planos e todo o restante sob hash.
+        with sqlite3.connect(snapshot) as normalized:
+            tables = {
+                str(row[0])
+                for row in normalized.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            if "session_environment" in tables:
+                normalized.execute("DELETE FROM session_environment")
+            if "event_log" in tables:
+                normalized.execute(
+                    "DELETE FROM event_log WHERE kind IN ('session.environment', 'session.resume')"
+                )
+                if "sqlite_sequence" in tables:
+                    normalized.execute("DELETE FROM sqlite_sequence WHERE name='event_log'")
+            normalized.commit()
+            normalized.execute("VACUUM")
         return _sha256(snapshot)
     except sqlite3.Error as exc:
         raise AutomationError(f"não foi possível fotografar state.db com WAL: {exc}") from exc
