@@ -155,6 +155,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_editorial_library.qml",
         "check_editorial_canonical_systems.qml",
         "check_media_effect_layer.qml",
+        "check_asset_recipe_preview.qml",
         "check_operational_metric_card.qml",
         "check_handheld_layout_focus.qml",
         "check_main_handheld_sections.qml",
@@ -165,6 +166,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_packaged_assets.qml",
         # Identidade AURA no editor: preview no ThemeBridge, cancelar restaura.
         "check_theme_editor_aura.qml",
+        "check_theme_editor_asset_recipes.qml",
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:

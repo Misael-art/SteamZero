@@ -9,6 +9,7 @@ from typing import Any
 import jsonschema
 
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.asset_recipes import validate_asset_source
 from steamzero.domain.theme_effects import PerformanceTier
 from steamzero.domain.themes import (
     THEME_API_VERSION,
@@ -46,9 +47,15 @@ _PROHIBITED_FILES = frozenset(
 
 
 def _load_manifest_schema() -> dict[str, Any]:
-    ref = importlib.resources.files("steamzero.schemas").joinpath("theme-manifest-v1.schema.json")
+    schemas = importlib.resources.files("steamzero.schemas")
+    ref = schemas.joinpath("theme-manifest-v1.schema.json")
     with importlib.resources.as_file(ref) as path:
         loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    # ``jsonschema.validate`` não recebe o registry multi-arquivo usado pela API.
+    # Injetar o schema empacotado preserva a mesma validação sem buscar a rede.
+    asset_ref = schemas.joinpath("asset-recipe-v1.schema.json")
+    with importlib.resources.as_file(asset_ref) as path:
+        loaded["properties"]["assetRecipes"] = json.loads(path.read_text(encoding="utf-8"))
     return loaded
 
 
@@ -191,10 +198,15 @@ def _check_file_limits(directory: Path) -> tuple[int, int]:
         ext = entry.suffix.lower()
         if ext in _PROHIBITED_FILES:
             raise SteamZeroError("E-THEME-UNSAFE", detail=f"tipo de arquivo proibido: {ext}")
-        if ext in _ALLOWED_RASTER and size > _MAX_ASSET_BYTES:
+        if ext in _ALLOWED_RASTER | {_ALLOWED_SVG_EXT} and size > _MAX_ASSET_BYTES:
             raise SteamZeroError(
                 "E-THEME-LIMIT", detail=f"asset muito grande: {entry.name} ({size} bytes)"
             )
+        if ext == _ALLOWED_SVG_EXT:
+            try:
+                validate_asset_source(entry.read_bytes())
+            except (OSError, ValueError) as exc:
+                raise SteamZeroError("E-THEME-UNSAFE", detail=f"{entry.name}: {exc}") from exc
     return file_count, total_bytes
 
 

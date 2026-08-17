@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "steamzero-theme-v1",
+  "id": "org.steamzero.asset-recipes-demo",
+  "name": "Theme Engine — asset único",
+  "version": "1.0.0",
+  "author": "SteamZero contributors",
+  "license": "CC0-1.0",
+  "description": "Fixture original e redistribuível para provar variantes geradas em runtime a partir de uma única fonte transparente.",
+  "compatibility": { "themeApi": 1 },
+  "extends": "org.steamzero.default",
+  "assets": {
+    "logo": "assets/source.svg"
+  },
+  "assetRecipes": {
+    "schemaVersion": 1,
+    "sourceSlot": "logo",
+    "recipes": {
+      "original": {
+        "source": "logo",
+        "nodes": []
+      },
+      "colored": {
+        "source": "logo",
+        "nodes": [
+          { "type": "recolor", "color": "#22d3ee", "opacity": 1, "fallback": "source" }
+        ]
+      },
+      "grayscale": {
+        "source": "logo",
+        "nodes": [
+          { "type": "grayscale", "amount": 1, "fallback": "source" }
+        ]
+      },
+      "black": {
+        "source": "logo",
+        "nodes": [
+          { "type": "silhouette", "color": "#000000", "opacity": 1, "fallback": "source" }
+        ]
+      },
+      "white": {
+        "source": "logo",
+        "nodes": [
+          { "type": "silhouette", "color": "#ffffff", "opacity": 1, "fallback": "source" }
+        ]
+      },
+      "invert": {
+        "source": "logo",
+        "nodes": [
+          { "type": "invert", "amount": 1, "fallback": "source" }
+        ]
+      },
+      "hueShift": {
+        "source": "logo",
+        "nodes": [
+          { "type": "hueRotate", "degrees": 120, "fallback": "source" }
+        ]
+      },
+      "outlineThin": {
+        "source": "logo",
+        "nodes": [
+          { "type": "outline", "width": 2, "color": "#ffffff", "opacity": 1, "position": "outer", "mask": "alpha", "fallback": "outer" }
+        ]
+      },
+      "outlineThick": {
+        "source": "logo",
+        "nodes": [
+          { "type": "outline", "width": 8, "color": "#000000", "opacity": 1, "position": "outer", "mask": "alpha", "fallback": "outer" }
+        ]
+      },
+      "outlineInner": {
+        "source": "logo",
+        "nodes": [
+          { "type": "outline", "width": 3, "color": "#ffffff", "opacity": 0.9, "position": "inner", "mask": "alpha", "fallback": "outer" }
+        ]
+      },
+      "outlinedGlow": {
+        "source": "logo",
+        "nodes": [
+          { "type": "recolor", "color": "#22d3ee", "opacity": 1, "fallback": "source" },
+          { "type": "outline", "width": 3, "color": "#ffffff", "opacity": 0.9, "position": "outer", "mask": "alpha", "fallback": "outer" },
+          { "type": "glow", "color": "#22d3ee", "strength": 0.55, "blur": 18, "fallback": "source" }
+        ]
+      },
+      "outlinedShadow": {
+        "source": "logo",
+        "nodes": [
+          { "type": "outline", "width": 3, "color": "#ffffff", "opacity": 1, "position": "outer", "mask": "alpha", "fallback": "outer" },
+          { "type": "shadow", "color": "#000000", "opacity": 0.7, "blur": 10, "offsetX": 4, "offsetY": 6, "fallback": "source" }
+        ]
+      }
+    }
+  }
+}

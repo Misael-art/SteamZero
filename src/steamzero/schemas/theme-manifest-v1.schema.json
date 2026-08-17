@@ -266,6 +266,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "assetRecipes": {
+      "$ref": "asset-recipe-v1.schema.json",
+      "description": "Variantes derivadas em runtime de uma única fonte; nunca contém código ou assets pré-editados."
     }
   },
   "additionalProperties": false,

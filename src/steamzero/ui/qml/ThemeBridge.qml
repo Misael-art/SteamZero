@@ -36,6 +36,12 @@ QtObject {
     // Receita decide fit/focal/source role; a URL continua vindo do read model.
     readonly property var mediaRecipes: resolved && resolved.mediaRecipes
         ? resolved.mediaRecipes : ({})
+    // Variantes de asset já negociadas. O componente recebe somente nodes
+    // builtin; fonte e receitas continuam dados, nunca código executável.
+    readonly property var assetRecipes: resolved && resolved.assetRecipes
+        ? resolved.assetRecipes : ({})
+    readonly property var assetRecipeDiagnostics: resolved && resolved.assetRecipeDiagnostics
+        ? resolved.assetRecipeDiagnostics : ([])
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")

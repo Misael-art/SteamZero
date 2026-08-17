@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<!-- Original SteamZero test fixture. No third-party mark or redistributed logo. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <defs>
+    <linearGradient id="source-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.52" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#ff6b73"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#source-gradient)" fill-rule="evenodd">
+    <path d="M38 36h104v26H70v16h58c13 0 24 11 24 24v18c0 13-11 24-24 24H30v-26h90v-16H62c-13 0-24-11-24-24V36zm139 0h105c13 0 24 11 24 24v60c0 13-11 24-24 24H177c-13 0-24-11-24-24V60c0-13 11-24 24-24zm18 27v54h69V63h-69zm18 14h33v26h-33V77z"/>
+  </g>
+</svg>

@@ -44,6 +44,16 @@ Rectangle {
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
     // fazia o preview cair no fallback claro e publicar binding warnings.
     property var editorPreviewObject: null
+    property string assetRecipeSelection: "original"
+    readonly property bool assetRecipeDemoActive:
+        editorManifest.id === "org.steamzero.asset-recipes-demo"
+        && Object.keys(_previewBridge.assetRecipes).length > 0
+    readonly property url assetRecipeSource: assetRecipeDemoActive
+        ? Qt.resolvedUrl("../../themes/org.steamzero.asset-recipes-demo/assets/source.svg")
+        : ""
+    readonly property bool assetRecipePreviewReady:
+        assetRecipeDemoActive && assetRecipePreview.sourceStatus === Image.Ready
+    readonly property int assetRecipePreviewDecodeCount: assetRecipePreview.sourceDecodeCount
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -76,6 +86,7 @@ Rectangle {
         panel.editorManifest = manifest
         panel.editorPreviewObject = preview
         panel.editorTokens = preview && preview.resolved ? preview.resolved : {}
+        panel.assetRecipeSelection = "original"
         panel.editorDirty = false
         panel.editorReadOnly = manifest.readOnly === true
     }
@@ -790,6 +801,67 @@ Rectangle {
                                         font.pixelSize: 11
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.assetRecipeDemoActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 260 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label {
+                                    text: qsTr("Asset único · receita em runtime")
+                                    color: panel._previewBridge.text
+                                    font.pixelSize: 14
+                                    font.weight: Font.Medium
+                                    Layout.fillWidth: true
+                                }
+                                ComboBox {
+                                    id: assetRecipePicker
+                                    model: [
+                                        "original", "colored", "grayscale", "black", "white",
+                                        "outlineThin", "outlineThick", "outlineInner",
+                                        "outlinedGlow", "outlinedShadow"
+                                    ]
+                                    implicitWidth: 150
+                                    Accessible.name: qsTr("Variante do asset")
+                                    onActivated: panel.assetRecipeSelection = model[index]
+                                }
+                            }
+
+                            AssetRecipePreview {
+                                id: assetRecipePreview
+                                objectName: "assetRecipePreview"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.margins: 12
+                                source: panel.assetRecipeSource
+                                recipe: panel._previewBridge.assetRecipes[
+                                    panel.assetRecipeSelection] || ({
+                                        "source": "logo", "nodes": [], "fallback": "source"
+                                    })
+                            }
+
+                            Label {
+                                text: assetRecipePreview.fallbackActive
+                                    ? qsTr("Efeito indisponível; fonte segura exibida")
+                                    : qsTr("Fonte decodificada uma vez · cache por hash e tier")
+                                color: assetRecipePreview.fallbackActive
+                                    ? panel.amberColor : panel._previewBridge.textMuted
+                                font.pixelSize: 11
+                                Layout.alignment: Qt.AlignHCenter
                             }
                         }
                     }
