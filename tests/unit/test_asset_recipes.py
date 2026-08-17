@@ -13,6 +13,7 @@ from steamzero.domain.asset_recipes import (
     AssetRecipeCache,
     AssetRecipeNode,
     AssetRecipeNodeType,
+    CachePressure,
     resolve_asset_recipes,
     validate_asset_source,
 )
@@ -273,3 +274,93 @@ def test_contract_and_hashes_are_deterministic() -> None:
     assert [item.to_dict() for item in first_diagnostics] == [
         item.to_dict() for item in second_diagnostics
     ]
+
+
+def test_adaptive_cache_has_512_mib_ceiling_without_preallocation() -> None:
+    cache = AssetRecipeCache()
+    assert cache.configured_max_bytes == 512 * 1024 * 1024
+    assert cache.effective_max_bytes == 512 * 1024 * 1024
+    assert cache.resident_bytes == 0
+    assert len(cache) == 0
+
+
+def test_adaptive_cache_evicts_lru_by_estimated_rgba_bytes() -> None:
+    source = (PACKAGE / "assets/source.svg").read_bytes()
+    resolved, _ = resolve_asset_recipes(_book(), tier=PerformanceTier.BALANCED)
+    cache = AssetRecipeCache(max_entries=8, max_bytes=80_000)
+    first = cache.prepare(
+        source,
+        resolved["colored"],
+        size=(100, 100),
+        scale=1,
+        tier=PerformanceTier.BALANCED,
+        capabilities=DEFAULT_ASSET_CAPABILITIES,
+    )
+    second = cache.prepare(
+        source,
+        resolved["black"],
+        size=(100, 100),
+        scale=1,
+        tier=PerformanceTier.BALANCED,
+        capabilities=DEFAULT_ASSET_CAPABILITIES,
+    )
+    cache.prepare(
+        source,
+        resolved["colored"],
+        size=(100, 100),
+        scale=1,
+        tier=PerformanceTier.BALANCED,
+        capabilities=DEFAULT_ASSET_CAPABILITIES,
+    )
+    third = cache.prepare(
+        source,
+        resolved["white"],
+        size=(100, 100),
+        scale=1,
+        tier=PerformanceTier.BALANCED,
+        capabilities=DEFAULT_ASSET_CAPABILITIES,
+    )
+    assert first.cached and third.cached
+    assert cache.contains(first.cache_key)
+    assert not cache.contains(second.cache_key)
+    assert cache.contains(third.cache_key)
+    assert cache.resident_bytes == 80_000
+
+
+def test_memory_pressure_reduces_budget_and_oversize_degrades_without_disappearing() -> None:
+    source = (PACKAGE / "assets/source.svg").read_bytes()
+    resolved, _ = resolve_asset_recipes(_book(), tier=PerformanceTier.CINEMATIC)
+    cache = AssetRecipeCache(max_entries=8, max_bytes=160_000)
+    variants = [
+        cache.prepare(
+            source,
+            resolved[name],
+            size=(100, 100),
+            scale=1,
+            tier=PerformanceTier.CINEMATIC,
+            capabilities=DEFAULT_ASSET_CAPABILITIES,
+        )
+        for name in ("colored", "black", "white", "grayscale")
+    ]
+    assert cache.resident_bytes == 160_000
+
+    cache.set_pressure(CachePressure.CRITICAL)
+    assert cache.effective_max_bytes == 40_000
+    assert cache.resident_bytes == 40_000
+    assert sum(cache.contains(item.cache_key) for item in variants) == 1
+
+    oversized = cache.prepare(
+        source,
+        resolved["outlineThick"],
+        size=(200, 200),
+        scale=1,
+        tier=PerformanceTier.CINEMATIC,
+        capabilities=DEFAULT_ASSET_CAPABILITIES,
+    )
+    assert oversized.cached is False
+    assert oversized.fallback == "render-direct"
+    assert cache.resident_bytes == 40_000
+
+    cache.set_pressure(CachePressure.NORMAL)
+    assert cache.effective_max_bytes == 160_000
+    assert cache.resident_bytes == 40_000

@@ -15,7 +15,7 @@ import math
 import re
 from collections import OrderedDict
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -25,6 +25,7 @@ ASSET_RECIPE_SCHEMA_VERSION = 1
 MAX_ASSET_RECIPES = 32
 MAX_ASSET_NODES = 12
 MAX_OUTLINE_WIDTH = 32.0
+DEFAULT_CACHE_MAX_BYTES = 512 * 1024 * 1024
 _RECIPE_NAME = re.compile(r"^[a-z][a-zA-Z0-9]{0,63}$")
 
 
@@ -42,6 +43,12 @@ class AssetRecipeNodeType(StrEnum):
 class AssetRecipeFallback(StrEnum):
     SOURCE = "source"
     OUTER = "outer"
+
+
+class CachePressure(StrEnum):
+    NORMAL = "normal"
+    MODERATE = "moderate"
+    CRITICAL = "critical"
 
 
 @dataclass(frozen=True)
@@ -469,6 +476,9 @@ class PreparedAssetVariant:
     tier: PerformanceTier
     capabilities: tuple[str, ...]
     recipe: ResolvedAssetRecipe
+    estimated_bytes: int
+    cached: bool = True
+    fallback: str = "cache"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -480,6 +490,9 @@ class PreparedAssetVariant:
             "tier": self.tier.value,
             "capabilities": list(self.capabilities),
             "recipe": self.recipe.to_dict(),
+            "estimatedBytes": self.estimated_bytes,
+            "cached": self.cached,
+            "fallback": self.fallback,
         }
 
 
@@ -491,13 +504,61 @@ class AssetRecipeCache:
     quando somente a receita muda.
     """
 
-    def __init__(self, *, max_entries: int = 128) -> None:
+    def __init__(
+        self,
+        *,
+        max_entries: int = 128,
+        max_bytes: int = DEFAULT_CACHE_MAX_BYTES,
+    ) -> None:
         if max_entries < 1 or max_entries > 4096:
             raise ValueError("max_entries fora de [1, 4096]")
+        if max_bytes < 1 or max_bytes > DEFAULT_CACHE_MAX_BYTES:
+            raise ValueError("max_bytes fora de [1, 512 MiB]")
         self._max_entries = max_entries
+        self._configured_max_bytes = max_bytes
+        self._pressure = CachePressure.NORMAL
         self._entries: OrderedDict[str, PreparedAssetVariant] = OrderedDict()
+        self._resident_bytes = 0
         self._decoded_sources: set[str] = set()
         self.source_decodes = 0
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    @property
+    def configured_max_bytes(self) -> int:
+        return self._configured_max_bytes
+
+    @property
+    def effective_max_bytes(self) -> int:
+        factor = {
+            CachePressure.NORMAL: 1.0,
+            CachePressure.MODERATE: 0.5,
+            CachePressure.CRITICAL: 0.25,
+        }[self._pressure]
+        return max(1, int(self._configured_max_bytes * factor))
+
+    @property
+    def resident_bytes(self) -> int:
+        return self._resident_bytes
+
+    def contains(self, cache_key: str) -> bool:
+        return cache_key in self._entries
+
+    def set_pressure(self, pressure: CachePressure) -> None:
+        self._pressure = CachePressure(pressure)
+        self._evict_until_fits()
+
+    def _evict_one(self) -> None:
+        _cache_key, removed = self._entries.popitem(last=False)
+        self._resident_bytes -= removed.estimated_bytes
+
+    def _evict_until_fits(self, *, reserve_bytes: int = 0, reserve_entries: int = 0) -> None:
+        while self._entries and (
+            len(self._entries) + reserve_entries > self._max_entries
+            or self._resident_bytes + reserve_bytes > self.effective_max_bytes
+        ):
+            self._evict_one()
 
     def prepare(
         self,
@@ -537,6 +598,9 @@ class AssetRecipeCache:
         if cached is not None:
             self._entries.move_to_end(cache_key)
             return cached
+        pixel_width = math.ceil(width * scale)
+        pixel_height = math.ceil(height * scale)
+        estimated_bytes = pixel_width * pixel_height * 4
         prepared = PreparedAssetVariant(
             cache_key=cache_key,
             source_hash=source_hash,
@@ -546,11 +610,14 @@ class AssetRecipeCache:
             tier=tier,
             capabilities=capability_list,
             recipe=recipe,
+            estimated_bytes=estimated_bytes,
         )
+        if estimated_bytes > self.effective_max_bytes:
+            return replace(prepared, cached=False, fallback="render-direct")
+        self._evict_until_fits(reserve_bytes=estimated_bytes, reserve_entries=1)
         self._entries[cache_key] = prepared
+        self._resident_bytes += estimated_bytes
         self._entries.move_to_end(cache_key)
-        while len(self._entries) > self._max_entries:
-            self._entries.popitem(last=False)
         return prepared
 
 
@@ -584,6 +651,7 @@ def validate_asset_source(source: bytes) -> None:
 __all__ = [
     "ASSET_RECIPE_SCHEMA_VERSION",
     "DEFAULT_ASSET_CAPABILITIES",
+    "DEFAULT_CACHE_MAX_BYTES",
     "MAX_ASSET_NODES",
     "MAX_ASSET_RECIPES",
     "MAX_OUTLINE_WIDTH",
@@ -594,6 +662,7 @@ __all__ = [
     "AssetRecipeFallback",
     "AssetRecipeNode",
     "AssetRecipeNodeType",
+    "CachePressure",
     "PreparedAssetVariant",
     "ResolvedAssetNode",
     "ResolvedAssetRecipe",
