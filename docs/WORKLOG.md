@@ -6410,3 +6410,25 @@ executada. Assim, não há captura da release instalada nem medição física de
 GPU, frame time ou memória; nenhuma alegação de 60 FPS foi feita. SZ-THEME-ENGINE
 permanece partial, e SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
 promovidos.
+
+## 2026-08-17 — Theme Engine — cache adaptativo por orçamento
+
+Com a entrega física do slice asset-único bloqueada pela ausência de release
+exata autorizada, a frente avançou no próximo trabalho seguro e independente.
+O baseline mostrou que `AssetRecipeCache` limitava apenas a quantidade de
+entradas; não havia orçamento em bytes nem reação à pressão de memória. O teste
+vermelho falhou na coleta pela ausência de `CachePressure`.
+
+O commit funcional `ff82210` adiciona teto padrão de 512 MiB sem pré-alocar,
+estimativa determinística RGBA pelo tamanho e escala, LRU simultâneo por entradas
+e bytes, pressão normal/moderada/crítica (100%/50%/25%) e fallback
+`render-direct` quando uma variante isolada excede o orçamento. Reduzir o
+orçamento remove primeiro a entrada menos recente; restaurá-lo não pré-aloca nem
+recarrega derivados. O cache continua descartável e sua chave permanece ligada
+a fonte, receita, tamanho, escala, tier e capabilities.
+
+Fechamento local único desta onda: **4488 passed, 10 skipped**; Ruff check,
+Ruff format, mypy, independence, boundaries, status-check, harnesses QML e 12
+goldens RHI verdes. A contabilidade de bytes é um contrato de desenvolvimento,
+não uma medição de VRAM real. Nenhuma release/instalação/ação de host foi
+executada e os estados das quatro capacidades não foram promovidos.

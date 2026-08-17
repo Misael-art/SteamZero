@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "3036f57ce396a9ae8022cbae4d42b03f9cada938e54fdcde31afafd3b598086f",
+  "scopeDigest": "dd49064179c0f7453d5436c26b824a256c750c793031d33a38d1ebd6139e1f16",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -81,12 +81,24 @@
       "reference": "tests/integration/test_qml_asset_recipes.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; ruff check; ruff format --check; mypy; make independence boundaries status-check; harnesses QML e goldens RHI",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_asset_recipes.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_asset_recipes.py -q (22 passed; budget adaptativo e pressao de memoria)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_asset_recipes.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (4488 passed); ruff check; ruff format --check; mypy; make independence boundaries status-check; harnesses QML e 12 goldens RHI",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar gates e CI do slice asset-unico; obter autorizacao com release exata para publicar, instalar e produzir evidencia fisica. Enquanto essa dependencia externa persistir, iniciar a onda de cache adaptativo.",
+  "nextAction": "Fechar gates e CI do cache adaptativo; obter autorizacao com release exata para a entrega fisica pendente. Depois, iniciar layouts, repeaters, bindings e breakpoints.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Os commits 9d126ea e 06b3a0f possuem contrato versionado de receitas, fixture CC0 com uma unica fonte SVG transparente, cache deterministico de planos descartaveis, negociacao de capability/tier/fallback e preview QML integrado com recolor, grayscale, silhuetas, contorno externo, glow e shadow. Invert, hue rotate e outline interno possuem contrato allowlisted e fallback diagnosticado, mas ainda nao possuem backend nativo. O fechamento local observou 4485 testes passed, 10 skipped, Ruff, format, mypy, independence, boundaries, status e 12 goldens RHI verdes. Os goldens RHI sao somente evidencia de desenvolvimento offscreen, nao de desempenho ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; por isso publicacao, instalacao, frame time, memoria, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados para este slice. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa; nao inclui nem certifica este slice. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
+  "notes": "Estado permanece parcial. Os commits 9d126ea e 06b3a0f possuem contrato versionado de receitas, fixture CC0 com uma unica fonte SVG transparente, cache deterministico de planos descartaveis, negociacao de capability/tier/fallback e preview QML integrado com recolor, grayscale, silhuetas, contorno externo, glow e shadow. O commit ff82210 acrescenta LRU adaptativo por bytes com teto configurado padrao de 512 MiB sem pre-alocacao, pressao normal/moderada/critica, eviction deterministica e render direto seguro para entrada acima do orcamento. Isso e contabilidade de desenvolvimento; nao e medicao de VRAM fisica. Invert, hue rotate e outline interno possuem contrato allowlisted e fallback diagnosticado, mas ainda nao possuem backend nativo. O fechamento do cache adaptativo observou 4488 testes passed, 10 skipped, Ruff, format, mypy, independence, boundaries, status e 12 goldens RHI verdes. Os goldens RHI sao somente evidencia de desenvolvimento offscreen, nao de desempenho ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; por isso publicacao, instalacao, frame time, memoria, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados para este slice. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa; nao inclui nem certifica estes slices. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
 }
