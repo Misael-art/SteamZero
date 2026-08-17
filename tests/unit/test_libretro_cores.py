@@ -141,10 +141,13 @@ def test_component_lifecycle_refuses_a_substituted_core_delegate(
         libretro_archive_reader=_archive_reader(payload, "mgba"),
     )
     planned = lifecycle.plan("libretro-mgba")
+    prepared = lifecycle._libretro().plan_install("libretro-mgba")  # type: ignore[attr-defined]
     alien = transaction.plan_write_files({}, root=tmp_path / "not-cores", kind="component.install")
     forged = planned.to_dict()
+    forged["schemaVersion"] = 2
+    forged["confirmToken"] = prepared.plan.confirm_token
     forged["delegated"] = {"transactionPlanId": alien.plan_id}
     fs.write_atomic_text(paths.plan_path(planned.plan_id), json.dumps(forged))
 
     with pytest.raises(SteamZeroError, match="plano não pertence a um core Libretro"):
-        lifecycle.apply(planned.plan_id, planned.confirm_token)
+        lifecycle.apply(planned.plan_id, prepared.plan.confirm_token)

@@ -121,6 +121,33 @@ def test_verify_failure_triggers_rollback(env: tuple[Path, Path]) -> None:
         )
     assert ei.value.code == "E-TX-VERIFY-FAILED"
     assert target.read_text() == "orig"  # restaurado
+    assert transaction.load_plan(plan.plan_id).status == "aborted"
+
+
+def test_interrupted_plan_refuses_reapply_until_recovery(env: tuple[Path, Path]) -> None:
+    sandbox, _ = env
+    target = sandbox / "interrupted.txt"
+    plan = transaction.plan_write_files({target: b"payload"}, root=sandbox)
+
+    def crash(stage: str) -> None:
+        if stage == "apply.begin":
+            raise transaction.SimulatedKill()
+
+    transaction.set_crash_hook(crash)
+    try:
+        with pytest.raises(transaction.SimulatedKill):
+            transaction.apply(plan.plan_id, plan.confirm_token)
+    finally:
+        transaction.set_crash_hook(None)
+
+    with pytest.raises(SteamZeroError) as interrupted:
+        transaction.apply(plan.plan_id, plan.confirm_token)
+    assert interrupted.value.code == "E-TX-STALE-PLAN"
+    assert transaction.load_plan(plan.plan_id).status == "pending"
+
+    recovered = transaction.recover_plan(plan.plan_id)
+    assert [item.outcome for item in recovered] == ["rolled-back"]
+    assert transaction.load_plan(plan.plan_id).status == "aborted"
 
 
 def test_explicit_rollback_after_apply(env: tuple[Path, Path]) -> None:

@@ -10,11 +10,14 @@
   "operation": "degraded",
   "distribution": "installed",
   "scopePaths": [
+    "docs/03-architecture/TRANSACTION-MODEL.md",
+    "docs/06-api/ERROR-CATALOG.md",
+    "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig",
     "src/steamzero/adapters/flatpak.py",
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
-  "scopeDigest": "c2e87688b7700e190392f8c9b859ce192c507700ebb0e3d9ccbbe8ec3ebae831",
+  "scopeDigest": "d9155a2078b13ba978d13e40a035e1ddeb631669ce38ceacecd36882028524b8",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-A7",
@@ -37,12 +40,55 @@
       "reference": "docs/WORKLOG.md",
       "command": "r18/r19 e ciclos posteriores do harness M10",
       "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/WORKLOG.md",
+      "command": "tools/run_tests_isolated.py tests/unit/test_retroarch_autoconfig.py tests/unit/test_input_devices.py",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/README.md",
+      "command": "flatpak run org.libretro.RetroArch --verbose --menu",
+      "result": "partial"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-13-retroarch-autoconfig/README.md",
+      "command": "A/B com joypad virtual uinput: sem overlay vs --appendconfig",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/WORKLOG.md",
+      "command": "tests/failure_injection (FI-05 + FI-06: 53 testes, custodia durável, recovery pos-crash, symlink e move seguros, EXDEV)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/WORKLOG.md",
+      "command": "suíte isolada completa do repo: 4573 passed",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar/README.md",
+      "command": "plan_recovery/apply_recovery no host real: planos Flatpak/component expirados terminalizados sem alterar deployments",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar/README.md",
+      "command": "Azahar físico: install/verify/noop/repair/falha com rollback/uninstall preservando dados",
+      "result": "passed"
     }
   ],
-  "nextAction": "Escrever o autoconfig gerenciado do RetroArch a partir da traducao RetroPad (resolver indice contra o pad real, arquivo com marcador, nunca editar o retroarch.cfg do usuario) e provar install/verify/rollback de um emulador no host.",
+  "nextAction": "G45 (custodia transacional, 2026-08-13, oitava rodada): a custodia durável do nucleo — TIRA a entrada com rename atomico sem substituicao, confere a identidade DEPOIS, publica/remove/restaura so sobre lugar vazio, journaliza intent/taken/released com fsync, e o recovery so declara kept sem evidencia de rollback interrompido — esta implementada e GREEN na suíte isolada completa (4573 passed) com 53 testes de injecao da FI-06 (crash em custody.intent/taken/postlink/release, SIGKILL real, symlink, move, cross-FS). PR #78 NAO mesclada ate a prova fisica: descoberta automatica com um CONTROLE FISICO com autoconfig empacotado e revisao de crash recovery/symlink/move do nucleo. A integracao --appendconfig ja esta provada ponta a ponta.",
   "activeWorkstreams": [
+    "WS-2026-08-G45-AUTOCONFIG",
     "WS-2026-08-M10"
   ],
-  "updatedAt": "2026-08-12",
-  "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado. Certificacao VM COMPLETA no commit 586ed7c: RetroArch, PCSX2 e PPSSPP com minimal + 3 ciclos full e restore btrfs SIM em todas (indice docs/diagnostics/INDEX-M10.md); DEBT-A7 encerrada. Operacao 'degraded' e nao 'blocked' porque o ciclo esta provado em VM e o codigo esta na 0.1.0a44-07802589e985 instalada; o que falta e a convergencia do daemon e a certificacao fisica, ambas do operador. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge)."
+  "updatedAt": "2026-08-16",
+  "notes": "A certificacao M10 nao e declarada ate tres ciclos de cada emulador e restore Btrfs confirmado. Certificacao VM COMPLETA no commit 586ed7c: RetroArch, PCSX2 e PPSSPP com minimal + 3 ciclos full e restore btrfs SIM em todas (indice docs/diagnostics/INDEX-M10.md); DEBT-A7 encerrada. Operacao 'degraded' e nao 'blocked' porque o ciclo esta provado em VM e o codigo esta na 0.1.0a44-07802589e985 instalada; o que falta e a convergencia do daemon e a certificacao fisica, ambas do operador. Distribuicao 'installed': o codigo deste item esta na release 0.1.0a44-07802589e985, instalada no host em 2026-08-11 (RELEASE-LEDGER, ancestralidade do commit 07802589e985 conferida). NAO e 'certified': a certificacao fisica segue adiada e a tag v0.1.0a44 nao foi publicada — tag e a afirmacao de que os gates fisicos passaram. A convergencia do daemon ainda depende de acao do operador (steamzero-host converge). G45 (2026-08-12, segundo incremento): o indice fisico passou a ser LIDO do autoconfig do fabricante, o arquivo gerenciado e gravado com marcador de forma atomica e idempotente sem tocar o retroarch.cfg, e a UI desenha os oito estados com verde reservado a 'applied'. NADA foi gravado no host nesta sessao: o writer so rodou em diretorio temporario. CORRIGIDO em 2026-08-13: o retroarch.cfg PASSOU A EXISTIR (o RetroArch foi executado uma vez na investigacao) e declara joypad_autoconfig_dir=/app/share/libretro/autoconfig — caminho interno ao sandbox, inexistente no host. Nao era ausencia de config, era caminho inalcancavel; 'abrir o RetroArch uma vez' nunca teria destravado. G45 (2026-08-13, quinta rodada): a integracao --appendconfig esta implementada e PROVADA ponta a ponta (A/B com joypad virtual uinput: sem overlay o RetroArch reporta o perfil empacotado, com overlay reporta o nosso), e a composicao do argv e compartilhada entre lifecycle e EmulationController, entao 'Abrir emulador' e 'Jogar' tambem a carregam. O pad interno (10462:4613) segue sem autoconfig empacotado. Nenhuma instalacao de emulador foi vista concluir no host."
 }

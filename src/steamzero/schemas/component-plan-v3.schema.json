@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "component-plan-v3.schema.json",
+  "title": "Plano metadata-only de componente com preparo após confirmação",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "planId",
+    "confirmToken",
+    "adapterId",
+    "executor",
+    "action",
+    "status",
+    "createdAt",
+    "expiresAt",
+    "rollbackGuarantee",
+    "sourceFingerprint",
+    "delegated",
+    "preview"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 3},
+    "planId": {"type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"},
+    "confirmToken": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+    "adapterId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "executor": {"enum": ["engine", "flatpak", "libretro"]},
+    "action": {"enum": ["install", "update", "uninstall", "noop", "repair", "stop"]},
+    "status": {"enum": ["pending", "applied", "aborted"]},
+    "createdAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "rollbackGuarantee": {"type": "string", "minLength": 1},
+    "sourceFingerprint": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["portable", "flatpak", "libretro-archive"]}
+      }
+    },
+    "delegated": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 1,
+      "properties": {
+        "flatpakPlanId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "transactionPlanId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        }
+      }
+    },
+    "preview": {"type": "string", "minLength": 1}
+  }
+}

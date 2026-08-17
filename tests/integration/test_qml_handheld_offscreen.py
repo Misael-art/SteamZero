@@ -181,6 +181,31 @@ def test_qml_handheld_harness_offscreen(harness: str) -> None:
 
 
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
+def test_darkbutton_stays_readable_on_the_light_theme(tmp_path: Path) -> None:
+    """P0-1/P0-2 da auditoria: DarkButton legível no tema claro.
+
+    O label segue a paleta do pai (nada de texto claro hardcodado sobre fundo
+    claro) e o texto renderiza escuro sobre o fundo claro: o harness salva a
+    cena e este teste conta os pixels escuros dentro do retângulo do botão da
+    sidebar (x220-420, y100-148 no canvas 640x300).
+    """
+    output = tmp_path / "darkbutton-theme.png"
+    _run_qml("check_darkbutton_theme.qml", f"--capture-output={output}")
+    from PIL import Image
+
+    im = Image.open(output).convert("RGB")
+    dark = 0
+    for y in range(100, 148):
+        for x in range(220, 420):
+            r, g, b = im.getpixel((x, y))
+            if 0.299 * r + 0.587 * g + 0.114 * b < 115:
+                dark += 1
+    assert dark > 40, (
+        f"texto do botão não aparece escuro sobre o fundo claro (pixels escuros: {dark})"
+    )
+
+
+@pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 def test_editorial_library_renders_at_logical_scale_200() -> None:
     """A composição editorial continua utilizável em 4K físico a 200% lógico."""
     _run_qml("check_editorial_library.qml", scale_factor=2)
@@ -276,3 +301,34 @@ def test_scene_text_renders_what_the_adapter_emits() -> None:
         check=False,
     )
     _assert_qml_clean(completed, "check_scene_text.qml")
+
+
+@pytest.mark.visual
+def test_controls_profile_card_never_shows_green_without_proof() -> None:
+    """G45 — a tela precisa separar perfil salvo, traduzido e valendo.
+
+    O perfil de controle era resolvido, gravado e desenhado por ninguém, então
+    o usuário não tinha como distinguir "escolhi um perfil" de "o perfil vale no
+    emulador". O harness percorre os oito estados publicados e cobra a regra que
+    importa: só `applied` pode ficar verde. `pending-write` tem todos os bindings
+    resolvidos e mesmo assim não é pronto — o arquivo ainda não existe.
+
+    Sem `skip`: um verde num host onde nada foi renderizado é exatamente como a
+    regressão de ícones da a37 atravessou os gates (G13).
+    """
+    if QML is None:
+        pytest.fail(
+            f"{DIAG_VISUAL_ENVIRONMENT}: qml6 ausente. Os estados do cartão de "
+            "perfil de controle não podem ser verificados sem runtime QML, e "
+            "declarar verde sem renderizar é o defeito que a G45 registra."
+        )
+    completed = subprocess.run(
+        [str(QML), "tests/qml/check_controls_profile_card.qml"],
+        cwd=ROOT,
+        env=_qml_environment(),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    _assert_qml_clean(completed, "check_controls_profile_card.qml")

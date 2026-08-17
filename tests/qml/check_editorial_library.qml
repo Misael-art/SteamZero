@@ -33,6 +33,25 @@ Window {
         return Qt.application.arguments.indexOf(value) >= 0
     }
 
+    // Sair de dentro do callback que ainda está mexendo na cena derruba o
+    // processo por sinal. Este harness passava a checagem, imprimia a geometria
+    // e morria com SIGSEGV de forma intermitente sob carga — sempre depois de
+    // tocar o carrossel virtualizado de 1200 títulos. O pedido de saída passa a
+    // atravessar o event loop, com a cena já estabilizada.
+    property int pendingExitCode: 0
+
+    function requestExit(code) {
+        pendingExitCode = code
+        exitTimer.restart()
+    }
+
+    Timer {
+        id: exitTimer
+        interval: 0
+        repeat: false
+        onTriggered: Qt.exit(harness.pendingExitCode)
+    }
+
     function optionNumber(prefix, fallback) {
         const args = Qt.application.arguments
         for (let i = 0; i < args.length; ++i) {
@@ -116,6 +135,20 @@ Window {
         }
     }
 
+    function findMediaLayer(item) {
+        if (item === null || item === undefined)
+            return null
+        if (item instanceof MediaEffectLayer)
+            return item
+        const kids = item.children !== undefined ? item.children : []
+        for (let i = 0; i < kids.length; ++i) {
+            const found = findMediaLayer(kids[i])
+            if (found !== null)
+                return found
+        }
+        return null
+    }
+
     function captureAndExit() {
         if (capturePending)
             return
@@ -161,7 +194,7 @@ Window {
         onTriggered: {
             contentItem.grabToImage(function(result) {
                 result.saveToFile(captureOutput)
-                Qt.exit(0)
+                harness.requestExit(0)
             })
         }
     }
@@ -264,7 +297,7 @@ Window {
                 if (geometryOnly) {
                     check(!library.contextualBackdropVisible === library.highContrast,
                           "alto contraste deve preservar a geometria sem mostrar backdrop")
-                    Qt.exit(failures === 0 ? 0 : 1)
+                    harness.requestExit(failures === 0 ? 0 : 1)
                     return
                 }
                 check(library.handleNavigationIntent("next")
@@ -321,24 +354,52 @@ Window {
                     check(library.visibleGames.length === 1,
                           "coleções devem filtrar o catálogo pela referência publicada")
                     library.collectionFilter = ""
-                    library.libraryView = "grid"
+                    // Capa publicada: reatribui o modelo inteiro (mutar chave
+                    // interna não reavalia bindings) e foca o jogo com arte.
+                    library.steamGames = [
+                        {"id": "10", "name": "Fixture Steam One",
+                            "coverUrl": "golden/deck-overview-1280x800.png",
+                            "state": "installed",
+                            "genre": "Action", "year": 2001, "developer": "Fixture Studio"},
+                        {"id": "20", "name": "Fixture Steam Two", "coverUrl": "",
+                            "state": "installed", "genre": "Puzzle", "year": 2002,
+                            "developer": "Other Studio"}
+                    ]
+                    library.selectedIndex = 0
+                    library.libraryView = "carousel"
                     viewLayoutCheck = 1
                     return
                 }
                 if (viewLayoutCheck === 1) {
-                    check(library.gridControl.visible
-                          && library.gridControl.y <= library.carouselControl.y + 24,
-                          "a grade não deve reservar o espaço do carrossel oculto")
-                    library.libraryView = "list"
+                    const delegate = library.carouselControl.itemAtIndex(0)
+                    check(delegate !== null, "delegate do carrossel deve existir para o jogo focado")
+                    const coverLayer = findMediaLayer(delegate)
+                    check(coverLayer !== null,
+                          "card do carrossel deve montar a camada de mídia")
+                    check(coverLayer !== null && coverLayer.visible
+                          && coverLayer.sourceStatus === Image.Ready,
+                          "capa publicada deve renderizar no card (status "
+                          + (coverLayer ? coverLayer.sourceStatus : "-") + ")")
+                    check(String(coverLayer ? coverLayer.source : "").indexOf("deck-overview-1280x800.png") >= 0,
+                          "a camada de mídia deve consumir a capa publicada no modelo")
+                    library.libraryView = "grid"
                     viewLayoutCheck = 2
                     return
                 }
                 if (viewLayoutCheck === 2) {
+                    check(library.gridControl.visible
+                          && library.gridControl.y <= library.carouselControl.y + 24,
+                          "a grade não deve reservar o espaço do carrossel oculto")
+                    library.libraryView = "list"
+                    viewLayoutCheck = 3
+                    return
+                }
+                if (viewLayoutCheck === 3) {
                     check(library.listControl.visible
                           && library.listControl.y <= library.carouselControl.y + 24,
                           "a lista não deve manter espaço das outras vistas ocultas")
                     library.libraryView = "carousel"
-                    viewLayoutCheck = 3
+                    viewLayoutCheck = 4
                     return
                 }
                 check(library.handleNavigationIntent("next") && library.selectedIndex === 1
@@ -419,7 +480,7 @@ Window {
                   "biblioteca grande deve preservar todos os títulos publicados")
             check(library.carouselControl.contentItem.children.length < 80,
                   "carrossel virtualizado não deve materializar a biblioteca inteira")
-            Qt.exit(failures === 0 ? 0 : 1)
+            harness.requestExit(failures === 0 ? 0 : 1)
         }
     }
 }

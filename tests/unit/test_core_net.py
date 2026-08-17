@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+import socket
 import urllib.error
 from pathlib import Path
 
 import pytest
 
+from steamzero.core import net
 from steamzero.core.net import (
     CancellationToken,
     FakeResponse,
@@ -40,6 +43,121 @@ def test_http_client_validates_policy_and_returns_bounded_body() -> None:
     assert result.status == 200
     assert transport.requests[0][1] == 7.0
     assert transport.requests[0][2]["Accept"] == "x/test"
+
+
+def test_transfer_observer_reports_declared_bytes_for_each_chunk() -> None:
+    progress: list[tuple[int, int | None]] = []
+    cancel_checks = 0
+
+    def check_cancelled() -> None:
+        nonlocal cancel_checks
+        cancel_checks += 1
+
+    response = FakeResponse(
+        b"payload",
+        "https://downloads.example/file",
+        headers={"Content-Length": "7"},
+        chunk_size=2,
+    )
+    with net.transfer_observer(
+        progress=lambda current, total: progress.append((current, total)),
+        cancel_check=check_cancelled,
+    ):
+        result = HttpClient(transport=FakeTransport([response])).get(
+            "https://downloads.example/file", policy=policy()
+        )
+
+    assert result.body == b"payload"
+    assert progress == [(0, 7), (2, 7), (4, 7), (6, 7), (7, 7)]
+    assert cancel_checks >= len(progress)
+
+
+def test_transfer_observer_reports_sanitized_network_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    diagnostics: list[dict[str, object]] = []
+    proxy_secret = "proxy-user:proxy-password"
+    environment_secret = "environment-password"
+    query_secret = "download-token"
+    for name in (
+        "ALL_PROXY",
+        "FLATPAK_ID",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(
+        net.urllib.request,
+        "getproxies",
+        lambda: {
+            "http": f"http://{proxy_secret}@proxy.example:8080",
+            "https": f"https://{proxy_secret}@proxy.example:8443",
+        },
+    )
+    monkeypatch.setenv("HTTPS_PROXY", f"https://{environment_secret}@proxy.example")
+    monkeypatch.setenv("SSL_CERT_FILE", f"/certificate/{environment_secret}.pem")
+
+    with net.transfer_observer(
+        progress=lambda _current, _total: None,
+        cancel_check=lambda: None,
+        diagnostic=diagnostics.append,
+    ):
+        body = net.fetch_bytes(
+            f"https://downloads.example/artifact?token={query_secret}",
+            max_bytes=8,
+            client=HttpClient(
+                transport=FakeTransport([FakeResponse(b"ok", "https://downloads.example/artifact")])
+            ),
+        )
+
+    assert body == b"ok"
+    assert [item["phase"] for item in diagnostics] == ["starting", "completed"]
+    assert diagnostics[-1]["host"] == "downloads.example"
+    assert diagnostics[-1]["dns"] == "resolved"
+    assert diagnostics[-1]["proxy"] == {
+        "configured": True,
+        "schemes": ["http", "https"],
+    }
+    assert diagnostics[-1]["environment"] == {
+        "sandboxed": False,
+        "variables": ["HTTPS_PROXY", "SSL_CERT_FILE"],
+    }
+    serialized = json.dumps(diagnostics, sort_keys=True)
+    assert proxy_secret not in serialized
+    assert environment_secret not in serialized
+    assert query_secret not in serialized
+    assert "/artifact" not in serialized
+
+
+def test_transfer_observer_distinguishes_dns_failure_from_generic_offline() -> None:
+    diagnostics: list[dict[str, object]] = []
+    failure = urllib.error.URLError(socket.gaierror(-2, "name lookup failed"))
+
+    with (
+        net.transfer_observer(
+            progress=lambda _current, _total: None,
+            cancel_check=lambda: None,
+            diagnostic=diagnostics.append,
+        ),
+        pytest.raises(NetworkFailure, match="E-NET-OFFLINE"),
+    ):
+        net.fetch_bytes(
+            "https://downloads.example/artifact",
+            max_bytes=8,
+            client=HttpClient(transport=FakeTransport([failure])),
+        )
+
+    assert diagnostics[-1] == {
+        "phase": "failed",
+        "host": "downloads.example",
+        "dns": "failed",
+        "proxy": diagnostics[0]["proxy"],
+        "environment": diagnostics[0]["environment"],
+        "errorCode": "E-NET-OFFLINE",
+    }
 
 
 @pytest.mark.parametrize(

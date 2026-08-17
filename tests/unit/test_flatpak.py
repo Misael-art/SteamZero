@@ -4,12 +4,15 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Sequence
 
 import pytest
 
+from steamzero.adapters import flatpak as flatpak_module
 from steamzero.adapters.flatpak import CommandResult, FlatpakCLI, FlatpakState
 from steamzero.core.errors import SteamZeroError
+from steamzero.jobs.manager import JobCancelled
 
 REF = "org.example.Emulator"
 COMMIT = "a" * 64
@@ -54,6 +57,63 @@ def test_mutations_are_user_scoped_noninteractive_and_fixed_argv() -> None:
         assert "--assumeyes" in argv
     assert f"--commit={COMMIT}" in runner.calls[1][0]
     assert "--delete-data" not in runner.calls[2][0]
+
+
+def test_real_runner_terminates_flatpak_when_job_cancels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class BlockingProcess:
+        pid = 4242
+        returncode = -15
+
+        def __init__(self, argv: Sequence[str], **kwargs: object) -> None:
+            captured["argv"] = tuple(argv)
+            captured["kwargs"] = kwargs
+            self.calls = 0
+            self.terminated = False
+            captured["process"] = self
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            self.calls += 1
+            if self.calls == 1:
+                raise subprocess.TimeoutExpired("flatpak", timeout or 0)
+            return "", ""
+
+        def terminate(self) -> None:
+            self.terminated = True
+
+        def kill(self) -> None:
+            raise AssertionError("terminate deveria bastar")
+
+    monkeypatch.setattr(flatpak_module.shutil, "which", lambda _name: "/usr/bin/flatpak")
+    monkeypatch.setattr(flatpak_module.subprocess, "Popen", BlockingProcess)
+
+    cancel_checks = 0
+
+    def cancel() -> None:
+        nonlocal cancel_checks
+        cancel_checks += 1
+        if cancel_checks > 2:
+            raise JobCancelled
+
+    with (
+        flatpak_module.flatpak_operation_observer(
+            progress=lambda _stage, _current, _total: None,
+            cancel_check=cancel,
+        ),
+        pytest.raises(JobCancelled),
+    ):
+        flatpak_module.run_flatpak_command(("flatpak", "install", "--user", REF), 30)
+
+    process = captured["process"]
+    assert isinstance(process, BlockingProcess)
+    assert process.terminated is True
+    assert captured["argv"] == ("/usr/bin/flatpak", "install", "--user", REF)
+    kwargs = captured["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert kwargs["start_new_session"] is True
 
 
 def test_remote_failure_maps_to_stable_error() -> None:

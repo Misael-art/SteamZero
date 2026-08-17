@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -46,6 +47,8 @@ _MAX_BODY = 64 * 1024
 # host falha. O backend software é o mesmo caminho certificado pelo gate visual
 # e evita que um SIGSEGV do renderer encerre a unidade transitória do Plasma.
 _QT_QUICK_BACKEND = "software"
+_QT_QUICK_EFFECTS_MINIMUM = (6, 5)
+_QML_VERSION_PATTERN = re.compile(r"(?:Qml Runtime|Qt)\s+(\d+)\.(\d+)")
 
 # Status HTTP por código do catálogo. O default é CONFLICT: erro de domínio que
 # recusa a operação no estado atual. Só o que é de fato malformado vira 400 e só
@@ -55,6 +58,26 @@ _STATUS_BY_CODE = {
     "E-API-SCHEMA": HTTPStatus.BAD_REQUEST,
     "E-API-UNKNOWN-ACTION": HTTPStatus.NOT_FOUND,
 }
+
+
+def _qml_supports_quick_effects(executable: str) -> bool:
+    """Detecta a capacidade opcional sem tornar a UI dependente da sonda."""
+
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [executable, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    output = f"{completed.stdout}\n{completed.stderr}"
+    match = _QML_VERSION_PATTERN.search(output)
+    if match is None:
+        return False
+    return (int(match.group(1)), int(match.group(2))) >= _QT_QUICK_EFFECTS_MINIMUM
 
 
 class DesktopControlServer(ThreadingHTTPServer):
@@ -896,6 +919,9 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
     resource = importlib.resources.files("steamzero.ui").joinpath("qml/Main.qml")
     try:
         with importlib.resources.as_file(resource) as qml_path:
+            capability_arguments = (
+                ["--steamzero-qtquick-effects"] if _qml_supports_quick_effects(executable) else []
+            )
             process = subprocess.Popen(  # noqa: S603
                 [
                     executable,
@@ -905,6 +931,7 @@ def launch_desktop_ui(coordinator: ExperienceCoordinator) -> int:
                     f"http://127.0.0.1:{server.server_port}",
                     "--steamzero-token",
                     token,
+                    *capability_arguments,
                 ],
                 stdin=subprocess.DEVNULL,
                 env={

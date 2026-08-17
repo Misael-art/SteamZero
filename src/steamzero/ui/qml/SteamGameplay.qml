@@ -810,6 +810,10 @@ Item {
                     textRole: "name"
                     currentIndex: page.gameIndex
                     enabled: page.games.length > 0
+                    Accessible.description: enabled ? ""
+                        : qsTr("Nenhum jogo Steam inventariado para escolher.")
+                    ToolTip.visible: hovered && !enabled
+                    ToolTip.text: Accessible.description
                     visible: page.workspaceIndex !== 3
                     Layout.preferredWidth: page.compactLayout ? 280
                         : Math.min(360, page.width * 0.3)
@@ -1151,7 +1155,10 @@ Item {
                                             visible: modelData.id === "gamemode" && modelData.state !== "ready"
                                             text: qsTr("Ver instruções")
                                             font.pixelSize: 10
-                                            Layout.preferredHeight: 32
+                                            // 32px nao alcanca o polegar no Deck;
+                                            // o minimo do produto e 48.
+                                            Layout.preferredHeight: page.minimumTouchTarget
+                                            Layout.minimumHeight: page.minimumTouchTarget
                                             Accessible.name: text
                                             onClicked: {
                                                 page.gamemodeGuidance = modelData
@@ -1282,6 +1289,11 @@ Item {
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     enabled: index === 0 || Boolean(page.hardware.gpuMax)
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("O host não publicou o clock máximo da GPU; "
+                                            + "só o modo automático é possível.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     onClicked: page.gpuModeIndex = index
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
@@ -1295,6 +1307,11 @@ Item {
                             Switch {
                                 checked: page.gamescopeEnabled
                                 enabled: page.environmentById("gamescope").state === "ready"
+                                Accessible.description: enabled ? ""
+                                    : qsTr("Gamescope não está pronto neste host; "
+                                        + "resolva em Sistema.")
+                                ToolTip.visible: hovered && !enabled
+                                ToolTip.text: Accessible.description
                                 Layout.minimumWidth: page.minimumTouchTarget
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Ativar Gamescope")
@@ -1309,6 +1326,11 @@ Item {
                             Switch {
                                 checked: page.gameModeEnabled
                                 enabled: page.environmentById("gamemode").state === "ready"
+                                Accessible.description: enabled ? ""
+                                    : qsTr("Feral GameMode não está pronto neste host; "
+                                        + "resolva em Sistema.")
+                                ToolTip.visible: hovered && !enabled
+                                ToolTip.text: Accessible.description
                                 Layout.minimumWidth: page.minimumTouchTarget
                                 Layout.minimumHeight: page.minimumTouchTarget
                                 Accessible.name: qsTr("Ativar Feral GameMode")
@@ -1327,6 +1349,11 @@ Item {
                                     checked: page.mangoIndex === index
                                     checkable: true
                                     enabled: index === 0 || page.environmentById("mangohud").state === "ready"
+                                    Accessible.description: enabled ? ""
+                                        : qsTr("MangoHud não está pronto neste host; "
+                                            + "resolva em Sistema.")
+                                    ToolTip.visible: hovered && !enabled
+                                    ToolTip.text: Accessible.description
                                     Layout.fillWidth: true
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
@@ -1435,13 +1462,30 @@ Item {
                                 font.bold: true
                             }
                         }
+                        // Nasceu sem `onClicked`: habilitado, com chevron, e
+                        // clicar nunca fez nada. Não existe superfície avançada
+                        // de LSFG para revelar, então a saída honesta é a mesma
+                        // que o domínio já usa para capacidade não construída
+                        // (`feature.planned`): desabilitado, com o motivo à
+                        // vista, em vez de uma promessa que não se cumpre.
                         Button {
                             text: qsTr("Configurações avançadas")
                             icon.name: "go-down"
                             flat: true
+                            enabled: false
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: text
+                            Accessible.description: qsTr("Em desenvolvimento: os ajustes avançados de LSFG ainda não são expostos pelo backend.")
+                            ToolTip.visible: hovered
+                            ToolTip.text: Accessible.description
+                        }
+                        Label {
+                            text: qsTr("Ajustes avançados de LSFG ainda não disponíveis.")
+                            color: page.mutedColor
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
                 }
@@ -1886,6 +1930,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.minimumHeight: page.compactLayout ? page.minimumTouchTarget : 54
                 Accessible.name: text
+                Accessible.description: enabled ? ""
+                    : qsTr("Nenhum jogo na biblioteca Steam para aplicar o perfil.")
+                ToolTip.visible: hovered && !enabled
+                ToolTip.text: Accessible.description
                 onClicked: page.planRequested(page.payload())
                 background: Rectangle {
                     color: parent.enabled ? "#069bd7" : page.raisedColor

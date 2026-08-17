@@ -12,11 +12,18 @@ from types import TracebackType
 import pytest
 
 from steamzero.adapters import flatpak as flatpak_module
-from steamzero.adapters.flatpak import CommandResult, FlatpakCLI, FlatpakExecutor, FlatpakState
+from steamzero.adapters.flatpak import (
+    CommandResult,
+    FlatpakCLI,
+    FlatpakExecutor,
+    FlatpakPlan,
+    FlatpakState,
+)
 from steamzero.adapters.registry import AdapterRegistry, load_manifest
 from steamzero.api import contracts
 from steamzero.core import fs, paths, state
 from steamzero.core.errors import SteamZeroError
+from steamzero.jobs.manager import JobCancelled
 
 TARGET = "a" * 64
 PREVIOUS = "b" * 64
@@ -379,6 +386,50 @@ def test_install_apply_and_manual_rollback_preserve_app_data_scope(
     assert ("uninstall", REF) in flatpak.calls
 
 
+def test_apply_publishes_ordered_flatpak_stages(store: state.StateStore) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    stages: list[tuple[str, int, int]] = []
+
+    with flatpak_module.flatpak_operation_observer(
+        progress=lambda stage, current, total: stages.append((stage, current, total)),
+        cancel_check=lambda: None,
+    ):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert stages == [
+        ("installing", 1, 5),
+        ("deploying", 2, 5),
+        ("verifying", 3, 5),
+        ("smoke", 4, 5),
+        ("persisting", 5, 5),
+    ]
+
+
+def test_job_cancellation_rolls_back_and_preserves_cancel_signal(
+    store: state.StateStore,
+) -> None:
+    class CancellingFlatpak(FakeFlatpak):
+        def install(self, remote: str, ref: str) -> None:
+            super().install(remote, ref)
+            raise JobCancelled
+
+    flatpak = CancellingFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+
+    with pytest.raises(JobCancelled):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    assert flatpak.current == FlatpakState(False, REF)
+    operation = next(paths.component_operations_dir().glob("*.json"))
+    payload = json.loads(operation.read_text(encoding="utf-8"))
+    assert payload["status"] == "rolled-back"
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
+
+
 @pytest.mark.rt
 def test_update_and_rollback_restore_exact_previous_commit(store: state.StateStore) -> None:
     before = FlatpakState(True, REF, "flathub", PREVIOUS)
@@ -444,6 +495,8 @@ def test_smoke_failure_rolls_back_automatically(store: state.StateStore) -> None
     assert error.value.code == "E-COMPONENT-UPDATE-ROLLEDBACK"
     assert error.value.operation_id is not None
     assert flatpak.current == before
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
 
 
 @pytest.mark.fi
@@ -464,7 +517,90 @@ def test_power_loss_after_deploy_is_recovered_to_snapshot(store: state.StateStor
     assert len(recovered) == 1
     assert recovered[0].status == "rolled-back"
     assert flatpak.current == before
+    saved_plan = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    assert saved_plan["status"] == "aborted"
     assert executor(store, flatpak).recover() == []
+
+
+@pytest.mark.fi
+@pytest.mark.rt
+def test_power_loss_after_flatpak_commit_rolls_plan_forward(
+    store: state.StateStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    save_plan = service._save_plan
+
+    def lose_power_before_plan(candidate: FlatpakPlan) -> None:
+        if candidate.status == "applied":
+            raise SimulatedPowerLoss()
+        save_plan(candidate)
+
+    monkeypatch.setattr(service, "_save_plan", lose_power_before_plan)
+    with pytest.raises(SimulatedPowerLoss):
+        service.apply(plan.plan_id, plan.confirm_token)
+
+    operation = next(paths.component_operations_dir().glob("*.json"))
+    saved_operation = json.loads(operation.read_text(encoding="utf-8"))
+    assert saved_operation["status"] == "committed"
+    assert json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"] == (
+        "pending"
+    )
+
+    recovered_status = executor(store, flatpak).recover_plan(plan.plan_id)
+    assert recovered_status == "applied"
+    assert flatpak.current.commit == TARGET
+
+
+def test_recover_terminalizes_expired_legacy_plan_without_operation(
+    store: state.StateStore,
+) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    raw["expiresAt"] = "2000-01-01T00:00:00+00:00"
+    fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+    recovered = service.recover_plans()
+
+    assert recovered == [
+        {
+            "status": "reconciled",
+            "planId": plan.plan_id,
+            "adapterId": "demo-flatpak",
+            "executor": "flatpak-plan",
+            "state": "aborted",
+            "reason": "expired",
+        }
+    ]
+    assert json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"] == (
+        "aborted"
+    )
+
+
+def test_recover_terminalizes_legacy_pending_plan_after_rolled_back_operation(
+    store: state.StateStore,
+) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    flatpak.smoke_error = RuntimeError("falha histórica")
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    with pytest.raises(SteamZeroError):
+        service.apply(plan.plan_id, plan.confirm_token)
+    raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    raw["status"] = "pending"  # estado persistido por releases antigas
+    fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+    recovered = service.recover_plans()
+
+    assert recovered[0]["planId"] == plan.plan_id
+    assert recovered[0]["state"] == "aborted"
+    assert recovered[0]["reason"] == "operation-terminal"
+    assert flatpak.current == before
 
 
 @pytest.mark.fi

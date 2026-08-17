@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-HOST-RELEASE-UPDATE",
+  "item": "SZ-HOST-RELEASE-UPDATE",
+  "branch": "codex/physical-functional-closure",
+  "baseRef": "99fba64e7b39ee943eb00885fbe07920dff4e9e6",
+  "owner": "physical-functional-closure",
+  "state": "active",
+  "exclusivePaths": [
+    ".github/workflows/ci.yml",
+    "tools/release_host.py",
+    "tools/install_host.py",
+    "tests/unit/test_release_host.py",
+    "tests/integration/test_host_installer.py",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md",
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+    "docs/09-operations/evidence/2026-08-17-release-convergence-recovery"
+  ],
+  "sharedPaths": [
+    "docs/status",
+    "docs/STATUS.md",
+    "docs/ACTIVE-WORK.md",
+    "docs/WORKLOG.md"
+  ],
+  "nextAction": "Recuperação fechada na release 0.1.0a46-fe360b3731d5 com evidência visual; retomar a matriz física de componentes e a certificação de UI sem merge ou tag antes dos gates do operador.",
+  "updatedAt": "2026-08-17"
+}

@@ -10,13 +10,16 @@ conhecer ``urllib``. Downloads são publicados pela porta ``core.fs``.
 from __future__ import annotations
 
 import email.message
+import os
 import random
+import socket
 import threading
 import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
@@ -27,6 +30,48 @@ from steamzero.core import fs
 
 _CHUNK = 1 << 20
 _USER_AGENT = "SteamZero/0.1"
+
+TransferProgress = Callable[[int, int | None], None]
+CancelCheck = Callable[[], None]
+TransferDiagnostic = Callable[[dict[str, object]], None]
+
+_RELEVANT_ENVIRONMENT = (
+    "ALL_PROXY",
+    "FLATPAK_ID",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "SSL_CERT_DIR",
+    "SSL_CERT_FILE",
+)
+_PROXY_SCHEMES = frozenset({"all", "ftp", "http", "https"})
+
+
+@dataclass(frozen=True)
+class _TransferObserver:
+    progress: TransferProgress
+    cancel_check: CancelCheck
+    diagnostic: TransferDiagnostic | None = None
+
+
+_TRANSFER_OBSERVER: ContextVar[_TransferObserver | None] = ContextVar(
+    "steamzero_transfer_observer", default=None
+)
+
+
+@contextmanager
+def transfer_observer(
+    *,
+    progress: TransferProgress,
+    cancel_check: CancelCheck,
+    diagnostic: TransferDiagnostic | None = None,
+) -> Iterator[None]:
+    """Liga progresso/cancelamento do chamador à transferência desta thread."""
+    token = _TRANSFER_OBSERVER.set(_TransferObserver(progress, cancel_check, diagnostic))
+    try:
+        yield
+    finally:
+        _TRANSFER_OBSERVER.reset(token)
 
 
 @dataclass
@@ -297,7 +342,76 @@ def fetch_bytes(
         max_bytes=max_bytes,
         retry=retry or RetryPolicy(attempts=1),
     )
-    return (client or HttpClient()).get(url, policy=policy, headers=headers, cancel=cancel).body
+    observer = _TRANSFER_OBSERVER.get()
+    if observer is not None and observer.diagnostic is not None:
+        observer.diagnostic(_network_diagnostic(host=host, phase="starting", dns="unknown"))
+    try:
+        body = (client or HttpClient()).get(url, policy=policy, headers=headers, cancel=cancel).body
+    except NetworkFailure as exc:
+        if observer is not None and observer.diagnostic is not None:
+            observer.diagnostic(
+                _network_diagnostic(
+                    host=host,
+                    phase="failed",
+                    dns="failed" if _caused_by_dns_failure(exc) else "unknown",
+                    error_code=exc.code,
+                )
+            )
+        raise
+    if observer is not None and observer.diagnostic is not None:
+        observer.diagnostic(_network_diagnostic(host=host, phase="completed", dns="resolved"))
+    return body
+
+
+def network_environment_snapshot() -> dict[str, object]:
+    """Expõe somente presença/configuração útil, nunca valores do ambiente."""
+    proxies = urllib.request.getproxies()
+    schemes = sorted(
+        {str(name).casefold() for name in proxies if str(name).casefold() in _PROXY_SCHEMES}
+    )
+    return {
+        "proxy": {"configured": bool(schemes), "schemes": schemes},
+        "environment": {
+            "sandboxed": "FLATPAK_ID" in os.environ or Path("/.flatpak-info").is_file(),
+            "variables": [name for name in _RELEVANT_ENVIRONMENT if name in os.environ],
+        },
+    }
+
+
+def _network_diagnostic(
+    *,
+    host: str,
+    phase: str,
+    dns: str,
+    error_code: str | None = None,
+) -> dict[str, object]:
+    snapshot = network_environment_snapshot()
+    diagnostic: dict[str, object] = {
+        "phase": phase,
+        "host": host,
+        "dns": dns,
+        "proxy": snapshot["proxy"],
+        "environment": snapshot["environment"],
+    }
+    if error_code is not None:
+        diagnostic["errorCode"] = error_code
+    return diagnostic
+
+
+def _caused_by_dns_failure(failure: NetworkFailure) -> bool:
+    current: object | None = failure.__cause__
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, socket.gaierror):
+            return True
+        if isinstance(current, urllib.error.URLError):
+            current = current.reason
+        elif isinstance(current, BaseException):
+            current = current.__cause__ or current.__context__
+        else:
+            current = None
+    return False
 
 
 class _CancelableReader:
@@ -338,16 +452,17 @@ def _response_url(response: ResponsePort, requested_url: str) -> str:
     return value if isinstance(value, str) and value else requested_url
 
 
-def _validate_declared_size(response: ResponsePort, max_bytes: int) -> None:
+def _validate_declared_size(response: ResponsePort, max_bytes: int) -> int | None:
     declared = _response_headers(response).get("Content-Length")
     if declared is None:
-        return
+        return None
     try:
         value = int(declared)
     except ValueError as exc:
         raise NetworkFailure("E-NET-CONTENT-LIMIT", "Content-Length inválido") from exc
     if value < 0 or value > max_bytes:
         raise NetworkFailure("E-NET-CONTENT-LIMIT", "conteúdo declarado excede o limite")
+    return value
 
 
 def _response_headers(response: ResponsePort) -> Mapping[str, str]:
@@ -360,9 +475,16 @@ def _read_limited(
 ) -> bytes:
     chunks: list[bytes] = []
     received = 0
+    observer = _TRANSFER_OBSERVER.get()
+    total = _validate_declared_size(response, max_bytes)
+    if observer is not None:
+        observer.cancel_check()
+        observer.progress(0, total)
     while True:
         if cancel is not None:
             cancel.raise_if_cancelled()
+        if observer is not None:
+            observer.cancel_check()
         chunk = response.read(min(_CHUNK, max_bytes + 1 - received))
         if not chunk:
             return b"".join(chunks)
@@ -370,6 +492,8 @@ def _read_limited(
         if received > max_bytes:
             raise NetworkFailure("E-NET-CONTENT-LIMIT", "download excedeu o limite")
         chunks.append(chunk)
+        if observer is not None:
+            observer.progress(received, total)
 
 
 @dataclass
