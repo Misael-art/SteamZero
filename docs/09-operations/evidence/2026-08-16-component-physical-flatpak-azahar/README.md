@@ -90,9 +90,98 @@ Relatórios sanitizados preservados durante a sessão:
 - `/tmp/sz-legacy-plan-recovery-linkage-20260816.json`, SHA-256
   `13c4a62f8d2e66659a282d1d17810d50aa62d395cfe243513fc52916cff9ca9b`.
 
+## Ciclo físico individual do Azahar
+
+O ciclo foi executado depois do commit `6fdcb72`, sempre com o código commitado
+da branch no `PYTHONPATH`, state home real e Flatpak do usuário real.
+
+### Baseline e plano
+
+- `status=missing`, zero recovery ativo, zero job do Azahar, dez planos antigos
+  `aborted` e três operações antigas `rolled-back`;
+- commit pinado `fd0b3050e4da6a7df8915f63fb8c1d551c7ca8c684568dc62c1681fd316a288c`
+  resolvido pelo Flathub em 0,249 s;
+- 249166667776 bytes livres, 17 deployments Flatpak e nenhum dado do Azahar;
+- plano install v3 gerado em 0,049006 s, `delegated={}`; hash de deployments e
+  dados idêntico antes/depois, provando planejamento metadata-only.
+
+### Install, verify e idempotência
+
+- install assíncrono: 23,057 s, job `completed`, operação `committed`, estágio
+  final `verified`, commit instalado igual ao pinado;
+- verify independente: `installed`, `verified=true`, origem Flatpak;
+- o smoke real criou oito arquivos de dados, 2196717 bytes;
+- segunda instalação: plano `action=noop` em 0,042035 s, job `completed` em
+  0,948 s, sem nova operação; deployment e dados não mudaram.
+
+### Repair físico
+
+Como repair é corretamente recusado para deployment íntegro, um drift foi
+criado pelo próprio lifecycle, sem comando manual de mutação:
+
+1. o Flathub confirmou o commit histórico
+   `c41f1e818b0387610e018598cf31c57cff6172235726d3b1cf87b29ecc3e073a`;
+2. um manifesto somente em memória, pinado nesse commit, gerou plano v3
+   metadata-only em 0,005166 s;
+3. o job governado instalou e verificou o commit histórico em 15,924 s;
+4. o manifesto oficial observou `degraded`, `repairable=true`;
+5. o plano `repair` oficial foi metadata-only em 0,095281 s;
+6. repair concluiu em 5,436 s, restaurou `fd0b3050…`, terminou
+   `verified=true` e deixou tanto a operação Flatpak quanto o marcador durável
+   de repair em `committed`.
+
+Os dados continuaram presentes durante todo o drift/repair. O smoke acrescentou
+estado próprio do aplicativo, elevando a contagem para nove arquivos, sem
+apagamento.
+
+### Falha controlada e rollback
+
+Um novo plano governado para o commit histórico recebeu uma porta Flatpak real
+com falha injetada somente no `smoke`, depois do deploy. Resultado:
+
+- job `rolled-back` em 7,426 s;
+- erro estruturado `E-COMPONENT-UPDATE-ROLLEDBACK`;
+- progresso chegou ao estágio `smoke` (3/4);
+- operação durável `rolled-back` e plano `aborted`;
+- deployment restaurado ao commit oficial `fd0b3050…`;
+- nove arquivos, 2196717 bytes, mtime e SHA-256 de dados exatamente iguais
+  antes/depois (`94c22c966c34aaa60ffa097c0874ed9c7ae3fc3d3481eaa7acc6f04bfaa7b93b`).
+
+### Uninstall e estado final
+
+- plano uninstall v3 metadata-only em 0,044543 s;
+- job `completed` em 2,929 s, operação `committed`;
+- Azahar voltou a `missing`, sem deployment e sem recovery ativo;
+- os nove arquivos/2196717 bytes mantiveram o mesmo mtime e SHA-256 integral;
+- cinco jobs bem-sucedidos e um job `rolled-back` registram o ciclo;
+- nenhuma unidade transitória terminou com erro;
+- a busca exata nos relatórios não encontrou `confirmToken`, senha, segredo,
+  authorization, bearer ou valor de proxy.
+
+O Flatpak manteve `org.kde.Platform/x86_64/6.9` após remover o aplicativo. É um
+runtime compartilhável, não o deployment do Azahar: o inventário final tem 18
+refs em vez das 17 iniciais. Ele não foi removido manualmente nem por
+`flatpak uninstall --unused`, porque limpeza global de runtimes não pertence ao
+ciclo de um componente individual.
+
+## Artefatos sanitizados da sessão
+
+Os principais registros temporários e seus SHA-256 foram:
+
+| Etapa | Arquivo | SHA-256 |
+|---|---|---|
+| baseline | `/tmp/sz-azahar-baseline-20260816.json` | `8a2dfa0bf6259a613389bb5387338c9c05cf1ba5c36948c10b978442e5843833` |
+| install | `/tmp/sz-az-install-20260816.log` | `13c4a4e193fe70a420d4c9ffc92641dc8a898627a6f51ac303e529dfb9099b54` |
+| idempotência | `/tmp/sz-az-idempotent-20260816.log` | `198d7baaca2c1b78107b5a26a71181230d97579d75a0f41366e8a1511cce4814` |
+| drift | `/tmp/sz-az-drift-20260816.log` | `4bf0deae28b5d98d9b95c2b5306a3bce5f1eaa5d2fca958cc84376e9348393f6` |
+| repair | `/tmp/sz-az-repair-20260816.log` | `122d14096883c459f87a684533fec9140f49bdbbe097565b4caa0a0eccf28da9` |
+| falha/rollback | `/tmp/sz-az-controlled-failure-20260816.log` | `616d8e3891c1844d43d8e24f94893f643baebfac66978fa8de80ffcc3f32006a` |
+| uninstall | `/tmp/sz-az-uninstall-20260816.log` | `1d63c45cb054f28bcef9a58baba956e07e5f9d69310e5215baae05d653c0923a` |
+| estado final | `/tmp/sz-azahar-final-20260816.json` | `3890c99c80f36b8e5418b51677132b3d37159b4761c3b97de990a55502c2b2aa` |
+
 ## Estado e próxima ação
 
-O defeito de recovery legado está fechado. O ciclo funcional do Azahar ainda
-não começou neste incremento; a próxima ação é baseline, plan metadata-only,
-install, verify, segunda instalação idempotente, repair, falha controlada,
-rollback e uninstall com preservação de dados.
+Recovery legado e ciclo físico individual do Azahar estão fechados. Azahar é o
+primeiro resultado físico completo da matriz (1/33). A próxima ação é executar
+o próximo adapter Flatpak individual, mantendo o runtime 6.9 observado como
+fato de inventário, não como deployment instalado do Azahar.

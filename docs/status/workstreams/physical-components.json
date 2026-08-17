@@ -48,6 +48,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Provar terminalização física por família e completar a matriz individual 33/33; instalação permanece no ciclo governado após o push final.",
+  "nextAction": "Azahar concluiu 1/33; executar o próximo adapter Flatpak individual sem push, release ou instalação da plataforma.",
   "updatedAt": "2026-08-16"
 }

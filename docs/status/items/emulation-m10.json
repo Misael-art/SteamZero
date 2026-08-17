@@ -76,6 +76,12 @@
       "reference": "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar/README.md",
       "command": "plan_recovery/apply_recovery no host real: planos Flatpak/component expirados terminalizados sem alterar deployments",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar/README.md",
+      "command": "Azahar físico: install/verify/noop/repair/falha com rollback/uninstall preservando dados",
+      "result": "passed"
     }
   ],
   "nextAction": "G45 (custodia transacional, 2026-08-13, oitava rodada): a custodia durável do nucleo — TIRA a entrada com rename atomico sem substituicao, confere a identidade DEPOIS, publica/remove/restaura so sobre lugar vazio, journaliza intent/taken/released com fsync, e o recovery so declara kept sem evidencia de rollback interrompido — esta implementada e GREEN na suíte isolada completa (4573 passed) com 53 testes de injecao da FI-06 (crash em custody.intent/taken/postlink/release, SIGKILL real, symlink, move, cross-FS). PR #78 NAO mesclada ate a prova fisica: descoberta automatica com um CONTROLE FISICO com autoconfig empacotado e revisao de crash recovery/symlink/move do nucleo. A integracao --appendconfig ja esta provada ponta a ponta.",
