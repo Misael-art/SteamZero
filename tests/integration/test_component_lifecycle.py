@@ -571,6 +571,34 @@ class TestMetadataOnlyPlanning:
         assert saved["status"] == "aborted"
         assert lifecycle.status("demo-emulator")["state"] == "missing"
 
+    def test_recovery_aborts_expired_outer_plan_without_delegated_effect(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan("azahar", "install")
+        raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+        raw["expiresAt"] = "2000-01-01T00:00:00+00:00"
+        fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+        recovered = lifecycle.recover()
+
+        assert any(
+            item.get("planId") == plan.plan_id
+            and item.get("executor") == "component-plan"
+            and item.get("state") == "aborted"
+            for item in recovered
+        )
+        assert lifecycle._apply_status(plan.plan_id) == "aborted"
+
+    def test_recovery_preserves_fresh_outer_plan_without_effect(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = bundled_with_fake(FakeFlatpak(), store)
+        plan = lifecycle.plan("azahar", "install")
+
+        assert lifecycle.recover() == []
+        assert lifecycle._apply_status(plan.plan_id) == "pending"
+
 
 class TestPlanSurvivesProcess:
     """Envelope persistido: plan e apply em instâncias/processos diferentes."""
