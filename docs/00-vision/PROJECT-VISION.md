@@ -22,6 +22,10 @@ O produto parte de quatro fontes de pesquisa, sem criar dependência operacional
 - **Autônomo e substituível por capacidades**: KDE, Steam, InputPlumber e integrações
   remotas são opcionais; ausência ou crash de um provider não derruba o núcleo.
 - **Legalmente responsável**: política `local-owned-dump-only` — o produto organiza e valida o que o usuário já possui; nunca obtém conteúdo protegido.
+- **Explícito sobre suas duas superfícies AURA**: **AURA UI** é o sistema visual
+  aplicado à central de gerenciamento; **AURA Launcher** é a experiência
+  fullscreen de biblioteca, descoberta e lançamento por controle. Uma não serve
+  como evidência de implementação, instalação ou certificação da outra.
 
 ## O que o produto NÃO é
 

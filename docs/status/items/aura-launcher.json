@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-LAUNCHER",
+  "title": "AURA Launcher — biblioteca fullscreen e lancamento",
+  "domain": "ui",
+  "implementation": "planned",
+  "integration": "isolated",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "docs/00-vision/PROJECT-VISION.md",
+    "docs/00-vision/NON-GOALS.md",
+    "docs/01-product/AURA-SURFACES.md",
+    "docs/01-product/PRD.md",
+    "docs/01-product/FEATURE-CATALOG.md",
+    "docs/01-product/ACCEPTANCE-CRITERIA.md",
+    "docs/12-roadmap/IMPLEMENTATION-ROADMAP.md",
+    "docs/12-roadmap/MILESTONES.md",
+    "docs/12-roadmap/STEAM-SESSION-ROADMAP.md",
+    "src/steamzero/launcher",
+    "src/steamzero/ui/qml/launcher",
+    "tests/qml/launcher"
+  ],
+  "dependsOn": [
+    "SZ-AURA-UI",
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
+    "Um jogo real e iniciado e retorna ao mesmo contexto do launcher sem encerrar a sessao indevidamente.",
+    "Reiniciar o launcher nao derruba o jogo ativo nem corrompe dados ou operacoes.",
+    "Steam, ES-DE, RetroFE e outros frontends permanecem opcionais e inalterados sem plano proprio.",
+    "Instalacao e certificacao exigem capturas da release ativa e ciclo fisico controle-jogo-retorno."
+  ],
+  "evidence": [],
+  "nextAction": "Definir o vertical slice home-biblioteca-jogo-retorno e implementa-lo com baseline e evidencia fisica separados da AURA UI.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-17",
+  "notes": "Capacidade criada para impedir que o tema AURA UI seja reportado como launcher. Nenhum codigo, pacote, instalacao ou certificacao do AURA Launcher existe neste item."
+}

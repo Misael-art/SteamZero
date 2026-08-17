@@ -19,6 +19,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 269 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 29 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AURA-LAUNCHER | 9 | 0 | 0 | none | sem evidencia registrada |
+| SZ-AURA-UI | 11 | 2 | 2 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
@@ -33,8 +35,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-AURA | 11 | 2 | 2 | unit |  |
-| SZ-THEME-EDITOR | 8 | 4 | 4 | unit |  |
+| SZ-THEME-ENGINE | 14 | 2 | 2 | unit |  |
+| SZ-THEME-STUDIO | 8 | 4 | 4 | unit |  |
 | SZ-UI-DESKTOP-AUDIT | 213 | 1 | 1 | dev |  |
 
-Arquivos em `src/`: **443**. Sob agregador apenas, sem item de capacidade: **320** (72%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **443**. Sob agregador apenas, sem item de capacidade: **313** (70%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

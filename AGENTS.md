@@ -129,7 +129,82 @@ loop de login ou falha silenciosa reprovam a mudança. Padrões existentes:
 fallback de desktop em `steam_session`, backoff de autologin, `ExecStartPre` de
 limpeza no unit, estado `unknown`/`permissionDenied` no `status()`.
 
-## 9. Ao terminar
+## 9. Execução autônoma, entrega física e evidência visual
+
+O padrão deste projeto é execução contínua, orientada a entregas reais. Uma vez
+definidos o item, a branch e as autorizações necessárias, o agente avança sem
+pedir confirmação entre etapas ou perguntar se deve continuar. Atualizações
+intermediárias devem ser curtas e sempre informar: resultado observado, bloqueio
+concreto (se houver) e próxima ação.
+
+Cada item deve seguir este ciclo, sem pular etapas aplicáveis:
+
+1. reproduzir o defeito ou registrar um baseline verificável;
+2. identificar a causa raiz e implementar a menor correção completa;
+3. executar testes focados durante a investigação e os gates integrais da seção
+   6 somente no fechamento da correção;
+4. criar commit funcional isolado e fazer push apenas da branch autorizada;
+5. acompanhar os gates remotos e, quando a thread atual autorizar explicitamente,
+   publicar a release pelo fluxo governado;
+6. instalar no host real somente conforme a autorização, o token e os limites da
+   seção 1, sem atalhos ou mutações manuais equivalentes;
+7. validar a experiência real no artefato instalado, incluindo os fluxos de
+   sucesso, erro e recuperação aplicáveis, idempotência, preservação de dados e
+   versão efetivamente ativa;
+8. registrar evidência física, atualizar status e documentação, criar o commit
+   documental isolado e fazer push da branch autorizada;
+9. avançar imediatamente ao próximo item elegível.
+
+Push, publicação, instalação, rollback e qualquer outra ação externa ou
+privilegiada não são implicitamente autorizados por esta seção. A thread atual
+deve conceder a autorização exigida, com o escopo definido pelas seções
+anteriores. Depois de concedida, o agente não volta a pedir confirmação entre
+passos já abrangidos; tokens de confirmação continuam sendo obtidos e usados
+exatamente como o fluxo governado exigir. Sem autorização, o agente conclui tudo
+o que for seguro até os gates e o commit local, registra o bloqueio exato e não
+simula nem alega entrega física.
+
+Não repita a suíte integral por cautela entre observações do mesmo ciclo. Se uma
+falha de infraestrutura se repetir após uma tentativa, trate-a como defeito
+reproduzível: teste focado, causa raiz, correção mínima e prova antes de retomar o
+item. Um item cuja validação física falhou permanece aberto e volta ao início
+desse ciclo; não avance apenas porque os testes automatizados passaram.
+
+Cada etapa fisicamente entregue deve conter ao menos uma captura PNG do resultado
+funcional real da release instalada. Quando aplicável, inclua também evidência do
+erro controlado e da recuperação. A captura principal deve aparecer no relatório
+da etapa e os arquivos devem ficar no diretório de evidências do item, com nomes
+ordenados como `01-baseline.png`, `02-entrega-funcional.png` e
+`03-recuperacao.png`. Mostre junto a versão/release ativa por evidência verificável
+e remova ou oculte tokens, segredos e dados pessoais antes de persistir qualquer
+imagem ou registro.
+
+O agente só deve pausar por dependência realmente externa: autorização ainda não
+concedida, token obrigatório, ação física exclusiva do operador (como reboot),
+segredo indisponível, decisão de produto materialmente ambígua, risco destrutivo
+fora do escopo ou bloqueio externo comprovado. Quando houver outro item seguro e
+independente no mesmo escopo, registre o bloqueio e prossiga nele autonomamente.
+
+## 10. Taxonomia AURA e dimensão da plataforma de temas
+
+Antes de trabalhar em temas, UI, Launcher, scene graph, assets ou efeitos, leia
+obrigatoriamente `docs/01-product/AURA-SURFACES.md` e
+`docs/01-product/THEME-ENGINE-AND-STUDIO.md`. O projeto possui quatro capacidades
+independentes: **AURA UI**, **AURA Launcher**, **Theme Engine** e **Theme Studio**.
+Código, teste, instalação ou captura de uma delas nunca promove o estado de outra.
+
+A filosofia normativa é **“renderize, não edite”**: o pacote guarda o asset-fonte
+e uma receita declarativa; variações de cor, contorno, máscara, composição e efeito
+são produzidas pela engine e apenas cacheadas. Não aceite múltiplos assets
+pré-editados como substituto de uma capacidade prometida pela engine.
+
+Liberdade criativa não amplia a fronteira de confiança. Tema de terceiros não
+executa QML, JavaScript, Python, shell, binário, biblioteca ou shader arbitrário;
+usa somente scene graph, bindings, componentes e effect nodes allowlisted. Toda
+afirmação de desempenho GPU, FPS, memória ou fidelidade visual exige medição no
+hardware e na release indicados, nunca inferência de teste offscreen.
+
+## 11. Ao terminar
 
 Relatório final com: tabela item→commit→testes que provam; o que ficou fora de
 escopo e por quê; ações de host executadas, release ativa e rollback disponível;

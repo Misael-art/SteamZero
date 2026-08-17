@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-THEME-ENGINE",
+  "title": "Theme Engine — cenas e efeitos declarativos",
+  "domain": "themes",
+  "implementation": "partial",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopeDigest": "cbb5f31f0185bf1fa0d5791f3360ffc3ac7f8b05020a98fa331d163acce2b08a",
+  "scopePaths": [
+    "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
+    "src/steamzero/domain/themes.py",
+    "src/steamzero/domain/scene_contract.py",
+    "src/steamzero/domain/scene_display.py",
+    "src/steamzero/domain/qml_render_model.py",
+    "src/steamzero/adapters/theme_catalog.py",
+    "src/steamzero/schemas/theme-manifest-v1.schema.json",
+    "src/steamzero/schemas/ir-scene-v1.schema.json",
+    "src/steamzero/ui/qml/MediaEffectLayer.qml",
+    "src/steamzero/ui/qml/ReflectionLayer.qml",
+    "tests/unit/test_theme_effects.py",
+    "tests/unit/test_scene_contract.py",
+    "tests/unit/test_scene_image_pipeline.py",
+    "tests/qml/check_media_effect_layer.qml"
+  ],
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
+    "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
+    "Grid, list, wheel e cover flow podem ser compostos sem codigo externo.",
+    "Tema invalido ou acima do orcamento degrada para builtin seguro sem perder foco ou derrubar o launcher.",
+    "A cena de referencia mede 60 FPS, frame p95 de 16,7 ms, startup de ate 2 s e no maximo 512 MB de VRAM no Deck.",
+    "Instalacao, update, rollback e remocao preservam temas e dados do usuario."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_effects.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_effects.py tests/unit/test_scene_contract.py tests/unit/test_scene_image_pipeline.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_media_effect_layer.qml",
+      "command": "make check (harness QML da effect stack allowlisted)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Implementar o primeiro slice asset-unico para recolor, silhueta e contorno fino/grosso, com fixture licenciada e prova GPU.",
+  "activeWorkstreams": [
+    "WS-2026-08-THEME-ASSET-RECIPES"
+  ],
+  "updatedAt": "2026-08-17",
+  "notes": "Estado parcial: resolver, contratos de cena e effect stack QML existem, mas scene graph livre ponta a ponta, transformacoes completas, cor dinamica, cache GPU, timeline e certificacao fisica nao existem como produto concluido. Distribuicao instalada descreve somente a fundacao presente na release; nao certifica a especificacao completa."
+}

@@ -63,6 +63,38 @@ Formato Given/When/Then. Cada critério vira caso de teste em 08-testing/TEST-MA
 - AC-UI-02: Todo erro exibido tem código estável, impacto e ação; detalhes técnicos são opt-in.
 - AC-UI-03: Progresso exibido deriva de medição real (bytes/itens/etapas); proibido progresso sintético.
 
+## Superfícies AURA
+
+- AC-AUI-01: AURA UI aplica tokens, contraste, escala, foco e redução de movimento
+  à central de gerenciamento; sua validação não afirma que existe um launcher.
+- AC-AL-01: AURA Launcher inicia fullscreen, apresenta home, biblioteca e página
+  de jogo e permite lançar e retornar usando somente o controle.
+- AC-AL-02: Fechar ou reiniciar o AURA Launcher não encerra jogo ativo nem corrompe
+  biblioteca, saves, operações ou configurações da AURA UI.
+- AC-AL-03: Uma release só declara AURA Launcher instalado ou certificado após
+  captura da experiência fullscreen real e ciclo físico controle→jogo→retorno.
+- AC-AL-04: Steam, ES-DE, RetroFE e outros frontends permanecem opções; habilitar
+  o AURA Launcher não os remove nem altera sem plano e confirmação próprios.
+
+## Theme Engine e Theme Studio
+
+- AC-TE-01: Um único asset transparente produz em runtime variantes colorida,
+  monocromática, invertida e com contornos fino/grosso; o pacote não contém os
+  derivados pré-editados.
+- AC-TE-02: Scene graph, layout, bindings, effect graph e animações são
+  declarativos, versionados, limitados e não executam código externo.
+- AC-TE-03: Tema inválido, incompatível ou acima do orçamento degrada para tema
+  seguro sem tela preta, perda de foco ou interrupção do jogo.
+- AC-TE-04: A cena de referência mantém 60 FPS no Deck a 1280×800, abre de forma
+  utilizável em até 2 segundos e respeita teto adaptativo de 512 MB de VRAM; os
+  três valores exigem medição física por release.
+- AC-TS-01: Theme Studio cria e edita layout, componente, efeito e animação por
+  canvas/inspector/timeline, com undo/redo e preview em múltiplas resoluções.
+- AC-TS-02: Exportar, importar e reabrir preserva o tema; validadores detectam
+  asset, contrato, foco, contraste, acessibilidade e orçamento antes da publicação.
+- AC-TS-03: Nenhum fluxo básico de criação das variantes previstas exige
+  Photoshop, GIMP, terminal ou alteração manual do pacote.
+
 ## Privilégio
 
 - AC-PR-01: Helper privilegiado rejeita qualquer ação fora da allowlist com `E-PRIV-DENIED`; fuzzing de parâmetros não produz execução arbitrária.

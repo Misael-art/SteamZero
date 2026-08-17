@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "workstream",
+  "id": "WS-2026-08-THEME-ASSET-RECIPES",
+  "item": "SZ-THEME-ENGINE",
+  "branch": "codex/theme-engine-asset-recipes",
+  "baseRef": "e71d9b41982de74328cd9956b447f6009cbee509",
+  "owner": "codex-theme-engine",
+  "state": "active",
+  "exclusivePaths": [
+    "src/steamzero/domain/asset_recipes.py",
+    "src/steamzero/schemas/asset-recipe-v1.schema.json",
+    "src/steamzero/themes/org.steamzero.asset-recipes-demo",
+    "src/steamzero/ui/qml/AssetRecipePreview.qml",
+    "tests/unit/test_asset_recipes.py",
+    "tests/qml/check_asset_recipe_preview.qml"
+  ],
+  "sharedPaths": [
+    "AGENTS.md",
+    "docs/00-vision",
+    "docs/01-product",
+    "docs/12-roadmap",
+    "docs/STATUS.md",
+    "docs/status",
+    "docs/WORKLOG.md",
+    "src/steamzero/ui/qml/MediaEffectLayer.qml"
+  ],
+  "nextAction": "Fechar o primeiro slice verificavel: um asset-fonte transparente gera variantes declarativas em runtime, com cache descartavel, fallback seguro, preview real e evidencia fisica.",
+  "updatedAt": "2026-08-17"
+}
