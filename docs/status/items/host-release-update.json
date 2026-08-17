@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-HOST-RELEASE-UPDATE",
+  "title": "Atualizacao transacional e recuperavel do host",
+  "domain": "distribution",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "ready",
+  "distribution": "installed",
+  "scopePaths": [
+    ".github/workflows/ci.yml",
+    "tools/release_host.py",
+    "tools/install_host.py",
+    "tests/unit/test_release_host.py",
+    "tests/integration/test_host_installer.py",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md",
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+    "docs/09-operations/evidence/2026-08-17-release-convergence-recovery"
+  ],
+  "scopeDigest": "01e7d0f706bab54c3b817d3c1168f6daa85884c5b543ab5d99b3b2191b9cfa35",
+  "dependsOn": [],
+  "knownGaps": [
+    "GAP-HOST-UPDATE-VM-CYCLE",
+    "GAP-HOST-UPDATE-PHYSICAL-CERTIFICATION"
+  ],
+  "acceptanceCriteria": [
+    "Um unico comando resolve o commit verde, valida o bundle e apresenta um plano imutavel antes da autorizacao.",
+    "A transacao mantem lock global e journal write-ahead atomico sem registrar segredos ou caminhos de dados do usuario.",
+    "Falha apos ativacao aciona rollback automatico para a release previamente verificada e comprova a recuperacao.",
+    "Reexecucao recupera uma transacao interrompida sem iniciar uma segunda ativacao concorrente.",
+    "Release reprovada fica em quarentena e deploymentHealthy nunca implica certificacao fisica.",
+    "Todo artefato de cadeia de suprimentos publicado pelo CI possui checksum validado antes do plano de instalacao.",
+    "Falha comprovada antes da preparacao do bundle terminaliza o journal sem chamada privilegiada, enquanto estados ambiguos continuam exigindo recuperacao do commit original.",
+    "Falha estruturada de convergencia preserva estado, codigo e detalhe sanitizado no journal antes do rollback automatico.",
+    "A provisao opcional do runtime QML no CI possui prazo finito e nao pode bloquear indefinidamente os gates obrigatorios.",
+    "O smoke da release candidata nao observa o link current real antes da reinicializacao do daemon e, portanto, nao cria uma pre-condicao circular para a convergencia."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_release_host.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_host_installer.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py tests/integration/test_host_installer.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+      "command": "tools/release_host.py update --to origin/codex/harmonize-ui-g45-release-candidate --confirm-update <token-exato>",
+      "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-17-release-convergence-recovery/README.md",
+      "command": "update governado da candidata fe360b3, doctor, daemon, socket, Game Mode, smoke QML e captura da UI instalada",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Prosseguir com a certificacao fisica dos componentes e da UI na release 0.1.0a46-fe360b3731d5; merge e tag continuam bloqueados pela certificacao de boot e controles do operador.",
+  "activeWorkstreams": [
+    "WS-2026-08-HOST-RELEASE-UPDATE"
+  ],
+  "updatedAt": "2026-08-17",
+  "notes": "A candidata fecha com testes os riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. Em 2026-08-17, a candidata 931a88b revelou que a identidade do daemon retornada pelo convergidor era aninhada e o controlador a registrava como nula. A correção fe360b3 normaliza esse contrato e recusa identidade realmente ausente. O CI de push 32019392762 passou nos oito jobs. O rollback governado restaurou a46 com daemon, socket e serviço ativos; a atualização seguinte ativou 0.1.0a46-fe360b3731d5, preservou state.db, passou doctor, Game Mode e smoke QML e permaneceu idempotente. A UI real foi capturada na evidência sanitizada. O rollback a46 continua disponível; a certificacao física de boot e controles continua pendente e bloqueia merge e tag."
+}
