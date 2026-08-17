@@ -8,6 +8,7 @@ time, memória ou desempenho do hardware real.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -40,6 +41,11 @@ VARIANTS = (
 
 @pytest.fixture(scope="module")
 def rendered(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    if os.environ.get("QT_QUICK_BACKEND") == "software":
+        pytest.skip(
+            "QML-RHI-ENVIRONMENT-001: goldens MultiEffect exigem RHI; "
+            "o gate software cobre o contrato QML separadamente"
+        )
     runtime = shutil.which("qml6") or shutil.which("qml")
     assert runtime is not None, "QML-VISUAL-ENVIRONMENT-001: qml6/qml ausente"
     output = tmp_path_factory.mktemp("asset-recipes")
