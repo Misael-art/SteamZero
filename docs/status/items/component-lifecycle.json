@@ -45,9 +45,11 @@
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
     "docs/09-operations/evidence/2026-08-16-component-telemetry",
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
-    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar"
+    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar",
+    "docs/09-operations/evidence/2026-08-17-component-physical-flatpak-cemu",
+    "docs/09-operations/evidence/2026-08-17-component-physical-citron"
   ],
-  "scopeDigest": "c20167d8386a7128c244a299958b92b89377cd46bfd524ccdbe61368a7ac6a08",
+  "scopeDigest": "dd8a0825bd01dec1c7908390aa96eb48091a1095e56b175fb1c76b3d2f876784",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -148,12 +150,24 @@
       "reference": "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar/README.md",
       "command": "ciclo físico Azahar: baseline, plan metadata-only, install, verify, noop, drift governado, repair, falha/rollback e uninstall com dados preservados",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-17-component-physical-flatpak-cemu/README.md",
+      "command": "ciclo físico Cemu: baseline, plan metadata-only e duas aplicações governadas",
+      "result": "partial"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-17-component-physical-citron/README.md",
+      "command": "Citron: status, verify, launch e segunda instalação v3 noop no host real",
+      "result": "passed"
     }
   ],
-  "nextAction": "Executar o próximo adapter Flatpak individual; Azahar concluiu o primeiro ciclo da matriz 1/33.",
+  "nextAction": "Não repetir Cemu enquanto a resolução de dl.flathub.org permanecer indisponível. Selecionar outro adapter independente; Citron tem apenas a observação inicial concluída, não o ciclo completo.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],
-  "updatedAt": "2026-08-16",
+  "updatedAt": "2026-08-17",
   "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O envelope v3 metadata-only mantém compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. component.apply cria job persistente, retorna jobId pela bridge, é observável pela gaveta de tarefas, deduplica confirmação e suporta retry auditável. Downloads internos publicam bytes reais e honram cancelamento por chunk. Recovery seletivo terminaliza órfãos e retoma somente queued. Flatpak publica etapas, cancela o processo cooperativamente, restaura deployment e preserva dados. Telemetria local registra DNS, proxy, nomes de ambiente e executor sem persistir valores sensíveis; jobs novos não duplicam o token e jobs legados permanecem recuperáveis. Planos confirmados agora terminam em applied/aborted em sucesso, falha, cancelamento, expiração e recovery; crashes ficam pending somente até recovery e retry cria novos planId/jobId com linhagem. Commit Flatpak cruzando crash faz roll-forward, reaplicação transacional interrompida é recusada até recovery e o job owner usa o fato durável do plano para não registrar cancelamento falso. A suíte completa passou com 4729 testes e guardião integral código zero. No host real, plan_recovery/apply_recovery abortou 28 planos Flatpak e 22 envelopes expirados, incluindo cinco transações delegadas, preservou 1877 transações genéricas independentes, três operações rolled-back, 17 deployments Flatpak e os dados ausentes do Azahar. O ciclo físico do Azahar passou ponta a ponta: metadata-only, install/verify, noop idempotente, drift governado, repair, falha no smoke com rollback e uninstall; nove arquivos/2196717 bytes foram preservados byte a byte no rollback e uninstall. Azahar está missing, sem recovery ativo; o runtime compartilhável KDE 6.9 ficou no inventário e não foi limpo manualmente. Matriz física: 1/33."
 }

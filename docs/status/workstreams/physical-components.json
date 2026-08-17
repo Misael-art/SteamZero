@@ -32,7 +32,9 @@
     "docs/09-operations/evidence/2026-08-16-component-flatpak-control",
     "docs/09-operations/evidence/2026-08-16-component-telemetry",
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
-    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar"
+    "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar",
+    "docs/09-operations/evidence/2026-08-17-component-physical-flatpak-cemu",
+    "docs/09-operations/evidence/2026-08-17-component-physical-citron"
   ],
   "sharedPaths": [
     "docs/status",
@@ -48,6 +50,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Azahar concluiu 1/33; executar o próximo adapter Flatpak individual sem push, release ou instalação da plataforma.",
-  "updatedAt": "2026-08-16"
+  "nextAction": "Cemu está bloqueado por DNS externo após duas tentativas terminalizadas; Citron confirmou lançamento, verify e noop na release 0.1.0a46-fe360b3731d5. Prosseguir por outro adapter independente, sem repetir Cemu até a rede mudar.",
+  "updatedAt": "2026-08-17"
 }
