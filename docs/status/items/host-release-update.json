@@ -20,7 +20,7 @@
     "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
     "docs/09-operations/evidence/2026-08-17-release-convergence-recovery"
   ],
-  "scopeDigest": "e850c95875bc20059b896250c2cf02a09aa8e24eb76e4e3ae5f2bfa0bb8259f8",
+  "scopeDigest": "01e7d0f706bab54c3b817d3c1168f6daa85884c5b543ab5d99b3b2191b9cfa35",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",

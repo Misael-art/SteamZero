@@ -1228,6 +1228,43 @@ def test_structured_convergence_failure_is_preserved_in_rollback_journal(
     assert runner.current == plan.rollback_release
 
 
+def test_state_change_failure_is_classified_without_recording_error_text(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    plan = _update_plan(bundle)
+    runner = _UpdateRunner(target=bundle.release, rollback=plan.rollback_release)
+    _patch_update_runtime(monkeypatch, runner)
+
+    def smokes(active_release: str, **_kwargs: object) -> dict[str, object]:
+        if active_release == bundle.release:
+            raise release_host.AutomationError("state.db mudou durante a atualização")
+        return {"host": {"release": active_release}, "doctor": {"ok": True}}
+
+    monkeypatch.setattr(release_host, "_activation_smokes", smokes)
+    journal = release_host._new_update_journal(plan, state_dir=tmp_path / "state")
+
+    with pytest.raises(release_host.AutomationError, match="foi ativado e verificado"):
+        release_host._execute_update_transaction(
+            bundle,
+            plan,
+            journal,
+            runner=runner,
+            state_dir=tmp_path / "state",
+        )
+
+    rollback_required = next(
+        event for event in journal.document["events"] if event["phase"] == "rollback-required"
+    )
+    assert rollback_required["data"] == {
+        "errorType": "AutomationError",
+        "failedPhase": "convergence-passed",
+        "failureCode": "E-HOST-STATE-CHANGED",
+    }
+
+
 def test_failure_before_activation_does_not_attempt_rollback(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

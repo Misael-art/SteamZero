@@ -1734,12 +1734,26 @@ def _finish_failed_update(
         except Exception as exc:  # A segurança do host prevalece sobre a telemetria.
             evidence_errors.append(exc)
 
+    failure_data: dict[str, object] = {
+        "failedPhase": failed_phase,
+        "errorType": type(original_error).__name__,
+    }
+    if isinstance(original_error, AutomationError):
+        # O journal é evidência de host e não pode copiar stderr/argv arbitrário:
+        # ambos podem carregar paths ou segredos. Estes diagnósticos são fatos
+        # estáveis e acionáveis do próprio controlador.
+        known_failures = {
+            "state.db mudou durante a atualização": "E-HOST-STATE-CHANGED",
+            "state.db divergiu após o rollback": "E-HOST-ROLLBACK-STATE-CHANGED",
+        }
+        if (code := known_failures.get(str(original_error))) is not None:
+            failure_data["failureCode"] = code
+
     record(
         "rollback-required",
         current_release=str(current) if current else None,
         data={
-            "failedPhase": failed_phase,
-            "errorType": type(original_error).__name__,
+            **failure_data,
             **(
                 {
                     "failureState": original_error.state,
