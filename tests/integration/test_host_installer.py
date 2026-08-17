@@ -826,6 +826,12 @@ def test_activation_publishes_and_removes_user_units_by_release_capability(
     assert not layout.polkit_policy.exists()
 
 
+def test_core_service_allows_only_local_and_internet_socket_families(tmp_path: Path) -> None:
+    unit = install_host._service_unit(_layout(tmp_path))
+
+    assert "RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6" in unit
+
+
 def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     modern = _release(layout, "release-modern")

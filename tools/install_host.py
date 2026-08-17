@@ -654,7 +654,10 @@ ProtectSystem=strict
 ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
-RestrictAddressFamilies=AF_UNIX
+# O daemon atende pelo socket local, mas também executa as aquisições HTTPS
+# confirmadas pelo usuário. Sem AF_INET/AF_INET6 a UI planeja corretamente e
+# falha apenas ao aplicar qualquer componente remoto.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 LockPersonality=true
 MemoryDenyWriteExecute=true
 """
