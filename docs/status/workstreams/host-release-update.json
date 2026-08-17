@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-HOST-RELEASE-UPDATE",
   "item": "SZ-HOST-RELEASE-UPDATE",
-  "branch": "codex/harmonize-ui-g45-release-candidate",
-  "baseRef": "66d7ac14323459766c3b63a7ea998c5ceae463f0",
-  "owner": "release-candidate-integration",
+  "branch": "codex/physical-functional-closure",
+  "baseRef": "99fba64e7b39ee943eb00885fbe07920dff4e9e6",
+  "owner": "physical-functional-closure",
   "state": "active",
   "exclusivePaths": [
     ".github/workflows/ci.yml",
@@ -23,6 +23,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Release 0.1.0a46-a02dae5f60ac ativa e saudavel; recolher certificacao fisica do operador e somente entao coordenar integracao e publicacao.",
-  "updatedAt": "2026-08-15"
+  "nextAction": "Corrigir a verificacao de convergencia/rollback revelada pela candidata 931a88bf4e6b: o host voltou para a46, mas os units ficaram inativos apos smoke reprovado; reproduzir, corrigir e recuperar somente pelo fluxo governado.",
+  "updatedAt": "2026-08-17"
 }

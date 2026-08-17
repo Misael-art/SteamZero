@@ -19,7 +19,7 @@
     "docs/09-operations/UPDATE-AND-ROLLBACK.md",
     "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md"
   ],
-  "scopeDigest": "30eba4815b847d49404ef2b2d6ee4c6149c9606be51fbc0dc44fda2f43748b6a",
+  "scopeDigest": "aa492fd36abe15264aab86f725a1772e5e803d2886258696bba9d14e10a442d6",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",

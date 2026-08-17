@@ -848,6 +848,35 @@ class _UpdateRunner:
         return subprocess.CompletedProcess(call, 127, "", f"inesperado: {call}")
 
 
+def test_converge_rejects_report_without_daemon_identity() -> None:
+    release = "0.1.0a42-aaaaaaaaaaaa"
+
+    def runner(argv: Sequence[str], _cwd: Path, _timeout: int) -> subprocess.CompletedProcess[str]:
+        payload = {"ok": True, "data": {"state": "converged", "restarted": False, "attempts": 0}}
+        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+
+    with pytest.raises(release_host.AutomationError, match="identidade do daemon"):
+        release_host._converge(release, runner=runner)
+
+
+def test_converge_accepts_nested_daemon_identity() -> None:
+    release = "0.1.0a42-aaaaaaaaaaaa"
+
+    def runner(argv: Sequence[str], _cwd: Path, _timeout: int) -> subprocess.CompletedProcess[str]:
+        payload = {
+            "ok": True,
+            "data": {
+                "state": "converged",
+                "restarted": False,
+                "attempts": 0,
+                "daemon": {"identity": {"releaseId": release, "sourceCommit": "a" * 40}},
+            },
+        }
+        return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+
+    assert release_host._converge(release, runner=runner)["idempotent"]
+
+
 def _patch_update_runtime(
     monkeypatch: pytest.MonkeyPatch,
     runner: _UpdateRunner,
