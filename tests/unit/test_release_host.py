@@ -1466,6 +1466,34 @@ def test_state_db_fingerprint_includes_wal_commits(
     assert before != after
 
 
+def test_state_db_fingerprint_ignores_daemon_environment_observations(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    state_home = tmp_path / "state"
+    database = state_home / "steamzero" / "state.db"
+    database.parent.mkdir(parents=True)
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute("CREATE TABLE protected (value TEXT)")
+        connection.execute("CREATE TABLE session_environment (id TEXT, payload_json TEXT)")
+        connection.execute(
+            "CREATE TABLE event_log (seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT)"
+        )
+        connection.execute("INSERT INTO protected VALUES ('preserve-me')")
+        connection.commit()
+        before = release_host._state_db_fingerprint()
+        connection.execute("INSERT INTO session_environment VALUES ('current', 'volatile')")
+        connection.execute("INSERT INTO event_log (kind) VALUES ('session.environment')")
+        connection.commit()
+        assert release_host._state_db_fingerprint() == before
+        connection.execute("INSERT INTO protected VALUES ('real-change')")
+        connection.commit()
+        assert release_host._state_db_fingerprint() != before
+    finally:
+        connection.close()
+
+
 def test_cache_space_preflight_rejects_low_disk(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
