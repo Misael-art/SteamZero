@@ -15,7 +15,8 @@
     "tests/integration/test_host_installer.py",
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md",
-    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md"
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+    "docs/09-operations/evidence/2026-08-17-release-convergence-recovery"
   ],
   "sharedPaths": [
     "docs/status",
@@ -23,6 +24,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/WORKLOG.md"
   ],
-  "nextAction": "Corrigir a verificacao de convergencia/rollback revelada pela candidata 931a88bf4e6b: o host voltou para a46, mas os units ficaram inativos apos smoke reprovado; reproduzir, corrigir e recuperar somente pelo fluxo governado.",
+  "nextAction": "Recuperação fechada na release 0.1.0a46-fe360b3731d5 com evidência visual; retomar a matriz física de componentes e a certificação de UI sem merge ou tag antes dos gates do operador.",
   "updatedAt": "2026-08-17"
 }

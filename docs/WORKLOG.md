@@ -7460,3 +7460,21 @@ read-only mostrou o host ainda em `0.1.0a46-40aa9bafa062`, com rollback conhecid
 `0.1.0a45-e2049b4999d5`. CI, ciclo em VM e certificação física no Deck continuam
 pendentes; `deploymentHealthy` automatizado nunca implica
 `physicalCertification`.
+
+---
+
+## 2026-08-17 — Recuperação de convergência da release
+
+Na frente `codex/physical-functional-closure`, a candidata `931a88b` revelou
+que o controlador aceitava identidade do daemon aninhada sem normalizá-la,
+deixando a auditoria vazia e levando a uma verificação pós-ativação incorreta.
+O rollback governado restaurou a a46 e, após a correção `fe360b3`, a candidata
+`0.1.0a46-fe360b3731d5` foi instalada pelo fluxo oficial.
+
+O CI push `32019392762` passou nos oito jobs. A release instalada convergiu com
+daemon identificado, socket e serviço ativos, doctor, Game Mode e QML verdes e
+fingerprint do state.db preservado; rollback `0.1.0a46-a02dae5f60ac` disponível.
+A evidência visual sanitizada está em
+`docs/09-operations/evidence/2026-08-17-release-convergence-recovery/`.
+Boot e controles físicos permanecem pendentes do operador; não houve reboot,
+tag ou merge.

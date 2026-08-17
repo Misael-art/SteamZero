@@ -17,9 +17,10 @@
     "tests/integration/test_host_installer.py",
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
     "docs/09-operations/UPDATE-AND-ROLLBACK.md",
-    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md"
+    "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
+    "docs/09-operations/evidence/2026-08-17-release-convergence-recovery"
   ],
-  "scopeDigest": "aa492fd36abe15264aab86f725a1772e5e803d2886258696bba9d14e10a442d6",
+  "scopeDigest": "77128d725a7313eeb3ca97d555fe47e2f7c1913b04a0b3f97ea58c24ceaf7169",
   "dependsOn": [],
   "knownGaps": [
     "GAP-HOST-UPDATE-VM-CYCLE",
@@ -55,12 +56,18 @@
       "reference": "docs/09-operations/evidence/2026-08-15-a46-release-candidate.md",
       "command": "tools/release_host.py update --to origin/codex/harmonize-ui-g45-release-candidate --confirm-update <token-exato>",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-17-release-convergence-recovery/README.md",
+      "command": "update governado da candidata fe360b3, doctor, daemon, socket, Game Mode, smoke QML e captura da UI instalada",
+      "result": "passed"
     }
   ],
-  "nextAction": "Recolher a certificacao fisica de boot, G45, controle, Game Mode e fallback para a release 0.1.0a46-a02dae5f60ac antes de integrar em main ou publicar a tag.",
+  "nextAction": "Prosseguir com a certificacao fisica dos componentes e da UI na release 0.1.0a46-fe360b3731d5; merge e tag continuam bloqueados pela certificacao de boot e controles do operador.",
   "activeWorkstreams": [
     "WS-2026-08-HOST-RELEASE-UPDATE"
   ],
-  "updatedAt": "2026-08-15",
-  "notes": "A candidata fecha com testes os riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. O caminho origin/codex/* permite certificacao anterior ao merge e e recusado por publish. O primeiro plano real bloqueou antes da mutacao porque SHA256SUMS nao cobria build/pip-audit.json; a pipeline agora inclui o relatorio de vulnerabilidades nos checksums e possui guarda de regressao. Esse bloqueio revelou que uma falha ainda em discovered prendia a proxima candidata ao commit antigo: novas falhas pre-ativacao agora terminalizam o journal, e uma descoberta antiga so pode ser superada quando nao possui bundle/plano, o host permanece na release registrada, o novo commit e o HEAD limpo e nenhuma fase posterior existiu. Duas instalacoes reais ativaram candidatas, reprovaram na convergencia e restauraram/verificaram automaticamente 0.1.0a46-40aa9bafa062. A segunda preservou a causa estruturada E-HOST-CURRENT-UNREADABLE: o smoke da release nova observava current ja apontado para a candidata e o daemon ainda antigo antes de a convergencia poder reinicia-lo, criando uma pre-condicao circular. O smoke agora recebe um link current isolado e inexistente, enquanto a verificacao real posterior a convergencia continua observando o host ativo. O CI seguinte ficou preso por mais de dez minutos no apt opcional de Qt/Python 3.11; esse passo best-effort agora tem timeout de cinco minutos e guarda automatizada, sem enfraquecer os gates obrigatorios. Em 2026-08-15 o SHA a02dae5f60acd6bc2df50fee462f2134b8891f47 passou em dois runs CI completos e foi ativado como 0.1.0a46-a02dae5f60ac: daemon convergido e idempotente, doctor sem blockers, schema 20, state.db preservado, Game Mode ready, QML offscreen vivo, service/socket ativos e rollback 0.1.0a46-40aa9bafa062 disponivel. O ciclo legado recusou corretamente proveniencia fora de refs/heads/main e nao foi contornado. deploymentHealthy e verdadeiro; physicalCertification permanece falso, portanto merge e tag continuam proibidos."
+  "updatedAt": "2026-08-17",
+  "notes": "A candidata fecha com testes os riscos reproduzidos: rollback defensivo mesmo com current ilegivel e falha de evidencia, cache revalidado contra o run verde e ref remoto, snapshot SQLite incluindo WAL, QML obrigado a permanecer vivo pela janela e lock privilegiado entre usuarios. Em 2026-08-17, a candidata 931a88b revelou que a identidade do daemon retornada pelo convergidor era aninhada e o controlador a registrava como nula. A correção fe360b3 normaliza esse contrato e recusa identidade realmente ausente. O CI de push 32019392762 passou nos oito jobs. O rollback governado restaurou a46 com daemon, socket e serviço ativos; a atualização seguinte ativou 0.1.0a46-fe360b3731d5, preservou state.db, passou doctor, Game Mode e smoke QML e permaneceu idempotente. A UI real foi capturada na evidência sanitizada. O rollback a46 continua disponível; a certificacao física de boot e controles continua pendente e bloqueia merge e tag."
 }
