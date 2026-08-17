@@ -1219,6 +1219,13 @@ def _converge(
             f"restarted={second_report.get('restarted')}, "
             f"attempts={second_report.get('attempts')}"
         )
+    for name, report in (("primeira", first_report), ("segunda", second_report)):
+        if report.get("daemonRelease") != release or not isinstance(
+            report.get("daemonCommit"), str
+        ):
+            raise AutomationError(
+                f"{name} convergência não confirmou a identidade do daemon esperado"
+            )
     return {"first": first_data, "idempotent": second_data}
 
 
@@ -1229,6 +1236,15 @@ def _convergence_report(payload: object) -> dict[str, object]:
     report = data if isinstance(data, dict) else payload
     if not isinstance(report, dict):
         raise AutomationError("convergência sem relatório")
+    daemon = report.get("daemon")
+    if isinstance(daemon, dict):
+        identity = daemon.get("identity")
+        if isinstance(identity, dict):
+            report = {
+                **report,
+                "daemonRelease": report.get("daemonRelease") or identity.get("releaseId"),
+                "daemonCommit": report.get("daemonCommit") or identity.get("sourceCommit"),
+            }
     return report
 
 
