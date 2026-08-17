@@ -819,6 +819,55 @@ class FlatpakExecutor:
         self._save_plan(replace(plan, status=terminal))
         return terminal
 
+    def recover_plans(self) -> list[dict[str, str]]:
+        """Migra planos v1 órfãos somente quando já expirados ou executados.
+
+        Uma autorização ainda válida e nunca iniciada permanece pendente. Já um
+        plano com operação durável, ou cujo TTL acabou, não pode continuar
+        reutilizável depois do recovery de uma release nova.
+        """
+        recovered: list[dict[str, str]] = []
+        fs.ensure_dir(paths.plans_dir())
+        for entry in sorted(paths.plans_dir().glob("*.json")):
+            if entry.is_symlink() or not entry.is_file():
+                continue
+            try:
+                raw = json.loads(entry.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            flatpak_fields = {"adapterId", "ref", "remote", "targetCommit", "before", "expiresAt"}
+            if (
+                raw.get("schemaVersion") != 1
+                or raw.get("status") != "pending"
+                or not flatpak_fields <= set(raw)
+            ):
+                continue
+            plan_id = raw.get("planId")
+            if not isinstance(plan_id, str):
+                continue
+            plan = self._load_plan(plan_id)
+            expires_at = datetime.fromisoformat(plan.expires_at)
+            if expires_at.tzinfo is None:
+                raise SteamZeroError(
+                    "E-STATE-INTEGRITY", detail="expiração do plano Flatpak sem timezone"
+                )
+            operations = self._operations_for_plan(plan_id)
+            expired = self._utc_now() > expires_at
+            if not operations and not expired:
+                continue
+            terminal = self.recover_plan(plan_id)
+            recovered.append(
+                {
+                    "status": "reconciled",
+                    "planId": plan_id,
+                    "adapterId": plan.adapter_id,
+                    "executor": "flatpak-plan",
+                    "state": terminal,
+                    "reason": "operation-terminal" if operations else "expired",
+                }
+            )
+        return recovered
+
     def _operations_for_plan(self, plan_id: str) -> list[FlatpakOperation]:
         operations: list[FlatpakOperation] = []
         fs.ensure_dir(paths.component_operations_dir())

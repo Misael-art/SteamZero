@@ -554,6 +554,55 @@ def test_power_loss_after_flatpak_commit_rolls_plan_forward(
     assert flatpak.current.commit == TARGET
 
 
+def test_recover_terminalizes_expired_legacy_plan_without_operation(
+    store: state.StateStore,
+) -> None:
+    flatpak = FakeFlatpak()
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    raw["expiresAt"] = "2000-01-01T00:00:00+00:00"
+    fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+    recovered = service.recover_plans()
+
+    assert recovered == [
+        {
+            "status": "reconciled",
+            "planId": plan.plan_id,
+            "adapterId": "demo-flatpak",
+            "executor": "flatpak-plan",
+            "state": "aborted",
+            "reason": "expired",
+        }
+    ]
+    assert json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))["status"] == (
+        "aborted"
+    )
+
+
+def test_recover_terminalizes_legacy_pending_plan_after_rolled_back_operation(
+    store: state.StateStore,
+) -> None:
+    before = FlatpakState(True, REF, "flathub", PREVIOUS)
+    flatpak = FakeFlatpak(before)
+    flatpak.smoke_error = RuntimeError("falha histórica")
+    service = executor(store, flatpak)
+    plan = service.plan_install("demo-flatpak")
+    with pytest.raises(SteamZeroError):
+        service.apply(plan.plan_id, plan.confirm_token)
+    raw = json.loads(paths.plan_path(plan.plan_id).read_text(encoding="utf-8"))
+    raw["status"] = "pending"  # estado persistido por releases antigas
+    fs.write_atomic_text(paths.plan_path(plan.plan_id), json.dumps(raw, sort_keys=True))
+
+    recovered = service.recover_plans()
+
+    assert recovered[0]["planId"] == plan.plan_id
+    assert recovered[0]["state"] == "aborted"
+    assert recovered[0]["reason"] == "operation-terminal"
+    assert flatpak.current == before
+
+
 @pytest.mark.fi
 @pytest.mark.rt
 def test_power_loss_during_manual_rollback_is_resumed(store: state.StateStore) -> None:

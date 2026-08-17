@@ -1454,6 +1454,7 @@ class ComponentLifecycle:
         estado real do executor com a operação ``rolled-back``. Idempotente:
         uma operação já encerrada não é processada de novo.
         """
+        flatpak = self._flatpak()
         recovered: list[dict[str, Any]] = [
             {
                 "status": result.status,
@@ -1461,9 +1462,10 @@ class ComponentLifecycle:
                 "adapterId": result.adapter_id,
                 "executor": "flatpak",
             }
-            for result in self._flatpak().recover()
+            for result in flatpak.recover()
         ]
-        recovered.extend(self._recover_delegated_plans())
+        recovered.extend(flatpak.recover_plans())
+        recovered.extend(self._recover_component_plans())
         fs.ensure_dir(paths.component_operations_dir())
         for entry in sorted(paths.component_operations_dir().glob("*.json")):
             if entry.is_symlink() or not entry.is_file():
@@ -1592,8 +1594,8 @@ class ComponentLifecycle:
         return hashlib.sha256(encoded).hexdigest()
 
     # ------------------------------------------------------------- internals
-    def _recover_delegated_plans(self) -> list[dict[str, Any]]:
-        """Reconcilia envelopes interrompidos usando o vínculo persistido."""
+    def _recover_component_plans(self) -> list[dict[str, Any]]:
+        """Reconcilia envelopes expirados ou interrompidos sem consumir os frescos."""
         recovered: list[dict[str, Any]] = []
         fs.ensure_dir(paths.plans_dir())
         for entry in sorted(paths.plans_dir().glob("*.json")):
@@ -1608,12 +1610,39 @@ class ComponentLifecycle:
                 or raw.get("schemaVersion") not in {2, 3}
                 or raw.get("status") not in {"pending", "aborted"}
                 or not isinstance(raw.get("delegated"), dict)
-                or not raw["delegated"]
                 or not isinstance(raw.get("adapterId"), str)
             ):
                 continue
             outer_status = str(raw["status"])
             delegated = dict(raw["delegated"])
+            if not delegated:
+                if outer_status != "pending":
+                    continue
+                try:
+                    expires_at = datetime.fromisoformat(str(raw.get("expiresAt", "")))
+                except ValueError as exc:
+                    raise SteamZeroError(
+                        "E-STATE-INTEGRITY", detail="expiração inválida do plano de componente"
+                    ) from exc
+                if expires_at.tzinfo is None:
+                    raise SteamZeroError(
+                        "E-STATE-INTEGRITY", detail="expiração do plano sem timezone"
+                    )
+                if self._utc_now() <= expires_at:
+                    continue
+                raw["status"] = "aborted"
+                self._save_raw_plan(raw)
+                recovered.append(
+                    {
+                        "status": "reconciled",
+                        "planId": str(raw["planId"]),
+                        "adapterId": str(raw["adapterId"]),
+                        "executor": "component-plan",
+                        "state": "aborted",
+                        "reason": "expired",
+                    }
+                )
+                continue
             executor: str
             if set(delegated) == {"transactionPlanId"}:
                 delegated_plan_id = str(delegated["transactionPlanId"])
