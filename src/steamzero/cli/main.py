@@ -703,6 +703,20 @@ def _component_lifecycle(store: StateStore) -> Any:
     return ComponentLifecycle(store, AdapterRegistry.bundled())
 
 
+def _component_job_service() -> Any:
+    """Constrói a fachada assíncrona usada também pela Central.
+
+    ``component apply`` é uma mutação potencialmente demorada (download,
+    verificação e rollback). Executá-la diretamente no handler RPC fazia o
+    cliente atingir o prazo do socket e receber um resultado ambíguo apesar de
+    a operação ter sido concluída. A confirmação agora só cria o job durável;
+    o worker continua em segundo plano e o estado é observado por ``jobs``.
+    """
+    from steamzero.adapters.component_jobs import ComponentJobService
+
+    return ComponentJobService()
+
+
 def _cmd_component_list(_args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     with StateStore() as store:
         store.migrate()
@@ -828,17 +842,14 @@ def _cmd_component_open_config(args: list[str], correlation_id: str) -> tuple[di
 def _cmd_component_apply(args: list[str], correlation_id: str) -> tuple[dict[str, Any], int]:
     plan_id = _required_flag(args, "--plan-id")
     confirm_token = _required_flag(args, "--confirm")
-    with StateStore() as store:
-        store.migrate()
-        lifecycle = _component_lifecycle(store)
-        result = lifecycle.apply(plan_id, confirm_token)
+    result = _component_job_service().start(plan_id, confirm_token)
     return (
         build_envelope(
             "component",
             "apply",
-            status=result["status"],
+            status="ok",
             data=result,
-            operation_id=result.get("operationId") or None,
+            job_id=str(result["jobId"]),
             correlation_id=correlation_id,
         ),
         EXIT_OK,
