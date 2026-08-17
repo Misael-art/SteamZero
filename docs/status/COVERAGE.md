@@ -10,17 +10,17 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-ADAPTERS | 102 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-CORE | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-DOMAIN | 80 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-DOMAIN | 81 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-INPUT-PROFILES | 19 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-JOBS | 3 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PLATFORM-MANIFESTS | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-SCHEMAS | 40 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-SCHEMAS | 41 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 269 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 282 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 29 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 9 | 0 | 0 | none | sem evidencia registrada |
-| SZ-AURA-UI | 11 | 2 | 2 | unit |  |
+| SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
@@ -35,8 +35,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 14 | 2 | 2 | unit |  |
-| SZ-THEME-STUDIO | 8 | 4 | 4 | unit |  |
-| SZ-UI-DESKTOP-AUDIT | 213 | 1 | 1 | dev |  |
+| SZ-THEME-ENGINE | 33 | 6 | 6 | unit |  |
+| SZ-THEME-STUDIO | 8 | 5 | 5 | unit |  |
+| SZ-UI-DESKTOP-AUDIT | 214 | 1 | 1 | dev |  |
 
-Arquivos em `src/`: **443**. Sob agregador apenas, sem item de capacidade: **313** (70%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **449**. Sob agregador apenas, sem item de capacidade: **313** (69%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

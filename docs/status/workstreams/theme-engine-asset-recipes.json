@@ -13,7 +13,10 @@
     "src/steamzero/themes/org.steamzero.asset-recipes-demo",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "tests/unit/test_asset_recipes.py",
-    "tests/qml/check_asset_recipe_preview.qml"
+    "tests/integration/test_qml_asset_recipes.py",
+    "tests/qml/check_asset_recipe_preview.qml",
+    "tests/qml/check_theme_editor_asset_recipes.qml",
+    "tests/qml/golden/asset-recipes"
   ],
   "sharedPaths": [
     "AGENTS.md",
@@ -23,8 +26,14 @@
     "docs/STATUS.md",
     "docs/status",
     "docs/WORKLOG.md",
-    "src/steamzero/ui/qml/MediaEffectLayer.qml"
+    "src/steamzero/adapters/theme_catalog.py",
+    "src/steamzero/domain/themes.py",
+    "src/steamzero/schemas/theme-manifest-v1.schema.json",
+    "src/steamzero/ui/qml/MediaEffectLayer.qml",
+    "src/steamzero/ui/qml/ThemeBridge.qml",
+    "src/steamzero/ui/qml/ThemeEditorPanel.qml",
+    "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Fechar o primeiro slice verificavel: um asset-fonte transparente gera variantes declarativas em runtime, com cache descartavel, fallback seguro, preview real e evidencia fisica.",
+  "nextAction": "Fechar gates, commit funcional, push e CI; release e evidencia fisica aguardam identificacao e autorizacao da release exata. Em paralelo seguro, iniciar cache adaptativo.",
   "updatedAt": "2026-08-17"
 }

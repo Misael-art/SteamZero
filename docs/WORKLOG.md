@@ -6371,3 +6371,42 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+## 2026-08-17 — Theme Engine — primeiro slice de receitas de asset
+
+Trabalho retomado sem descartar a árvore documental válida da branch
+transacional. O escopo AURA/Theme Engine/Theme Studio foi transferido para
+`codex/theme-engine-asset-recipes`, baseada exatamente em
+`e71d9b41982de74328cd9956b447f6009cbee509`; o restante da árvore original
+permanece preservado em stash. O commit documental isolado `3fa3ada` definiu a
+taxonomia das quatro capacidades e a especificação/roadmap, com CI terminal
+verde no run `32040325979`.
+
+O primeiro slice funcional foi implementado em `9d126ea`: fixture CC0 com um
+único SVG-fonte transparente, schema e receitas declarativas v1, nodes
+allowlisted, negociação de capability/tier/fallback, limites de custo e
+largura, cache determinístico descartável e preview QML consumido pelo editor.
+Testes provam recolor, grayscale, silhuetas preta/branca, preservação de alpha
+e furos, contornos fino/grosso distintos, glow/shadow, recusa de conteúdo
+ativo/código, uma única decodificação lógica, invalidação do cache e fallback
+seguro. Nenhum PNG derivado existe no pacote; os PNGs versionados ficam apenas
+em `tests/qml/golden/asset-recipes` como oráculos de teste.
+
+O gate visual remoto expôs que a imagem oficial fixa backend software e não
+oferece OpenGL. O teste RHI deixava de respeitar esse contrato e abortava o
+scene graph; `06b3a0f` passou a declarar o skip RHI explicitamente nesse
+ambiente, mantendo o contrato QML no backend software e os 12 goldens verdes
+onde RHI existe. Fechamento local: **4485 passed, 10 skipped**; Ruff check,
+Ruff format, mypy, independence, boundaries, status-check, dois harnesses QML
+e 12 goldens RHI verdes. O run remoto seguinte confirmou QML, supply-chain e
+smokes verdes; Python 3.14 passou 4235 testes e cobertura 85,97%, falhando
+somente porque o commit funcional isolado ainda não continha este fechamento
+documental/digests, razão deste commit separado.
+
+Nenhuma release foi construída, publicada ou instalada: a autorização desta
+sessão contém o placeholder `[PREENCHER RELEASE EXATA QUANDO DISPONÍVEL]` e não
+identifica uma release. Nenhuma ação de host, `bigsudo`, rollback ou reboot foi
+executada. Assim, não há captura da release instalada nem medição física de
+GPU, frame time ou memória; nenhuma alegação de 60 FPS foi feita. SZ-THEME-ENGINE
+permanece partial, e SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
+promovidos.

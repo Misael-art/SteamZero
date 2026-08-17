@@ -19,7 +19,7 @@
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_theme_editor_aura.qml"
   ],
-  "scopeDigest": "30be3a94afc86d07fad7af4c36088ad6cbeceea21c0cd60eb80069ec5cc67d1e",
+  "scopeDigest": "732622b54e6b2195155b53783551dd8cc0073cc63f67dcec9b715217fb6bf502",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -38,6 +38,6 @@
   ],
   "nextAction": "Integrar em main e validar fisicamente no Deck.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-12",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45."
+  "updatedAt": "2026-08-17",
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. O digest compartilhado da UI foi renovado apos o harness QML completo permanecer verde com o preview asset-unico; nenhum estado operacional foi promovido."
 }

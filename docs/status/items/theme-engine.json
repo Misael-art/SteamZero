@@ -9,22 +9,31 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "cbb5f31f0185bf1fa0d5791f3360ffc3ac7f8b05020a98fa331d163acce2b08a",
+  "scopeDigest": "3036f57ce396a9ae8022cbae4d42b03f9cada938e54fdcde31afafd3b598086f",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
+    "src/steamzero/domain/asset_recipes.py",
     "src/steamzero/domain/themes.py",
     "src/steamzero/domain/scene_contract.py",
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/qml_render_model.py",
     "src/steamzero/adapters/theme_catalog.py",
+    "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
     "src/steamzero/schemas/ir-scene-v1.schema.json",
     "src/steamzero/ui/qml/MediaEffectLayer.qml",
     "src/steamzero/ui/qml/ReflectionLayer.qml",
+    "src/steamzero/ui/qml/AssetRecipePreview.qml",
+    "src/steamzero/themes/org.steamzero.asset-recipes-demo",
+    "tests/unit/test_asset_recipes.py",
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
     "tests/unit/test_scene_image_pipeline.py",
-    "tests/qml/check_media_effect_layer.qml"
+    "tests/qml/check_media_effect_layer.qml",
+    "tests/qml/check_asset_recipe_preview.qml",
+    "tests/qml/check_theme_editor_asset_recipes.qml",
+    "tests/qml/golden/asset-recipes",
+    "tests/integration/test_qml_asset_recipes.py"
   ],
   "dependsOn": [],
   "knownGaps": [],
@@ -48,12 +57,36 @@
       "reference": "tests/qml/check_media_effect_layer.qml",
       "command": "make check (harness QML da effect stack allowlisted)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_asset_recipes.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_effects.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_asset_recipes.py",
+      "command": "QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=opengl .venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_asset_recipes.py -q -m visual",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_asset_recipes.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_asset_recipes.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q; ruff check; ruff format --check; mypy; make independence boundaries status-check; harnesses QML e goldens RHI",
+      "result": "passed"
     }
   ],
-  "nextAction": "Implementar o primeiro slice asset-unico para recolor, silhueta e contorno fino/grosso, com fixture licenciada e prova GPU.",
+  "nextAction": "Fechar gates e CI do slice asset-unico; obter autorizacao com release exata para publicar, instalar e produzir evidencia fisica. Enquanto essa dependencia externa persistir, iniciar a onda de cache adaptativo.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado parcial: resolver, contratos de cena e effect stack QML existem, mas scene graph livre ponta a ponta, transformacoes completas, cor dinamica, cache GPU, timeline e certificacao fisica nao existem como produto concluido. Distribuicao instalada descreve somente a fundacao presente na release; nao certifica a especificacao completa."
+  "notes": "Estado permanece parcial. Os commits 9d126ea e 06b3a0f possuem contrato versionado de receitas, fixture CC0 com uma unica fonte SVG transparente, cache deterministico de planos descartaveis, negociacao de capability/tier/fallback e preview QML integrado com recolor, grayscale, silhuetas, contorno externo, glow e shadow. Invert, hue rotate e outline interno possuem contrato allowlisted e fallback diagnosticado, mas ainda nao possuem backend nativo. O fechamento local observou 4485 testes passed, 10 skipped, Ruff, format, mypy, independence, boundaries, status e 12 goldens RHI verdes. Os goldens RHI sao somente evidencia de desenvolvimento offscreen, nao de desempenho ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; por isso publicacao, instalacao, frame time, memoria, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados para este slice. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa; nao inclui nem certifica este slice. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
 }

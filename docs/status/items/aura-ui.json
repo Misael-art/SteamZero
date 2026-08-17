@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "ad55d8a185129d34e9224c83c64729dbff422e6340b9ef5529883152b1336dc2",
+  "scopeDigest": "d6cd6de01cc801175ad4dc3364f5ac0ac9f1a0d956a622f10a70a384644759c8",
   "scopePaths": [
     "src/steamzero/domain/default_theme.py",
     "src/steamzero/themes",
@@ -41,10 +41,16 @@
       "reference": "tests/qml/check_theme_editor_aura.qml",
       "command": "make check (gate QML offscreen registrado no harness)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
     }
   ],
   "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. A evidencia historica e o escopo permanecem os mesmos, sem ampliar a alegacao operacional. Nao ha certificacao visual/hardware deste item."
+  "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture asset-unico; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item."
 }

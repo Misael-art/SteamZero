@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "ff9a45dc7db6b2b17d84bc7e220f6ee0ee02ab3ebce731d390e33939ca0a1ffd",
+  "scopeDigest": "1c6dadea452c0af8422f414c7848b7550f47d7cca28608f260c66d26d9245cec",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -60,10 +60,16 @@
       "reference": "tests/unit/test_theme_import_package.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_package.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_asset_recipes.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
     }
   ],
   "nextAction": "Fechar GAP-G39 e entregar o primeiro slice visual canvas-arvore-inspector ligado ao scene graph da Theme Engine.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Renomeado de SZ-THEME-EDITOR para registrar a ambicao real. O produto instalado edita tokens/metadados, faz preview, salva, exporta e importa; isso e fundacao parcial. Canvas, scene tree visual, grafo de efeitos, timeline, profiler e validadores completos ainda nao existem e nao podem ser alegados a partir do editor atual."
+  "notes": "Renomeado de SZ-THEME-EDITOR para registrar a ambicao real. O produto instalado edita tokens/metadados, faz preview, salva, exporta e importa; isso e fundacao parcial. O preview de receitas do slice pertence a integracao da Theme Engine e nao promove o Theme Studio. Canvas, scene tree visual, grafo de efeitos, timeline, profiler e validadores completos ainda nao existem e nao podem ser alegados a partir do editor atual."
 }
