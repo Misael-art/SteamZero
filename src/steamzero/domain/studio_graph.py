@@ -4,7 +4,8 @@
 
 O Studio não interpreta binding, não carrega QML do pacote e não redesenha a
 cena. Ele só organiza os nós finais da Theme Engine para seleção e inspeção,
-incluindo o grafo de efeitos allowlisted e os constraints já diagnosticados.
+incluindo o grafo de efeitos allowlisted, os constraints já diagnosticados e um
+profiler de orçamento declarado. FPS, frame time e VRAM não são inventados.
 """
 
 from __future__ import annotations
@@ -18,6 +19,21 @@ ALLOWED_SEVERITIES = frozenset({"info", "warning", "error"})
 _FORBIDDEN = frozenset({"qml", "js", "script", "shader", "python"})
 DIAG_EFFECT_OMITTED = "THEME-STUDIO-EFFECT-001"
 DIAG_EFFECT_COST = "THEME-STUDIO-COST-001"
+DIAG_BUDGET = "THEME-STUDIO-BUDGET-001"
+_COST_UNITS = {"low": 1, "medium": 2, "high": 3}
+_FORBIDDEN_BUDGET = frozenset({"fps", "frameTime", "vram", *_FORBIDDEN})
+_BUDGET_KEYS = frozenset(
+    {
+        "effectCost",
+        "recipeCost",
+        "declaredCost",
+        "highCostNodes",
+        "omitted",
+        "diagnostics",
+        "withinBudget",
+        "measured",
+    }
+)
 
 
 def _scalars(raw: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -59,6 +75,78 @@ class StudioConstraint:
             reason=str(raw.get("reason", "")),
             severity=str(raw.get("severity", "warning")),
         )
+
+
+def _cost_units(value: object) -> int:
+    if isinstance(value, str):
+        return _COST_UNITS.get(value, 0)
+    return 0
+
+
+def _mapping_list(value: object) -> list[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, Mapping)]
+
+
+@dataclass(frozen=True)
+class StudioBudget:
+    effect_cost: int = 0
+    recipe_cost: int = 0
+    high_cost_nodes: int = 0
+    omitted: int = 0
+    diagnostics: int = 0
+    within_budget: bool = True
+    measured: bool = False
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("effectCost", self.effect_cost),
+            ("recipeCost", self.recipe_cost),
+            ("highCostNodes", self.high_cost_nodes),
+            ("omitted", self.omitted),
+            ("diagnostics", self.diagnostics),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"studio budget.{name} inválido")
+        if self.measured:
+            raise ValueError("studio budget não aceita medição física")
+
+    @property
+    def declared_cost(self) -> int:
+        return self.effect_cost + self.recipe_cost
+
+    def to_dict(self) -> dict[str, int | bool]:
+        return {
+            "effectCost": self.effect_cost,
+            "recipeCost": self.recipe_cost,
+            "declaredCost": self.declared_cost,
+            "highCostNodes": self.high_cost_nodes,
+            "omitted": self.omitted,
+            "diagnostics": self.diagnostics,
+            "withinBudget": self.within_budget,
+            "measured": False,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> StudioBudget:
+        unknown = set(raw) - _BUDGET_KEYS
+        forbidden = set(raw) & _FORBIDDEN_BUDGET
+        if unknown or forbidden:
+            raise ValueError(f"studio budget inválido: {sorted(unknown | forbidden)}")
+        budget = cls(
+            effect_cost=int(raw.get("effectCost", 0) or 0),
+            recipe_cost=int(raw.get("recipeCost", 0) or 0),
+            high_cost_nodes=int(raw.get("highCostNodes", 0) or 0),
+            omitted=int(raw.get("omitted", 0) or 0),
+            diagnostics=int(raw.get("diagnostics", 0) or 0),
+            within_budget=raw.get("withinBudget", True) is not False,
+            measured=raw.get("measured", False) is True,
+        )
+        declared = raw.get("declaredCost")
+        if declared is not None and int(declared) != budget.declared_cost:
+            raise ValueError("studio budget.declaredCost inconsistente")
+        return budget
 
 
 def _constraint_tuple(raw: object) -> tuple[StudioConstraint, ...]:
@@ -208,6 +296,7 @@ class StudioNode:
 class StudioGraph:
     nodes: tuple[StudioNode, ...]
     selected_id: str = "scene"
+    budget: StudioBudget = StudioBudget()
 
     def __post_init__(self) -> None:
         ids = [node.id for node in self.nodes]
@@ -220,11 +309,15 @@ class StudioGraph:
         return next((node for node in self.nodes if node.id == node_id), None)
 
     def to_qml_object(self) -> dict[str, Any]:
-        return {"selectedId": self.selected_id, "nodes": [node.to_dict() for node in self.nodes]}
+        return {
+            "selectedId": self.selected_id,
+            "nodes": [node.to_dict() for node in self.nodes],
+            "budget": self.budget.to_dict(),
+        }
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> StudioGraph:
-        if set(raw) - {"selectedId", "nodes"}:
+        if set(raw) - {"selectedId", "nodes", "budget"}:
             raise ValueError("studio graph inválido")
         nodes = raw.get("nodes")
         if not isinstance(nodes, list) or not nodes:
@@ -232,7 +325,16 @@ class StudioGraph:
         parsed = tuple(StudioNode.from_dict(node) for node in nodes if isinstance(node, Mapping))
         if len(parsed) != len(nodes):
             raise ValueError("studio node exige objeto")
-        return cls(nodes=parsed, selected_id=str(raw.get("selectedId", "scene")))
+        budget_raw = raw.get("budget", {})
+        if budget_raw is None:
+            budget_raw = {}
+        if not isinstance(budget_raw, Mapping):
+            raise ValueError("studio graph.budget exige objeto")
+        return cls(
+            nodes=parsed,
+            selected_id=str(raw.get("selectedId", "scene")),
+            budget=StudioBudget.from_dict(budget_raw),
+        )
 
 
 def _layout_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
@@ -491,6 +593,61 @@ def _effect_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
     return nodes
 
 
+def build_studio_budget(preview: Mapping[str, Any]) -> StudioBudget:
+    """Soma custos já declarados. Não mede FPS, frame time nem VRAM."""
+    effect_cost = 0
+    recipe_cost = 0
+    high_cost_nodes = 0
+    effects = preview.get("effects")
+    if isinstance(effects, Mapping):
+        for entries in effects.values():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, Mapping):
+                    continue
+                effect_cost += _cost_units(entry.get("cost"))
+                if entry.get("cost") == "high":
+                    high_cost_nodes += 1
+    recipes = preview.get("assetRecipes")
+    if isinstance(recipes, Mapping):
+        for recipe in recipes.values():
+            if not isinstance(recipe, Mapping):
+                continue
+            for node in _mapping_list(recipe.get("nodes")):
+                recipe_cost += _cost_units(node.get("cost"))
+                if node.get("cost") == "high":
+                    high_cost_nodes += 1
+    effect_diags = _mapping_list(preview.get("effectDiagnostics"))
+    recipe_diags = _mapping_list(preview.get("assetRecipeDiagnostics"))
+    layout_preview = preview.get("sceneLayoutPreview")
+    surface_preview = preview.get("sceneSurfacePreview")
+    motion_preview = preview.get("sceneMotionPreview")
+    extra_diags = (
+        _mapping_list(
+            layout_preview.get("diagnostics") if isinstance(layout_preview, Mapping) else None
+        )
+        + _mapping_list(
+            surface_preview.get("diagnostics") if isinstance(surface_preview, Mapping) else None
+        )
+        + _mapping_list(
+            motion_preview.get("diagnostics") if isinstance(motion_preview, Mapping) else None
+        )
+    )
+    over_budget = any(
+        "orçamento excedido" in str(item.get("reason") or "") for item in recipe_diags
+    )
+    return StudioBudget(
+        effect_cost=effect_cost,
+        recipe_cost=recipe_cost,
+        high_cost_nodes=high_cost_nodes,
+        omitted=len(effect_diags) + len(recipe_diags),
+        diagnostics=len(effect_diags) + len(recipe_diags) + len(extra_diags),
+        within_budget=not over_budget,
+        measured=False,
+    )
+
+
 def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     """Monta a árvore a partir do preview já materializado pela engine."""
     children: list[str] = []
@@ -500,14 +657,29 @@ def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     nodes.extend(_motion_nodes(preview, children))
     nodes.extend(_timeline_nodes(preview, children))
     nodes.extend(_effect_nodes(preview, children))
+    budget = build_studio_budget(preview)
+    budget_constraints: tuple[StudioConstraint, ...] = ()
+    if not budget.within_budget:
+        budget_constraints = (
+            StudioConstraint(
+                code=DIAG_BUDGET,
+                reason="receita acima do orçamento declarado do tier",
+                severity="warning",
+            ),
+        )
     nodes.insert(
         0,
         StudioNode(
             id="scene",
             kind="scene",
             label="Cena",
-            properties={"children": len(children)},
+            properties={
+                "children": len(children),
+                "declaredCost": budget.declared_cost,
+                "withinBudget": budget.within_budget,
+            },
             children=tuple(children),
+            constraints=budget_constraints,
         ),
     )
-    return StudioGraph(nodes=tuple(nodes), selected_id="scene")
+    return StudioGraph(nodes=tuple(nodes), selected_id="scene", budget=budget)

@@ -7,8 +7,10 @@ from __future__ import annotations
 import pytest
 
 from steamzero.domain.studio_graph import (
+    DIAG_BUDGET,
     DIAG_EFFECT_COST,
     DIAG_EFFECT_OMITTED,
+    StudioBudget,
     StudioGraph,
     build_studio_graph,
 )
@@ -34,6 +36,14 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert all(isinstance(node["properties"], dict) for node in graph["nodes"])
     assert all(isinstance(node.get("constraints"), list) for node in graph["nodes"])
     assert all("qml" not in node for node in graph["nodes"])
+    budget = graph["budget"]
+    assert isinstance(budget, dict)
+    assert budget["measured"] is False
+    assert "fps" not in budget
+    assert "vram" not in budget
+    assert budget["declaredCost"] == budget["effectCost"] + budget["recipeCost"]
+    assert budget["declaredCost"] > 0
+    assert budget["withinBudget"] is True
 
 
 def test_selecting_a_layout_node_exposes_only_scalar_inspector_fields() -> None:
@@ -165,6 +175,55 @@ def test_reduced_motion_diagnostics_attach_to_transition_nodes() -> None:
     assert timeline.properties["totalDuration"] == 80
     assert timeline.constraints[0].code == "THEME-MOTION-CLIP-002"
     assert graph.select("evil.js") is None
+
+
+def test_declared_budget_does_not_invent_physical_metrics() -> None:
+    graph = build_studio_graph(
+        {
+            "effects": {
+                "focusedCover": [
+                    {
+                        "type": "glow",
+                        "parameters": {"strength": 0.12},
+                        "capability": "graphics.effect.glow",
+                        "cost": "high",
+                    }
+                ]
+            },
+            "assetRecipes": {
+                "outlineThin": {
+                    "nodes": [
+                        {
+                            "type": "outline",
+                            "parameters": {"width": 2},
+                            "cost": "medium",
+                        }
+                    ]
+                }
+            },
+            "assetRecipeDiagnostics": [
+                {
+                    "recipe": "outlinedGlow",
+                    "node": "recipe",
+                    "reason": "orçamento excedido no tier economy: 6 > 5",
+                    "fallback": "source",
+                }
+            ],
+        }
+    )
+    assert graph.budget.effect_cost == 3
+    assert graph.budget.recipe_cost == 2
+    assert graph.budget.declared_cost == 5
+    assert graph.budget.high_cost_nodes == 1
+    assert graph.budget.within_budget is False
+    assert graph.budget.measured is False
+    scene = graph.select("scene")
+    assert scene is not None
+    assert scene.constraints[0].code == DIAG_BUDGET
+    with pytest.raises(ValueError, match="inválid"):
+        StudioBudget.from_dict({"effectCost": 1, "fps": 60})
+    with pytest.raises(ValueError, match="medição física"):
+        StudioBudget.from_dict({"effectCost": 1, "measured": True})
 
 
 def test_graph_refuses_code_bearing_nodes() -> None:

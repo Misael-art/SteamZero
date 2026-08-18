@@ -108,6 +108,12 @@ Rectangle {
         studioGraphActive ? studioCanvas.selectedConstraintCode : ""
     readonly property int studioGraphTimelineDuration:
         studioGraphActive ? studioCanvas.selectedTimelineDuration : 0
+    readonly property int studioGraphDeclaredCost:
+        studioGraphActive ? studioCanvas.declaredCost : 0
+    readonly property bool studioGraphWithinBudget:
+        studioGraphActive && studioCanvas.withinBudget
+    readonly property bool studioGraphBudgetMeasured:
+        studioGraphActive && studioCanvas.budgetMeasured
 
     function studioGraphSelect(nodeId) {
         return studioGraphActive ? studioCanvas.select(nodeId) : false

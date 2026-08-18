@@ -47,6 +47,10 @@ Item {
         const value = Number(selectedNode.properties.totalDuration)
         return value === value ? value : 0
     }
+    readonly property var budget: graph && graph.budget ? graph.budget : ({})
+    readonly property int declaredCost: Number(budget.declaredCost) || 0
+    readonly property bool withinBudget: budget.withinBudget !== false
+    readonly property bool budgetMeasured: budget.measured === true
 
     function select(nodeId) {
         for (let i = 0; i < nodes.length; ++i) {
@@ -155,6 +159,33 @@ Item {
                     color: "#ffc400"
                     font.pixelSize: 12
                     text: modelData.code + ": " + modelData.reason
+                }
+            }
+            Column {
+                id: profiler
+                objectName: "studioProfiler"
+                width: inspector.width
+                spacing: 2
+                Text {
+                    color: "#8b93a8"
+                    font.pixelSize: 11
+                    text: qsTr("Profiler declarado")
+                }
+                Text {
+                    color: "#e8ecf7"
+                    font.pixelSize: 12
+                    text: qsTr("custo %1").arg(studio.declaredCost)
+                }
+                Text {
+                    color: studio.withinBudget ? "#59d35d" : "#ffc400"
+                    font.pixelSize: 12
+                    text: studio.withinBudget ? qsTr("dentro do orçamento") : qsTr("orçamento excedido")
+                }
+                Text {
+                    visible: !studio.budgetMeasured
+                    color: "#8b93a8"
+                    font.pixelSize: 11
+                    text: qsTr("sem medição física")
                 }
             }
         }

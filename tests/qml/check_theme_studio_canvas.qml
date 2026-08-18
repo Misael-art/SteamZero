@@ -19,6 +19,11 @@ Item {
         anchors.fill: parent
         graph: ({
             "selectedId": "scene",
+            "budget": {
+                "effectCost": 3, "recipeCost": 2, "declaredCost": 5,
+                "highCostNodes": 1, "omitted": 0, "diagnostics": 0,
+                "withinBudget": true, "measured": false
+            },
             "nodes": [
                 {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
                  "children": ["layout.previewTitles"], "properties": {"children": 1}},
@@ -68,6 +73,10 @@ Item {
             harness.check(canvas.selectedKind === "timeline", "inspector não acompanhou a timeline")
             harness.check(canvas.selectedTimelineDuration === 260,
                           "duração materializada não chegou à faixa da timeline")
+            harness.check(canvas.declaredCost === 5, "profiler não somou o custo declarado")
+            harness.check(canvas.withinBudget === true, "orçamento declarado precisa chegar ao inspector")
+            harness.check(canvas.budgetMeasured === false,
+                          "profiler offscreen não pode alegar medição física")
             harness.check(canvas.select("evil.qml") === false, "id inexistente não pode selecionar")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }

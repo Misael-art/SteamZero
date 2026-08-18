@@ -168,6 +168,11 @@ Window {
             },
             "studioGraph": {
                 "selectedId": "scene",
+                "budget": {
+                    "effectCost": 3, "recipeCost": 2, "declaredCost": 5,
+                    "highCostNodes": 1, "omitted": 0, "diagnostics": 0,
+                    "withinBudget": true, "measured": false
+                },
                 "nodes": [
                     {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
                      "children": ["layout.previewTitles", "surface.saveStates",
@@ -267,6 +272,12 @@ Window {
                   "inspector precisa identificar o node de timeline")
             check(panel.studioGraphTimelineDuration === 260,
                   "duração da timeline precisa chegar ao inspector")
+            check(panel.studioGraphDeclaredCost === 5,
+                  "profiler declarado precisa chegar ao editor real")
+            check(panel.studioGraphWithinBudget === true,
+                  "orçamento declarado precisa chegar ao inspector")
+            check(panel.studioGraphBudgetMeasured === false,
+                  "profiler offscreen não pode alegar medição física")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }
