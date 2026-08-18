@@ -32,6 +32,8 @@ Image {
 
     x: model.x
     y: model.y
+    z: model.z !== undefined ? model.z : 0
+    scale: model.scale !== undefined ? model.scale : 1
 
     // `width`/`height` ausentes no modelo significam dimensão implícita — a
     // imagem no tamanho natural do arquivo. Atribuir 0 seria diferente: caixa

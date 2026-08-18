@@ -556,6 +556,8 @@ class TestComponentIsDeliberatelySimple:
             "text",
             "x",
             "y",
+            "z",
+            "scale",
             "width",
             "height",
             "visible",

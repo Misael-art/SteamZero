@@ -16,6 +16,30 @@ Item {
     }
 
     SceneRepeater {
+        id: wheel
+        layout: ({
+            "id": "previewWheel",
+            "kind": "wheel",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "wheel-0", "text": "Axiom Verge",
+                "x": 70, "y": 24, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "wheel-1", "text": "Celeste",
+                "x": 160, "y": 24, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: cards
         layout: ({
             "id": "previewTitles",
@@ -44,6 +68,19 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            harness.check(wheel.entryCount === 2, "wheel não recebeu duas entradas")
+            const focused = wheel.entryAt(1)
+            const side = wheel.entryAt(0)
+            harness.check(focused !== null && side !== null, "nós do wheel não instanciaram")
+            if (focused !== null) {
+                harness.check(focused.text === "Celeste", "item selecionado não chegou ao QML")
+                harness.check(focused.scale === 1 && focused.z === 32,
+                              "offset converter não pode ser recalculado no QML")
+            }
+            if (side !== null) {
+                harness.check(side.x === 70 && side.scale === 0.92,
+                              "vizinho do wheel precisa usar escala materializada")
+            }
             harness.check(cards.entryCount === 2, "repetidor não recebeu duas entradas")
             const first = cards.entryAt(0)
             const second = cards.entryAt(1)

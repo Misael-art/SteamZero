@@ -26,6 +26,7 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     ids = {node["id"] for node in graph["nodes"]}
     assert "scene" in ids
     assert "layout.previewTitles" in ids
+    assert "layout.previewWheel" in ids
     assert "surface.saveStates" in ids
     assert "motion.focusIn" in ids
     assert "timeline.previewFocus" in ids

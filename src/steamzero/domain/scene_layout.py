@@ -3,8 +3,9 @@
 """Layouts responsivos e repetidores declarativos da Theme Engine.
 
 Esta é a fronteira entre a descrição declarativa do tema e o renderizador. O
-tema escolhe somente um vocabulário fechado (grid/list, medidas, breakpoints e
-campos ``item.*``); o shell entrega o read model; e o resultado já contém
+tema escolhe somente um vocabulário fechado (grid/list/wheel, medidas,
+breakpoints, offset converter e campos ``item.*``); o shell entrega o read
+model; e o resultado já contém
 geometria e valores escalares finais para QML. Nenhuma expressão, QML,
 JavaScript ou caminho de objeto do Python atravessa esta camada.
 """
@@ -34,6 +35,7 @@ _COLOR = re.compile(r"^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$")
 class LayoutKind(StrEnum):
     GRID = "grid"
     LIST = "list"
+    WHEEL = "wheel"
 
 
 class LayoutDirection(StrEnum):
@@ -182,6 +184,52 @@ class LayoutBreakpoint:
 
 
 @dataclass(frozen=True)
+class LayoutOffset:
+    scale_step: float = 0.08
+    opacity_step: float = 0.18
+    min_scale: float = 0.7
+    min_opacity: float = 0.35
+
+    def __post_init__(self) -> None:
+        _number(self.scale_step, name="offset.scaleStep", low=0, high=0.5)
+        _number(self.opacity_step, name="offset.opacityStep", low=0, high=0.5)
+        _number(self.min_scale, name="offset.minScale", low=0.25, high=1)
+        _number(self.min_opacity, name="offset.minOpacity", low=0, high=1)
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> LayoutOffset:
+        unknown = set(raw) - {"scaleStep", "opacityStep", "minScale", "minOpacity"}
+        if unknown:
+            raise ValueError("offset inválido")
+        return cls(
+            scale_step=_number(
+                raw.get("scaleStep", 0.08), name="offset.scaleStep", low=0, high=0.5
+            ),
+            opacity_step=_number(
+                raw.get("opacityStep", 0.18), name="offset.opacityStep", low=0, high=0.5
+            ),
+            min_scale=_number(raw.get("minScale", 0.7), name="offset.minScale", low=0.25, high=1),
+            min_opacity=_number(
+                raw.get("minOpacity", 0.35), name="offset.minOpacity", low=0, high=1
+            ),
+        )
+
+    def apply(self, distance: int) -> tuple[float, float, int]:
+        steps = abs(distance)
+        scale = max(1.0 - steps * self.scale_step, self.min_scale)
+        opacity = max(1.0 - steps * self.opacity_step, self.min_opacity)
+        return (round(scale, 4), round(opacity, 4), 32 - steps)
+
+    def to_dict(self) -> dict[str, float]:
+        return {
+            "scaleStep": self.scale_step,
+            "opacityStep": self.opacity_step,
+            "minScale": self.min_scale,
+            "minOpacity": self.min_opacity,
+        }
+
+
+@dataclass(frozen=True)
 class LayoutTemplate:
     kind: str
     id: str
@@ -270,6 +318,8 @@ class LayoutRecipe:
     max_items: int = MAX_ITEMS
     columns: int = 1
     direction: LayoutDirection = LayoutDirection.VERTICAL
+    selected: int = 0
+    offset: LayoutOffset | None = None
     breakpoints: tuple[LayoutBreakpoint, ...] = ()
 
     def __post_init__(self) -> None:
@@ -289,8 +339,18 @@ class LayoutRecipe:
             or not 1 <= self.columns <= 16
         ):
             raise ValueError("columns fora de 1..16")
+        if (
+            isinstance(self.selected, bool)
+            or not isinstance(self.selected, int)
+            or not 0 <= self.selected <= MAX_ITEMS - 1
+        ):
+            raise ValueError("selected fora de 0..127")
         if self.kind is LayoutKind.LIST and self.breakpoints:
             raise ValueError("list não aceita breakpoints")
+        if self.kind is LayoutKind.WHEEL and self.breakpoints:
+            raise ValueError("wheel não aceita breakpoints")
+        if self.offset is not None and self.kind is not LayoutKind.WHEEL:
+            raise ValueError("offset só é válido em wheel")
         ranges: list[tuple[float, float]] = []
         for point in self.breakpoints:
             low = point.min_width if point.min_width is not None else float("-inf")
@@ -311,6 +371,8 @@ class LayoutRecipe:
             "maxItems",
             "columns",
             "direction",
+            "selected",
+            "offset",
             "breakpoints",
         }
         unknown = set(raw) - allowed
@@ -322,7 +384,8 @@ class LayoutRecipe:
         except ValueError:
             raise ValueError("kind inválido") from None
         try:
-            direction = LayoutDirection(str(raw.get("direction", "vertical")))
+            direction_default = "horizontal" if kind is LayoutKind.WHEEL else "vertical"
+            direction = LayoutDirection(str(raw.get("direction", direction_default)))
         except ValueError:
             raise ValueError("direction inválida") from None
         item = raw["item"]
@@ -336,6 +399,9 @@ class LayoutRecipe:
             raise ValueError("breakpoints inválidos")
         if not all(isinstance(point, Mapping) for point in breakpoints):
             raise ValueError("breakpoints inválidos")
+        offset_raw = raw.get("offset")
+        if offset_raw is not None and not isinstance(offset_raw, Mapping):
+            raise ValueError("offset exige objeto")
         return cls(
             id=_identifier(layout_id, name="layout.id"),
             source=str(raw["source"]),
@@ -346,6 +412,8 @@ class LayoutRecipe:
             max_items=raw.get("maxItems", MAX_ITEMS),
             columns=raw.get("columns", 1),
             direction=direction,
+            selected=raw.get("selected", 0),
+            offset=LayoutOffset.from_dict(offset_raw) if offset_raw is not None else None,
             breakpoints=tuple(LayoutBreakpoint.from_dict(point) for point in breakpoints),
         )
 
@@ -372,6 +440,11 @@ class LayoutRecipe:
             value["columns"] = self.columns
         if self.kind is LayoutKind.LIST:
             value["direction"] = self.direction.value
+        if self.kind is LayoutKind.WHEEL:
+            value["direction"] = self.direction.value
+            value["selected"] = self.selected
+            if self.offset is not None:
+                value["offset"] = self.offset.to_dict()
         if self.breakpoints:
             value["breakpoints"] = [
                 {
@@ -565,7 +638,7 @@ def resolve_scene_layouts(
                     reason=f"source '{recipe.source}' truncado em {recipe.max_items} itens",
                 )
             )
-        entries: list[ResolvedLayoutEntry] = []
+        accepted: list[tuple[int, Mapping[str, Any]]] = []
         for index, raw_item in enumerate(source[: recipe.max_items]):
             if not isinstance(raw_item, Mapping):
                 diagnostics.append(
@@ -576,17 +649,39 @@ def resolve_scene_layouts(
                     )
                 )
                 continue
+            accepted.append((index, raw_item))
+        selected = recipe.selected
+        if accepted:
+            selected = min(max(selected, 0), len(accepted) - 1)
+        offset = recipe.offset or LayoutOffset()
+        entries: list[ResolvedLayoutEntry] = []
+        for display_index, (index, raw_item) in enumerate(accepted):
             if recipe.kind is LayoutKind.GRID:
-                column = index % columns
-                row = index // columns
+                column = display_index % columns
+                row = display_index // columns
                 x = bounds.x + column * (recipe.item.width + recipe.gap)
                 y = bounds.y + row * (recipe.item.height + recipe.gap)
+                extras: dict[str, Any] = {}
+            elif recipe.kind is LayoutKind.WHEEL:
+                distance = display_index - selected
+                scale, fade, z_index = offset.apply(distance)
+                if recipe.direction is LayoutDirection.VERTICAL:
+                    step = recipe.item.height + recipe.gap
+                    x = bounds.x + (bounds.width - recipe.item.width) / 2
+                    y = bounds.y + (bounds.height - recipe.item.height) / 2 + distance * step
+                else:
+                    step = recipe.item.width + recipe.gap
+                    x = bounds.x + (bounds.width - recipe.item.width) / 2 + distance * step
+                    y = bounds.y + (bounds.height - recipe.item.height) / 2
+                extras = {"scale": scale, "z": z_index, "distance": distance}
             elif recipe.direction is LayoutDirection.VERTICAL:
                 x = bounds.x
-                y = bounds.y + index * (recipe.item.height + recipe.gap)
+                y = bounds.y + display_index * (recipe.item.height + recipe.gap)
+                extras = {}
             else:
-                x = bounds.x + index * (recipe.item.width + recipe.gap)
+                x = bounds.x + display_index * (recipe.item.width + recipe.gap)
                 y = bounds.y
+                extras = {}
             node = _node_for(
                 recipe.template,
                 raw_item,
@@ -595,6 +690,13 @@ def resolve_scene_layouts(
                 LayoutBounds(x=x, y=y, width=bounds.width, height=bounds.height),
                 recipe.item,
             )
+            if extras:
+                node = dict(node)
+                node.update(extras)
+                if recipe.kind is LayoutKind.WHEEL:
+                    base = node.get("opacity", 1.0)
+                    if isinstance(base, int | float) and not isinstance(base, bool):
+                        node["opacity"] = round(float(base) * fade, 4)
             entries.append(
                 ResolvedLayoutEntry(
                     index=index,

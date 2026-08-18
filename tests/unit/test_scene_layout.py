@@ -125,6 +125,45 @@ def test_list_is_declarative_bounded_and_uses_vertical_flow() -> None:
     assert all(entry.node["kind"] == "text" for entry in layout.entries)
 
 
+def test_wheel_applies_offset_converter_from_selected_index() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusWheel": {
+                "source": "library.items",
+                "kind": "wheel",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "wheel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusWheel"]
+    assert layout.kind is LayoutKind.WHEEL
+    assert [entry.node["text"] for entry in layout.entries[:3]] == [
+        "Axiom Verge",
+        "Celeste",
+        "Hades",
+    ]
+    assert [round(entry.x, 1) for entry in layout.entries[:3]] == [70.0, 160.0, 250.0]
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[1].node["opacity"] == 1.0
+    assert layout.entries[1].node["z"] == 32
+    assert layout.entries[0].node["scale"] == 0.92
+    assert layout.entries[0].node["opacity"] == 0.82
+    assert layout.entries[0].node["z"] == 31
+    assert layout.entries[0].node["distance"] == -1
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
 def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagnostic() -> None:
     book = LayoutRecipeBook.from_dict(_raw_book())
     resolved = resolve_scene_layouts(
@@ -146,7 +185,7 @@ def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagn
         (
             {
                 "source": "library.items",
-                "kind": "wheel",
+                "kind": "coverFlow",
                 "item": {"width": 1, "height": 1},
                 "template": {"kind": "text", "id": "x"},
             },
@@ -260,7 +299,7 @@ def test_invalid_scene_layouts_fall_back_to_builtin_and_keep_accessibility(
                     "layouts": {
                         "bad": {
                             "source": "library.items",
-                            "kind": "wheel",
+                            "kind": "coverFlow",
                             "item": {"width": 10, "height": 10},
                             "template": {"kind": "text", "id": "x"},
                         }

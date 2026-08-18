@@ -34,6 +34,29 @@
             "fontPixelSize": 14
           }
         }
+      },
+      "previewWheel": {
+        "source": "preview.items",
+        "kind": "wheel",
+        "item": { "width": 138, "height": 32 },
+        "gap": 10,
+        "maxItems": 4,
+        "selected": 1,
+        "offset": {
+          "scaleStep": 0.08,
+          "opacityStep": 0.18,
+          "minScale": 0.7,
+          "minOpacity": 0.35
+        },
+        "template": {
+          "kind": "text",
+          "id": "wheel-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
       }
     }
   },
