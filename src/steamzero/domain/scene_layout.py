@@ -56,6 +56,36 @@ class LayoutDirection(StrEnum):
     HORIZONTAL = "horizontal"
 
 
+# O tema nomeia a semântica; a engine escolhe o caractere. É isso que impede um
+# pacote de contrabandear glifo arbitrário, emoji ou marca de terceiro.
+GLYPHS: dict[str, str] = {
+    "none": "",
+    "favorite": "★",
+    "achievement": "✦",
+    "download": "↓",
+    "update": "↻",
+    "warning": "⚠",
+    "error": "✖",
+    "network": "◈",
+    "save": "▣",
+    "offline": "⦸",
+}
+BADGE_VARIANTS: dict[str, tuple[str, str]] = {
+    "neutral": ("#334155", "#f2f6fb"),
+    "info": ("#0e7490", "#f2f6fb"),
+    "success": ("#166534", "#f2f6fb"),
+    "warning": ("#92400e", "#fff7ed"),
+    "danger": ("#7f1d1d", "#fee2e2"),
+}
+LABEL_ROLES: dict[str, dict[str, Any]] = {
+    "body": {"fontPixelSize": 16, "fontWeight": 400, "opacity": 1.0},
+    "title": {"fontPixelSize": 20, "fontWeight": 600, "opacity": 1.0},
+    "subtitle": {"fontPixelSize": 16, "fontWeight": 500, "opacity": 0.9},
+    "meta": {"fontPixelSize": 13, "fontWeight": 400, "opacity": 0.75},
+    "caption": {"fontPixelSize": 11, "fontWeight": 400, "opacity": 0.6},
+}
+MAX_BADGE_TEXT = 12
+
 _PROPERTIES: dict[str, frozenset[str]] = {
     "text": frozenset(
         {
@@ -69,9 +99,11 @@ _PROPERTIES: dict[str, frozenset[str]] = {
             "verticalAlignment",
             "visible",
             "opacity",
+            "role",
         }
     ),
     "image": frozenset({"source", "fillMode", "visible", "opacity"}),
+    "badge": frozenset({"text", "variant", "glyph", "visible", "opacity"}),
 }
 _TEXT_DEFAULTS: dict[str, Any] = {
     "text": "",
@@ -84,12 +116,25 @@ _TEXT_DEFAULTS: dict[str, Any] = {
     "verticalAlignment": "AlignTop",
     "visible": True,
     "opacity": 1.0,
+    "role": "body",
 }
 _IMAGE_DEFAULTS: dict[str, Any] = {
     "source": "",
     "fillMode": "PreserveAspectFit",
     "visible": True,
     "opacity": 1.0,
+}
+_BADGE_DEFAULTS: dict[str, Any] = {
+    "text": "",
+    "variant": "neutral",
+    "glyph": "none",
+    "visible": True,
+    "opacity": 1.0,
+}
+_DEFAULTS_BY_KIND: dict[str, dict[str, Any]] = {
+    "text": _TEXT_DEFAULTS,
+    "image": _IMAGE_DEFAULTS,
+    "badge": _BADGE_DEFAULTS,
 }
 
 
@@ -402,6 +447,12 @@ class LayoutTemplate:
                 _number(value, name="template.properties.opacity", low=0, high=1)
             if name in {"visible", "fontItalic"} and not isinstance(value, bool):
                 raise ValueError(f"template.properties.{name} exige booleano")
+            if name == "glyph" and value not in GLYPHS:
+                raise ValueError(f"template.properties.glyph desconhecido: {value!r}")
+            if name == "variant" and value not in BADGE_VARIANTS:
+                raise ValueError(f"template.properties.variant desconhecida: {value!r}")
+            if name == "role" and value not in LABEL_ROLES:
+                raise ValueError(f"template.properties.role desconhecido: {value!r}")
             if name == "fillMode" and value not in {
                 "Stretch",
                 "PreserveAspectFit",
@@ -767,6 +818,34 @@ def _apply_highlight(
         highlight.adjacent.apply(node)
 
 
+def _materialize_badge(values: dict[str, Any]) -> None:
+    """Resolve glifo, cores e visibilidade de um badge semântico.
+
+    O caractere e o par de cores pertencem à engine: o tema só nomeia semântica
+    e variante. Valor vindo de binding que caia fora da allowlist degrada para o
+    padrão em vez de chegar cru ao renderizador. Badge sem texto e sem glifo fica
+    invisível — pílula vazia é ruído, não informação.
+    """
+    glyph = values.get("glyph")
+    if not isinstance(glyph, str) or glyph not in GLYPHS:
+        glyph = "none"
+    variant = values.get("variant")
+    if not isinstance(variant, str) or variant not in BADGE_VARIANTS:
+        variant = "neutral"
+    text = values.get("text")
+    text = text if isinstance(text, str) else ""
+    if len(text) > MAX_BADGE_TEXT:
+        text = text[:MAX_BADGE_TEXT] + "…"
+    background, foreground = BADGE_VARIANTS[variant]
+    values["glyph"] = glyph
+    values["glyphChar"] = GLYPHS[glyph]
+    values["variant"] = variant
+    values["text"] = text
+    values["background"] = background
+    values["foreground"] = foreground
+    values["visible"] = values.get("visible") is not False and bool(text or GLYPHS[glyph])
+
+
 def _read_path(read_model: Mapping[str, Any], source: str) -> Any:
     current: Any = read_model
     for part in source.split("."):
@@ -797,13 +876,20 @@ def _node_for(
     size: LayoutItemSize,
 ) -> dict[str, Any]:
     del entry
-    values = dict(_TEXT_DEFAULTS if template.kind == "text" else _IMAGE_DEFAULTS)
+    values = dict(_DEFAULTS_BY_KIND[template.kind])
+    role = template.properties.get("role")
+    if isinstance(role, str) and role in LABEL_ROLES:
+        # O papel semântico entra antes das propriedades explícitas: declarar
+        # "meta" e um fontPixelSize próprio mantém o override do tema.
+        values.update(LABEL_ROLES[role])
     for name, value in template.properties.items():
         if isinstance(value, Mapping):
             resolved = _item_value(item, str(value["binding"]))
             values[name] = value.get("fallback") if resolved is None or resolved == "" else resolved
         else:
             values[name] = value
+    if template.kind == "badge":
+        _materialize_badge(values)
     return {
         "kind": template.kind,
         "id": f"{template.id}-{index}",

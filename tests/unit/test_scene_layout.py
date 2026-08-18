@@ -244,6 +244,150 @@ def test_carousel_places_items_on_an_ellipse_by_wrapped_distance() -> None:
     assert all("binding" not in entry.node for entry in layout.entries)
 
 
+def _template_book(template: dict[str, object]) -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "layouts": {
+            "shelf": {
+                "source": "library.badges",
+                "kind": "list",
+                "item": {"width": 120, "height": 24},
+                "maxItems": 4,
+                "template": template,
+            }
+        },
+    }
+
+
+def _badge_model() -> dict[str, object]:
+    model = _read_model()
+    library = dict(model["library"])  # type: ignore[arg-type]
+    library["badges"] = [
+        {"state": "Atualizando", "title": "Celeste"},
+        {"state": "", "title": "Hades"},
+        {"state": "Aguardando sincronização da nuvem", "title": "Tunic"},
+    ]
+    model["library"] = library
+    return model
+
+
+def test_badge_resolves_variant_colours_and_semantic_glyph() -> None:
+    raw = _template_book(
+        {
+            "kind": "badge",
+            "id": "state-badge",
+            "properties": {
+                "text": {"binding": "item.state", "fallback": ""},
+                "variant": "warning",
+                "glyph": "update",
+            },
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries
+    )
+    first = entries[0].node
+    assert first["kind"] == "badge"
+    assert first["text"] == "Atualizando"
+    assert first["variant"] == "warning"
+    assert first["glyph"] == "update"
+    # O caractere é escolhido pela engine: o tema nomeia a semântica, não o glifo.
+    assert first["glyphChar"] == "↻"
+    assert first["background"] == "#92400e"
+    assert first["foreground"] == "#fff7ed"
+    assert first["visible"] is True
+    # Texto longo é truncado de forma determinística, sem estourar o layout.
+    assert entries[2].node["text"] == "Aguardando s…"
+
+
+def test_badge_without_text_or_glyph_stays_hidden_instead_of_an_empty_pill() -> None:
+    raw = _template_book(
+        {
+            "kind": "badge",
+            "id": "state-badge",
+            "properties": {"text": {"binding": "item.state", "fallback": ""}},
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries
+    )
+    assert entries[0].node["visible"] is True
+    assert entries[1].node["visible"] is False
+    assert entries[1].node["glyphChar"] == ""
+
+
+def test_semantic_label_role_fills_typography_defaults_without_hiding_overrides() -> None:
+    raw = _template_book(
+        {
+            "kind": "text",
+            "id": "game-title",
+            "properties": {
+                "text": {"binding": "item.title", "fallback": "—"},
+                "role": "meta",
+            },
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    node = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries[0]
+        .node
+    )
+    assert node["role"] == "meta"
+    assert node["fontPixelSize"] == 13
+    assert node["fontWeight"] == 400
+    assert node["opacity"] == 0.75
+
+    override = _template_book(
+        {
+            "kind": "text",
+            "id": "game-title",
+            "properties": {"role": "meta", "fontPixelSize": 22, "opacity": 1},
+        }
+    )
+    jsonschema.validate(override, SCHEMA)
+    node = (
+        resolve_scene_layouts(
+            LayoutRecipeBook.from_dict(override),
+            _badge_model(),
+            bounds=LayoutBounds(width=400, height=200),
+        )
+        .layouts["shelf"]
+        .entries[0]
+        .node
+    )
+    assert node["fontPixelSize"] == 22
+    assert node["opacity"] == 1.0
+    assert node["fontWeight"] == 400
+
+
+def test_badge_and_label_refuse_smuggled_glyphs_roles_and_variants() -> None:
+    for properties, message in (
+        ({"glyphChar": "☠"}, "não permitidas"),
+        ({"glyph": "skull"}, "glyph"),
+        ({"variant": "neon"}, "variant"),
+        ({"background": "#000000"}, "não permitidas"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            LayoutRecipeBook.from_dict(
+                _template_book({"kind": "badge", "id": "b", "properties": properties})
+            )
+    with pytest.raises(ValueError, match="role"):
+        LayoutRecipeBook.from_dict(
+            _template_book({"kind": "text", "id": "t", "properties": {"role": "headline"}})
+        )
+
+
 def _highlight_book(**highlight: object) -> dict[str, object]:
     return {
         "schemaVersion": 1,

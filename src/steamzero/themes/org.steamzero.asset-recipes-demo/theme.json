@@ -123,6 +123,23 @@
           }
         }
       },
+      "previewBadges": {
+        "source": "preview.items",
+        "kind": "list",
+        "direction": "horizontal",
+        "item": { "width": 138, "height": 24 },
+        "gap": 8,
+        "maxItems": 4,
+        "template": {
+          "kind": "badge",
+          "id": "state-badge",
+          "properties": {
+            "text": { "binding": "item.state", "fallback": "" },
+            "variant": "info",
+            "glyph": "download"
+          }
+        }
+      },
       "previewStack": {
         "source": "preview.items",
         "kind": "stack",

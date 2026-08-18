@@ -45,10 +45,10 @@ _THEME_PACKAGE = "steamzero.themes"
 _LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
     "preview": {
         "items": [
-            {"title": "Axiom Verge"},
-            {"title": "Celeste"},
-            {"title": "Hades"},
-            {"title": "Tunic"},
+            {"title": "Axiom Verge", "state": "Baixando"},
+            {"title": "Celeste", "state": ""},
+            {"title": "Hades", "state": "Na fila"},
+            {"title": "Tunic", "state": ""},
         ]
     }
 }

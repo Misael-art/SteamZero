@@ -15,6 +15,15 @@ Item {
 
     readonly property url textSource: Qt.resolvedUrl("SceneText.qml")
     readonly property url imageSource: Qt.resolvedUrl("SceneImage.qml")
+    readonly property url badgeSource: Qt.resolvedUrl("SceneBadge.qml")
+
+    function sourceFor(kind) {
+        if (kind === "image")
+            return imageSource
+        if (kind === "badge")
+            return badgeSource
+        return textSource
+    }
 
     function entryAt(index) {
         const loader = nodes.itemAt(index)
@@ -61,8 +70,7 @@ Item {
             function loadEntry() {
                 if (modelData === undefined)
                     return
-                const source = modelData.kind === "image"
-                    ? sceneRepeater.imageSource : sceneRepeater.textSource
+                const source = sceneRepeater.sourceFor(modelData.kind)
                 // `SceneText`/`SceneImage` exigem `model` na construção. Atribuir
                 // em onLoaded é tarde demais e o Qt recusa o componente.
                 setSource(source, {"model": modelData})

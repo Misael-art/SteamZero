@@ -88,6 +88,28 @@ Item {
     }
 
     SceneRepeater {
+        id: badges
+        layout: ({
+            "id": "previewBadges",
+            "kind": "list",
+            "columns": 1,
+            "entries": [{
+                "kind": "badge", "id": "state-badge-0", "text": "Baixando",
+                "x": 0, "y": 0, "width": 138, "height": 24,
+                "visible": true, "opacity": 1,
+                "variant": "info", "glyph": "download", "glyphChar": "\u2193",
+                "background": "#0e7490", "foreground": "#f2f6fb"
+            }, {
+                "kind": "badge", "id": "state-badge-1", "text": "",
+                "x": 146, "y": 0, "width": 138, "height": 24,
+                "visible": false, "opacity": 1,
+                "variant": "neutral", "glyph": "none", "glyphChar": "",
+                "background": "#334155", "foreground": "#f2f6fb"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: covers
         layout: ({
             "id": "previewCoverFlow",
@@ -197,6 +219,22 @@ Item {
                               "peek do stack precisa usar o gap materializado")
                 harness.check(stackTop.z > stackBehind.z && stackBehind.scale === 0.92,
                               "profundidade do stack não pode ser recalculada no QML")
+            }
+            harness.check(badges.entryCount === 2, "badges não receberam duas entradas")
+            const badge = badges.entryAt(0)
+            const emptyBadge = badges.entryAt(1)
+            harness.check(badge !== null && emptyBadge !== null, "nós de badge não instanciaram")
+            if (badge !== null) {
+                harness.check(badge.color.toString().toLowerCase().indexOf("0e7490") !== -1,
+                              "cor da variante precisa vir materializada")
+                harness.check(badge.visible === true, "badge com texto precisa aparecer")
+                const glyphNode = badge.children[0].children[0]
+                harness.check(glyphNode.objectName === "badgeGlyph" && glyphNode.text === "\u2193",
+                              "glifo semântico não pode ser escolhido no QML")
+            }
+            if (emptyBadge !== null) {
+                harness.check(emptyBadge.visible === false,
+                              "badge sem texto e sem glifo não pode virar pílula vazia")
             }
             harness.check(covers.entryCount === 2, "cover flow não recebeu duas entradas")
             const cover = covers.entryAt(1)
