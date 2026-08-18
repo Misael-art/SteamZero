@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "8f9e11ec608cd5ff6df4ccf8e563b11c39b41aeca39947d5a76b551b686e2cc9",
+  "scopeDigest": "8eeb98c1e6c9fba1edbd74107b2bb449eb947c8d6ca8222ad88b3e6e395dca62",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -27,9 +27,7 @@
   "dependsOn": [
     "SZ-THEME-ENGINE"
   ],
-  "knownGaps": [
-    "GAP-G39"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Edicao de tokens, metadados e catalogo possui contratos e testes unitarios.",
     "Instalacao de tema continua reversivel e nao altera o host diretamente.",
@@ -84,8 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Fechar GAP-G39 e acrescentar constraints/effect graph ao inspector. A evidência física do canvas na release instalada ainda não foi capturada.",
+  "nextAction": "Acrescentar constraints e effect graph ao inspector. Capturar evidência física do canvas na próxima release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Primeiro slice de canvas/arvore/inspector existe no codigo e no harness QML: o Studio so seleciona nos ja materializados pela Theme Engine. Continua partial. GAP-G39 aberto. Grafo de efeitos, timeline de autoria e evidencia fisica na release instalada ainda nao existem. AURA Launcher nao foi promovido."
+  "notes": "Primeiro slice de canvas/arvore/inspector existe no codigo e no harness QML. GAP-G39 fechado: cadeia extends acima do limite continua degradando, mas publica THEME-EDITOR-EXTENDS-001. Continua partial. Grafo de efeitos, timeline de autoria e evidencia fisica do canvas na release instalada ainda nao existem."
 }

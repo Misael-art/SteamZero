@@ -6531,3 +6531,18 @@ format, mypy, independence, boundaries, status-check e harnesses
 `check_theme_studio_canvas.qml` / `check_theme_editor_asset_recipes.qml`.
 SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem partial. GAP-G39 aberto.
 SZ-AURA-LAUNCHER não foi promovido.
+
+## 2026-08-18 — smoke do instalador e fechamento do G39
+
+O commit `aac72f4` corrige a causa do converge após a instalação
+`0.1.0a46-226b5f4b5c7c`: o smoke isolado de `_verify_release` observava o
+daemon ao vivo e tratava `E-HOST-DAEMON-PENDING` como binário doente, o que
+impedia o restart. Falhas reais de doctor continuam reprovando o smoke.
+
+O commit `236e61f` fecha o G39: cadeia `extends` acima do limite ainda degrada
+para os tokens da sessão, mas o preview publica `THEME-EDITOR-EXTENDS-001` e o
+editor mostra o código. Ciclo e base ausente também deixam de ser silenciosos.
+
+Fechamento local: **4530 passed, 10 skipped**; Ruff, format, mypy, independence,
+boundaries e status-check. SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem
+partial. AURA Launcher não foi promovido.
