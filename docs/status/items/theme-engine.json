@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "bf10da7533e2215c13c45abe1c8908d006bf80b81af3cac8e352290d0258b8e2",
+  "scopeDigest": "d3cecc49b1332e70a01302f3a78aa9104492c77d20ba2b67ea6b3d61a0abaa07",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -63,7 +63,7 @@
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
-    "Grid, list, wheel e cover flow podem ser compostos sem codigo externo.",
+    "Grid, list, wheel, cover flow, carousel, flow e stack podem ser compostos sem codigo externo.",
     "Tema invalido ou acima do orcamento degrada para builtin seguro sem perder foco ou derrubar o launcher.",
     "A cena de referencia mede 60 FPS, frame p95 de 16,7 ms, startup de ate 2 s e no maximo 512 MB de VRAM no Deck.",
     "Instalacao, update, rollback e remocao preservam temas e dados do usuario."
@@ -164,12 +164,24 @@
       "reference": "tests/qml/check_scene_surfaces.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_repeater.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Avançar stack/flow declarativos. Medição física permanece na release instalada identificada.",
+  "nextAction": "Avançar componentes do Launcher declarativos. Medição física permanece na release instalada identificada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. Este slice acrescenta layout kind carousel: itens numa elipse com distancia circular materializada. O QML so atribui x/y/scale/opacity/z. Stack/flow, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. Este slice acrescenta os layout kinds flow e stack: flow quebra pelos bounds resolvidos e degrada para uma faixa com diagnostico quando o item nao cabe; stack ancora o baralho no centro e faz peek so pelo gap, com profundidade materializada em scale/opacity/z. O QML so atribui o resultado. Componentes do Launcher, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }

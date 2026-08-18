@@ -6660,3 +6660,24 @@ Fechamento local: **4540 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — layouts stack e flow
+
+O commit `9b17e2d` acrescenta os kinds `flow` e `stack`. O flow quebra
+pelos bounds resolvidos (linhas pela largura, colunas pela altura) e
+informa a contagem de faixas calculada; item maior que os bounds degrada
+para uma faixa única com diagnóstico `THEME-LAYOUT-LIMIT-002`, nunca
+sumindo em silêncio. O stack ancora o baralho no centro e faz peek só
+pelo gap, com profundidade materializada em scale/opacity/z. O QML apenas
+atribui o resultado — a sonda `check_scene_repeater.qml` foi verificada
+por mutação (a versão mutante reprova com exit 1, a íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada; a autorização desta sessão não
+preencheu a release-alvo, então não há evidência física deste slice.
+
+Fechamento local: **4546 passed, 10 skipped** (a única falha da execução
+anterior era o catálogo de estado, resolvido neste commit documental);
+Ruff, format, mypy, independence, boundaries e status-check. SZ-THEME-ENGINE
+e SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
