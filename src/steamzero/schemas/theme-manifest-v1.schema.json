@@ -286,6 +286,10 @@
     "sceneMotion": {
       "$ref": "scene-motion-v1.schema.json",
       "description": "Estados nativos, transições e timeline declarativos; o QML recebe somente o plano materializado."
+    },
+    "sceneSurfaces": {
+      "$ref": "scene-surfaces-v1.schema.json",
+      "description": "Slots, galeria de saves e OSD por contrato público; a engine não controla o emulador."
     }
   },
   "additionalProperties": false,

@@ -54,6 +54,8 @@ QtObject {
         ? resolved.glassPreview : ({})
     readonly property var sceneMotionPreview: resolved && resolved.sceneMotionPreview
         ? resolved.sceneMotionPreview : ({})
+    readonly property var sceneSurfacePreview: resolved && resolved.sceneSurfacePreview
+        ? resolved.sceneSurfacePreview : ({})
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")

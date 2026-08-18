@@ -145,6 +145,26 @@ Window {
                     }
                 },
                 "diagnostics": []
+            },
+            "sceneSurfacePreview": {
+                "slots": {
+                    "saveStates": {
+                        "slot": "saveStates", "kind": "saveGallery",
+                        "entries": [
+                            {"title": "Auto", "timestamp": "2026-08-17T12:00:00Z",
+                             "playtime": "1h 12m", "compatible": true, "thumbnailFallback": false},
+                            {"title": "Slot 2", "timestamp": "", "playtime": "",
+                             "compatible": false, "thumbnailFallback": true}
+                        ],
+                        "items": [], "progress": 0, "criticalVisible": false, "success": false
+                    },
+                    "osd": {
+                        "slot": "osd", "kind": "osd", "entries": [],
+                        "items": ["volume", "mute", "pause", "saveState"],
+                        "progress": 0.4, "criticalVisible": false, "success": false
+                    }
+                },
+                "diagnostics": []
             }
         }
         panel._openEditor("edit-asset-recipes", manifest, preview)
@@ -181,6 +201,14 @@ Window {
                   "transição materializada não chegou ao consumidor")
             check(panel.sceneMotionPreview.states.focused.scale === 1.06,
                   "snapshot focused não foi aplicado")
+            check(panel.sceneSurfacePreviewActive,
+                  "contratos de save/OSD precisam chegar ao editor real")
+            check(panel.sceneSurfaceSaveCount === 2,
+                  "galeria materializada não chegou ao consumidor")
+            check(panel.sceneSurfaceThumbnailFallback,
+                  "slot sem captura precisa degradar com placeholder")
+            check(panel.sceneSurfaceCriticalVisible === false,
+                  "OSD não pode inventar erro crítico")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

@@ -20,6 +20,7 @@ from steamzero.domain.media_recipes import (
 )
 from steamzero.domain.scene_layout import LayoutRecipeBook
 from steamzero.domain.scene_motion import MotionBook
+from steamzero.domain.scene_surfaces import SurfaceBook
 from steamzero.domain.theme_effects import (
     EffectDiagnostic,
     EffectSpec,
@@ -300,6 +301,7 @@ class ThemeManifest:
     dynamic_palette: PaletteRecipe | None = None
     glass: GlassBook | None = None
     scene_motion: MotionBook | None = None
+    scene_surfaces: SurfaceBook | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -336,6 +338,8 @@ class ThemeManifest:
             result["glass"] = self.glass.to_dict()
         if self.scene_motion is not None:
             result["sceneMotion"] = self.scene_motion.to_dict()
+        if self.scene_surfaces is not None:
+            result["sceneSurfaces"] = self.scene_surfaces.to_dict()
         return result
 
     @staticmethod
@@ -347,6 +351,7 @@ class ThemeManifest:
         raw_dynamic_palette = data.get("dynamicPalette")
         raw_glass = data.get("glass")
         raw_scene_motion = data.get("sceneMotion")
+        raw_scene_surfaces = data.get("sceneSurfaces")
         if raw_effects is not None and not isinstance(raw_effects, dict):
             raise ValueError("effects precisa ser objeto")
         if raw_media_recipes is not None and not isinstance(raw_media_recipes, dict):
@@ -361,6 +366,8 @@ class ThemeManifest:
             raise ValueError("glass precisa ser objeto")
         if raw_scene_motion is not None and not isinstance(raw_scene_motion, dict):
             raise ValueError("sceneMotion precisa ser objeto")
+        if raw_scene_surfaces is not None and not isinstance(raw_scene_surfaces, dict):
+            raise ValueError("sceneSurfaces precisa ser objeto")
         return ThemeManifest(
             schemaVersion=data.get("schemaVersion", THEME_MANIFEST_SCHEMA_VERSION),
             kind=data.get("kind", "steamzero-theme-v1"),
@@ -396,6 +403,11 @@ class ThemeManifest:
             scene_motion=(
                 MotionBook.from_dict(raw_scene_motion) if raw_scene_motion is not None else None
             ),
+            scene_surfaces=(
+                SurfaceBook.from_dict(raw_scene_surfaces)
+                if raw_scene_surfaces is not None
+                else None
+            ),
         )
 
 
@@ -423,6 +435,7 @@ class ResolvedTheme:
     dynamic_palette: PaletteRecipe | None = None
     glass: GlassBook | None = None
     scene_motion: MotionBook | None = None
+    scene_surfaces: SurfaceBook | None = None
     effect_diagnostics: tuple[EffectDiagnostic, ...] = ()
     asset_recipe_diagnostics: tuple[AssetRecipeDiagnostic, ...] = ()
     high_contrast: bool = False
@@ -492,6 +505,7 @@ class ResolvedTheme:
             dynamic_palette=self.dynamic_palette,
             glass=self.glass,
             scene_motion=self.scene_motion,
+            scene_surfaces=self.scene_surfaces,
             effect_diagnostics=self.effect_diagnostics,
             asset_recipe_diagnostics=self.asset_recipe_diagnostics,
             high_contrast=high_contrast,
@@ -529,6 +543,7 @@ class ResolvedTheme:
             "dynamicPalette": self.dynamic_palette.to_dict() if self.dynamic_palette else None,
             "glass": self.glass.to_dict() if self.glass else None,
             "sceneMotion": self.scene_motion.to_dict() if self.scene_motion else None,
+            "sceneSurfaces": self.scene_surfaces.to_dict() if self.scene_surfaces else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -553,6 +568,7 @@ class ResolvedTheme:
             "dynamicPalette": self.dynamic_palette.to_dict() if self.dynamic_palette else None,
             "glass": self.glass.to_dict() if self.glass else None,
             "sceneMotion": self.scene_motion.to_dict() if self.scene_motion else None,
+            "sceneSurfaces": self.scene_surfaces.to_dict() if self.scene_surfaces else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -632,6 +648,7 @@ class ThemeResolver:
         dynamic_palette: PaletteRecipe | None = None
         glass_book: GlassBook | None = None
         scene_motion_book: MotionBook | None = None
+        scene_surface_book: SurfaceBook | None = None
         name = ""
         version = ""
         author = ""
@@ -694,6 +711,8 @@ class ThemeResolver:
                 glass_book = manifest.glass
             if manifest.scene_motion is not None:
                 scene_motion_book = manifest.scene_motion
+            if manifest.scene_surfaces is not None:
+                scene_surface_book = manifest.scene_surfaces
 
         validate_recipe_effect_stacks(tuple(media_recipes.values()), effects)
 
@@ -746,6 +765,7 @@ class ThemeResolver:
             dynamic_palette=dynamic_palette,
             glass=glass_book,
             scene_motion=scene_motion_book,
+            scene_surfaces=scene_surface_book,
             effect_diagnostics=effect_diagnostics,
             asset_recipe_diagnostics=asset_recipe_diagnostics,
         )

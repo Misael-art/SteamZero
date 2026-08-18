@@ -18,6 +18,7 @@ from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
 from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
+from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -51,6 +52,31 @@ _LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
     }
 }
 _LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
+_SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
+    "library": {
+        "items": [{"title": "Celeste"}],
+        "recent": [{"title": "Celeste"}],
+    },
+    "saves": {
+        "slots": [
+            {
+                "label": "Auto",
+                "timestamp": "2026-08-17T12:00:00Z",
+                "playtime": "1h 12m",
+                "compatible": True,
+                "hasThumbnail": True,
+            },
+            {
+                "label": "Slot 2",
+                "timestamp": "",
+                "playtime": "",
+                "compatible": False,
+                "hasThumbnail": False,
+            },
+        ]
+    },
+    "osd": {"volume": 0.4, "muted": False, "paused": False},
+}
 
 
 @dataclass
@@ -256,6 +282,11 @@ def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
         preview["sceneMotionPreview"] = resolve_scene_motion(
             resolved.scene_motion,
             reduced_motion=resolved.reduced_motion,
+        ).to_qml_object()
+    if resolved.scene_surfaces is not None:
+        preview["sceneSurfacePreview"] = resolve_scene_surfaces(
+            resolved.scene_surfaces,
+            _SURFACE_PREVIEW_READ_MODEL,
         ).to_qml_object()
     return preview
 

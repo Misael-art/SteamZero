@@ -81,6 +81,17 @@ Rectangle {
         sceneMotionPreviewActive && sceneMotionPreview.transitions
             && sceneMotionPreview.transitions.focusIn
             ? Number(sceneMotionPreview.transitions.focusIn.duration) : 0
+    readonly property var sceneSurfacePreview: _previewBridge.sceneSurfacePreview.slots
+        ? _previewBridge.sceneSurfacePreview : null
+    readonly property bool sceneSurfacePreviewActive:
+        assetRecipeDemoActive && sceneSurfacePreview !== null
+    readonly property int sceneSurfaceSaveCount:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.saveCount
+            ? sceneSurfaceRepeater.saveCount : 0
+    readonly property bool sceneSurfaceThumbnailFallback:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.thumbnailFallback
+    readonly property bool sceneSurfaceCriticalVisible:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.criticalVisible
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -1019,6 +1030,37 @@ Rectangle {
                             height: 56
                             motion: panel.sceneMotionPreview
                             stateName: "focused"
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneSurfacePreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Saves e OSD por contrato")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneSurfacePreview {
+                            id: sceneSurfaceRepeater
+                            objectName: "sceneSurfaceRepeater"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            anchors.topMargin: 32
+                            surfaces: panel.sceneSurfacePreview
                         }
                     }
 

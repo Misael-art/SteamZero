@@ -110,6 +110,27 @@
       }
     }
   },
+  "sceneSurfaces": {
+    "schemaVersion": 1,
+    "slots": {
+      "home": { "component": "recentRail" },
+      "library": { "component": "libraryGrid" },
+      "saveStates": { "component": "saveGallery" },
+      "osd": { "component": "quickOsd" },
+      "error": { "component": "errorBanner" }
+    },
+    "components": {
+      "recentRail": { "kind": "recentlyPlayed", "source": "library.recent" },
+      "libraryGrid": { "kind": "gameGrid", "source": "library.items" },
+      "saveGallery": { "kind": "saveGallery", "source": "saves.slots", "maxItems": 4 },
+      "quickOsd": {
+        "kind": "osd",
+        "items": ["volume", "mute", "pause", "saveState"],
+        "progress": { "binding": "osd.volume", "fallback": 0 }
+      },
+      "errorBanner": { "kind": "errorBanner" }
+    }
+  },
   "assetRecipes": {
     "schemaVersion": 1,
     "sourceSlot": "logo",

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/scene-surfaces-v1.schema.json",
+  "title": "Theme Engine scene surfaces v1",
+  "description": "Slots semânticos, galeria de saves e OSD por contrato público. O pacote não traz QML, caminho privado nem controla o emulador.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "slots", "components"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "slots": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 12,
+      "additionalProperties": false,
+      "properties": {
+        "home": {"$ref": "#/$defs/slot"},
+        "library": {"$ref": "#/$defs/slot"},
+        "gameDetail": {"$ref": "#/$defs/slot"},
+        "search": {"$ref": "#/$defs/slot"},
+        "collections": {"$ref": "#/$defs/slot"},
+        "saveStates": {"$ref": "#/$defs/slot"},
+        "quickMenu": {"$ref": "#/$defs/slot"},
+        "osd": {"$ref": "#/$defs/slot"},
+        "empty": {"$ref": "#/$defs/slot"},
+        "loading": {"$ref": "#/$defs/slot"},
+        "error": {"$ref": "#/$defs/slot"},
+        "offline": {"$ref": "#/$defs/slot"}
+      }
+    },
+    "components": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 16,
+      "propertyNames": {"pattern": "^[a-z][a-zA-Z0-9]{0,63}$"},
+      "additionalProperties": {"$ref": "#/$defs/component"}
+    }
+  },
+  "$defs": {
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component"],
+      "properties": {"component": {"type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,63}$"}}
+    },
+    "osdItem": {
+      "enum": ["volume", "mute", "brightness", "screenshot", "saveState", "loadState", "fastForward", "rewind", "pause", "control", "achievement", "network"]
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding"],
+      "properties": {
+        "binding": {"type": "string", "pattern": "^osd\\.(volume|brightness)$"},
+        "fallback": {"type": ["number", "integer"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["gameGrid", "recentlyPlayed", "gameDetail", "saveGallery", "osd", "emptyState", "loadingState", "errorBanner", "offlineState", "progressBar"]},
+        "source": {"type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,31}(?:\\.[a-z][a-zA-Z0-9]{0,31}){1,3}$", "maxLength": 128},
+        "maxItems": {"type": "integer", "minimum": 1, "maximum": 32},
+        "items": {"type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": {"$ref": "#/$defs/osdItem"}},
+        "progress": {"$ref": "#/$defs/binding"}
+      }
+    }
+  }
+}
