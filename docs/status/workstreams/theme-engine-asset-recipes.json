@@ -61,6 +61,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Capturar evidência física do canvas na release 0.1.0a46-226b5f4b5c7c e fechar GAP-G39.",
-  "updatedAt": "2026-08-17"
+  "nextAction": "Acrescentar timeline de autoria no Theme Studio e capturar evidência física do canvas na próxima release instalada.",
+  "updatedAt": "2026-08-18"
 }

@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d58e0c0d1d460ddb13c38c8612f219bc841aa66fdb5420cbacc7939d66fe02f4",
+  "scopeDigest": "99719d7680b70e3638f663dd76bbaf98eac3b4b812ec33d70eb4f7ae1a92d843",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -166,7 +166,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam identificação da release exata.",
+  "nextAction": "Medir a cena de referência na release 0.1.0a46-226b5f4b5c7c e avançar wheel/cover flow. Theme Studio segue no item próprio.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],

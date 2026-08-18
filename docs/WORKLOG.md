@@ -6546,3 +6546,22 @@ editor mostra o código. Ciclo e base ausente também deixam de ser silenciosos.
 Fechamento local: **4530 passed, 10 skipped**; Ruff, format, mypy, independence,
 boundaries e status-check. SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem
 partial. AURA Launcher não foi promovido.
+
+## 2026-08-18 — Theme Studio — grafo de efeitos e constraints
+
+A branch `codex/theme-engine-asset-recipes` incorporou `origin/main`
+(`226b5f4`, squash do PR #83) sem reescrever o histórico publicado. O
+commit `e220f41` acrescenta o grafo de efeitos allowlisted e os
+constraints já diagnosticados ao inspector do Theme Studio. O Studio só
+observa stacks negociados pela engine; não executa QML, shader ou código
+do pacote. Timeline, profiler e evidência física do canvas na release
+instalada continuam ausentes.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c` (Theme Engine
+do PR #83). Este slice ainda não está instalado. Nenhuma release nova
+foi construída.
+
+Fechamento local: **4531 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.

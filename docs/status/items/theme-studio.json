@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "8eeb98c1e6c9fba1edbd74107b2bb449eb947c8d6ca8222ad88b3e6e395dca62",
+  "scopeDigest": "6181ec5360a6df24c1a0d93a8dba758856d88e4f533d785733e3718e4a84f863",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -82,8 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Acrescentar constraints e effect graph ao inspector. Capturar evidência física do canvas na próxima release instalada.",
+  "nextAction": "Acrescentar timeline de autoria e capturar evidência física do canvas na próxima release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Primeiro slice de canvas/arvore/inspector existe no codigo e no harness QML. GAP-G39 fechado: cadeia extends acima do limite continua degradando, mas publica THEME-EDITOR-EXTENDS-001. Continua partial. Grafo de efeitos, timeline de autoria e evidencia fisica do canvas na release instalada ainda nao existem."
+  "notes": "Canvas, arvore, inspector, constraints e grafo de efeitos allowlisted existem no codigo e no harness QML. O inspector so observa stacks ja negociados pela engine; nao executa QML, shader ou codigo do pacote. Continua partial. Timeline de autoria, profiler e evidencia fisica do canvas na release instalada ainda nao existem."
 }
