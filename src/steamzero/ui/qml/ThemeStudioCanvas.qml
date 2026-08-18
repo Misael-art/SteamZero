@@ -28,6 +28,25 @@ Item {
         selectedNode && selectedNode.constraints ? selectedNode.constraints.length : 0
     readonly property string selectedConstraintCode:
         selectedConstraintCount ? String(selectedNode.constraints[0].code) : ""
+    readonly property var selectedSteps: {
+        if (!selectedNode || selectedKind !== "timeline" || !selectedNode.children)
+            return []
+        const ids = selectedNode.children
+        const steps = []
+        for (let i = 0; i < ids.length; ++i) {
+            for (let j = 0; j < nodes.length; ++j) {
+                if (nodes[j].id === ids[i])
+                    steps.push(nodes[j])
+            }
+        }
+        return steps
+    }
+    readonly property int selectedTimelineDuration: {
+        if (selectedKind !== "timeline" || !selectedNode || !selectedNode.properties)
+            return 0
+        const value = Number(selectedNode.properties.totalDuration)
+        return value === value ? value : 0
+    }
 
     function select(nodeId) {
         for (let i = 0; i < nodes.length; ++i) {
@@ -72,6 +91,33 @@ Item {
                 color: "#e8ecf7"
                 text: studio.selectedLabel
                 font.pixelSize: 16
+            }
+            Row {
+                id: timelineStrip
+                objectName: "studioTimeline"
+                visible: studio.selectedKind === "timeline" && studio.selectedSteps.length > 0
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 12
+                spacing: 4
+                Repeater {
+                    model: studio.selectedSteps
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: Math.max(28, Number(modelData.properties.duration) * 0.4)
+                        height: 22
+                        radius: 4
+                        color: "#1c2440"
+                        border.color: "#262f4d"
+                        Text {
+                            anchors.centerIn: parent
+                            color: "#e8ecf7"
+                            font.pixelSize: 10
+                            text: String(modelData.properties.state)
+                        }
+                    }
+                }
             }
         }
 

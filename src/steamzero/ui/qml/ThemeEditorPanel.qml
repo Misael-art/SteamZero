@@ -106,6 +106,8 @@ Rectangle {
         studioGraphActive ? studioCanvas.selectedConstraintCount : 0
     readonly property string studioGraphConstraintCode:
         studioGraphActive ? studioCanvas.selectedConstraintCode : ""
+    readonly property int studioGraphTimelineDuration:
+        studioGraphActive ? studioCanvas.selectedTimelineDuration : 0
 
     function studioGraphSelect(nodeId) {
         return studioGraphActive ? studioCanvas.select(nodeId) : false

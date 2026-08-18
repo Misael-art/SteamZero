@@ -25,6 +25,8 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert "layout.previewTitles" in ids
     assert "surface.saveStates" in ids
     assert "motion.focusIn" in ids
+    assert "timeline.previewFocus" in ids
+    assert "timeline.previewFocus.1" in ids
     assert "effect.focusedCover" in ids
     assert "effect.focusedCover.0" in ids
     selected = next(node for node in graph["nodes"] if node["id"] == graph["selectedId"])
@@ -97,6 +99,72 @@ def test_effect_diagnostics_become_inspector_constraints() -> None:
     assert layout is not None
     assert layout.constraints[0].code == "THEME-LAYOUT-SOURCE-001"
     assert graph.select("evil.shader") is None
+
+
+def test_resolved_timeline_is_inspectable_without_running_motion() -> None:
+    preview = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")["preview"]
+    assert isinstance(preview, dict)
+    graph = StudioGraph.from_dict(preview["studioGraph"])
+    timeline = graph.select("timeline.previewFocus")
+    assert timeline is not None
+    assert timeline.kind == "timeline"
+    assert timeline.properties["kind"] == "sequence"
+    assert timeline.properties["steps"] == 3
+    assert timeline.properties["totalDuration"] == 260
+    step = graph.select("timeline.previewFocus.1")
+    assert step is not None
+    assert step.properties["state"] == "focused"
+    assert step.properties["duration"] == 180
+    assert step.properties["easing"] == "cubicOut"
+
+
+def test_reduced_motion_diagnostics_attach_to_transition_nodes() -> None:
+    graph = build_studio_graph(
+        {
+            "sceneMotionPreview": {
+                "transitions": {
+                    "focusIn": {
+                        "from": "normal",
+                        "to": "focused",
+                        "duration": 0,
+                        "easing": "cubicOut",
+                    }
+                },
+                "timelines": {
+                    "previewFocus": {
+                        "kind": "sequence",
+                        "repeat": 0,
+                        "totalDuration": 80,
+                        "steps": [
+                            {"state": "normal", "duration": 0, "easing": "linear"},
+                            {"state": "focused", "duration": 0, "easing": "cubicOut"},
+                            {"state": "focused", "duration": 80, "easing": "linear"},
+                        ],
+                    }
+                },
+                "diagnostics": [
+                    {
+                        "code": "THEME-MOTION-REDUCED-001",
+                        "reason": "transição 'focusIn' zerada com reduced motion",
+                        "fallback": "cut",
+                    },
+                    {
+                        "code": "THEME-MOTION-CLIP-002",
+                        "reason": "clip referencia transition ausente: missingFlash",
+                        "fallback": "cut",
+                    },
+                ],
+            }
+        }
+    )
+    motion = graph.select("motion.focusIn")
+    assert motion is not None
+    assert motion.constraints[0].code == "THEME-MOTION-REDUCED-001"
+    timeline = graph.select("timeline.previewFocus")
+    assert timeline is not None
+    assert timeline.properties["totalDuration"] == 80
+    assert timeline.constraints[0].code == "THEME-MOTION-CLIP-002"
+    assert graph.select("evil.js") is None
 
 
 def test_graph_refuses_code_bearing_nodes() -> None:

@@ -171,8 +171,9 @@ Window {
                 "nodes": [
                     {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
                      "children": ["layout.previewTitles", "surface.saveStates",
-                                  "motion.focusIn", "effect.focusedCover"],
-                     "properties": {"children": 4}},
+                                  "motion.focusIn", "timeline.previewFocus",
+                                  "effect.focusedCover"],
+                     "properties": {"children": 5}},
                     {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                      "parent": "scene", "children": [],
                      "properties": {"kind": "grid", "columns": 4, "entries": 2}},
@@ -193,7 +194,14 @@ Window {
                          {"code": "THEME-STUDIO-COST-001",
                           "reason": "efeito de custo alto; o inspector só observa, não executa",
                           "severity": "info"}
-                     ]}
+                     ]},
+                    {"id": "timeline.previewFocus", "kind": "timeline", "label": "previewFocus",
+                     "parent": "scene", "children": ["timeline.previewFocus.0"],
+                     "properties": {"kind": "sequence", "repeat": 0,
+                                    "totalDuration": 260, "steps": 1}},
+                    {"id": "timeline.previewFocus.0", "kind": "timeline", "label": "focused",
+                     "parent": "timeline.previewFocus", "children": [],
+                     "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}}
                 ]
             }
         }
@@ -253,6 +261,12 @@ Window {
                   "inspector precisa identificar o node de efeito")
             check(panel.studioGraphConstraintCode === "THEME-STUDIO-COST-001",
                   "constraint do efeito precisa chegar ao inspector")
+            check(panel.studioGraphSelect("timeline.previewFocus") === true,
+                  "timeline materializada precisa ser selecionável no editor real")
+            check(panel.studioGraphSelectedKind === "timeline",
+                  "inspector precisa identificar o node de timeline")
+            check(panel.studioGraphTimelineDuration === 260,
+                  "duração da timeline precisa chegar ao inspector")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

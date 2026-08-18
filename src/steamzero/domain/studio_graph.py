@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect"})
+ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect", "timeline"})
 ALLOWED_SEVERITIES = frozenset({"info", "warning", "error"})
 _FORBIDDEN = frozenset({"qml", "js", "script", "shader", "python"})
 DIAG_EFFECT_OMITTED = "THEME-STUDIO-EFFECT-001"
@@ -89,6 +89,54 @@ def _constraints_from(
         found.append(
             StudioConstraint(
                 code=str(item.get("code") or default_code),
+                reason=str(item.get("reason") or "constraint diagnosticado"),
+                severity=severity,
+            )
+        )
+    return tuple(found)
+
+
+def _reason_constraints(
+    items: object,
+    token: str,
+    *,
+    default_code: str,
+    severity: str = "warning",
+) -> tuple[StudioConstraint, ...]:
+    if not isinstance(items, list) or not token:
+        return ()
+    found: list[StudioConstraint] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        reason = str(item.get("reason") or "")
+        if f"'{token}'" not in reason and f": {token}" not in reason:
+            continue
+        found.append(
+            StudioConstraint(
+                code=str(item.get("code") or default_code),
+                reason=reason or "constraint diagnosticado",
+                severity=severity,
+            )
+        )
+    return tuple(found)
+
+
+def _code_constraints(
+    items: object,
+    code: str,
+    *,
+    severity: str = "warning",
+) -> tuple[StudioConstraint, ...]:
+    if not isinstance(items, list) or not code:
+        return ()
+    found: list[StudioConstraint] = []
+    for item in items:
+        if not isinstance(item, Mapping) or item.get("code") != code:
+            continue
+        found.append(
+            StudioConstraint(
+                code=code,
                 reason=str(item.get("reason") or "constraint diagnosticado"),
                 severity=severity,
             )
@@ -272,6 +320,7 @@ def _motion_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
     transitions = motion.get("transitions")
     if not isinstance(transitions, Mapping):
         return []
+    diagnostics = motion.get("diagnostics")
     nodes: list[StudioNode] = []
     for name, transition in transitions.items():
         if not isinstance(transition, Mapping):
@@ -290,7 +339,67 @@ def _motion_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
                     "duration": transition.get("duration"),
                     "easing": transition.get("easing"),
                 },
+                constraints=_reason_constraints(
+                    diagnostics,
+                    str(name),
+                    default_code="THEME-MOTION-REDUCED-001",
+                ),
             )
+        )
+    return nodes
+
+
+def _timeline_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    motion = preview.get("sceneMotionPreview")
+    if not isinstance(motion, Mapping):
+        return []
+    timelines = motion.get("timelines")
+    if not isinstance(timelines, Mapping):
+        return []
+    diagnostics = motion.get("diagnostics")
+    nodes: list[StudioNode] = []
+    for name, timeline in timelines.items():
+        if not isinstance(name, str) or not isinstance(timeline, Mapping):
+            continue
+        timeline_id = f"timeline.{name}"
+        steps = timeline.get("steps")
+        step_entries = steps if isinstance(steps, list) else []
+        child_ids: list[str] = []
+        for index, step in enumerate(step_entries):
+            if not isinstance(step, Mapping):
+                continue
+            node_id = f"{timeline_id}.{index}"
+            child_ids.append(node_id)
+            nodes.append(
+                StudioNode(
+                    id=node_id,
+                    kind="timeline",
+                    label=str(step.get("state") or name),
+                    parent=timeline_id,
+                    properties={
+                        "state": step.get("state"),
+                        "duration": step.get("duration"),
+                        "easing": step.get("easing"),
+                    },
+                )
+            )
+        children.append(timeline_id)
+        nodes.insert(
+            len(nodes) - len(child_ids),
+            StudioNode(
+                id=timeline_id,
+                kind="timeline",
+                label=str(name),
+                parent="scene",
+                children=tuple(child_ids),
+                properties={
+                    "kind": timeline.get("kind"),
+                    "repeat": timeline.get("repeat"),
+                    "totalDuration": timeline.get("totalDuration"),
+                    "steps": len(child_ids),
+                },
+                constraints=_code_constraints(diagnostics, "THEME-MOTION-CLIP-002"),
+            ),
         )
     return nodes
 
@@ -389,6 +498,7 @@ def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     nodes.extend(_layout_nodes(preview, children))
     nodes.extend(_surface_nodes(preview, children))
     nodes.extend(_motion_nodes(preview, children))
+    nodes.extend(_timeline_nodes(preview, children))
     nodes.extend(_effect_nodes(preview, children))
     nodes.insert(
         0,

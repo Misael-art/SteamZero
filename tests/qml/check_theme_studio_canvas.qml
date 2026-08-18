@@ -36,7 +36,18 @@ Item {
                      {"code": "THEME-STUDIO-COST-001",
                       "reason": "efeito de custo alto; o inspector só observa, não executa",
                       "severity": "info"}
-                 ]}
+                 ]},
+                {"id": "timeline.previewFocus", "kind": "timeline", "label": "previewFocus",
+                 "parent": "scene", "children": ["timeline.previewFocus.0",
+                                                "timeline.previewFocus.1"],
+                 "properties": {"kind": "sequence", "repeat": 0,
+                                "totalDuration": 260, "steps": 2}},
+                {"id": "timeline.previewFocus.0", "kind": "timeline", "label": "normal",
+                 "parent": "timeline.previewFocus", "children": [],
+                 "properties": {"state": "normal", "duration": 80, "easing": "linear"}},
+                {"id": "timeline.previewFocus.1", "kind": "timeline", "label": "focused",
+                 "parent": "timeline.previewFocus", "children": [],
+                 "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}}
             ]
         })
     }
@@ -46,13 +57,17 @@ Item {
         running: true
         repeat: false
         onTriggered: {
-            harness.check(canvas.nodeCount === 4, "canvas não recebeu a árvore")
+            harness.check(canvas.nodeCount === 7, "canvas não recebeu a árvore")
             harness.check(canvas.select("layout.previewTitles") === true, "seleção falhou")
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
             harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
             harness.check(canvas.selectedKind === "effect", "inspector não acompanhou o efeito")
             harness.check(canvas.selectedConstraintCode === "THEME-STUDIO-COST-001",
                           "constraint do efeito não chegou ao inspector")
+            harness.check(canvas.select("timeline.previewFocus") === true, "timeline não selecionou")
+            harness.check(canvas.selectedKind === "timeline", "inspector não acompanhou a timeline")
+            harness.check(canvas.selectedTimelineDuration === 260,
+                          "duração materializada não chegou à faixa da timeline")
             harness.check(canvas.select("evil.qml") === false, "id inexistente não pode selecionar")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }
