@@ -164,6 +164,66 @@ def test_wheel_applies_offset_converter_from_selected_index() -> None:
     assert all("binding" not in entry.node for entry in layout.entries)
 
 
+def test_cover_flow_materializes_overlap_and_rotation() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "libraryCover": {
+                "source": "library.items",
+                "kind": "coverFlow",
+                "item": {"width": 80, "height": 24},
+                "gap": 0,
+                "selected": 1,
+                "offset": {
+                    "scaleStep": 0.1,
+                    "opacityStep": 0.15,
+                    "minScale": 0.65,
+                    "minOpacity": 0.4,
+                    "rotationStep": 28,
+                    "maxRotation": 55,
+                    "overlap": 0.45,
+                },
+                "template": {
+                    "kind": "text",
+                    "id": "cover-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["libraryCover"]
+    assert layout.kind is LayoutKind.COVER_FLOW
+    assert [round(entry.x, 1) for entry in layout.entries[:3]] == [124.0, 160.0, 196.0]
+    assert layout.entries[1].node["rotationY"] == 0
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[0].node["rotationY"] == -28.0
+    assert layout.entries[2].node["rotationY"] == 28.0
+    assert layout.entries[0].node["scale"] == 0.9
+    assert layout.entries[0].node["opacity"] == 0.85
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def test_cover_flow_refuses_vertical_direction() -> None:
+    with pytest.raises(ValueError, match="horizontal"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "bad": {
+                        "source": "library.items",
+                        "kind": "coverFlow",
+                        "direction": "vertical",
+                        "item": {"width": 80, "height": 24},
+                        "template": {"kind": "text", "id": "x"},
+                    }
+                },
+            }
+        )
+
+
 def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagnostic() -> None:
     book = LayoutRecipeBook.from_dict(_raw_book())
     resolved = resolve_scene_layouts(
@@ -185,7 +245,7 @@ def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagn
         (
             {
                 "source": "library.items",
-                "kind": "coverFlow",
+                "kind": "mosaic",
                 "item": {"width": 1, "height": 1},
                 "template": {"kind": "text", "id": "x"},
             },
@@ -299,7 +359,7 @@ def test_invalid_scene_layouts_fall_back_to_builtin_and_keep_accessibility(
                     "layouts": {
                         "bad": {
                             "source": "library.items",
-                            "kind": "coverFlow",
+                            "kind": "mosaic",
                             "item": {"width": 10, "height": 10},
                             "template": {"kind": "text", "id": "x"},
                         }

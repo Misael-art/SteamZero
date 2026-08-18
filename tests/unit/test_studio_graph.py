@@ -27,6 +27,7 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert "scene" in ids
     assert "layout.previewTitles" in ids
     assert "layout.previewWheel" in ids
+    assert "layout.previewCoverFlow" in ids
     assert "surface.saveStates" in ids
     assert "motion.focusIn" in ids
     assert "timeline.previewFocus" in ids

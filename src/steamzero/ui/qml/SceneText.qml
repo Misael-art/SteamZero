@@ -30,6 +30,12 @@ Text {
     y: model.y
     z: model.z !== undefined ? model.z : 0
     scale: model.scale !== undefined ? model.scale : 1
+    transform: Rotation {
+        origin.x: width / 2
+        origin.y: height / 2
+        axis.y: 1
+        angle: model.rotationY !== undefined ? model.rotationY : 0
+    }
 
     // `width`/`height` ausentes no modelo significam dimensão implícita — o
     // `Text` se dimensiona pelo conteúdo. Atribuir 0 seria diferente: caixa

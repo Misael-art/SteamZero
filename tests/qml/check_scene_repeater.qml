@@ -16,6 +16,30 @@ Item {
     }
 
     SceneRepeater {
+        id: covers
+        layout: ({
+            "id": "previewCoverFlow",
+            "kind": "coverFlow",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "cover-0", "text": "Axiom Verge",
+                "x": 124, "y": 28, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.85, "scale": 0.9, "z": 31,
+                "rotationY": -28, "color": "#f2f6fb", "fontFamily": "",
+                "fontPixelSize": 14, "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "cover-1", "text": "Celeste",
+                "x": 160, "y": 28, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "rotationY": 0, "color": "#f2f6fb", "fontFamily": "",
+                "fontPixelSize": 14, "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: wheel
         layout: ({
             "id": "previewWheel",
@@ -68,6 +92,19 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            harness.check(covers.entryCount === 2, "cover flow não recebeu duas entradas")
+            const cover = covers.entryAt(1)
+            const neighbor = covers.entryAt(0)
+            harness.check(cover !== null && neighbor !== null, "nós do cover flow não instanciaram")
+            if (cover !== null) {
+                harness.check(cover.text === "Celeste", "capa selecionada não chegou ao QML")
+                harness.check(cover.z === 32 && cover.scale === 1,
+                              "offset converter do cover flow não pode ser recalculado no QML")
+            }
+            if (neighbor !== null) {
+                harness.check(neighbor.x === 124 && neighbor.scale === 0.9,
+                              "vizinho do cover flow precisa usar overlap materializado")
+            }
             harness.check(wheel.entryCount === 2, "wheel não recebeu duas entradas")
             const focused = wheel.entryAt(1)
             const side = wheel.entryAt(0)

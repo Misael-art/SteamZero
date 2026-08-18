@@ -36,6 +36,7 @@ class LayoutKind(StrEnum):
     GRID = "grid"
     LIST = "list"
     WHEEL = "wheel"
+    COVER_FLOW = "coverFlow"
 
 
 class LayoutDirection(StrEnum):
@@ -189,16 +190,30 @@ class LayoutOffset:
     opacity_step: float = 0.18
     min_scale: float = 0.7
     min_opacity: float = 0.35
+    rotation_step: float = 0.0
+    max_rotation: float = 0.0
+    overlap: float = 1.0
 
     def __post_init__(self) -> None:
         _number(self.scale_step, name="offset.scaleStep", low=0, high=0.5)
         _number(self.opacity_step, name="offset.opacityStep", low=0, high=0.5)
         _number(self.min_scale, name="offset.minScale", low=0.25, high=1)
         _number(self.min_opacity, name="offset.minOpacity", low=0, high=1)
+        _number(self.rotation_step, name="offset.rotationStep", low=0, high=60)
+        _number(self.max_rotation, name="offset.maxRotation", low=0, high=70)
+        _number(self.overlap, name="offset.overlap", low=0.25, high=1)
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> LayoutOffset:
-        unknown = set(raw) - {"scaleStep", "opacityStep", "minScale", "minOpacity"}
+        unknown = set(raw) - {
+            "scaleStep",
+            "opacityStep",
+            "minScale",
+            "minOpacity",
+            "rotationStep",
+            "maxRotation",
+            "overlap",
+        }
         if unknown:
             raise ValueError("offset inválido")
         return cls(
@@ -212,13 +227,21 @@ class LayoutOffset:
             min_opacity=_number(
                 raw.get("minOpacity", 0.35), name="offset.minOpacity", low=0, high=1
             ),
+            rotation_step=_number(
+                raw.get("rotationStep", 0), name="offset.rotationStep", low=0, high=60
+            ),
+            max_rotation=_number(
+                raw.get("maxRotation", 0), name="offset.maxRotation", low=0, high=70
+            ),
+            overlap=_number(raw.get("overlap", 1), name="offset.overlap", low=0.25, high=1),
         )
 
-    def apply(self, distance: int) -> tuple[float, float, int]:
+    def apply(self, distance: int) -> tuple[float, float, int, float]:
         steps = abs(distance)
         scale = max(1.0 - steps * self.scale_step, self.min_scale)
         opacity = max(1.0 - steps * self.opacity_step, self.min_opacity)
-        return (round(scale, 4), round(opacity, 4), 32 - steps)
+        rotation = max(-self.max_rotation, min(self.max_rotation, distance * self.rotation_step))
+        return (round(scale, 4), round(opacity, 4), 32 - steps, round(rotation, 4))
 
     def to_dict(self) -> dict[str, float]:
         return {
@@ -226,6 +249,9 @@ class LayoutOffset:
             "opacityStep": self.opacity_step,
             "minScale": self.min_scale,
             "minOpacity": self.min_opacity,
+            "rotationStep": self.rotation_step,
+            "maxRotation": self.max_rotation,
+            "overlap": self.overlap,
         }
 
 
@@ -349,8 +375,12 @@ class LayoutRecipe:
             raise ValueError("list não aceita breakpoints")
         if self.kind is LayoutKind.WHEEL and self.breakpoints:
             raise ValueError("wheel não aceita breakpoints")
-        if self.offset is not None and self.kind is not LayoutKind.WHEEL:
-            raise ValueError("offset só é válido em wheel")
+        if self.kind is LayoutKind.COVER_FLOW and self.breakpoints:
+            raise ValueError("coverFlow não aceita breakpoints")
+        if self.kind is LayoutKind.COVER_FLOW and self.direction is not LayoutDirection.HORIZONTAL:
+            raise ValueError("coverFlow só é horizontal")
+        if self.offset is not None and self.kind not in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
+            raise ValueError("offset só é válido em wheel ou coverFlow")
         ranges: list[tuple[float, float]] = []
         for point in self.breakpoints:
             low = point.min_width if point.min_width is not None else float("-inf")
@@ -384,7 +414,9 @@ class LayoutRecipe:
         except ValueError:
             raise ValueError("kind inválido") from None
         try:
-            direction_default = "horizontal" if kind is LayoutKind.WHEEL else "vertical"
+            direction_default = (
+                "horizontal" if kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW} else "vertical"
+            )
             direction = LayoutDirection(str(raw.get("direction", direction_default)))
         except ValueError:
             raise ValueError("direction inválida") from None
@@ -440,7 +472,7 @@ class LayoutRecipe:
             value["columns"] = self.columns
         if self.kind is LayoutKind.LIST:
             value["direction"] = self.direction.value
-        if self.kind is LayoutKind.WHEEL:
+        if self.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
             value["direction"] = self.direction.value
             value["selected"] = self.selected
             if self.offset is not None:
@@ -653,7 +685,20 @@ def resolve_scene_layouts(
         selected = recipe.selected
         if accepted:
             selected = min(max(selected, 0), len(accepted) - 1)
-        offset = recipe.offset or LayoutOffset()
+        if recipe.offset is not None:
+            offset = recipe.offset
+        elif recipe.kind is LayoutKind.COVER_FLOW:
+            offset = LayoutOffset(
+                scale_step=0.1,
+                opacity_step=0.15,
+                min_scale=0.65,
+                min_opacity=0.4,
+                rotation_step=28.0,
+                max_rotation=55.0,
+                overlap=0.45,
+            )
+        else:
+            offset = LayoutOffset()
         entries: list[ResolvedLayoutEntry] = []
         for display_index, (index, raw_item) in enumerate(accepted):
             if recipe.kind is LayoutKind.GRID:
@@ -662,18 +707,23 @@ def resolve_scene_layouts(
                 x = bounds.x + column * (recipe.item.width + recipe.gap)
                 y = bounds.y + row * (recipe.item.height + recipe.gap)
                 extras: dict[str, Any] = {}
-            elif recipe.kind is LayoutKind.WHEEL:
+            elif recipe.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
                 distance = display_index - selected
-                scale, fade, z_index = offset.apply(distance)
-                if recipe.direction is LayoutDirection.VERTICAL:
+                scale, fade, z_index, rotation_y = offset.apply(distance)
+                if recipe.kind is LayoutKind.WHEEL and recipe.direction is LayoutDirection.VERTICAL:
                     step = recipe.item.height + recipe.gap
                     x = bounds.x + (bounds.width - recipe.item.width) / 2
                     y = bounds.y + (bounds.height - recipe.item.height) / 2 + distance * step
                 else:
-                    step = recipe.item.width + recipe.gap
+                    width_step = recipe.item.width * (
+                        offset.overlap if recipe.kind is LayoutKind.COVER_FLOW else 1.0
+                    )
+                    step = width_step + recipe.gap
                     x = bounds.x + (bounds.width - recipe.item.width) / 2 + distance * step
                     y = bounds.y + (bounds.height - recipe.item.height) / 2
                 extras = {"scale": scale, "z": z_index, "distance": distance}
+                if recipe.kind is LayoutKind.COVER_FLOW:
+                    extras["rotationY"] = rotation_y
             elif recipe.direction is LayoutDirection.VERTICAL:
                 x = bounds.x
                 y = bounds.y + display_index * (recipe.item.height + recipe.gap)
@@ -693,7 +743,7 @@ def resolve_scene_layouts(
             if extras:
                 node = dict(node)
                 node.update(extras)
-                if recipe.kind is LayoutKind.WHEEL:
+                if recipe.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
                     base = node.get("opacity", 1.0)
                     if isinstance(base, int | float) and not isinstance(base, bool):
                         node["opacity"] = round(float(base) * fade, 4)
