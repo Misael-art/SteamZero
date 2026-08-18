@@ -10,14 +10,14 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-ADAPTERS | 102 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-ASSETS | 10 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-CORE | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-DOMAIN | 84 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-DOMAIN | 85 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-INPUT-PROFILES | 19 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-JOBS | 3 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PLATFORM-MANIFESTS | 37 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-SCHEMAS | 44 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-SCHEMAS | 45 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 287 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 289 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 29 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 9 | 0 | 0 | none | sem evidencia registrada |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
@@ -35,8 +35,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 46 | 12 | 12 | unit |  |
+| SZ-THEME-ENGINE | 51 | 14 | 14 | unit |  |
 | SZ-THEME-STUDIO | 8 | 5 | 5 | unit |  |
-| SZ-UI-DESKTOP-AUDIT | 216 | 1 | 1 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 217 | 1 | 1 | dev |  |
 
-Arquivos em `src/`: **457**. Sob agregador apenas, sem item de capacidade: **313** (68%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **460**. Sob agregador apenas, sem item de capacidade: **313** (68%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

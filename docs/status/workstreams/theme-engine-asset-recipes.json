@@ -29,6 +29,11 @@
     "tests/unit/test_dynamic_palette.py",
     "tests/unit/test_glass_panels.py",
     "tests/qml/check_glass_panel.qml",
+    "src/steamzero/domain/scene_motion.py",
+    "src/steamzero/schemas/scene-motion-v1.schema.json",
+    "src/steamzero/ui/qml/SceneMotionPreview.qml",
+    "tests/unit/test_scene_motion.py",
+    "tests/qml/check_scene_motion.qml",
     "tests/qml/check_scene_repeater.qml"
   ],
   "sharedPaths": [
@@ -47,6 +52,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Iniciar states, timeline e transições declarativas. Release e evidência física dos slices anteriores aguardam a identificação da release exata.",
+  "nextAction": "Iniciar componentes Launcher, OSD e save gallery por contratos. Release e evidência física dos slices anteriores aguardam a identificação da release exata.",
   "updatedAt": "2026-08-17"
 }

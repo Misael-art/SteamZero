@@ -6475,3 +6475,20 @@ commits `b7b750a`/`9cdbfcb`; os commits desta onda também ficam locais até o
 envio ser possível. Nenhuma release/instalação/ação de host foi executada.
 SZ-THEME-ENGINE permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e
 SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-17 — Theme Engine — states, timeline e transições
+
+A frente avançou na quinta onda da especificação. O commit funcional `3267551`
+define `sceneMotion` v1: doze estados nativos, transições com easing
+allowlisted, timeline `sequence`/`parallel` materializada em passos finais e
+`reducedMotion` que zera animações não essenciais sem apagar o flash de erro.
+O QML aplica somente snapshots; não avalia curva nem executa código do pacote.
+
+Fechamento local único: **4518 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_scene_motion.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time ou VRAM.
+
+Nenhuma release foi construída, publicada ou instalada: a autorização desta
+sessão ainda não identifica uma release exata. SZ-THEME-ENGINE permanece
+partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.

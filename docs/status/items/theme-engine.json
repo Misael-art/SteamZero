@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "c997e237ae702e353832a99261e17a0bdfbdb08ad30381102f518630ca2820fb",
+  "scopeDigest": "6d2eac22328d23229af972489ec1125470c26db01726a234e90e138b0dd36912",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -17,12 +17,14 @@
     "src/steamzero/domain/scene_contract.py",
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/scene_layout.py",
+    "src/steamzero/domain/scene_motion.py",
     "src/steamzero/domain/dynamic_palette.py",
     "src/steamzero/domain/glass_panels.py",
     "src/steamzero/domain/qml_render_model.py",
     "src/steamzero/adapters/theme_catalog.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/scene-layout-v1.schema.json",
+    "src/steamzero/schemas/scene-motion-v1.schema.json",
     "src/steamzero/schemas/dynamic-palette-v1.schema.json",
     "src/steamzero/schemas/glass-panel-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
@@ -31,6 +33,7 @@
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "src/steamzero/ui/qml/SceneRepeater.qml",
+    "src/steamzero/ui/qml/SceneMotionPreview.qml",
     "src/steamzero/ui/qml/GlassPanel.qml",
     "src/steamzero/themes/org.steamzero.asset-recipes-demo",
     "tests/unit/test_asset_recipes.py",
@@ -38,12 +41,14 @@
     "tests/unit/test_scene_contract.py",
     "tests/unit/test_scene_image_pipeline.py",
     "tests/unit/test_scene_layout.py",
+    "tests/unit/test_scene_motion.py",
     "tests/unit/test_dynamic_palette.py",
     "tests/unit/test_glass_panels.py",
     "tests/qml/check_media_effect_layer.qml",
     "tests/qml/check_asset_recipe_preview.qml",
     "tests/qml/check_theme_editor_asset_recipes.qml",
     "tests/qml/check_scene_repeater.qml",
+    "tests/qml/check_scene_motion.qml",
     "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py"
@@ -130,12 +135,24 @@
       "reference": "tests/qml/check_glass_panel.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_glass_panel.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_motion.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_motion.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_motion.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_motion.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Iniciar states, timeline e transições declarativas. Release e evidência física dos slices anteriores aguardam identificação da release exata.",
+  "nextAction": "Iniciar componentes Launcher, OSD e save gallery por contratos. Release e evidência física dos slices anteriores aguardam identificação da release exata.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Receitas de asset unico, cache adaptativo e layouts/repeaters ja tem contrato e preview offscreen. Este slice acrescenta extração de paleta cacheada por hash (dominant/vibrant/muted/accent/contrastText) e paineis de vidro com blur negociado por tier; economia e capability ausente desligam o backbuffer e mantem tint/borda. A evidencia e offscreen. Wheel, cover flow, states/timeline e medicao fisica de FPS/VRAM ainda nao existem. A autorizacao de release desta sessao nao identifica uma release exata; publicacao, instalacao, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
+  "notes": "Estado permanece parcial. Receitas, cache, layouts, paleta e vidro ja tem contrato e preview offscreen. Este slice acrescenta sceneMotion v1: doze estados nativos, transicoes com easing allowlisted, timeline sequence/parallel materializada e reducedMotion que zera animacao nao essencial sem apagar o flash de erro. O QML so aplica snapshots. Entradas de cena (glitch, page curl) e wheel/cover flow ainda nao existem. A evidencia e offscreen; nao ha medicao fisica de FPS/VRAM. A autorizacao de release desta sessao nao identifica uma release exata. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
 }
