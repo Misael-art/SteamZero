@@ -388,7 +388,7 @@ def _surface_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Stud
     nodes: list[StudioNode] = []
     diagnostics = surfaces.get("diagnostics")
     for name, slot in slots.items():
-        if not isinstance(slot, Mapping) or name not in {"saveStates", "osd", "error"}:
+        if not isinstance(slot, Mapping) or name not in {"saveStates", "osd", "error", "loading"}:
             continue
         node_id = f"surface.{name}"
         children.append(node_id)
@@ -404,6 +404,9 @@ def _surface_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Stud
                     "kind": slot.get("kind"),
                     "entries": len(entries) if isinstance(entries, list) else 0,
                     "criticalVisible": slot.get("criticalVisible"),
+                    "style": slot.get("style"),
+                    "filledSegments": slot.get("filledSegments"),
+                    "label": slot.get("label"),
                 },
                 constraints=_constraints_from(
                     diagnostics,

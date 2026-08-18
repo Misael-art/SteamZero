@@ -32,6 +32,11 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert "layout.previewFlow" in ids
     assert "layout.previewStack" in ids
     assert "surface.saveStates" in ids
+    assert "surface.loading" in ids
+    loading = next(node for node in graph["nodes"] if node["id"] == "surface.loading")
+    assert loading["properties"]["kind"] == "progressBar"
+    assert loading["properties"]["filledSegments"] == 3
+    assert loading["properties"]["label"] == "3/8"
     assert "motion.focusIn" in ids
     assert "timeline.previewFocus" in ids
     assert "timeline.previewFocus.1" in ids

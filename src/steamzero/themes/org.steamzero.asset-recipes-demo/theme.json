@@ -215,7 +215,8 @@
       "library": { "component": "libraryGrid" },
       "saveStates": { "component": "saveGallery" },
       "osd": { "component": "quickOsd" },
-      "error": { "component": "errorBanner" }
+      "error": { "component": "errorBanner" },
+      "loading": { "component": "downloadBar" }
     },
     "components": {
       "recentRail": { "kind": "recentlyPlayed", "source": "library.recent" },
@@ -226,7 +227,18 @@
         "items": ["volume", "mute", "pause", "saveState"],
         "progress": { "binding": "osd.volume", "fallback": 0 }
       },
-      "errorBanner": { "kind": "errorBanner" }
+      "errorBanner": { "kind": "errorBanner" },
+      "downloadBar": {
+        "kind": "progressBar",
+        "style": "segmented",
+        "segments": 8,
+        "progress": { "binding": "progress.download.ratio", "fallback": 0 },
+        "counter": {
+          "current": "progress.download.current",
+          "total": "progress.download.total",
+          "format": "{current}/{total}"
+        }
+      }
     }
   },
   "assetRecipes": {

@@ -31,6 +31,15 @@ Item {
                     "items": ["volume", "pause"],
                     "progress": 0.4,
                     "criticalVisible": false
+                },
+                "loading": {
+                    "kind": "progressBar",
+                    "style": "segmented",
+                    "progress": 0.375,
+                    "segments": 8,
+                    "filledSegments": 3,
+                    "sweep": 0,
+                    "label": "3/8"
                 }
             }
         })
@@ -45,6 +54,11 @@ Item {
             harness.check(surfaces.thumbnailFallback === true, "placeholder de captura ausente")
             harness.check(surfaces.progress === 0.4, "progresso do OSD não chegou")
             harness.check(surfaces.criticalVisible === false, "erro crítico não pode ser inventado")
+            harness.check(surfaces.loadingIsProgress === true, "slot loading não virou progressBar")
+            harness.check(surfaces.loadingSegments === 8 && surfaces.loadingFilled === 3,
+                          "segmentos preenchidos precisam vir materializados")
+            harness.check(surfaces.loadingLabel === "3/8",
+                          "contador {current}/{total} não pode ser formatado no QML")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }
     }

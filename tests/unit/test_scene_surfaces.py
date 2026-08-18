@@ -13,6 +13,7 @@ import pytest
 from steamzero.adapters.theme_catalog import ThemeCatalog
 from steamzero.domain.scene_surfaces import (
     DIAG_SURFACE_ERROR,
+    DIAG_SURFACE_PROGRESS,
     DIAG_SURFACE_THUMBNAIL,
     SEMANTIC_SLOTS,
     SurfaceBook,
@@ -113,6 +114,115 @@ def test_osd_cannot_hide_critical_error_or_fake_success() -> None:
     assert "volume" in bar.items
     assert any(item.code == DIAG_SURFACE_ERROR for item in resolved.diagnostics)
     assert resolved.slots["error"].kind == "errorBanner"
+
+
+def _progress_book(**component: object) -> dict[str, object]:
+    raw = _book()
+    slots = dict(raw["slots"])  # type: ignore[arg-type]
+    slots["loading"] = {"component": "downloadBar"}
+    raw["slots"] = slots
+    components = dict(raw["components"])  # type: ignore[arg-type]
+    components["downloadBar"] = {
+        "kind": "progressBar",
+        "progress": {"binding": "progress.download.ratio", "fallback": 0},
+        **component,
+    }
+    raw["components"] = components
+    return raw
+
+
+def _progress_model(**progress: object) -> dict[str, object]:
+    model = _read_model()
+    model["progress"] = {"download": {"ratio": 0.375, "current": 3, "total": 8, **progress}}
+    return model
+
+
+def test_progress_bar_materializes_value_segments_and_counter_label() -> None:
+    raw = _progress_book(
+        style="segmented",
+        segments=8,
+        counter={
+            "current": "progress.download.current",
+            "total": "progress.download.total",
+            "format": "{current}/{total}",
+        },
+    )
+    jsonschema.validate(raw, SCHEMA)
+    resolved = resolve_scene_surfaces(raw, _progress_model())
+    bar = resolved.slots["loading"]
+    assert bar.kind == "progressBar"
+    assert bar.progress == 0.375
+    assert bar.style == "segmented"
+    assert bar.segments == 8
+    assert bar.filled_segments == 3
+    assert bar.sweep == 0.0
+    assert bar.label == "3/8"
+    assert not any(item.code == DIAG_SURFACE_PROGRESS for item in resolved.diagnostics)
+    assert bar.to_dict()["filledSegments"] == 3
+
+
+def test_circular_progress_materializes_the_sweep_angle() -> None:
+    raw = _progress_book(style="circular")
+    jsonschema.validate(raw, SCHEMA)
+    bar = resolve_scene_surfaces(raw, _progress_model()).slots["loading"]
+    assert bar.style == "circular"
+    assert bar.sweep == 135.0
+    assert bar.segments == 0
+    assert bar.filled_segments == 0
+
+
+def test_dotted_progress_clamps_filled_dots_to_the_declared_segments() -> None:
+    raw = _progress_book(style="dotted", segments=4)
+    jsonschema.validate(raw, SCHEMA)
+    bar = resolve_scene_surfaces(raw, _progress_model(ratio=2.5)).slots["loading"]
+    assert bar.style == "dotted"
+    assert bar.progress == 1.0
+    assert bar.filled_segments == 4
+
+
+def test_progress_counter_without_source_keeps_the_bar_and_reports_a_diagnostic() -> None:
+    raw = _progress_book(
+        counter={
+            "current": "progress.download.current",
+            "total": "progress.download.total",
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    model = _read_model()
+    model["progress"] = {"download": {"ratio": 0.5}}
+    resolved = resolve_scene_surfaces(raw, model)
+    bar = resolved.slots["loading"]
+    assert bar.kind == "progressBar"
+    assert bar.progress == 0.5
+    assert bar.label == ""
+    assert any(
+        item.code == DIAG_SURFACE_PROGRESS and item.slot == "loading"
+        for item in resolved.diagnostics
+    )
+
+
+def test_progress_recipe_refuses_unsafe_styles_limits_and_formats() -> None:
+    for component, message in (
+        ({"style": "hologram"}, "style"),
+        ({"style": "segmented", "segments": 64}, "segments"),
+        ({"style": "linear", "segments": 4}, "segments"),
+        (
+            {
+                "counter": {
+                    "current": "progress.download.current",
+                    "total": "progress.download.total",
+                    "format": "{current} de {secret}",
+                }
+            },
+            "format",
+        ),
+        (
+            {"counter": {"current": "saves.slots", "total": "progress.download.total"}},
+            "counter",
+        ),
+    ):
+        with pytest.raises(ValueError, match=message):
+            SurfaceBook.from_dict(_progress_book(**component))
 
 
 def test_recipe_refuses_unknown_slot_code_paths_and_private_sources() -> None:
