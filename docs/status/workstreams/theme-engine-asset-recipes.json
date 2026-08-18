@@ -39,6 +39,10 @@
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",
     "tests/unit/test_scene_surfaces.py",
     "tests/qml/check_scene_surfaces.qml",
+    "src/steamzero/domain/studio_graph.py",
+    "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
+    "tests/unit/test_studio_graph.py",
+    "tests/qml/check_theme_studio_canvas.qml",
     "tests/qml/check_scene_repeater.qml"
   ],
   "sharedPaths": [
@@ -57,6 +61,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam a identificação da release exata.",
+  "nextAction": "Capturar evidência física do canvas na release 0.1.0a46-226b5f4b5c7c e fechar GAP-G39.",
   "updatedAt": "2026-08-17"
 }

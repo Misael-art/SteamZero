@@ -6510,3 +6510,24 @@ Essa evidência é offscreen e não implementa home/biblioteca/lançamento.
 Nenhuma release foi construída, publicada ou instalada. SZ-THEME-ENGINE
 permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
 promovidos.
+
+## 2026-08-18 — instalação 0.1.0a46-226b5f4b5c7c e canvas do Studio
+
+O PR #83 foi mesclado em `main` (`226b5f4`). O run `push` 32120555254 ficou
+verde. `release_host.py prepare` gerou o bundle
+`0.1.0a46-226b5f4b5c7c` (wheel `6440050ba802485c…`). A primeira instalação
+ativou `current` mas o converge falhou: o smoke de `_verify_release` roda
+`doctor` e `service.generation` falha enquanto o daemon ainda está na release
+anterior, o que impede o restart. Após `systemctl --user restart` das units
+gerenciadas, o converge ficou `converged` (PID 1986891, mesma release) e a
+segunda instalação governada passou com convergência idempotente
+(`restarted=false`, `attempts=0`). Doctor `ok=true` / `degraded` (backup órfão
+e boot.direct unknown, pré-existentes). Rollback disponível:
+`0.1.0a46-87e03a1373ba`. Não houve reboot nem captura PNG da UI instalada.
+
+O commit `6f2768f` acrescenta canvas/árvore/inspector do Theme Studio sobre o
+grafo já materializado. Fechamento local: **4528 passed, 10 skipped**; Ruff,
+format, mypy, independence, boundaries, status-check e harnesses
+`check_theme_studio_canvas.qml` / `check_theme_editor_asset_recipes.qml`.
+SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem partial. GAP-G39 aberto.
+SZ-AURA-LAUNCHER não foi promovido.
