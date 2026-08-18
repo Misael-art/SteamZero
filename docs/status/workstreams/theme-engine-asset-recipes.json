@@ -44,7 +44,12 @@
     "tests/unit/test_studio_graph.py",
     "tests/qml/check_theme_studio_canvas.qml",
     "tests/qml/check_scene_repeater.qml",
-    "src/steamzero/ui/qml/SceneBadge.qml"
+    "src/steamzero/ui/qml/SceneBadge.qml",
+    "src/steamzero/domain/scene_containers.py",
+    "src/steamzero/schemas/scene-containers-v1.schema.json",
+    "src/steamzero/ui/qml/SceneContainerPreview.qml",
+    "tests/unit/test_scene_containers.py",
+    "tests/qml/check_scene_containers.qml"
   ],
   "sharedPaths": [
     "AGENTS.md",
@@ -62,6 +67,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Avançar panels, cards e modals semânticos. Evidência física de todas as capacidades desta sessão aguarda merge do PR #84 e instalação autorizada.",
+  "nextAction": "Release governada autorizada nesta thread: construir do commit verde e instalar no host.",
   "updatedAt": "2026-08-18"
 }

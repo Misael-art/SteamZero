@@ -6799,3 +6799,27 @@ Fechamento local: **4566 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — panels, cards, modals e drawers
+
+O commit `786e56a` acrescenta `sceneContainers`: o tema declara papel
+(`panel`, `card`, `modal`, `drawer`) e âncora; o domínio resolve
+geometria em pixels, padding, scrim e empilhamento. Contêiner maior que os
+bounds é encolhido com `THEME-CONTAINER-FIT-001` em vez de ser desenhado
+fora da tela.
+
+A regra que importa é estrutural: o z do modal fica abaixo da faixa
+reservada ao erro crítico (`CRITICAL_ERROR_Z`). Nenhum tema consegue
+declarar profundidade que esconda uma falha do sistema — o teste prova a
+comparação sobre valores materializados, e a sonda QML idem.
+
+Sonda `check_scene_containers.qml` verificada por mutação em três
+asserções independentes (scrim, z-order e bloqueio de entrada): todas
+reprovam com exit 1.
+
+Fechamento local: **4573 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+A partir deste commit a thread autorizou release e instalação no host, o
+que estava bloqueado desde o início da sessão. O fluxo governado começa
+no commit com CI verde.

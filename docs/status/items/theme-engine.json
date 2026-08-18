@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d2dbe44815c5a50776c684904aea6d0db11edc07ef0407aa5d53a17fea45faf2",
+  "scopeDigest": "2e319f5d9f6fab667140336b732a26cb8377ba737378479dbf4cc168ae834d75",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -56,7 +56,12 @@
     "tests/qml/check_scene_surfaces.qml",
     "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
-    "tests/integration/test_qml_asset_recipes.py"
+    "tests/integration/test_qml_asset_recipes.py",
+    "src/steamzero/domain/scene_containers.py",
+    "src/steamzero/schemas/scene-containers-v1.schema.json",
+    "src/steamzero/ui/qml/SceneContainerPreview.qml",
+    "tests/unit/test_scene_containers.py",
+    "tests/qml/check_scene_containers.qml"
   ],
   "dependsOn": [],
   "knownGaps": [],
@@ -206,12 +211,18 @@
       "reference": "tests/unit/test_scene_layout.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q (badges, labels e glyphs semanticos); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_containers.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_containers.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_containers.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Avançar panels, cards e modals semânticos. Medição física permanece na release instalada identificada.",
+  "nextAction": "Construir e instalar release governada com as capacidades desta sessão e capturar a evidência física.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; e badges/labels/glyphs semanticos, em que o tema nomeia a semantica e a engine escolhe caractere e cores — pacote nao contrabandeia glifo, emoji nem marca de terceiro. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; badges/labels/glyphs semanticos; e panels/cards/modals/drawers semanticos com geometria, scrim e empilhamento resolvidos — modal fica abaixo da faixa do erro critico por construcao. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }
