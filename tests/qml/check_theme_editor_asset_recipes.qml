@@ -165,6 +165,23 @@ Window {
                     }
                 },
                 "diagnostics": []
+            },
+            "studioGraph": {
+                "selectedId": "scene",
+                "nodes": [
+                    {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
+                     "children": ["layout.previewTitles", "surface.saveStates", "motion.focusIn"],
+                     "properties": {"children": 3}},
+                    {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
+                     "parent": "scene", "children": [],
+                     "properties": {"kind": "grid", "columns": 4, "entries": 2}},
+                    {"id": "surface.saveStates", "kind": "surface", "label": "saveStates",
+                     "parent": "scene", "children": [],
+                     "properties": {"kind": "saveGallery", "entries": 2, "criticalVisible": false}},
+                    {"id": "motion.focusIn", "kind": "motion", "label": "focusIn",
+                     "parent": "scene", "children": [],
+                     "properties": {"from": "normal", "to": "focused", "duration": 180, "easing": "cubicOut"}}
+                ]
             }
         }
         panel._openEditor("edit-asset-recipes", manifest, preview)
@@ -209,6 +226,14 @@ Window {
                   "slot sem captura precisa degradar com placeholder")
             check(panel.sceneSurfaceCriticalVisible === false,
                   "OSD não pode inventar erro crítico")
+            check(panel.studioGraphActive,
+                  "grafo do Studio precisa chegar ao editor real")
+            check(panel.studioGraphNodeCount >= 4,
+                  "árvore do Studio precisa listar a cena e os nós da engine")
+            check(panel.studioGraphSelect("layout.previewTitles") === true,
+                  "seleção da árvore precisa apontar para o layout materializado")
+            check(panel.studioGraphSelectedId === "layout.previewTitles",
+                  "inspector precisa acompanhar o nó selecionado")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

@@ -19,6 +19,7 @@ from steamzero.domain.glass_panels import resolve_glass_panels
 from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
+from steamzero.domain.studio_graph import build_studio_graph
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -288,6 +289,7 @@ def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
             resolved.scene_surfaces,
             _SURFACE_PREVIEW_READ_MODEL,
         ).to_qml_object()
+    preview["studioGraph"] = build_studio_graph(preview).to_qml_object()
     return preview
 
 

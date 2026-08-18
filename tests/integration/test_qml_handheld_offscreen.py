@@ -160,6 +160,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_glass_panel.qml",
         "check_scene_motion.qml",
         "check_scene_surfaces.qml",
+        "check_theme_studio_canvas.qml",
         "check_operational_metric_card.qml",
         "check_handheld_layout_focus.qml",
         "check_main_handheld_sections.qml",
