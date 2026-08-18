@@ -6767,3 +6767,35 @@ Fechamento local: **4562 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — badges, labels e glyphs semânticos
+
+O commit `d81a731` fecha o bullet de componentes semânticos da seção 11 da
+especificação. O tema passa a nomear semântica, não aparência: `glyph`
+escolhe entre nomes fechados (favorite, achievement, download, update,
+warning, error, network, save, offline) e **a engine decide o caractere**;
+`variant` mapeia para um par de cores fechado; `role` de label preenche
+os defaults tipográficos sem esconder override explícito do tema.
+
+Isso é fronteira de confiança, não conveniência: como o pacote não escreve
+o caractere, ele não contrabandeia glifo arbitrário, emoji nem marca de
+terceiro. Propriedades como `glyphChar` e `background` são recusadas na
+receita — só saem materializadas.
+
+Badge com texto longo trunca de forma determinística (12 caracteres + `…`)
+e badge sem texto e sem glifo fica invisível, em vez de virar pílula
+vazia. O novo `SceneBadge.qml` só desenha o que recebeu.
+
+Sonda `check_scene_repeater.qml` verificada por mutação em duas asserções
+(glifo trocado e visibilidade invertida reprovam com exit 1).
+
+O CI do push anterior (`d427149`) fechou verde em todos os jobs.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`; a sessão segue
+sem release-alvo autorizada, então também esta entrega fica sem evidência
+física.
+
+Fechamento local: **4566 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.

@@ -43,7 +43,8 @@
     "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
     "tests/unit/test_studio_graph.py",
     "tests/qml/check_theme_studio_canvas.qml",
-    "tests/qml/check_scene_repeater.qml"
+    "tests/qml/check_scene_repeater.qml",
+    "src/steamzero/ui/qml/SceneBadge.qml"
   ],
   "sharedPaths": [
     "AGENTS.md",
@@ -61,6 +62,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Avançar badges, labels e glyphs semânticos. Evidência física de layouts, progresso, widgets, highlight e transparência aguarda merge do PR #84 e instalação autorizada.",
+  "nextAction": "Avançar panels, cards e modals semânticos. Evidência física de todas as capacidades desta sessão aguarda merge do PR #84 e instalação autorizada.",
   "updatedAt": "2026-08-18"
 }

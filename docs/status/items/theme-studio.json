@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "4f3e8cbf1e15f4d7db99365e9460b72287c4de56cccd16856e433df56019e964",
+  "scopeDigest": "a30baa160ee60411bd15f07a023929c7e789c65d7b6f4b56961009fc02d28cda",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",

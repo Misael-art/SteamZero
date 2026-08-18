@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "dffd46d67e2ec471243444303fec5af3e0134f34c3b2da80969a1a93c0c8d78d",
+  "scopeDigest": "d2dbe44815c5a50776c684904aea6d0db11edc07ef0407aa5d53a17fea45faf2",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -200,12 +200,18 @@
       "reference": "tests/unit/test_scene_layout.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_scene_motion.py tests/unit/test_theme_editor.py -q (highlight central e transparencia por interacao); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_motion.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q (badges, labels e glyphs semanticos); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Avançar badges, labels e glyphs semânticos. Medição física permanece na release instalada identificada.",
+  "nextAction": "Avançar panels, cards e modals semânticos. Medição física permanece na release instalada identificada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido (era kind aceito com resolucao ausente); widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos (escala, opacidade e contorno resolvidos contra o falloff do offset); e transparencia por estado de interacao (idle/navigating/focused/menuOpen) com fade materializado e corte sob reduced motion. Estado ausente cai no fallback opaco com THEME-MOTION-PRESENCE-003 em vez de apagar a interface. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; e badges/labels/glyphs semanticos, em que o tema nomeia a semantica e a engine escolhe caractere e cores — pacote nao contrabandeia glifo, emoji nem marca de terceiro. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }
