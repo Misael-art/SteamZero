@@ -14,6 +14,8 @@ from typing import Any
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.dynamic_palette import extract_dynamic_palette
+from steamzero.domain.glass_panels import resolve_glass_panels
 from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
@@ -209,6 +211,23 @@ def _make_resolved(
         )
 
 
+def _preview_source_bytes(resolved: ResolvedTheme) -> bytes | None:
+    if resolved.dynamic_palette is None:
+        return None
+    slot = resolved.dynamic_palette.source_slot
+    asset = resolved.assets.get(slot)
+    if asset is None:
+        return None
+    try:
+        import importlib.resources as resources
+
+        ref = resources.files("steamzero.themes").joinpath(resolved.id, asset.path)
+        with resources.as_file(ref) as path:
+            return path.read_bytes()
+    except (OSError, FileNotFoundError, ModuleNotFoundError):
+        return None
+
+
 def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
     """Entrega ao editor um preview já materializado, nunca bindings vivos."""
     preview = resolved.to_theme_qml_object()
@@ -217,6 +236,20 @@ def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
             resolved.scene_layouts,
             _LAYOUT_PREVIEW_READ_MODEL,
             bounds=_LAYOUT_PREVIEW_BOUNDS,
+        ).to_qml_object()
+    extracted = None
+    if resolved.dynamic_palette is not None:
+        extracted = extract_dynamic_palette(
+            resolved.dynamic_palette,
+            source=_preview_source_bytes(resolved),
+        )
+        preview["dynamicPalette"] = extracted.to_qml_object()
+    if resolved.glass is not None:
+        palette = extracted.swatches if extracted is not None else {}
+        preview["glassPreview"] = resolve_glass_panels(
+            resolved.glass,
+            palette=palette,
+            high_contrast=resolved.high_contrast,
         ).to_qml_object()
     return preview
 

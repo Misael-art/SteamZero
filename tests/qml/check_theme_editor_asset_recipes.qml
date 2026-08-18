@@ -102,6 +102,25 @@ Window {
                         }]
                     }
                 }, "diagnostics": []
+            },
+            "dynamicPalette": {
+                "swatches": {
+                    "dominant": "#132833", "vibrant": "#22d3ee", "lightVibrant": "#7dd3fc",
+                    "darkVibrant": "#0e7490", "muted": "#64748b", "lightMuted": "#94a3b8",
+                    "darkMuted": "#334155", "complementary": "#ee3d22", "accent": "#22d3ee",
+                    "background": "#071019", "contrastText": "#f2f6fb"
+                },
+                "cacheKey": "preview", "algorithm": "medianCut", "diagnostics": []
+            },
+            "glassPreview": {
+                "panels": {
+                    "previewCard": {
+                        "id": "previewCard", "tint": "#22d3ee", "blur": 24,
+                        "tintOpacity": 0.42, "borderColor": "#ffffff", "borderOpacity": 0.28,
+                        "highlightOpacity": 0.16, "shadowOpacity": 0.32, "sampleScale": 0.5,
+                        "blurEnabled": true, "fallback": "none"
+                    }
+                }, "diagnostics": []
             }
         }
         panel._openEditor("edit-asset-recipes", manifest, preview)
@@ -126,6 +145,12 @@ Window {
                   "repetidor integrado precisa consumir os nós finais")
             check(panel.sceneLayoutPreviewEntryAt(1).text === "Celeste",
                   "binding materializado não chegou ao consumidor real")
+            check(panel.dynamicPalettePreviewActive,
+                  "paleta extraída precisa chegar ao editor real")
+            check(panel.dynamicPalettePreview.accent.toString().toLowerCase().indexOf("22d3ee") !== -1,
+                  "swatch extraído não chegou ao consumidor")
+            check(panel.glassPreviewActive && panel.glassPreview.tint.toString().toLowerCase().indexOf("22d3ee") !== -1,
+                  "vidro materializado não chegou ao consumidor real")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

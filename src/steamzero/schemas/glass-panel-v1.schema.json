@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/glass-panel-v1.schema.json",
+  "title": "Theme Engine glass panels v1",
+  "description": "Painéis de vidro declarativos; o tema não fornece shader, QML ou backbuffer arbitrário.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "panels"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "panels": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 8,
+      "propertyNames": {"pattern": "^[a-z][a-zA-Z0-9]{0,63}$"},
+      "additionalProperties": {"$ref": "#/$defs/panel"}
+    }
+  },
+  "$defs": {
+    "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+    "tint": {
+      "oneOf": [
+        {"$ref": "#/$defs/color"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["binding", "fallback"],
+          "properties": {
+            "binding": {"type": "string", "pattern": "^palette\\.(dominant|vibrant|lightVibrant|darkVibrant|muted|lightMuted|darkMuted|complementary|accent|background|contrastText)$"},
+            "fallback": {"$ref": "#/$defs/color"}
+          }
+        }
+      ]
+    },
+    "panel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "blur": {"type": "number", "minimum": 0, "maximum": 64},
+        "tint": {"$ref": "#/$defs/tint"},
+        "tintOpacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "borderColor": {"$ref": "#/$defs/color"},
+        "borderOpacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "highlightOpacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "shadowOpacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "sampleScale": {"type": "number", "minimum": 0.25, "maximum": 1},
+        "fallback": {"enum": ["flat", "omit"]}
+      }
+    }
+  }
+}

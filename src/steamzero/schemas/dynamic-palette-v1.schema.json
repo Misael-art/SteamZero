@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/dynamic-palette-v1.schema.json",
+  "title": "Theme Engine dynamic palette v1",
+  "description": "Extração assíncrona de paleta a partir de um asset-fonte; nunca código nem análise por frame.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceSlot", "algorithm", "fallback"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "sourceSlot": {"type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,31}$"},
+    "algorithm": {"enum": ["medianCut", "kmeans", "families"]},
+    "fallback": {"$ref": "#/$defs/swatches"}
+  },
+  "$defs": {
+    "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+    "swatches": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dominant", "vibrant", "lightVibrant", "darkVibrant",
+        "muted", "lightMuted", "darkMuted", "complementary",
+        "accent", "background", "contrastText"
+      ],
+      "properties": {
+        "dominant": {"$ref": "#/$defs/color"},
+        "vibrant": {"$ref": "#/$defs/color"},
+        "lightVibrant": {"$ref": "#/$defs/color"},
+        "darkVibrant": {"$ref": "#/$defs/color"},
+        "muted": {"$ref": "#/$defs/color"},
+        "lightMuted": {"$ref": "#/$defs/color"},
+        "darkMuted": {"$ref": "#/$defs/color"},
+        "complementary": {"$ref": "#/$defs/color"},
+        "accent": {"$ref": "#/$defs/color"},
+        "background": {"$ref": "#/$defs/color"},
+        "contrastText": {"$ref": "#/$defs/color"}
+      }
+    }
+  }
+}

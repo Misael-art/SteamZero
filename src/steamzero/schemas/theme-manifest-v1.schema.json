@@ -274,6 +274,14 @@
     "sceneLayouts": {
       "$ref": "scene-layout-v1.schema.json",
       "description": "Layouts, repetidores e bindings item.* declarativos; o QML recebe somente modelos materializados pelo runtime."
+    },
+    "dynamicPalette": {
+      "$ref": "dynamic-palette-v1.schema.json",
+      "description": "Paleta extraída de um asset-fonte e cacheada por hash; nunca corre por frame."
+    },
+    "glass": {
+      "$ref": "glass-panel-v1.schema.json",
+      "description": "Painéis de vidro allowlisted com fallback sem backbuffer blur."
     }
   },
   "additionalProperties": false,

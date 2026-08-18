@@ -37,6 +37,40 @@
       }
     }
   },
+  "dynamicPalette": {
+    "schemaVersion": 1,
+    "sourceSlot": "logo",
+    "algorithm": "medianCut",
+    "fallback": {
+      "dominant": "#132833",
+      "vibrant": "#22d3ee",
+      "lightVibrant": "#7dd3fc",
+      "darkVibrant": "#0e7490",
+      "muted": "#64748b",
+      "lightMuted": "#94a3b8",
+      "darkMuted": "#334155",
+      "complementary": "#ee3d22",
+      "accent": "#22d3ee",
+      "background": "#071019",
+      "contrastText": "#f2f6fb"
+    }
+  },
+  "glass": {
+    "schemaVersion": 1,
+    "panels": {
+      "previewCard": {
+        "blur": 24,
+        "tint": { "binding": "palette.accent", "fallback": "#132833" },
+        "tintOpacity": 0.42,
+        "borderColor": "#ffffff",
+        "borderOpacity": 0.28,
+        "highlightOpacity": 0.16,
+        "shadowOpacity": 0.32,
+        "sampleScale": 0.5,
+        "fallback": "flat"
+      }
+    }
+  },
   "assetRecipes": {
     "schemaVersion": 1,
     "sourceSlot": "logo",

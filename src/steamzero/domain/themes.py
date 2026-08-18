@@ -10,6 +10,8 @@ from steamzero.domain.asset_recipes import (
     ResolvedAssetRecipe,
     resolve_asset_recipes,
 )
+from steamzero.domain.dynamic_palette import PaletteRecipe
+from steamzero.domain.glass_panels import GlassBook
 from steamzero.domain.media_recipes import (
     MediaRecipe,
     media_recipes_to_dict,
@@ -294,6 +296,8 @@ class ThemeManifest:
     media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
     asset_recipes: AssetRecipeBook | None = None
     scene_layouts: LayoutRecipeBook | None = None
+    dynamic_palette: PaletteRecipe | None = None
+    glass: GlassBook | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -324,6 +328,10 @@ class ThemeManifest:
             result["assetRecipes"] = self.asset_recipes.to_dict()
         if self.scene_layouts is not None:
             result["sceneLayouts"] = self.scene_layouts.to_dict()
+        if self.dynamic_palette is not None:
+            result["dynamicPalette"] = self.dynamic_palette.to_dict()
+        if self.glass is not None:
+            result["glass"] = self.glass.to_dict()
         return result
 
     @staticmethod
@@ -332,6 +340,8 @@ class ThemeManifest:
         raw_media_recipes = data.get("mediaRecipes")
         raw_asset_recipes = data.get("assetRecipes")
         raw_scene_layouts = data.get("sceneLayouts")
+        raw_dynamic_palette = data.get("dynamicPalette")
+        raw_glass = data.get("glass")
         if raw_effects is not None and not isinstance(raw_effects, dict):
             raise ValueError("effects precisa ser objeto")
         if raw_media_recipes is not None and not isinstance(raw_media_recipes, dict):
@@ -340,6 +350,10 @@ class ThemeManifest:
             raise ValueError("assetRecipes precisa ser objeto")
         if raw_scene_layouts is not None and not isinstance(raw_scene_layouts, dict):
             raise ValueError("sceneLayouts precisa ser objeto")
+        if raw_dynamic_palette is not None and not isinstance(raw_dynamic_palette, dict):
+            raise ValueError("dynamicPalette precisa ser objeto")
+        if raw_glass is not None and not isinstance(raw_glass, dict):
+            raise ValueError("glass precisa ser objeto")
         return ThemeManifest(
             schemaVersion=data.get("schemaVersion", THEME_MANIFEST_SCHEMA_VERSION),
             kind=data.get("kind", "steamzero-theme-v1"),
@@ -366,6 +380,12 @@ class ThemeManifest:
                 if raw_scene_layouts is not None
                 else None
             ),
+            dynamic_palette=(
+                PaletteRecipe.from_dict(raw_dynamic_palette)
+                if raw_dynamic_palette is not None
+                else None
+            ),
+            glass=GlassBook.from_dict(raw_glass) if raw_glass is not None else None,
         )
 
 
@@ -390,6 +410,8 @@ class ResolvedTheme:
     media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
     asset_recipes: dict[str, ResolvedAssetRecipe] = field(default_factory=dict)
     scene_layouts: LayoutRecipeBook | None = None
+    dynamic_palette: PaletteRecipe | None = None
+    glass: GlassBook | None = None
     effect_diagnostics: tuple[EffectDiagnostic, ...] = ()
     asset_recipe_diagnostics: tuple[AssetRecipeDiagnostic, ...] = ()
     high_contrast: bool = False
@@ -456,6 +478,8 @@ class ResolvedTheme:
             media_recipes=self.media_recipes,
             asset_recipes=self.asset_recipes,
             scene_layouts=self.scene_layouts,
+            dynamic_palette=self.dynamic_palette,
+            glass=self.glass,
             effect_diagnostics=self.effect_diagnostics,
             asset_recipe_diagnostics=self.asset_recipe_diagnostics,
             high_contrast=high_contrast,
@@ -490,6 +514,8 @@ class ResolvedTheme:
             "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "assetRecipes": {name: recipe.to_dict() for name, recipe in self.asset_recipes.items()},
             "sceneLayouts": self.scene_layouts.to_dict() if self.scene_layouts else None,
+            "dynamicPalette": self.dynamic_palette.to_dict() if self.dynamic_palette else None,
+            "glass": self.glass.to_dict() if self.glass else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -511,6 +537,8 @@ class ResolvedTheme:
             "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "assetRecipes": {name: recipe.to_dict() for name, recipe in self.asset_recipes.items()},
             "sceneLayouts": self.scene_layouts.to_dict() if self.scene_layouts else None,
+            "dynamicPalette": self.dynamic_palette.to_dict() if self.dynamic_palette else None,
+            "glass": self.glass.to_dict() if self.glass else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -587,6 +615,8 @@ class ThemeResolver:
         media_recipes: dict[str, MediaRecipe] = {}
         asset_recipe_book: AssetRecipeBook | None = None
         scene_layout_book: LayoutRecipeBook | None = None
+        dynamic_palette: PaletteRecipe | None = None
+        glass_book: GlassBook | None = None
         name = ""
         version = ""
         author = ""
@@ -643,6 +673,10 @@ class ThemeResolver:
                 asset_recipe_book = manifest.asset_recipes
             if manifest.scene_layouts is not None:
                 scene_layout_book = manifest.scene_layouts
+            if manifest.dynamic_palette is not None:
+                dynamic_palette = manifest.dynamic_palette
+            if manifest.glass is not None:
+                glass_book = manifest.glass
 
         validate_recipe_effect_stacks(tuple(media_recipes.values()), effects)
 
@@ -692,6 +726,8 @@ class ThemeResolver:
             media_recipes=media_recipes,
             asset_recipes=resolved_asset_recipes,
             scene_layouts=scene_layout_book,
+            dynamic_palette=dynamic_palette,
+            glass=glass_book,
             effect_diagnostics=effect_diagnostics,
             asset_recipe_diagnostics=asset_recipe_diagnostics,
         )

@@ -60,6 +60,12 @@ def _load_manifest_schema() -> dict[str, Any]:
     layout_ref = schemas.joinpath("scene-layout-v1.schema.json")
     with importlib.resources.as_file(layout_ref) as path:
         loaded["properties"]["sceneLayouts"] = json.loads(path.read_text(encoding="utf-8"))
+    palette_ref = schemas.joinpath("dynamic-palette-v1.schema.json")
+    with importlib.resources.as_file(palette_ref) as path:
+        loaded["properties"]["dynamicPalette"] = json.loads(path.read_text(encoding="utf-8"))
+    glass_ref = schemas.joinpath("glass-panel-v1.schema.json")
+    with importlib.resources.as_file(glass_ref) as path:
+        loaded["properties"]["glass"] = json.loads(path.read_text(encoding="utf-8"))
     return loaded
 
 

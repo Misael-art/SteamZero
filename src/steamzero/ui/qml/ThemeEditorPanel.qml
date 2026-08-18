@@ -65,6 +65,15 @@ Rectangle {
         return sceneLayoutPreviewActive ? sceneLayoutRepeater.entryAt(index) : null
     }
 
+    readonly property var dynamicPalettePreview: _previewBridge.dynamicPalette.swatches
+        ? _previewBridge.dynamicPalette.swatches : null
+    readonly property bool dynamicPalettePreviewActive:
+        assetRecipeDemoActive && dynamicPalettePreview !== null
+    readonly property var glassPreview: _previewBridge.glassPreview.panels
+        ? _previewBridge.glassPreview.panels.previewCard : null
+    readonly property bool glassPreviewActive:
+        assetRecipeDemoActive && glassPreview !== null
+
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
         // tema (themeId/themeVersion/resolved/effects), como o Main.qml entrega
@@ -904,6 +913,60 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             layout: panel.sceneLayoutPreview
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.dynamicPalettePreviewActive || panel.glassPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 96 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Paleta extraída · vidro com fallback")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        Row {
+                            id: paletteSwatches
+                            objectName: "paletteSwatches"
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            spacing: 6
+                            Repeater {
+                                model: panel.dynamicPalettePreviewActive
+                                    ? ["accent", "vibrant", "muted", "background", "contrastText"]
+                                    : []
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    width: 18
+                                    height: 18
+                                    radius: 4
+                                    color: panel.dynamicPalettePreview[modelData]
+                                    border.color: panel._previewBridge.border
+                                    border.width: 1
+                                }
+                            }
+                        }
+
+                        GlassPanel {
+                            id: glassPreviewPanel
+                            objectName: "glassPreviewPanel"
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 120
+                            height: 48
+                            visible: panel.glassPreviewActive
+                            panel: panel.glassPreview
                         }
                     }
 
