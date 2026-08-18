@@ -105,6 +105,12 @@ Rectangle {
         return studioGraphActive ? studioCanvas.select(nodeId) : false
     }
 
+    readonly property var editorDiagnostics: _previewBridge.editorDiagnostics
+    readonly property bool editorDiagnosticsActive:
+        editorDiagnostics && editorDiagnostics.length > 0
+    readonly property string editorDiagnosticCode:
+        editorDiagnosticsActive ? String(editorDiagnostics[0].code) : ""
+
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
         // tema (themeId/themeVersion/resolved/effects), como o Main.qml entrega
@@ -852,6 +858,23 @@ Rectangle {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.editorDiagnosticsActive
+                        objectName: "editorDiagnosticsBanner"
+                        color: panel.amberColor
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 40 : 0
+                        Label {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            text: panel.editorDiagnosticCode
+                            color: "#1a1a1a"
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
                         }
                     }
 

@@ -122,20 +122,17 @@ class TestChainsAndTheirLimits:
 
         Medido: `MAX_EXTENDS_DEPTH = 2`, e a sessão já ocupa o nível 0. A cadeia
         sessão → folha → meio → aura → default chega a 4 e é recusada pelo
-        resolver, então o preview degrada.
-
-        O teste congela isso como comportamento CONHECIDO, não desejável: o
-        usuário escolhe uma base e vê a paleta padrão, sem nada dizendo que a
-        cadeia foi longa demais. É a mesma forma do G37, um nível acima —
-        registrado como G39.
+        resolver. O preview degrada para a paleta da sessão, mas publica
+        `THEME-EDITOR-EXTENDS-001` — G39.
         """
         _write_theme(themes_dir, "org.teste.meio", extends=AURA_ID, accent="#111111")
         _write_theme(themes_dir, "org.teste.folha", extends="org.teste.meio", accent="#222222")
 
-        colors = _preview_for("org.teste.folha")
-        assert colors["accent"] == "#006f99", (
-            "cadeia acima do limite cai na paleta padrão — silenciosamente"
-        )
+        preview = ThemeEditorManager().create("Tema profundo", extends="org.teste.folha")["preview"]
+        colors = _colors(preview)
+        assert colors["accent"] == "#006f99"
+        diagnostics = preview["editorDiagnostics"]
+        assert any(item["code"] == "THEME-EDITOR-EXTENDS-001" for item in diagnostics)
 
     def test_a_cycle_degrades_instead_of_hanging(self, themes_dir: Path) -> None:
         """Ciclo é erro do autor do tema, não motivo para travar o editor.

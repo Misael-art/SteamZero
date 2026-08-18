@@ -201,12 +201,13 @@ def _make_resolved(
     assets: dict[str, str],
     high_contrast: bool = False,
     reduced_motion: bool = False,
-) -> ResolvedTheme:
+) -> tuple[ResolvedTheme, tuple[dict[str, str], ...]]:
     """Resolve o preview da sessão percorrendo a cadeia ``extends``.
 
     Usa ``ThemeResolver`` (profundidade finita, detecção de ciclo, base ausente).
     Em qualquer falha de cadeia ou de montagem do rascunho, degrada para a
-    resolução só com tokens da sessão — o editor nunca trava o preview.
+    resolução só com tokens da sessão — o editor nunca trava o preview, mas
+    publica diagnóstico quando a cadeia foi recusada.
     """
     draft_tokens = {cat: dict(vals) for cat, vals in tokens.items() if vals}
     draft_assets = {slot: path for slot, path in assets.items() if slot in ASSET_SLOTS_ALLOWED}
@@ -224,18 +225,25 @@ def _make_resolved(
         available = _load_manifests_for_resolution()
         # Rascunho da sessão vence o que estiver em disco/builtin para o mesmo id.
         available[draft.id] = draft
-        return ThemeResolver(available).resolve(
-            draft.id,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
+        return (
+            ThemeResolver(available).resolve(
+                draft.id,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            ),
+            (),
         )
-    except (ValueError, TypeError, KeyError, AttributeError):
-        return _make_resolved_leaf(
-            manifest,
-            tokens,
-            assets,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        diagnostic = _editor_chain_diagnostic(exc)
+        return (
+            _make_resolved_leaf(
+                manifest,
+                tokens,
+                assets,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            ),
+            (diagnostic,) if diagnostic is not None else (),
         )
 
 
@@ -256,9 +264,52 @@ def _preview_source_bytes(resolved: ResolvedTheme) -> bytes | None:
         return None
 
 
-def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
+def _editor_chain_diagnostic(exc: BaseException) -> dict[str, str] | None:
+    message = str(exc)
+    if "profundidade de herança excedida" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-001",
+            "reason": "cadeia extends acima do limite; preview usou os tokens da sessão",
+        }
+    if "ciclo de herança" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-002",
+            "reason": "ciclo na cadeia extends; preview usou os tokens da sessão",
+        }
+    if "não encontrado" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-003",
+            "reason": "base da cadeia extends ausente; preview usou os tokens da sessão",
+        }
+    return None
+
+
+def _resolved_preview(
+    manifest: dict[str, object],
+    tokens: dict[str, dict[str, object]],
+    assets: dict[str, str],
+    *,
+    high_contrast: bool = False,
+    reduced_motion: bool = False,
+) -> dict[str, object]:
+    resolved, diagnostics = _make_resolved(
+        manifest,
+        tokens,
+        assets,
+        high_contrast=high_contrast,
+        reduced_motion=reduced_motion,
+    )
+    return _to_preview_object(resolved, diagnostics=diagnostics)
+
+
+def _to_preview_object(
+    resolved: ResolvedTheme,
+    *,
+    diagnostics: tuple[dict[str, str], ...] = (),
+) -> dict[str, object]:
     """Entrega ao editor um preview já materializado, nunca bindings vivos."""
     preview = resolved.to_theme_qml_object()
+    preview["editorDiagnostics"] = [dict(item) for item in diagnostics]
     if resolved.scene_layouts is not None:
         preview["sceneLayoutPreview"] = resolve_scene_layouts(
             resolved.scene_layouts,
@@ -341,7 +392,7 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
-            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), tokens, assets)),
+            "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
         }
 
     def create(
@@ -370,7 +421,7 @@ class ThemeEditorManager:
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
-            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), {}, {})),
+            "preview": _resolved_preview(manifest.to_dict(), {}, {}),
         }
 
     def set_tokens(
@@ -558,14 +609,12 @@ class ThemeEditorManager:
         high_contrast: bool = False,
         reduced_motion: bool = False,
     ) -> dict[str, object]:
-        return _to_preview_object(
-            _make_resolved(
-                session.manifest,
-                session.tokens,
-                session.assets,
-                high_contrast=high_contrast,
-                reduced_motion=reduced_motion,
-            )
+        return _resolved_preview(
+            session.manifest,
+            session.tokens,
+            session.assets,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
         )
 
 
