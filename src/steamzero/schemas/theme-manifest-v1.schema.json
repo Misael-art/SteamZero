@@ -282,6 +282,10 @@
     "glass": {
       "$ref": "glass-panel-v1.schema.json",
       "description": "Painéis de vidro allowlisted com fallback sem backbuffer blur."
+    },
+    "sceneMotion": {
+      "$ref": "scene-motion-v1.schema.json",
+      "description": "Estados nativos, transições e timeline declarativos; o QML recebe somente o plano materializado."
     }
   },
   "additionalProperties": false,

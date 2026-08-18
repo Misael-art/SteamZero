@@ -73,6 +73,14 @@ Rectangle {
         ? _previewBridge.glassPreview.panels.previewCard : null
     readonly property bool glassPreviewActive:
         assetRecipeDemoActive && glassPreview !== null
+    readonly property var sceneMotionPreview: _previewBridge.sceneMotionPreview.states
+        ? _previewBridge.sceneMotionPreview : null
+    readonly property bool sceneMotionPreviewActive:
+        assetRecipeDemoActive && sceneMotionPreview !== null
+    readonly property int sceneMotionFocusDuration:
+        sceneMotionPreviewActive && sceneMotionPreview.transitions
+            && sceneMotionPreview.transitions.focusIn
+            ? Number(sceneMotionPreview.transitions.focusIn.duration) : 0
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -967,6 +975,50 @@ Rectangle {
                             height: 48
                             visible: panel.glassPreviewActive
                             panel: panel.glassPreview
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneMotionPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Estados nativos · timeline materializada")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneMotionPreview {
+                            id: sceneMotionNormal
+                            objectName: "sceneMotionNormal"
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 88
+                            height: 56
+                            motion: panel.sceneMotionPreview
+                            stateName: "normal"
+                        }
+
+                        SceneMotionPreview {
+                            id: sceneMotionFocused
+                            objectName: "sceneMotionFocused"
+                            anchors.left: sceneMotionNormal.right
+                            anchors.leftMargin: 16
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 88
+                            height: 56
+                            motion: panel.sceneMotionPreview
+                            stateName: "focused"
                         }
                     }
 

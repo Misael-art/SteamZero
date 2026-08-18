@@ -71,6 +71,45 @@
       }
     }
   },
+  "sceneMotion": {
+    "schemaVersion": 1,
+    "states": {
+      "normal": { "opacity": 1, "scale": 1 },
+      "focused": { "opacity": 1, "scale": 1.06 },
+      "selected": { "opacity": 1, "scale": 1.04 },
+      "pressed": { "opacity": 0.92, "scale": 0.98 },
+      "disabled": { "opacity": 0.45 }
+    },
+    "transitions": [
+      {
+        "id": "focusIn",
+        "from": "normal",
+        "to": "focused",
+        "duration": 180,
+        "easing": "cubicOut",
+        "essential": false
+      },
+      {
+        "id": "errorFlash",
+        "from": "normal",
+        "to": "error",
+        "duration": 90,
+        "easing": "linear",
+        "essential": true
+      }
+    ],
+    "timelines": {
+      "previewFocus": {
+        "kind": "sequence",
+        "repeat": 0,
+        "clips": [
+          { "state": "normal", "duration": 0 },
+          { "transition": "focusIn" },
+          { "state": "focused", "duration": 80 }
+        ]
+      }
+    }
+  },
   "assetRecipes": {
     "schemaVersion": 1,
     "sourceSlot": "logo",

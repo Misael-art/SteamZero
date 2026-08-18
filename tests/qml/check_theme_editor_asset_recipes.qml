@@ -121,6 +121,30 @@ Window {
                         "blurEnabled": true, "fallback": "none"
                     }
                 }, "diagnostics": []
+            },
+            "sceneMotionPreview": {
+                "states": {
+                    "normal": {"opacity": 1, "scale": 1, "translateX": 0, "translateY": 0},
+                    "focused": {"opacity": 1, "scale": 1.06, "translateX": 0, "translateY": 0}
+                },
+                "transitions": {
+                    "focusIn": {
+                        "id": "focusIn", "from": "normal", "to": "focused",
+                        "duration": 180, "easing": "cubicOut", "essential": false
+                    }
+                },
+                "timelines": {
+                    "previewFocus": {
+                        "id": "previewFocus", "kind": "sequence", "repeat": 0,
+                        "totalDuration": 260,
+                        "steps": [
+                            {"state": "normal", "duration": 0, "easing": "linear"},
+                            {"state": "focused", "duration": 180, "easing": "cubicOut"},
+                            {"state": "focused", "duration": 80, "easing": "linear"}
+                        ]
+                    }
+                },
+                "diagnostics": []
             }
         }
         panel._openEditor("edit-asset-recipes", manifest, preview)
@@ -151,6 +175,12 @@ Window {
                   "swatch extraído não chegou ao consumidor")
             check(panel.glassPreviewActive && panel.glassPreview.tint.toString().toLowerCase().indexOf("22d3ee") !== -1,
                   "vidro materializado não chegou ao consumidor real")
+            check(panel.sceneMotionPreviewActive,
+                  "plano de estados precisa chegar ao editor real")
+            check(panel.sceneMotionFocusDuration === 180,
+                  "transição materializada não chegou ao consumidor")
+            check(panel.sceneMotionPreview.states.focused.scale === 1.06,
+                  "snapshot focused não foi aplicado")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }
