@@ -80,7 +80,29 @@ Window {
                     "fallback": "outer"
                 }])
             },
-            "assetRecipeDiagnostics": []
+            "assetRecipeDiagnostics": [],
+            "sceneLayoutPreview": {
+                "layouts": {
+                    "previewTitles": {
+                        "id": "previewTitles", "kind": "grid", "columns": 2,
+                        "entries": [{
+                            "kind": "text", "id": "preview-title-0", "text": "Axiom Verge",
+                            "x": 0, "y": 0, "width": 138, "height": 32,
+                            "visible": true, "opacity": 1, "color": "#f2f6fb",
+                            "fontFamily": "", "fontPixelSize": 14, "fontWeight": 400,
+                            "fontItalic": false, "horizontalAlignment": "AlignLeft",
+                            "verticalAlignment": "AlignTop"
+                        }, {
+                            "kind": "text", "id": "preview-title-1", "text": "Celeste",
+                            "x": 146, "y": 0, "width": 138, "height": 32,
+                            "visible": true, "opacity": 1, "color": "#f2f6fb",
+                            "fontFamily": "", "fontPixelSize": 14, "fontWeight": 400,
+                            "fontItalic": false, "horizontalAlignment": "AlignLeft",
+                            "verticalAlignment": "AlignTop"
+                        }]
+                    }
+                }, "diagnostics": []
+            }
         }
         panel._openEditor("edit-asset-recipes", manifest, preview)
     }
@@ -98,6 +120,12 @@ Window {
                   "preview integrado precisa decodificar a fonte uma vez")
             check(panel._previewBridge.assetRecipes.outlineThin.nodes[0].parameters.mask === "alpha",
                   "receita alpha precisa atravessar ThemeBridge")
+            check(panel.sceneLayoutPreviewActive,
+                  "preview de layout materializado precisa chegar ao editor real")
+            check(panel.sceneLayoutPreviewEntryCount === 2,
+                  "repetidor integrado precisa consumir os nós finais")
+            check(panel.sceneLayoutPreviewEntryAt(1).text === "Celeste",
+                  "binding materializado não chegou ao consumidor real")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

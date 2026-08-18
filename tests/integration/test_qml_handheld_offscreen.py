@@ -156,6 +156,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_editorial_canonical_systems.qml",
         "check_media_effect_layer.qml",
         "check_asset_recipe_preview.qml",
+        "check_scene_repeater.qml",
         "check_operational_metric_card.qml",
         "check_handheld_layout_focus.qml",
         "check_main_handheld_sections.qml",

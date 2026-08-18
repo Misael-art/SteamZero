@@ -42,6 +42,12 @@ QtObject {
         ? resolved.assetRecipes : ({})
     readonly property var assetRecipeDiagnostics: resolved && resolved.assetRecipeDiagnostics
         ? resolved.assetRecipeDiagnostics : ([])
+    // Contrato declarativo do tema e modelo final opcional fornecido pelo shell.
+    // QML nunca consulta o catálogo nem resolve `item.*` por conta própria.
+    readonly property var sceneLayouts: resolved && resolved.sceneLayouts
+        ? resolved.sceneLayouts : ({})
+    readonly property var sceneLayoutPreview: resolved && resolved.sceneLayoutPreview
+        ? resolved.sceneLayoutPreview : ({})
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")

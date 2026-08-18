@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from steamzero.adapters.theme_catalog import ThemeCatalog
 from steamzero.domain.asset_recipes import (
     DEFAULT_ASSET_CAPABILITIES,
     AssetRecipeBook,
@@ -107,7 +108,20 @@ def test_builtin_preview_consumes_resolved_asset_recipes() -> None:
     assert isinstance(recipes, dict)
     assert recipes["colored"]["nodes"][0]["capability"] == "graphics.asset.recolor"
     assert recipes["outlineThin"]["nodes"][0]["parameters"]["mask"] == "alpha"
+    layout_preview = preview["sceneLayoutPreview"]
+    assert layout_preview["layouts"]["previewTitles"]["columns"] == 4
+    assert layout_preview["layouts"]["previewTitles"]["entries"][0]["text"] == "Axiom Verge"
     assert preview["reducedMotion"] is False
+    accessible = ThemeCatalog().resolve(
+        "org.steamzero.asset-recipes-demo",
+        high_contrast=True,
+        reduced_motion=True,
+    )
+    assert accessible.scene_layouts is not None
+    assert accessible.high_contrast is True
+    assert accessible.reduced_motion is True
+    assert accessible.color.background == "#000000"
+    assert accessible.motion.durationNormal == 0
 
 
 @pytest.mark.parametrize(

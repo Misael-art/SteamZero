@@ -14,6 +14,7 @@ from typing import Any
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -35,6 +36,18 @@ THEME_ID_RE = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$")
 
 _ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 _THEME_PACKAGE = "steamzero.themes"
+
+_LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
+    "preview": {
+        "items": [
+            {"title": "Axiom Verge"},
+            {"title": "Celeste"},
+            {"title": "Hades"},
+            {"title": "Tunic"},
+        ]
+    }
+}
+_LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
 
 
 @dataclass
@@ -196,6 +209,18 @@ def _make_resolved(
         )
 
 
+def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
+    """Entrega ao editor um preview já materializado, nunca bindings vivos."""
+    preview = resolved.to_theme_qml_object()
+    if resolved.scene_layouts is not None:
+        preview["sceneLayoutPreview"] = resolve_scene_layouts(
+            resolved.scene_layouts,
+            _LAYOUT_PREVIEW_READ_MODEL,
+            bounds=_LAYOUT_PREVIEW_BOUNDS,
+        ).to_qml_object()
+    return preview
+
+
 class ThemeEditorManager:
     def __init__(self) -> None:
         self._sessions: dict[str, EditorSession] = {}
@@ -244,7 +269,7 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
-            "preview": _make_resolved(manifest.to_dict(), tokens, assets).to_theme_qml_object(),
+            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), tokens, assets)),
         }
 
     def create(
@@ -273,7 +298,7 @@ class ThemeEditorManager:
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
-            "preview": _make_resolved(manifest.to_dict(), {}, {}).to_theme_qml_object(),
+            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), {}, {})),
         }
 
     def set_tokens(
@@ -461,13 +486,15 @@ class ThemeEditorManager:
         high_contrast: bool = False,
         reduced_motion: bool = False,
     ) -> dict[str, object]:
-        return _make_resolved(
-            session.manifest,
-            session.tokens,
-            session.assets,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
-        ).to_theme_qml_object()
+        return _to_preview_object(
+            _make_resolved(
+                session.manifest,
+                session.tokens,
+                session.assets,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            )
+        )
 
 
 def _validate_save(manifest_dict: dict[str, object]) -> str | None:

@@ -12,6 +12,31 @@
   "assets": {
     "logo": "assets/source.svg"
   },
+  "sceneLayouts": {
+    "schemaVersion": 1,
+    "layouts": {
+      "previewTitles": {
+        "source": "preview.items",
+        "kind": "grid",
+        "item": { "width": 138, "height": 32 },
+        "gap": 8,
+        "maxItems": 4,
+        "breakpoints": [
+          { "maxWidth": 479, "columns": 2 },
+          { "minWidth": 480, "columns": 4 }
+        ],
+        "template": {
+          "kind": "text",
+          "id": "preview-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      }
+    }
+  },
   "assetRecipes": {
     "schemaVersion": 1,
     "sourceSlot": "logo",

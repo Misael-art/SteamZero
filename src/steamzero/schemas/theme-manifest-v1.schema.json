@@ -270,6 +270,10 @@
     "assetRecipes": {
       "$ref": "asset-recipe-v1.schema.json",
       "description": "Variantes derivadas em runtime de uma única fonte; nunca contém código ou assets pré-editados."
+    },
+    "sceneLayouts": {
+      "$ref": "scene-layout-v1.schema.json",
+      "description": "Layouts, repetidores e bindings item.* declarativos; o QML recebe somente modelos materializados pelo runtime."
     }
   },
   "additionalProperties": false,

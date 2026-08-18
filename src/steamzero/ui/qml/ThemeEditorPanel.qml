@@ -54,6 +54,16 @@ Rectangle {
     readonly property bool assetRecipePreviewReady:
         assetRecipeDemoActive && assetRecipePreview.sourceStatus === Image.Ready
     readonly property int assetRecipePreviewDecodeCount: assetRecipePreview.sourceDecodeCount
+    readonly property var sceneLayoutPreview: _previewBridge.sceneLayoutPreview.layouts
+        ? _previewBridge.sceneLayoutPreview.layouts.previewTitles : null
+    readonly property bool sceneLayoutPreviewActive:
+        assetRecipeDemoActive && sceneLayoutPreview !== null
+    readonly property int sceneLayoutPreviewEntryCount:
+        sceneLayoutPreviewActive ? sceneLayoutRepeater.entryCount : 0
+
+    function sceneLayoutPreviewEntryAt(index) {
+        return sceneLayoutPreviewActive ? sceneLayoutRepeater.entryAt(index) : null
+    }
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -863,6 +873,37 @@ Rectangle {
                                 font.pixelSize: 11
                                 Layout.alignment: Qt.AlignHCenter
                             }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneLayoutPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Grid responsivo · bindings materializados")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneRepeater {
+                            id: sceneLayoutRepeater
+                            objectName: "sceneLayoutRepeater"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            anchors.topMargin: 32
+                            layout: panel.sceneLayoutPreview
                         }
                     }
 

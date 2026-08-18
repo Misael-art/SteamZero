@@ -16,6 +16,7 @@ from steamzero.domain.media_recipes import (
     parse_media_recipes,
     validate_recipe_effect_stacks,
 )
+from steamzero.domain.scene_layout import LayoutRecipeBook
 from steamzero.domain.theme_effects import (
     EffectDiagnostic,
     EffectSpec,
@@ -292,6 +293,7 @@ class ThemeManifest:
     effects: dict[str, tuple[EffectSpec, ...]] = field(default_factory=dict)
     media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
     asset_recipes: AssetRecipeBook | None = None
+    scene_layouts: LayoutRecipeBook | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -320,6 +322,8 @@ class ThemeManifest:
             result["mediaRecipes"] = media_recipes_to_dict(self.media_recipes)
         if self.asset_recipes is not None:
             result["assetRecipes"] = self.asset_recipes.to_dict()
+        if self.scene_layouts is not None:
+            result["sceneLayouts"] = self.scene_layouts.to_dict()
         return result
 
     @staticmethod
@@ -327,12 +331,15 @@ class ThemeManifest:
         raw_effects = data.get("effects")
         raw_media_recipes = data.get("mediaRecipes")
         raw_asset_recipes = data.get("assetRecipes")
+        raw_scene_layouts = data.get("sceneLayouts")
         if raw_effects is not None and not isinstance(raw_effects, dict):
             raise ValueError("effects precisa ser objeto")
         if raw_media_recipes is not None and not isinstance(raw_media_recipes, dict):
             raise ValueError("mediaRecipes precisa ser objeto")
         if raw_asset_recipes is not None and not isinstance(raw_asset_recipes, dict):
             raise ValueError("assetRecipes precisa ser objeto")
+        if raw_scene_layouts is not None and not isinstance(raw_scene_layouts, dict):
+            raise ValueError("sceneLayouts precisa ser objeto")
         return ThemeManifest(
             schemaVersion=data.get("schemaVersion", THEME_MANIFEST_SCHEMA_VERSION),
             kind=data.get("kind", "steamzero-theme-v1"),
@@ -352,6 +359,11 @@ class ThemeManifest:
             asset_recipes=(
                 AssetRecipeBook.from_dict(raw_asset_recipes)
                 if raw_asset_recipes is not None
+                else None
+            ),
+            scene_layouts=(
+                LayoutRecipeBook.from_dict(raw_scene_layouts)
+                if raw_scene_layouts is not None
                 else None
             ),
         )
@@ -377,6 +389,7 @@ class ResolvedTheme:
     effects: dict[str, tuple[ResolvedEffect, ...]] = field(default_factory=dict)
     media_recipes: dict[str, MediaRecipe] = field(default_factory=dict)
     asset_recipes: dict[str, ResolvedAssetRecipe] = field(default_factory=dict)
+    scene_layouts: LayoutRecipeBook | None = None
     effect_diagnostics: tuple[EffectDiagnostic, ...] = ()
     asset_recipe_diagnostics: tuple[AssetRecipeDiagnostic, ...] = ()
     high_contrast: bool = False
@@ -442,6 +455,7 @@ class ResolvedTheme:
             },
             media_recipes=self.media_recipes,
             asset_recipes=self.asset_recipes,
+            scene_layouts=self.scene_layouts,
             effect_diagnostics=self.effect_diagnostics,
             asset_recipe_diagnostics=self.asset_recipe_diagnostics,
             high_contrast=high_contrast,
@@ -475,6 +489,7 @@ class ResolvedTheme:
             },
             "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "assetRecipes": {name: recipe.to_dict() for name, recipe in self.asset_recipes.items()},
+            "sceneLayouts": self.scene_layouts.to_dict() if self.scene_layouts else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -495,6 +510,7 @@ class ResolvedTheme:
             },
             "mediaRecipes": {role: recipe.to_dict() for role, recipe in self.media_recipes.items()},
             "assetRecipes": {name: recipe.to_dict() for name, recipe in self.asset_recipes.items()},
+            "sceneLayouts": self.scene_layouts.to_dict() if self.scene_layouts else None,
             "effectDiagnostics": [item.to_dict() for item in self.effect_diagnostics],
             "assetRecipeDiagnostics": [item.to_dict() for item in self.asset_recipe_diagnostics],
         }
@@ -570,6 +586,7 @@ class ThemeResolver:
         effects: dict[str, tuple[EffectSpec, ...]] = {}
         media_recipes: dict[str, MediaRecipe] = {}
         asset_recipe_book: AssetRecipeBook | None = None
+        scene_layout_book: LayoutRecipeBook | None = None
         name = ""
         version = ""
         author = ""
@@ -624,6 +641,8 @@ class ThemeResolver:
                 media_recipes.update(manifest.media_recipes)
             if manifest.asset_recipes is not None:
                 asset_recipe_book = manifest.asset_recipes
+            if manifest.scene_layouts is not None:
+                scene_layout_book = manifest.scene_layouts
 
         validate_recipe_effect_stacks(tuple(media_recipes.values()), effects)
 
@@ -672,6 +691,7 @@ class ThemeResolver:
             effects=resolved_effects,
             media_recipes=media_recipes,
             asset_recipes=resolved_asset_recipes,
+            scene_layouts=scene_layout_book,
             effect_diagnostics=effect_diagnostics,
             asset_recipe_diagnostics=asset_recipe_diagnostics,
         )

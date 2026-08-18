@@ -13,6 +13,7 @@ from steamzero.domain.asset_recipes import validate_asset_source
 from steamzero.domain.theme_effects import PerformanceTier
 from steamzero.domain.themes import (
     THEME_API_VERSION,
+    THEME_DEFAULT_ID,
     ResolvedTheme,
     ThemeManifest,
     ThemeResolver,
@@ -56,6 +57,9 @@ def _load_manifest_schema() -> dict[str, Any]:
     asset_ref = schemas.joinpath("asset-recipe-v1.schema.json")
     with importlib.resources.as_file(asset_ref) as path:
         loaded["properties"]["assetRecipes"] = json.loads(path.read_text(encoding="utf-8"))
+    layout_ref = schemas.joinpath("scene-layout-v1.schema.json")
+    with importlib.resources.as_file(layout_ref) as path:
+        loaded["properties"]["sceneLayouts"] = json.loads(path.read_text(encoding="utf-8"))
     return loaded
 
 
@@ -336,10 +340,23 @@ class ThemeCatalog:
                 with contextlib.suppress(SteamZeroError):
                     manifests[tid] = validate_theme_directory(entry)
         resolver = ThemeResolver(manifests)
-        return resolver.resolve(
-            theme_id,
-            effect_capabilities=effect_capabilities,
-            performance_tier=performance_tier,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
-        )
+        try:
+            return resolver.resolve(
+                theme_id,
+                effect_capabilities=effect_capabilities,
+                performance_tier=performance_tier,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            )
+        except ValueError:
+            if theme_id == THEME_DEFAULT_ID:
+                raise
+            # Pacote inválido, incompatível ou ausente não derruba a central:
+            # o builtin seguro permanece o único consumidor visível.
+            return resolver.resolve(
+                THEME_DEFAULT_ID,
+                effect_capabilities=effect_capabilities,
+                performance_tier=performance_tier,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            )
