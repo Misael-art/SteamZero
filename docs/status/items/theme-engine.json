@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "782f7cf3f3a67c08b52d0805767fb5a1b26f07303c80a151fa1f17345a6e3823",
+  "scopeDigest": "bf10da7533e2215c13c45abe1c8908d006bf80b81af3cac8e352290d0258b8e2",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -166,10 +166,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Avançar carousel declarativo. Medição física permanece na release instalada identificada.",
+  "nextAction": "Avançar stack/flow declarativos. Medição física permanece na release instalada identificada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. Este slice acrescenta layout kind coverFlow com overlap e rotationY materializados. O QML so atribui os escalares; nao calcula perspectiva. Carousel, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. Este slice acrescenta layout kind carousel: itens numa elipse com distancia circular materializada. O QML so atribui x/y/scale/opacity/z. Stack/flow, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }

@@ -6645,3 +6645,18 @@ Fechamento local: **4539 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — layout carousel
+
+O commit `f2f0d78` acrescenta o kind `carousel`: itens numa elipse, com
+distância circular já materializada. O QML só atribui x/y/scale/opacity/z.
+Stack/flow e evidência física continuam abertos. O PR #84 ainda não está
+em `main`.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada.
+
+Fechamento local: **4540 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
