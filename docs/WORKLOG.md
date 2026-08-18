@@ -6492,3 +6492,21 @@ Essa evidência é offscreen e não mede FPS, frame time ou VRAM.
 Nenhuma release foi construída, publicada ou instalada: a autorização desta
 sessão ainda não identifica uma release exata. SZ-THEME-ENGINE permanece
 partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-18 — Theme Engine — saves, OSD e slots por contrato
+
+A frente avançou na sexta onda da especificação sem criar código do AURA
+Launcher. O commit funcional `ee3e01d` define `sceneSurfaces` v1: slots
+semânticos fechados, galeria de saves a partir de um read model público e OSD
+allowlisted. Slot sem captura usa placeholder com diagnóstico; erro crítico
+permanece visível e impede sucesso falso. A engine não lê path privado nem
+controla o emulador.
+
+Fechamento local único: **4524 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_scene_surfaces.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não implementa home/biblioteca/lançamento.
+
+Nenhuma release foi construída, publicada ou instalada. SZ-THEME-ENGINE
+permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
+promovidos.

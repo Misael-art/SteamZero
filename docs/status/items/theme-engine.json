@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "6d2eac22328d23229af972489ec1125470c26db01726a234e90e138b0dd36912",
+  "scopeDigest": "46f2a7d3bc8f80b5f010ae46962d6cd09ab17b8491676c0d01cbedc977d33ea0",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -18,6 +18,7 @@
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/scene_layout.py",
     "src/steamzero/domain/scene_motion.py",
+    "src/steamzero/domain/scene_surfaces.py",
     "src/steamzero/domain/dynamic_palette.py",
     "src/steamzero/domain/glass_panels.py",
     "src/steamzero/domain/qml_render_model.py",
@@ -25,6 +26,7 @@
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/scene-layout-v1.schema.json",
     "src/steamzero/schemas/scene-motion-v1.schema.json",
+    "src/steamzero/schemas/scene-surfaces-v1.schema.json",
     "src/steamzero/schemas/dynamic-palette-v1.schema.json",
     "src/steamzero/schemas/glass-panel-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
@@ -34,6 +36,7 @@
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "src/steamzero/ui/qml/SceneRepeater.qml",
     "src/steamzero/ui/qml/SceneMotionPreview.qml",
+    "src/steamzero/ui/qml/SceneSurfacePreview.qml",
     "src/steamzero/ui/qml/GlassPanel.qml",
     "src/steamzero/themes/org.steamzero.asset-recipes-demo",
     "tests/unit/test_asset_recipes.py",
@@ -42,6 +45,7 @@
     "tests/unit/test_scene_image_pipeline.py",
     "tests/unit/test_scene_layout.py",
     "tests/unit/test_scene_motion.py",
+    "tests/unit/test_scene_surfaces.py",
     "tests/unit/test_dynamic_palette.py",
     "tests/unit/test_glass_panels.py",
     "tests/qml/check_media_effect_layer.qml",
@@ -49,6 +53,7 @@
     "tests/qml/check_theme_editor_asset_recipes.qml",
     "tests/qml/check_scene_repeater.qml",
     "tests/qml/check_scene_motion.qml",
+    "tests/qml/check_scene_surfaces.qml",
     "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py"
@@ -147,12 +152,24 @@
       "reference": "tests/qml/check_scene_motion.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_motion.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_surfaces.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_surfaces.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_surfaces.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Iniciar componentes Launcher, OSD e save gallery por contratos. Release e evidência física dos slices anteriores aguardam identificação da release exata.",
+  "nextAction": "Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam identificação da release exata.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Receitas, cache, layouts, paleta e vidro ja tem contrato e preview offscreen. Este slice acrescenta sceneMotion v1: doze estados nativos, transicoes com easing allowlisted, timeline sequence/parallel materializada e reducedMotion que zera animacao nao essencial sem apagar o flash de erro. O QML so aplica snapshots. Entradas de cena (glitch, page curl) e wheel/cover flow ainda nao existem. A evidencia e offscreen; nao ha medicao fisica de FPS/VRAM. A autorizacao de release desta sessao nao identifica uma release exata. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
+  "notes": "Estado permanece parcial. Receitas, cache, layouts, paleta, vidro e motion ja tem contrato offscreen. Este slice acrescenta sceneSurfaces v1: slots semânticos, galeria de saves por contrato publico e OSD que nao oculta erro critico nem publica sucesso falso. A engine nao controla o emulador e nao le path privado. Isso nao implementa o AURA Launcher. Wheel/cover flow, canvas do Studio e medicao fisica ainda nao existem. A autorizacao de release desta sessao nao identifica uma release exata."
 }
