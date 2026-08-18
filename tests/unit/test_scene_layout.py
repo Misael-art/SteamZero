@@ -206,6 +206,44 @@ def test_cover_flow_materializes_overlap_and_rotation() -> None:
     assert all("binding" not in entry.node for entry in layout.entries)
 
 
+def test_carousel_places_items_on_an_ellipse_by_wrapped_distance() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusCarousel": {
+                "source": "library.items",
+                "kind": "carousel",
+                "item": {"width": 80, "height": 24},
+                "maxItems": 3,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "carousel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusCarousel"]
+    assert layout.kind is LayoutKind.CAROUSEL
+    assert [entry.node["text"] for entry in layout.entries] == [
+        "Axiom Verge",
+        "Celeste",
+        "Hades",
+    ]
+    assert [round(entry.x, 1) for entry in layout.entries] == [21.4, 160.0, 298.6]
+    assert [round(entry.y, 1) for entry in layout.entries] == [42.0, 0.0, 42.0]
+    assert layout.entries[1].node["distance"] == 0
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[0].node["distance"] == -1
+    assert layout.entries[0].node["scale"] == 0.92
+    assert layout.entries[2].node["distance"] == 1
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
 def test_cover_flow_refuses_vertical_direction() -> None:
     with pytest.raises(ValueError, match="horizontal"):
         LayoutRecipeBook.from_dict(

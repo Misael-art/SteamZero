@@ -37,6 +37,7 @@ class LayoutKind(StrEnum):
     LIST = "list"
     WHEEL = "wheel"
     COVER_FLOW = "coverFlow"
+    CAROUSEL = "carousel"
 
 
 class LayoutDirection(StrEnum):
@@ -377,10 +378,16 @@ class LayoutRecipe:
             raise ValueError("wheel não aceita breakpoints")
         if self.kind is LayoutKind.COVER_FLOW and self.breakpoints:
             raise ValueError("coverFlow não aceita breakpoints")
+        if self.kind is LayoutKind.CAROUSEL and self.breakpoints:
+            raise ValueError("carousel não aceita breakpoints")
         if self.kind is LayoutKind.COVER_FLOW and self.direction is not LayoutDirection.HORIZONTAL:
             raise ValueError("coverFlow só é horizontal")
-        if self.offset is not None and self.kind not in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
-            raise ValueError("offset só é válido em wheel ou coverFlow")
+        if self.offset is not None and self.kind not in {
+            LayoutKind.WHEEL,
+            LayoutKind.COVER_FLOW,
+            LayoutKind.CAROUSEL,
+        }:
+            raise ValueError("offset só é válido em wheel, coverFlow ou carousel")
         ranges: list[tuple[float, float]] = []
         for point in self.breakpoints:
             low = point.min_width if point.min_width is not None else float("-inf")
@@ -415,7 +422,9 @@ class LayoutRecipe:
             raise ValueError("kind inválido") from None
         try:
             direction_default = (
-                "horizontal" if kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW} else "vertical"
+                "horizontal"
+                if kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL}
+                else "vertical"
             )
             direction = LayoutDirection(str(raw.get("direction", direction_default)))
         except ValueError:
@@ -472,7 +481,7 @@ class LayoutRecipe:
             value["columns"] = self.columns
         if self.kind is LayoutKind.LIST:
             value["direction"] = self.direction.value
-        if self.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
+        if self.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL}:
             value["direction"] = self.direction.value
             value["selected"] = self.selected
             if self.offset is not None:
@@ -584,6 +593,31 @@ class SceneLayoutResolution:
             "layouts": {layout_id: layout.to_dict() for layout_id, layout in self.layouts.items()},
             "diagnostics": [item.to_dict() for item in self.diagnostics],
         }
+
+
+def _wrap_distance(index: int, selected: int, count: int) -> int:
+    if count <= 0:
+        return 0
+    raw = (index - selected) % count
+    if raw > count // 2:
+        return raw - count
+    return raw
+
+
+def _carousel_point(
+    bounds: LayoutBounds, item: LayoutItemSize, distance: int, count: int
+) -> tuple[float, float]:
+    center_x = bounds.x + (bounds.width - item.width) / 2
+    center_y = bounds.y + (bounds.height - item.height) / 2
+    if count <= 1:
+        return center_x, center_y
+    radius_x = max((bounds.width - item.width) / 2, 1.0)
+    radius_y = max((bounds.height - item.height) / 2, 1.0)
+    theta = 2.0 * math.pi * distance / count
+    return (
+        round(center_x + radius_x * math.sin(theta), 4),
+        round(center_y - radius_y * math.cos(theta), 4),
+    )
 
 
 def _read_path(read_model: Mapping[str, Any], source: str) -> Any:
@@ -707,6 +741,11 @@ def resolve_scene_layouts(
                 x = bounds.x + column * (recipe.item.width + recipe.gap)
                 y = bounds.y + row * (recipe.item.height + recipe.gap)
                 extras: dict[str, Any] = {}
+            elif recipe.kind is LayoutKind.CAROUSEL:
+                distance = _wrap_distance(display_index, selected, len(accepted))
+                scale, fade, z_index, _rotation = offset.apply(distance)
+                x, y = _carousel_point(bounds, recipe.item, distance, len(accepted))
+                extras = {"scale": scale, "z": z_index, "distance": distance}
             elif recipe.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
                 distance = display_index - selected
                 scale, fade, z_index, rotation_y = offset.apply(distance)
@@ -743,7 +782,11 @@ def resolve_scene_layouts(
             if extras:
                 node = dict(node)
                 node.update(extras)
-                if recipe.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW}:
+                if recipe.kind in {
+                    LayoutKind.WHEEL,
+                    LayoutKind.COVER_FLOW,
+                    LayoutKind.CAROUSEL,
+                }:
                     base = node.get("opacity", 1.0)
                     if isinstance(base, int | float) and not isinstance(base, bool):
                         node["opacity"] = round(float(base) * fade, 4)

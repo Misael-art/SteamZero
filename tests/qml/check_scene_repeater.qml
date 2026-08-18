@@ -16,6 +16,30 @@ Item {
     }
 
     SceneRepeater {
+        id: carousel
+        layout: ({
+            "id": "previewCarousel",
+            "kind": "carousel",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "carousel-0", "text": "Axiom Verge",
+                "x": 21.4, "y": 42, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "carousel-1", "text": "Celeste",
+                "x": 160, "y": 0, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: covers
         layout: ({
             "id": "previewCoverFlow",
@@ -92,6 +116,18 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            harness.check(carousel.entryCount === 2, "carousel não recebeu duas entradas")
+            const front = carousel.entryAt(1)
+            const side = carousel.entryAt(0)
+            harness.check(front !== null && side !== null, "nós do carousel não instanciaram")
+            if (front !== null) {
+                harness.check(front.text === "Celeste" && front.y === 0,
+                              "item frontal do carousel não chegou ao QML")
+            }
+            if (side !== null) {
+                harness.check(Math.abs(side.x - 21.4) < 0.05 && side.scale === 0.92,
+                              "elipse do carousel precisa usar geometria materializada")
+            }
             harness.check(covers.entryCount === 2, "cover flow não recebeu duas entradas")
             const cover = covers.entryAt(1)
             const neighbor = covers.entryAt(0)
@@ -107,15 +143,15 @@ Item {
             }
             harness.check(wheel.entryCount === 2, "wheel não recebeu duas entradas")
             const focused = wheel.entryAt(1)
-            const side = wheel.entryAt(0)
-            harness.check(focused !== null && side !== null, "nós do wheel não instanciaram")
+            const wheelSide = wheel.entryAt(0)
+            harness.check(focused !== null && wheelSide !== null, "nós do wheel não instanciaram")
             if (focused !== null) {
                 harness.check(focused.text === "Celeste", "item selecionado não chegou ao QML")
                 harness.check(focused.scale === 1 && focused.z === 32,
                               "offset converter não pode ser recalculado no QML")
             }
-            if (side !== null) {
-                harness.check(side.x === 70 && side.scale === 0.92,
+            if (wheelSide !== null) {
+                harness.check(wheelSide.x === 70 && wheelSide.scale === 0.92,
                               "vizinho do wheel precisa usar escala materializada")
             }
             harness.check(cards.entryCount === 2, "repetidor não recebeu duas entradas")
