@@ -22,6 +22,9 @@ DIAG_EFFECT_OMITTED = "THEME-STUDIO-EFFECT-001"
 DIAG_EFFECT_COST = "THEME-STUDIO-COST-001"
 DIAG_BUDGET = "THEME-STUDIO-BUDGET-001"
 DIAG_BINDING = "THEME-STUDIO-BINDING-001"
+_INSPECTABLE_SLOTS = frozenset(
+    {"saveStates", "osd", "error", "loading", "quickMenu", "collections"}
+)
 _COST_UNITS = {"low": 1, "medium": 2, "high": 3}
 _FORBIDDEN_BUDGET = frozenset({"fps", "frameTime", "vram", *_FORBIDDEN})
 _BUDGET_KEYS = frozenset(
@@ -388,7 +391,7 @@ def _surface_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Stud
     nodes: list[StudioNode] = []
     diagnostics = surfaces.get("diagnostics")
     for name, slot in slots.items():
-        if not isinstance(slot, Mapping) or name not in {"saveStates", "osd", "error", "loading"}:
+        if not isinstance(slot, Mapping) or name not in _INSPECTABLE_SLOTS:
             continue
         node_id = f"surface.{name}"
         children.append(node_id)

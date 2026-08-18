@@ -78,6 +78,8 @@ _SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
     },
     "osd": {"volume": 0.4, "muted": False, "paused": False},
     "progress": {"download": {"ratio": 0.375, "current": 3, "total": 8}},
+    "clock": {"iso": "2026-08-18T21:07:42"},
+    "stats": {"totalGames": 128},
 }
 
 

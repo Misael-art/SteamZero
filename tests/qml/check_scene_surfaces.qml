@@ -40,7 +40,9 @@ Item {
                     "filledSegments": 3,
                     "sweep": 0,
                     "label": "3/8"
-                }
+                },
+                "quickMenu": {"kind": "clock", "label": "21:07"},
+                "collections": {"kind": "statistics", "label": "128 jogos"}
             }
         })
     }
@@ -59,6 +61,10 @@ Item {
                           "segmentos preenchidos precisam vir materializados")
             harness.check(surfaces.loadingLabel === "3/8",
                           "contador {current}/{total} não pode ser formatado no QML")
+            harness.check(surfaces.clockLabel === "21:07",
+                          "relógio precisa chegar formatado do domínio")
+            harness.check(surfaces.statsLabel === "128 jogos",
+                          "estatística precisa chegar formatada do domínio")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }
     }

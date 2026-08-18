@@ -15,6 +15,7 @@ from steamzero.domain.scene_surfaces import (
     DIAG_SURFACE_ERROR,
     DIAG_SURFACE_PROGRESS,
     DIAG_SURFACE_THUMBNAIL,
+    DIAG_SURFACE_WIDGET,
     SEMANTIC_SLOTS,
     SurfaceBook,
     resolve_scene_surfaces,
@@ -223,6 +224,75 @@ def test_progress_recipe_refuses_unsafe_styles_limits_and_formats() -> None:
     ):
         with pytest.raises(ValueError, match=message):
             SurfaceBook.from_dict(_progress_book(**component))
+
+
+def _widget_book(**components: object) -> dict[str, object]:
+    raw = _book()
+    slots = dict(raw["slots"])  # type: ignore[arg-type]
+    slots["quickMenu"] = {"component": "headerClock"}
+    slots["collections"] = {"component": "libraryStats"}
+    raw["slots"] = slots
+    declared = dict(raw["components"])  # type: ignore[arg-type]
+    declared["headerClock"] = {"kind": "clock", "source": "clock.iso", "format": "HH:mm"}
+    declared["libraryStats"] = {
+        "kind": "statistics",
+        "source": "stats.totalGames",
+        "format": "{value} jogos",
+    }
+    declared.update(components)
+    raw["components"] = declared
+    return raw
+
+
+def _widget_model(**overrides: object) -> dict[str, object]:
+    model = _read_model()
+    model["clock"] = {"iso": "2026-08-18T21:07:42"}
+    model["stats"] = {"totalGames": 128}
+    model.update(overrides)
+    return model
+
+
+def test_clock_and_statistics_widgets_are_formatted_in_the_domain() -> None:
+    raw = _widget_book()
+    jsonschema.validate(raw, SCHEMA)
+    resolved = resolve_scene_surfaces(raw, _widget_model())
+    clock = resolved.slots["quickMenu"]
+    stats = resolved.slots["collections"]
+    assert clock.kind == "clock"
+    assert clock.label == "21:07"
+    assert stats.kind == "statistics"
+    assert stats.label == "128 jogos"
+    assert not any(item.code == DIAG_SURFACE_WIDGET for item in resolved.diagnostics)
+
+
+def test_clock_widget_honours_the_declared_second_precision() -> None:
+    raw = _widget_book(headerClock={"kind": "clock", "source": "clock.iso", "format": "HH:mm:ss"})
+    jsonschema.validate(raw, SCHEMA)
+    resolved = resolve_scene_surfaces(raw, _widget_model())
+    assert resolved.slots["quickMenu"].label == "21:07:42"
+
+
+def test_widget_without_a_real_source_reports_a_diagnostic_and_stays_empty() -> None:
+    raw = _widget_book()
+    jsonschema.validate(raw, SCHEMA)
+    resolved = resolve_scene_surfaces(raw, _widget_model(clock={"iso": "ontem à noite"}))
+    clock = resolved.slots["quickMenu"]
+    assert clock.kind == "clock"
+    assert clock.label == ""
+    assert any(
+        item.code == DIAG_SURFACE_WIDGET and item.slot == "quickMenu"
+        for item in resolved.diagnostics
+    )
+
+
+def test_widget_recipe_refuses_unsafe_formats_and_sources() -> None:
+    for component, message in (
+        ({"kind": "clock", "source": "clock.iso", "format": "HH:mm {shell}"}, "format"),
+        ({"kind": "clock", "source": "saves.slots", "format": "HH:mm"}, "source"),
+        ({"kind": "statistics", "source": "stats.totalGames", "format": "{secret}"}, "format"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            SurfaceBook.from_dict(_widget_book(headerClock=component))
 
 
 def test_recipe_refuses_unknown_slot_code_paths_and_private_sources() -> None:

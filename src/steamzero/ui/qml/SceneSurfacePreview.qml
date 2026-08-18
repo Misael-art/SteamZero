@@ -31,6 +31,16 @@ Item {
     readonly property real loadingSweep: loading.sweep !== undefined ? Number(loading.sweep) : 0
     readonly property string loadingLabel: loading.label !== undefined ? String(loading.label) : ""
 
+    // Widgets allowlisted: relógio e estatística chegam formatados pelo domínio.
+    readonly property var clockSlot: surfaces && surfaces.slots && surfaces.slots.quickMenu
+        ? surfaces.slots.quickMenu : ({"kind": "emptyState"})
+    readonly property var statsSlot: surfaces && surfaces.slots && surfaces.slots.collections
+        ? surfaces.slots.collections : ({"kind": "emptyState"})
+    readonly property string clockLabel: clockSlot.kind === "clock" && clockSlot.label !== undefined
+        ? String(clockSlot.label) : ""
+    readonly property string statsLabel: statsSlot.kind === "statistics" && statsSlot.label !== undefined
+        ? String(statsSlot.label) : ""
+
     Column {
         anchors.fill: parent
         anchors.margins: 4
@@ -90,6 +100,24 @@ Item {
             text: surfacePreview.loadingLabel
             color: "#f2f6fb"
             font.pixelSize: 11
+        }
+
+        Row {
+            spacing: 8
+            Text {
+                id: clockText
+                visible: text.length > 0
+                text: surfacePreview.clockLabel
+                color: "#f2f6fb"
+                font.pixelSize: 11
+            }
+            Text {
+                id: statsText
+                visible: text.length > 0
+                text: surfacePreview.statsLabel
+                color: "#94a3b8"
+                font.pixelSize: 11
+            }
         }
     }
 }

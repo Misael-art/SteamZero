@@ -37,6 +37,10 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert loading["properties"]["kind"] == "progressBar"
     assert loading["properties"]["filledSegments"] == 3
     assert loading["properties"]["label"] == "3/8"
+    assert "surface.quickMenu" in ids
+    clock = next(node for node in graph["nodes"] if node["id"] == "surface.quickMenu")
+    assert clock["properties"]["kind"] == "clock"
+    assert clock["properties"]["label"] == "21:07"
     assert "motion.focusIn" in ids
     assert "timeline.previewFocus" in ids
     assert "timeline.previewFocus.1" in ids

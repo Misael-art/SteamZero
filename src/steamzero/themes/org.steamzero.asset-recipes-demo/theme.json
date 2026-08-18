@@ -216,7 +216,9 @@
       "saveStates": { "component": "saveGallery" },
       "osd": { "component": "quickOsd" },
       "error": { "component": "errorBanner" },
-      "loading": { "component": "downloadBar" }
+      "loading": { "component": "downloadBar" },
+      "quickMenu": { "component": "headerClock" },
+      "collections": { "component": "libraryStats" }
     },
     "components": {
       "recentRail": { "kind": "recentlyPlayed", "source": "library.recent" },
@@ -238,6 +240,12 @@
           "total": "progress.download.total",
           "format": "{current}/{total}"
         }
+      },
+      "headerClock": { "kind": "clock", "source": "clock.iso", "format": "HH:mm" },
+      "libraryStats": {
+        "kind": "statistics",
+        "source": "stats.totalGames",
+        "format": "{value} jogos"
       }
     }
   },

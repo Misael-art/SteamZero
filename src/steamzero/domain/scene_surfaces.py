@@ -13,12 +13,14 @@ import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 DIAG_SURFACE_SOURCE = "THEME-SURFACE-SOURCE-001"
 DIAG_SURFACE_THUMBNAIL = "THEME-SURFACE-THUMBNAIL-002"
 DIAG_SURFACE_ERROR = "THEME-SURFACE-ERROR-003"
 DIAG_SURFACE_PROGRESS = "THEME-SURFACE-PROGRESS-004"
+DIAG_SURFACE_WIDGET = "THEME-SURFACE-WIDGET-005"
 MAX_COMPONENTS = 16
 MAX_ITEMS = 32
 SEMANTIC_SLOTS = (
@@ -47,8 +49,11 @@ COMPONENT_KINDS = frozenset(
         "errorBanner",
         "offlineState",
         "progressBar",
+        "clock",
+        "statistics",
     }
 )
+WIDGET_KINDS = frozenset({"clock", "statistics"})
 OSD_ITEMS = frozenset(
     {
         "volume",
@@ -76,6 +81,12 @@ SEGMENTED_STYLES = frozenset({"segmented", "dotted"})
 MAX_SEGMENTS = 32
 MAX_COUNTER_FORMAT = 32
 DEFAULT_COUNTER_FORMAT = "{current}/{total}"
+_CLOCK_SOURCE = re.compile(r"^clock\.iso$")
+_STATISTICS_SOURCE = re.compile(r"^stats\.[a-z][a-zA-Z0-9]{0,31}$")
+_CLOCK_FORMAT = re.compile(r"^HH:mm(?::ss)?$")
+_STATISTICS_FORMAT = re.compile(r"^[^{}]{0,16}\{value\}[^{}]{0,16}$")
+DEFAULT_CLOCK_FORMAT = "HH:mm"
+DEFAULT_STATISTICS_FORMAT = "{value}"
 _DEFAULT_KIND = {
     "empty": "emptyState",
     "loading": "loadingState",
@@ -154,9 +165,11 @@ class SurfaceComponent:
     style: str = "linear"
     segments: int = 0
     counter: SurfaceCounter | None = None
+    format: str | None = None
 
     def __post_init__(self) -> None:
         self._validate_progress()
+        self._validate_widget()
         _identifier(self.id, name="component.id")
         if self.kind not in COMPONENT_KINDS:
             raise ValueError(f"kind de superfície desconhecido: {self.kind!r}")
@@ -194,6 +207,27 @@ class SurfaceComponent:
         if self.counter is not None and self.kind != "progressBar":
             raise ValueError("counter só é válido em progressBar")
 
+    def _validate_widget(self) -> None:
+        """Widget lê um único caminho público e formata com tokens fechados."""
+        if self.kind not in WIDGET_KINDS:
+            if self.format is not None:
+                raise ValueError("format só é válido em clock ou statistics")
+            return
+        if self.source is None:
+            raise ValueError(f"source é obrigatório em {self.kind}")
+        pattern = _CLOCK_SOURCE if self.kind == "clock" else _STATISTICS_SOURCE
+        if not pattern.fullmatch(self.source):
+            raise ValueError(f"source de {self.kind} fora da allowlist")
+        shape = _CLOCK_FORMAT if self.kind == "clock" else _STATISTICS_FORMAT
+        if not shape.fullmatch(self.resolved_format):
+            raise ValueError(f"format de {self.kind} inválido")
+
+    @property
+    def resolved_format(self) -> str:
+        if self.format is not None:
+            return self.format
+        return DEFAULT_CLOCK_FORMAT if self.kind == "clock" else DEFAULT_STATISTICS_FORMAT
+
     @property
     def resolved_segments(self) -> int:
         """Faixas efetivas: estilo segmentado sem declaração cai no padrão fechado."""
@@ -212,6 +246,7 @@ class SurfaceComponent:
             "style",
             "segments",
             "counter",
+            "format",
         }
         unknown = set(raw) - allowed
         if unknown or "kind" not in raw:
@@ -243,6 +278,7 @@ class SurfaceComponent:
             style=str(raw.get("style", "linear")),
             segments=raw.get("segments", 0),
             counter=SurfaceCounter.from_dict(counter) if counter is not None else None,
+            format=str(raw["format"]) if "format" in raw else None,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -258,6 +294,8 @@ class SurfaceComponent:
                 "binding": self.progress_binding,
                 "fallback": self.progress_fallback,
             }
+        if self.kind in WIDGET_KINDS:
+            value["format"] = self.resolved_format
         if self.kind == "progressBar":
             value["style"] = self.style
             if self.segments:
@@ -457,6 +495,59 @@ def _counter_label(
     return counter.render(resolved[0], resolved[1])
 
 
+def _widget_label(
+    component: SurfaceComponent,
+    read_model: Mapping[str, Any],
+    slot: str,
+    diagnostics: list[SurfaceDiagnostic],
+) -> str:
+    """Formata clock e statistics no domínio, sem relógio próprio nem I/O.
+
+    A hora vem do shell como ISO já localizado; o widget apenas a formata com
+    tokens fechados. Fonte ausente ou fora de formato não vira texto inventado:
+    devolve rótulo vazio com diagnóstico.
+    """
+    source = component.source or ""
+    value = _read_path(read_model, source)
+    fmt = component.resolved_format
+    if component.kind == "clock":
+        try:
+            moment = datetime.fromisoformat(str(value))
+        except (TypeError, ValueError):
+            moment = None
+        if moment is None:
+            diagnostics.append(
+                SurfaceDiagnostic(
+                    code=DIAG_SURFACE_WIDGET,
+                    slot=slot,
+                    reason=f"relógio '{source}' ausente ou fora do formato ISO",
+                    fallback="noLabel",
+                )
+            )
+            return ""
+        return (
+            fmt.replace("HH", f"{moment.hour:02d}")
+            .replace("mm", f"{moment.minute:02d}")
+            .replace("ss", f"{moment.second:02d}")
+        )
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        diagnostics.append(
+            SurfaceDiagnostic(
+                code=DIAG_SURFACE_WIDGET,
+                slot=slot,
+                reason=f"estatística '{source}' ausente ou não numérica",
+                fallback="noLabel",
+            )
+        )
+        return ""
+    return fmt.replace("{value}", str(int(value)))
+
+
 def _gallery_entries(
     component: SurfaceComponent,
     read_model: Mapping[str, Any],
@@ -539,7 +630,9 @@ def resolve_scene_surfaces(
         filled_segments = 0
         sweep = 0.0
         label = ""
-        if component.kind == "progressBar":
+        if component.kind in WIDGET_KINDS:
+            label = _widget_label(component, read_model, slot_name, diagnostics)
+        elif component.kind == "progressBar":
             progress = _progress_for(component, read_model)
             segments = component.resolved_segments
             if segments:
