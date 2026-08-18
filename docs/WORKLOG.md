@@ -6454,3 +6454,24 @@ Essa evidência é offscreen e não mede FPS, frame time, VRAM ou caminho GPU.
 Nenhuma release foi construída, publicada ou instalada. Nenhuma ação de host,
 `bigsudo`, rollback ou reboot foi executada. SZ-THEME-ENGINE permanece
 partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-17 — Theme Engine — paleta dinâmica e vidro
+
+A frente avançou na quarta onda da especificação. O commit funcional `633a5d8`
+extrai paleta (dominant/vibrant/muted/accent/background/contrastText) do
+asset-fonte, cacheia por hash da fonte e algoritmo, promove contraste ≥7:1 e
+devolve a paleta do tema com diagnóstico quando não há amostras. O node de
+vidro resolve tint a partir de `palette.*`, reduz blur no tier balanced e
+desliga o backbuffer em economy/accessible ou sem capability; o cromo estático
+permanece visível. O editor consome swatches e `GlassPanel` já materializados.
+
+Fechamento local único: **4511 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_glass_panel.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time, VRAM ou caminho GPU.
+
+Push da branch autorizada ficou bloqueado pelo ambiente desta sessão após os
+commits `b7b750a`/`9cdbfcb`; os commits desta onda também ficam locais até o
+envio ser possível. Nenhuma release/instalação/ação de host foi executada.
+SZ-THEME-ENGINE permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e
+SZ-AURA-LAUNCHER não foram promovidos.

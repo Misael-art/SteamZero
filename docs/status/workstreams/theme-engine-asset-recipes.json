@@ -21,6 +21,14 @@
     "src/steamzero/schemas/scene-layout-v1.schema.json",
     "tests/unit/test_scene_layout.py",
     "src/steamzero/ui/qml/SceneRepeater.qml",
+    "src/steamzero/domain/dynamic_palette.py",
+    "src/steamzero/domain/glass_panels.py",
+    "src/steamzero/schemas/dynamic-palette-v1.schema.json",
+    "src/steamzero/schemas/glass-panel-v1.schema.json",
+    "src/steamzero/ui/qml/GlassPanel.qml",
+    "tests/unit/test_dynamic_palette.py",
+    "tests/unit/test_glass_panels.py",
+    "tests/qml/check_glass_panel.qml",
     "tests/qml/check_scene_repeater.qml"
   ],
   "sharedPaths": [
@@ -39,6 +47,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Iniciar extração de cores, glass e effect nodes por tiers. Release e evidência física dos slices anteriores aguardam a identificação da release exata.",
+  "nextAction": "Iniciar states, timeline e transições declarativas. Release e evidência física dos slices anteriores aguardam a identificação da release exata.",
   "updatedAt": "2026-08-17"
 }

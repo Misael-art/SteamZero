@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "b5eaf777d02eaf9455e99b0c43f22b028e05d6f5c5ce2f15c6d4c57fe1371afe",
+  "scopeDigest": "c997e237ae702e353832a99261e17a0bdfbdb08ad30381102f518630ca2820fb",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -17,26 +17,34 @@
     "src/steamzero/domain/scene_contract.py",
     "src/steamzero/domain/scene_display.py",
     "src/steamzero/domain/scene_layout.py",
+    "src/steamzero/domain/dynamic_palette.py",
+    "src/steamzero/domain/glass_panels.py",
     "src/steamzero/domain/qml_render_model.py",
     "src/steamzero/adapters/theme_catalog.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
     "src/steamzero/schemas/scene-layout-v1.schema.json",
+    "src/steamzero/schemas/dynamic-palette-v1.schema.json",
+    "src/steamzero/schemas/glass-panel-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
     "src/steamzero/schemas/ir-scene-v1.schema.json",
     "src/steamzero/ui/qml/MediaEffectLayer.qml",
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
     "src/steamzero/ui/qml/SceneRepeater.qml",
+    "src/steamzero/ui/qml/GlassPanel.qml",
     "src/steamzero/themes/org.steamzero.asset-recipes-demo",
     "tests/unit/test_asset_recipes.py",
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
     "tests/unit/test_scene_image_pipeline.py",
     "tests/unit/test_scene_layout.py",
+    "tests/unit/test_dynamic_palette.py",
+    "tests/unit/test_glass_panels.py",
     "tests/qml/check_media_effect_layer.qml",
     "tests/qml/check_asset_recipe_preview.qml",
     "tests/qml/check_theme_editor_asset_recipes.qml",
     "tests/qml/check_scene_repeater.qml",
+    "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py"
   ],
@@ -110,12 +118,24 @@
       "reference": "tests/qml/check_scene_repeater.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_dynamic_palette.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_dynamic_palette.py tests/unit/test_glass_panels.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_glass_panel.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_glass_panel.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Iniciar extração de cores, glass e effect nodes por tiers. Release e evidência física dos slices de receitas, cache e layouts aguardam identificação da release exata.",
+  "nextAction": "Iniciar states, timeline e transições declarativas. Release e evidência física dos slices anteriores aguardam identificação da release exata.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Os commits 9d126ea, 06b3a0f e ff82210 cobrem receitas de um asset-fonte, cache adaptativo e preview QML das variantes. Este slice acrescenta sceneLayouts v1 com grid/list, breakpoints por largura, bindings fechados item.*, SceneRepeater que so consome nos finais e fallback do catalogo para o builtin seguro quando o pacote e invalido. O QML nao calcula geometria nem interpreta binding. Wheel e cover flow ainda nao existem. Invert, hue rotate e outline interno continuam allowlisted com fallback diagnosticado, sem backend nativo. A evidencia deste slice e offscreen (testes unitarios e harness QML); nao e medicao de FPS, frame time, VRAM ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; publicacao, instalacao, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
+  "notes": "Estado permanece parcial. Receitas de asset unico, cache adaptativo e layouts/repeaters ja tem contrato e preview offscreen. Este slice acrescenta extração de paleta cacheada por hash (dominant/vibrant/muted/accent/contrastText) e paineis de vidro com blur negociado por tier; economia e capability ausente desligam o backbuffer e mantem tint/borda. A evidencia e offscreen. Wheel, cover flow, states/timeline e medicao fisica de FPS/VRAM ainda nao existem. A autorizacao de release desta sessao nao identifica uma release exata; publicacao, instalacao, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
 }
