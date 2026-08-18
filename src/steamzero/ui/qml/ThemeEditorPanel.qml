@@ -114,6 +114,8 @@ Rectangle {
         studioGraphActive && studioCanvas.withinBudget
     readonly property bool studioGraphBudgetMeasured:
         studioGraphActive && studioCanvas.budgetMeasured
+    readonly property string studioGraphBindingPath:
+        studioGraphActive ? studioCanvas.selectedBindingPath : ""
 
     function studioGraphSelect(nodeId) {
         return studioGraphActive ? studioCanvas.select(nodeId) : false

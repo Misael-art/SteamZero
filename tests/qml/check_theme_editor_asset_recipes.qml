@@ -206,7 +206,12 @@ Window {
                                     "totalDuration": 260, "steps": 1}},
                     {"id": "timeline.previewFocus.0", "kind": "timeline", "label": "focused",
                      "parent": "timeline.previewFocus", "children": [],
-                     "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}}
+                     "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}},
+                    {"id": "binding.layout.previewTitles.text", "kind": "binding",
+                     "label": "previewTitles.text", "parent": "scene", "children": [],
+                     "properties": {"path": "item.title", "field": "text", "source": "layout",
+                                    "fallback": "Sem título", "resolved": "Axiom Verge",
+                                    "usedFallback": false}}
                 ]
             }
         }
@@ -278,6 +283,12 @@ Window {
                   "orçamento declarado precisa chegar ao inspector")
             check(panel.studioGraphBudgetMeasured === false,
                   "profiler offscreen não pode alegar medição física")
+            check(panel.studioGraphSelect("binding.layout.previewTitles.text") === true,
+                  "binding assistido precisa ser selecionável no editor real")
+            check(panel.studioGraphSelectedKind === "binding",
+                  "inspector precisa identificar o node de binding")
+            check(panel.studioGraphBindingPath === "item.title",
+                  "caminho allowlisted precisa chegar ao inspector")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

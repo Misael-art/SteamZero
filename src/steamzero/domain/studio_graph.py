@@ -14,12 +14,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect", "timeline"})
+ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect", "timeline", "binding"})
 ALLOWED_SEVERITIES = frozenset({"info", "warning", "error"})
 _FORBIDDEN = frozenset({"qml", "js", "script", "shader", "python"})
+ALLOWED_BINDING_PREFIXES = ("item.", "palette.", "osd.")
 DIAG_EFFECT_OMITTED = "THEME-STUDIO-EFFECT-001"
 DIAG_EFFECT_COST = "THEME-STUDIO-COST-001"
 DIAG_BUDGET = "THEME-STUDIO-BUDGET-001"
+DIAG_BINDING = "THEME-STUDIO-BINDING-001"
 _COST_UNITS = {"low": 1, "medium": 2, "high": 3}
 _FORBIDDEN_BUDGET = frozenset({"fps", "frameTime", "vram", *_FORBIDDEN})
 _BUDGET_KEYS = frozenset(
@@ -648,6 +650,190 @@ def build_studio_budget(preview: Mapping[str, Any]) -> StudioBudget:
     )
 
 
+def _binding_path_status(path: object) -> tuple[str, tuple[StudioConstraint, ...]]:
+    if not isinstance(path, str) or not path:
+        return "", (
+            StudioConstraint(
+                code=DIAG_BINDING,
+                reason="caminho de binding ausente",
+                severity="warning",
+            ),
+        )
+    lowered = path.casefold()
+    if any(token in lowered for token in _FORBIDDEN) or not path.startswith(
+        ALLOWED_BINDING_PREFIXES
+    ):
+        return "", (
+            StudioConstraint(
+                code=DIAG_BINDING,
+                reason="caminho de binding não allowlisted",
+                severity="warning",
+            ),
+        )
+    return path, ()
+
+
+def _scalar_or_none(value: object) -> str | int | float | bool | None:
+    if value is None or isinstance(value, str | int | float | bool):
+        if isinstance(value, float) and value != value:
+            return None
+        return value
+    return None
+
+
+def _first_entry_field(preview: Mapping[str, Any], layout_name: str, field: str) -> object:
+    layouts = preview.get("sceneLayoutPreview")
+    if not isinstance(layouts, Mapping):
+        return None
+    declared = layouts.get("layouts")
+    if not isinstance(declared, Mapping):
+        return None
+    layout = declared.get(layout_name)
+    if not isinstance(layout, Mapping):
+        return None
+    entries = layout.get("entries")
+    if not isinstance(entries, list) or not entries or not isinstance(entries[0], Mapping):
+        return None
+    return entries[0].get(field)
+
+
+def _glass_resolved_tint(preview: Mapping[str, Any], panel_name: str) -> object:
+    glass = preview.get("glassPreview")
+    if not isinstance(glass, Mapping):
+        return None
+    panels = glass.get("panels")
+    if not isinstance(panels, Mapping):
+        return None
+    panel = panels.get(panel_name)
+    if not isinstance(panel, Mapping):
+        return None
+    return panel.get("tint")
+
+
+def _surface_resolved_progress(preview: Mapping[str, Any], component: str) -> object:
+    surfaces = preview.get("sceneSurfacePreview")
+    if not isinstance(surfaces, Mapping):
+        return None
+    slots = surfaces.get("slots")
+    if not isinstance(slots, Mapping):
+        return None
+    for slot in slots.values():
+        if not isinstance(slot, Mapping):
+            continue
+        if slot.get("kind") == "osd" or slot.get("slot") == "osd":
+            return slot.get("progress")
+    del component
+    return None
+
+
+def _append_binding(
+    nodes: list[StudioNode],
+    children: list[str],
+    *,
+    node_id: str,
+    label: str,
+    source: str,
+    field: str,
+    declared: Mapping[str, Any],
+    resolved: object,
+) -> None:
+    path, constraints = _binding_path_status(declared.get("binding"))
+    fallback = _scalar_or_none(declared.get("fallback"))
+    sample = _scalar_or_none(resolved)
+    used_fallback = path != "" and (sample is None or sample == fallback)
+    children.append(node_id)
+    nodes.append(
+        StudioNode(
+            id=node_id,
+            kind="binding",
+            label=label,
+            parent="scene",
+            properties={
+                "path": path,
+                "field": field,
+                "source": source,
+                "fallback": fallback,
+                "resolved": sample,
+                "usedFallback": used_fallback,
+            },
+            constraints=constraints,
+        )
+    )
+
+
+def _binding_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    nodes: list[StudioNode] = []
+    layouts = preview.get("sceneLayouts")
+    if isinstance(layouts, Mapping):
+        declared = layouts.get("layouts")
+        if isinstance(declared, Mapping):
+            for name, layout in declared.items():
+                if not isinstance(name, str) or not isinstance(layout, Mapping):
+                    continue
+                template = layout.get("template")
+                if not isinstance(template, Mapping):
+                    continue
+                properties = template.get("properties")
+                if not isinstance(properties, Mapping):
+                    continue
+                for field, value in properties.items():
+                    if not isinstance(field, str) or not isinstance(value, Mapping):
+                        continue
+                    if "binding" not in value:
+                        continue
+                    _append_binding(
+                        nodes,
+                        children,
+                        node_id=f"binding.layout.{name}.{field}",
+                        label=f"{name}.{field}",
+                        source="layout",
+                        field=field,
+                        declared=value,
+                        resolved=_first_entry_field(preview, name, field),
+                    )
+    glass = preview.get("glass")
+    if isinstance(glass, Mapping):
+        panels = glass.get("panels")
+        if isinstance(panels, Mapping):
+            for name, panel in panels.items():
+                if not isinstance(name, str) or not isinstance(panel, Mapping):
+                    continue
+                tint = panel.get("tint")
+                if not isinstance(tint, Mapping) or "binding" not in tint:
+                    continue
+                _append_binding(
+                    nodes,
+                    children,
+                    node_id=f"binding.glass.{name}.tint",
+                    label=f"{name}.tint",
+                    source="glass",
+                    field="tint",
+                    declared=tint,
+                    resolved=_glass_resolved_tint(preview, name),
+                )
+    surfaces = preview.get("sceneSurfaces")
+    if isinstance(surfaces, Mapping):
+        components = surfaces.get("components")
+        if isinstance(components, Mapping):
+            for name, component in components.items():
+                if not isinstance(name, str) or not isinstance(component, Mapping):
+                    continue
+                progress = component.get("progress")
+                if not isinstance(progress, Mapping) or "binding" not in progress:
+                    continue
+                _append_binding(
+                    nodes,
+                    children,
+                    node_id=f"binding.surface.{name}.progress",
+                    label=f"{name}.progress",
+                    source="surface",
+                    field="progress",
+                    declared=progress,
+                    resolved=_surface_resolved_progress(preview, name),
+                )
+    return nodes
+
+
 def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     """Monta a árvore a partir do preview já materializado pela engine."""
     children: list[str] = []
@@ -657,6 +843,7 @@ def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     nodes.extend(_motion_nodes(preview, children))
     nodes.extend(_timeline_nodes(preview, children))
     nodes.extend(_effect_nodes(preview, children))
+    nodes.extend(_binding_nodes(preview, children))
     budget = build_studio_budget(preview)
     budget_constraints: tuple[StudioConstraint, ...] = ()
     if not budget.within_budget:

@@ -52,7 +52,12 @@ Item {
                  "properties": {"state": "normal", "duration": 80, "easing": "linear"}},
                 {"id": "timeline.previewFocus.1", "kind": "timeline", "label": "focused",
                  "parent": "timeline.previewFocus", "children": [],
-                 "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}}
+                 "properties": {"state": "focused", "duration": 180, "easing": "cubicOut"}},
+                {"id": "binding.layout.previewTitles.text", "kind": "binding",
+                 "label": "previewTitles.text", "parent": "scene", "children": [],
+                 "properties": {"path": "item.title", "field": "text", "source": "layout",
+                                "fallback": "Sem título", "resolved": "Axiom Verge",
+                                "usedFallback": false}}
             ]
         })
     }
@@ -62,7 +67,7 @@ Item {
         running: true
         repeat: false
         onTriggered: {
-            harness.check(canvas.nodeCount === 7, "canvas não recebeu a árvore")
+            harness.check(canvas.nodeCount === 8, "canvas não recebeu a árvore")
             harness.check(canvas.select("layout.previewTitles") === true, "seleção falhou")
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
             harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
@@ -77,6 +82,11 @@ Item {
             harness.check(canvas.withinBudget === true, "orçamento declarado precisa chegar ao inspector")
             harness.check(canvas.budgetMeasured === false,
                           "profiler offscreen não pode alegar medição física")
+            harness.check(canvas.select("binding.layout.previewTitles.text") === true,
+                          "binding assistido não selecionou")
+            harness.check(canvas.selectedKind === "binding", "inspector não acompanhou o binding")
+            harness.check(canvas.selectedBindingPath === "item.title",
+                          "caminho allowlisted não chegou ao inspector")
             harness.check(canvas.select("evil.qml") === false, "id inexistente não pode selecionar")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }

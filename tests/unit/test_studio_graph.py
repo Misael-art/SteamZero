@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 
 from steamzero.domain.studio_graph import (
+    DIAG_BINDING,
     DIAG_BUDGET,
     DIAG_EFFECT_COST,
     DIAG_EFFECT_OMITTED,
@@ -31,6 +32,8 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert "timeline.previewFocus.1" in ids
     assert "effect.focusedCover" in ids
     assert "effect.focusedCover.0" in ids
+    assert "binding.layout.previewTitles.text" in ids
+    assert "binding.glass.previewCard.tint" in ids
     selected = next(node for node in graph["nodes"] if node["id"] == graph["selectedId"])
     assert selected["kind"] == "scene"
     assert all(isinstance(node["properties"], dict) for node in graph["nodes"])
@@ -224,6 +227,52 @@ def test_declared_budget_does_not_invent_physical_metrics() -> None:
         StudioBudget.from_dict({"effectCost": 1, "fps": 60})
     with pytest.raises(ValueError, match="medição física"):
         StudioBudget.from_dict({"effectCost": 1, "measured": True})
+
+
+def test_assisted_bindings_expose_allowlisted_paths_without_eval() -> None:
+    preview = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")["preview"]
+    assert isinstance(preview, dict)
+    graph = StudioGraph.from_dict(preview["studioGraph"])
+    text = graph.select("binding.layout.previewTitles.text")
+    assert text is not None
+    assert text.kind == "binding"
+    assert text.properties["path"] == "item.title"
+    assert text.properties["resolved"] == "Axiom Verge"
+    assert text.properties["usedFallback"] is False
+    tint = graph.select("binding.glass.previewCard.tint")
+    assert tint is not None
+    assert tint.properties["path"] == "palette.accent"
+    assert isinstance(tint.properties["resolved"], str)
+    progress = graph.select("binding.surface.quickOsd.progress")
+    assert progress is not None
+    assert progress.properties["path"] == "osd.volume"
+    assert progress.properties["resolved"] == 0.4
+
+
+def test_forbidden_binding_paths_become_constraints() -> None:
+    graph = build_studio_graph(
+        {
+            "sceneLayouts": {
+                "layouts": {
+                    "previewTitles": {
+                        "template": {
+                            "properties": {
+                                "text": {
+                                    "binding": "evil.qml",
+                                    "fallback": "x",
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    node = graph.select("binding.layout.previewTitles.text")
+    assert node is not None
+    assert node.properties["path"] == ""
+    assert node.constraints[0].code == DIAG_BINDING
+    assert graph.select("eval.python") is None
 
 
 def test_graph_refuses_code_bearing_nodes() -> None:

@@ -51,6 +51,11 @@ Item {
     readonly property int declaredCost: Number(budget.declaredCost) || 0
     readonly property bool withinBudget: budget.withinBudget !== false
     readonly property bool budgetMeasured: budget.measured === true
+    readonly property string selectedBindingPath: {
+        if (selectedKind !== "binding" || !selectedNode || !selectedNode.properties)
+            return ""
+        return String(selectedNode.properties.path || "")
+    }
 
     function select(nodeId) {
         for (let i = 0; i < nodes.length; ++i) {
