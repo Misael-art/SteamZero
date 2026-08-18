@@ -6,7 +6,12 @@ from __future__ import annotations
 
 import pytest
 
-from steamzero.domain.studio_graph import StudioGraph
+from steamzero.domain.studio_graph import (
+    DIAG_EFFECT_COST,
+    DIAG_EFFECT_OMITTED,
+    StudioGraph,
+    build_studio_graph,
+)
 from steamzero.domain.theme_editor import ThemeEditorManager
 
 
@@ -20,9 +25,12 @@ def test_builtin_preview_exposes_a_selectable_scene_tree() -> None:
     assert "layout.previewTitles" in ids
     assert "surface.saveStates" in ids
     assert "motion.focusIn" in ids
+    assert "effect.focusedCover" in ids
+    assert "effect.focusedCover.0" in ids
     selected = next(node for node in graph["nodes"] if node["id"] == graph["selectedId"])
     assert selected["kind"] == "scene"
     assert all(isinstance(node["properties"], dict) for node in graph["nodes"])
+    assert all(isinstance(node.get("constraints"), list) for node in graph["nodes"])
     assert all("qml" not in node for node in graph["nodes"])
 
 
@@ -37,6 +45,58 @@ def test_selecting_a_layout_node_exposes_only_scalar_inspector_fields() -> None:
     assert selected.properties["columns"] == 4
     assert "binding" not in selected.properties
     assert graph.select("evil.qml") is None
+
+
+def test_effect_diagnostics_become_inspector_constraints() -> None:
+    graph = build_studio_graph(
+        {
+            "effects": {
+                "focusedCover": [
+                    {
+                        "type": "glow",
+                        "parameters": {"strength": 0.12, "blur": 12},
+                        "capability": "graphics.effect.glow",
+                        "cost": "high",
+                    }
+                ]
+            },
+            "effectDiagnostics": [
+                {
+                    "stack": "focusedCover",
+                    "effect": "blur",
+                    "reason": "omitido no tier economy",
+                    "fallback": "omit",
+                }
+            ],
+            "sceneLayoutPreview": {
+                "layouts": {
+                    "previewTitles": {"kind": "grid", "columns": 4, "entries": []},
+                },
+                "diagnostics": [
+                    {
+                        "code": "THEME-LAYOUT-SOURCE-001",
+                        "layout": "previewTitles",
+                        "reason": "fonte vazia",
+                        "fallback": "empty",
+                    }
+                ],
+            },
+        }
+    )
+    stack = graph.select("effect.focusedCover")
+    assert stack is not None
+    assert stack.kind == "effect"
+    assert stack.properties["omitted"] == 1
+    assert stack.constraints[0].code == DIAG_EFFECT_OMITTED
+    glow = graph.select("effect.focusedCover.0")
+    assert glow is not None
+    assert glow.properties["type"] == "glow"
+    assert glow.properties["strength"] == 0.12
+    assert glow.constraints[0].code == DIAG_EFFECT_COST
+    layout = graph.select("layout.previewTitles")
+    assert layout is not None
+    assert layout.constraints[0].code == "THEME-LAYOUT-SOURCE-001"
+    assert graph.select("evil.shader") is None
 
 
 def test_graph_refuses_code_bearing_nodes() -> None:

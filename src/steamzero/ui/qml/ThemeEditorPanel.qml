@@ -100,6 +100,12 @@ Rectangle {
         studioGraphActive ? studioCanvas.nodeCount : 0
     readonly property string studioGraphSelectedId:
         studioGraphActive ? studioCanvas.selectedId : ""
+    readonly property string studioGraphSelectedKind:
+        studioGraphActive ? studioCanvas.selectedKind : ""
+    readonly property int studioGraphConstraintCount:
+        studioGraphActive ? studioCanvas.selectedConstraintCount : 0
+    readonly property string studioGraphConstraintCode:
+        studioGraphActive ? studioCanvas.selectedConstraintCode : ""
 
     function studioGraphSelect(nodeId) {
         return studioGraphActive ? studioCanvas.select(nodeId) : false

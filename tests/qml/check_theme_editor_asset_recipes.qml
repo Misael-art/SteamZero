@@ -170,8 +170,9 @@ Window {
                 "selectedId": "scene",
                 "nodes": [
                     {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
-                     "children": ["layout.previewTitles", "surface.saveStates", "motion.focusIn"],
-                     "properties": {"children": 3}},
+                     "children": ["layout.previewTitles", "surface.saveStates",
+                                  "motion.focusIn", "effect.focusedCover"],
+                     "properties": {"children": 4}},
                     {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                      "parent": "scene", "children": [],
                      "properties": {"kind": "grid", "columns": 4, "entries": 2}},
@@ -180,7 +181,19 @@ Window {
                      "properties": {"kind": "saveGallery", "entries": 2, "criticalVisible": false}},
                     {"id": "motion.focusIn", "kind": "motion", "label": "focusIn",
                      "parent": "scene", "children": [],
-                     "properties": {"from": "normal", "to": "focused", "duration": 180, "easing": "cubicOut"}}
+                     "properties": {"from": "normal", "to": "focused", "duration": 180, "easing": "cubicOut"}},
+                    {"id": "effect.focusedCover", "kind": "effect", "label": "focusedCover",
+                     "parent": "scene", "children": ["effect.focusedCover.0"],
+                     "properties": {"stack": "focusedCover", "nodes": 1, "omitted": 0}},
+                    {"id": "effect.focusedCover.0", "kind": "effect", "label": "glow",
+                     "parent": "effect.focusedCover", "children": [],
+                     "properties": {"type": "glow", "cost": "high",
+                                    "capability": "graphics.effect.glow"},
+                     "constraints": [
+                         {"code": "THEME-STUDIO-COST-001",
+                          "reason": "efeito de custo alto; o inspector só observa, não executa",
+                          "severity": "info"}
+                     ]}
                 ]
             }
         }
@@ -234,6 +247,12 @@ Window {
                   "seleção da árvore precisa apontar para o layout materializado")
             check(panel.studioGraphSelectedId === "layout.previewTitles",
                   "inspector precisa acompanhar o nó selecionado")
+            check(panel.studioGraphSelect("effect.focusedCover.0") === true,
+                  "grafo de efeitos precisa ser selecionável no editor real")
+            check(panel.studioGraphSelectedKind === "effect",
+                  "inspector precisa identificar o node de efeito")
+            check(panel.studioGraphConstraintCode === "THEME-STUDIO-COST-001",
+                  "constraint do efeito precisa chegar ao inspector")
             Qt.exit(failures === 0 ? 0 : 1)
         }
     }

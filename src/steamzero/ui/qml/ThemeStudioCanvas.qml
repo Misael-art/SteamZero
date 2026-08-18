@@ -24,6 +24,10 @@ Item {
     readonly property string selectedKind: selectedNode ? selectedNode.kind : ""
     readonly property string selectedLabel: selectedNode ? selectedNode.label : ""
     readonly property int nodeCount: nodes.length
+    readonly property int selectedConstraintCount:
+        selectedNode && selectedNode.constraints ? selectedNode.constraints.length : 0
+    readonly property string selectedConstraintCode:
+        selectedConstraintCount ? String(selectedNode.constraints[0].code) : ""
 
     function select(nodeId) {
         for (let i = 0; i < nodes.length; ++i) {
@@ -92,6 +96,19 @@ Item {
                     color: "#e8ecf7"
                     font.pixelSize: 12
                     text: modelData + ": " + studio.selectedNode.properties[modelData]
+                }
+            }
+            Repeater {
+                model: studio.selectedNode && studio.selectedNode.constraints
+                    ? studio.selectedNode.constraints : []
+                delegate: Text {
+                    required property var modelData
+                    objectName: "studioConstraint"
+                    width: inspector.width
+                    wrapMode: Text.Wrap
+                    color: "#ffc400"
+                    font.pixelSize: 12
+                    text: modelData.code + ": " + modelData.reason
                 }
             }
         }

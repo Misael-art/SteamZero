@@ -3,7 +3,8 @@
 """Árvore e inspector do Theme Studio sobre o scene graph já resolvido.
 
 O Studio não interpreta binding, não carrega QML do pacote e não redesenha a
-cena. Ele só organiza os nós finais da Theme Engine para seleção e inspeção.
+cena. Ele só organiza os nós finais da Theme Engine para seleção e inspeção,
+incluindo o grafo de efeitos allowlisted e os constraints já diagnosticados.
 """
 
 from __future__ import annotations
@@ -13,7 +14,10 @@ from dataclasses import dataclass
 from typing import Any
 
 ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect"})
+ALLOWED_SEVERITIES = frozenset({"info", "warning", "error"})
 _FORBIDDEN = frozenset({"qml", "js", "script", "shader", "python"})
+DIAG_EFFECT_OMITTED = "THEME-STUDIO-EFFECT-001"
+DIAG_EFFECT_COST = "THEME-STUDIO-COST-001"
 
 
 def _scalars(raw: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -29,6 +33,70 @@ def _scalars(raw: Mapping[str, Any]) -> dict[str, str | int | float | bool | Non
 
 
 @dataclass(frozen=True)
+class StudioConstraint:
+    code: str
+    reason: str
+    severity: str = "warning"
+
+    def __post_init__(self) -> None:
+        if not self.code or "/" in self.code or " " in self.code:
+            raise ValueError("studio constraint code inválido")
+        if self.severity not in ALLOWED_SEVERITIES:
+            raise ValueError(f"studio constraint severity desconhecida: {self.severity}")
+        if not self.reason or any(token in self.reason.casefold() for token in _FORBIDDEN):
+            raise ValueError("studio constraint reason inválido")
+
+    def to_dict(self) -> dict[str, str]:
+        return {"code": self.code, "reason": self.reason, "severity": self.severity}
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> StudioConstraint:
+        unknown = set(raw) - {"code", "reason", "severity"}
+        if unknown:
+            raise ValueError(f"studio constraint inválido: {sorted(unknown)}")
+        return cls(
+            code=str(raw.get("code", "")),
+            reason=str(raw.get("reason", "")),
+            severity=str(raw.get("severity", "warning")),
+        )
+
+
+def _constraint_tuple(raw: object) -> tuple[StudioConstraint, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError("studio node.constraints exige lista")
+    parsed = tuple(StudioConstraint.from_dict(item) for item in raw if isinstance(item, Mapping))
+    if len(parsed) != len(raw):
+        raise ValueError("studio constraint exige objeto")
+    return parsed
+
+
+def _constraints_from(
+    items: object,
+    *,
+    match_key: str,
+    match_value: str,
+    default_code: str,
+    severity: str,
+) -> tuple[StudioConstraint, ...]:
+    if not isinstance(items, list):
+        return ()
+    found: list[StudioConstraint] = []
+    for item in items:
+        if not isinstance(item, Mapping) or item.get(match_key) != match_value:
+            continue
+        found.append(
+            StudioConstraint(
+                code=str(item.get("code") or default_code),
+                reason=str(item.get("reason") or "constraint diagnosticado"),
+                severity=severity,
+            )
+        )
+    return tuple(found)
+
+
+@dataclass(frozen=True)
 class StudioNode:
     id: str
     kind: str
@@ -36,6 +104,7 @@ class StudioNode:
     properties: Mapping[str, str | int | float | bool | None]
     parent: str | None = None
     children: tuple[str, ...] = ()
+    constraints: tuple[StudioConstraint, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.id or "/" in self.id or " " in self.id:
@@ -54,11 +123,20 @@ class StudioNode:
             "parent": self.parent,
             "children": list(self.children),
             "properties": dict(self.properties),
+            "constraints": [item.to_dict() for item in self.constraints],
         }
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> StudioNode:
-        unknown = set(raw) - {"id", "kind", "label", "parent", "children", "properties"}
+        unknown = set(raw) - {
+            "id",
+            "kind",
+            "label",
+            "parent",
+            "children",
+            "properties",
+            "constraints",
+        }
         if unknown:
             raise ValueError(f"studio node inválido: {sorted(unknown)}")
         properties = raw.get("properties", {})
@@ -74,6 +152,7 @@ class StudioNode:
             properties=_scalars(properties),
             parent=str(raw["parent"]) if raw.get("parent") is not None else None,
             children=tuple(children),
+            constraints=_constraint_tuple(raw.get("constraints")),
         )
 
 
@@ -108,80 +187,209 @@ class StudioGraph:
         return cls(nodes=parsed, selected_id=str(raw.get("selectedId", "scene")))
 
 
+def _layout_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    layouts = preview.get("sceneLayoutPreview")
+    if not isinstance(layouts, Mapping):
+        return []
+    declared = layouts.get("layouts")
+    if not isinstance(declared, Mapping):
+        return []
+    nodes: list[StudioNode] = []
+    diagnostics = layouts.get("diagnostics")
+    for name, layout in declared.items():
+        if not isinstance(layout, Mapping):
+            continue
+        node_id = f"layout.{name}"
+        children.append(node_id)
+        entries = layout.get("entries")
+        count = len(entries) if isinstance(entries, list) else 0
+        nodes.append(
+            StudioNode(
+                id=node_id,
+                kind="layout",
+                label=str(name),
+                parent="scene",
+                properties={
+                    "kind": layout.get("kind"),
+                    "columns": layout.get("columns"),
+                    "entries": count,
+                },
+                constraints=_constraints_from(
+                    diagnostics,
+                    match_key="layout",
+                    match_value=str(name),
+                    default_code="THEME-LAYOUT-SOURCE-001",
+                    severity="warning",
+                ),
+            )
+        )
+    return nodes
+
+
+def _surface_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    surfaces = preview.get("sceneSurfacePreview")
+    if not isinstance(surfaces, Mapping):
+        return []
+    slots = surfaces.get("slots")
+    if not isinstance(slots, Mapping):
+        return []
+    nodes: list[StudioNode] = []
+    diagnostics = surfaces.get("diagnostics")
+    for name, slot in slots.items():
+        if not isinstance(slot, Mapping) or name not in {"saveStates", "osd", "error"}:
+            continue
+        node_id = f"surface.{name}"
+        children.append(node_id)
+        entries = slot.get("entries")
+        severity = "error" if slot.get("criticalVisible") else "warning"
+        nodes.append(
+            StudioNode(
+                id=node_id,
+                kind="surface",
+                label=str(name),
+                parent="scene",
+                properties={
+                    "kind": slot.get("kind"),
+                    "entries": len(entries) if isinstance(entries, list) else 0,
+                    "criticalVisible": slot.get("criticalVisible"),
+                },
+                constraints=_constraints_from(
+                    diagnostics,
+                    match_key="slot",
+                    match_value=str(name),
+                    default_code="THEME-SURFACE-SOURCE-001",
+                    severity=severity,
+                ),
+            )
+        )
+    return nodes
+
+
+def _motion_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    motion = preview.get("sceneMotionPreview")
+    if not isinstance(motion, Mapping):
+        return []
+    transitions = motion.get("transitions")
+    if not isinstance(transitions, Mapping):
+        return []
+    nodes: list[StudioNode] = []
+    for name, transition in transitions.items():
+        if not isinstance(transition, Mapping):
+            continue
+        node_id = f"motion.{name}"
+        children.append(node_id)
+        nodes.append(
+            StudioNode(
+                id=node_id,
+                kind="motion",
+                label=str(name),
+                parent="scene",
+                properties={
+                    "from": transition.get("from"),
+                    "to": transition.get("to"),
+                    "duration": transition.get("duration"),
+                    "easing": transition.get("easing"),
+                },
+            )
+        )
+    return nodes
+
+
+def _effect_nodes(preview: Mapping[str, Any], children: list[str]) -> list[StudioNode]:
+    effects = preview.get("effects")
+    if not isinstance(effects, Mapping):
+        return []
+    omitted = preview.get("effectDiagnostics")
+    nodes: list[StudioNode] = []
+    for name, entries in effects.items():
+        if not isinstance(name, str) or not isinstance(entries, list):
+            continue
+        stack_id = f"effect.{name}"
+        child_ids: list[str] = []
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, Mapping):
+                continue
+            node_id = f"{stack_id}.{index}"
+            child_ids.append(node_id)
+            properties: dict[str, str | int | float | bool | None] = {
+                "type": entry.get("type") if isinstance(entry.get("type"), str) else None,
+                "cost": entry.get("cost") if isinstance(entry.get("cost"), str) else None,
+                "capability": (
+                    entry.get("capability") if isinstance(entry.get("capability"), str) else None
+                ),
+            }
+            parameters = entry.get("parameters")
+            if isinstance(parameters, Mapping):
+                for key, value in parameters.items():
+                    if key in properties or key in _FORBIDDEN:
+                        continue
+                    if value is None or isinstance(value, str | int | float | bool):
+                        if isinstance(value, float) and value != value:
+                            continue
+                        properties[str(key)] = value
+            cost_constraints: tuple[StudioConstraint, ...] = ()
+            if properties.get("cost") == "high":
+                cost_constraints = (
+                    StudioConstraint(
+                        code=DIAG_EFFECT_COST,
+                        reason="efeito de custo alto; o inspector só observa, não executa",
+                        severity="info",
+                    ),
+                )
+            nodes.append(
+                StudioNode(
+                    id=node_id,
+                    kind="effect",
+                    label=str(properties.get("type") or name),
+                    parent=stack_id,
+                    properties=properties,
+                    constraints=cost_constraints,
+                )
+            )
+        children.append(stack_id)
+        nodes.insert(
+            len(nodes) - len(child_ids),
+            StudioNode(
+                id=stack_id,
+                kind="effect",
+                label=str(name),
+                parent="scene",
+                children=tuple(child_ids),
+                properties={
+                    "stack": name,
+                    "nodes": len(child_ids),
+                    "omitted": (
+                        len(
+                            [
+                                item
+                                for item in omitted
+                                if isinstance(item, Mapping) and item.get("stack") == name
+                            ]
+                        )
+                        if isinstance(omitted, list)
+                        else 0
+                    ),
+                },
+                constraints=_constraints_from(
+                    omitted,
+                    match_key="stack",
+                    match_value=name,
+                    default_code=DIAG_EFFECT_OMITTED,
+                    severity="warning",
+                ),
+            ),
+        )
+    return nodes
+
+
 def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
     """Monta a árvore a partir do preview já materializado pela engine."""
     children: list[str] = []
     nodes: list[StudioNode] = []
-    layouts = preview.get("sceneLayoutPreview")
-    if isinstance(layouts, Mapping):
-        declared = layouts.get("layouts")
-        if isinstance(declared, Mapping):
-            for name, layout in declared.items():
-                if not isinstance(layout, Mapping):
-                    continue
-                node_id = f"layout.{name}"
-                children.append(node_id)
-                entries = layout.get("entries")
-                count = len(entries) if isinstance(entries, list) else 0
-                nodes.append(
-                    StudioNode(
-                        id=node_id,
-                        kind="layout",
-                        label=str(name),
-                        parent="scene",
-                        properties={
-                            "kind": layout.get("kind"),
-                            "columns": layout.get("columns"),
-                            "entries": count,
-                        },
-                    )
-                )
-    surfaces = preview.get("sceneSurfacePreview")
-    if isinstance(surfaces, Mapping):
-        slots = surfaces.get("slots")
-        if isinstance(slots, Mapping):
-            for name, slot in slots.items():
-                if not isinstance(slot, Mapping) or name not in {"saveStates", "osd", "error"}:
-                    continue
-                node_id = f"surface.{name}"
-                children.append(node_id)
-                entries = slot.get("entries")
-                nodes.append(
-                    StudioNode(
-                        id=node_id,
-                        kind="surface",
-                        label=str(name),
-                        parent="scene",
-                        properties={
-                            "kind": slot.get("kind"),
-                            "entries": len(entries) if isinstance(entries, list) else 0,
-                            "criticalVisible": slot.get("criticalVisible"),
-                        },
-                    )
-                )
-    motion = preview.get("sceneMotionPreview")
-    if isinstance(motion, Mapping):
-        transitions = motion.get("transitions")
-        if isinstance(transitions, Mapping):
-            for name, transition in transitions.items():
-                if not isinstance(transition, Mapping):
-                    continue
-                node_id = f"motion.{name}"
-                children.append(node_id)
-                nodes.append(
-                    StudioNode(
-                        id=node_id,
-                        kind="motion",
-                        label=str(name),
-                        parent="scene",
-                        properties={
-                            "from": transition.get("from"),
-                            "to": transition.get("to"),
-                            "duration": transition.get("duration"),
-                            "easing": transition.get("easing"),
-                        },
-                    )
-                )
+    nodes.extend(_layout_nodes(preview, children))
+    nodes.extend(_surface_nodes(preview, children))
+    nodes.extend(_motion_nodes(preview, children))
+    nodes.extend(_effect_nodes(preview, children))
     nodes.insert(
         0,
         StudioNode(

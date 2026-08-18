@@ -24,7 +24,19 @@ Item {
                  "children": ["layout.previewTitles"], "properties": {"children": 1}},
                 {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                  "parent": "scene", "children": [],
-                 "properties": {"kind": "grid", "columns": 4, "entries": 4}}
+                 "properties": {"kind": "grid", "columns": 4, "entries": 4}},
+                {"id": "effect.focusedCover", "kind": "effect", "label": "focusedCover",
+                 "parent": "scene", "children": ["effect.focusedCover.0"],
+                 "properties": {"stack": "focusedCover", "nodes": 1, "omitted": 0}},
+                {"id": "effect.focusedCover.0", "kind": "effect", "label": "glow",
+                 "parent": "effect.focusedCover", "children": [],
+                 "properties": {"type": "glow", "cost": "high",
+                                "capability": "graphics.effect.glow"},
+                 "constraints": [
+                     {"code": "THEME-STUDIO-COST-001",
+                      "reason": "efeito de custo alto; o inspector só observa, não executa",
+                      "severity": "info"}
+                 ]}
             ]
         })
     }
@@ -34,9 +46,13 @@ Item {
         running: true
         repeat: false
         onTriggered: {
-            harness.check(canvas.nodeCount === 2, "canvas não recebeu a árvore")
+            harness.check(canvas.nodeCount === 4, "canvas não recebeu a árvore")
             harness.check(canvas.select("layout.previewTitles") === true, "seleção falhou")
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
+            harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
+            harness.check(canvas.selectedKind === "effect", "inspector não acompanhou o efeito")
+            harness.check(canvas.selectedConstraintCode === "THEME-STUDIO-COST-001",
+                          "constraint do efeito não chegou ao inspector")
             harness.check(canvas.select("evil.qml") === false, "id inexistente não pode selecionar")
             Qt.exit(harness.failures === 0 ? 0 : 1)
         }
