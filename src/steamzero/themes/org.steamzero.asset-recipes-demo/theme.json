@@ -240,6 +240,43 @@
       }
     }
   },
+  "sceneContainers": {
+    "schemaVersion": 1,
+    "containers": {
+      "previewPanel": {
+        "kind": "panel",
+        "anchor": "right",
+        "size": 0.38,
+        "padding": 16,
+        "radius": 12,
+        "elevation": 2
+      },
+      "previewCard": {
+        "kind": "card",
+        "anchor": "center",
+        "width": 320,
+        "height": 180,
+        "padding": 12,
+        "radius": 16,
+        "elevation": 1
+      },
+      "previewModal": {
+        "kind": "modal",
+        "width": 420,
+        "height": 220,
+        "scrimOpacity": 0.6,
+        "radius": 16,
+        "elevation": 3
+      },
+      "previewDrawer": {
+        "kind": "drawer",
+        "anchor": "bottom",
+        "size": 0.35,
+        "padding": 12,
+        "radius": 20
+      }
+    }
+  },
   "sceneSurfaces": {
     "schemaVersion": 1,
     "slots": {

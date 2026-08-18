@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/scene-containers-v1.schema.json",
+  "title": "Theme Engine scene containers v1",
+  "description": "Panels, cards, modals e drawers semânticos. O tema declara papel e âncora; geometria, scrim e empilhamento são resolvidos pela engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "containers"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "containers": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 12,
+      "propertyNames": {"pattern": "^[a-z][a-zA-Z0-9]{0,63}$"},
+      "additionalProperties": {"$ref": "#/$defs/container"}
+    }
+  },
+  "$defs": {
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["panel", "card", "modal", "drawer"]},
+        "anchor": {"enum": ["left", "right", "top", "bottom", "center"]},
+        "size": {"type": "number", "minimum": 0.1, "maximum": 0.9},
+        "width": {"type": "number", "minimum": 16, "maximum": 16384},
+        "height": {"type": "number", "minimum": 16, "maximum": 16384},
+        "padding": {"type": "number", "minimum": 0, "maximum": 64},
+        "radius": {"type": "number", "minimum": 0, "maximum": 48},
+        "elevation": {"type": "integer", "minimum": 0, "maximum": 4},
+        "scrimOpacity": {"type": "number", "minimum": 0, "maximum": 0.9},
+        "dismissible": {"type": "boolean"}
+      }
+    }
+  }
+}

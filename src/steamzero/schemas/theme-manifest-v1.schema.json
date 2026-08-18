@@ -290,6 +290,10 @@
     "sceneSurfaces": {
       "$ref": "scene-surfaces-v1.schema.json",
       "description": "Slots, galeria de saves e OSD por contrato público; a engine não controla o emulador."
+    },
+    "sceneContainers": {
+      "$ref": "scene-containers-v1.schema.json",
+      "description": "Panels, cards, modals e drawers semânticos; geometria e empilhamento são resolvidos pela engine."
     }
   },
   "additionalProperties": false,

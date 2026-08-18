@@ -16,6 +16,7 @@ from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
+from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
@@ -56,6 +57,7 @@ _LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
 # O preview mostra a interface ociosa para tornar a transparência declarada
 # legível; o estado real vem do shell, nunca do pacote.
 _MOTION_PREVIEW_INTERACTION = "idle"
+_CONTAINER_PREVIEW_BOUNDS = ContainerBounds(width=1280, height=800)
 _SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
     "library": {
         "items": [{"title": "Celeste"}],
@@ -341,6 +343,11 @@ def _to_preview_object(
             resolved.scene_motion,
             reduced_motion=resolved.reduced_motion,
             interaction_state=_MOTION_PREVIEW_INTERACTION,
+        ).to_qml_object()
+    if resolved.scene_containers is not None:
+        preview["sceneContainerPreview"] = resolve_scene_containers(
+            resolved.scene_containers,
+            bounds=_CONTAINER_PREVIEW_BOUNDS,
         ).to_qml_object()
     if resolved.scene_surfaces is not None:
         preview["sceneSurfacePreview"] = resolve_scene_surfaces(
