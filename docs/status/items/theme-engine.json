@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d3cecc49b1332e70a01302f3a78aa9104492c77d20ba2b67ea6b3d61a0abaa07",
+  "scopeDigest": "68c6bba575ae226adaac79c902f80d3ce0be3eb2f48f8b600122418a14eda6ee",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -176,12 +176,24 @@
       "reference": "tests/qml/check_scene_repeater.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_surfaces.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_surfaces.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_surfaces.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Avançar componentes do Launcher declarativos. Medição física permanece na release instalada identificada.",
+  "nextAction": "Avançar widgets allowlisted do Launcher (clock, recently played, statistics). Medição física permanece na release instalada identificada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. Este slice acrescenta os layout kinds flow e stack: flow quebra pelos bounds resolvidos e degrada para uma faixa com diagnostico quando o item nao cabe; stack ancora o baralho no centro e faz peek so pelo gap, com profundidade materializada em scale/opacity/z. O QML so atribui o resultado. Componentes do Launcher, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. Alem dos layout kinds flow e stack, este slice corrige o progressBar: o vocabulario aceitava o kind mas a resolucao nunca o tratava, entao toda barra declarada ficava em zero. Agora valor, estilo linear/circular/segmented/dotted, faixas preenchidas, angulo de varredura e contador {current}/{total} saem materializados do dominio, com diagnostico THEME-SURFACE-PROGRESS-004 quando o contador nao tem numero real. Widgets do Launcher, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }

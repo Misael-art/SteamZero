@@ -6681,3 +6681,30 @@ anterior era o catálogo de estado, resolvido neste commit documental);
 Ruff, format, mypy, independence, boundaries e status-check. SZ-THEME-ENGINE
 e SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — componentes de progresso
+
+O commit `59fa604` corrige um defeito real: `progressBar` já era um kind
+aceito pelo vocabulário de superfícies, mas `resolve_scene_surfaces` só
+tratava `saveGallery` e `osd` — toda barra declarada por um tema ficava
+travada em zero. A resolução agora materializa valor (binding em
+allowlist fechada `progress.<job>.ratio`), estilo linear/circular/
+segmented/dotted, faixas preenchidas, ângulo de varredura e o contador
+`{current}/{total}` renderizado a partir de bindings allowlisted. Contador
+sem número real não inventa valor: mantém a barra e emite
+`THEME-SURFACE-PROGRESS-004`. O `SceneSurfacePreview` consome os
+escalares prontos — não conta segmentos nem formata texto — e o grafo do
+Studio passou a expor o slot `loading` para inspeção.
+
+A sonda `check_scene_surfaces.qml` foi verificada por mutação (mutante
+reprova com exit 1, íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada; a autorização desta sessão não
+preencheu a release-alvo, então este slice também não tem evidência
+física.
+
+Fechamento local: **4551 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
