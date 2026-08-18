@@ -9,29 +9,34 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "dd49064179c0f7453d5436c26b824a256c750c793031d33a38d1ebd6139e1f16",
+  "scopeDigest": "b5eaf777d02eaf9455e99b0c43f22b028e05d6f5c5ce2f15c6d4c57fe1371afe",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
     "src/steamzero/domain/themes.py",
     "src/steamzero/domain/scene_contract.py",
     "src/steamzero/domain/scene_display.py",
+    "src/steamzero/domain/scene_layout.py",
     "src/steamzero/domain/qml_render_model.py",
     "src/steamzero/adapters/theme_catalog.py",
     "src/steamzero/schemas/asset-recipe-v1.schema.json",
+    "src/steamzero/schemas/scene-layout-v1.schema.json",
     "src/steamzero/schemas/theme-manifest-v1.schema.json",
     "src/steamzero/schemas/ir-scene-v1.schema.json",
     "src/steamzero/ui/qml/MediaEffectLayer.qml",
     "src/steamzero/ui/qml/ReflectionLayer.qml",
     "src/steamzero/ui/qml/AssetRecipePreview.qml",
+    "src/steamzero/ui/qml/SceneRepeater.qml",
     "src/steamzero/themes/org.steamzero.asset-recipes-demo",
     "tests/unit/test_asset_recipes.py",
     "tests/unit/test_theme_effects.py",
     "tests/unit/test_scene_contract.py",
     "tests/unit/test_scene_image_pipeline.py",
+    "tests/unit/test_scene_layout.py",
     "tests/qml/check_media_effect_layer.qml",
     "tests/qml/check_asset_recipe_preview.qml",
     "tests/qml/check_theme_editor_asset_recipes.qml",
+    "tests/qml/check_scene_repeater.qml",
     "tests/qml/golden/asset-recipes",
     "tests/integration/test_qml_asset_recipes.py"
   ],
@@ -93,12 +98,24 @@
       "reference": "tests/unit/test_asset_recipes.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests -q (4488 passed); ruff check; ruff format --check; mypy; make independence boundaries status-check; harnesses QML e 12 goldens RHI",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_asset_recipes.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_repeater.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar gates e CI do cache adaptativo; obter autorizacao com release exata para a entrega fisica pendente. Depois, iniciar layouts, repeaters, bindings e breakpoints.",
+  "nextAction": "Iniciar extração de cores, glass e effect nodes por tiers. Release e evidência física dos slices de receitas, cache e layouts aguardam identificação da release exata.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Os commits 9d126ea e 06b3a0f possuem contrato versionado de receitas, fixture CC0 com uma unica fonte SVG transparente, cache deterministico de planos descartaveis, negociacao de capability/tier/fallback e preview QML integrado com recolor, grayscale, silhuetas, contorno externo, glow e shadow. O commit ff82210 acrescenta LRU adaptativo por bytes com teto configurado padrao de 512 MiB sem pre-alocacao, pressao normal/moderada/critica, eviction deterministica e render direto seguro para entrada acima do orcamento. Isso e contabilidade de desenvolvimento; nao e medicao de VRAM fisica. Invert, hue rotate e outline interno possuem contrato allowlisted e fallback diagnosticado, mas ainda nao possuem backend nativo. O fechamento do cache adaptativo observou 4488 testes passed, 10 skipped, Ruff, format, mypy, independence, boundaries, status e 12 goldens RHI verdes. Os goldens RHI sao somente evidencia de desenvolvimento offscreen, nao de desempenho ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; por isso publicacao, instalacao, frame time, memoria, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados para este slice. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa; nao inclui nem certifica estes slices. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
+  "notes": "Estado permanece parcial. Os commits 9d126ea, 06b3a0f e ff82210 cobrem receitas de um asset-fonte, cache adaptativo e preview QML das variantes. Este slice acrescenta sceneLayouts v1 com grid/list, breakpoints por largura, bindings fechados item.*, SceneRepeater que so consome nos finais e fallback do catalogo para o builtin seguro quando o pacote e invalido. O QML nao calcula geometria nem interpreta binding. Wheel e cover flow ainda nao existem. Invert, hue rotate e outline interno continuam allowlisted com fallback diagnosticado, sem backend nativo. A evidencia deste slice e offscreen (testes unitarios e harness QML); nao e medicao de FPS, frame time, VRAM ou entrega fisica. A autorizacao de release desta sessao nao identifica uma release exata; publicacao, instalacao, caminho GPU real, idempotencia, rollback e preservacao de dados nao foram observados. Distribuicao installed descreve apenas a fundacao da release anteriormente ativa. Theme Studio, AURA UI e AURA Launcher nao foram promovidos."
 }

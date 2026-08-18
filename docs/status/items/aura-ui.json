@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "d6cd6de01cc801175ad4dc3364f5ac0ac9f1a0d956a622f10a70a384644759c8",
+  "scopeDigest": "c712982cb862fa531ec68ab27f04d7fad0e3e490797a17b74c02ca6438e3040b",
   "scopePaths": [
     "src/steamzero/domain/default_theme.py",
     "src/steamzero/themes",
@@ -52,5 +52,5 @@
   "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture asset-unico; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item."
+  "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item."
 }

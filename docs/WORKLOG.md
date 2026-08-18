@@ -6432,3 +6432,25 @@ Ruff format, mypy, independence, boundaries, status-check, harnesses QML e 12
 goldens RHI verdes. A contabilidade de bytes é um contrato de desenvolvimento,
 não uma medição de VRAM real. Nenhuma release/instalação/ação de host foi
 executada e os estados das quatro capacidades não foram promovidos.
+
+## 2026-08-17 — Theme Engine — layouts, repeaters e bindings
+
+A frente avançou na terceira onda da especificação, com a entrega física dos
+slices anteriores ainda bloqueada pela ausência de release exata autorizada.
+O commit funcional `b7b750a` acrescenta `sceneLayouts` v1: grid e list
+declarativos, breakpoints por largura, bindings fechados `item.*` e
+`SceneRepeater` que apenas instancia nós já materializados. Fonte ausente ou
+incompatível devolve layout vazio com diagnóstico; excesso de itens trunca com
+`THEME-LAYOUT-LIMIT-002`; pacote inválido volta ao builtin seguro sem derrubar
+alto contraste nem reduced motion.
+
+O QML do editor consome o preview materializado; não calcula geometria nem
+interpreta binding. Wheel e cover flow ficam fora deste slice. Fechamento
+local único: **4500 passed, 10 skipped**; Ruff check, Ruff format, mypy,
+independence, boundaries, status-check e harnesses
+`check_scene_repeater.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time, VRAM ou caminho GPU.
+
+Nenhuma release foi construída, publicada ou instalada. Nenhuma ação de host,
+`bigsudo`, rollback ou reboot foi executada. SZ-THEME-ENGINE permanece
+partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.
