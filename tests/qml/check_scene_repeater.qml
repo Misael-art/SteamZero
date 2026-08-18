@@ -40,6 +40,54 @@ Item {
     }
 
     SceneRepeater {
+        id: flow
+        layout: ({
+            "id": "previewFlow",
+            "kind": "flow",
+            "columns": 4,
+            "entries": [{
+                "kind": "text", "id": "flow-title-0", "text": "Axiom Verge",
+                "x": 0, "y": 0, "width": 138, "height": 32,
+                "visible": true, "opacity": 1,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "flow-title-1", "text": "Celeste",
+                "x": 146, "y": 0, "width": 138, "height": 32,
+                "visible": true, "opacity": 1,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: stack
+        layout: ({
+            "id": "previewStack",
+            "kind": "stack",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "stack-title-0", "text": "Axiom Verge",
+                "x": 251, "y": 22, "width": 138, "height": 32,
+                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "stack-title-1", "text": "Celeste",
+                "x": 251, "y": 32, "width": 138, "height": 32,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: covers
         layout: ({
             "id": "previewCoverFlow",
@@ -127,6 +175,24 @@ Item {
             if (side !== null) {
                 harness.check(Math.abs(side.x - 21.4) < 0.05 && side.scale === 0.92,
                               "elipse do carousel precisa usar geometria materializada")
+            }
+            harness.check(flow.entryCount === 2, "flow não recebeu duas entradas")
+            const flowFirst = flow.entryAt(0)
+            const flowSecond = flow.entryAt(1)
+            harness.check(flowFirst !== null && flowSecond !== null, "nós do flow não instanciaram")
+            if (flowFirst !== null && flowSecond !== null) {
+                harness.check(flowFirst.y === flowSecond.y && flowSecond.x === 146,
+                              "quebra do flow precisa vir materializada do domínio")
+            }
+            harness.check(stack.entryCount === 2, "stack não recebeu duas entradas")
+            const stackTop = stack.entryAt(1)
+            const stackBehind = stack.entryAt(0)
+            harness.check(stackTop !== null && stackBehind !== null, "nós do stack não instanciaram")
+            if (stackTop !== null && stackBehind !== null) {
+                harness.check(stackTop.x === stackBehind.x && stackTop.y - stackBehind.y === 10,
+                              "peek do stack precisa usar o gap materializado")
+                harness.check(stackTop.z > stackBehind.z && stackBehind.scale === 0.92,
+                              "profundidade do stack não pode ser recalculada no QML")
             }
             harness.check(covers.entryCount === 2, "cover flow não recebeu duas entradas")
             const cover = covers.entryAt(1)

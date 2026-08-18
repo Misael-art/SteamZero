@@ -244,6 +244,209 @@ def test_carousel_places_items_on_an_ellipse_by_wrapped_distance() -> None:
     assert all("binding" not in entry.node for entry in layout.entries)
 
 
+def test_flow_wraps_by_bounds_and_reports_computed_columns() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "shelfFlow": {
+                "source": "library.items",
+                "kind": "flow",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "template": {
+                    "kind": "text",
+                    "id": "flow-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(
+        book, _read_model(), bounds=LayoutBounds(width=400, height=300)
+    )
+    layout = resolved.layouts["shelfFlow"]
+    assert layout.kind is LayoutKind.FLOW
+    assert layout.columns == 4
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (0.0, 0.0),
+        (90.0, 0.0),
+        (180.0, 0.0),
+        (270.0, 0.0),
+        (0.0, 34.0),
+    ]
+    assert resolved.diagnostics == ()
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+    narrow = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=200, height=300))
+    assert narrow.layouts["shelfFlow"].columns == 2
+    assert [(entry.x, entry.y) for entry in narrow.layouts["shelfFlow"].entries][:3] == [
+        (0.0, 0.0),
+        (90.0, 0.0),
+        (0.0, 34.0),
+    ]
+
+
+def test_vertical_flow_wraps_by_bounds_height() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "columnFlow": {
+                "source": "library.items",
+                "kind": "flow",
+                "direction": "vertical",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "template": {"kind": "text", "id": "flow-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["columnFlow"]
+    assert layout.columns == 3
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (0.0, 0.0),
+        (0.0, 34.0),
+        (90.0, 0.0),
+        (90.0, 34.0),
+        (180.0, 0.0),
+    ]
+
+
+def test_flow_degrades_to_a_single_track_with_diagnostic_when_item_exceeds_bounds() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "tooWide": {
+                "source": "library.recent",
+                "kind": "flow",
+                "item": {"width": 240, "height": 36},
+                "gap": 8,
+                "template": {"kind": "text", "id": "flow-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(
+        book, _read_model(), bounds=LayoutBounds(width=100, height=300)
+    )
+    layout = resolved.layouts["tooWide"]
+    assert layout.columns == 1
+    assert [(entry.x, entry.y) for entry in layout.entries] == [(0.0, 0.0), (0.0, 44.0)]
+    assert any(
+        item.code == DIAG_LAYOUT_LIMIT
+        and item.layout == "tooWide"
+        and item.fallback == "singleTrack"
+        for item in resolved.diagnostics
+    )
+
+
+def test_flow_refuses_declared_columns_and_breakpoints() -> None:
+    for extra in ({"columns": 3}, {"breakpoints": [{"columns": 2}]}):
+        with pytest.raises(ValueError, match="flow"):
+            LayoutRecipeBook.from_dict(
+                {
+                    "schemaVersion": 1,
+                    "layouts": {
+                        "bad": {
+                            "source": "library.items",
+                            "kind": "flow",
+                            "item": {"width": 80, "height": 24},
+                            "template": {"kind": "text", "id": "x"},
+                            **extra,
+                        }
+                    },
+                }
+            )
+
+
+def test_stack_overlaps_items_by_gap_and_materializes_depth() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusStack": {
+                "source": "library.items",
+                "kind": "stack",
+                "item": {"width": 80, "height": 24},
+                "gap": 12,
+                "maxItems": 3,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "stack-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusStack"]
+    assert layout.kind is LayoutKind.STACK
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (160.0, 16.0),
+        (160.0, 28.0),
+        (160.0, 40.0),
+    ]
+    assert [entry.node["z"] for entry in layout.entries] == [31, 32, 31]
+    assert [entry.node["scale"] for entry in layout.entries] == [0.92, 1.0, 0.92]
+    assert [entry.node["opacity"] for entry in layout.entries] == [0.82, 1.0, 0.82]
+    assert [entry.node["distance"] for entry in layout.entries] == [-1, 0, 1]
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def test_horizontal_stack_peeks_on_the_x_axis_only() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "sideStack": {
+                "source": "library.items",
+                "kind": "stack",
+                "direction": "horizontal",
+                "item": {"width": 80, "height": 24},
+                "gap": 12,
+                "maxItems": 3,
+                "selected": 1,
+                "template": {"kind": "text", "id": "stack-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["sideStack"]
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (148.0, 28.0),
+        (160.0, 28.0),
+        (172.0, 28.0),
+    ]
+
+
+def test_stack_refuses_breakpoints() -> None:
+    with pytest.raises(ValueError, match="stack"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "bad": {
+                        "source": "library.items",
+                        "kind": "stack",
+                        "item": {"width": 80, "height": 24},
+                        "template": {"kind": "text", "id": "x"},
+                        "breakpoints": [{"columns": 2}],
+                    }
+                },
+            }
+        )
+
+
 def test_cover_flow_refuses_vertical_direction() -> None:
     with pytest.raises(ValueError, match="horizontal"):
         LayoutRecipeBook.from_dict(

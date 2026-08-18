@@ -3,7 +3,7 @@
 """Layouts responsivos e repetidores declarativos da Theme Engine.
 
 Esta é a fronteira entre a descrição declarativa do tema e o renderizador. O
-tema escolhe somente um vocabulário fechado (grid/list/wheel, medidas,
+tema escolhe somente um vocabulário fechado (grid/list/wheel/flow/stack, medidas,
 breakpoints, offset converter e campos ``item.*``); o shell entrega o read
 model; e o resultado já contém
 geometria e valores escalares finais para QML. Nenhuma expressão, QML,
@@ -38,6 +38,16 @@ class LayoutKind(StrEnum):
     WHEEL = "wheel"
     COVER_FLOW = "coverFlow"
     CAROUSEL = "carousel"
+    FLOW = "flow"
+    STACK = "stack"
+
+
+_DEPTH_KINDS = frozenset(
+    {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL, LayoutKind.STACK}
+)
+_HORIZONTAL_DEFAULT_KINDS = frozenset(
+    {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL, LayoutKind.FLOW}
+)
 
 
 class LayoutDirection(StrEnum):
@@ -372,22 +382,12 @@ class LayoutRecipe:
             or not 0 <= self.selected <= MAX_ITEMS - 1
         ):
             raise ValueError("selected fora de 0..127")
-        if self.kind is LayoutKind.LIST and self.breakpoints:
-            raise ValueError("list não aceita breakpoints")
-        if self.kind is LayoutKind.WHEEL and self.breakpoints:
-            raise ValueError("wheel não aceita breakpoints")
-        if self.kind is LayoutKind.COVER_FLOW and self.breakpoints:
-            raise ValueError("coverFlow não aceita breakpoints")
-        if self.kind is LayoutKind.CAROUSEL and self.breakpoints:
-            raise ValueError("carousel não aceita breakpoints")
+        if self.kind is not LayoutKind.GRID and self.breakpoints:
+            raise ValueError(f"{self.kind.value} não aceita breakpoints")
         if self.kind is LayoutKind.COVER_FLOW and self.direction is not LayoutDirection.HORIZONTAL:
             raise ValueError("coverFlow só é horizontal")
-        if self.offset is not None and self.kind not in {
-            LayoutKind.WHEEL,
-            LayoutKind.COVER_FLOW,
-            LayoutKind.CAROUSEL,
-        }:
-            raise ValueError("offset só é válido em wheel, coverFlow ou carousel")
+        if self.offset is not None and self.kind not in _DEPTH_KINDS:
+            raise ValueError("offset só é válido em wheel, coverFlow, carousel ou stack")
         ranges: list[tuple[float, float]] = []
         for point in self.breakpoints:
             low = point.min_width if point.min_width is not None else float("-inf")
@@ -420,12 +420,10 @@ class LayoutRecipe:
             kind = LayoutKind(str(raw["kind"]))
         except ValueError:
             raise ValueError("kind inválido") from None
+        if kind is LayoutKind.FLOW and "columns" in raw:
+            raise ValueError("flow calcula columns a partir dos bounds")
         try:
-            direction_default = (
-                "horizontal"
-                if kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL}
-                else "vertical"
-            )
+            direction_default = "horizontal" if kind in _HORIZONTAL_DEFAULT_KINDS else "vertical"
             direction = LayoutDirection(str(raw.get("direction", direction_default)))
         except ValueError:
             raise ValueError("direction inválida") from None
@@ -479,9 +477,9 @@ class LayoutRecipe:
         }
         if self.kind is LayoutKind.GRID:
             value["columns"] = self.columns
-        if self.kind is LayoutKind.LIST:
+        if self.kind in {LayoutKind.LIST, LayoutKind.FLOW}:
             value["direction"] = self.direction.value
-        if self.kind in {LayoutKind.WHEEL, LayoutKind.COVER_FLOW, LayoutKind.CAROUSEL}:
+        if self.kind in _DEPTH_KINDS:
             value["direction"] = self.direction.value
             value["selected"] = self.selected
             if self.offset is not None:
@@ -620,6 +618,26 @@ def _carousel_point(
     )
 
 
+def _flow_tracks(recipe: LayoutRecipe, bounds: LayoutBounds, count: int) -> tuple[int, int, bool]:
+    """Quantas faixas cabem no eixo de quebra, quantas colunas saem e se degradou.
+
+    Horizontal quebra em linhas pela largura; vertical quebra em colunas pela
+    altura. Item maior que os bounds não some: a faixa é fixada em 1 e o chamador
+    registra diagnóstico.
+    """
+    if recipe.direction is LayoutDirection.HORIZONTAL:
+        span, extent = bounds.width, recipe.item.width
+    else:
+        span, extent = bounds.height, recipe.item.height
+    fitted = int((span + recipe.gap) // (extent + recipe.gap))
+    tracks = max(fitted, 1)
+    if recipe.direction is LayoutDirection.HORIZONTAL:
+        columns = tracks
+    else:
+        columns = max(1, math.ceil(count / tracks)) if count else 1
+    return tracks, columns, fitted < 1
+
+
 def _read_path(read_model: Mapping[str, Any], source: str) -> Any:
     current: Any = read_model
     for part in source.split("."):
@@ -716,6 +734,18 @@ def resolve_scene_layouts(
                 )
                 continue
             accepted.append((index, raw_item))
+        tracks = 1
+        if recipe.kind is LayoutKind.FLOW:
+            tracks, columns, degraded = _flow_tracks(recipe, bounds, len(accepted))
+            if degraded:
+                diagnostics.append(
+                    LayoutDiagnostic(
+                        code=DIAG_LAYOUT_LIMIT,
+                        layout=layout_id,
+                        reason=f"item de '{recipe.source}' não cabe nos bounds do flow",
+                        fallback="singleTrack",
+                    )
+                )
         selected = recipe.selected
         if accepted:
             selected = min(max(selected, 0), len(accepted) - 1)
@@ -741,6 +771,25 @@ def resolve_scene_layouts(
                 x = bounds.x + column * (recipe.item.width + recipe.gap)
                 y = bounds.y + row * (recipe.item.height + recipe.gap)
                 extras: dict[str, Any] = {}
+            elif recipe.kind is LayoutKind.FLOW:
+                if recipe.direction is LayoutDirection.HORIZONTAL:
+                    column, row = display_index % tracks, display_index // tracks
+                else:
+                    column, row = display_index // tracks, display_index % tracks
+                x = bounds.x + column * (recipe.item.width + recipe.gap)
+                y = bounds.y + row * (recipe.item.height + recipe.gap)
+                extras = {}
+            elif recipe.kind is LayoutKind.STACK:
+                distance = display_index - selected
+                scale, fade, z_index, _rotation = offset.apply(distance)
+                center_x = bounds.x + (bounds.width - recipe.item.width) / 2
+                center_y = bounds.y + (bounds.height - recipe.item.height) / 2
+                peek = distance * recipe.gap
+                if recipe.direction is LayoutDirection.HORIZONTAL:
+                    x, y = center_x + peek, center_y
+                else:
+                    x, y = center_x, center_y + peek
+                extras = {"scale": scale, "z": z_index, "distance": distance}
             elif recipe.kind is LayoutKind.CAROUSEL:
                 distance = _wrap_distance(display_index, selected, len(accepted))
                 scale, fade, z_index, _rotation = offset.apply(distance)
@@ -782,11 +831,7 @@ def resolve_scene_layouts(
             if extras:
                 node = dict(node)
                 node.update(extras)
-                if recipe.kind in {
-                    LayoutKind.WHEEL,
-                    LayoutKind.COVER_FLOW,
-                    LayoutKind.CAROUSEL,
-                }:
+                if recipe.kind in _DEPTH_KINDS:
                     base = node.get("opacity", 1.0)
                     if isinstance(base, int | float) and not isinstance(base, bool):
                         node["opacity"] = round(float(base) * fade, 4)

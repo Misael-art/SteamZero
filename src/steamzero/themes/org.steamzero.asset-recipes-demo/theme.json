@@ -99,6 +99,39 @@
             "fontPixelSize": 14
           }
         }
+      },
+      "previewFlow": {
+        "source": "preview.items",
+        "kind": "flow",
+        "item": { "width": 138, "height": 32 },
+        "gap": 8,
+        "maxItems": 4,
+        "template": {
+          "kind": "text",
+          "id": "flow-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      },
+      "previewStack": {
+        "source": "preview.items",
+        "kind": "stack",
+        "item": { "width": 138, "height": 32 },
+        "gap": 10,
+        "maxItems": 4,
+        "selected": 1,
+        "template": {
+          "kind": "text",
+          "id": "stack-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
       }
     }
   },
