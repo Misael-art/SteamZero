@@ -6733,3 +6733,37 @@ Fechamento local: **4555 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — highlight central e transparência por interação
+
+Dois commits funcionais nesta onda.
+
+O `494aa1d` acrescenta `highlight` aos layouts com centro (wheel,
+coverFlow, carousel, stack): escala, opacidade, largura e cor de contorno
+do item selecionado, com tratamento opcional e distinto para os vizinhos
+imediatos. O domínio resolve tudo contra o falloff do offset converter e
+marca cada entrada com `highlighted`/`adjacent` e contorno materializado;
+o `SceneRepeater` desenha a moldura sem decidir quem é o centro. Item a
+partir da distância 2 mantém o falloff puro e contorno zero.
+
+O `3945396` acrescenta `presence` ao movimento: o tema declara a opacidade
+de cada camada por estado de interação (`idle`, `navigating`, `focused`,
+`menuOpen`), o shell informa o estado corrente e o domínio materializa
+opacidade e duração do fade. Estado ausente ou fora da allowlist não apaga
+a interface — cai no fallback opaco, marca `unknown` e emite
+`THEME-MOTION-PRESENCE-003`. Reduced motion zera o fade, nunca o valor.
+
+Sondas `check_scene_repeater.qml` e `check_scene_motion.qml` verificadas
+por mutação (mutantes reprovam com exit 1; íntegras passam com 0).
+
+O CI do push anterior (`b224539`) fechou verde em todos os jobs: 3.11,
+3.12, 3.14, gate visual QML, os três smokes e o supply chain.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. A autorização
+desta sessão continua sem release-alvo, então estas entregas também ficam
+sem evidência física.
+
+Fechamento local: **4562 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
