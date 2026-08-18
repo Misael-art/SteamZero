@@ -6614,3 +6614,19 @@ Fechamento local: **4536 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — layout wheel
+
+O commit `8cbbbcd` acrescenta o kind `wheel` com offset converter
+fechado. A engine materializa x/y/scale/opacity/z a partir da distância
+ao `selected`; o QML só atribui esses escalares. Cover flow continua
+recusado. Evidência física e instalação desta frente continuam
+bloqueadas: o PR #84 ainda não está em `main`.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada.
+
+Fechamento local: **4537 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.

@@ -19,7 +19,7 @@
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_theme_editor_aura.qml"
   ],
-  "scopeDigest": "378ba2174538b8a675e31b0e691978ba679b303ee8cf817b5007712fba25f00d",
+  "scopeDigest": "aa833cf97ccd58011d414a86941c8c1b0f245826493936506e6dc47c922b7aff",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [

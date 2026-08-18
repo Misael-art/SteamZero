@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "34b8606d69af707f629978db223a14ef5237417d542a246de66fa0a061bc830c",
+  "scopeDigest": "b8c40a6d1ee61e9eaefc00f13d03decce03907c8355dcb5a2f1816123ca8d2e4",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -166,10 +166,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Medir a cena de referência na release 0.1.0a46-226b5f4b5c7c e avançar wheel/cover flow. Theme Studio segue no item próprio.",
+  "nextAction": "Avançar cover flow declarativo. Medição física permanece na release instalada identificada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
-  "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Receitas, cache, layouts, paleta, vidro e motion ja tem contrato offscreen. Este slice acrescenta sceneSurfaces v1: slots semânticos, galeria de saves por contrato publico e OSD que nao oculta erro critico nem publica sucesso falso. A engine nao controla o emulador e nao le path privado. Isso nao implementa o AURA Launcher. Wheel/cover flow, canvas do Studio e medicao fisica ainda nao existem. A autorizacao de release desta sessao nao identifica uma release exata."
+  "updatedAt": "2026-08-18",
+  "notes": "Estado permanece parcial. Este slice acrescenta layout kind wheel com offset converter materializado (scale, opacity, z, distance). O QML so aplica os escalares; nao calcula roda. Cover flow, medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }
