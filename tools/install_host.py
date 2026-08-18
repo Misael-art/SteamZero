@@ -1010,10 +1010,40 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
         if (
             not version
             or (schema_version == 2 and version != data["packageVersion"])
-            or payload.get("status") not in {"ok", "degraded"}
+            or not _smoke_doctor_is_healthy(payload)
         ):
             raise RuntimeError("smoke da release não retornou estado saudável")
     return data
+
+
+def _smoke_doctor_is_healthy(payload: object) -> bool:
+    """O smoke valida o binário novo, não a convergência do daemon ao vivo.
+
+    ``doctor`` observa ``/opt/steamzero/current`` e o serviço da sessão. Durante
+    a ativação isso ainda aponta a geração anterior; tratar esse pending como
+    fatal impede o converge de reiniciar o daemon.
+    """
+    if not isinstance(payload, dict):
+        return False
+    status = payload.get("status")
+    if status in {"ok", "degraded"}:
+        return True
+    if status != "failed":
+        return False
+    checks = payload.get("checks")
+    if not isinstance(checks, list):
+        return False
+    generation_pending = False
+    for check in checks:
+        if not isinstance(check, dict) or check.get("status") != "fail":
+            continue
+        name = check.get("name")
+        message = str(check.get("message", ""))
+        if name == "service.generation" and "E-HOST-DAEMON-PENDING" in message:
+            generation_pending = True
+            continue
+        return False
+    return generation_pending
 
 
 _BOOT_CHAIN_BINARIES = (
