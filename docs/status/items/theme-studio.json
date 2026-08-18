@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "6181ec5360a6df24c1a0d93a8dba758856d88e4f533d785733e3718e4a84f863",
+  "scopeDigest": "9749f362b4ab7425598641f92473d573863a768e2f2ff7151d0663569928e4e9",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -82,8 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Acrescentar timeline de autoria e capturar evidência física do canvas na próxima release instalada.",
+  "nextAction": "Acrescentar profiler de orçamento no inspector e capturar evidência física do canvas na próxima release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Canvas, arvore, inspector, constraints e grafo de efeitos allowlisted existem no codigo e no harness QML. O inspector so observa stacks ja negociados pela engine; nao executa QML, shader ou codigo do pacote. Continua partial. Timeline de autoria, profiler e evidencia fisica do canvas na release instalada ainda nao existem."
+  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos e timeline materializada existem no codigo e no harness QML. A timeline do Studio so observa o plano ja resolvido pela engine; nao edita keyframes nem executa QML, shader ou codigo do pacote. Continua partial. Editor de keyframes, profiler e evidencia fisica do canvas na release instalada ainda nao existem."
 }
