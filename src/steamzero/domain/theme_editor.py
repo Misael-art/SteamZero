@@ -14,6 +14,11 @@ from typing import Any
 
 from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
+from steamzero.domain.dynamic_palette import extract_dynamic_palette
+from steamzero.domain.glass_panels import resolve_glass_panels
+from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
+from steamzero.domain.scene_motion import resolve_scene_motion
+from steamzero.domain.scene_surfaces import resolve_scene_surfaces
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -35,6 +40,43 @@ THEME_ID_RE = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$")
 
 _ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 _THEME_PACKAGE = "steamzero.themes"
+
+_LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
+    "preview": {
+        "items": [
+            {"title": "Axiom Verge"},
+            {"title": "Celeste"},
+            {"title": "Hades"},
+            {"title": "Tunic"},
+        ]
+    }
+}
+_LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
+_SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
+    "library": {
+        "items": [{"title": "Celeste"}],
+        "recent": [{"title": "Celeste"}],
+    },
+    "saves": {
+        "slots": [
+            {
+                "label": "Auto",
+                "timestamp": "2026-08-17T12:00:00Z",
+                "playtime": "1h 12m",
+                "compatible": True,
+                "hasThumbnail": True,
+            },
+            {
+                "label": "Slot 2",
+                "timestamp": "",
+                "playtime": "",
+                "compatible": False,
+                "hasThumbnail": False,
+            },
+        ]
+    },
+    "osd": {"volume": 0.4, "muted": False, "paused": False},
+}
 
 
 @dataclass
@@ -196,6 +238,59 @@ def _make_resolved(
         )
 
 
+def _preview_source_bytes(resolved: ResolvedTheme) -> bytes | None:
+    if resolved.dynamic_palette is None:
+        return None
+    slot = resolved.dynamic_palette.source_slot
+    asset = resolved.assets.get(slot)
+    if asset is None:
+        return None
+    try:
+        import importlib.resources as resources
+
+        ref = resources.files("steamzero.themes").joinpath(resolved.id, asset.path)
+        with resources.as_file(ref) as path:
+            return path.read_bytes()
+    except (OSError, FileNotFoundError, ModuleNotFoundError):
+        return None
+
+
+def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
+    """Entrega ao editor um preview já materializado, nunca bindings vivos."""
+    preview = resolved.to_theme_qml_object()
+    if resolved.scene_layouts is not None:
+        preview["sceneLayoutPreview"] = resolve_scene_layouts(
+            resolved.scene_layouts,
+            _LAYOUT_PREVIEW_READ_MODEL,
+            bounds=_LAYOUT_PREVIEW_BOUNDS,
+        ).to_qml_object()
+    extracted = None
+    if resolved.dynamic_palette is not None:
+        extracted = extract_dynamic_palette(
+            resolved.dynamic_palette,
+            source=_preview_source_bytes(resolved),
+        )
+        preview["dynamicPalette"] = extracted.to_qml_object()
+    if resolved.glass is not None:
+        palette = extracted.swatches if extracted is not None else {}
+        preview["glassPreview"] = resolve_glass_panels(
+            resolved.glass,
+            palette=palette,
+            high_contrast=resolved.high_contrast,
+        ).to_qml_object()
+    if resolved.scene_motion is not None:
+        preview["sceneMotionPreview"] = resolve_scene_motion(
+            resolved.scene_motion,
+            reduced_motion=resolved.reduced_motion,
+        ).to_qml_object()
+    if resolved.scene_surfaces is not None:
+        preview["sceneSurfacePreview"] = resolve_scene_surfaces(
+            resolved.scene_surfaces,
+            _SURFACE_PREVIEW_READ_MODEL,
+        ).to_qml_object()
+    return preview
+
+
 class ThemeEditorManager:
     def __init__(self) -> None:
         self._sessions: dict[str, EditorSession] = {}
@@ -244,7 +339,7 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
-            "preview": _make_resolved(manifest.to_dict(), tokens, assets).to_theme_qml_object(),
+            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), tokens, assets)),
         }
 
     def create(
@@ -273,7 +368,7 @@ class ThemeEditorManager:
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
-            "preview": _make_resolved(manifest.to_dict(), {}, {}).to_theme_qml_object(),
+            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), {}, {})),
         }
 
     def set_tokens(
@@ -461,13 +556,15 @@ class ThemeEditorManager:
         high_contrast: bool = False,
         reduced_motion: bool = False,
     ) -> dict[str, object]:
-        return _make_resolved(
-            session.manifest,
-            session.tokens,
-            session.assets,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
-        ).to_theme_qml_object()
+        return _to_preview_object(
+            _make_resolved(
+                session.manifest,
+                session.tokens,
+                session.assets,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            )
+        )
 
 
 def _validate_save(manifest_dict: dict[str, object]) -> str | None:

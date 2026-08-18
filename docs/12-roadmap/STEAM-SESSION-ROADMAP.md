@@ -24,7 +24,7 @@ snapshot restaurável, console de recuperação e rollback verificado.
 | Privilégio | F-PL-05, SZ-PR-01..08 | dry only | transporte Polkit, efetores host e audit root |
 | Steam Input | F-CT-01/03, SZ-CT-01..11 | parcial | layouts próprios, apply real, hot-swap, conflitos e glyphs |
 | Frontends Steam | F-FE-01..02, SZ-FE-01..02/08 | parcial | shortcuts.vdf/SRM idempotentes e launcher genérico |
-| Game Mode UI e QAM | F-UI-01/03/04, SZ-UI-01/02/04/06/09..14/16 | parcial | superfície Game Mode, QAM fino e focus graph certificado |
+| AURA Launcher e QAM | F-UI-01/03/04, SZ-AURA-LAUNCHER | planejado | home fullscreen, biblioteca, página de jogo, launch/return, QAM fino e focus graph certificado; AURA UI não satisfaz este bloco |
 | Watchdogs e suporte | SZ-OP-06..07 | pendente | healthchecks, recovery e bundle anonimizado revisável |
 | Hardware | SZ-QA-10..11 | read-only | matriz LCD/OLED/dock/suspend/storage/input/TDP por release |
 
@@ -115,10 +115,13 @@ aplicação é no-op verificado.
 Registrar combinações testadas de Steam, SteamOS/distro, Gamescope, Decky e
 plugin. Saída: combinação incompatível é bloqueada antes de mutação.
 
-### R8 — Game Mode UI e QAM
+### R8 — AURA Launcher e QAM
 
-Levar o design gerencial escolhido à superfície Game Mode, com QAM opcional,
-jobs, recovery, acessibilidade e navegação integral por controle em 1280×800.
+Construir a superfície fullscreen própria sobre o sistema visual AURA UI, com
+home, biblioteca, página de jogo, launch/return, QAM opcional, jobs, recovery,
+acessibilidade e navegação integral por controle em 1280×800. A superfície usa
+a Theme Engine, mas o Theme Studio continua um marco independente. Abrir a
+central administrativa em tela cheia ou pelo Steam não satisfaz esta etapa.
 
 ### R9 — certificação física
 

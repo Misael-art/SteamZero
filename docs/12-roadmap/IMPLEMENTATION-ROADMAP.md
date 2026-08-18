@@ -44,7 +44,15 @@ opcional e só vira owner após validação em hardware. Este submarco não renu
 
 ## Fase 5 — UI
 
-Entregas: Game Mode UI (dashboard, biblioteca, página do jogo, BIOS center, jobs, saves/conflitos, configurações, acessibilidade), expansão da Desktop UI QML iniciada no M10-H (lote, imports offline, logs/journal, manutenção), QAM adapter opcional, testes de UI (focus graph, escalas, erros).
+Entregas separadas: **AURA UI** na central de gerenciamento (dashboard, BIOS
+center, jobs, saves/conflitos, configurações, lote, imports, logs/journal e
+manutenção) e **AURA Launcher** fullscreen (home, biblioteca, busca, coleções,
+página do jogo, launch/return e recuperação por controle). O Launcher consome o
+sistema visual, mas possui item, gates e certificação próprios. A fase também
+fecha a **Theme Engine** declarativa e o **Theme Studio** visual definidos em
+`01-product/THEME-ENGINE-AND-STUDIO.md`; tokens ou editor de paleta isolados não
+satisfazem esses marcos. Inclui ainda QAM opcional e testes de UI (focus graph,
+escalas e erros).
 Critério: AC-UI-01..03; jornadas J1–J9 automatizadas onde possível.
 
 ## Fase 6 — Distribuição

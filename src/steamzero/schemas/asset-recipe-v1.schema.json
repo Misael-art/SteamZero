@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steamzero.org/schemas/asset-recipe-v1.schema.json",
+  "title": "SteamZero Asset Recipe v1",
+  "type": "object",
+  "required": ["schemaVersion", "sourceSlot", "recipes"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceSlot": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+    "recipes": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 32,
+      "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["source", "nodes"],
+        "properties": {
+          "source": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,63}$" },
+          "nodes": {
+            "type": "array",
+            "maxItems": 12,
+            "items": { "$ref": "#/$defs/node" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+    "fallback": { "enum": ["source", "outer"] },
+    "node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "recolor" },
+            "color": { "$ref": "#/$defs/color" },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fallback": { "$ref": "#/$defs/fallback" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "grayscale" },
+            "amount": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "silhouette" },
+            "color": { "enum": ["#000000", "#ffffff", "#FFFFFF"] },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "invert" },
+            "amount": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "hueRotate" },
+            "degrees": { "type": "number", "minimum": -360, "maximum": 360 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "width", "color", "mask"],
+          "properties": {
+            "type": { "const": "outline" },
+            "width": { "type": "number", "minimum": 1, "maximum": 32 },
+            "color": { "$ref": "#/$defs/color" },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "position": { "enum": ["inner", "outer"] },
+            "mask": { "enum": ["alpha", "sdf"] },
+            "fallback": { "$ref": "#/$defs/fallback" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "glow" },
+            "color": { "$ref": "#/$defs/color" },
+            "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+            "blur": { "type": "number", "minimum": 0, "maximum": 48 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "shadow" },
+            "color": { "$ref": "#/$defs/color" },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "blur": { "type": "number", "minimum": 0, "maximum": 48 },
+            "offsetX": { "type": "number", "minimum": -48, "maximum": 48 },
+            "offsetY": { "type": "number", "minimum": -48, "maximum": 48 },
+            "fallback": { "const": "source" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

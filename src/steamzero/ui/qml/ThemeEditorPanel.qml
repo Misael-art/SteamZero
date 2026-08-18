@@ -44,6 +44,54 @@ Rectangle {
     // em ``_source.resolved`` — alimentá-lo com o dicionário de tokens puro
     // fazia o preview cair no fallback claro e publicar binding warnings.
     property var editorPreviewObject: null
+    property string assetRecipeSelection: "original"
+    readonly property bool assetRecipeDemoActive:
+        editorManifest.id === "org.steamzero.asset-recipes-demo"
+        && Object.keys(_previewBridge.assetRecipes).length > 0
+    readonly property url assetRecipeSource: assetRecipeDemoActive
+        ? Qt.resolvedUrl("../../themes/org.steamzero.asset-recipes-demo/assets/source.svg")
+        : ""
+    readonly property bool assetRecipePreviewReady:
+        assetRecipeDemoActive && assetRecipePreview.sourceStatus === Image.Ready
+    readonly property int assetRecipePreviewDecodeCount: assetRecipePreview.sourceDecodeCount
+    readonly property var sceneLayoutPreview: _previewBridge.sceneLayoutPreview.layouts
+        ? _previewBridge.sceneLayoutPreview.layouts.previewTitles : null
+    readonly property bool sceneLayoutPreviewActive:
+        assetRecipeDemoActive && sceneLayoutPreview !== null
+    readonly property int sceneLayoutPreviewEntryCount:
+        sceneLayoutPreviewActive ? sceneLayoutRepeater.entryCount : 0
+
+    function sceneLayoutPreviewEntryAt(index) {
+        return sceneLayoutPreviewActive ? sceneLayoutRepeater.entryAt(index) : null
+    }
+
+    readonly property var dynamicPalettePreview: _previewBridge.dynamicPalette.swatches
+        ? _previewBridge.dynamicPalette.swatches : null
+    readonly property bool dynamicPalettePreviewActive:
+        assetRecipeDemoActive && dynamicPalettePreview !== null
+    readonly property var glassPreview: _previewBridge.glassPreview.panels
+        ? _previewBridge.glassPreview.panels.previewCard : null
+    readonly property bool glassPreviewActive:
+        assetRecipeDemoActive && glassPreview !== null
+    readonly property var sceneMotionPreview: _previewBridge.sceneMotionPreview.states
+        ? _previewBridge.sceneMotionPreview : null
+    readonly property bool sceneMotionPreviewActive:
+        assetRecipeDemoActive && sceneMotionPreview !== null
+    readonly property int sceneMotionFocusDuration:
+        sceneMotionPreviewActive && sceneMotionPreview.transitions
+            && sceneMotionPreview.transitions.focusIn
+            ? Number(sceneMotionPreview.transitions.focusIn.duration) : 0
+    readonly property var sceneSurfacePreview: _previewBridge.sceneSurfacePreview.slots
+        ? _previewBridge.sceneSurfacePreview : null
+    readonly property bool sceneSurfacePreviewActive:
+        assetRecipeDemoActive && sceneSurfacePreview !== null
+    readonly property int sceneSurfaceSaveCount:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.saveCount
+            ? sceneSurfaceRepeater.saveCount : 0
+    readonly property bool sceneSurfaceThumbnailFallback:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.thumbnailFallback
+    readonly property bool sceneSurfaceCriticalVisible:
+        sceneSurfacePreviewActive && sceneSurfaceRepeater.criticalVisible
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -76,6 +124,7 @@ Rectangle {
         panel.editorManifest = manifest
         panel.editorPreviewObject = preview
         panel.editorTokens = preview && preview.resolved ? preview.resolved : {}
+        panel.assetRecipeSelection = "original"
         panel.editorDirty = false
         panel.editorReadOnly = manifest.readOnly === true
     }
@@ -791,6 +840,227 @@ Rectangle {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.assetRecipeDemoActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 260 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label {
+                                    text: qsTr("Asset único · receita em runtime")
+                                    color: panel._previewBridge.text
+                                    font.pixelSize: 14
+                                    font.weight: Font.Medium
+                                    Layout.fillWidth: true
+                                }
+                                ComboBox {
+                                    id: assetRecipePicker
+                                    model: [
+                                        "original", "colored", "grayscale", "black", "white",
+                                        "outlineThin", "outlineThick", "outlineInner",
+                                        "outlinedGlow", "outlinedShadow"
+                                    ]
+                                    implicitWidth: 150
+                                    Accessible.name: qsTr("Variante do asset")
+                                    onActivated: panel.assetRecipeSelection = model[index]
+                                }
+                            }
+
+                            AssetRecipePreview {
+                                id: assetRecipePreview
+                                objectName: "assetRecipePreview"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.margins: 12
+                                source: panel.assetRecipeSource
+                                recipe: panel._previewBridge.assetRecipes[
+                                    panel.assetRecipeSelection] || ({
+                                        "source": "logo", "nodes": [], "fallback": "source"
+                                    })
+                            }
+
+                            Label {
+                                text: assetRecipePreview.fallbackActive
+                                    ? qsTr("Efeito indisponível; fonte segura exibida")
+                                    : qsTr("Fonte decodificada uma vez · cache por hash e tier")
+                                color: assetRecipePreview.fallbackActive
+                                    ? panel.amberColor : panel._previewBridge.textMuted
+                                font.pixelSize: 11
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneLayoutPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Grid responsivo · bindings materializados")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneRepeater {
+                            id: sceneLayoutRepeater
+                            objectName: "sceneLayoutRepeater"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            anchors.topMargin: 32
+                            layout: panel.sceneLayoutPreview
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.dynamicPalettePreviewActive || panel.glassPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 96 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Paleta extraída · vidro com fallback")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        Row {
+                            id: paletteSwatches
+                            objectName: "paletteSwatches"
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            spacing: 6
+                            Repeater {
+                                model: panel.dynamicPalettePreviewActive
+                                    ? ["accent", "vibrant", "muted", "background", "contrastText"]
+                                    : []
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    width: 18
+                                    height: 18
+                                    radius: 4
+                                    color: panel.dynamicPalettePreview[modelData]
+                                    border.color: panel._previewBridge.border
+                                    border.width: 1
+                                }
+                            }
+                        }
+
+                        GlassPanel {
+                            id: glassPreviewPanel
+                            objectName: "glassPreviewPanel"
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 120
+                            height: 48
+                            visible: panel.glassPreviewActive
+                            panel: panel.glassPreview
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneMotionPreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Estados nativos · timeline materializada")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneMotionPreview {
+                            id: sceneMotionNormal
+                            objectName: "sceneMotionNormal"
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 88
+                            height: 56
+                            motion: panel.sceneMotionPreview
+                            stateName: "normal"
+                        }
+
+                        SceneMotionPreview {
+                            id: sceneMotionFocused
+                            objectName: "sceneMotionFocused"
+                            anchors.left: sceneMotionNormal.right
+                            anchors.leftMargin: 16
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 12
+                            width: 88
+                            height: 56
+                            motion: panel.sceneMotionPreview
+                            stateName: "focused"
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.sceneSurfacePreviewActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 112 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Saves e OSD por contrato")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        SceneSurfacePreview {
+                            id: sceneSurfaceRepeater
+                            objectName: "sceneSurfaceRepeater"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            anchors.topMargin: 32
+                            surfaces: panel.sceneSurfacePreview
                         }
                     }
 

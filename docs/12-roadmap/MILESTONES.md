@@ -16,7 +16,9 @@ Complexidade em T-shirt (S/M/L/XL) — sem datas (dependem de Q6/Q10 e capacidad
 | M10 | Engine de adapters + 3 emuladores núcleo fim-a-fim | 4 | XL | instalar/atualizar/rollback DuckStation/RetroArch/Dolphin em VM |
 | M10-H | Handheld Desktop BigLinux/KDE autônomo e resiliente | 4 | L | status/plan/apply/recovery no Deck; zero dependência legada; UI QML navegável |
 | M11 | Frontends: Steam shortcuts + SRM + ES-DE sem duplicação | 4 | L | idempotência 2× verificada |
-| M12 | Game Mode UI navegável 100% controle (dashboard+biblioteca+jogo) | 5 | XL | suíte focus graph verde |
+| M12-E | Theme Engine declarativa e GPU-first | 5 | XL | um asset gera variantes e cenas responsivas a 60 FPS medidos no Deck, com fallback seguro |
+| M12-S | Theme Studio visual e reproduzível | 5/6 | XL | criar→preview→exportar→importar→reabrir sem perda, com validação e sem editor externo |
+| M12 | AURA Launcher fullscreen navegável 100% por controle (home+biblioteca+jogo+retorno) | 5 | XL | focus graph verde + ciclo físico controle→jogo→retorno com capturas da release instalada |
 | M13 | Adoção EmuDeck/RetroDECK em máquina real de teste | 5 | L | relatório de import sem perda (hashes) |
 | M14 | Flatpak + canais + update/rollback da plataforma | 6 | L | RT-14 verde; downgrade demonstrado |
 | M15 | Release 1.0 stable com SBOM/assinaturas + docs de usuário | 6 | M | checklist §17 completo com hardware (Q6) |

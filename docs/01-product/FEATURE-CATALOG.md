@@ -94,7 +94,15 @@ Colunas: origem conceitual (de qual projeto vem a melhor referência), fase do r
 
 ## UI
 
-| F-UI-01 | Game Mode UI (dashboard, biblioteca, jogo, BIOS center, jobs, saves, config) | RetroDECK Godot Configurator (precedente) | 5 |
-| F-UI-02 | Desktop Mode UI (lote, avançado, logs, migrações) | PhaseZero WPF contract (conceito) | 5 |
+| F-UI-01 | AURA Launcher fullscreen (home, biblioteca, jogo, busca, coleções, launch/return) | categoria Big Picture/ES-DE/RetroFE/BigBox; implementação própria | 5 |
+| F-UI-02 | AURA UI da central de gerenciamento (dashboard, BIOS, jobs, saves, configurações, lote, logs e migrações) | SteamZero | 4/5 |
 | F-UI-03 | QAM adapter opcional via Decky | PhaseZero decky-ws-client.py | 5 |
 | F-UI-04 | Acessibilidade (escala, contraste, redução de movimento, remap, glyphs) | novo | 5 |
+| F-UI-05 | Theme Engine declarativa: scene graph, layouts, assets, bindings, effect graph e animações GPU-first | SteamZero | 5 |
+| F-UI-06 | Theme Studio visual: canvas, árvore, inspector, nodes, timeline, preview, validação e pacote reproduzível | SteamZero | 5/6 |
+
+`F-UI-02` estar tematizada, instalada ou visível **não** implementa `F-UI-01`.
+O Launcher pode consumir tokens da AURA UI, mas exige shell, navegação, modelo de
+biblioteca, ciclo de lançamento e certificação física próprios.
+Theme Engine e Theme Studio também mantêm status independentes: runtime parcial
+não prova ferramenta visual, e editor de tokens não prova autoria livre de cenas.

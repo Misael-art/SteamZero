@@ -266,6 +266,30 @@
         }
       },
       "additionalProperties": false
+    },
+    "assetRecipes": {
+      "$ref": "asset-recipe-v1.schema.json",
+      "description": "Variantes derivadas em runtime de uma única fonte; nunca contém código ou assets pré-editados."
+    },
+    "sceneLayouts": {
+      "$ref": "scene-layout-v1.schema.json",
+      "description": "Layouts, repetidores e bindings item.* declarativos; o QML recebe somente modelos materializados pelo runtime."
+    },
+    "dynamicPalette": {
+      "$ref": "dynamic-palette-v1.schema.json",
+      "description": "Paleta extraída de um asset-fonte e cacheada por hash; nunca corre por frame."
+    },
+    "glass": {
+      "$ref": "glass-panel-v1.schema.json",
+      "description": "Painéis de vidro allowlisted com fallback sem backbuffer blur."
+    },
+    "sceneMotion": {
+      "$ref": "scene-motion-v1.schema.json",
+      "description": "Estados nativos, transições e timeline declarativos; o QML recebe somente o plano materializado."
+    },
+    "sceneSurfaces": {
+      "$ref": "scene-surfaces-v1.schema.json",
+      "description": "Slots, galeria de saves e OSD por contrato público; a engine não controla o emulador."
     }
   },
   "additionalProperties": false,

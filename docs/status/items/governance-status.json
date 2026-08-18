@@ -29,7 +29,7 @@
     "tests/unit/test_project_status.py",
     "tools/project_status.py"
   ],
-  "scopeDigest": "41ed8ddd2d11f3aa4bea99fe4377812e2c3c8b7c854e1a68f4f63fc27020e5f9",
+  "scopeDigest": "ae724f5eaa7f0d41ee17294c2035f6acef45dc81692d7b694bbb73971603cb4e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -50,6 +50,6 @@
   "activeWorkstreams": [
     "WS-2026-08-HARMONIZE-A45"
   ],
-  "updatedAt": "2026-08-12",
-  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe()."
+  "updatedAt": "2026-08-17",
+  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo."
 }

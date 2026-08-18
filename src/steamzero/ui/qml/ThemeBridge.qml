@@ -36,6 +36,26 @@ QtObject {
     // Receita decide fit/focal/source role; a URL continua vindo do read model.
     readonly property var mediaRecipes: resolved && resolved.mediaRecipes
         ? resolved.mediaRecipes : ({})
+    // Variantes de asset já negociadas. O componente recebe somente nodes
+    // builtin; fonte e receitas continuam dados, nunca código executável.
+    readonly property var assetRecipes: resolved && resolved.assetRecipes
+        ? resolved.assetRecipes : ({})
+    readonly property var assetRecipeDiagnostics: resolved && resolved.assetRecipeDiagnostics
+        ? resolved.assetRecipeDiagnostics : ([])
+    // Contrato declarativo do tema e modelo final opcional fornecido pelo shell.
+    // QML nunca consulta o catálogo nem resolve `item.*` por conta própria.
+    readonly property var sceneLayouts: resolved && resolved.sceneLayouts
+        ? resolved.sceneLayouts : ({})
+    readonly property var sceneLayoutPreview: resolved && resolved.sceneLayoutPreview
+        ? resolved.sceneLayoutPreview : ({})
+    readonly property var dynamicPalette: resolved && resolved.dynamicPalette
+        ? resolved.dynamicPalette : ({})
+    readonly property var glassPreview: resolved && resolved.glassPreview
+        ? resolved.glassPreview : ({})
+    readonly property var sceneMotionPreview: resolved && resolved.sceneMotionPreview
+        ? resolved.sceneMotionPreview : ({})
+    readonly property var sceneSurfacePreview: resolved && resolved.sceneSurfacePreview
+        ? resolved.sceneSurfacePreview : ({})
 
     // Cores — alto contraste sobrepõe quando ativo
     readonly property color background: highContrast ? "#000000" : _get("color", "background", "#e7eceb")

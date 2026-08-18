@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-AURA-UI",
+  "title": "AURA UI — sistema visual da central",
+  "domain": "themes",
+  "implementation": "complete",
+  "integration": "integrated",
+  "verification": "unit",
+  "operation": "degraded",
+  "distribution": "installed",
+  "scopeDigest": "b49a1a1a6ac490b6776a98d1bf0bd167d43d5801c5994d6f3a91d8fca0336a39",
+  "scopePaths": [
+    "src/steamzero/domain/default_theme.py",
+    "src/steamzero/themes",
+    "src/steamzero/themes/org.steamzero.aura",
+    "src/steamzero/themes/org.steamzero.default",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/qml/check_theme_editor_aura.qml",
+    "tests/unit/test_default_theme.py",
+    "tests/unit/test_theme_aura.py"
+  ],
+  "dependsOn": [
+    "SZ-THEME-ENGINE"
+  ],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Identidade, tokens e manifest do sistema visual AURA UI sao versionados no projeto.",
+    "AURA UI tem testes de carregamento e preferencia na central de gerenciamento.",
+    "Nenhuma evidencia deste item pode ser usada para declarar o AURA Launcher implementado ou instalado."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_theme_aura.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_aura.py tests/unit/test_themes.py tests/unit/test_default_theme.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_editor_aura.qml",
+      "command": "make check (gate QML offscreen registrado no harness)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_qml_handheld_offscreen.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Validar visualmente AURA UI na central real, sem confundir essa prova com o AURA Launcher.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-17",
+  "notes": "Renomeado de SZ-THEME-AURA para eliminar ambiguidade. AURA UI e o tema/sistema visual instalado na central; nao e a experiencia fullscreen de biblioteca. O digest foi renovado porque o escopo compartilhado de temas recebeu a fixture de layouts; testes AURA e QML permaneceram verdes, sem promocao de estado. Nao ha certificacao visual/hardware deste item."
+}

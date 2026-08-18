@@ -19,13 +19,19 @@ Ver PERSONAS.md. Resumo: (P1) iniciante console-like; (P2) entusiasta que quer c
 Plataforma composta por (§4 do prompt mestre):
 
 ```
-Game Mode UI ──┐
-Desktop UI ────┤                     ┌─ Adapters (emuladores, frontends, sistema)
+AURA Launcher ─┐
+AURA UI ───────┤                     ┌─ Adapters (emuladores, frontends, sistema)
 QAM (opcional)─┼─► Serviço local ───►├─ Núcleo transacional ─► Journal/Backups
 CLI ───────────┘    UI/API           ├─ Job Manager
                                      └─ State Store (SQLite)
                     Sistema de diagnóstico + backup/rollback transversais
 ```
+
+**AURA UI e AURA Launcher são entregas independentes.** AURA UI designa tema,
+tokens, componentes visuais e apresentação da central de gerenciamento existente.
+AURA Launcher designa a experiência fullscreen console-like de biblioteca,
+página de jogo e lançamento, na mesma categoria de produto que Big Picture,
+ES-DE, RetroFE ou BigBox. Ver [AURA-SURFACES](AURA-SURFACES.md).
 
 ## 4. Requisitos funcionais (síntese; catálogo completo em FEATURE-CATALOG.md)
 
@@ -40,6 +46,13 @@ RF-08 Frontends: adapters para Steam, SRM, ES-DE, RetroArch, RetroDECK, Heroic; 
 RF-09 Sessão Deck: máquinas de estado de sessão (§11.1) e de modo (handheld/docked-tv/docked-monitor/desktop), fallback de display, microSD por UUID.
 RF-10 Diagnóstico: doctor, logs estruturados, pacote de suporte anonimizado e revisável.
 RF-11 Contratos: CLI JSON estável, API local com allowlist, eventos de progresso, cancelamento.
+RF-12 Superfícies AURA: AURA UI tematiza a central; AURA Launcher oferece home,
+biblioteca, página de jogo, busca, coleções e launch/return fullscreen por controle.
+O estado de entrega e a evidência física são registrados separadamente.
+RF-13 Plataforma criativa: Theme Engine renderiza scenes, layouts, bindings,
+efeitos e animações a partir de assets-fonte e receitas declarativas; Theme Studio
+oferece autoria visual, preview, validação e empacotamento sem exigir edição manual
+das variantes. Código externo e shaders arbitrários permanecem proibidos.
 
 ## 5. Requisitos não-funcionais
 

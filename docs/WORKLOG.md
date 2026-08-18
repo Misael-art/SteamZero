@@ -6371,3 +6371,142 @@ um CI que ainda não rodou.
 
 Fases 8, 9 e 10 (release a45, instalação e certificação física) continuam
 pendentes e exigem o operador.
+
+## 2026-08-17 — Theme Engine — primeiro slice de receitas de asset
+
+Trabalho retomado sem descartar a árvore documental válida da branch
+transacional. O escopo AURA/Theme Engine/Theme Studio foi transferido para
+`codex/theme-engine-asset-recipes`, baseada exatamente em
+`e71d9b41982de74328cd9956b447f6009cbee509`; o restante da árvore original
+permanece preservado em stash. O commit documental isolado `3fa3ada` definiu a
+taxonomia das quatro capacidades e a especificação/roadmap, com CI terminal
+verde no run `32040325979`.
+
+O primeiro slice funcional foi implementado em `9d126ea`: fixture CC0 com um
+único SVG-fonte transparente, schema e receitas declarativas v1, nodes
+allowlisted, negociação de capability/tier/fallback, limites de custo e
+largura, cache determinístico descartável e preview QML consumido pelo editor.
+Testes provam recolor, grayscale, silhuetas preta/branca, preservação de alpha
+e furos, contornos fino/grosso distintos, glow/shadow, recusa de conteúdo
+ativo/código, uma única decodificação lógica, invalidação do cache e fallback
+seguro. Nenhum PNG derivado existe no pacote; os PNGs versionados ficam apenas
+em `tests/qml/golden/asset-recipes` como oráculos de teste.
+
+O gate visual remoto expôs que a imagem oficial fixa backend software e não
+oferece OpenGL. O teste RHI deixava de respeitar esse contrato e abortava o
+scene graph; `06b3a0f` passou a declarar o skip RHI explicitamente nesse
+ambiente, mantendo o contrato QML no backend software e os 12 goldens verdes
+onde RHI existe. Fechamento local: **4485 passed, 10 skipped**; Ruff check,
+Ruff format, mypy, independence, boundaries, status-check, dois harnesses QML
+e 12 goldens RHI verdes. O run remoto seguinte confirmou QML, supply-chain e
+smokes verdes; Python 3.14 passou 4235 testes e cobertura 85,97%, falhando
+somente porque o commit funcional isolado ainda não continha este fechamento
+documental/digests, razão deste commit separado.
+
+Nenhuma release foi construída, publicada ou instalada: a autorização desta
+sessão contém o placeholder `[PREENCHER RELEASE EXATA QUANDO DISPONÍVEL]` e não
+identifica uma release. Nenhuma ação de host, `bigsudo`, rollback ou reboot foi
+executada. Assim, não há captura da release instalada nem medição física de
+GPU, frame time ou memória; nenhuma alegação de 60 FPS foi feita. SZ-THEME-ENGINE
+permanece partial, e SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
+promovidos.
+
+## 2026-08-17 — Theme Engine — cache adaptativo por orçamento
+
+Com a entrega física do slice asset-único bloqueada pela ausência de release
+exata autorizada, a frente avançou no próximo trabalho seguro e independente.
+O baseline mostrou que `AssetRecipeCache` limitava apenas a quantidade de
+entradas; não havia orçamento em bytes nem reação à pressão de memória. O teste
+vermelho falhou na coleta pela ausência de `CachePressure`.
+
+O commit funcional `ff82210` adiciona teto padrão de 512 MiB sem pré-alocar,
+estimativa determinística RGBA pelo tamanho e escala, LRU simultâneo por entradas
+e bytes, pressão normal/moderada/crítica (100%/50%/25%) e fallback
+`render-direct` quando uma variante isolada excede o orçamento. Reduzir o
+orçamento remove primeiro a entrada menos recente; restaurá-lo não pré-aloca nem
+recarrega derivados. O cache continua descartável e sua chave permanece ligada
+a fonte, receita, tamanho, escala, tier e capabilities.
+
+Fechamento local único desta onda: **4488 passed, 10 skipped**; Ruff check,
+Ruff format, mypy, independence, boundaries, status-check, harnesses QML e 12
+goldens RHI verdes. A contabilidade de bytes é um contrato de desenvolvimento,
+não uma medição de VRAM real. Nenhuma release/instalação/ação de host foi
+executada e os estados das quatro capacidades não foram promovidos.
+
+## 2026-08-17 — Theme Engine — layouts, repeaters e bindings
+
+A frente avançou na terceira onda da especificação, com a entrega física dos
+slices anteriores ainda bloqueada pela ausência de release exata autorizada.
+O commit funcional `b7b750a` acrescenta `sceneLayouts` v1: grid e list
+declarativos, breakpoints por largura, bindings fechados `item.*` e
+`SceneRepeater` que apenas instancia nós já materializados. Fonte ausente ou
+incompatível devolve layout vazio com diagnóstico; excesso de itens trunca com
+`THEME-LAYOUT-LIMIT-002`; pacote inválido volta ao builtin seguro sem derrubar
+alto contraste nem reduced motion.
+
+O QML do editor consome o preview materializado; não calcula geometria nem
+interpreta binding. Wheel e cover flow ficam fora deste slice. Fechamento
+local único: **4500 passed, 10 skipped**; Ruff check, Ruff format, mypy,
+independence, boundaries, status-check e harnesses
+`check_scene_repeater.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time, VRAM ou caminho GPU.
+
+Nenhuma release foi construída, publicada ou instalada. Nenhuma ação de host,
+`bigsudo`, rollback ou reboot foi executada. SZ-THEME-ENGINE permanece
+partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-17 — Theme Engine — paleta dinâmica e vidro
+
+A frente avançou na quarta onda da especificação. O commit funcional `633a5d8`
+extrai paleta (dominant/vibrant/muted/accent/background/contrastText) do
+asset-fonte, cacheia por hash da fonte e algoritmo, promove contraste ≥7:1 e
+devolve a paleta do tema com diagnóstico quando não há amostras. O node de
+vidro resolve tint a partir de `palette.*`, reduz blur no tier balanced e
+desliga o backbuffer em economy/accessible ou sem capability; o cromo estático
+permanece visível. O editor consome swatches e `GlassPanel` já materializados.
+
+Fechamento local único: **4511 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_glass_panel.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time, VRAM ou caminho GPU.
+
+Push da branch autorizada ficou bloqueado pelo ambiente desta sessão após os
+commits `b7b750a`/`9cdbfcb`; os commits desta onda também ficam locais até o
+envio ser possível. Nenhuma release/instalação/ação de host foi executada.
+SZ-THEME-ENGINE permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e
+SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-17 — Theme Engine — states, timeline e transições
+
+A frente avançou na quinta onda da especificação. O commit funcional `3267551`
+define `sceneMotion` v1: doze estados nativos, transições com easing
+allowlisted, timeline `sequence`/`parallel` materializada em passos finais e
+`reducedMotion` que zera animações não essenciais sem apagar o flash de erro.
+O QML aplica somente snapshots; não avalia curva nem executa código do pacote.
+
+Fechamento local único: **4518 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_scene_motion.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não mede FPS, frame time ou VRAM.
+
+Nenhuma release foi construída, publicada ou instalada: a autorização desta
+sessão ainda não identifica uma release exata. SZ-THEME-ENGINE permanece
+partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram promovidos.
+
+## 2026-08-18 — Theme Engine — saves, OSD e slots por contrato
+
+A frente avançou na sexta onda da especificação sem criar código do AURA
+Launcher. O commit funcional `ee3e01d` define `sceneSurfaces` v1: slots
+semânticos fechados, galeria de saves a partir de um read model público e OSD
+allowlisted. Slot sem captura usa placeholder com diagnóstico; erro crítico
+permanece visível e impede sucesso falso. A engine não lê path privado nem
+controla o emulador.
+
+Fechamento local único: **4524 passed, 10 skipped**; Ruff check, Ruff format,
+mypy, independence, boundaries, status-check e harnesses
+`check_scene_surfaces.qml` / `check_theme_editor_asset_recipes.qml` verdes.
+Essa evidência é offscreen e não implementa home/biblioteca/lançamento.
+
+Nenhuma release foi construída, publicada ou instalada. SZ-THEME-ENGINE
+permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
+promovidos.
