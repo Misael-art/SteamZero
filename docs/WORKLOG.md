@@ -6708,3 +6708,28 @@ Fechamento local: **4551 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Engine — widgets clock e statistics
+
+O commit `a7b38e2` fecha a onda de componentes do Launcher com dois
+widgets allowlisted resolvidos ponta a ponta. O `clock` formata um
+instante ISO entregue pelo shell com tokens fechados `HH:mm[:ss]` — o
+domínio não tem relógio próprio nem faz I/O, então o resultado é
+determinístico e testável. O `statistics` renderiza `{value}` a partir de
+um caminho `stats.*` em allowlist. Fonte ausente ou fora de formato não
+vira texto inventado: emite `THEME-SURFACE-WIDGET-005` e mantém o rótulo
+vazio. O `SceneSurfacePreview` só desenha os rótulos prontos e o
+inspector do Studio passou a expor os slots `quickMenu` e `collections`.
+
+Sonda `check_scene_surfaces.qml` verificada por mutação (mutante reprova
+com exit 1; íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. A autorização
+desta sessão deixou a release-alvo em branco, então nenhuma das três
+entregas desta sessão tem evidência física; todas ficam em código,
+gates e CI.
+
+Fechamento local: **4555 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
