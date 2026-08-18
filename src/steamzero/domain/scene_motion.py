@@ -12,11 +12,14 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 DIAG_MOTION_REDUCED = "THEME-MOTION-REDUCED-001"
 DIAG_MOTION_CLIP = "THEME-MOTION-CLIP-002"
+DIAG_MOTION_PRESENCE = "THEME-MOTION-PRESENCE-003"
+MAX_PRESENCE_LAYERS = 8
+INTERACTION_STATES = ("idle", "navigating", "focused", "menuOpen")
 MAX_TRANSITIONS = 32
 MAX_TIMELINES = 8
 MAX_CLIPS = 16
@@ -69,6 +72,7 @@ EASINGS = frozenset(
     }
 )
 _IDENTIFIER = re.compile(r"^[a-z][a-zA-Z0-9]{0,63}$")
+_PRESENCE_SOURCE = re.compile(r"^interaction\.state$")
 
 
 def _number(value: Any, *, name: str, low: float, high: float) -> float:
@@ -267,10 +271,77 @@ class MotionTimeline:
 
 
 @dataclass(frozen=True)
+class MotionPresence:
+    """Transparência por estado de interação: idle, navegação, foco e menu.
+
+    O tema declara a opacidade de cada camada por estado; quem informa o estado
+    corrente é o shell, nunca o pacote. O valor é sempre materializado — o QML
+    não decide o que fica translúcido.
+    """
+
+    source: str
+    layers: Mapping[str, Mapping[str, float]]
+    fade_duration: int = 0
+    fallback: float = 1.0
+    essential: bool = False
+
+    def __post_init__(self) -> None:
+        if not _PRESENCE_SOURCE.fullmatch(self.source):
+            raise ValueError("presence.source fora da allowlist")
+        if not self.layers or len(self.layers) > MAX_PRESENCE_LAYERS:
+            raise ValueError(f"presence.layers exige 1..{MAX_PRESENCE_LAYERS} camadas")
+        for name, states in self.layers.items():
+            if not _IDENTIFIER.fullmatch(name):
+                raise ValueError(f"presence.layer inválida: {name!r}")
+            if not states:
+                raise ValueError(f"presence.layer '{name}' exige ao menos um estado")
+            for state in states:
+                if state not in INTERACTION_STATES:
+                    raise ValueError(f"estado de interação desconhecido: {state!r}")
+        _duration(self.fade_duration, name="presence.fadeDuration")
+        _number(self.fallback, name="presence.fallback", low=0, high=1)
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> MotionPresence:
+        allowed = {"source", "layers", "fadeDuration", "fallback", "essential"}
+        unknown = set(raw) - allowed
+        if unknown or "source" not in raw or "layers" not in raw:
+            raise ValueError("presence inválido")
+        layers = raw["layers"]
+        if not isinstance(layers, Mapping):
+            raise ValueError("presence.layers exige objeto")
+        parsed: dict[str, dict[str, float]] = {}
+        for name, states in layers.items():
+            if not isinstance(states, Mapping):
+                raise ValueError("presence.layer exige objeto")
+            parsed[str(name)] = {
+                str(state): _number(value, name="presence.opacity", low=0, high=1)
+                for state, value in states.items()
+            }
+        return cls(
+            source=str(raw["source"]),
+            layers=parsed,
+            fade_duration=_duration(raw.get("fadeDuration", 0), name="presence.fadeDuration"),
+            fallback=_number(raw.get("fallback", 1), name="presence.fallback", low=0, high=1),
+            essential=raw.get("essential", False) is True,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "layers": {name: dict(states) for name, states in self.layers.items()},
+            "fadeDuration": self.fade_duration,
+            "fallback": self.fallback,
+            "essential": self.essential,
+        }
+
+
+@dataclass(frozen=True)
 class MotionBook:
     states: Mapping[str, MotionSnapshot]
     transitions: Mapping[str, MotionTransition]
     timelines: Mapping[str, MotionTimeline]
+    presence: MotionPresence | None = None
     schema_version: int = 1
 
     def __post_init__(self) -> None:
@@ -292,7 +363,7 @@ class MotionBook:
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> MotionBook:
-        allowed = {"schemaVersion", "states", "transitions", "timelines"}
+        allowed = {"schemaVersion", "states", "transitions", "timelines", "presence"}
         unknown = set(raw) - allowed
         if unknown or "states" not in raw:
             raise ValueError("sceneMotion inválido")
@@ -324,10 +395,14 @@ class MotionBook:
         }
         if len(parsed_timelines) != len(timelines):
             raise ValueError("timeline exige objeto")
+        presence = raw.get("presence")
+        if presence is not None and not isinstance(presence, Mapping):
+            raise ValueError("presence exige objeto")
         return cls(
             states=parsed_states,
             transitions=parsed_transitions,
             timelines=parsed_timelines,
+            presence=MotionPresence.from_dict(presence) if presence is not None else None,
             schema_version=raw.get("schemaVersion", 1),
         )
 
@@ -337,6 +412,7 @@ class MotionBook:
             "states": {name: snapshot.to_dict() for name, snapshot in self.states.items()},
             "transitions": [item.to_dict() for item in self.transitions.values()],
             "timelines": {name: timeline.to_dict() for name, timeline in self.timelines.items()},
+            **({"presence": self.presence.to_dict()} if self.presence is not None else {}),
         }
 
 
@@ -403,10 +479,27 @@ class ResolvedTimeline:
 
 
 @dataclass(frozen=True)
+class ResolvedPresence:
+    layer: str
+    state: str
+    opacity: float
+    fade_duration: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "layer": self.layer,
+            "state": self.state,
+            "opacity": self.opacity,
+            "fadeDuration": self.fade_duration,
+        }
+
+
+@dataclass(frozen=True)
 class MotionResolution:
     states: Mapping[str, MotionSnapshot]
     transitions: Mapping[str, ResolvedTransition]
     timelines: Mapping[str, ResolvedTimeline]
+    presence: Mapping[str, ResolvedPresence] = field(default_factory=dict)
     diagnostics: tuple[MotionDiagnostic, ...] = ()
 
     def to_qml_object(self) -> dict[str, Any]:
@@ -414,6 +507,7 @@ class MotionResolution:
             "states": {name: snapshot.to_dict() for name, snapshot in self.states.items()},
             "transitions": {name: item.to_dict() for name, item in self.transitions.items()},
             "timelines": {name: item.to_dict() for name, item in self.timelines.items()},
+            "presence": {name: item.to_dict() for name, item in self.presence.items()},
             "diagnostics": [item.to_dict() for item in self.diagnostics],
         }
 
@@ -434,10 +528,68 @@ def _default_snapshot(name: str, declared: Mapping[str, MotionSnapshot]) -> Moti
     return MotionSnapshot()
 
 
+def _resolve_presence(
+    presence: MotionPresence | None,
+    *,
+    interaction_state: str | None,
+    reduced_motion: bool,
+    diagnostics: list[MotionDiagnostic],
+) -> dict[str, ResolvedPresence]:
+    """Materializa a opacidade de cada camada para o estado corrente.
+
+    Estado ausente ou fora da allowlist não apaga a interface: cai no fallback
+    declarado, marca o estado como ``unknown`` e publica diagnóstico. Reduced
+    motion corta a duração do fade, nunca o valor final.
+    """
+    if presence is None:
+        return {}
+    state = interaction_state if interaction_state in INTERACTION_STATES else None
+    if state is None:
+        diagnostics.append(
+            MotionDiagnostic(
+                code=DIAG_MOTION_PRESENCE,
+                reason=f"estado de interação ausente ou desconhecido: {interaction_state!r}",
+                fallback="opaque",
+            )
+        )
+    duration = presence.fade_duration
+    if reduced_motion and not presence.essential and duration:
+        duration = 0
+        diagnostics.append(
+            MotionDiagnostic(
+                code=DIAG_MOTION_REDUCED,
+                reason="fade de transparência zerado com reduced motion",
+            )
+        )
+    resolved: dict[str, ResolvedPresence] = {}
+    for name, states in presence.layers.items():
+        if state is None:
+            opacity = presence.fallback
+        elif state in states:
+            opacity = states[state]
+        else:
+            opacity = presence.fallback
+            diagnostics.append(
+                MotionDiagnostic(
+                    code=DIAG_MOTION_PRESENCE,
+                    reason=f"camada '{name}' não declara o estado '{state}'",
+                    fallback="opaque",
+                )
+            )
+        resolved[name] = ResolvedPresence(
+            layer=name,
+            state=state or "unknown",
+            opacity=opacity,
+            fade_duration=duration,
+        )
+    return resolved
+
+
 def resolve_scene_motion(
     raw_book: Mapping[str, Any] | MotionBook,
     *,
     reduced_motion: bool = False,
+    interaction_state: str | None = None,
 ) -> MotionResolution:
     book = raw_book if isinstance(raw_book, MotionBook) else MotionBook.from_dict(raw_book)
     states = {name: _default_snapshot(name, book.states) for name in NATIVE_STATES}
@@ -495,9 +647,16 @@ def resolve_scene_motion(
             total_duration=total,
             repeat=timeline.repeat,
         )
+    presence = _resolve_presence(
+        book.presence,
+        interaction_state=interaction_state,
+        reduced_motion=reduced_motion,
+        diagnostics=diagnostics,
+    )
     return MotionResolution(
         states=states,
         transitions=transitions,
         timelines=timelines,
+        presence=presence,
         diagnostics=tuple(diagnostics),
     )

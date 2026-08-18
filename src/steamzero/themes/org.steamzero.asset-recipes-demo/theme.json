@@ -178,6 +178,14 @@
   },
   "sceneMotion": {
     "schemaVersion": 1,
+    "presence": {
+      "source": "interaction.state",
+      "fadeDuration": 200,
+      "layers": {
+        "chrome": { "idle": 0.25, "navigating": 1, "focused": 1, "menuOpen": 0.6 },
+        "osd": { "idle": 0, "navigating": 0.85, "focused": 1, "menuOpen": 1 }
+      }
+    },
     "states": {
       "normal": { "opacity": 1, "scale": 1 },
       "focused": { "opacity": 1, "scale": 1.06 },

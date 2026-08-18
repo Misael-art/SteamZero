@@ -26,6 +26,15 @@ Item {
         return Number(motion.transitions.focusIn.duration)
     }
 
+    // Transparência por estado de interação. A opacidade e a duração do fade
+    // chegam resolvidas; este consumidor não sabe o que é "ocioso".
+    readonly property var presence: motion && motion.presence ? motion.presence : ({})
+    readonly property var chromePresence: presence.chrome
+        ? presence.chrome : ({"opacity": 1, "fadeDuration": 0, "state": "unknown"})
+    readonly property real chromeOpacity: Number(chromePresence.opacity)
+    readonly property int chromeFadeDuration: Number(chromePresence.fadeDuration)
+    readonly property string interactionState: String(chromePresence.state)
+
     Rectangle {
         id: card
         objectName: "motionCard"
@@ -39,6 +48,21 @@ Item {
         transform: Translate {
             x: motionPreview.snapshotX
             y: motionPreview.snapshotY
+        }
+    }
+
+    Rectangle {
+        id: chromeLayer
+        objectName: "chromeLayer"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 10
+        color: "#f2f6fb"
+        opacity: motionPreview.chromeOpacity
+
+        Behavior on opacity {
+            NumberAnimation { duration: motionPreview.chromeFadeDuration }
         }
     }
 }

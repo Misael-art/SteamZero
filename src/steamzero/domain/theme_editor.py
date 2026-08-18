@@ -53,6 +53,9 @@ _LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
     }
 }
 _LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
+# O preview mostra a interface ociosa para tornar a transparência declarada
+# legível; o estado real vem do shell, nunca do pacote.
+_MOTION_PREVIEW_INTERACTION = "idle"
 _SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
     "library": {
         "items": [{"title": "Celeste"}],
@@ -337,6 +340,7 @@ def _to_preview_object(
         preview["sceneMotionPreview"] = resolve_scene_motion(
             resolved.scene_motion,
             reduced_motion=resolved.reduced_motion,
+            interaction_state=_MOTION_PREVIEW_INTERACTION,
         ).to_qml_object()
     if resolved.scene_surfaces is not None:
         preview["sceneSurfacePreview"] = resolve_scene_surfaces(
