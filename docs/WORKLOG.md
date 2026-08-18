@@ -6581,3 +6581,19 @@ Fechamento local: **4533 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Studio — profiler de orçamento declarado
+
+O commit `a243b0e` acrescenta um profiler que só soma custos já
+negociados pela Theme Engine (efeitos + receitas). Recusa `fps`,
+`vram` e `frameTime` e nunca marca `measured=true`. Receita acima do
+orçamento do tier vira `THEME-STUDIO-BUDGET-001`. Isso não é medição
+física de desempenho.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada. O PR #84 absorve este slice.
+
+Fechamento local: **4534 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.

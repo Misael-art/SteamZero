@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "9749f362b4ab7425598641f92473d573863a768e2f2ff7151d0663569928e4e9",
+  "scopeDigest": "f011b3e55fc4f44eac8628509ba4b09f97c620c7452f4a37aaa836b1986d2b03",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -82,8 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Acrescentar profiler de orçamento no inspector e capturar evidência física do canvas na próxima release instalada.",
+  "nextAction": "Capturar evidência física do canvas na próxima release instalada. Bindings assistidos ficam para o slice seguinte.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos e timeline materializada existem no codigo e no harness QML. A timeline do Studio so observa o plano ja resolvido pela engine; nao edita keyframes nem executa QML, shader ou codigo do pacote. Continua partial. Editor de keyframes, profiler e evidencia fisica do canvas na release instalada ainda nao existem."
+  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos, timeline materializada e profiler de orçamento declarado existem no codigo e no harness QML. O profiler so soma custos ja negociados; recusa fps/vram/frameTime e nunca marca measured=true. Continua partial. Editor de keyframes, bindings assistidos e evidencia fisica do canvas na release instalada ainda nao existem."
 }

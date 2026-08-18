@@ -61,6 +61,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Acrescentar profiler de orçamento no Theme Studio e capturar evidência física do canvas na próxima release instalada.",
+  "nextAction": "Capturar evidência física do canvas na próxima release instalada. Bindings assistidos ficam para o slice seguinte.",
   "updatedAt": "2026-08-18"
 }

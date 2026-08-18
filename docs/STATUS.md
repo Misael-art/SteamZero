@@ -35,7 +35,7 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
 | SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | partial | partial | integrated | unit | degraded | installed | Medir a cena de referência na release 0.1.0a46-226b5f4b5c7c e avançar wheel/cover flow. Theme Studio segue no item próprio. |
-| SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | partial | partial | integrated | unit | degraded | installed | Acrescentar profiler de orçamento no inspector e capturar evidência física do canvas na próxima release instalada. |
+| SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | partial | partial | integrated | unit | degraded | installed | Capturar evidência física do canvas na próxima release instalada. Bindings assistidos ficam para o slice seguinte. |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.
