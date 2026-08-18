@@ -6597,3 +6597,20 @@ Fechamento local: **4534 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. SZ-THEME-ENGINE e
 SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
 foram promovidos.
+
+## 2026-08-18 — Theme Studio — bindings assistidos
+
+O commit `4c5c821` lista no inspector os caminhos já declarados
+(`item.*`, `palette.*`, `osd.*`) e o valor materializado de amostra.
+Caminho fora da allowlist ou com qml/js/shader vira
+`THEME-STUDIO-BINDING-001` sem publicar o path. O Studio não avalia
+expressão, não escreve o binding de volta no pacote e não executa
+código.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada. O PR #84 absorve este slice.
+
+Fechamento local: **4536 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.

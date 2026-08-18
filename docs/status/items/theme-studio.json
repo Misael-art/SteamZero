@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "f011b3e55fc4f44eac8628509ba4b09f97c620c7452f4a37aaa836b1986d2b03",
+  "scopeDigest": "b013c302dd870c967dfc96741fd308fd3133f4e4c8cd5560b2725b87ed3585b7",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -82,8 +82,8 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Capturar evidência física do canvas na próxima release instalada. Bindings assistidos ficam para o slice seguinte.",
+  "nextAction": "Capturar evidência física do canvas na próxima release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos, timeline materializada e profiler de orçamento declarado existem no codigo e no harness QML. O profiler so soma custos ja negociados; recusa fps/vram/frameTime e nunca marca measured=true. Continua partial. Editor de keyframes, bindings assistidos e evidencia fisica do canvas na release instalada ainda nao existem."
+  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos, timeline, profiler declarado e bindings assistidos existem no codigo e no harness QML. Bindings so listam caminhos allowlisted (item/palette/osd) ja declarados; nao ha eval, JS ou QML do pacote. Continua partial. Editor de keyframes, bindings escritos de volta no pacote e evidencia fisica do canvas na release instalada ainda nao existem."
 }
