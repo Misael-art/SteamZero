@@ -244,6 +244,101 @@ def test_carousel_places_items_on_an_ellipse_by_wrapped_distance() -> None:
     assert all("binding" not in entry.node for entry in layout.entries)
 
 
+def _highlight_book(**highlight: object) -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusWheel": {
+                "source": "library.items",
+                "kind": "wheel",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "selected": 1,
+                "highlight": {
+                    "scale": 1.2,
+                    "opacity": 1,
+                    "outlineWidth": 3,
+                    "outlineColor": "#22d3ee",
+                    **highlight,
+                },
+                "template": {
+                    "kind": "text",
+                    "id": "wheel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+
+
+def test_central_highlight_overrides_the_offset_falloff_for_the_selected_item() -> None:
+    raw = _highlight_book()
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    entries = resolved.layouts["focusWheel"].entries
+    center = entries[1].node
+    assert center["highlighted"] is True
+    assert center["adjacent"] is False
+    assert center["scale"] == 1.2
+    assert center["opacity"] == 1.0
+    assert center["outlineWidth"] == 3.0
+    assert center["outlineColor"] == "#22d3ee"
+    # Sem tratamento declarado, vizinhos e distantes seguem o offset converter.
+    assert entries[0].node["highlighted"] is False
+    assert entries[0].node["scale"] == 0.92
+    assert entries[0].node["outlineWidth"] == 0.0
+    assert entries[3].node["adjacent"] is False
+
+
+def test_adjacent_treatment_applies_only_to_the_immediate_neighbours() -> None:
+    raw = _highlight_book(
+        adjacent={"scale": 0.9, "opacity": 0.6, "outlineWidth": 1, "outlineColor": "#334155"}
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+        .layouts["focusWheel"]
+        .entries
+    )
+    assert [entry.node["adjacent"] for entry in entries] == [True, False, True, False, False]
+    assert entries[0].node["scale"] == 0.9
+    assert entries[0].node["opacity"] == 0.6
+    assert entries[0].node["outlineWidth"] == 1.0
+    assert entries[0].node["outlineColor"] == "#334155"
+    assert entries[2].node["scale"] == 0.9
+    # Distância 2 continua no falloff do offset, sem contorno.
+    assert entries[3].node["scale"] == 0.84
+    assert entries[3].node["outlineWidth"] == 0.0
+
+
+def test_highlight_refuses_layouts_without_a_centre_and_unsafe_limits() -> None:
+    for override, message in (
+        ({"outlineWidth": 32}, "outlineWidth"),
+        ({"outlineColor": "rgba(0,0,0,1)"}, "outlineColor"),
+        ({"scale": 4}, "scale"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            LayoutRecipeBook.from_dict(_highlight_book(**override))
+    with pytest.raises(ValueError, match="highlight"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "plainGrid": {
+                        "source": "library.items",
+                        "kind": "grid",
+                        "item": {"width": 80, "height": 24},
+                        "highlight": {"scale": 1.2},
+                        "template": {"kind": "text", "id": "x"},
+                    }
+                },
+            }
+        )
+
+
 def test_flow_wraps_by_bounds_and_reports_computed_columns() -> None:
     raw = {
         "schemaVersion": 1,

@@ -48,6 +48,13 @@
           "minScale": 0.7,
           "minOpacity": 0.35
         },
+        "highlight": {
+          "scale": 1.18,
+          "opacity": 1,
+          "outlineWidth": 3,
+          "outlineColor": "#22d3ee",
+          "adjacent": { "scale": 0.92, "opacity": 0.7, "outlineWidth": 1, "outlineColor": "#334155" }
+        },
         "template": {
           "kind": "text",
           "id": "wheel-title",

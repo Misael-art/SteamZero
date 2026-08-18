@@ -120,14 +120,18 @@ Item {
             "entries": [{
                 "kind": "text", "id": "wheel-0", "text": "Axiom Verge",
                 "x": 70, "y": 24, "width": 80, "height": 24,
-                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "visible": true, "opacity": 0.7, "scale": 0.92, "z": 31,
+                "highlighted": false, "adjacent": true,
+                "outlineWidth": 1, "outlineColor": "#334155",
                 "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
                 "fontWeight": 400, "fontItalic": false,
                 "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
             }, {
                 "kind": "text", "id": "wheel-1", "text": "Celeste",
                 "x": 160, "y": 24, "width": 80, "height": 24,
-                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "visible": true, "opacity": 1, "scale": 1.18, "z": 32,
+                "highlighted": true, "adjacent": false,
+                "outlineWidth": 3, "outlineColor": "#22d3ee",
                 "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
                 "fontWeight": 400, "fontItalic": false,
                 "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
@@ -213,12 +217,29 @@ Item {
             harness.check(focused !== null && wheelSide !== null, "nós do wheel não instanciaram")
             if (focused !== null) {
                 harness.check(focused.text === "Celeste", "item selecionado não chegou ao QML")
-                harness.check(focused.scale === 1 && focused.z === 32,
+                harness.check(focused.scale === 1.18 && focused.z === 32,
                               "offset converter não pode ser recalculado no QML")
             }
             if (wheelSide !== null) {
                 harness.check(wheelSide.x === 70 && wheelSide.scale === 0.92,
                               "vizinho do wheel precisa usar escala materializada")
+            }
+            const centreOutline = wheel.outlineAt(1)
+            const sideOutline = wheel.outlineAt(0)
+            const farOutline = covers.outlineAt(0)
+            harness.check(centreOutline !== null && sideOutline !== null,
+                          "molduras de destaque não instanciaram")
+            if (centreOutline !== null && sideOutline !== null) {
+                harness.check(centreOutline.visible && centreOutline.border.width === 3,
+                              "contorno do centro precisa vir materializado")
+                harness.check(sideOutline.visible && sideOutline.border.width === 1,
+                              "vizinho precisa usar o contorno declarado")
+                harness.check(centreOutline.border.width > sideOutline.border.width,
+                              "centro e vizinho não podem ter o mesmo contorno")
+            }
+            if (farOutline !== null) {
+                harness.check(farOutline.visible === false,
+                              "item sem tratamento não pode ganhar contorno no QML")
             }
             harness.check(cards.entryCount === 2, "repetidor não recebeu duas entradas")
             const first = cards.entryAt(0)

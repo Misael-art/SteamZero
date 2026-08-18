@@ -26,6 +26,7 @@ MAX_LAYOUTS = 16
 MAX_ITEMS = 128
 MAX_TEMPLATE_PROPERTIES = 12
 MAX_DIMENSION = 2048.0
+MAX_OUTLINE_WIDTH = 8.0
 _IDENTIFIER = re.compile(r"^[a-z][a-zA-Z0-9-]{0,63}$")
 _SOURCE_PATH = re.compile(r"^[a-z][a-zA-Z0-9]{0,31}(?:\.[a-z][a-zA-Z0-9]{0,31}){1,3}$")
 _ITEM_BINDING = re.compile(r"^item\.([a-z][a-zA-Z0-9]{0,31}(?:\.[a-z][a-zA-Z0-9]{0,31})?)$")
@@ -267,6 +268,99 @@ class LayoutOffset:
 
 
 @dataclass(frozen=True)
+class LayoutTreatment:
+    """Tratamento visual de um item pela posição relativa ao centro."""
+
+    scale: float | None = None
+    opacity: float | None = None
+    outline_width: float = 0.0
+    outline_color: str = "#ffffff"
+
+    def __post_init__(self) -> None:
+        if self.scale is not None:
+            _number(self.scale, name="highlight.scale", low=0.5, high=2)
+        if self.opacity is not None:
+            _number(self.opacity, name="highlight.opacity", low=0, high=1)
+        _number(self.outline_width, name="highlight.outlineWidth", low=0, high=MAX_OUTLINE_WIDTH)
+        if not isinstance(self.outline_color, str) or not _COLOR.fullmatch(self.outline_color):
+            raise ValueError("highlight.outlineColor inválida")
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any], *, name: str) -> LayoutTreatment:
+        unknown = set(raw) - {"scale", "opacity", "outlineWidth", "outlineColor"}
+        if unknown:
+            raise ValueError(f"{name} inválido: {sorted(unknown)}")
+        return cls(
+            scale=(
+                _number(raw["scale"], name="highlight.scale", low=0.5, high=2)
+                if "scale" in raw
+                else None
+            ),
+            opacity=(
+                _number(raw["opacity"], name="highlight.opacity", low=0, high=1)
+                if "opacity" in raw
+                else None
+            ),
+            outline_width=_number(
+                raw.get("outlineWidth", 0),
+                name="highlight.outlineWidth",
+                low=0,
+                high=MAX_OUTLINE_WIDTH,
+            ),
+            outline_color=str(raw.get("outlineColor", "#ffffff")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        value: dict[str, Any] = {
+            "outlineWidth": self.outline_width,
+            "outlineColor": self.outline_color,
+        }
+        if self.scale is not None:
+            value["scale"] = self.scale
+        if self.opacity is not None:
+            value["opacity"] = self.opacity
+        return value
+
+    def apply(self, node: dict[str, Any]) -> None:
+        """Sobrepõe o falloff do offset converter no item tratado."""
+        if self.scale is not None:
+            node["scale"] = self.scale
+        if self.opacity is not None:
+            node["opacity"] = self.opacity
+        node["outlineWidth"] = self.outline_width
+        node["outlineColor"] = self.outline_color
+
+
+@dataclass(frozen=True)
+class LayoutHighlight:
+    """Destaque central e, opcionalmente, tratamento dos vizinhos imediatos."""
+
+    centre: LayoutTreatment
+    adjacent: LayoutTreatment | None = None
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, Any]) -> LayoutHighlight:
+        adjacent = raw.get("adjacent")
+        if adjacent is not None and not isinstance(adjacent, Mapping):
+            raise ValueError("highlight.adjacent exige objeto")
+        centre_raw = {key: value for key, value in raw.items() if key != "adjacent"}
+        return cls(
+            centre=LayoutTreatment.from_dict(centre_raw, name="highlight"),
+            adjacent=(
+                LayoutTreatment.from_dict(adjacent, name="highlight.adjacent")
+                if adjacent is not None
+                else None
+            ),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        value = self.centre.to_dict()
+        if self.adjacent is not None:
+            value["adjacent"] = self.adjacent.to_dict()
+        return value
+
+
+@dataclass(frozen=True)
 class LayoutTemplate:
     kind: str
     id: str
@@ -357,6 +451,7 @@ class LayoutRecipe:
     direction: LayoutDirection = LayoutDirection.VERTICAL
     selected: int = 0
     offset: LayoutOffset | None = None
+    highlight: LayoutHighlight | None = None
     breakpoints: tuple[LayoutBreakpoint, ...] = ()
 
     def __post_init__(self) -> None:
@@ -388,6 +483,10 @@ class LayoutRecipe:
             raise ValueError("coverFlow só é horizontal")
         if self.offset is not None and self.kind not in _DEPTH_KINDS:
             raise ValueError("offset só é válido em wheel, coverFlow, carousel ou stack")
+        if self.highlight is not None and self.kind not in _DEPTH_KINDS:
+            raise ValueError(
+                "highlight exige layout com centro: wheel, coverFlow, carousel ou stack"
+            )
         ranges: list[tuple[float, float]] = []
         for point in self.breakpoints:
             low = point.min_width if point.min_width is not None else float("-inf")
@@ -410,6 +509,7 @@ class LayoutRecipe:
             "direction",
             "selected",
             "offset",
+            "highlight",
             "breakpoints",
         }
         unknown = set(raw) - allowed
@@ -441,6 +541,9 @@ class LayoutRecipe:
         offset_raw = raw.get("offset")
         if offset_raw is not None and not isinstance(offset_raw, Mapping):
             raise ValueError("offset exige objeto")
+        highlight_raw = raw.get("highlight")
+        if highlight_raw is not None and not isinstance(highlight_raw, Mapping):
+            raise ValueError("highlight exige objeto")
         return cls(
             id=_identifier(layout_id, name="layout.id"),
             source=str(raw["source"]),
@@ -453,6 +556,9 @@ class LayoutRecipe:
             direction=direction,
             selected=raw.get("selected", 0),
             offset=LayoutOffset.from_dict(offset_raw) if offset_raw is not None else None,
+            highlight=(
+                LayoutHighlight.from_dict(highlight_raw) if highlight_raw is not None else None
+            ),
             breakpoints=tuple(LayoutBreakpoint.from_dict(point) for point in breakpoints),
         )
 
@@ -484,6 +590,8 @@ class LayoutRecipe:
             value["selected"] = self.selected
             if self.offset is not None:
                 value["offset"] = self.offset.to_dict()
+            if self.highlight is not None:
+                value["highlight"] = self.highlight.to_dict()
         if self.breakpoints:
             value["breakpoints"] = [
                 {
@@ -636,6 +744,27 @@ def _flow_tracks(recipe: LayoutRecipe, bounds: LayoutBounds, count: int) -> tupl
     else:
         columns = max(1, math.ceil(count / tracks)) if count else 1
     return tracks, columns, fitted < 1
+
+
+def _apply_highlight(
+    highlight: LayoutHighlight | None, node: dict[str, Any], distance: int
+) -> None:
+    """Marca centro e vizinhos e sobrepõe o tratamento declarado.
+
+    Sem ``highlight`` o item continua exatamente no falloff do offset converter;
+    o contorno fica em zero para que o QML não precise decidir nada.
+    """
+    node["highlighted"] = distance == 0
+    treats_adjacent = highlight is not None and highlight.adjacent is not None
+    node["adjacent"] = treats_adjacent and abs(distance) == 1
+    node.setdefault("outlineWidth", 0.0)
+    node.setdefault("outlineColor", "#ffffff")
+    if highlight is None:
+        return
+    if distance == 0:
+        highlight.centre.apply(node)
+    elif highlight.adjacent is not None and abs(distance) == 1:
+        highlight.adjacent.apply(node)
 
 
 def _read_path(read_model: Mapping[str, Any], source: str) -> Any:
@@ -835,6 +964,7 @@ def resolve_scene_layouts(
                     base = node.get("opacity", 1.0)
                     if isinstance(base, int | float) and not isinstance(base, bool):
                         node["opacity"] = round(float(base) * fade, 4)
+                    _apply_highlight(recipe.highlight, node, distance)
             entries.append(
                 ResolvedLayoutEntry(
                     index=index,
