@@ -143,6 +143,11 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
     raise RuntimeError("nenhuma porta livre para o servidor de teste ErrorCard")
 
 
+# Marcado como visual porque é onde o runtime existe de verdade: o job
+# `quality` gastava 76 s tentando provisionar Qt via apt e terminava com
+# "qml6 indisponível", então estes harnesses nunca rodaram no CI. A imagem
+# canônica do gate visual traz o Qt fixado por digest.
+@pytest.mark.visual
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 @pytest.mark.parametrize(
     "harness",

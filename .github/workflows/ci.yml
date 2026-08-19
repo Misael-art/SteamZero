@@ -54,45 +54,6 @@ jobs:
         run: python tools/check_independence.py
       - name: Tipos estritos
         run: mypy
-      - name: Runtime QML para os harnesses offscreen
-        # Os harnesses provam o que teste Python não alcança: que o artwork de
-        # emulação chega a Image.Ready — a lacuna que deixou "os ícones sumiram"
-        # passar por gates verdes na a37 — e que a shell carrega sem warning.
-        #
-        # Best-effort de propósito: `test_qml_handheld_offscreen.py` já pula por
-        # skipif quando qml6 está ausente, e um runtime opcional não deve
-        # derrubar o job. Se a provisão falhar, o passo registra o diagnóstico e
-        # segue; a cobertura não depende destes testes.
-        #
-        # `continue-on-error` cobre FALHA, não TRAVAMENTO: sem o timeout abaixo,
-        # um apt-get pendurado consome as 6h do default e o job nunca conclui.
-        # Foi o que aconteceu em 2026-08-19.
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          # `DPkg::Lock::Timeout` é o que faltava: sem ele o apt espera o lock
-          # do unattended-upgrades para sempre — foi assim que este passo ficou
-          # cinco horas pendurado. Com o limite ele desiste e o passo segue,
-          # em vez de o timeout do step matar o step e deixar o apt-get filho
-          # vivo segurando o lock para o passo seguinte.
-          sudo apt-get -o DPkg::Lock::Timeout=180 update -qq
-          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends \
-            qt6-declarative-dev-tools qml6-module-qtquick \
-            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
-            qml6-module-qtquick-window qml6-module-qtquick-dialogs \
-            qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
-            libgl1 libegl1 || echo "provisão do runtime QML falhou"
-          echo "--- binários Qt encontrados ---"
-          find /usr/lib/qt6/bin /usr/bin -maxdepth 1 -name 'qml*' 2>/dev/null || true
-          runner=$(command -v qml6 || find /usr/lib/qt6/bin -maxdepth 1 -name qml -type f 2>/dev/null | head -1)
-          if [ -n "$runner" ]; then
-            dir=$(dirname "$runner")
-            [ -x "$dir/qml6" ] || sudo ln -sf "$runner" "$dir/qml6"
-            echo "$dir" >> "$GITHUB_PATH"
-            echo "runtime QML disponível em $dir"
-          else
-            echo "qml6 indisponível; os harnesses serão pulados por skipif"
-          fi
       - name: Gerador de ISO cloud-init (harness de VM)
         # test_vm_harness.py exercita provision(), que exige um gerador de ISO
         # cidata no PATH (cloud-localds|xorriso|genisoimage). O runner do GitHub
