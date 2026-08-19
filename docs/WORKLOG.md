@@ -7131,4 +7131,36 @@ Sonda verificada por mutação nos dois sentidos: `canDrawScene` invertido e cha
 de cena inexistente — ambos reprovam.
 
 Fechamento local: **4589 passed, 10 skipped**; Ruff, format, mypy,
+## 2026-08-19 — AURA Launcher: baseline e o primeiro slice de foco
+
+Baseline registrado **antes** de escrever qualquer linha: zero artefatos.
+`src/steamzero/launcher`, `src/steamzero/ui/qml/launcher` e `tests/qml/launcher`
+não existiam — e o escopo do item declarava os três, a ponto de o `digest` nem
+poder ser calculado. Os dois que seguem sem artefato saíram do escopo; voltam
+quando existirem. Escopo descreve o que é, não o que será.
+
+O primeiro slice é o alicerce do item 3 da Definition of Done: navegação por
+controle **sem becos**. Num launcher conduzido por controle não há mouse para
+resgatar o usuário; um nó de onde nenhuma direção sai obriga a reiniciar a
+sessão no handheld.
+
+O contrato que escrevi primeiro — "todo nó tem alguma saída" — era fraco: dois
+nós apontando um para o outro passariam e ainda assim seriam um beco. O
+contrato real é **conectividade**: de qualquer nó, o direcional devolve ao foco
+inicial. É isso que o teste verifica, por busca em largura a partir de cada nó.
+
+Regras que valem registrar, porque cada uma cobre um jeito de perder o usuário:
+home vazia cai num nó de ação com `LAUNCHER-FOCUS-EMPTY-001`, em vez de ficar
+sem foco; seção sem itens não vira linha alcançável; linha de um item só recusa
+a volta horizontal, que pareceria movimento sem mover; coluna inexistente na
+seção vizinha cai na mais próxima, em vez de virar destino nulo.
+
+O teste de mutação pegou uma lacuna real: eu cobria a volta pela direita e não
+pela esquerda, então remover o wrap à esquerda passava despercebido. Fechada.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Não há shell, home renderizada,
+página de jogo, lançamento, retorno nem pacote instalado — e nada aqui promove
+AURA UI ou Theme Engine.
+
+Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
