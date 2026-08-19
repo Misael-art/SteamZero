@@ -6510,3 +6510,316 @@ Essa evidência é offscreen e não implementa home/biblioteca/lançamento.
 Nenhuma release foi construída, publicada ou instalada. SZ-THEME-ENGINE
 permanece partial. SZ-THEME-STUDIO, SZ-AURA-UI e SZ-AURA-LAUNCHER não foram
 promovidos.
+
+## 2026-08-18 — instalação 0.1.0a46-226b5f4b5c7c e canvas do Studio
+
+O PR #83 foi mesclado em `main` (`226b5f4`). O run `push` 32120555254 ficou
+verde. `release_host.py prepare` gerou o bundle
+`0.1.0a46-226b5f4b5c7c` (wheel `6440050ba802485c…`). A primeira instalação
+ativou `current` mas o converge falhou: o smoke de `_verify_release` roda
+`doctor` e `service.generation` falha enquanto o daemon ainda está na release
+anterior, o que impede o restart. Após `systemctl --user restart` das units
+gerenciadas, o converge ficou `converged` (PID 1986891, mesma release) e a
+segunda instalação governada passou com convergência idempotente
+(`restarted=false`, `attempts=0`). Doctor `ok=true` / `degraded` (backup órfão
+e boot.direct unknown, pré-existentes). Rollback disponível:
+`0.1.0a46-87e03a1373ba`. Não houve reboot nem captura PNG da UI instalada.
+
+O commit `6f2768f` acrescenta canvas/árvore/inspector do Theme Studio sobre o
+grafo já materializado. Fechamento local: **4528 passed, 10 skipped**; Ruff,
+format, mypy, independence, boundaries, status-check e harnesses
+`check_theme_studio_canvas.qml` / `check_theme_editor_asset_recipes.qml`.
+SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem partial. GAP-G39 aberto.
+SZ-AURA-LAUNCHER não foi promovido.
+
+## 2026-08-18 — smoke do instalador e fechamento do G39
+
+O commit `aac72f4` corrige a causa do converge após a instalação
+`0.1.0a46-226b5f4b5c7c`: o smoke isolado de `_verify_release` observava o
+daemon ao vivo e tratava `E-HOST-DAEMON-PENDING` como binário doente, o que
+impedia o restart. Falhas reais de doctor continuam reprovando o smoke.
+
+O commit `236e61f` fecha o G39: cadeia `extends` acima do limite ainda degrada
+para os tokens da sessão, mas o preview publica `THEME-EDITOR-EXTENDS-001` e o
+editor mostra o código. Ciclo e base ausente também deixam de ser silenciosos.
+
+Fechamento local: **4530 passed, 10 skipped**; Ruff, format, mypy, independence,
+boundaries e status-check. SZ-THEME-ENGINE e SZ-THEME-STUDIO permanecem
+partial. AURA Launcher não foi promovido.
+
+## 2026-08-18 — Theme Studio — grafo de efeitos e constraints
+
+A branch `codex/theme-engine-asset-recipes` incorporou `origin/main`
+(`226b5f4`, squash do PR #83) sem reescrever o histórico publicado. O
+commit `e220f41` acrescenta o grafo de efeitos allowlisted e os
+constraints já diagnosticados ao inspector do Theme Studio. O Studio só
+observa stacks negociados pela engine; não executa QML, shader ou código
+do pacote. Timeline, profiler e evidência física do canvas na release
+instalada continuam ausentes.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c` (Theme Engine
+do PR #83). Este slice ainda não está instalado. Nenhuma release nova
+foi construída.
+
+Fechamento local: **4531 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Studio — timeline materializada
+
+O commit `2fb37dd` expõe o plano de reprodução já resolvido pela Theme
+Engine como nós `timeline.*` e uma faixa de duração no canvas. O Studio
+não edita keyframes, não interpreta curva e não executa motion do
+pacote. Diagnósticos de reduced motion e clip ausente viram constraints
+no inspector.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada. O PR #84 absorve este slice.
+
+Fechamento local: **4533 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Studio — profiler de orçamento declarado
+
+O commit `a243b0e` acrescenta um profiler que só soma custos já
+negociados pela Theme Engine (efeitos + receitas). Recusa `fps`,
+`vram` e `frameTime` e nunca marca `measured=true`. Receita acima do
+orçamento do tier vira `THEME-STUDIO-BUDGET-001`. Isso não é medição
+física de desempenho.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada. O PR #84 absorve este slice.
+
+Fechamento local: **4534 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Studio — bindings assistidos
+
+O commit `4c5c821` lista no inspector os caminhos já declarados
+(`item.*`, `palette.*`, `osd.*`) e o valor materializado de amostra.
+Caminho fora da allowlist ou com qml/js/shader vira
+`THEME-STUDIO-BINDING-001` sem publicar o path. O Studio não avalia
+expressão, não escreve o binding de volta no pacote e não executa
+código.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada. O PR #84 absorve este slice.
+
+Fechamento local: **4536 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — layout wheel
+
+O commit `8cbbbcd` acrescenta o kind `wheel` com offset converter
+fechado. A engine materializa x/y/scale/opacity/z a partir da distância
+ao `selected`; o QML só atribui esses escalares. Cover flow continua
+recusado. Evidência física e instalação desta frente continuam
+bloqueadas: o PR #84 ainda não está em `main`.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada.
+
+Fechamento local: **4537 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — layout coverFlow
+
+O commit `ba07ccc` acrescenta o kind `coverFlow` com overlap e
+`rotationY` materializados. O QML só atribui os escalares; não calcula
+perspectiva. Mosaic continua recusado. Evidência física e instalação
+desta frente continuam bloqueadas: o PR #84 ainda não está em `main`.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada.
+
+Fechamento local: **4539 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — layout carousel
+
+O commit `f2f0d78` acrescenta o kind `carousel`: itens numa elipse, com
+distância circular já materializada. O QML só atribui x/y/scale/opacity/z.
+Stack/flow e evidência física continuam abertos. O PR #84 ainda não está
+em `main`.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada.
+
+Fechamento local: **4540 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — layouts stack e flow
+
+O commit `9b17e2d` acrescenta os kinds `flow` e `stack`. O flow quebra
+pelos bounds resolvidos (linhas pela largura, colunas pela altura) e
+informa a contagem de faixas calculada; item maior que os bounds degrada
+para uma faixa única com diagnóstico `THEME-LAYOUT-LIMIT-002`, nunca
+sumindo em silêncio. O stack ancora o baralho no centro e faz peek só
+pelo gap, com profundidade materializada em scale/opacity/z. O QML apenas
+atribui o resultado — a sonda `check_scene_repeater.qml` foi verificada
+por mutação (a versão mutante reprova com exit 1, a íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada; a autorização desta sessão não
+preencheu a release-alvo, então não há evidência física deste slice.
+
+Fechamento local: **4546 passed, 10 skipped** (a única falha da execução
+anterior era o catálogo de estado, resolvido neste commit documental);
+Ruff, format, mypy, independence, boundaries e status-check. SZ-THEME-ENGINE
+e SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — componentes de progresso
+
+O commit `59fa604` corrige um defeito real: `progressBar` já era um kind
+aceito pelo vocabulário de superfícies, mas `resolve_scene_surfaces` só
+tratava `saveGallery` e `osd` — toda barra declarada por um tema ficava
+travada em zero. A resolução agora materializa valor (binding em
+allowlist fechada `progress.<job>.ratio`), estilo linear/circular/
+segmented/dotted, faixas preenchidas, ângulo de varredura e o contador
+`{current}/{total}` renderizado a partir de bindings allowlisted. Contador
+sem número real não inventa valor: mantém a barra e emite
+`THEME-SURFACE-PROGRESS-004`. O `SceneSurfacePreview` consome os
+escalares prontos — não conta segmentos nem formata texto — e o grafo do
+Studio passou a expor o slot `loading` para inspeção.
+
+A sonda `check_scene_surfaces.qml` foi verificada por mutação (mutante
+reprova com exit 1, íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. Nenhuma
+release nova foi construída ou instalada; a autorização desta sessão não
+preencheu a release-alvo, então este slice também não tem evidência
+física.
+
+Fechamento local: **4551 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — widgets clock e statistics
+
+O commit `a7b38e2` fecha a onda de componentes do Launcher com dois
+widgets allowlisted resolvidos ponta a ponta. O `clock` formata um
+instante ISO entregue pelo shell com tokens fechados `HH:mm[:ss]` — o
+domínio não tem relógio próprio nem faz I/O, então o resultado é
+determinístico e testável. O `statistics` renderiza `{value}` a partir de
+um caminho `stats.*` em allowlist. Fonte ausente ou fora de formato não
+vira texto inventado: emite `THEME-SURFACE-WIDGET-005` e mantém o rótulo
+vazio. O `SceneSurfacePreview` só desenha os rótulos prontos e o
+inspector do Studio passou a expor os slots `quickMenu` e `collections`.
+
+Sonda `check_scene_surfaces.qml` verificada por mutação (mutante reprova
+com exit 1; íntegra passa com 0).
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. A autorização
+desta sessão deixou a release-alvo em branco, então nenhuma das três
+entregas desta sessão tem evidência física; todas ficam em código,
+gates e CI.
+
+Fechamento local: **4555 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — highlight central e transparência por interação
+
+Dois commits funcionais nesta onda.
+
+O `494aa1d` acrescenta `highlight` aos layouts com centro (wheel,
+coverFlow, carousel, stack): escala, opacidade, largura e cor de contorno
+do item selecionado, com tratamento opcional e distinto para os vizinhos
+imediatos. O domínio resolve tudo contra o falloff do offset converter e
+marca cada entrada com `highlighted`/`adjacent` e contorno materializado;
+o `SceneRepeater` desenha a moldura sem decidir quem é o centro. Item a
+partir da distância 2 mantém o falloff puro e contorno zero.
+
+O `3945396` acrescenta `presence` ao movimento: o tema declara a opacidade
+de cada camada por estado de interação (`idle`, `navigating`, `focused`,
+`menuOpen`), o shell informa o estado corrente e o domínio materializa
+opacidade e duração do fade. Estado ausente ou fora da allowlist não apaga
+a interface — cai no fallback opaco, marca `unknown` e emite
+`THEME-MOTION-PRESENCE-003`. Reduced motion zera o fade, nunca o valor.
+
+Sondas `check_scene_repeater.qml` e `check_scene_motion.qml` verificadas
+por mutação (mutantes reprovam com exit 1; íntegras passam com 0).
+
+O CI do push anterior (`b224539`) fechou verde em todos os jobs: 3.11,
+3.12, 3.14, gate visual QML, os três smokes e o supply chain.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`. A autorização
+desta sessão continua sem release-alvo, então estas entregas também ficam
+sem evidência física.
+
+Fechamento local: **4562 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — badges, labels e glyphs semânticos
+
+O commit `d81a731` fecha o bullet de componentes semânticos da seção 11 da
+especificação. O tema passa a nomear semântica, não aparência: `glyph`
+escolhe entre nomes fechados (favorite, achievement, download, update,
+warning, error, network, save, offline) e **a engine decide o caractere**;
+`variant` mapeia para um par de cores fechado; `role` de label preenche
+os defaults tipográficos sem esconder override explícito do tema.
+
+Isso é fronteira de confiança, não conveniência: como o pacote não escreve
+o caractere, ele não contrabandeia glifo arbitrário, emoji nem marca de
+terceiro. Propriedades como `glyphChar` e `background` são recusadas na
+receita — só saem materializadas.
+
+Badge com texto longo trunca de forma determinística (12 caracteres + `…`)
+e badge sem texto e sem glifo fica invisível, em vez de virar pílula
+vazia. O novo `SceneBadge.qml` só desenha o que recebeu.
+
+Sonda `check_scene_repeater.qml` verificada por mutação em duas asserções
+(glifo trocado e visibilidade invertida reprovam com exit 1).
+
+O CI do push anterior (`d427149`) fechou verde em todos os jobs.
+
+A release ativa no host permanece `0.1.0a46-226b5f4b5c7c`; a sessão segue
+sem release-alvo autorizada, então também esta entrega fica sem evidência
+física.
+
+Fechamento local: **4566 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. SZ-THEME-ENGINE e
+SZ-THEME-STUDIO permanecem partial. SZ-AURA-UI e SZ-AURA-LAUNCHER não
+foram promovidos.
+
+## 2026-08-18 — Theme Engine — panels, cards, modals e drawers
+
+O commit `786e56a` acrescenta `sceneContainers`: o tema declara papel
+(`panel`, `card`, `modal`, `drawer`) e âncora; o domínio resolve
+geometria em pixels, padding, scrim e empilhamento. Contêiner maior que os
+bounds é encolhido com `THEME-CONTAINER-FIT-001` em vez de ser desenhado
+fora da tela.
+
+A regra que importa é estrutural: o z do modal fica abaixo da faixa
+reservada ao erro crítico (`CRITICAL_ERROR_Z`). Nenhum tema consegue
+declarar profundidade que esconda uma falha do sistema — o teste prova a
+comparação sobre valores materializados, e a sonda QML idem.
+
+Sonda `check_scene_containers.qml` verificada por mutação em três
+asserções independentes (scrim, z-order e bloqueio de entrada): todas
+reprovam com exit 1.
+
+Fechamento local: **4573 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+A partir deste commit a thread autorizou release e instalação no host, o
+que estava bloqueado desde o início da sessão. O fluxo governado começa
+no commit com CI verde.

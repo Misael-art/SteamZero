@@ -72,6 +72,9 @@ def _load_manifest_schema() -> dict[str, Any]:
     surface_ref = schemas.joinpath("scene-surfaces-v1.schema.json")
     with importlib.resources.as_file(surface_ref) as path:
         loaded["properties"]["sceneSurfaces"] = json.loads(path.read_text(encoding="utf-8"))
+    container_ref = schemas.joinpath("scene-containers-v1.schema.json")
+    with importlib.resources.as_file(container_ref) as path:
+        loaded["properties"]["sceneContainers"] = json.loads(path.read_text(encoding="utf-8"))
     return loaded
 
 

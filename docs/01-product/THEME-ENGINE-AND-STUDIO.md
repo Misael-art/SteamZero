@@ -337,7 +337,7 @@ Theme Engine só vira `complete` quando:
 1. um único asset gera todas as variantes de logo exigidas sem derivados no pacote;
 2. scene graph, layouts, repeaters, bindings, efeitos e animações funcionam ponta
    a ponta em pacote externo seguro;
-3. grid, list, wheel e cover flow são declarativos;
+3. grid, list, wheel, cover flow, carousel, flow e stack são declarativos;
 4. cor dinâmica, glass, cache e tiers possuem fallback e diagnóstico;
 5. múltiplas resoluções, controle e acessibilidade passam;
 6. pacote inválido/pesado volta ao tema seguro;

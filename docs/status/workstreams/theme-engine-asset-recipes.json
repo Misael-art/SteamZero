@@ -39,7 +39,17 @@
     "src/steamzero/ui/qml/SceneSurfacePreview.qml",
     "tests/unit/test_scene_surfaces.py",
     "tests/qml/check_scene_surfaces.qml",
-    "tests/qml/check_scene_repeater.qml"
+    "src/steamzero/domain/studio_graph.py",
+    "src/steamzero/ui/qml/ThemeStudioCanvas.qml",
+    "tests/unit/test_studio_graph.py",
+    "tests/qml/check_theme_studio_canvas.qml",
+    "tests/qml/check_scene_repeater.qml",
+    "src/steamzero/ui/qml/SceneBadge.qml",
+    "src/steamzero/domain/scene_containers.py",
+    "src/steamzero/schemas/scene-containers-v1.schema.json",
+    "src/steamzero/ui/qml/SceneContainerPreview.qml",
+    "tests/unit/test_scene_containers.py",
+    "tests/qml/check_scene_containers.qml"
   ],
   "sharedPaths": [
     "AGENTS.md",
@@ -57,6 +67,6 @@
     "src/steamzero/ui/qml/ThemeEditorPanel.qml",
     "tests/integration/test_qml_handheld_offscreen.py"
   ],
-  "nextAction": "Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam a identificação da release exata.",
-  "updatedAt": "2026-08-17"
+  "nextAction": "Release governada autorizada nesta thread: construir do commit verde e instalar no host.",
+  "updatedAt": "2026-08-18"
 }

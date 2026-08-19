@@ -16,9 +16,11 @@ from steamzero.core import fs, ids, paths
 from steamzero.core.errors import SteamZeroError
 from steamzero.domain.dynamic_palette import extract_dynamic_palette
 from steamzero.domain.glass_panels import resolve_glass_panels
+from steamzero.domain.scene_containers import ContainerBounds, resolve_scene_containers
 from steamzero.domain.scene_layout import LayoutBounds, resolve_scene_layouts
 from steamzero.domain.scene_motion import resolve_scene_motion
 from steamzero.domain.scene_surfaces import resolve_scene_surfaces
+from steamzero.domain.studio_graph import build_studio_graph
 from steamzero.domain.themes import (
     ASSET_SLOTS_ALLOWED,
     THEME_DEFAULT_ID,
@@ -44,14 +46,18 @@ _THEME_PACKAGE = "steamzero.themes"
 _LAYOUT_PREVIEW_READ_MODEL: dict[str, object] = {
     "preview": {
         "items": [
-            {"title": "Axiom Verge"},
-            {"title": "Celeste"},
-            {"title": "Hades"},
-            {"title": "Tunic"},
+            {"title": "Axiom Verge", "state": "Baixando"},
+            {"title": "Celeste", "state": ""},
+            {"title": "Hades", "state": "Na fila"},
+            {"title": "Tunic", "state": ""},
         ]
     }
 }
 _LAYOUT_PREVIEW_BOUNDS = LayoutBounds(width=640, height=96)
+# O preview mostra a interface ociosa para tornar a transparência declarada
+# legível; o estado real vem do shell, nunca do pacote.
+_MOTION_PREVIEW_INTERACTION = "idle"
+_CONTAINER_PREVIEW_BOUNDS = ContainerBounds(width=1280, height=800)
 _SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
     "library": {
         "items": [{"title": "Celeste"}],
@@ -76,6 +82,9 @@ _SURFACE_PREVIEW_READ_MODEL: dict[str, object] = {
         ]
     },
     "osd": {"volume": 0.4, "muted": False, "paused": False},
+    "progress": {"download": {"ratio": 0.375, "current": 3, "total": 8}},
+    "clock": {"iso": "2026-08-18T21:07:42"},
+    "stats": {"totalGames": 128},
 }
 
 
@@ -200,12 +209,13 @@ def _make_resolved(
     assets: dict[str, str],
     high_contrast: bool = False,
     reduced_motion: bool = False,
-) -> ResolvedTheme:
+) -> tuple[ResolvedTheme, tuple[dict[str, str], ...]]:
     """Resolve o preview da sessão percorrendo a cadeia ``extends``.
 
     Usa ``ThemeResolver`` (profundidade finita, detecção de ciclo, base ausente).
     Em qualquer falha de cadeia ou de montagem do rascunho, degrada para a
-    resolução só com tokens da sessão — o editor nunca trava o preview.
+    resolução só com tokens da sessão — o editor nunca trava o preview, mas
+    publica diagnóstico quando a cadeia foi recusada.
     """
     draft_tokens = {cat: dict(vals) for cat, vals in tokens.items() if vals}
     draft_assets = {slot: path for slot, path in assets.items() if slot in ASSET_SLOTS_ALLOWED}
@@ -223,18 +233,25 @@ def _make_resolved(
         available = _load_manifests_for_resolution()
         # Rascunho da sessão vence o que estiver em disco/builtin para o mesmo id.
         available[draft.id] = draft
-        return ThemeResolver(available).resolve(
-            draft.id,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
+        return (
+            ThemeResolver(available).resolve(
+                draft.id,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            ),
+            (),
         )
-    except (ValueError, TypeError, KeyError, AttributeError):
-        return _make_resolved_leaf(
-            manifest,
-            tokens,
-            assets,
-            high_contrast=high_contrast,
-            reduced_motion=reduced_motion,
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        diagnostic = _editor_chain_diagnostic(exc)
+        return (
+            _make_resolved_leaf(
+                manifest,
+                tokens,
+                assets,
+                high_contrast=high_contrast,
+                reduced_motion=reduced_motion,
+            ),
+            (diagnostic,) if diagnostic is not None else (),
         )
 
 
@@ -255,9 +272,52 @@ def _preview_source_bytes(resolved: ResolvedTheme) -> bytes | None:
         return None
 
 
-def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
+def _editor_chain_diagnostic(exc: BaseException) -> dict[str, str] | None:
+    message = str(exc)
+    if "profundidade de herança excedida" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-001",
+            "reason": "cadeia extends acima do limite; preview usou os tokens da sessão",
+        }
+    if "ciclo de herança" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-002",
+            "reason": "ciclo na cadeia extends; preview usou os tokens da sessão",
+        }
+    if "não encontrado" in message:
+        return {
+            "code": "THEME-EDITOR-EXTENDS-003",
+            "reason": "base da cadeia extends ausente; preview usou os tokens da sessão",
+        }
+    return None
+
+
+def _resolved_preview(
+    manifest: dict[str, object],
+    tokens: dict[str, dict[str, object]],
+    assets: dict[str, str],
+    *,
+    high_contrast: bool = False,
+    reduced_motion: bool = False,
+) -> dict[str, object]:
+    resolved, diagnostics = _make_resolved(
+        manifest,
+        tokens,
+        assets,
+        high_contrast=high_contrast,
+        reduced_motion=reduced_motion,
+    )
+    return _to_preview_object(resolved, diagnostics=diagnostics)
+
+
+def _to_preview_object(
+    resolved: ResolvedTheme,
+    *,
+    diagnostics: tuple[dict[str, str], ...] = (),
+) -> dict[str, object]:
     """Entrega ao editor um preview já materializado, nunca bindings vivos."""
     preview = resolved.to_theme_qml_object()
+    preview["editorDiagnostics"] = [dict(item) for item in diagnostics]
     if resolved.scene_layouts is not None:
         preview["sceneLayoutPreview"] = resolve_scene_layouts(
             resolved.scene_layouts,
@@ -282,12 +342,19 @@ def _to_preview_object(resolved: ResolvedTheme) -> dict[str, object]:
         preview["sceneMotionPreview"] = resolve_scene_motion(
             resolved.scene_motion,
             reduced_motion=resolved.reduced_motion,
+            interaction_state=_MOTION_PREVIEW_INTERACTION,
+        ).to_qml_object()
+    if resolved.scene_containers is not None:
+        preview["sceneContainerPreview"] = resolve_scene_containers(
+            resolved.scene_containers,
+            bounds=_CONTAINER_PREVIEW_BOUNDS,
         ).to_qml_object()
     if resolved.scene_surfaces is not None:
         preview["sceneSurfacePreview"] = resolve_scene_surfaces(
             resolved.scene_surfaces,
             _SURFACE_PREVIEW_READ_MODEL,
         ).to_qml_object()
+    preview["studioGraph"] = build_studio_graph(preview).to_qml_object()
     return preview
 
 
@@ -339,7 +406,7 @@ class ThemeEditorManager:
             "sessionId": sid,
             "readOnly": read_only,
             "manifest": manifest.to_dict(),
-            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), tokens, assets)),
+            "preview": _resolved_preview(manifest.to_dict(), tokens, assets),
         }
 
     def create(
@@ -368,7 +435,7 @@ class ThemeEditorManager:
         return {
             "sessionId": sid,
             "manifest": manifest.to_dict(),
-            "preview": _to_preview_object(_make_resolved(manifest.to_dict(), {}, {})),
+            "preview": _resolved_preview(manifest.to_dict(), {}, {}),
         }
 
     def set_tokens(
@@ -556,14 +623,12 @@ class ThemeEditorManager:
         high_contrast: bool = False,
         reduced_motion: bool = False,
     ) -> dict[str, object]:
-        return _to_preview_object(
-            _make_resolved(
-                session.manifest,
-                session.tokens,
-                session.assets,
-                high_contrast=high_contrast,
-                reduced_motion=reduced_motion,
-            )
+        return _resolved_preview(
+            session.manifest,
+            session.tokens,
+            session.assets,
+            high_contrast=high_contrast,
+            reduced_motion=reduced_motion,
         )
 
 

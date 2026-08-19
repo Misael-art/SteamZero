@@ -15,10 +15,49 @@ Item {
 
     readonly property url textSource: Qt.resolvedUrl("SceneText.qml")
     readonly property url imageSource: Qt.resolvedUrl("SceneImage.qml")
+    readonly property url badgeSource: Qt.resolvedUrl("SceneBadge.qml")
+
+    function sourceFor(kind) {
+        if (kind === "image")
+            return imageSource
+        if (kind === "badge")
+            return badgeSource
+        return textSource
+    }
 
     function entryAt(index) {
         const loader = nodes.itemAt(index)
         return loader ? loader.item : null
+    }
+
+    function outlineAt(index) {
+        return outlines.itemAt(index)
+    }
+
+    // Moldura de destaque do item central (e dos vizinhos, quando o tema declara
+    // tratamento). Largura, cor e visibilidade chegam resolvidas; o QML não
+    // decide quem é o centro nem quanto contorno aplicar.
+    Repeater {
+        id: outlines
+        model: sceneRepeater.entries
+
+        delegate: Rectangle {
+            required property var modelData
+            readonly property real outlineWidth: modelData && modelData.outlineWidth !== undefined
+                ? Number(modelData.outlineWidth) : 0
+
+            x: modelData.x
+            y: modelData.y
+            width: modelData.width !== undefined ? modelData.width : 0
+            height: modelData.height !== undefined ? modelData.height : 0
+            z: (modelData.z !== undefined ? modelData.z : 0) - 1
+            scale: modelData.scale !== undefined ? modelData.scale : 1
+            visible: outlineWidth > 0 && modelData.visible !== false
+            color: "transparent"
+            border.width: outlineWidth
+            border.color: modelData.outlineColor !== undefined ? modelData.outlineColor : "#ffffff"
+            radius: 4
+        }
     }
 
     Repeater {
@@ -31,8 +70,7 @@ Item {
             function loadEntry() {
                 if (modelData === undefined)
                     return
-                const source = modelData.kind === "image"
-                    ? sceneRepeater.imageSource : sceneRepeater.textSource
+                const source = sceneRepeater.sourceFor(modelData.kind)
                 // `SceneText`/`SceneImage` exigem `model` na construção. Atribuir
                 // em onLoaded é tarde demais e o Qt recusa o componente.
                 setSource(source, {"model": modelData})

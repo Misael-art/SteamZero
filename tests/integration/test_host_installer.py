@@ -220,6 +220,66 @@ def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
     assert captured["dir"] == install_host._SMOKE_TMPDIR
 
 
+def test_verify_release_smoke_accepts_live_daemon_still_on_previous_generation(
+    tmp_path: Path,
+) -> None:
+    """O smoke isola XDG, mas doctor ainda observa o daemon da sessão.
+
+    Se a geração ao vivo ainda não convergiu, isso não pode impedir o
+    instalador de verificar o binário novo — senão o converge nunca chega a
+    reiniciar o serviço.
+    """
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    executable = release / "venv" / "bin" / "steamzero"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "if '--version' in sys.argv:\n"
+        "    print('0.1.0')\n"
+        "else:\n"
+        "    print(json.dumps({\n"
+        "        'status': 'failed',\n"
+        "        'ok': False,\n"
+        "        'checks': [\n"
+        "            {'name': 'runtime.python', 'status': 'pass', 'message': 'ok'},\n"
+        "            {'name': 'runtime.provenance', 'status': 'pass', 'message': 'release-a'},\n"
+        "            {'name': 'service.generation', 'status': 'fail',\n"
+        "             'message': 'E-HOST-DAEMON-PENDING: current=release-a daemon=release-old'},\n"
+        "        ],\n"
+        "    }))\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+
+    install_host._verify_release(release)
+
+
+def test_verify_release_smoke_still_fails_on_unrelated_doctor_errors(tmp_path: Path) -> None:
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    executable = release / "venv" / "bin" / "steamzero"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "if '--version' in sys.argv:\n"
+        "    print('0.1.0')\n"
+        "else:\n"
+        "    print(json.dumps({\n"
+        "        'status': 'failed',\n"
+        "        'ok': False,\n"
+        "        'checks': [\n"
+        "            {'name': 'state.db.integrity', 'status': 'fail', 'message': 'corrupt'},\n"
+        "        ],\n"
+        "    }))\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+
+    with pytest.raises(RuntimeError, match="smoke da release"):
+        install_host._verify_release(release)
+
+
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     _release(layout, "release-a")

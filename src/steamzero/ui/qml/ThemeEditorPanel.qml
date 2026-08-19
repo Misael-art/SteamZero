@@ -92,6 +92,40 @@ Rectangle {
         sceneSurfacePreviewActive && sceneSurfaceRepeater.thumbnailFallback
     readonly property bool sceneSurfaceCriticalVisible:
         sceneSurfacePreviewActive && sceneSurfaceRepeater.criticalVisible
+    readonly property var studioGraph: _previewBridge.studioGraph.nodes
+        ? _previewBridge.studioGraph : null
+    readonly property bool studioGraphActive:
+        assetRecipeDemoActive && studioGraph !== null
+    readonly property int studioGraphNodeCount:
+        studioGraphActive ? studioCanvas.nodeCount : 0
+    readonly property string studioGraphSelectedId:
+        studioGraphActive ? studioCanvas.selectedId : ""
+    readonly property string studioGraphSelectedKind:
+        studioGraphActive ? studioCanvas.selectedKind : ""
+    readonly property int studioGraphConstraintCount:
+        studioGraphActive ? studioCanvas.selectedConstraintCount : 0
+    readonly property string studioGraphConstraintCode:
+        studioGraphActive ? studioCanvas.selectedConstraintCode : ""
+    readonly property int studioGraphTimelineDuration:
+        studioGraphActive ? studioCanvas.selectedTimelineDuration : 0
+    readonly property int studioGraphDeclaredCost:
+        studioGraphActive ? studioCanvas.declaredCost : 0
+    readonly property bool studioGraphWithinBudget:
+        studioGraphActive && studioCanvas.withinBudget
+    readonly property bool studioGraphBudgetMeasured:
+        studioGraphActive && studioCanvas.budgetMeasured
+    readonly property string studioGraphBindingPath:
+        studioGraphActive ? studioCanvas.selectedBindingPath : ""
+
+    function studioGraphSelect(nodeId) {
+        return studioGraphActive ? studioCanvas.select(nodeId) : false
+    }
+
+    readonly property var editorDiagnostics: _previewBridge.editorDiagnostics
+    readonly property bool editorDiagnosticsActive:
+        editorDiagnostics && editorDiagnostics.length > 0
+    readonly property string editorDiagnosticCode:
+        editorDiagnosticsActive ? String(editorDiagnostics[0].code) : ""
 
     property var _previewBridge: ThemeBridge {
         // O ThemeBridge espera em ``_source.resolved`` o objeto QML completo do
@@ -844,6 +878,23 @@ Rectangle {
                     }
 
                     Rectangle {
+                        visible: panel.editorDiagnosticsActive
+                        objectName: "editorDiagnosticsBanner"
+                        color: panel.amberColor
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 40 : 0
+                        Label {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            text: panel.editorDiagnosticCode
+                            color: "#1a1a1a"
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Rectangle {
                         visible: panel.assetRecipeDemoActive
                         color: panel._previewBridge.surface
                         radius: panel._previewBridge.radiusMedium
@@ -1061,6 +1112,37 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             surfaces: panel.sceneSurfacePreview
+                        }
+                    }
+
+                    Rectangle {
+                        visible: panel.studioGraphActive
+                        color: panel._previewBridge.surface
+                        radius: panel._previewBridge.radiusMedium
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? 180 : 0
+                        border.color: panel._previewBridge.border
+                        border.width: 1
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            text: qsTr("Theme Studio · árvore e inspector")
+                            color: panel._previewBridge.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        ThemeStudioCanvas {
+                            id: studioCanvas
+                            objectName: "studioCanvas"
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.top: parent.top
+                            anchors.margins: 12
+                            anchors.topMargin: 32
+                            graph: panel.studioGraph
                         }
                     }
 

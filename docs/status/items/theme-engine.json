@@ -9,7 +9,7 @@
   "verification": "unit",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "46f2a7d3bc8f80b5f010ae46962d6cd09ab17b8491676c0d01cbedc977d33ea0",
+  "scopeDigest": "2e319f5d9f6fab667140336b732a26cb8377ba737378479dbf4cc168ae834d75",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -56,14 +56,19 @@
     "tests/qml/check_scene_surfaces.qml",
     "tests/qml/check_glass_panel.qml",
     "tests/qml/golden/asset-recipes",
-    "tests/integration/test_qml_asset_recipes.py"
+    "tests/integration/test_qml_asset_recipes.py",
+    "src/steamzero/domain/scene_containers.py",
+    "src/steamzero/schemas/scene-containers-v1.schema.json",
+    "src/steamzero/ui/qml/SceneContainerPreview.qml",
+    "tests/unit/test_scene_containers.py",
+    "tests/qml/check_scene_containers.qml"
   ],
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
-    "Grid, list, wheel e cover flow podem ser compostos sem codigo externo.",
+    "Grid, list, wheel, cover flow, carousel, flow e stack podem ser compostos sem codigo externo.",
     "Tema invalido ou acima do orcamento degrada para builtin seguro sem perder foco ou derrubar o launcher.",
     "A cena de referencia mede 60 FPS, frame p95 de 16,7 ms, startup de ate 2 s e no maximo 512 MB de VRAM no Deck.",
     "Instalacao, update, rollback e remocao preservam temas e dados do usuario."
@@ -164,12 +169,60 @@
       "reference": "tests/qml/check_scene_surfaces.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_repeater.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_surfaces.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_surfaces.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_scene_surfaces.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_surfaces.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_surfaces.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q (widgets clock/statistics); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_surfaces.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_scene_motion.py tests/unit/test_theme_editor.py -q (highlight central e transparencia por interacao); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_motion.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_layout.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_layout.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q (badges, labels e glyphs semanticos); QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_repeater.qml",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_scene_containers.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_containers.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_containers.qml",
+      "result": "passed"
     }
   ],
-  "nextAction": "Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam identificação da release exata.",
+  "nextAction": "Construir e instalar release governada com as capacidades desta sessão e capturar a evidência física.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
-  "updatedAt": "2026-08-17",
-  "notes": "Estado permanece parcial. Receitas, cache, layouts, paleta, vidro e motion ja tem contrato offscreen. Este slice acrescenta sceneSurfaces v1: slots semânticos, galeria de saves por contrato publico e OSD que nao oculta erro critico nem publica sucesso falso. A engine nao controla o emulador e nao le path privado. Isso nao implementa o AURA Launcher. Wheel/cover flow, canvas do Studio e medicao fisica ainda nao existem. A autorizacao de release desta sessao nao identifica uma release exata."
+  "updatedAt": "2026-08-18",
+  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; badges/labels/glyphs semanticos; e panels/cards/modals/drawers semanticos com geometria, scrim e empilhamento resolvidos — modal fica abaixo da faixa do erro critico por construcao. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
 }

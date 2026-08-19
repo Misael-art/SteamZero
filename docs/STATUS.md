@@ -34,8 +34,8 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-MEDIA-SCRAPING | Metadados e midia por scraping controlado | implemented | complete | integrated | unit | degraded | installed | Mostrar o estado vaultVolatile na UI com texto acionavel (o cofre perdeu o valor, nao voce esqueceu) e fechar a G40 (systemeid do ScreenScraper). |
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
-| SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | partial | partial | integrated | unit | degraded | installed | Iniciar o slice canvas/árvore/inspector do Theme Studio. Release e evidência física dos slices da Theme Engine aguardam identificação da release exata. |
-| SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | partial | partial | integrated | unit | degraded | installed | Fechar GAP-G39 e entregar o primeiro slice visual canvas-arvore-inspector ligado ao scene graph da Theme Engine. |
+| SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | partial | partial | integrated | unit | degraded | installed | Construir e instalar release governada com as capacidades desta sessão e capturar a evidência física. |
+| SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | partial | partial | integrated | unit | degraded | installed | Capturar evidência física do canvas na próxima release instalada. |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
 
 Consulte `docs/ACTIVE-WORK.md` antes de criar uma branch ou editar arquivos compartilhados.

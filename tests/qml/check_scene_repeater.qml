@@ -16,6 +16,152 @@ Item {
     }
 
     SceneRepeater {
+        id: carousel
+        layout: ({
+            "id": "previewCarousel",
+            "kind": "carousel",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "carousel-0", "text": "Axiom Verge",
+                "x": 21.4, "y": 42, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "carousel-1", "text": "Celeste",
+                "x": 160, "y": 0, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: flow
+        layout: ({
+            "id": "previewFlow",
+            "kind": "flow",
+            "columns": 4,
+            "entries": [{
+                "kind": "text", "id": "flow-title-0", "text": "Axiom Verge",
+                "x": 0, "y": 0, "width": 138, "height": 32,
+                "visible": true, "opacity": 1,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "flow-title-1", "text": "Celeste",
+                "x": 146, "y": 0, "width": 138, "height": 32,
+                "visible": true, "opacity": 1,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: stack
+        layout: ({
+            "id": "previewStack",
+            "kind": "stack",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "stack-title-0", "text": "Axiom Verge",
+                "x": 251, "y": 22, "width": 138, "height": 32,
+                "visible": true, "opacity": 0.82, "scale": 0.92, "z": 31,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "stack-title-1", "text": "Celeste",
+                "x": 251, "y": 32, "width": 138, "height": 32,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: badges
+        layout: ({
+            "id": "previewBadges",
+            "kind": "list",
+            "columns": 1,
+            "entries": [{
+                "kind": "badge", "id": "state-badge-0", "text": "Baixando",
+                "x": 0, "y": 0, "width": 138, "height": 24,
+                "visible": true, "opacity": 1,
+                "variant": "info", "glyph": "download", "glyphChar": "\u2193",
+                "background": "#0e7490", "foreground": "#f2f6fb"
+            }, {
+                "kind": "badge", "id": "state-badge-1", "text": "",
+                "x": 146, "y": 0, "width": 138, "height": 24,
+                "visible": false, "opacity": 1,
+                "variant": "neutral", "glyph": "none", "glyphChar": "",
+                "background": "#334155", "foreground": "#f2f6fb"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: covers
+        layout: ({
+            "id": "previewCoverFlow",
+            "kind": "coverFlow",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "cover-0", "text": "Axiom Verge",
+                "x": 124, "y": 28, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.85, "scale": 0.9, "z": 31,
+                "rotationY": -28, "color": "#f2f6fb", "fontFamily": "",
+                "fontPixelSize": 14, "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "cover-1", "text": "Celeste",
+                "x": 160, "y": 28, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1, "z": 32,
+                "rotationY": 0, "color": "#f2f6fb", "fontFamily": "",
+                "fontPixelSize": 14, "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
+        id: wheel
+        layout: ({
+            "id": "previewWheel",
+            "kind": "wheel",
+            "columns": 1,
+            "entries": [{
+                "kind": "text", "id": "wheel-0", "text": "Axiom Verge",
+                "x": 70, "y": 24, "width": 80, "height": 24,
+                "visible": true, "opacity": 0.7, "scale": 0.92, "z": 31,
+                "highlighted": false, "adjacent": true,
+                "outlineWidth": 1, "outlineColor": "#334155",
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }, {
+                "kind": "text", "id": "wheel-1", "text": "Celeste",
+                "x": 160, "y": 24, "width": 80, "height": 24,
+                "visible": true, "opacity": 1, "scale": 1.18, "z": 32,
+                "highlighted": true, "adjacent": false,
+                "outlineWidth": 3, "outlineColor": "#22d3ee",
+                "color": "#f2f6fb", "fontFamily": "", "fontPixelSize": 14,
+                "fontWeight": 400, "fontItalic": false,
+                "horizontalAlignment": "AlignLeft", "verticalAlignment": "AlignTop"
+            }]
+        })
+    }
+
+    SceneRepeater {
         id: cards
         layout: ({
             "id": "previewTitles",
@@ -44,6 +190,95 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            harness.check(carousel.entryCount === 2, "carousel não recebeu duas entradas")
+            const front = carousel.entryAt(1)
+            const side = carousel.entryAt(0)
+            harness.check(front !== null && side !== null, "nós do carousel não instanciaram")
+            if (front !== null) {
+                harness.check(front.text === "Celeste" && front.y === 0,
+                              "item frontal do carousel não chegou ao QML")
+            }
+            if (side !== null) {
+                harness.check(Math.abs(side.x - 21.4) < 0.05 && side.scale === 0.92,
+                              "elipse do carousel precisa usar geometria materializada")
+            }
+            harness.check(flow.entryCount === 2, "flow não recebeu duas entradas")
+            const flowFirst = flow.entryAt(0)
+            const flowSecond = flow.entryAt(1)
+            harness.check(flowFirst !== null && flowSecond !== null, "nós do flow não instanciaram")
+            if (flowFirst !== null && flowSecond !== null) {
+                harness.check(flowFirst.y === flowSecond.y && flowSecond.x === 146,
+                              "quebra do flow precisa vir materializada do domínio")
+            }
+            harness.check(stack.entryCount === 2, "stack não recebeu duas entradas")
+            const stackTop = stack.entryAt(1)
+            const stackBehind = stack.entryAt(0)
+            harness.check(stackTop !== null && stackBehind !== null, "nós do stack não instanciaram")
+            if (stackTop !== null && stackBehind !== null) {
+                harness.check(stackTop.x === stackBehind.x && stackTop.y - stackBehind.y === 10,
+                              "peek do stack precisa usar o gap materializado")
+                harness.check(stackTop.z > stackBehind.z && stackBehind.scale === 0.92,
+                              "profundidade do stack não pode ser recalculada no QML")
+            }
+            harness.check(badges.entryCount === 2, "badges não receberam duas entradas")
+            const badge = badges.entryAt(0)
+            const emptyBadge = badges.entryAt(1)
+            harness.check(badge !== null && emptyBadge !== null, "nós de badge não instanciaram")
+            if (badge !== null) {
+                harness.check(badge.color.toString().toLowerCase().indexOf("0e7490") !== -1,
+                              "cor da variante precisa vir materializada")
+                harness.check(badge.visible === true, "badge com texto precisa aparecer")
+                const glyphNode = badge.children[0].children[0]
+                harness.check(glyphNode.objectName === "badgeGlyph" && glyphNode.text === "\u2193",
+                              "glifo semântico não pode ser escolhido no QML")
+            }
+            if (emptyBadge !== null) {
+                harness.check(emptyBadge.visible === false,
+                              "badge sem texto e sem glifo não pode virar pílula vazia")
+            }
+            harness.check(covers.entryCount === 2, "cover flow não recebeu duas entradas")
+            const cover = covers.entryAt(1)
+            const neighbor = covers.entryAt(0)
+            harness.check(cover !== null && neighbor !== null, "nós do cover flow não instanciaram")
+            if (cover !== null) {
+                harness.check(cover.text === "Celeste", "capa selecionada não chegou ao QML")
+                harness.check(cover.z === 32 && cover.scale === 1,
+                              "offset converter do cover flow não pode ser recalculado no QML")
+            }
+            if (neighbor !== null) {
+                harness.check(neighbor.x === 124 && neighbor.scale === 0.9,
+                              "vizinho do cover flow precisa usar overlap materializado")
+            }
+            harness.check(wheel.entryCount === 2, "wheel não recebeu duas entradas")
+            const focused = wheel.entryAt(1)
+            const wheelSide = wheel.entryAt(0)
+            harness.check(focused !== null && wheelSide !== null, "nós do wheel não instanciaram")
+            if (focused !== null) {
+                harness.check(focused.text === "Celeste", "item selecionado não chegou ao QML")
+                harness.check(focused.scale === 1.18 && focused.z === 32,
+                              "offset converter não pode ser recalculado no QML")
+            }
+            if (wheelSide !== null) {
+                harness.check(wheelSide.x === 70 && wheelSide.scale === 0.92,
+                              "vizinho do wheel precisa usar escala materializada")
+            }
+            const centreOutline = wheel.outlineAt(1)
+            const sideOutline = wheel.outlineAt(0)
+            const farOutline = covers.outlineAt(0)
+            harness.check(centreOutline !== null && sideOutline !== null,
+                          "molduras de destaque não instanciaram")
+            if (centreOutline !== null && sideOutline !== null) {
+                harness.check(centreOutline.visible && centreOutline.border.width === 3,
+                              "contorno do centro precisa vir materializado")
+                harness.check(sideOutline.visible && sideOutline.border.width === 1,
+                              "vizinho precisa usar o contorno declarado")
+                harness.check(centreOutline.border.width > sideOutline.border.width,
+                              "centro e vizinho não podem ter o mesmo contorno")
+            }
+            if (farOutline !== null) {
+                harness.check(farOutline.visible === false,
+                              "item sem tratamento não pode ganhar contorno no QML")
+            }
             harness.check(cards.entryCount === 2, "repetidor não recebeu duas entradas")
             const first = cards.entryAt(0)
             const second = cards.entryAt(1)

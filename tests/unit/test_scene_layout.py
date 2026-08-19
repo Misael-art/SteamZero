@@ -125,6 +125,585 @@ def test_list_is_declarative_bounded_and_uses_vertical_flow() -> None:
     assert all(entry.node["kind"] == "text" for entry in layout.entries)
 
 
+def test_wheel_applies_offset_converter_from_selected_index() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusWheel": {
+                "source": "library.items",
+                "kind": "wheel",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "wheel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusWheel"]
+    assert layout.kind is LayoutKind.WHEEL
+    assert [entry.node["text"] for entry in layout.entries[:3]] == [
+        "Axiom Verge",
+        "Celeste",
+        "Hades",
+    ]
+    assert [round(entry.x, 1) for entry in layout.entries[:3]] == [70.0, 160.0, 250.0]
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[1].node["opacity"] == 1.0
+    assert layout.entries[1].node["z"] == 32
+    assert layout.entries[0].node["scale"] == 0.92
+    assert layout.entries[0].node["opacity"] == 0.82
+    assert layout.entries[0].node["z"] == 31
+    assert layout.entries[0].node["distance"] == -1
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def test_cover_flow_materializes_overlap_and_rotation() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "libraryCover": {
+                "source": "library.items",
+                "kind": "coverFlow",
+                "item": {"width": 80, "height": 24},
+                "gap": 0,
+                "selected": 1,
+                "offset": {
+                    "scaleStep": 0.1,
+                    "opacityStep": 0.15,
+                    "minScale": 0.65,
+                    "minOpacity": 0.4,
+                    "rotationStep": 28,
+                    "maxRotation": 55,
+                    "overlap": 0.45,
+                },
+                "template": {
+                    "kind": "text",
+                    "id": "cover-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["libraryCover"]
+    assert layout.kind is LayoutKind.COVER_FLOW
+    assert [round(entry.x, 1) for entry in layout.entries[:3]] == [124.0, 160.0, 196.0]
+    assert layout.entries[1].node["rotationY"] == 0
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[0].node["rotationY"] == -28.0
+    assert layout.entries[2].node["rotationY"] == 28.0
+    assert layout.entries[0].node["scale"] == 0.9
+    assert layout.entries[0].node["opacity"] == 0.85
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def test_carousel_places_items_on_an_ellipse_by_wrapped_distance() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusCarousel": {
+                "source": "library.items",
+                "kind": "carousel",
+                "item": {"width": 80, "height": 24},
+                "maxItems": 3,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "carousel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusCarousel"]
+    assert layout.kind is LayoutKind.CAROUSEL
+    assert [entry.node["text"] for entry in layout.entries] == [
+        "Axiom Verge",
+        "Celeste",
+        "Hades",
+    ]
+    assert [round(entry.x, 1) for entry in layout.entries] == [21.4, 160.0, 298.6]
+    assert [round(entry.y, 1) for entry in layout.entries] == [42.0, 0.0, 42.0]
+    assert layout.entries[1].node["distance"] == 0
+    assert layout.entries[1].node["scale"] == 1.0
+    assert layout.entries[0].node["distance"] == -1
+    assert layout.entries[0].node["scale"] == 0.92
+    assert layout.entries[2].node["distance"] == 1
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def _template_book(template: dict[str, object]) -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "layouts": {
+            "shelf": {
+                "source": "library.badges",
+                "kind": "list",
+                "item": {"width": 120, "height": 24},
+                "maxItems": 4,
+                "template": template,
+            }
+        },
+    }
+
+
+def _badge_model() -> dict[str, object]:
+    model = _read_model()
+    library = dict(model["library"])  # type: ignore[arg-type]
+    library["badges"] = [
+        {"state": "Atualizando", "title": "Celeste"},
+        {"state": "", "title": "Hades"},
+        {"state": "Aguardando sincronização da nuvem", "title": "Tunic"},
+    ]
+    model["library"] = library
+    return model
+
+
+def test_badge_resolves_variant_colours_and_semantic_glyph() -> None:
+    raw = _template_book(
+        {
+            "kind": "badge",
+            "id": "state-badge",
+            "properties": {
+                "text": {"binding": "item.state", "fallback": ""},
+                "variant": "warning",
+                "glyph": "update",
+            },
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries
+    )
+    first = entries[0].node
+    assert first["kind"] == "badge"
+    assert first["text"] == "Atualizando"
+    assert first["variant"] == "warning"
+    assert first["glyph"] == "update"
+    # O caractere é escolhido pela engine: o tema nomeia a semântica, não o glifo.
+    assert first["glyphChar"] == "↻"
+    assert first["background"] == "#92400e"
+    assert first["foreground"] == "#fff7ed"
+    assert first["visible"] is True
+    # Texto longo é truncado de forma determinística, sem estourar o layout.
+    assert entries[2].node["text"] == "Aguardando s…"
+
+
+def test_badge_without_text_or_glyph_stays_hidden_instead_of_an_empty_pill() -> None:
+    raw = _template_book(
+        {
+            "kind": "badge",
+            "id": "state-badge",
+            "properties": {"text": {"binding": "item.state", "fallback": ""}},
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries
+    )
+    assert entries[0].node["visible"] is True
+    assert entries[1].node["visible"] is False
+    assert entries[1].node["glyphChar"] == ""
+
+
+def test_semantic_label_role_fills_typography_defaults_without_hiding_overrides() -> None:
+    raw = _template_book(
+        {
+            "kind": "text",
+            "id": "game-title",
+            "properties": {
+                "text": {"binding": "item.title", "fallback": "—"},
+                "role": "meta",
+            },
+        }
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    node = (
+        resolve_scene_layouts(book, _badge_model(), bounds=LayoutBounds(width=400, height=200))
+        .layouts["shelf"]
+        .entries[0]
+        .node
+    )
+    assert node["role"] == "meta"
+    assert node["fontPixelSize"] == 13
+    assert node["fontWeight"] == 400
+    assert node["opacity"] == 0.75
+
+    override = _template_book(
+        {
+            "kind": "text",
+            "id": "game-title",
+            "properties": {"role": "meta", "fontPixelSize": 22, "opacity": 1},
+        }
+    )
+    jsonschema.validate(override, SCHEMA)
+    node = (
+        resolve_scene_layouts(
+            LayoutRecipeBook.from_dict(override),
+            _badge_model(),
+            bounds=LayoutBounds(width=400, height=200),
+        )
+        .layouts["shelf"]
+        .entries[0]
+        .node
+    )
+    assert node["fontPixelSize"] == 22
+    assert node["opacity"] == 1.0
+    assert node["fontWeight"] == 400
+
+
+def test_badge_and_label_refuse_smuggled_glyphs_roles_and_variants() -> None:
+    for properties, message in (
+        ({"glyphChar": "☠"}, "não permitidas"),
+        ({"glyph": "skull"}, "glyph"),
+        ({"variant": "neon"}, "variant"),
+        ({"background": "#000000"}, "não permitidas"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            LayoutRecipeBook.from_dict(
+                _template_book({"kind": "badge", "id": "b", "properties": properties})
+            )
+    with pytest.raises(ValueError, match="role"):
+        LayoutRecipeBook.from_dict(
+            _template_book({"kind": "text", "id": "t", "properties": {"role": "headline"}})
+        )
+
+
+def _highlight_book(**highlight: object) -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusWheel": {
+                "source": "library.items",
+                "kind": "wheel",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "selected": 1,
+                "highlight": {
+                    "scale": 1.2,
+                    "opacity": 1,
+                    "outlineWidth": 3,
+                    "outlineColor": "#22d3ee",
+                    **highlight,
+                },
+                "template": {
+                    "kind": "text",
+                    "id": "wheel-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+
+
+def test_central_highlight_overrides_the_offset_falloff_for_the_selected_item() -> None:
+    raw = _highlight_book()
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    entries = resolved.layouts["focusWheel"].entries
+    center = entries[1].node
+    assert center["highlighted"] is True
+    assert center["adjacent"] is False
+    assert center["scale"] == 1.2
+    assert center["opacity"] == 1.0
+    assert center["outlineWidth"] == 3.0
+    assert center["outlineColor"] == "#22d3ee"
+    # Sem tratamento declarado, vizinhos e distantes seguem o offset converter.
+    assert entries[0].node["highlighted"] is False
+    assert entries[0].node["scale"] == 0.92
+    assert entries[0].node["outlineWidth"] == 0.0
+    assert entries[3].node["adjacent"] is False
+
+
+def test_adjacent_treatment_applies_only_to_the_immediate_neighbours() -> None:
+    raw = _highlight_book(
+        adjacent={"scale": 0.9, "opacity": 0.6, "outlineWidth": 1, "outlineColor": "#334155"}
+    )
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    entries = (
+        resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+        .layouts["focusWheel"]
+        .entries
+    )
+    assert [entry.node["adjacent"] for entry in entries] == [True, False, True, False, False]
+    assert entries[0].node["scale"] == 0.9
+    assert entries[0].node["opacity"] == 0.6
+    assert entries[0].node["outlineWidth"] == 1.0
+    assert entries[0].node["outlineColor"] == "#334155"
+    assert entries[2].node["scale"] == 0.9
+    # Distância 2 continua no falloff do offset, sem contorno.
+    assert entries[3].node["scale"] == 0.84
+    assert entries[3].node["outlineWidth"] == 0.0
+
+
+def test_highlight_refuses_layouts_without_a_centre_and_unsafe_limits() -> None:
+    for override, message in (
+        ({"outlineWidth": 32}, "outlineWidth"),
+        ({"outlineColor": "rgba(0,0,0,1)"}, "outlineColor"),
+        ({"scale": 4}, "scale"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            LayoutRecipeBook.from_dict(_highlight_book(**override))
+    with pytest.raises(ValueError, match="highlight"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "plainGrid": {
+                        "source": "library.items",
+                        "kind": "grid",
+                        "item": {"width": 80, "height": 24},
+                        "highlight": {"scale": 1.2},
+                        "template": {"kind": "text", "id": "x"},
+                    }
+                },
+            }
+        )
+
+
+def test_flow_wraps_by_bounds_and_reports_computed_columns() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "shelfFlow": {
+                "source": "library.items",
+                "kind": "flow",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "template": {
+                    "kind": "text",
+                    "id": "flow-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(
+        book, _read_model(), bounds=LayoutBounds(width=400, height=300)
+    )
+    layout = resolved.layouts["shelfFlow"]
+    assert layout.kind is LayoutKind.FLOW
+    assert layout.columns == 4
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (0.0, 0.0),
+        (90.0, 0.0),
+        (180.0, 0.0),
+        (270.0, 0.0),
+        (0.0, 34.0),
+    ]
+    assert resolved.diagnostics == ()
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+    narrow = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=200, height=300))
+    assert narrow.layouts["shelfFlow"].columns == 2
+    assert [(entry.x, entry.y) for entry in narrow.layouts["shelfFlow"].entries][:3] == [
+        (0.0, 0.0),
+        (90.0, 0.0),
+        (0.0, 34.0),
+    ]
+
+
+def test_vertical_flow_wraps_by_bounds_height() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "columnFlow": {
+                "source": "library.items",
+                "kind": "flow",
+                "direction": "vertical",
+                "item": {"width": 80, "height": 24},
+                "gap": 10,
+                "maxItems": 5,
+                "template": {"kind": "text", "id": "flow-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["columnFlow"]
+    assert layout.columns == 3
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (0.0, 0.0),
+        (0.0, 34.0),
+        (90.0, 0.0),
+        (90.0, 34.0),
+        (180.0, 0.0),
+    ]
+
+
+def test_flow_degrades_to_a_single_track_with_diagnostic_when_item_exceeds_bounds() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "tooWide": {
+                "source": "library.recent",
+                "kind": "flow",
+                "item": {"width": 240, "height": 36},
+                "gap": 8,
+                "template": {"kind": "text", "id": "flow-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(
+        book, _read_model(), bounds=LayoutBounds(width=100, height=300)
+    )
+    layout = resolved.layouts["tooWide"]
+    assert layout.columns == 1
+    assert [(entry.x, entry.y) for entry in layout.entries] == [(0.0, 0.0), (0.0, 44.0)]
+    assert any(
+        item.code == DIAG_LAYOUT_LIMIT
+        and item.layout == "tooWide"
+        and item.fallback == "singleTrack"
+        for item in resolved.diagnostics
+    )
+
+
+def test_flow_refuses_declared_columns_and_breakpoints() -> None:
+    for extra in ({"columns": 3}, {"breakpoints": [{"columns": 2}]}):
+        with pytest.raises(ValueError, match="flow"):
+            LayoutRecipeBook.from_dict(
+                {
+                    "schemaVersion": 1,
+                    "layouts": {
+                        "bad": {
+                            "source": "library.items",
+                            "kind": "flow",
+                            "item": {"width": 80, "height": 24},
+                            "template": {"kind": "text", "id": "x"},
+                            **extra,
+                        }
+                    },
+                }
+            )
+
+
+def test_stack_overlaps_items_by_gap_and_materializes_depth() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "focusStack": {
+                "source": "library.items",
+                "kind": "stack",
+                "item": {"width": 80, "height": 24},
+                "gap": 12,
+                "maxItems": 3,
+                "selected": 1,
+                "template": {
+                    "kind": "text",
+                    "id": "stack-title",
+                    "properties": {"text": {"binding": "item.title", "fallback": "—"}},
+                },
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["focusStack"]
+    assert layout.kind is LayoutKind.STACK
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (160.0, 16.0),
+        (160.0, 28.0),
+        (160.0, 40.0),
+    ]
+    assert [entry.node["z"] for entry in layout.entries] == [31, 32, 31]
+    assert [entry.node["scale"] for entry in layout.entries] == [0.92, 1.0, 0.92]
+    assert [entry.node["opacity"] for entry in layout.entries] == [0.82, 1.0, 0.82]
+    assert [entry.node["distance"] for entry in layout.entries] == [-1, 0, 1]
+    assert all("binding" not in entry.node for entry in layout.entries)
+
+
+def test_horizontal_stack_peeks_on_the_x_axis_only() -> None:
+    raw = {
+        "schemaVersion": 1,
+        "layouts": {
+            "sideStack": {
+                "source": "library.items",
+                "kind": "stack",
+                "direction": "horizontal",
+                "item": {"width": 80, "height": 24},
+                "gap": 12,
+                "maxItems": 3,
+                "selected": 1,
+                "template": {"kind": "text", "id": "stack-title"},
+            }
+        },
+    }
+    jsonschema.validate(raw, SCHEMA)
+    book = LayoutRecipeBook.from_dict(raw)
+    resolved = resolve_scene_layouts(book, _read_model(), bounds=LayoutBounds(width=400, height=80))
+    layout = resolved.layouts["sideStack"]
+    assert [(entry.x, entry.y) for entry in layout.entries] == [
+        (148.0, 28.0),
+        (160.0, 28.0),
+        (172.0, 28.0),
+    ]
+
+
+def test_stack_refuses_breakpoints() -> None:
+    with pytest.raises(ValueError, match="stack"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "bad": {
+                        "source": "library.items",
+                        "kind": "stack",
+                        "item": {"width": 80, "height": 24},
+                        "template": {"kind": "text", "id": "x"},
+                        "breakpoints": [{"columns": 2}],
+                    }
+                },
+            }
+        )
+
+
+def test_cover_flow_refuses_vertical_direction() -> None:
+    with pytest.raises(ValueError, match="horizontal"):
+        LayoutRecipeBook.from_dict(
+            {
+                "schemaVersion": 1,
+                "layouts": {
+                    "bad": {
+                        "source": "library.items",
+                        "kind": "coverFlow",
+                        "direction": "vertical",
+                        "item": {"width": 80, "height": 24},
+                        "template": {"kind": "text", "id": "x"},
+                    }
+                },
+            }
+        )
+
+
 def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagnostic() -> None:
     book = LayoutRecipeBook.from_dict(_raw_book())
     resolved = resolve_scene_layouts(
@@ -146,7 +725,7 @@ def test_missing_or_incompatible_source_degrades_to_safe_empty_layout_with_diagn
         (
             {
                 "source": "library.items",
-                "kind": "wheel",
+                "kind": "mosaic",
                 "item": {"width": 1, "height": 1},
                 "template": {"kind": "text", "id": "x"},
             },
@@ -260,7 +839,7 @@ def test_invalid_scene_layouts_fall_back_to_builtin_and_keep_accessibility(
                     "layouts": {
                         "bad": {
                             "source": "library.items",
-                            "kind": "wheel",
+                            "kind": "mosaic",
                             "item": {"width": 10, "height": 10},
                             "template": {"kind": "text", "id": "x"},
                         }

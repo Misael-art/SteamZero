@@ -34,6 +34,128 @@
             "fontPixelSize": 14
           }
         }
+      },
+      "previewWheel": {
+        "source": "preview.items",
+        "kind": "wheel",
+        "item": { "width": 138, "height": 32 },
+        "gap": 10,
+        "maxItems": 4,
+        "selected": 1,
+        "offset": {
+          "scaleStep": 0.08,
+          "opacityStep": 0.18,
+          "minScale": 0.7,
+          "minOpacity": 0.35
+        },
+        "highlight": {
+          "scale": 1.18,
+          "opacity": 1,
+          "outlineWidth": 3,
+          "outlineColor": "#22d3ee",
+          "adjacent": { "scale": 0.92, "opacity": 0.7, "outlineWidth": 1, "outlineColor": "#334155" }
+        },
+        "template": {
+          "kind": "text",
+          "id": "wheel-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      },
+      "previewCoverFlow": {
+        "source": "preview.items",
+        "kind": "coverFlow",
+        "item": { "width": 138, "height": 32 },
+        "gap": 0,
+        "maxItems": 4,
+        "selected": 1,
+        "offset": {
+          "scaleStep": 0.1,
+          "opacityStep": 0.15,
+          "minScale": 0.65,
+          "minOpacity": 0.4,
+          "rotationStep": 28,
+          "maxRotation": 55,
+          "overlap": 0.45
+        },
+        "template": {
+          "kind": "text",
+          "id": "cover-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      },
+      "previewCarousel": {
+        "source": "preview.items",
+        "kind": "carousel",
+        "item": { "width": 138, "height": 32 },
+        "maxItems": 4,
+        "selected": 1,
+        "template": {
+          "kind": "text",
+          "id": "carousel-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      },
+      "previewFlow": {
+        "source": "preview.items",
+        "kind": "flow",
+        "item": { "width": 138, "height": 32 },
+        "gap": 8,
+        "maxItems": 4,
+        "template": {
+          "kind": "text",
+          "id": "flow-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
+      },
+      "previewBadges": {
+        "source": "preview.items",
+        "kind": "list",
+        "direction": "horizontal",
+        "item": { "width": 138, "height": 24 },
+        "gap": 8,
+        "maxItems": 4,
+        "template": {
+          "kind": "badge",
+          "id": "state-badge",
+          "properties": {
+            "text": { "binding": "item.state", "fallback": "" },
+            "variant": "info",
+            "glyph": "download"
+          }
+        }
+      },
+      "previewStack": {
+        "source": "preview.items",
+        "kind": "stack",
+        "item": { "width": 138, "height": 32 },
+        "gap": 10,
+        "maxItems": 4,
+        "selected": 1,
+        "template": {
+          "kind": "text",
+          "id": "stack-title",
+          "properties": {
+            "text": { "binding": "item.title", "fallback": "Sem título" },
+            "color": "#f2f6fb",
+            "fontPixelSize": 14
+          }
+        }
       }
     }
   },
@@ -73,6 +195,14 @@
   },
   "sceneMotion": {
     "schemaVersion": 1,
+    "presence": {
+      "source": "interaction.state",
+      "fadeDuration": 200,
+      "layers": {
+        "chrome": { "idle": 0.25, "navigating": 1, "focused": 1, "menuOpen": 0.6 },
+        "osd": { "idle": 0, "navigating": 0.85, "focused": 1, "menuOpen": 1 }
+      }
+    },
     "states": {
       "normal": { "opacity": 1, "scale": 1 },
       "focused": { "opacity": 1, "scale": 1.06 },
@@ -110,6 +240,43 @@
       }
     }
   },
+  "sceneContainers": {
+    "schemaVersion": 1,
+    "containers": {
+      "previewPanel": {
+        "kind": "panel",
+        "anchor": "right",
+        "size": 0.38,
+        "padding": 16,
+        "radius": 12,
+        "elevation": 2
+      },
+      "previewCard": {
+        "kind": "card",
+        "anchor": "center",
+        "width": 320,
+        "height": 180,
+        "padding": 12,
+        "radius": 16,
+        "elevation": 1
+      },
+      "previewModal": {
+        "kind": "modal",
+        "width": 420,
+        "height": 220,
+        "scrimOpacity": 0.6,
+        "radius": 16,
+        "elevation": 3
+      },
+      "previewDrawer": {
+        "kind": "drawer",
+        "anchor": "bottom",
+        "size": 0.35,
+        "padding": 12,
+        "radius": 20
+      }
+    }
+  },
   "sceneSurfaces": {
     "schemaVersion": 1,
     "slots": {
@@ -117,7 +284,10 @@
       "library": { "component": "libraryGrid" },
       "saveStates": { "component": "saveGallery" },
       "osd": { "component": "quickOsd" },
-      "error": { "component": "errorBanner" }
+      "error": { "component": "errorBanner" },
+      "loading": { "component": "downloadBar" },
+      "quickMenu": { "component": "headerClock" },
+      "collections": { "component": "libraryStats" }
     },
     "components": {
       "recentRail": { "kind": "recentlyPlayed", "source": "library.recent" },
@@ -128,7 +298,24 @@
         "items": ["volume", "mute", "pause", "saveState"],
         "progress": { "binding": "osd.volume", "fallback": 0 }
       },
-      "errorBanner": { "kind": "errorBanner" }
+      "errorBanner": { "kind": "errorBanner" },
+      "downloadBar": {
+        "kind": "progressBar",
+        "style": "segmented",
+        "segments": 8,
+        "progress": { "binding": "progress.download.ratio", "fallback": 0 },
+        "counter": {
+          "current": "progress.download.current",
+          "total": "progress.download.total",
+          "format": "{current}/{total}"
+        }
+      },
+      "headerClock": { "kind": "clock", "source": "clock.iso", "format": "HH:mm" },
+      "libraryStats": {
+        "kind": "statistics",
+        "source": "stats.totalGames",
+        "format": "{value} jogos"
+      }
     }
   },
   "assetRecipes": {

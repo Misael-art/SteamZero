@@ -27,6 +27,34 @@
         "menuOpen": {"$ref": "#/$defs/snapshot"}
       }
     },
+    "presence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "layers"],
+      "properties": {
+        "source": {"const": "interaction.state"},
+        "fadeDuration": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "fallback": {"type": "number", "minimum": 0, "maximum": 1},
+        "essential": {"type": "boolean"},
+        "layers": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 8,
+          "propertyNames": {"pattern": "^[a-z][a-zA-Z0-9]{0,63}$"},
+          "additionalProperties": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "idle": {"type": "number", "minimum": 0, "maximum": 1},
+              "navigating": {"type": "number", "minimum": 0, "maximum": 1},
+              "focused": {"type": "number", "minimum": 0, "maximum": 1},
+              "menuOpen": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          }
+        }
+      }
+    },
     "transitions": {
       "type": "array",
       "maxItems": 32,
