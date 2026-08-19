@@ -7201,3 +7201,42 @@ retorno, shell instalado nem consumidor real fora do harness.
 
 Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: página de jogo e o contrato de retorno
+
+Itens 2 e 4 da Definition of Done, com a parte que separa vertical real de
+fachada.
+
+**Página de jogo.** Ação bloqueada continua visível, com o motivo ao lado.
+Esconder faria o usuário procurar o que não está lá; mostrar sem explicar faria
+ele apertar e não entender o silêncio. O foco nunca começa numa ação
+desabilitada, e o direcional não para nela — passar o foco por um botão morto
+obriga a apertar duas vezes sem saber por quê. O QML não avalia se o jogo pode
+rodar: se avaliasse, a regra viveria em dois lugares e um dia divergiria.
+
+**Retorno.** O item 5 exige reiniciar o launcher sem derrubar o jogo, logo o
+contexto atravessa processos em vez de viver em memória. A consequência é que o
+foco salvo pode não existir na volta — a biblioteca muda enquanto o jogo roda.
+Nesse caso o retorno cai no vizinho da **mesma seção**, com
+`LAUNCHER-RETURN-MISSING-001`, em vez de voltar ao topo da home e perder o lugar
+do usuário. Contexto corrompido não derruba o retorno: entre processos, o
+arquivo pode vir truncado ou vazio, e cair fora do launcher depois de fechar o
+jogo seria o pior desfecho possível.
+
+Três lacunas minhas apareceram no teste de mutação, todas em asserções que eu
+tinha escrito e considerava suficientes:
+
+- o retorno "válido" era verificado só por `restored in focus.nodes`, o que
+  `focus.initial` satisfaz — não provava a volta à mesma seção;
+- os casos de contexto corrompido eram todos dicionários, então o ramo de
+  payload não-objeto nunca era exercido;
+- a checagem de ativação usava `activate() === false || currentFocus !== "play"`
+  com a segunda condição já verdadeira. Era uma asserção que nunca falhava.
+
+As três foram fechadas e os mutantes agora reprovam.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Lançamento de processo real, shell
+instalado e consumidor fora do harness ainda não existem.
+
+Fechamento local: **4604 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
