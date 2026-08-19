@@ -222,6 +222,38 @@ def test_resolved_recipe_carries_the_degradation_signal_to_the_renderer() -> Non
     assert intact.to_dict()["degraded"] is False
 
 
+def test_hue_rotate_degrades_with_the_same_semantics_as_invert() -> None:
+    """Os dois nós de cor compartilham a negociação; um não pode divergir do outro."""
+    resolved, diagnostics = resolve_asset_recipes(
+        _book(),
+        capabilities=DEFAULT_ASSET_CAPABILITIES - {"graphics.asset.hue-rotate"},
+        tier=PerformanceTier.CINEMATIC,
+    )
+    hue = resolved["hueShift"]
+    assert hue.nodes == ()
+    assert hue.degraded is True
+    assert hue.dropped_nodes == 1
+    assert hue.to_dict()["droppedNodes"] == 1
+    assert any(
+        item.recipe == "hueShift" and item.fallback == "source" for item in diagnostics
+    )
+    # Invert segue intacto: remover uma capability não pode derrubar a outra.
+    assert resolved["invert"].degraded is False
+
+
+def test_renderer_node_allowlist_stays_in_sync_with_the_domain_vocabulary() -> None:
+    """Impede o drift entre o vocabulário do domínio e a lista do renderizador.
+
+    O QML não importa Python, então a lista de tipos suportados é duplicada por
+    necessidade. Sem esta prova, um node novo passaria a degradar em silêncio
+    porque o renderizador nunca soube que ele existe.
+    """
+    preview = Path("src/steamzero/ui/qml/AssetRecipePreview.qml").read_text(encoding="utf-8")
+    block = preview.split("const supported = [", 1)[1].split("]", 1)[0]
+    declared = {chunk.strip().strip('"') for chunk in block.split(",") if chunk.strip()}
+    assert declared == {node.value for node in AssetRecipeNodeType}
+
+
 def test_inner_outline_degrades_to_outer_when_only_outer_is_available() -> None:
     capabilities = DEFAULT_ASSET_CAPABILITIES - {"graphics.asset.outline.inner"}
     resolved, diagnostics = resolve_asset_recipes(

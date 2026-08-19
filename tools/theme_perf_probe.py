@@ -182,12 +182,34 @@ Window {
 """
 
 
-def _qml_runner() -> str:
+def _qml_runner() -> Path:
+    """Resolve o runtime QML para um caminho absoluto e executável.
+
+    O argv desta sonda nunca é montado a partir de entrada livre: o executável
+    sai do PATH via ``which`` e o harness é um arquivo que a própria ferramenta
+    acabou de escrever num diretório temporário.
+    """
     for name in ("qml6", "qml"):
         found = shutil.which(name)
         if found:
-            return found
+            resolved = Path(found).resolve()
+            if resolved.is_file():
+                return resolved
     raise SystemExit("qml6/qml ausente; instale o runtime Qt para medir")
+
+
+def _safe_qml_dir(value: Path) -> Path:
+    """Recusa diretório inexistente ou com aspas.
+
+    O caminho é interpolado no corpo QML do harness; uma aspa aqui deixaria de
+    ser um caminho e viraria código na cena.
+    """
+    resolved = value.expanduser().resolve()
+    if not resolved.is_dir():
+        raise SystemExit(f"--qml-dir não é diretório: {resolved}")
+    if any(char in str(resolved) for char in ('"', "'", "\\", "\n")):
+        raise SystemExit("--qml-dir com caractere que escaparia do literal QML")
+    return resolved
 
 
 def _peak_rss_kb(pid: int, stop: threading.Event) -> int:
@@ -220,7 +242,7 @@ def measure(
     port = _free_port()
     payload = base64.b64encode(json.dumps(preview).encode("utf-8")).decode("ascii")
     harness = (
-        _HARNESS.replace("__QMLDIR__", str(qml_dir))
+        _HARNESS.replace("__QMLDIR__", str(_safe_qml_dir(qml_dir)))
         .replace("__PAYLOAD__", payload)
         .replace("__PORT__", str(port))
         .replace("__WIDTH__", str(width))
@@ -237,8 +259,9 @@ def measure(
     stop = threading.Event()
     peak_holder: dict[str, int] = {}
     try:
+        argv = [str(_qml_runner()), str(harness_path.resolve())]
         process = subprocess.Popen(
-            [_qml_runner(), str(harness_path)],
+            argv,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

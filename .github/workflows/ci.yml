@@ -70,8 +70,13 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
+          # `DPkg::Lock::Timeout` é o que faltava: sem ele o apt espera o lock
+          # do unattended-upgrades para sempre — foi assim que este passo ficou
+          # cinco horas pendurado. Com o limite ele desiste e o passo segue,
+          # em vez de o timeout do step matar o step e deixar o apt-get filho
+          # vivo segurando o lock para o passo seguinte.
+          sudo apt-get -o DPkg::Lock::Timeout=180 update -qq
+          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends \
             qt6-declarative-dev-tools qml6-module-qtquick \
             qml6-module-qtquick-controls qml6-module-qtquick-layouts \
             qml6-module-qtquick-window qml6-module-qtquick-dialogs \
@@ -96,8 +101,9 @@ jobs:
         # integração do driver, não best-effort.
         timeout-minutes: 10
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends xorriso genisoimage
+          sudo apt-get -o DPkg::Lock::Timeout=180 update -qq
+          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends \
+            xorriso genisoimage
       - name: Testes e cobertura
         run: |
           mkdir -p build
