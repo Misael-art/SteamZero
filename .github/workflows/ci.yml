@@ -54,17 +54,15 @@ jobs:
         run: python tools/check_independence.py
       - name: Tipos estritos
         run: mypy
-      - name: Gerador de ISO cloud-init (harness de VM)
-        # test_vm_harness.py exercita provision(), que exige um gerador de ISO
-        # cidata no PATH (cloud-localds|xorriso|genisoimage). O runner do GitHub
-        # não traz nenhum por padrão; sem ele os testes do harness falham em
-        # RuntimeError na construção do seed. Obrigatório: são testes de
-        # integração do driver, não best-effort.
-        timeout-minutes: 10
-        run: |
-          sudo apt-get -o DPkg::Lock::Timeout=180 update -qq
-          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends \
-            xorriso genisoimage
+      # Havia aqui um passo que instalava xorriso e genisoimage por apt. A
+      # justificativa era real: dois testes de `test_vm_harness.py` montavam o
+      # argv do seed com `shutil.which` e falhavam sem um gerador no PATH.
+      #
+      # O passo travou o CI em 2026-08-19, estourando dez minutos sem imprimir
+      # uma linha de apt. A saída não foi mexer no timeout de novo: os dois
+      # testes passaram a injetar o gerador por monkeypatch, como o resto do
+      # arquivo já fazia. Rodam com PATH vazio (38 passed), e qual gerador é
+      # escolhido continua coberto por teste dedicado.
       - name: Testes e cobertura
         run: |
           mkdir -p build

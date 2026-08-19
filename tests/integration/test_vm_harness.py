@@ -483,6 +483,27 @@ def test_cloud_init_and_virt_install_are_pinned_to_disposable_overlay(tmp_path: 
     assert "--noautoconsole" in argv
 
 
+def _stub_seed_builder(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Injeta o gerador de ISO cidata em vez de exigi-lo do PATH do runner.
+
+    ``provision()`` monta o argv do seed com ``shutil.which``. Sem isto, dois
+    testes dependiam de ``xorriso`` estar instalado na máquina que roda a suíte
+    — e o CI precisava de um passo de ``apt`` só para isso, que travava. Qual
+    gerador é escolhido continua coberto por
+    ``test_seed_iso_uses_xorriso_when_cloud_localds_is_absent``.
+    """
+    real_which = provision_module.shutil.which
+
+    def which(name: str) -> str | None:
+        if name == "xorriso":
+            return "/usr/bin/xorriso"
+        if name in {"cloud-localds", "genisoimage"}:
+            return None
+        return real_which(name)
+
+    monkeypatch.setattr(provision_module.shutil, "which", which)
+
+
 def test_seed_iso_uses_xorriso_when_cloud_localds_is_absent(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -795,6 +816,7 @@ def test_provision_orchestrates_only_disposable_resources(
             return {"state": "missing"}
 
     monkeypatch.setattr(provision_module, "_preflight", lambda: events.append("preflight"))
+    _stub_seed_builder(monkeypatch)
     monkeypatch.setattr(provision_module, "_wait_for_guest", lambda *_a, **_k: "192.0.2.5")
     monkeypatch.setattr(
         provision_module,
@@ -874,6 +896,7 @@ def test_provision_writes_failed_component_payload_before_cleanup(
         return CommandResult(0)
 
     monkeypatch.setattr(provision_module, "_preflight", lambda: None)
+    _stub_seed_builder(monkeypatch)
     monkeypatch.setattr(provision_module, "_wait_for_guest", lambda *_a, **_k: "192.0.2.5")
     monkeypatch.setattr(provision_module, "_copy_source", lambda *_a, **_k: None)
     monkeypatch.setattr(provision_module, "_configure_flathub", lambda *_a, **_k: None)

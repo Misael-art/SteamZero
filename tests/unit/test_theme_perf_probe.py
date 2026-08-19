@@ -51,3 +51,23 @@ def test_report_shape_declares_what_was_not_measured() -> None:
     # a sonda mede o render loop, e o relatório precisa dizer isso.
     assert "fps" not in payload
     assert "vram" not in payload
+
+
+def test_vram_counts_each_drm_client_once() -> None:
+    """O driver repete o mesmo cliente em vários fds; somar tudo triplicaria."""
+    block = "drm-driver:\tamdgpu\ndrm-client-id:\t95\ndrm-memory-vram:\t13628 KiB\n"
+    assert probe.vram_kb_from_fdinfo([block, block, block]) == 13628
+
+
+def test_vram_sums_distinct_clients() -> None:
+    first = "drm-client-id:\t95\ndrm-memory-vram:\t13628 KiB\n"
+    second = "drm-client-id:\t96\ndrm-memory-vram:\t2048 KiB\n"
+    assert probe.vram_kb_from_fdinfo([first, second]) == 15676
+
+
+def test_vram_is_absent_rather_than_zero_when_the_driver_says_nothing() -> None:
+    """Zero pareceria consumo nulo; ausência é o que realmente sabemos."""
+    assert probe.vram_kb_from_fdinfo([]) is None
+    assert probe.vram_kb_from_fdinfo(["pos:\t0\nflags:\t02\n"]) is None
+    # Bloco DRM sem a chave de VRAM também não vira zero.
+    assert probe.vram_kb_from_fdinfo(["drm-client-id:\t95\ndrm-memory-gtt:\t8220 KiB\n"]) is None

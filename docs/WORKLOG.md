@@ -6997,3 +6997,76 @@ declarada como não medida.
 Fechamento local: **4583 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check. `DEBT-HOST-INSTALL-DAEMON-RESTART`
 permanece aberto até a prova física.
+
+## 2026-08-19 — A dívida do instalador fecha com prova física
+
+A release `0.1.0a46-862fe3aa6837` foi instalada pelo fluxo governado e
+**convergiu sozinha**: `state: converged`, `restarted: true`, sem nenhuma
+intervenção manual. Verifiquei de forma independente em vez de aceitar o
+relato: `current` aponta para a release nova, o daemon (PID 252026) executa o
+venv dela, o doctor passa e não há blockers.
+
+Foi a primeira instalação em que **as duas etapas rodaram código corrigido** —
+a ativação usa `tools/install_host.py` do checkout e a convergência usa
+`/usr/local/sbin/steamzero-host`, que a própria instalação acabou de publicar.
+Nas duas tentativas anteriores pelo menos uma delas ainda era código antigo, o
+que explica por que o sintoma sobreviveu a dois "consertos". A idempotência da
+convergência está implícita no sucesso: `_converge` executa `converge` duas
+vezes e exige `restarted=false, attempts=0` na segunda.
+
+`DEBT-HOST-INSTALL-DAEMON-RESTART` fecha aqui, depois de **três**
+diagnósticos. Não era falta de restart — ele sempre existiu. Não era o smoke
+tratando o pending como fatal — essa tolerância já estava escrita. Era
+`_verify_release` executando `doctor --json` com `check=True`, enquanto o
+doctor real sai com `EXIT_FAILURE` quando o status é `failed`: o erro subia
+antes do payload ser lido. Os testes protegiam a função errada porque o fake
+saía com código 0.
+
+Evidência da release atual em `12-invert-hue-release-862fe3aa.png`: invert e
+hue rotate aplicados pela engine, `fallback=false`. Medição por
+`tools/theme_perf_probe.py` na release instalada: 300 frames, p95 **14,054
+ms**, startup **147 ms**, pico de **148 MB** de RSS. Rollback disponível em
+`0.1.0a46-29bdcf63ef0f` e `state.db` preservado.
+
+O `EVIDENCE.json` deixou de ter defeitos abertos; os dois que restavam foram
+movidos para `resolvedDefects`, com a correção do diagnóstico registrada em
+vez de apagada. Resta `GAP-THEME-PERF-BUDGET-UNMEASURED`: FPS apresentado e
+VRAM continuam sem medição honesta, e o próximo passo é medi-los de verdade ou
+reescrever o critério para o que a plataforma permite.
+
+## 2026-08-19 — VRAM era mensurável, e o critério foi reescrito
+
+Eu havia afirmado que VRAM não era mensurável. Isso valia para uma API
+**portátil** e **por processo** — mas não para este host. O amdgpu expõe
+`drm-memory-vram` no `fdinfo` do processo, e `/sys/class/drm/card1/device/`
+traz o total do dispositivo. A afirmação anterior era uma generalização que eu
+não tinha verificado aqui.
+
+A sonda passou a medir VRAM do processo, agrupando por `drm-client-id`: o
+driver repete o mesmo cliente em vários descritores — três fds com o mesmo id e
+o mesmo valor — e somar tudo triplicaria a medição. Quando o driver não expõe
+nada, a sonda devolve ausência em vez de zero, porque zero pareceria consumo
+nulo.
+
+Na release `0.1.0a46-862fe3aa6837` instalada, a 1280x800: p95 **13,882 ms**,
+startup **147 ms**, pico de **147 MB** de RSS e **46,6 MB de VRAM** — dentro
+dos três limites.
+
+O critério de aceitação foi reescrito. Antes prometia "60 FPS, frame p95 de
+16,7 ms, startup de até 2 s e no máximo 512 MB de VRAM". Agora nomeia o
+instrumento e a superfície (a sonda, na release instalada no Deck), mantém os
+três limites que sabemos medir e **exclui FPS apresentado**: contar frames
+entregues à tela exige instrumentação do compositor que a plataforma não tem, e
+o ritmo do render loop não é substituto honesto. `GAP-THEME-PERF-BUDGET-UNMEASURED`
+fecha com essa reescrita, não com um número inventado.
+
+Sobre a queda da sessão KDE no meio deste trabalho: investiguei antes de
+responder. Sem evento OOM no kernel; encerramento **ordenado** do Plasma, não
+crash; `Removed session 5` seguido do greeter. Os dois `exit 137` da suíte
+foram consequência — o scope da sessão morre e leva os processos junto. Não
+consegui atribuir o pedido de logout (o logind não registra o solicitante).
+Fica anotado que `gamemoded` iniciou onze segundos antes, e que
+`ai-memory.service` está em loop de falha a cada seis segundos desde então.
+
+Fechamento local: **4587 passed, 10 skipped**, zero falhas; Ruff, format,
+mypy, independence, boundaries e status-check.

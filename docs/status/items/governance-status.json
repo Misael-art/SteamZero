@@ -30,7 +30,7 @@
     "tests/unit/test_project_status.py",
     "tools/project_status.py"
   ],
-  "scopeDigest": "f63262d5480a40f2bcc07e7ad7100f4ba3307147a90101b0ba8c48849ccec56f",
+  "scopeDigest": "df67cc14e146ec7e6dbc31874b2e118e0389152737d03f6a26dfe6a0044dc723",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
