@@ -7164,3 +7164,40 @@ AURA UI ou Theme Engine.
 
 Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: a home navega pelo mapa
+
+Segundo slice do vertical. A home renderiza as seções e move o foco **aplicando
+o mapa** resolvido no domínio: o QML não escolhe vizinho, não deduz coluna e não
+inventa destino. Se ele decidisse vizinhança, a garantia de "sem becos" provada
+no domínio não valeria para aquilo que o usuário de fato navega — seriam duas
+verdades diferentes.
+
+Direção sem destino mantém o foco onde está. Mover para um destino nulo
+apagaria o foco, e num aparelho sem mouse isso é a definição de beco.
+
+Dois erros meus, ambos corrigidos e registrados no próprio componente:
+
+O índice de itens era um array preenchido por `push` no `Component.onCompleted`
+de cada delegate. Parecia funcionar — e o harness passou na primeira execução.
+Bastou outro binding passar a ler a propriedade para o binding original
+reavaliar e zerar o array. Agora é derivado das seções: determinístico e
+independente da ordem de instanciação.
+
+O delegate interno montava a chave do nó subindo `parent.parent.parent`. Isso
+quebra em silêncio se a árvore visual mudar de forma; o id da seção passou a ser
+guardado no `Column` que a representa.
+
+O harness verifica o que interessa: o foco segue o mapa, direção sem destino não
+mexe no foco, sessenta movimentos não tiram o foco do mapa, e **exatamente um**
+item fica destacado — contar itens não provaria que a chave do item bate com a
+do mapa. Mutantes que quebram a chave e que anulam o movimento reprovam.
+
+Os diretórios `src/steamzero/ui/qml/launcher` e `tests/qml/launcher` voltaram ao
+escopo do item, como prometido quando saíram: existem agora.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Não há página de jogo, lançamento,
+retorno, shell instalado nem consumidor real fora do harness.
+
+Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

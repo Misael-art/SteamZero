@@ -9,7 +9,7 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "6d2910e15b609a19d6c62df5ee894e9f5b694156f43b2647b96ae3f088535b63",
+  "scopeDigest": "5528f5b20edf583a29f67abb5a21ec96164df124bd4b70705b1d9d4b12dbf6f3",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -21,7 +21,9 @@
     "docs/12-roadmap/MILESTONES.md",
     "docs/12-roadmap/STEAM-SESSION-ROADMAP.md",
     "src/steamzero/launcher",
-    "tests/unit/test_launcher_navigation.py"
+    "tests/unit/test_launcher_navigation.py",
+    "src/steamzero/ui/qml/launcher",
+    "tests/qml/launcher"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -47,10 +49,16 @@
       "reference": "tests/unit/test_launcher_navigation.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_navigation.py -q (foco da home: conectividade ao no inicial a partir de qualquer no, volta da linha nos dois sentidos, home vazia com acao focavel; contratos verificados por mutacao)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/launcher/check_launcher_home.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_home.qml (o foco anda pelo mapa resolvido; direcao sem destino mantem o foco; 60 movimentos nao tiram o foco do mapa; um unico item destacado por vez). Mutantes que quebram a chave do no e o movimento reprovam.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Renderizar a home fullscreen consumindo este mapa de foco, com navegacao real por controle, e so entao falar em baseline visual.",
+  "nextAction": "Pagina de jogo e o par lancamento/retorno ao mesmo contexto — os itens 2 e 4 da Definition of Done; so entao um shell que instancie a home fora do harness.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. O item permanece planned: nao ha shell, home renderizada, pagina de jogo, lancamento, retorno nem pacote instalado. Nada aqui promove AURA UI ou Theme Engine."
+  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. O item permanece planned: nao ha pagina de jogo, lancamento, retorno, shell instalado nem consumidor real fora do harness. Nada aqui promove AURA UI ou Theme Engine."
 }
