@@ -26,17 +26,21 @@ Item {
             },
             "nodes": [
                 {"id": "scene", "kind": "scene", "label": "Cena", "parent": null,
-                 "children": ["layout.previewTitles"], "properties": {"children": 1}},
+                 "children": ["layout.previewTitles"], "properties": {"children": 1},
+                 "depth": 0, "path": "Cena"},
                 {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                  "parent": "scene", "children": [],
-                 "properties": {"kind": "grid", "columns": 4, "entries": 4}},
+                 "properties": {"kind": "grid", "columns": 4, "entries": 4},
+                 "depth": 1, "path": "Cena / previewTitles"},
                 {"id": "effect.focusedCover", "kind": "effect", "label": "focusedCover",
                  "parent": "scene", "children": ["effect.focusedCover.0"],
-                 "properties": {"stack": "focusedCover", "nodes": 1, "omitted": 0}},
+                 "properties": {"stack": "focusedCover", "nodes": 1, "omitted": 0},
+                 "depth": 1, "path": "Cena / focusedCover"},
                 {"id": "effect.focusedCover.0", "kind": "effect", "label": "glow",
                  "parent": "effect.focusedCover", "children": [],
                  "properties": {"type": "glow", "cost": "high",
                                 "capability": "graphics.effect.glow"},
+                 "depth": 2, "path": "Cena / focusedCover / glow",
                  "constraints": [
                      {"code": "THEME-STUDIO-COST-001",
                       "reason": "efeito de custo alto; o inspector só observa, não executa",
@@ -72,6 +76,8 @@ Item {
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
             harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
             harness.check(canvas.selectedKind === "effect", "inspector não acompanhou o efeito")
+            harness.check(canvas.selectedPath === "Cena / focusedCover / glow",
+                          "inspector precisa situar o nó na árvore, não só nomeá-lo")
             harness.check(canvas.selectedConstraintCode === "THEME-STUDIO-COST-001",
                           "constraint do efeito não chegou ao inspector")
             harness.check(canvas.select("timeline.previewFocus") === true, "timeline não selecionou")

@@ -11,7 +11,7 @@ profiler de orçamento declarado. FPS, frame time e VRAM não são inventados.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 ALLOWED_KINDS = frozenset({"scene", "layout", "surface", "motion", "effect", "timeline", "binding"})
@@ -246,6 +246,8 @@ class StudioNode:
     parent: str | None = None
     children: tuple[str, ...] = ()
     constraints: tuple[StudioConstraint, ...] = ()
+    depth: int = 0
+    path: str = ""
 
     def __post_init__(self) -> None:
         if not self.id or "/" in self.id or " " in self.id:
@@ -265,6 +267,8 @@ class StudioNode:
             "children": list(self.children),
             "properties": dict(self.properties),
             "constraints": [item.to_dict() for item in self.constraints],
+            "depth": self.depth,
+            "path": self.path or self.label,
         }
 
     @classmethod
@@ -277,6 +281,8 @@ class StudioNode:
             "children",
             "properties",
             "constraints",
+            "depth",
+            "path",
         }
         if unknown:
             raise ValueError(f"studio node inválido: {sorted(unknown)}")
@@ -294,6 +300,8 @@ class StudioNode:
             parent=str(raw["parent"]) if raw.get("parent") is not None else None,
             children=tuple(children),
             constraints=_constraint_tuple(raw.get("constraints")),
+            depth=int(raw["depth"]) if isinstance(raw.get("depth"), int) else 0,
+            path=str(raw.get("path", "")),
         )
 
 
@@ -875,4 +883,45 @@ def build_studio_graph(preview: Mapping[str, Any]) -> StudioGraph:
             constraints=budget_constraints,
         ),
     )
-    return StudioGraph(nodes=tuple(nodes), selected_id="scene", budget=budget)
+    return StudioGraph(nodes=_with_tree_position(nodes), selected_id="scene", budget=budget)
+
+
+def _with_tree_position(nodes: list[StudioNode]) -> tuple[StudioNode, ...]:
+    """Anota profundidade e caminho, para o Studio não recalcular a hierarquia.
+
+    A árvore já está no grafo, em ``parent``/``children``. Sem estes dois campos
+    o consumidor desenha uma lista plana, e nós irmãos de mesmo rótulo — dois
+    ``focused``, dois ``saturation`` — ficam indistinguíveis na tela.
+
+    Ciclo ou pai ausente não trava a montagem: a cadeia para, e o nó fica na
+    raiz com o próprio rótulo como caminho.
+    """
+    by_id = {node.id: node for node in nodes}
+    # Irmãos com o mesmo rótulo existem de verdade: dois passos de uma timeline
+    # podem ir para o mesmo estado. Aí a ordem entre eles é a informação que
+    # distingue, e entra no caminho.
+    ordinals: dict[str, int] = {}
+    seen_siblings: dict[tuple[str | None, str], int] = {}
+    duplicated: set[tuple[str | None, str]] = set()
+    for node in nodes:
+        key = (node.parent, node.label)
+        seen_siblings[key] = seen_siblings.get(key, 0) + 1
+        ordinals[node.id] = seen_siblings[key]
+        if seen_siblings[key] > 1:
+            duplicated.add(key)
+
+    positioned: list[StudioNode] = []
+    for node in nodes:
+        own = node.label
+        if (node.parent, node.label) in duplicated:
+            own = f"{node.label} #{ordinals[node.id]}"
+        labels = [own]
+        cursor = node.parent
+        seen = {node.id}
+        while cursor is not None and cursor in by_id and cursor not in seen:
+            seen.add(cursor)
+            parent = by_id[cursor]
+            labels.append(parent.label)
+            cursor = parent.parent
+        positioned.append(replace(node, depth=len(labels) - 1, path=" / ".join(reversed(labels))))
+    return tuple(positioned)

@@ -23,6 +23,8 @@ Item {
     }
     readonly property string selectedKind: selectedNode ? selectedNode.kind : ""
     readonly property string selectedLabel: selectedNode ? selectedNode.label : ""
+    readonly property string selectedPath: selectedNode && selectedNode.path !== undefined
+        ? String(selectedNode.path) : selectedLabel
     readonly property int nodeCount: nodes.length
     readonly property int selectedConstraintCount:
         selectedNode && selectedNode.constraints ? selectedNode.constraints.length : 0
@@ -78,11 +80,20 @@ Item {
             Layout.fillHeight: true
             clip: true
             model: studio.nodes
+            // A indentação vem de `depth`, resolvido no domínio. O QML não
+            // percorre `parent`/`children` nem deduz hierarquia: se desenhasse
+            // a própria árvore, ela poderia divergir da que a engine validou.
             delegate: ItemDelegate {
                 required property var modelData
+                readonly property int depth: modelData.depth !== undefined
+                    ? Number(modelData.depth) : 0
                 width: tree.width
+                leftPadding: 8 + depth * 14
                 text: modelData.label
                 highlighted: modelData.id === studio.selectedId
+                // Rótulos repetidos entre irmãos só se distinguem pelo caminho.
+                ToolTip.visible: hovered && modelData.path !== undefined
+                ToolTip.text: modelData.path !== undefined ? modelData.path : modelData.label
                 onClicked: studio.select(modelData.id)
             }
         }
@@ -140,6 +151,16 @@ Item {
                 text: studio.selectedKind
                 color: "#8b93a8"
                 font.pixelSize: 11
+            }
+            // Onde o nó está na cena. Sem isto, dois irmãos de mesmo rótulo
+            // ficam indistinguíveis depois de selecionados.
+            Text {
+                objectName: "studioSelectedPath"
+                width: inspector.width
+                wrapMode: Text.Wrap
+                text: studio.selectedPath
+                color: "#5f6b85"
+                font.pixelSize: 10
             }
             Repeater {
                 model: studio.selectedNode && studio.selectedNode.properties

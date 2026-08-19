@@ -298,3 +298,46 @@ def test_graph_refuses_code_bearing_nodes() -> None:
                 "nodes": [{"id": "scene", "kind": "scene", "label": "Cena", "qml": "evil.qml"}],
             }
         )
+
+
+def test_tree_carries_depth_and_path_so_the_studio_stops_rendering_a_flat_list() -> None:
+    """A hierarquia existe no grafo; quem consome não pode ter de recalculá-la.
+
+    Sem isto o Studio desenhava 41 nós numa lista plana, e nós irmãos com o
+    mesmo rótulo — dois `focused`, dois `saturation` — ficavam indistinguíveis
+    na tela.
+    """
+    preview = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")["preview"]
+    assert isinstance(preview, dict)
+    graph = preview["studioGraph"]
+    assert isinstance(graph, dict)
+    by_id = {node["id"]: node for node in graph["nodes"]}
+
+    assert by_id["scene"]["depth"] == 0
+    assert by_id["scene"]["path"] == "Cena"
+    assert by_id["layout.previewWheel"]["depth"] == 1
+    assert by_id["layout.previewWheel"]["path"] == "Cena / previewWheel"
+
+    # A profundidade tem de bater com a cadeia de pais, para qualquer nó.
+    for node in graph["nodes"]:
+        depth = 0
+        cursor = node["parent"]
+        while cursor is not None:
+            depth += 1
+            cursor = by_id[cursor]["parent"]
+        assert node["depth"] == depth, node["id"]
+
+
+def test_duplicate_labels_are_told_apart_by_their_path() -> None:
+    preview = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")["preview"]
+    assert isinstance(preview, dict)
+    nodes = preview["studioGraph"]["nodes"]
+    repeated = [
+        label
+        for label in {node["label"] for node in nodes}
+        if sum(1 for node in nodes if node["label"] == label) > 1
+    ]
+    assert repeated, "a fixture precisa manter rótulos repetidos para este contrato valer"
+    for label in repeated:
+        paths = {node["path"] for node in nodes if node["label"] == label}
+        assert len(paths) == sum(1 for node in nodes if node["label"] == label), label
