@@ -259,8 +259,15 @@ def measure(
     stop = threading.Event()
     peak_holder: dict[str, int] = {}
     try:
+        # Auditoria do alerta de subprocess com argv dinâmico (opengrep
+        # dangerous-subprocess-use-audit): os dois elementos são construídos
+        # aqui e nenhum vem de entrada livre. O executável sai de
+        # ``shutil.which`` e é resolvido para um caminho absoluto existente; o
+        # segundo é o harness que esta função acabou de escrever num diretório
+        # temporário próprio. Não há shell, não há concatenação de string e
+        # ``--qml-dir`` já foi recusado se contiver caractere de escape.
         argv = [str(_qml_runner()), str(harness_path.resolve())]
-        process = subprocess.Popen(
+        process = subprocess.Popen(  # nosemgrep: dangerous-subprocess-use-audit
             argv,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
