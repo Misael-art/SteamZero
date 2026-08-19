@@ -232,22 +232,26 @@ def test_verify_release_smoke_accepts_live_daemon_still_on_previous_generation(
     layout = _layout(tmp_path)
     release = _release(layout, "release-a")
     executable = release / "venv" / "bin" / "steamzero"
+    # O doctor real sai com EXIT_FAILURE quando `status` é `failed`
+    # (`_cmd_doctor` em cli/main.py). Um fake que saísse com 0 esconderia
+    # justamente o defeito: o instalador nunca chegaria a inspecionar o payload.
     executable.write_text(
         "#!/usr/bin/env python3\n"
         "import json, sys\n"
         "if '--version' in sys.argv:\n"
         "    print('0.1.0')\n"
-        "else:\n"
-        "    print(json.dumps({\n"
-        "        'status': 'failed',\n"
-        "        'ok': False,\n"
-        "        'checks': [\n"
-        "            {'name': 'runtime.python', 'status': 'pass', 'message': 'ok'},\n"
-        "            {'name': 'runtime.provenance', 'status': 'pass', 'message': 'release-a'},\n"
-        "            {'name': 'service.generation', 'status': 'fail',\n"
-        "             'message': 'E-HOST-DAEMON-PENDING: current=release-a daemon=release-old'},\n"
-        "        ],\n"
-        "    }))\n",
+        "    sys.exit(0)\n"
+        "print(json.dumps({\n"
+        "    'status': 'failed',\n"
+        "    'ok': False,\n"
+        "    'checks': [\n"
+        "        {'name': 'runtime.python', 'status': 'pass', 'message': 'ok'},\n"
+        "        {'name': 'runtime.provenance', 'status': 'pass', 'message': 'release-a'},\n"
+        "        {'name': 'service.generation', 'status': 'fail',\n"
+        "         'message': 'E-HOST-DAEMON-PENDING: current=release-a daemon=release-old'},\n"
+        "    ],\n"
+        "}))\n"
+        "sys.exit(1)\n",
         encoding="utf-8",
     )
     executable.chmod(0o755)
@@ -264,19 +268,41 @@ def test_verify_release_smoke_still_fails_on_unrelated_doctor_errors(tmp_path: P
         "import json, sys\n"
         "if '--version' in sys.argv:\n"
         "    print('0.1.0')\n"
-        "else:\n"
-        "    print(json.dumps({\n"
-        "        'status': 'failed',\n"
-        "        'ok': False,\n"
-        "        'checks': [\n"
-        "            {'name': 'state.db.integrity', 'status': 'fail', 'message': 'corrupt'},\n"
-        "        ],\n"
-        "    }))\n",
+        "    sys.exit(0)\n"
+        "print(json.dumps({\n"
+        "    'status': 'failed',\n"
+        "    'ok': False,\n"
+        "    'checks': [\n"
+        "        {'name': 'state.db.integrity', 'status': 'fail', 'message': 'corrupt'},\n"
+        "    ],\n"
+        "}))\n"
+        "sys.exit(1)\n",
         encoding="utf-8",
     )
     executable.chmod(0o755)
 
     with pytest.raises(RuntimeError, match="smoke da release"):
+        install_host._verify_release(release)
+
+
+def test_verify_release_smoke_fails_when_doctor_produces_no_json(tmp_path: Path) -> None:
+    """Doctor que morre sem payload não pode ser confundido com pendência benigna."""
+    layout = _layout(tmp_path)
+    release = _release(layout, "release-a")
+    executable = release / "venv" / "bin" / "steamzero"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "if '--version' in sys.argv:\n"
+        "    print('0.1.0')\n"
+        "    sys.exit(0)\n"
+        "sys.stderr.write('Traceback: ImportError\\n')\n"
+        "sys.exit(2)\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+
+    with pytest.raises(RuntimeError, match="não devolveu JSON"):
         install_host._verify_release(release)
 
 
