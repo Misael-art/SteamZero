@@ -166,11 +166,6 @@
   },
   "openDefects": [
     {
-      "id": "invert/hue-rotate sem capability no host",
-      "detail": "graphics.asset.invert e graphics.asset.hue-rotate nao estao disponiveis nesta release/host; a engine remove os nos e degrada para a fonte com diagnostico. As variantes existem na receita mas nao visualmente.",
-      "evidence": "10-erro-controlado-invert-hue.png"
-    },
-    {
       "id": "fallback nao chega ao no visual",
       "detail": "AssetRecipePreview conta nos nao suportados da receita ja resolvida; como os nos foram removidos antes, o card mostra fallbackActive=false mesmo degradando.",
       "evidence": "10-erro-controlado-invert-hue.png"
@@ -179,6 +174,40 @@
       "id": "instalador nao reinicia o daemon",
       "detail": "primeira instalacao falhou a convergencia; exigiu restart manual autorizado.",
       "evidence": "registro installs[0] neste arquivo"
+    },
+    {
+      "id": "prova do fix do instalador pendente",
+      "detail": "A correcao do doctor (check=False) esta provada por teste com fake fiel a producao, mas nao no binario real: quando fui verificar, o host ja havia convergido e o cenario nao era mais reproduzivel. A prova fisica exige a proxima instalacao governada.",
+      "evidence": "tests/integration/test_host_installer.py"
     }
-  ]
+  ],
+  "followUp": {
+    "release": "0.1.0a46-29bdcf63ef0f",
+    "sourceCommit": "29bdcf63ef0f1fa06f979a8010f29f70fe01a251",
+    "wheelSha256": "e727d682ae155290ddaf6cbaf53a2c517c6774c21efd05b12d901985a4179c70",
+    "ciRunId": "32243166439",
+    "installedBy": "operador (a instalacao pelo agente foi bloqueada por safety check do harness)",
+    "convergence": {
+      "firstAttempt": "falhou: E-HOST-CURRENT-UNREADABLE, restarted=false",
+      "rootCause": "_verify_release rodava doctor --json com check=True; o doctor real sai com EXIT_FAILURE quando status=failed, entao o RuntimeError disparava antes do json.loads e _smoke_doctor_is_healthy nunca era alcancado.",
+      "state": "convergido depois, com o daemon reiniciado fora do fluxo"
+    },
+    "invertHueVerified": {
+      "capture": "11-invert-hue-na-release-instalada.png",
+      "effectApplied": true,
+      "fallbackActive": false,
+      "pixelDistinct": "invert != original, hueShift != original, invert != hueShift",
+      "alphaPreserved": "no de invert e hueShift capturado isolado: 70% de pixels transparentes"
+    },
+    "measurement": {
+      "tool": "tools/theme_perf_probe.py",
+      "qmlDir": "/opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml",
+      "frames": 300,
+      "avgFrameTimeMs": 13.338,
+      "p95Ms": 14.273,
+      "startupMs": 134.0,
+      "peakRssKb": 152468,
+      "vramMeasured": false
+    }
+  }
 }

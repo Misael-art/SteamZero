@@ -6952,3 +6952,48 @@ vem do render loop.
 
 Fechamento local: **4579 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — Instalador: o terceiro diagnóstico, e o que os testes escondiam
+
+A instalação da release `0.1.0a46-29bdcf63ef0f` reprovou a convergência de
+novo, com `E-HOST-CURRENT-UNREADABLE` e `restarted: false`. O critério que eu
+mesmo tinha definido diz o que fazer: **o rediagnóstico estava errado e o item
+volta ao ciclo**.
+
+Meu erro anterior foi específico e vale nomear: confirmei que
+`_smoke_doctor_is_healthy` existia e concluí que o defeito estava corrigido.
+Não verifiquei se a função era **alcançável**. Não era. `_verify_release` roda
+`doctor --json` através de `_run`, que usa `check=True`; o doctor real sai com
+`EXIT_FAILURE` sempre que o status é `failed` (`_cmd_doctor`). O
+`RuntimeError` disparava antes do `json.loads`, e a tolerância ao pending
+nunca era consultada. Por isso o instalador desistia da ativação e jamais
+chegava ao restart.
+
+Os testes passavam porque o doctor fake imprimia o JSON e saía com **código
+0**. Essa divergência entre fake e produção era o defeito de verdade — o teste
+protegia a função errada. Os dois fakes agora saem como o binário real, e o
+primeiro deles reprova sem a correção. Acrescentei o terceiro caminho, que não
+tinha teste: doctor que morre sem JSON é recusado explicitamente, em vez de
+ser confundido com pendência benigna.
+
+Tentei provar a correção contra o binário real e o resultado foi inconclusivo:
+`_verify_release` passou, mas o código de `main` **também** passou. O host já
+havia convergido no intervalo (daemon PID 149740 na release nova), então o
+cenário não existia mais. Sem esse contrafactual eu teria apresentado um teste
+vazio como prova. A prova física fica para a próxima instalação governada.
+
+Com a release nova ativa, a evidência que faltava saiu:
+`11-invert-hue-na-release-instalada.png` mostra invert e hue rotate
+**aplicados pela engine** (`efeito=aplicado`, `fallback=false`). Verifiquei
+por hash que as três variantes são pixel-distintas entre si e do original — e,
+como a captura tinha fundo opaco e portanto não provava alpha, capturei os nós
+isolados: 70% de pixels transparentes preservados. `GAP-THEME-ASSET-INVERT-HUE`
+e `GAP-THEME-FALLBACK-SIGNAL` fecham aqui.
+
+Medição na release instalada, por `tools/theme_perf_probe.py`: 300 frames,
+p95 **14,273 ms**, startup **134 ms**, pico de **149 MB** de RSS. VRAM segue
+declarada como não medida.
+
+Fechamento local: **4583 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check. `DEBT-HOST-INSTALL-DAEMON-RESTART`
+permanece aberto até a prova física.

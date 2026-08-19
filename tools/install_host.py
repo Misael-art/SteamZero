@@ -214,7 +214,16 @@ def _wheelhouse(path: Path) -> tuple[Path, list[Path], dict[str, Any]]:
     return resolved, wheels, _wheelhouse_manifest(resolved, wheels)
 
 
-def _run(argv: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+def _run(
+    argv: list[str], *, env: dict[str, str] | None = None, check: bool = True
+) -> subprocess.CompletedProcess[str]:
+    """Executa um comando do smoke.
+
+    ``check=False`` existe para um caso específico: o ``doctor`` sai com código
+    de falha quando o status é ``failed``, e durante a ativação isso é esperado
+    (a geração ao vivo ainda é a anterior). Tratar o código de saída como fatal
+    ali descartaria o payload antes de alguém poder lê-lo.
+    """
     try:
         return subprocess.run(
             argv,
@@ -222,7 +231,7 @@ def _run(argv: list[str], *, env: dict[str, str] | None = None) -> subprocess.Co
             capture_output=True,
             text=True,
             timeout=1800,
-            check=True,
+            check=check,
             env=env,
         )
     except subprocess.TimeoutExpired as exc:
@@ -1005,8 +1014,16 @@ def _verify_release(release_path: Path, *, expected_release: str | None = None) 
         if schema_version == 4:
             _run([str(boot_executable), "status"], env=environment)
             _run([str(host_prepare_executable), "status"], env=environment)
-        doctor = _run([str(executable), "doctor", "--json"], env=environment)
-        payload = json.loads(doctor.stdout)
+        # Sem `check=False` o código de saída do doctor derrubaria a verificação
+        # antes do payload ser lido, e `_smoke_doctor_is_healthy` nunca seria
+        # alcançado no caminho real — foi assim que a convergência falhou em
+        # 2026-08-19 mesmo com a tolerância já escrita.
+        doctor = _run([str(executable), "doctor", "--json"], env=environment, check=False)
+        try:
+            payload = json.loads(doctor.stdout)
+        except json.JSONDecodeError as exc:
+            detail = (doctor.stderr or doctor.stdout or f"exit {doctor.returncode}").strip()[-2000:]
+            raise RuntimeError(f"doctor da release não devolveu JSON: {detail}") from exc
         if (
             not version
             or (schema_version == 2 and version != data["packageVersion"])
@@ -1022,6 +1039,10 @@ def _smoke_doctor_is_healthy(payload: object) -> bool:
     ``doctor`` observa ``/opt/steamzero/current`` e o serviço da sessão. Durante
     a ativação isso ainda aponta a geração anterior; tratar esse pending como
     fatal impede o converge de reiniciar o daemon.
+
+    Quem chama precisa executar o doctor com ``check=False``: com o status
+    ``failed`` o processo sai com código de erro, e sem isso esta função sequer
+    é chamada.
     """
     if not isinstance(payload, dict):
         return False
