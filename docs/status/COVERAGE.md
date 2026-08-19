@@ -35,7 +35,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 74 | 30 | 28 | hw |  |
+| SZ-THEME-ENGINE | 75 | 31 | 29 | hw |  |
 | SZ-THEME-STUDIO | 12 | 7 | 7 | unit |  |
 | SZ-UI-DESKTOP-AUDIT | 222 | 1 | 1 | dev |  |
 
