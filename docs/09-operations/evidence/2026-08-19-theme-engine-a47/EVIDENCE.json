@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-19T02:26:00Z",
+  "release": "0.1.0a46-53b753f4b901",
+  "sourceCommit": "53b753f4b901744762acb2606d954ec363faeea8",
+  "packageVersion": "0.1.0a46",
+  "wheelSha256": "9f4bc7554886aff91a90f3dd285d56495e02875c2537d8e8f229fff5e1aaf428",
+  "ciRunId": "32206534496",
+  "ciEvent": "push",
+  "ciConclusion": "success",
+  "rollbackRelease": "0.1.0a46-226b5f4b5c7c",
+  "rollbackAvailable": true,
+  "theme": "org.steamzero.asset-recipes-demo",
+  "sourceAsset": "assets/source.svg",
+  "packagedThemeFiles": [
+    "theme.json",
+    "LICENSE.txt",
+    "assets/source.svg"
+  ],
+  "derivedAssetsPackaged": 0,
+  "recipes": {
+    "original": {
+      "nodes": [],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "colored": {
+      "nodes": [
+        "recolor"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "grayscale": {
+      "nodes": [
+        "grayscale"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "black": {
+      "nodes": [
+        "silhouette"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "white": {
+      "nodes": [
+        "silhouette"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "invert": {
+      "nodes": [],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "hueShift": {
+      "nodes": [],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "outlineThin": {
+      "nodes": [
+        "outline"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "outlineThick": {
+      "nodes": [
+        "outline"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "outlineInner": {
+      "nodes": [
+        "outline"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "outlinedGlow": {
+      "nodes": [
+        "recolor",
+        "outline",
+        "glow"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    },
+    "outlinedShadow": {
+      "nodes": [
+        "outline",
+        "shadow"
+      ],
+      "tier": "cinematic",
+      "fallback": "source"
+    }
+  },
+  "capabilityDiagnostics": [
+    {
+      "recipe": "invert",
+      "node": "invert",
+      "reason": "capability ausente: graphics.asset.invert",
+      "fallback": "source"
+    },
+    {
+      "recipe": "hueShift",
+      "node": "hueRotate",
+      "reason": "capability ausente: graphics.asset.hue-rotate",
+      "fallback": "source"
+    },
+    {
+      "recipe": "outlineInner",
+      "node": "outline",
+      "reason": "capability ausente: graphics.asset.outline.inner",
+      "fallback": "outer"
+    }
+  ],
+  "measurement": {
+    "surface": "janela Wayland 1280x800 no host (Steam Deck LCD), GPU real",
+    "scene": "6 repeaters animados + 4 containers, nós materializados pela release",
+    "frames": 390,
+    "avgFrameTimeMs": 13.353,
+    "p50Ms": 13.347,
+    "p95Ms": 14.134,
+    "maxMs": 16.271,
+    "peakRssMb": 149,
+    "note": "frame time medido com FrameAnimation no render loop; o fps derivado (74,9) excede os 60 Hz do painel, portanto reflete o ritmo do render loop e NAO frames apresentados. Nenhuma alegacao de 60 FPS estaveis."
+  },
+  "installs": [
+    {
+      "attempt": 1,
+      "ok": false,
+      "reason": "convergencia falhou: daemon preso na release anterior (E-HOST-DAEMON-PENDING)"
+    },
+    {
+      "attempt": 2,
+      "ok": true,
+      "state": "converged",
+      "service": "active",
+      "socket": "active"
+    }
+  ],
+  "daemonRestart": {
+    "required": true,
+    "reason": "instalador promove arquivos mas nao reinicia o user unit steamzero-core",
+    "authorizedBy": "operador, nesta thread",
+    "command": "systemctl --user daemon-reload && systemctl --user restart steamzero-core"
+  },
+  "images": {
+    "01-asset-fonte.png": "asset-fonte original renderizado pela release",
+    "02-variante-colorida.png": "recolor solido e hue rotate lado a lado",
+    "03-silhueta-preta-branca.png": "silhuetas preta/branca e grayscale; furos internos preservados",
+    "04-contorno-fino.png": "contorno externo 2 px",
+    "05-contorno-grosso.png": "contorno externo 7 px",
+    "06-preview-release-instalada.png": "12 variantes de UM asset-fonte",
+    "07-layouts-highlight-badges.png": "flow, stack, wheel com highlight central e badges semanticos",
+    "08-containers-modal-scrim.png": "panel/card/modal/drawer com scrim e empilhamento resolvidos",
+    "09-medicao-frame-time.png": "medicao de frame time no host real",
+    "10-erro-controlado-invert-hue.png": "degradacao declarada por capability ausente"
+  },
+  "openDefects": [
+    {
+      "id": "invert/hue-rotate sem capability no host",
+      "detail": "graphics.asset.invert e graphics.asset.hue-rotate nao estao disponiveis nesta release/host; a engine remove os nos e degrada para a fonte com diagnostico. As variantes existem na receita mas nao visualmente.",
+      "evidence": "10-erro-controlado-invert-hue.png"
+    },
+    {
+      "id": "fallback nao chega ao no visual",
+      "detail": "AssetRecipePreview conta nos nao suportados da receita ja resolvida; como os nos foram removidos antes, o card mostra fallbackActive=false mesmo degradando.",
+      "evidence": "10-erro-controlado-invert-hue.png"
+    },
+    {
+      "id": "instalador nao reinicia o daemon",
+      "detail": "primeira instalacao falhou a convergencia; exigiu restart manual autorizado.",
+      "evidence": "registro installs[0] neste arquivo"
+    }
+  ]
+}

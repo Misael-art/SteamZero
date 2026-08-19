@@ -6,10 +6,10 @@
   "domain": "themes",
   "implementation": "partial",
   "integration": "integrated",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "2e319f5d9f6fab667140336b732a26cb8377ba737378479dbf4cc168ae834d75",
+  "scopeDigest": "8fbd325a4866b2e40d376e72e17ba6e50af981ad884ed1f4130e89e3f81a5d22",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -61,10 +61,16 @@
     "src/steamzero/schemas/scene-containers-v1.schema.json",
     "src/steamzero/ui/qml/SceneContainerPreview.qml",
     "tests/unit/test_scene_containers.py",
-    "tests/qml/check_scene_containers.qml"
+    "tests/qml/check_scene_containers.qml",
+    "docs/09-operations/evidence/2026-08-19-theme-engine-a47"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-THEME-ASSET-INVERT-HUE",
+    "GAP-THEME-FALLBACK-SIGNAL",
+    "GAP-THEME-PERF-BUDGET-UNMEASURED",
+    "DEBT-HOST-INSTALL-DAEMON-RESTART"
+  ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
@@ -217,12 +223,36 @@
       "reference": "tests/unit/test_scene_containers.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_containers.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_containers.qml",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/06-preview-release-instalada.png",
+      "command": "release 0.1.0a46-53b753f4b901 instalada; 12 variantes de UM asset-fonte capturadas do QML da release em sessao Wayland do host",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/07-layouts-highlight-badges.png",
+      "command": "flow, stack, wheel com highlight central/vizinhos e badges semanticos renderizados pela release instalada",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/09-medicao-frame-time.png",
+      "command": "medicao no host real (Wayland, GPU): 390 frames, media 13,353 ms, p95 14,134 ms, pico 149 MB RSS",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/10-erro-controlado-invert-hue.png",
+      "command": "erro controlado: capability ausente (graphics.asset.invert / hue-rotate) degrada para a fonte com diagnostico",
+      "result": "failed"
     }
   ],
-  "nextAction": "Construir e instalar release governada com as capacidades desta sessão e capturar a evidência física.",
+  "nextAction": "Corrigir os tres defeitos abertos encontrados na validacao fisica: capability de invert/hue-rotate, sinal de fallback no no visual e restart do daemon no instalador.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; badges/labels/glyphs semanticos; e panels/cards/modals/drawers semanticos com geometria, scrim e empilhamento resolvidos — modal fica abaixo da faixa do erro critico por construcao. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial, agora com evidencia fisica em hardware (Steam Deck LCD, sessao Wayland). A release 0.1.0a46-53b753f4b901 esta instalada e renderiza, do proprio pacote: 12 variantes de um unico asset-fonte, layouts flow/stack/wheel com highlight central e vizinhos, badges semanticos com glifo escolhido pela engine, containers panel/card/modal/drawer com scrim e empilhamento, e transparencia por estado de interacao. Medicao no host real: frame time medio 13,353 ms, p95 14,134 ms, pico de 149 MB de RSS. GAP-THEME-ASSET-INVERT-HUE: graphics.asset.invert e graphics.asset.hue-rotate nao existem nesta release/host, entao as variantes invert e hueShift degradam para a fonte com diagnostico e nao existem visualmente. GAP-THEME-FALLBACK-SIGNAL: AssetRecipePreview marca fallbackActive=false mesmo degradando, porque conta nos da receita ja resolvida (que chega vazia). GAP-THEME-PERF-BUDGET-UNMEASURED: FPS, startup e VRAM do criterio nao foram medidos como tais; ha frame time e RSS. DEBT-HOST-INSTALL-DAEMON-RESTART: o instalador promove arquivos mas nao reinicia o user unit steamzero-core, e a primeira instalacao reprovou a convergencia com E-HOST-DAEMON-PENDING."
 }

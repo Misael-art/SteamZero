@@ -6823,3 +6823,57 @@ independence, boundaries e status-check.
 A partir deste commit a thread autorizou release e instalação no host, o
 que estava bloqueado desde o início da sessão. O fluxo governado começa
 no commit com CI verde.
+
+## 2026-08-19 — Theme Engine — release 0.1.0a46-53b753f4b901 instalada no host
+
+Primeira entrega física desta frente. O operador mergeou o PR #84 (squash,
+`53b753f`); confirmei que a árvore de `origin/main` é byte a byte idêntica
+à que passou no CI (mesmo tree `d53c3f8`), o run `push` fechou verde e só
+então o fluxo governado construiu a release **0.1.0a46-53b753f4b901**
+(wheel `9f4bc755…`, run `32206534496`), com entry points de boot conferidos.
+
+**A primeira instalação reprovou.** O `install` promoveu os arquivos, mas a
+convergência falhou: o daemon `steamzero-core` continuou executando o
+interpretador da release anterior (`E-HOST-DAEMON-PENDING`). É defeito do
+instalador, que não reinicia o user unit. Tentei reiniciar por conta e a
+ação foi corretamente bloqueada — mutação manual de host está fora do fluxo
+governado; o operador então autorizou explicitamente o
+`systemctl --user restart steamzero-core`. Depois disso o doctor passou e a
+**segunda instalação convergiu limpa**, provando idempotência.
+
+Evidência física em `docs/09-operations/evidence/2026-08-19-theme-engine-a47/`
+(10 PNGs + `EVIDENCE.json`), toda capturada dos QML **da release instalada**
+em sessão Wayland real, com o preview resolvido pelo Python da release:
+
+- 12 variantes geradas de UM asset-fonte, furos internos preservados;
+- contorno fino (2 px) e grosso (7 px) visivelmente distintos;
+- flow, stack e wheel com highlight central e vizinhos — item na distância 2
+  fica sem contorno, como o contrato exige;
+- badges semânticos com o glifo escolhido pela engine;
+- panel/card/modal/drawer com scrim escurecendo o conteúdo e modal abaixo da
+  faixa do erro crítico.
+
+Medição no host real (não offscreen): 390 frames, frame time médio 13,353 ms,
+p50 13,347 ms, **p95 14,134 ms**, máximo 16,271 ms, pico de 149 MB de RSS. O
+fps derivado (74,9) excede os 60 Hz do painel, então reflete o ritmo do render
+loop e **não** frames apresentados — nenhuma alegação de 60 FPS estáveis.
+
+A validação física achou o que os testes não achavam. Comparação pixel a pixel
+mostrou `invert` e `hueShift` **idênticas** ao original. Investigando: não é
+sumiço silencioso — a engine publica `capability ausente: graphics.asset.invert`
+e `graphics.asset.hue-rotate`, remove os nós e degrada para a fonte. Mas o card
+visual ainda marca `fallbackActive=false`, porque conta nós da receita já
+resolvida, que chega vazia. Registrei minha própria correção de rumo: a
+primeira captura do erro trazia diagnóstico errado (culpava o renderizador) e
+foi refeita.
+
+Integridade confirmada: o pacote traz **um único** asset visual
+(`assets/source.svg`), nenhum derivado; a release anterior segue em disco para
+rollback; `state.db` preservado (mtime anterior à instalação).
+
+Quatro pendências ficam abertas — `GAP-THEME-ASSET-INVERT-HUE`,
+`GAP-THEME-FALLBACK-SIGNAL`, `GAP-THEME-PERF-BUDGET-UNMEASURED` e
+`DEBT-HOST-INSTALL-DAEMON-RESTART`. Por isso SZ-THEME-ENGINE permanece
+**partial**, agora com `verification: hw`. SZ-THEME-STUDIO, SZ-AURA-UI e
+SZ-AURA-LAUNCHER não foram promovidos. Nenhuma tag foi publicada: `publish`
+exige certificação separada.
