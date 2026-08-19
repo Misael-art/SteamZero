@@ -6823,3 +6823,132 @@ independence, boundaries e status-check.
 A partir deste commit a thread autorizou release e instalação no host, o
 que estava bloqueado desde o início da sessão. O fluxo governado começa
 no commit com CI verde.
+
+## 2026-08-19 — Theme Engine — release 0.1.0a46-53b753f4b901 instalada no host
+
+Primeira entrega física desta frente. O operador mergeou o PR #84 (squash,
+`53b753f`); confirmei que a árvore de `origin/main` é byte a byte idêntica
+à que passou no CI (mesmo tree `d53c3f8`), o run `push` fechou verde e só
+então o fluxo governado construiu a release **0.1.0a46-53b753f4b901**
+(wheel `9f4bc755…`, run `32206534496`), com entry points de boot conferidos.
+
+**A primeira instalação reprovou.** O `install` promoveu os arquivos, mas a
+convergência falhou: o daemon `steamzero-core` continuou executando o
+interpretador da release anterior (`E-HOST-DAEMON-PENDING`). É defeito do
+instalador, que não reinicia o user unit. Tentei reiniciar por conta e a
+ação foi corretamente bloqueada — mutação manual de host está fora do fluxo
+governado; o operador então autorizou explicitamente o
+`systemctl --user restart steamzero-core`. Depois disso o doctor passou e a
+**segunda instalação convergiu limpa**, provando idempotência.
+
+Evidência física em `docs/09-operations/evidence/2026-08-19-theme-engine-a47/`
+(10 PNGs + `EVIDENCE.json`), toda capturada dos QML **da release instalada**
+em sessão Wayland real, com o preview resolvido pelo Python da release:
+
+- 12 variantes geradas de UM asset-fonte, furos internos preservados;
+- contorno fino (2 px) e grosso (7 px) visivelmente distintos;
+- flow, stack e wheel com highlight central e vizinhos — item na distância 2
+  fica sem contorno, como o contrato exige;
+- badges semânticos com o glifo escolhido pela engine;
+- panel/card/modal/drawer com scrim escurecendo o conteúdo e modal abaixo da
+  faixa do erro crítico.
+
+Medição no host real (não offscreen): 390 frames, frame time médio 13,353 ms,
+p50 13,347 ms, **p95 14,134 ms**, máximo 16,271 ms, pico de 149 MB de RSS. O
+fps derivado (74,9) excede os 60 Hz do painel, então reflete o ritmo do render
+loop e **não** frames apresentados — nenhuma alegação de 60 FPS estáveis.
+
+A validação física achou o que os testes não achavam. Comparação pixel a pixel
+mostrou `invert` e `hueShift` **idênticas** ao original. Investigando: não é
+sumiço silencioso — a engine publica `capability ausente: graphics.asset.invert`
+e `graphics.asset.hue-rotate`, remove os nós e degrada para a fonte. Mas o card
+visual ainda marca `fallbackActive=false`, porque conta nós da receita já
+resolvida, que chega vazia. Registrei minha própria correção de rumo: a
+primeira captura do erro trazia diagnóstico errado (culpava o renderizador) e
+foi refeita.
+
+Integridade confirmada: o pacote traz **um único** asset visual
+(`assets/source.svg`), nenhum derivado; a release anterior segue em disco para
+rollback; `state.db` preservado (mtime anterior à instalação).
+
+Quatro pendências ficam abertas — `GAP-THEME-ASSET-INVERT-HUE`,
+`GAP-THEME-FALLBACK-SIGNAL`, `GAP-THEME-PERF-BUDGET-UNMEASURED` e
+`DEBT-HOST-INSTALL-DAEMON-RESTART`. Por isso SZ-THEME-ENGINE permanece
+**partial**, agora com `verification: hw`. SZ-THEME-STUDIO, SZ-AURA-UI e
+SZ-AURA-LAUNCHER não foram promovidos. Nenhuma tag foi publicada: `publish`
+exige certificação separada.
+
+## 2026-08-19 — Theme Engine — correção dos defeitos achados na validação física
+
+O commit `08a75cf` fecha os dois defeitos de código que só a instalação real
+expôs.
+
+**GAP-THEME-ASSET-INVERT-HUE.** As capabilities `graphics.asset.invert` e
+`graphics.asset.hue-rotate` eram deliberadamente omitidas do conjunto padrão
+porque nenhum node Qt Quick as implementava — resultado: as duas variantes
+renderizavam iguais à fonte. Agora existe um node builtin da engine,
+`AssetColorTransform`, que aplica o efeito quando o runtime traz o módulo de
+efeitos de cor e se declara indisponível quando não traz. O invert remascara
+com o alpha da fonte, então transparência e furos internos sobrevivem — foi
+justamente o que a primeira tentativa errou, deixando o fundo branco.
+
+**GAP-THEME-FALLBACK-SIGNAL.** A receita degradada chegava vazia ao
+renderizador, indistinguível de "nenhum efeito declarado"; por isso o card
+marcava `fallbackActive=false` enquanto degradava. `ResolvedAssetRecipe` passa
+a carregar `degraded` e `droppedNodes`, e o preview levanta o fallback pelas
+duas origens: nó removido no domínio ou efeito recusado pelo runtime.
+
+O harness afirma o contrato que interessa: efeito que não pode ser aplicado
+**precisa** publicar o fallback e manter a fonte visível — nunca os dois
+falsos, que seria sumiço silencioso. Como o efeito funciona neste host, a
+asserção não morde aqui; provei o caminho degradado com uma cópia do node
+apontando para um módulo inexistente (`available=false`, `unsupported=true`),
+e no CI, cuja imagem canônica não traz o módulo, é o caminho degradado que
+será exercido.
+
+**DEBT-HOST-INSTALL-DAEMON-RESTART — rediagnóstico.** Meu registro anterior
+dizia que "o instalador não reinicia o serviço". Errado. O instalador sempre
+teve `daemon-reload` e `restart`; o que falhava era `_verify_release` tratar o
+`E-HOST-DAEMON-PENDING` do smoke como fatal e abortar **antes** de reiniciar —
+ou seja, considerava fatal exatamente o sintoma que o restart existe para
+curar. Isso já fora corrigido por `aac72f4`, com teste de regressão, e está na
+release instalada. A falha que observei veio do binário da release
+**anterior**, que ainda conduzia a ativação. A prova física fica para a próxima
+instalação governada, que já começará com o binário corrigido.
+
+Fechamento local: **4575 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-19 — CI pendurado e sonda de desempenho reproduzível
+
+O job Python 3.11 do PR #85 ficou **cinco horas** sem concluir. Não era o
+código: travou no step `Runtime QML para os harnesses offscreen`, num
+`apt-get`. O step é best-effort de propósito (`continue-on-error: true`), mas
+`continue-on-error` cobre **falha**, não **travamento** — sem
+`timeout-minutes`, vale o default de 6h do GitHub. O commit `1095600` limita
+os dois steps de provisionamento em 10 min e o job em 45, folgado sobre os
+14–25 min de uma execução saudável. O run travado foi deixado como está, a
+pedido do operador; re-rodamos depois.
+
+O commit `ffccd84` transforma a medição de desempenho em ferramenta:
+`tools/theme_perf_probe.py`. A medição anterior foi improvisada — números
+transcritos de uma captura de tela, que ninguém consegue refazer. A sonda
+renderiza a cena com os layouts resolvidos, amostra frame time do render loop,
+registra startup até o primeiro frame e o pico de RSS, e imprime JSON.
+
+Duas restrições moldaram o desenho e ficaram registradas no módulo: a saída de
+`console.*` do QML **não chega ao chamador neste host** (verifiquei os três
+canais; só as mensagens do próprio runtime saem), então o harness devolve o
+resultado por HTTP em loopback — o mesmo padrão que os testes de integração já
+usam; e `--qml-dir` aceita `/opt/steamzero/current`, então o mesmo comando mede
+a release instalada em vez do checkout.
+
+Na release `0.1.0a46-53b753f4b901`, a 1280x800: 300 frames, p95 **14,405 ms**,
+startup **178 ms**, pico de **148 MB** de RSS. VRAM continua sem medição e o
+relatório declara `vramMeasured: false` — nenhuma API portátil devolve o
+consumo de textura do processo, e inventar o número seria pior que admitir a
+lacuna. O mesmo vale para FPS de tela: a nota do relatório avisa que frame time
+vem do render loop.
+
+Fechamento local: **4579 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

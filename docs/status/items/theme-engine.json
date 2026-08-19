@@ -6,10 +6,10 @@
   "domain": "themes",
   "implementation": "partial",
   "integration": "integrated",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "2e319f5d9f6fab667140336b732a26cb8377ba737378479dbf4cc168ae834d75",
+  "scopeDigest": "6b5240375950a63b0a7f6417a90bb9f0c58690383ebc101e7f3f7c544f972817",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -61,10 +61,16 @@
     "src/steamzero/schemas/scene-containers-v1.schema.json",
     "src/steamzero/ui/qml/SceneContainerPreview.qml",
     "tests/unit/test_scene_containers.py",
-    "tests/qml/check_scene_containers.qml"
+    "tests/qml/check_scene_containers.qml",
+    "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
+    "tools/theme_perf_probe.py",
+    "tests/unit/test_theme_perf_probe.py"
   ],
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "GAP-THEME-PERF-BUDGET-UNMEASURED",
+    "DEBT-HOST-INSTALL-DAEMON-RESTART"
+  ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
@@ -217,12 +223,48 @@
       "reference": "tests/unit/test_scene_containers.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_scene_containers.py tests/unit/test_themes.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_scene_containers.qml",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/06-preview-release-instalada.png",
+      "command": "release 0.1.0a46-53b753f4b901 instalada; 12 variantes de UM asset-fonte capturadas do QML da release em sessao Wayland do host",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/07-layouts-highlight-badges.png",
+      "command": "flow, stack, wheel com highlight central/vizinhos e badges semanticos renderizados pela release instalada",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/09-medicao-frame-time.png",
+      "command": "medicao no host real (Wayland, GPU): 390 frames, media 13,353 ms, p95 14,134 ms, pico 149 MB RSS",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/10-erro-controlado-invert-hue.png",
+      "command": "erro controlado: capability ausente (graphics.asset.invert / hue-rotate) degrada para a fonte com diagnostico",
+      "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_asset_recipe_preview.qml",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_asset_recipes.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml (contrato: efeito indisponivel publica fallback e mantem a fonte visivel; caminho degradado provado com modulo inexistente)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/theme_perf_probe.py",
+      "command": ".venv/bin/python tools/theme_perf_probe.py --qml-dir /opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml --preview-json <preview da release> (release instalada, 1280x800: 300 frames, p95 14,405 ms, startup 178 ms, pico 148 MB RSS; VRAM nao medida)",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Construir e instalar release governada com as capacidades desta sessão e capturar a evidência física.",
+  "nextAction": "Re-rodar o CI do PR #85 (job 3.11 pendurou no apt-get; timeouts ja adicionados), merge em main e instalar para provar invert/hue e a convergencia.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. A onda atual entregou: layout kinds flow e stack; progressBar realmente resolvido; widgets allowlisted clock e statistics; highlight central com tratamento de vizinhos; transparencia por estado de interacao; badges/labels/glyphs semanticos; e panels/cards/modals/drawers semanticos com geometria, scrim e empilhamento resolvidos — modal fica abaixo da faixa do erro critico por construcao. Medicao fisica de FPS/VRAM e AURA Launcher ainda nao existem."
+  "notes": "Estado permanece parcial. Dois defeitos achados pela validacao fisica foram corrigidos: GAP-THEME-ASSET-INVERT-HUE (invert e hue rotate agora tem node builtin da engine, AssetColorTransform, que aplica o efeito quando o runtime tem o modulo de cor e se declara indisponivel quando nao tem; invert remascara com o alpha da fonte, preservando transparencia e furos internos) e GAP-THEME-FALLBACK-SIGNAL (ResolvedAssetRecipe passa a carregar degraded/droppedNodes, entao o no visual distingue 'sem efeito declarado' de 'efeito recusado'). DEBT-HOST-INSTALL-DAEMON-RESTART foi rediagnosticado: o instalador SEMPRE teve reload e restart; o que falhava era _verify_release tratar o E-HOST-DAEMON-PENDING do smoke como fatal, abortando antes de reiniciar — exatamente o sintoma que o restart existe para curar. Isso ja fora corrigido por aac72f4 (com teste de regressao) e esta na release instalada; a falha observada em 2026-08-19 veio do binario da release ANTERIOR, que ainda conduzia a ativacao. Falta a prova fisica na proxima instalacao governada. GAP-THEME-PERF-BUDGET-UNMEASURED encolheu e continua aberto: a medicao virou ferramenta reproduzivel (tools/theme_perf_probe.py), que aponta para a release instalada e mede frame time, startup ate o primeiro frame e RSS de pico. Na release 0.1.0a46-53b753f4b901 a 1280x800: p95 14,405 ms, startup 178 ms, pico 148 MB. FPS apresentado e VRAM continuam sem medicao honesta; o relatorio declara vramMeasured=false em vez de estimar."
 }

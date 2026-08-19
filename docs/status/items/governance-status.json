@@ -10,6 +10,7 @@
   "operation": "ready",
   "distribution": "not-packaged",
   "scopePaths": [
+    ".github/workflows/ci.yml",
     "AGENTS.md",
     "Makefile",
     "docs/01-product/CAPABILITY-MATRIX.md",
@@ -29,9 +30,11 @@
     "tests/unit/test_project_status.py",
     "tools/project_status.py"
   ],
-  "scopeDigest": "9c7dd112bbb952315790f24e23a8ff8cf624b4ff0cbdc45f81db3276b36e424f",
+  "scopeDigest": "f63262d5480a40f2bcc07e7ad7100f4ba3307147a90101b0ba8c48849ccec56f",
   "dependsOn": [],
-  "knownGaps": [],
+  "knownGaps": [
+    "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
+  ],
   "acceptanceCriteria": [
     "Cada capacidade possui cinco eixos de estado independentes.",
     "Mudanca sem item responsavel reprova no gate local.",
@@ -44,6 +47,24 @@
       "reference": "tests/unit/test_project_status.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "run 32211030788 ficou 5h no apt-get do runtime QML e o 32233319678 falhou com 'Could not get lock': apt esperava o lock do unattended-upgrades sem limite. DPkg::Lock::Timeout=180 corrige a causa; timeout-minutes fica como rede.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "job 3.11 do run 32236018916: o step de provisao QML gastava 76 s e terminava com 'qml6 indisponivel; os harnesses serao pulados por skipif' — os harnesses nunca rodaram no CI. Step removido; os testes passaram a rodar no gate visual canonico (222 -> 247 selecionados por -m visual).",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "gate visual do run 32238398314: 231 passaram e 4 falharam com 'QML Image: Error decoding' — a imagem canonica traz qt6-declarative e qt6-base, mas nao o plugin de imagem SVG. Os quatro harnesses que carregam asset .svg passaram a pular com razao explicita, detectada executando uma sonda no runtime.",
+      "result": "partial"
     }
   ],
   "nextAction": "Manter status-check e WORKLOG append-only verdes apos harmonizacao a45.",

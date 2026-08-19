@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import shutil
 import subprocess
+import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -36,6 +38,55 @@ def _qml_environment() -> dict[str, str]:
         }
     )
     return env
+
+
+# Harnesses que carregam um asset SVG do pacote. A imagem canônica do gate
+# visual traz qt6-declarative e qt6-base, mas NÃO o plugin de imagem SVG: os
+# quatro falham com "QML Image: Error decoding" enquanto os outros 21 passam.
+# Pular com a razão explícita é melhor que removê-los do gate — o dia em que a
+# imagem ganhar o plugin, eles voltam sozinhos.
+_SVG_HARNESSES = frozenset(
+    {
+        "check_asset_recipe_preview.qml",
+        "check_editorial_library.qml",
+        "check_packaged_assets.qml",
+        "check_theme_editor_asset_recipes.qml",
+    }
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _qml_decodes_svg() -> bool:
+    """Descobre, executando, se o runtime consegue decodificar SVG."""
+    if QML is None:
+        return False
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">'
+        '<rect width="8" height="8" fill="#22d3ee"/></svg>'
+    )
+    with tempfile.TemporaryDirectory(prefix="steamzero-svg-probe-") as tmp:
+        root = Path(tmp)
+        (root / "probe.svg").write_text(svg, encoding="utf-8")
+        (root / "probe.qml").write_text(
+            "import QtQuick\n"
+            "Item {\n"
+            "    Image { id: img; source: 'probe.svg' }\n"
+            "    Timer {\n"
+            "        interval: 200; running: true; repeat: false\n"
+            "        onTriggered: Qt.exit(img.status === Image.Ready ? 0 : 3)\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [str(QML), str(root / "probe.qml")],
+            capture_output=True,
+            text=True,
+            env=_qml_environment(),
+            timeout=60,
+            check=False,
+        )
+    return completed.returncode == 0
 
 
 def _assert_qml_clean(completed: subprocess.CompletedProcess[str], label: str) -> None:
@@ -143,6 +194,11 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
     raise RuntimeError("nenhuma porta livre para o servidor de teste ErrorCard")
 
 
+# Marcado como visual porque é onde o runtime existe de verdade: o job
+# `quality` gastava 76 s tentando provisionar Qt via apt e terminava com
+# "qml6 indisponível", então estes harnesses nunca rodaram no CI. A imagem
+# canônica do gate visual traz o Qt fixado por digest.
+@pytest.mark.visual
 @pytest.mark.skipif(QML is None, reason="qml6 não está instalado neste host")
 @pytest.mark.parametrize(
     "harness",
@@ -158,6 +214,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         "check_asset_recipe_preview.qml",
         "check_scene_repeater.qml",
         "check_scene_containers.qml",
+        "check_asset_color_transform.qml",
         "check_glass_panel.qml",
         "check_scene_motion.qml",
         "check_scene_surfaces.qml",
@@ -176,6 +233,8 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
     ],
 )
 def test_qml_handheld_harness_offscreen(harness: str) -> None:
+    if harness in _SVG_HARNESSES and not _qml_decodes_svg():
+        pytest.skip("runtime sem plugin de imagem SVG; o harness carrega asset .svg")
     completed = subprocess.run(
         [str(QML), f"tests/qml/{harness}"],
         cwd=ROOT,

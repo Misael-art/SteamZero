@@ -168,6 +168,20 @@ Window {
             if (name === "outlineThin" || name === "outlineThick")
                 harness.check(preview.outlineActive,
                               "outline precisa ativar a camada alpha")
+            // Contrato de degradacao: o node de cor existe (invert/hueRotate) e
+            // ou o runtime aplica o efeito, ou o fallback precisa estar publicado.
+            // Nunca as duas coisas falsas — isso seria sumico silencioso.
+            if (name === "invert" || name === "hueShift") {
+                const requested = preview.invertNode !== null || preview.hueRotateNode !== null
+                harness.check(requested,
+                              "receita de cor precisa chegar ao renderer com o node preservado")
+                harness.check(preview.sourceStatus === Image.Ready,
+                              "a fonte continua visivel mesmo quando o efeito degrada")
+                harness.check(preview.colorTransformAvailable || preview.fallbackActive,
+                              "efeito indisponivel precisa publicar fallback, nao sumir calado")
+                harness.check(!(preview.colorTransformAvailable && preview.fallbackActive),
+                              "efeito aplicado nao pode alegar fallback ao mesmo tempo")
+            }
             if (harness.outputDirectory === "") {
                 harness.captureIndex += 1
                 harness.nextCapture()
