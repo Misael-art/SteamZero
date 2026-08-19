@@ -198,6 +198,55 @@ def _qml_runner() -> Path:
     raise SystemExit("qml6/qml ausente; instale o runtime Qt para medir")
 
 
+def vram_kb_from_fdinfo(blocks: list[str]) -> int | None:
+    """Soma a VRAM do processo a partir dos blocos ``fdinfo`` do DRM.
+
+    O driver expõe o mesmo cliente em vários descritores — três fds com o mesmo
+    ``drm-client-id`` e o mesmo valor. Somar tudo triplicaria a medição, então
+    cada cliente entra uma vez só.
+
+    Devolve ``None`` quando nenhum bloco traz VRAM: sem dado é melhor declarar
+    ausência do que reportar zero, que pareceria consumo nulo.
+    """
+    per_client: dict[str, int] = {}
+    for block in blocks:
+        client: str | None = None
+        vram: int | None = None
+        for line in block.splitlines():
+            key, _, value = line.partition(":")
+            key = key.strip()
+            value = value.strip()
+            if key == "drm-client-id":
+                client = value
+            elif key == "drm-memory-vram":
+                number = value.split()[0] if value else ""
+                if number.isdigit():
+                    vram = int(number)
+        if client is not None and vram is not None:
+            per_client[client] = max(per_client.get(client, 0), vram)
+    if not per_client:
+        return None
+    return sum(per_client.values())
+
+
+def _peak_vram_kb(pid: int) -> int | None:
+    """Lê a VRAM corrente do processo; ``None`` quando o driver não expõe."""
+    fdinfo = Path(f"/proc/{pid}/fdinfo")
+    blocks: list[str] = []
+    try:
+        entries = sorted(fdinfo.iterdir())
+    except OSError:
+        return None
+    for entry in entries:
+        try:
+            content = entry.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "drm-client-id" in content:
+            blocks.append(content)
+    return vram_kb_from_fdinfo(blocks)
+
+
 def _safe_qml_dir(value: Path) -> Path:
     """Recusa diretório inexistente ou com aspas.
 
@@ -212,7 +261,7 @@ def _safe_qml_dir(value: Path) -> Path:
     return resolved
 
 
-def _peak_rss_kb(pid: int, stop: threading.Event) -> int:
+def _peak_rss_kb(pid: int, stop: threading.Event, vram: dict[str, int]) -> int:
     peak = 0
     status = Path(f"/proc/{pid}/status")
     while not stop.is_set():
@@ -223,6 +272,9 @@ def _peak_rss_kb(pid: int, stop: threading.Event) -> int:
                     break
         except (OSError, ValueError, IndexError):
             break
+        current = _peak_vram_kb(pid)
+        if current is not None:
+            vram["kb"] = max(vram.get("kb", 0), current)
         time.sleep(0.3)
     return peak
 
@@ -258,6 +310,7 @@ def measure(
     thread.start()
     stop = threading.Event()
     peak_holder: dict[str, int] = {}
+    vram_holder: dict[str, int] = {}
     try:
         # Auditoria do alerta de subprocess com argv dinâmico (opengrep
         # dangerous-subprocess-use-audit): os dois elementos são construídos
@@ -273,7 +326,9 @@ def measure(
             stderr=subprocess.DEVNULL,
         )
         sampler = threading.Thread(
-            target=lambda: peak_holder.setdefault("kb", _peak_rss_kb(process.pid, stop)),
+            target=lambda: peak_holder.setdefault(
+                "kb", _peak_rss_kb(process.pid, stop, vram_holder)
+            ),
             daemon=True,
         )
         sampler.start()
@@ -296,10 +351,14 @@ def measure(
         "frameTime": summary.to_dict(),
         "startupMs": round(float(server.payload.get("startupMs", 0.0)), 3),
         "peakRssKb": peak_holder.get("kb", 0),
-        "vramMeasured": False,
+        "peakVramKb": vram_holder.get("kb"),
+        "vramMeasured": "kb" in vram_holder,
+        "vramMethod": (
+            "drm fdinfo do processo, agrupado por drm-client-id" if "kb" in vram_holder else None
+        ),
         "note": (
             "frameTime vem do render loop (FrameAnimation), nao de frames apresentados: "
-            "nao afirme FPS de tela a partir daqui. VRAM nao e medida."
+            "nao afirme FPS de tela a partir daqui."
         ),
     }
 

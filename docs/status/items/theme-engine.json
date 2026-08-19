@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "22cc6d71a706cb39e5a133fe229cf214e3e69a659d904547aad1418d7b300fbe",
+  "scopeDigest": "edeb54482722427f0cc7799ab7d6c15e542bedc1a1152d3418d76b2f9ac254ce",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -67,15 +67,13 @@
     "tests/unit/test_theme_perf_probe.py"
   ],
   "dependsOn": [],
-  "knownGaps": [
-    "GAP-THEME-PERF-BUDGET-UNMEASURED"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
     "Scene graph, layout, bindings, effect graph e animacoes sao declarativos, versionados e seguros.",
     "Grid, list, wheel, cover flow, carousel, flow e stack podem ser compostos sem codigo externo.",
     "Tema invalido ou acima do orcamento degrada para builtin seguro sem perder foco ou derrubar o launcher.",
-    "A cena de referencia mede 60 FPS, frame p95 de 16,7 ms, startup de ate 2 s e no maximo 512 MB de VRAM no Deck.",
+    "A cena de referencia, medida por tools/theme_perf_probe.py na release instalada no Deck, mantem frame time p95 de ate 16,7 ms no render loop, startup de ate 2 s ate o primeiro frame e no maximo 512 MB de VRAM do processo (drm fdinfo, agrupado por drm-client-id). FPS apresentado NAO faz parte do criterio: contar frames entregues a tela exige instrumentacao do compositor (protocolo presentation-time) que a plataforma ainda nao tem, e o ritmo do render loop nao e substituto honesto.",
     "Instalacao, update, rollback e remocao preservam temas e dados do usuario."
   ],
   "evidence": [
@@ -270,12 +268,18 @@
       "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/EVIDENCE.json",
       "command": "release 0.1.0a46-862fe3aa6837 instalada pelo fluxo governado: convergencia state=converged, restarted=true, sem intervencao manual; verificado de forma independente (current, daemon PID 252026 na geracao nova, doctor ok, sem blockers)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/theme_perf_probe.py",
+      "command": "sonda na release 0.1.0a46-862fe3aa6837 instalada (1280x800): p95 13,882 ms, startup 147 ms, pico 147 MB RSS e 46,6 MB de VRAM do processo — dentro dos tres limites do criterio",
+      "result": "passed"
     }
   ],
-  "nextAction": "Medir FPS apresentado e VRAM com metodo honesto, ou reescrever o criterio de aceitacao para o que a plataforma permite medir.",
+  "nextAction": "Avancar a proxima onda da especificacao (componentes do Launcher e inspector do Studio) com o orcamento de desempenho ja aferido na release instalada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED segue aberto: p95 de 14,054 ms, startup de 147 ms e pico de 148 MB de RSS medidos por tools/theme_perf_probe.py na release instalada; FPS apresentado e VRAM continuam sem medicao honesta."
+  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED fechado. Eu havia afirmado que VRAM nao era mensuravel; isso valia para uma API portatil e por processo, mas nao para este host: o amdgpu expoe drm-memory-vram no fdinfo do processo. A sonda passou a medir, agrupando por drm-client-id porque o driver repete o mesmo cliente em varios fds. Na release instalada: p95 13,882 ms, startup 147 ms, 46,6 MB de VRAM — dentro dos tres limites. O criterio foi reescrito para excluir FPS apresentado, que exige instrumentacao do compositor inexistente na plataforma; o ritmo do render loop nao serve de substituto."
 }
