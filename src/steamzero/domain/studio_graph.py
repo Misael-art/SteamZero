@@ -376,6 +376,10 @@ def _layout_nodes(preview: Mapping[str, Any], children: list[str]) -> list[Studi
                     "kind": layout.get("kind"),
                     "columns": layout.get("columns"),
                     "entries": count,
+                    # Chave da cena deste nó dentro de `sceneLayoutPreview`. O
+                    # canvas desenha a partir daqui em vez de fatiar o id: se o
+                    # formato do id mudasse, o desenho sumiria em silêncio.
+                    "previewKey": str(name),
                 },
                 constraints=_constraints_from(
                     diagnostics,

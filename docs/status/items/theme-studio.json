@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "c84a16d4604576520cfaa4c8dd946ec7bff6788c85a93e87852d23e996bb7187",
+  "scopeDigest": "84e4adb79196d73df2704b35899093963526173333380a77c0ea41121c16a06b",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -92,10 +92,16 @@
       "reference": "tests/unit/test_studio_graph.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml (profundidade e caminho na arvore; sonda verificada por mutacao)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_theme_studio_canvas.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml (canvas desenha a cena do no pelo previewKey declarado; sonda verificada por mutacao nos dois sentidos: canDrawScene invertido e chave inexistente)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Desenhar no canvas central a cena do no selecionado, em vez do rotulo; hoje o canvas e placeholder e so a arvore e o inspector sao funcionais.",
+  "nextAction": "Capturar o canvas desenhando a cena na proxima release instalada e, depois, avaliar edicao direta no canvas — hoje o Studio e somente leitura.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial, agora com evidencia fisica do canvas na release instalada. A captura expos um defeito real: a arvore desenhava os 41 nos numa lista plana, e irmaos de mesmo rotulo (dois 'focused' da timeline) ficavam indistinguiveis. A hierarquia ja existia no grafo em parent/children — faltava o consumidor recebe-la pronta. O dominio passou a anotar depth e path; o QML indenta por depth e situa o no selecionado pelo path, sem percorrer a arvore por conta propria. Irmaos com rotulo repetido ganham a posicao no caminho, porque ali a ordem e informacao real. O canvas central ainda mostra apenas o nome do no selecionado: preview real da cena selecionada continua por fazer."
+  "notes": "Estado permanece parcial. O canvas central deixou de ser placeholder: quando o no selecionado e um layout com cena resolvida, ele desenha usando o MESMO SceneRepeater que a interface usa — um renderizador proprio do Studio poderia divergir do que o usuario ve, e o preview mentiria para quem edita. O no de layout passou a declarar previewKey, entao o canvas acha a cena sem fatiar o id: se o formato do id mudasse, o desenho sumiria em silencio. No sem cena propria (binding, motion, efeito) mostra o rotulo e diz por que nao desenhou, em vez de exibir vazio. A arvore ja carrega depth e path, com irmaos de rotulo repetido desambiguados pela posicao. Falta ainda: edicao no canvas (hoje e so leitura) e evidencia fisica desta fatia na proxima release instalada."
 }

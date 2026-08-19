@@ -25,6 +25,22 @@ Item {
     readonly property string selectedLabel: selectedNode ? selectedNode.label : ""
     readonly property string selectedPath: selectedNode && selectedNode.path !== undefined
         ? String(selectedNode.path) : selectedLabel
+
+    // Cena já resolvida pela engine, indexada por chave de layout. Sem isto o
+    // canvas não desenha — e diz que não desenhou, em vez de mostrar vazio.
+    property var scene: ({})
+    readonly property var selectedScene: {
+        if (!selectedNode || selectedKind !== "layout" || !selectedNode.properties)
+            return null
+        const key = selectedNode.properties.previewKey
+        if (key === undefined || !scene || !scene.layouts)
+            return null
+        const found = scene.layouts[key]
+        return found !== undefined ? found : null
+    }
+    readonly property bool canDrawScene: selectedScene !== null
+        && selectedScene.entries !== undefined
+        && selectedScene.entries.length > 0
     readonly property int nodeCount: nodes.length
     readonly property int selectedConstraintCount:
         selectedNode && selectedNode.constraints ? selectedNode.constraints.length : 0
@@ -106,11 +122,39 @@ Item {
             color: "#0b1020"
             radius: 8
             border.color: "#262f4d"
+            // Desenha a cena do nó com o MESMO repetidor que a interface usa.
+            // Um renderizador próprio do Studio poderia divergir do que o
+            // usuário vê, e aí o preview mentiria justamente para quem edita.
+            SceneRepeater {
+                id: scenePreview
+                objectName: "studioScenePreview"
+                anchors.fill: parent
+                anchors.margins: 12
+                visible: studio.canDrawScene
+                layout: studio.selectedScene
+            }
+
+            // Nem todo nó é desenhável: binding, motion e efeito não têm cena
+            // própria. Nesses casos o canvas diz o que está mostrando, em vez
+            // de fingir um desenho.
             Text {
                 anchors.centerIn: parent
+                visible: !studio.canDrawScene
                 color: "#e8ecf7"
                 text: studio.selectedLabel
                 font.pixelSize: 16
+            }
+            Text {
+                objectName: "studioCanvasNotice"
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: 10
+                visible: !studio.canDrawScene && studio.selectedKind !== ""
+                color: "#5f6b85"
+                font.pixelSize: 10
+                text: studio.selectedKind === "layout"
+                    ? "cena indisponível para este layout"
+                    : "nó sem cena própria: " + studio.selectedKind
             }
             Row {
                 id: timelineStrip

@@ -7098,3 +7098,37 @@ apenas o rótulo do nó selecionado, não a cena. Preview real é o próximo pas
 
 Fechamento local: **4588 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — O canvas do Studio passa a desenhar a cena
+
+O canvas central mostrava o rótulo do nó selecionado, não a cena. Agora, quando
+o nó é um layout com cena resolvida, ele desenha usando o **mesmo**
+`SceneRepeater` que a interface usa. Um renderizador próprio do Studio poderia
+divergir do que o usuário vê — e o preview mentiria justamente para quem edita.
+
+O nó de layout passou a declarar `previewKey`. O canvas acha a cena por essa
+chave em vez de fatiar o id: se o formato do id mudasse, o desenho sumiria em
+silêncio, sem ninguém notar. Nó sem cena própria — binding, motion, efeito —
+mostra o rótulo e **diz por que não desenhou**, em vez de exibir um retângulo
+vazio.
+
+O consumidor real recebeu a ligação: `ThemeEditorPanel` passa ao canvas a mesma
+`sceneLayoutPreview` que ele já desenha, não uma cópia própria.
+
+Duas notas de método, ambas de erro meu:
+
+O harness quebrou depois da mudança e eu tentei bissectar com `git stash`. O
+bisect foi **inválido**: o stash guardou o harness junto, então comparei harness
+antigo com harness novo, não a mudança que eu suspeitava. A causa real era
+outra e trivial — a fixture do harness é escrita à mão e não tinha o
+`previewKey` que a implementação passou a exigir.
+
+Como `console.error` não chega ao chamador neste host, instrumentei uma cópia da
+sonda para sair com `10 + índice da primeira falha`. Apontou a checagem #7 em um
+segundo, contra vários minutos de tentativa e erro.
+
+Sonda verificada por mutação nos dois sentidos: `canDrawScene` invertido e chave
+de cena inexistente — ambos reprovam.
+
+Fechamento local: **4589 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
