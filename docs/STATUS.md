@@ -34,7 +34,7 @@ Esta e a visao atual do projeto. A fonte de verdade sao os arquivos em `docs/sta
 | SZ-MEDIA-SCRAPING | Metadados e midia por scraping controlado | implemented | complete | integrated | unit | degraded | installed | Mostrar o estado vaultVolatile na UI com texto acionavel (o cofre perdeu o valor, nao voce esqueceu) e fechar a G40 (systemeid do ScreenScraper). |
 | SZ-ONLINE-P2P | Jogo online ponto a ponto | planned | planned | isolated | none | unknown | not-packaged | Implementar runtime P2P apenas apos escolha de transporte e emuladores, respeitando o contrato netplay-session-v1. |
 | SZ-RETROACHIEVEMENTS | RetroAchievements e modo offline | planned | planned | isolated | none | unknown | not-packaged | Implementar adapter RetroAchievements apenas apos hardening de keyring e outbox, respeitando achievement-event-v1. |
-| SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | verified-hw | partial | integrated | hw | degraded | installed | Provar fisicamente a convergencia do instalador na proxima instalacao governada, com o binario que le o payload do doctor conduzindo a ativacao. |
+| SZ-THEME-ENGINE | Theme Engine — cenas e efeitos declarativos | verified-hw | partial | integrated | hw | degraded | installed | Medir FPS apresentado e VRAM com metodo honesto, ou reescrever o criterio de aceitacao para o que a plataforma permite medir. |
 | SZ-THEME-STUDIO | Theme Studio — autoria visual de temas | partial | partial | integrated | unit | degraded | installed | Capturar evidência física do canvas na próxima release instalada. |
 | SZ-UI-DESKTOP-AUDIT | UI Desktop — auditoria visual e jornadas P0/P1 | verified-dev | partial | feature-branch | dev | degraded | not-packaged | Integrar em main e validar fisicamente no Deck. |
 

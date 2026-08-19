@@ -164,23 +164,7 @@
     "09-medicao-frame-time.png": "medicao de frame time no host real",
     "10-erro-controlado-invert-hue.png": "degradacao declarada por capability ausente"
   },
-  "openDefects": [
-    {
-      "id": "fallback nao chega ao no visual",
-      "detail": "AssetRecipePreview conta nos nao suportados da receita ja resolvida; como os nos foram removidos antes, o card mostra fallbackActive=false mesmo degradando.",
-      "evidence": "10-erro-controlado-invert-hue.png"
-    },
-    {
-      "id": "instalador nao reinicia o daemon",
-      "detail": "primeira instalacao falhou a convergencia; exigiu restart manual autorizado.",
-      "evidence": "registro installs[0] neste arquivo"
-    },
-    {
-      "id": "prova do fix do instalador pendente",
-      "detail": "A correcao do doctor (check=False) esta provada por teste com fake fiel a producao, mas nao no binario real: quando fui verificar, o host ja havia convergido e o cenario nao era mais reproduzivel. A prova fisica exige a proxima instalacao governada.",
-      "evidence": "tests/integration/test_host_installer.py"
-    }
-  ],
+  "openDefects": [],
   "followUp": {
     "release": "0.1.0a46-29bdcf63ef0f",
     "sourceCommit": "29bdcf63ef0f1fa06f979a8010f29f70fe01a251",
@@ -209,5 +193,49 @@
       "peakRssKb": 152468,
       "vramMeasured": false
     }
-  }
+  },
+  "installerDebtProof": {
+    "release": "0.1.0a46-862fe3aa6837",
+    "sourceCommit": "862fe3aa6837beea932a91f31d3dd8350dfca2ca",
+    "wheelSha256": "198f47b69e946874f5b90be7b9bc8f748590ded8c9c0c69ac07a71df3f1feabf",
+    "ciRunId": "32268987498",
+    "installedBy": "operador (instalacao pelo agente bloqueada por safety check do harness)",
+    "convergence": {
+      "state": "converged",
+      "restarted": true,
+      "manualIntervention": false,
+      "note": "Primeira instalacao em que ativacao e convergencia rodam ambas com codigo corrigido: a ativacao usa tools/install_host.py do checkout e a convergencia usa /usr/local/sbin/steamzero-host, que a propria instalacao acabou de publicar. A idempotencia da convergencia esta implicita no sucesso: _converge roda converge duas vezes e exige restarted=false, attempts=0 na segunda."
+    },
+    "verifiedIndependently": {
+      "current": "/opt/steamzero/releases/0.1.0a46-862fe3aa6837",
+      "daemonPid": 252026,
+      "daemonGeneration": "0.1.0a46-862fe3aa6837",
+      "doctorOk": true,
+      "blockers": []
+    },
+    "capture": "12-invert-hue-release-862fe3aa.png",
+    "measurement": {
+      "frames": 300,
+      "avgFrameTimeMs": 13.345,
+      "p95Ms": 14.054,
+      "startupMs": 147.0,
+      "peakRssKb": 151532,
+      "vramMeasured": false
+    },
+    "rollbackAvailable": "0.1.0a46-29bdcf63ef0f",
+    "userDataPreserved": "state.db intacto (mtime anterior a instalacao)"
+  },
+  "resolvedDefects": [
+    {
+      "id": "fallback nao chega ao no visual",
+      "resolvedBy": "PR #85 — ResolvedAssetRecipe passou a carregar degraded/droppedNodes",
+      "evidence": "11-invert-hue-na-release-instalada.png"
+    },
+    {
+      "id": "instalador nao reinicia o daemon",
+      "correction": "Diagnostico original errado, e o segundo tambem. O instalador sempre teve reload e restart, e a tolerancia ao pending existia desde aac72f4 — mas era inalcancavel: _verify_release rodava 'doctor --json' com check=True e o doctor real sai com EXIT_FAILURE quando status=failed.",
+      "resolvedBy": "PR #86 — doctor lido com check=False; fakes de teste passaram a sair como o binario real",
+      "evidence": "installerDebtProof neste arquivo"
+    }
+  ]
 }

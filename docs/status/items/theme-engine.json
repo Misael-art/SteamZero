@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "b857fe0f1e7f497a8e30c86d3cecfe35e8c0705a5d80ce0fa838759cdade7a80",
+  "scopeDigest": "22cc6d71a706cb39e5a133fe229cf214e3e69a659d904547aad1418d7b300fbe",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -68,8 +68,7 @@
   ],
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-PERF-BUDGET-UNMEASURED",
-    "DEBT-HOST-INSTALL-DAEMON-RESTART"
+    "GAP-THEME-PERF-BUDGET-UNMEASURED"
   ],
   "acceptanceCriteria": [
     "Um asset-fonte produz variantes de cor, silhueta e contorno em runtime sem derivados no pacote.",
@@ -265,12 +264,18 @@
       "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/11-invert-hue-na-release-instalada.png",
       "command": "release 0.1.0a46-29bdcf63ef0f instalada: invert e hue rotate aplicados pela engine (efeito=aplicado, fallback=false), variantes pixel-distintas entre si e do original, alpha preservado (70% de pixels transparentes no no isolado)",
       "result": "passed"
+    },
+    {
+      "kind": "release",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/EVIDENCE.json",
+      "command": "release 0.1.0a46-862fe3aa6837 instalada pelo fluxo governado: convergencia state=converged, restarted=true, sem intervencao manual; verificado de forma independente (current, daemon PID 252026 na geracao nova, doctor ok, sem blockers)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Provar fisicamente a convergencia do instalador na proxima instalacao governada, com o binario que le o payload do doctor conduzindo a ativacao.",
+  "nextAction": "Medir FPS apresentado e VRAM com metodo honesto, ou reescrever o criterio de aceitacao para o que a plataforma permite medir.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. GAP-THEME-ASSET-INVERT-HUE fechado com evidencia fisica: na release 0.1.0a46-29bdcf63ef0f instalada, invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. GAP-THEME-FALLBACK-SIGNAL fechado: ResolvedAssetRecipe carrega degraded/droppedNodes e o no visual levanta o fallback pelas duas origens. DEBT-HOST-INSTALL-DAEMON-RESTART continua ABERTO e foi rediagnosticado pela segunda vez. O restart sempre existiu e a tolerancia ao pending tambem, mas era inalcancavel: _verify_release rodava 'doctor --json' com check=True e o doctor real sai com EXIT_FAILURE quando status=failed, entao o RuntimeError disparava antes do payload ser lido. Os testes escondiam isso porque o doctor fake saia com codigo 0. Corrigido com check=False e fakes fieis a producao; a prova fisica depende da proxima instalacao governada, porque quando fui verificar no binario real o host ja havia convergido e o cenario nao era mais reproduzivel. GAP-THEME-PERF-BUDGET-UNMEASURED aberto: na release instalada, p95 de 14,273 ms, startup de 134 ms e pico de 149 MB de RSS medidos por tools/theme_perf_probe.py; FPS apresentado e VRAM seguem sem medicao honesta."
+  "notes": "Estado permanece parcial, com tres capacidades agora provadas fisicamente na release instalada. GAP-THEME-ASSET-INVERT-HUE e GAP-THEME-FALLBACK-SIGNAL fechados: invert e hue rotate sao aplicados pelo node builtin AssetColorTransform, com variantes pixel-distintas e alpha preservado. DEBT-HOST-INSTALL-DAEMON-RESTART FECHADO: a release 0.1.0a46-862fe3aa6837 convergiu sozinha (restarted=true) na primeira instalacao em que ativacao e convergencia rodaram ambas com o codigo corrigido. O defeito levou tres diagnosticos: nao era falta de restart nem o smoke em si, e sim _verify_release rodando 'doctor --json' com check=True, enquanto o doctor real sai com EXIT_FAILURE em status=failed; os testes escondiam isso porque o fake saia com codigo 0. GAP-THEME-PERF-BUDGET-UNMEASURED segue aberto: p95 de 14,054 ms, startup de 147 ms e pico de 148 MB de RSS medidos por tools/theme_perf_probe.py na release instalada; FPS apresentado e VRAM continuam sem medicao honesta."
 }
