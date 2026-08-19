@@ -185,6 +185,43 @@ def test_missing_capability_has_diagnostic_and_safe_source_fallback() -> None:
     assert all(item.fallback == "source" for item in diagnostics)
 
 
+def test_invert_and_hue_rotate_are_supported_capabilities_by_default() -> None:
+    assert "graphics.asset.invert" in DEFAULT_ASSET_CAPABILITIES
+    assert "graphics.asset.hue-rotate" in DEFAULT_ASSET_CAPABILITIES
+    resolved, diagnostics = resolve_asset_recipes(
+        _book(), capabilities=DEFAULT_ASSET_CAPABILITIES, tier=PerformanceTier.CINEMATIC
+    )
+    invert = resolved["invert"]
+    hue = resolved["hueShift"]
+    assert [node.type.value for node in invert.nodes] == ["invert"]
+    assert [node.type.value for node in hue.nodes] == ["hueRotate"]
+    assert invert.degraded is False
+    assert hue.degraded is False
+    assert not any(item.recipe in {"invert", "hueShift"} for item in diagnostics)
+
+
+def test_resolved_recipe_carries_the_degradation_signal_to_the_renderer() -> None:
+    """O nó visual precisa saber que degradou; a receita chega vazia, não muda sozinha."""
+    resolved, diagnostics = resolve_asset_recipes(
+        _book(),
+        capabilities=DEFAULT_ASSET_CAPABILITIES - {"graphics.asset.invert"},
+        tier=PerformanceTier.CINEMATIC,
+    )
+    invert = resolved["invert"]
+    assert invert.nodes == ()
+    assert invert.degraded is True
+    assert invert.dropped_nodes == 1
+    payload = invert.to_dict()
+    assert payload["degraded"] is True
+    assert payload["droppedNodes"] == 1
+    assert any(item.recipe == "invert" for item in diagnostics)
+
+    intact = resolved["colored"]
+    assert intact.degraded is False
+    assert intact.dropped_nodes == 0
+    assert intact.to_dict()["degraded"] is False
+
+
 def test_inner_outline_degrades_to_outer_when_only_outer_is_available() -> None:
     capabilities = DEFAULT_ASSET_CAPABILITIES - {"graphics.asset.outline.inner"}
     resolved, diagnostics = resolve_asset_recipes(

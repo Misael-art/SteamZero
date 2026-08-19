@@ -138,15 +138,18 @@ _NODE_RULES: dict[AssetRecipeNodeType, _NodeRule] = {
     ),
 }
 
-# O backend Qt Quick atual implementa somente efeitos que podem ser compostos
-# por MultiEffect e por uma textura alpha local. Invert, hue rotate e outline
-# interno continuam allowlisted, mas degradam com diagnóstico até haver um node
-# builtin revisado para esses capabilities.
+# Invert e hue rotate saem de um node builtin da engine (``AssetColorTransform``),
+# que só existe quando o runtime QML traz o módulo de efeitos de cor. O node se
+# declara indisponível em vez de sumir, e o renderizador publica o fallback — por
+# isso a capability entra aqui e a negociação final é do runtime, não desta
+# constante. Outline interno continua fora até ter node próprio.
 DEFAULT_ASSET_CAPABILITIES = frozenset(
     {
         "graphics.asset.recolor",
         "graphics.asset.grayscale",
         "graphics.asset.silhouette",
+        "graphics.asset.invert",
+        "graphics.asset.hue-rotate",
         "graphics.asset.outline.outer",
         "graphics.effect.glow",
         "graphics.effect.shadow",
@@ -338,6 +341,8 @@ class ResolvedAssetRecipe:
     nodes: tuple[ResolvedAssetNode, ...]
     tier: PerformanceTier
     reduced_motion_safe: bool = True
+    degraded: bool = False
+    dropped_nodes: int = 0
 
     def node(self, node_type: AssetRecipeNodeType) -> ResolvedAssetNode:
         for item in self.nodes:
@@ -352,6 +357,8 @@ class ResolvedAssetRecipe:
             "tier": self.tier.value,
             "fallback": "source",
             "reducedMotionSafe": self.reduced_motion_safe,
+            "degraded": self.degraded,
+            "droppedNodes": self.dropped_nodes,
         }
 
 
@@ -447,11 +454,16 @@ def resolve_asset_recipes(
                 )
             )
             fallback_to_source = True
+        # A receita degradada chega vazia ao renderizador; sem este sinal o nó
+        # visual não teria como distinguir "sem efeito declarado" de "efeito
+        # recusado", e marcaria fallback inativo enquanto degradava.
         resolved[name] = ResolvedAssetRecipe(
             name=name,
             source_slot=recipe.source_slot,
             nodes=() if fallback_to_source else tuple(accepted),
             tier=tier,
+            degraded=fallback_to_source,
+            dropped_nodes=len(recipe.nodes) if fallback_to_source else 0,
         )
     return resolved, tuple(diagnostics)
 
