@@ -1143,6 +1143,9 @@ Rectangle {
                             anchors.margins: 12
                             anchors.topMargin: 32
                             graph: panel.studioGraph
+                            // A mesma cena resolvida que a interface desenha:
+                            // o canvas do Studio não recebe uma versão própria.
+                            scene: panel._previewBridge.sceneLayoutPreview
                         }
                     }
 

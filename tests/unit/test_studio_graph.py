@@ -341,3 +341,26 @@ def test_duplicate_labels_are_told_apart_by_their_path() -> None:
     for label in repeated:
         paths = {node["path"] for node in nodes if node["label"] == label}
         assert len(paths) == sum(1 for node in nodes if node["label"] == label), label
+
+
+def test_layout_nodes_carry_the_preview_key_so_the_canvas_can_draw_the_scene() -> None:
+    """O canvas precisa achar a cena do nó sem fatiar o id em QML.
+
+    O id é ``layout.previewWheel``, mas quem consome não deve inferir a chave a
+    partir dele: se o formato do id mudar, o canvas silenciosamente pararia de
+    desenhar. A chave vem declarada.
+    """
+    preview = ThemeEditorManager().load("org.steamzero.asset-recipes-demo")["preview"]
+    assert isinstance(preview, dict)
+    graph = preview["studioGraph"]
+    assert isinstance(graph, dict)
+    layouts = preview["sceneLayoutPreview"]["layouts"]
+    layout_nodes = [node for node in graph["nodes"] if node["kind"] == "layout"]
+    assert layout_nodes
+
+    for node in layout_nodes:
+        key = node["properties"]["previewKey"]
+        assert key in layouts, node["id"]
+        # A chave tem de apontar para a cena daquele nó, não para outra qualquer.
+        assert layouts[key]["kind"] == node["properties"]["kind"]
+        assert len(layouts[key]["entries"]) == node["properties"]["entries"]

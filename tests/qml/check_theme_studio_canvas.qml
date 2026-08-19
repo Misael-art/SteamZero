@@ -17,6 +17,28 @@ Item {
     ThemeStudioCanvas {
         id: canvas
         anchors.fill: parent
+        scene: ({
+            "layouts": {
+                "previewTitles": {
+                    "id": "previewTitles", "kind": "grid", "columns": 2,
+                    "entries": [{
+                        "kind": "text", "id": "t-0", "text": "Axiom Verge",
+                        "x": 0, "y": 0, "width": 120, "height": 24,
+                        "visible": true, "opacity": 1, "color": "#f2f6fb",
+                        "fontFamily": "", "fontPixelSize": 14, "fontWeight": 400,
+                        "fontItalic": false, "horizontalAlignment": "AlignLeft",
+                        "verticalAlignment": "AlignTop"
+                    }, {
+                        "kind": "text", "id": "t-1", "text": "Celeste",
+                        "x": 130, "y": 0, "width": 120, "height": 24,
+                        "visible": true, "opacity": 1, "color": "#f2f6fb",
+                        "fontFamily": "", "fontPixelSize": 14, "fontWeight": 400,
+                        "fontItalic": false, "horizontalAlignment": "AlignLeft",
+                        "verticalAlignment": "AlignTop"
+                    }]
+                }
+            }
+        })
         graph: ({
             "selectedId": "scene",
             "budget": {
@@ -30,7 +52,8 @@ Item {
                  "depth": 0, "path": "Cena"},
                 {"id": "layout.previewTitles", "kind": "layout", "label": "previewTitles",
                  "parent": "scene", "children": [],
-                 "properties": {"kind": "grid", "columns": 4, "entries": 4},
+                 "properties": {"kind": "grid", "columns": 4, "entries": 4,
+                                "previewKey": "previewTitles"},
                  "depth": 1, "path": "Cena / previewTitles"},
                 {"id": "effect.focusedCover", "kind": "effect", "label": "focusedCover",
                  "parent": "scene", "children": ["effect.focusedCover.0"],
@@ -76,6 +99,17 @@ Item {
             harness.check(canvas.selectedKind === "layout", "inspector não acompanhou o nó")
             harness.check(canvas.select("effect.focusedCover.0") === true, "efeito não selecionou")
             harness.check(canvas.selectedKind === "effect", "inspector não acompanhou o efeito")
+            harness.check(canvas.select("layout.previewTitles") === true,
+                          "seleção de layout falhou na checagem de canvas")
+            harness.check(canvas.canDrawScene === true,
+                          "layout com cena resolvida precisa ser desenhável")
+            harness.check(canvas.selectedScene !== null
+                          && canvas.selectedScene.entries.length === 2,
+                          "o canvas precisa receber a cena pela chave declarada, não pelo id")
+            harness.check(canvas.select("effect.focusedCover.0") === true,
+                          "reseleção do efeito falhou")
+            harness.check(canvas.canDrawScene === false,
+                          "nó sem cena própria não pode alegar desenho")
             harness.check(canvas.selectedPath === "Cena / focusedCover / glow",
                           "inspector precisa situar o nó na árvore, não só nomeá-lo")
             harness.check(canvas.selectedConstraintCode === "THEME-STUDIO-COST-001",
