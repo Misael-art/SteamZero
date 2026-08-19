@@ -6877,3 +6877,44 @@ Quatro pendências ficam abertas — `GAP-THEME-ASSET-INVERT-HUE`,
 **partial**, agora com `verification: hw`. SZ-THEME-STUDIO, SZ-AURA-UI e
 SZ-AURA-LAUNCHER não foram promovidos. Nenhuma tag foi publicada: `publish`
 exige certificação separada.
+
+## 2026-08-19 — Theme Engine — correção dos defeitos achados na validação física
+
+O commit `08a75cf` fecha os dois defeitos de código que só a instalação real
+expôs.
+
+**GAP-THEME-ASSET-INVERT-HUE.** As capabilities `graphics.asset.invert` e
+`graphics.asset.hue-rotate` eram deliberadamente omitidas do conjunto padrão
+porque nenhum node Qt Quick as implementava — resultado: as duas variantes
+renderizavam iguais à fonte. Agora existe um node builtin da engine,
+`AssetColorTransform`, que aplica o efeito quando o runtime traz o módulo de
+efeitos de cor e se declara indisponível quando não traz. O invert remascara
+com o alpha da fonte, então transparência e furos internos sobrevivem — foi
+justamente o que a primeira tentativa errou, deixando o fundo branco.
+
+**GAP-THEME-FALLBACK-SIGNAL.** A receita degradada chegava vazia ao
+renderizador, indistinguível de "nenhum efeito declarado"; por isso o card
+marcava `fallbackActive=false` enquanto degradava. `ResolvedAssetRecipe` passa
+a carregar `degraded` e `droppedNodes`, e o preview levanta o fallback pelas
+duas origens: nó removido no domínio ou efeito recusado pelo runtime.
+
+O harness afirma o contrato que interessa: efeito que não pode ser aplicado
+**precisa** publicar o fallback e manter a fonte visível — nunca os dois
+falsos, que seria sumiço silencioso. Como o efeito funciona neste host, a
+asserção não morde aqui; provei o caminho degradado com uma cópia do node
+apontando para um módulo inexistente (`available=false`, `unsupported=true`),
+e no CI, cuja imagem canônica não traz o módulo, é o caminho degradado que
+será exercido.
+
+**DEBT-HOST-INSTALL-DAEMON-RESTART — rediagnóstico.** Meu registro anterior
+dizia que "o instalador não reinicia o serviço". Errado. O instalador sempre
+teve `daemon-reload` e `restart`; o que falhava era `_verify_release` tratar o
+`E-HOST-DAEMON-PENDING` do smoke como fatal e abortar **antes** de reiniciar —
+ou seja, considerava fatal exatamente o sintoma que o restart existe para
+curar. Isso já fora corrigido por `aac72f4`, com teste de regressão, e está na
+release instalada. A falha que observei veio do binário da release
+**anterior**, que ainda conduzia a ativação. A prova física fica para a próxima
+instalação governada, que já começará com o binário corrigido.
+
+Fechamento local: **4575 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

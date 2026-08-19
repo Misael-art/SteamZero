@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "8fbd325a4866b2e40d376e72e17ba6e50af981ad884ed1f4130e89e3f81a5d22",
+  "scopeDigest": "563a1cbf41796b005ea138e44505f699d2f852f3c54676079961bcc235f70381",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -66,8 +66,6 @@
   ],
   "dependsOn": [],
   "knownGaps": [
-    "GAP-THEME-ASSET-INVERT-HUE",
-    "GAP-THEME-FALLBACK-SIGNAL",
     "GAP-THEME-PERF-BUDGET-UNMEASURED",
     "DEBT-HOST-INSTALL-DAEMON-RESTART"
   ],
@@ -247,12 +245,18 @@
       "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/10-erro-controlado-invert-hue.png",
       "command": "erro controlado: capability ausente (graphics.asset.invert / hue-rotate) degrada para a fonte com diagnostico",
       "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_asset_recipe_preview.qml",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_asset_recipes.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml (contrato: efeito indisponivel publica fallback e mantem a fonte visivel; caminho degradado provado com modulo inexistente)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Corrigir os tres defeitos abertos encontrados na validacao fisica: capability de invert/hue-rotate, sinal de fallback no no visual e restart do daemon no instalador.",
+  "nextAction": "Construir release do commit verde e validar fisicamente invert/hue rotate e a convergencia do instalador na instalacao governada.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial, agora com evidencia fisica em hardware (Steam Deck LCD, sessao Wayland). A release 0.1.0a46-53b753f4b901 esta instalada e renderiza, do proprio pacote: 12 variantes de um unico asset-fonte, layouts flow/stack/wheel com highlight central e vizinhos, badges semanticos com glifo escolhido pela engine, containers panel/card/modal/drawer com scrim e empilhamento, e transparencia por estado de interacao. Medicao no host real: frame time medio 13,353 ms, p95 14,134 ms, pico de 149 MB de RSS. GAP-THEME-ASSET-INVERT-HUE: graphics.asset.invert e graphics.asset.hue-rotate nao existem nesta release/host, entao as variantes invert e hueShift degradam para a fonte com diagnostico e nao existem visualmente. GAP-THEME-FALLBACK-SIGNAL: AssetRecipePreview marca fallbackActive=false mesmo degradando, porque conta nos da receita ja resolvida (que chega vazia). GAP-THEME-PERF-BUDGET-UNMEASURED: FPS, startup e VRAM do criterio nao foram medidos como tais; ha frame time e RSS. DEBT-HOST-INSTALL-DAEMON-RESTART: o instalador promove arquivos mas nao reinicia o user unit steamzero-core, e a primeira instalacao reprovou a convergencia com E-HOST-DAEMON-PENDING."
+  "notes": "Estado permanece parcial. Dois defeitos achados pela validacao fisica foram corrigidos: GAP-THEME-ASSET-INVERT-HUE (invert e hue rotate agora tem node builtin da engine, AssetColorTransform, que aplica o efeito quando o runtime tem o modulo de cor e se declara indisponivel quando nao tem; invert remascara com o alpha da fonte, preservando transparencia e furos internos) e GAP-THEME-FALLBACK-SIGNAL (ResolvedAssetRecipe passa a carregar degraded/droppedNodes, entao o no visual distingue 'sem efeito declarado' de 'efeito recusado'). DEBT-HOST-INSTALL-DAEMON-RESTART foi rediagnosticado: o instalador SEMPRE teve reload e restart; o que falhava era _verify_release tratar o E-HOST-DAEMON-PENDING do smoke como fatal, abortando antes de reiniciar — exatamente o sintoma que o restart existe para curar. Isso ja fora corrigido por aac72f4 (com teste de regressao) e esta na release instalada; a falha observada em 2026-08-19 veio do binario da release ANTERIOR, que ainda conduzia a ativacao. Falta a prova fisica na proxima instalacao governada. GAP-THEME-PERF-BUDGET-UNMEASURED segue aberto: ha frame time (p95 14,134 ms) e RSS de pico (149 MB), nao FPS apresentado, startup nem VRAM."
 }
