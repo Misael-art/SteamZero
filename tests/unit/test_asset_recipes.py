@@ -234,9 +234,7 @@ def test_hue_rotate_degrades_with_the_same_semantics_as_invert() -> None:
     assert hue.degraded is True
     assert hue.dropped_nodes == 1
     assert hue.to_dict()["droppedNodes"] == 1
-    assert any(
-        item.recipe == "hueShift" and item.fallback == "source" for item in diagnostics
-    )
+    assert any(item.recipe == "hueShift" and item.fallback == "source" for item in diagnostics)
     # Invert segue intacto: remover uma capability não pode derrubar a outra.
     assert resolved["invert"].degraded is False
 

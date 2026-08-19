@@ -10,6 +10,7 @@
   "operation": "ready",
   "distribution": "not-packaged",
   "scopePaths": [
+    ".github/workflows/ci.yml",
     "AGENTS.md",
     "Makefile",
     "docs/01-product/CAPABILITY-MATRIX.md",
@@ -29,7 +30,7 @@
     "tests/unit/test_project_status.py",
     "tools/project_status.py"
   ],
-  "scopeDigest": "9c7dd112bbb952315790f24e23a8ff8cf624b4ff0cbdc45f81db3276b36e424f",
+  "scopeDigest": "02b658e5b10d183fb2b683848facf9f5bd3689638d6bb1b1a6e6faa01f267b86",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -44,6 +45,12 @@
       "reference": "tests/unit/test_project_status.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_project_status.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": ".github/workflows/ci.yml",
+      "command": "run 32211030788 ficou 5h no apt-get do runtime QML e o 32233319678 falhou com 'Could not get lock': apt esperava o lock do unattended-upgrades sem limite. DPkg::Lock::Timeout=180 corrige a causa; timeout-minutes fica como rede.",
+      "result": "recorded"
     }
   ],
   "nextAction": "Manter status-check e WORKLOG append-only verdes apos harmonizacao a45.",
