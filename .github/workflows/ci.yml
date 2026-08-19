@@ -54,15 +54,15 @@ jobs:
         run: python tools/check_independence.py
       - name: Tipos estritos
         run: mypy
-      # Havia aqui um passo que instalava xorriso e genisoimage por apt, com a
-      # justificativa de que `test_vm_harness.py` falharia sem um gerador de ISO
-      # cidata no PATH. Não falha: os 38 testes do arquivo passam com o PATH
-      # limpo dos três geradores, porque exercitam `provision()` com mocks de
-      # `shutil.which`. O passo custava minutos e travou o CI de novo em
-      # 2026-08-19, estourando o timeout sem imprimir uma linha de apt.
+      # Havia aqui um passo que instalava xorriso e genisoimage por apt. A
+      # justificativa era real: dois testes de `test_vm_harness.py` montavam o
+      # argv do seed com `shutil.which` e falhavam sem um gerador no PATH.
       #
-      # Se algum dia um teste precisar do binário de verdade, ele deve declarar
-      # isso por skipif — e aí o passo volta com um motivo verificável.
+      # O passo travou o CI em 2026-08-19, estourando dez minutos sem imprimir
+      # uma linha de apt. A saída não foi mexer no timeout de novo: os dois
+      # testes passaram a injetar o gerador por monkeypatch, como o resto do
+      # arquivo já fazia. Rodam com PATH vazio (38 passed), e qual gerador é
+      # escolhido continua coberto por teste dedicado.
       - name: Testes e cobertura
         run: |
           mkdir -p build
