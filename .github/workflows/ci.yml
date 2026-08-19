@@ -23,6 +23,10 @@ jobs:
   quality:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    # Teto explicito. O default do GitHub e 6h: em 2026-08-19 o job 3.11 ficou
+    # 5h pendurado no apt-get do runtime QML sem nunca falhar, e o PR ficou
+    # bloqueado. Os jobs saudaveis fecham em 14-25 min.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -59,7 +63,12 @@ jobs:
         # skipif quando qml6 está ausente, e um runtime opcional não deve
         # derrubar o job. Se a provisão falhar, o passo registra o diagnóstico e
         # segue; a cobertura não depende destes testes.
+        #
+        # `continue-on-error` cobre FALHA, não TRAVAMENTO: sem o timeout abaixo,
+        # um apt-get pendurado consome as 6h do default e o job nunca conclui.
+        # Foi o que aconteceu em 2026-08-19.
         continue-on-error: true
+        timeout-minutes: 10
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
@@ -85,6 +94,7 @@ jobs:
         # não traz nenhum por padrão; sem ele os testes do harness falham em
         # RuntimeError na construção do seed. Obrigatório: são testes de
         # integração do driver, não best-effort.
+        timeout-minutes: 10
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends xorriso genisoimage
