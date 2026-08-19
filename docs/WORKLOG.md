@@ -6918,3 +6918,37 @@ instalação governada, que já começará com o binário corrigido.
 
 Fechamento local: **4575 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — CI pendurado e sonda de desempenho reproduzível
+
+O job Python 3.11 do PR #85 ficou **cinco horas** sem concluir. Não era o
+código: travou no step `Runtime QML para os harnesses offscreen`, num
+`apt-get`. O step é best-effort de propósito (`continue-on-error: true`), mas
+`continue-on-error` cobre **falha**, não **travamento** — sem
+`timeout-minutes`, vale o default de 6h do GitHub. O commit `1095600` limita
+os dois steps de provisionamento em 10 min e o job em 45, folgado sobre os
+14–25 min de uma execução saudável. O run travado foi deixado como está, a
+pedido do operador; re-rodamos depois.
+
+O commit `ffccd84` transforma a medição de desempenho em ferramenta:
+`tools/theme_perf_probe.py`. A medição anterior foi improvisada — números
+transcritos de uma captura de tela, que ninguém consegue refazer. A sonda
+renderiza a cena com os layouts resolvidos, amostra frame time do render loop,
+registra startup até o primeiro frame e o pico de RSS, e imprime JSON.
+
+Duas restrições moldaram o desenho e ficaram registradas no módulo: a saída de
+`console.*` do QML **não chega ao chamador neste host** (verifiquei os três
+canais; só as mensagens do próprio runtime saem), então o harness devolve o
+resultado por HTTP em loopback — o mesmo padrão que os testes de integração já
+usam; e `--qml-dir` aceita `/opt/steamzero/current`, então o mesmo comando mede
+a release instalada em vez do checkout.
+
+Na release `0.1.0a46-53b753f4b901`, a 1280x800: 300 frames, p95 **14,405 ms**,
+startup **178 ms**, pico de **148 MB** de RSS. VRAM continua sem medição e o
+relatório declara `vramMeasured: false` — nenhuma API portátil devolve o
+consumo de textura do processo, e inventar o número seria pior que admitir a
+lacuna. O mesmo vale para FPS de tela: a nota do relatório avisa que frame time
+vem do render loop.
+
+Fechamento local: **4579 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

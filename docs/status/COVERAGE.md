@@ -17,8 +17,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-PRIVILEGED | 7 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SCHEMAS | 47 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TESTS | 295 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TOOLS | 29 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TESTS | 296 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TOOLS | 30 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 9 | 0 | 0 | none | sem evidencia registrada |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
@@ -35,7 +35,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 72 | 29 | 28 | hw |  |
+| SZ-THEME-ENGINE | 74 | 30 | 28 | hw |  |
 | SZ-THEME-STUDIO | 12 | 7 | 7 | unit |  |
 | SZ-UI-DESKTOP-AUDIT | 222 | 1 | 1 | dev |  |
 

@@ -9,7 +9,7 @@
   "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "563a1cbf41796b005ea138e44505f699d2f852f3c54676079961bcc235f70381",
+  "scopeDigest": "0cc85c37fbcd8f1d00ada705de2410a7343a9f29c14befa996399ea82b98b88c",
   "scopePaths": [
     "docs/01-product/THEME-ENGINE-AND-STUDIO.md",
     "src/steamzero/domain/asset_recipes.py",
@@ -62,7 +62,9 @@
     "src/steamzero/ui/qml/SceneContainerPreview.qml",
     "tests/unit/test_scene_containers.py",
     "tests/qml/check_scene_containers.qml",
-    "docs/09-operations/evidence/2026-08-19-theme-engine-a47"
+    "docs/09-operations/evidence/2026-08-19-theme-engine-a47",
+    "tools/theme_perf_probe.py",
+    "tests/unit/test_theme_perf_probe.py"
   ],
   "dependsOn": [],
   "knownGaps": [
@@ -251,12 +253,18 @@
       "reference": "tests/qml/check_asset_recipe_preview.qml",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_asset_recipes.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_asset_recipe_preview.qml (contrato: efeito indisponivel publica fallback e mantem a fonte visivel; caminho degradado provado com modulo inexistente)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/theme_perf_probe.py",
+      "command": ".venv/bin/python tools/theme_perf_probe.py --qml-dir /opt/steamzero/current/venv/lib/python3.14/site-packages/steamzero/ui/qml --preview-json <preview da release> (release instalada, 1280x800: 300 frames, p95 14,405 ms, startup 178 ms, pico 148 MB RSS; VRAM nao medida)",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Construir release do commit verde e validar fisicamente invert/hue rotate e a convergencia do instalador na instalacao governada.",
+  "nextAction": "Re-rodar o CI do PR #85 (job 3.11 pendurou no apt-get; timeouts ja adicionados), merge em main e instalar para provar invert/hue e a convergencia.",
   "activeWorkstreams": [
     "WS-2026-08-THEME-ASSET-RECIPES"
   ],
   "updatedAt": "2026-08-18",
-  "notes": "Estado permanece parcial. Dois defeitos achados pela validacao fisica foram corrigidos: GAP-THEME-ASSET-INVERT-HUE (invert e hue rotate agora tem node builtin da engine, AssetColorTransform, que aplica o efeito quando o runtime tem o modulo de cor e se declara indisponivel quando nao tem; invert remascara com o alpha da fonte, preservando transparencia e furos internos) e GAP-THEME-FALLBACK-SIGNAL (ResolvedAssetRecipe passa a carregar degraded/droppedNodes, entao o no visual distingue 'sem efeito declarado' de 'efeito recusado'). DEBT-HOST-INSTALL-DAEMON-RESTART foi rediagnosticado: o instalador SEMPRE teve reload e restart; o que falhava era _verify_release tratar o E-HOST-DAEMON-PENDING do smoke como fatal, abortando antes de reiniciar — exatamente o sintoma que o restart existe para curar. Isso ja fora corrigido por aac72f4 (com teste de regressao) e esta na release instalada; a falha observada em 2026-08-19 veio do binario da release ANTERIOR, que ainda conduzia a ativacao. Falta a prova fisica na proxima instalacao governada. GAP-THEME-PERF-BUDGET-UNMEASURED segue aberto: ha frame time (p95 14,134 ms) e RSS de pico (149 MB), nao FPS apresentado, startup nem VRAM."
+  "notes": "Estado permanece parcial. Dois defeitos achados pela validacao fisica foram corrigidos: GAP-THEME-ASSET-INVERT-HUE (invert e hue rotate agora tem node builtin da engine, AssetColorTransform, que aplica o efeito quando o runtime tem o modulo de cor e se declara indisponivel quando nao tem; invert remascara com o alpha da fonte, preservando transparencia e furos internos) e GAP-THEME-FALLBACK-SIGNAL (ResolvedAssetRecipe passa a carregar degraded/droppedNodes, entao o no visual distingue 'sem efeito declarado' de 'efeito recusado'). DEBT-HOST-INSTALL-DAEMON-RESTART foi rediagnosticado: o instalador SEMPRE teve reload e restart; o que falhava era _verify_release tratar o E-HOST-DAEMON-PENDING do smoke como fatal, abortando antes de reiniciar — exatamente o sintoma que o restart existe para curar. Isso ja fora corrigido por aac72f4 (com teste de regressao) e esta na release instalada; a falha observada em 2026-08-19 veio do binario da release ANTERIOR, que ainda conduzia a ativacao. Falta a prova fisica na proxima instalacao governada. GAP-THEME-PERF-BUDGET-UNMEASURED encolheu e continua aberto: a medicao virou ferramenta reproduzivel (tools/theme_perf_probe.py), que aponta para a release instalada e mede frame time, startup ate o primeiro frame e RSS de pico. Na release 0.1.0a46-53b753f4b901 a 1280x800: p95 14,405 ms, startup 178 ms, pico 148 MB. FPS apresentado e VRAM continuam sem medicao honesta; o relatorio declara vramMeasured=false em vez de estimar."
 }
