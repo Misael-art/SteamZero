@@ -6,10 +6,10 @@
   "domain": "themes",
   "implementation": "partial",
   "integration": "integrated",
-  "verification": "unit",
+  "verification": "hw",
   "operation": "degraded",
   "distribution": "installed",
-  "scopeDigest": "488f9443c9a8b41ac1bc513069d65d3a63a8112890dc836e6fc9529882924073",
+  "scopeDigest": "c84a16d4604576520cfaa4c8dd946ec7bff6788c85a93e87852d23e996bb7187",
   "scopePaths": [
     "src/steamzero/domain/theme_editor.py",
     "src/steamzero/domain/theme_marketplace.py",
@@ -80,10 +80,22 @@
       "reference": "tests/qml/check_theme_studio_canvas.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml && QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_editor_asset_recipes.qml",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "docs/09-operations/evidence/2026-08-19-theme-engine-a47/13-theme-studio-canvas.png",
+      "command": "release 0.1.0a46-862fe3aa6837 instalada: canvas do Studio com arvore de 41 nos, selecao de layout.previewWheel e inspector mostrando kind/columns/entries e o profiler declarado (custo 39, dentro do orcamento, sem medicao fisica)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_studio_graph.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_studio_graph.py tests/unit/test_theme_editor.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/check_theme_studio_canvas.qml (profundidade e caminho na arvore; sonda verificada por mutacao)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Capturar evidência física do canvas na próxima release instalada.",
+  "nextAction": "Desenhar no canvas central a cena do no selecionado, em vez do rotulo; hoje o canvas e placeholder e so a arvore e o inspector sao funcionais.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-18",
-  "notes": "Canvas, arvore, inspector, constraints, grafo de efeitos, timeline, profiler declarado e bindings assistidos existem no codigo e no harness QML. Bindings so listam caminhos allowlisted (item/palette/osd) ja declarados; nao ha eval, JS ou QML do pacote. Continua partial. Editor de keyframes, bindings escritos de volta no pacote e evidencia fisica do canvas na release instalada ainda nao existem."
+  "notes": "Estado permanece parcial, agora com evidencia fisica do canvas na release instalada. A captura expos um defeito real: a arvore desenhava os 41 nos numa lista plana, e irmaos de mesmo rotulo (dois 'focused' da timeline) ficavam indistinguiveis. A hierarquia ja existia no grafo em parent/children — faltava o consumidor recebe-la pronta. O dominio passou a anotar depth e path; o QML indenta por depth e situa o no selecionado pelo path, sem percorrer a arvore por conta propria. Irmaos com rotulo repetido ganham a posicao no caminho, porque ali a ordem e informacao real. O canvas central ainda mostra apenas o nome do no selecionado: preview real da cena selecionada continua por fazer."
 }

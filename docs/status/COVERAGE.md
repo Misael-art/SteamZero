@@ -35,8 +35,8 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
-| SZ-THEME-ENGINE | 76 | 33 | 31 | hw |  |
-| SZ-THEME-STUDIO | 12 | 7 | 7 | unit |  |
+| SZ-THEME-ENGINE | 77 | 33 | 31 | hw |  |
+| SZ-THEME-STUDIO | 12 | 9 | 9 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 222 | 1 | 1 | dev |  |
 
 Arquivos em `src/`: **470**. Sob agregador apenas, sem item de capacidade: **313** (66%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

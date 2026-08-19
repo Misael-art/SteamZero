@@ -7070,3 +7070,31 @@ Fica anotado que `gamemoded` iniciou onze segundos antes, e que
 
 Fechamento local: **4587 passed, 10 skipped**, zero falhas; Ruff, format,
 mypy, independence, boundaries e status-check.
+
+## 2026-08-19 — Theme Studio: a árvore passa a ser árvore
+
+A evidência física do canvas na release instalada era o `nextAction` do item, e
+capturá-la (`13-theme-studio-canvas.png`, offscreen, para não arriscar a sessão
+de novo) expôs um defeito que nenhum teste pegava: o Studio desenhava os **41
+nós numa lista plana**. Pior, irmãos com o mesmo rótulo — dois `focused`, dois
+`saturation` — ficavam indistinguíveis na tela.
+
+A hierarquia já estava no grafo, em `parent`/`children`. Faltava o consumidor
+recebê-la pronta. O domínio passou a anotar `depth` e `path`; o QML indenta por
+`depth` e situa o nó selecionado pelo `path`, sem percorrer a árvore por conta
+própria — se desenhasse a própria hierarquia, ela poderia divergir da que a
+engine validou.
+
+Irmãos com rótulo repetido ganham a posição no caminho. Os dois `saturation`
+são de stacks diferentes e já se distinguiam pelo pai; os dois `focused` são
+passos distintos da mesma timeline indo para o mesmo estado, e ali a ordem é a
+informação que distingue. Ciclo ou pai ausente não trava a montagem: a cadeia
+para e o nó fica na raiz.
+
+Sonda `check_theme_studio_canvas.qml` verificada por mutação (mutante reprova
+com exit 1). `SZ-THEME-STUDIO` sobe para `verification: hw` e permanece
+`partial` — com uma pendência agora nomeada: o canvas central ainda mostra
+apenas o rótulo do nó selecionado, não a cena. Preview real é o próximo passo.
+
+Fechamento local: **4588 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
