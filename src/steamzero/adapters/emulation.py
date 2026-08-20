@@ -6580,11 +6580,12 @@ class EmulationController:
         self, game: Mapping[str, Any], settings: Mapping[str, dict[str, Any]]
     ) -> dict[str, Any]:
         result = self._resolve_settings(game, settings)
-        if "emulatorId" not in result:
-            global_settings = self._load_global_settings()
-            default_emu = global_settings.get("defaultEmulatorId")
-            if default_emu is not None:
-                result["emulatorId"] = default_emu
+        global_settings = self._load_global_settings()
+        for key, value in global_settings.items():
+            if key == "defaultEmulatorId":
+                key = "emulatorId"
+            if key not in result:
+                result[key] = value
         return result
 
     def _media_manager(self, store: StateStore) -> GameMediaManager:

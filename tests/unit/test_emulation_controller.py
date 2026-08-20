@@ -478,6 +478,40 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     assert enriched[0]["playAction"]["enabled"] is True
 
 
+def test_game_settings_win_over_global_defaults_and_global_fills_gaps(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Onda 4: precedência jogo→global no launcher — o jogo que opta por
+    valor próprio vence; o jogo sem opt-in herda a preferência global."""
+    controller = _controller(monkeypatch, tmp_path)
+    global_path = controller._global_settings_path  # type: ignore[attr-defined]
+    global_path.parent.mkdir(parents=True, exist_ok=True)
+    global_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "settings": {
+                    "defaultEmulatorId": "citron",
+                    "autoPublishSteam": True,
+                    "preferNativeNca": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    game = {"id": "0fd1b7954e6eaf474f5e8c8c", "fingerprint": "f" * 64}
+    settings = {"0fd1b7954e6eaf474f5e8c8c": {"autoPublishSteam": False, "emulatorId": "eden"}}
+    merged = controller._settings_for_game_with_global(game, settings)  # type: ignore[attr-defined]
+    assert merged["emulatorId"] == "eden"
+    assert merged["autoPublishSteam"] is False
+    assert merged["preferNativeNca"] is True
+
+    inherited = controller._settings_for_game_with_global(game, {})  # type: ignore[attr-defined]
+    assert inherited["emulatorId"] == "citron"
+    assert inherited["autoPublishSteam"] is True
+    assert inherited["preferNativeNca"] is True
+
+
 def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
 
