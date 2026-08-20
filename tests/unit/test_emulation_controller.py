@@ -1333,6 +1333,41 @@ def test_library_scan_indexes_known_platform_directories_without_scanning_bios(
     assert report[str(bios)]["disposition"] == "excluded"
 
 
+def test_library_scan_enriches_platform_games_with_identity_seam(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Onda 1 parte 3: costura mínima do domínio na varredura de plataforma —
+    identity do disco preenche o game dict sem tocar no caminho Switch."""
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    psx = root / "PSX"
+    psx.mkdir(parents=True)
+
+    pvd = bytearray(2048)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[0x20:0x2B] = b"SLUS_005.55"
+    image = bytearray(0x8000)
+    image[0x8000:0x8800] = pvd
+    (psx / "Ridge Racer Revolution.iso").write_bytes(bytes(image))
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    game = cached["games"][0]
+    assert game["platform"] == "playstation"
+    assert game["titleId"] == "SLUS_005.55"
+    assert game["identityScheme"] == "psx-serial"
+    assert game["identityDiagnosis"] == "pvd-serial"
+    assert game["identityVerified"] is True
+    assert game["state"] == "ready"
+
+
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(
     monkeypatch, tmp_path: Path
 ) -> None:  # type: ignore[no-untyped-def]

@@ -34,6 +34,7 @@ from steamzero.adapters.converters import (
     ToolRegistry,
     nsz_tool_manifest,
 )
+from steamzero.adapters.discovery.format_parsers import read_game_identity
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.lifecycle import ComponentLifecycle
@@ -1484,11 +1485,16 @@ class EmulationController:
                         f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
                     ).hexdigest()
                     stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                    game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
                     discovered[str(pm.path)] = {
                         "id": stable_id,
-                        "titleId": None,
+                        "titleId": game_identity.value if game_identity is not None else None,
+                        "identityScheme": (
+                            game_identity.scheme.value if game_identity is not None else None
+                        ),
+                        "identityDiagnosis": identity_diag,
                         "name": pm.path.stem,
-                        "state": "unverified",
+                        "state": "ready" if game_identity is not None else "unverified",
                         "statusLabel": (
                             f"{pm.format.upper()} · Platform: {pm.platform}"
                             if pm.platform
@@ -1499,7 +1505,7 @@ class EmulationController:
                         "fingerprint": fingerprint,
                         "size": stat.st_size,
                         "format": pm.format,
-                        "identityVerified": False,
+                        "identityVerified": game_identity is not None,
                         "contentKind": "base",
                         "metadataSource": None,
                         "version": None,
