@@ -7273,3 +7273,66 @@ não existem, e nenhum jogo real foi lançado numa release instalada.
 
 Fechamento local: **4613 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: o shell costura home e página
+
+Quinto slice. O shell junta home e página de jogo no mesmo processo e guarda de
+onde o usuário saiu, devolvendo exatamente ali na volta. Cair no topo da home
+depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada
+partida — é o tipo de detalhe que separa um launcher usável de uma tela bonita.
+
+O foco de saída viaja junto no pedido de lançamento, porque é ele que o contexto
+grava em disco. Contexto apontando para item que sumiu cai no foco inicial, em
+vez de deixar o shell sem foco: a mesma defesa que o domínio já faz, repetida
+aqui porque o shell também lê o contexto na inicialização.
+
+O shell não resolve foco nem decide ações. A home aplica o mapa do domínio, a
+página recebe as ações já decididas, e aqui só existe a costura entre as duas
+mais o contexto de retorno.
+
+Três mutantes reprovam: voltar ao topo em vez do foco de saída, lançar sem levar
+o foco junto, e aceitar contexto apontando para nó inexistente.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta o entry point que abra este
+shell como processo real, alimentado por read model de verdade, e a instalação
+que permita a primeira evidência física.
+
+Fechamento local: **4614 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: o entry point
+
+Sexto slice: `steamzero-launcher` existe como processo. Segue o desenho que a
+central já usa — servidor em loopback, token por execução e o QML como processo
+separado. O token não é formalidade: sem ele, qualquer processo local dispararia
+jogos na máquina do usuário, e o teste cobre o 403.
+
+A fonte da biblioteca é injetada por `--library`. A varredura real do acervo
+roda por jobs assíncronos, e ligá-la aqui seria integração de fachada — então
+ficou declarado como próximo passo em vez de simulado. Sem biblioteca o Launcher
+**abre assim mesmo**, com a home vazia acionável que o domínio já resolve:
+primeira execução sem acervo é o caso comum, não erro. Runtime Qt ausente vira
+código de saída, não traceback.
+
+Um detalhe que o teste pegou: `build_sections` guardava só ids, então a home
+mostraria `celeste` onde o usuário espera `Celeste`. O domínio de foco trabalha
+com ids de propósito, então o título passou a viajar à parte, num mapa que a
+ponte aplica.
+
+O gate de status acusou `pyproject.toml` **alterado sem item responsável**.
+Ninguém o declarava, apesar de ele definir entry points, dependências e
+empacotamento. Passou para `SZ-GOVERNANCE-STATUS`, que já governa `ci.yml`,
+`AGENTS.md` e `Makefile`.
+
+Sobre o merge do PR #90: ele entrou com quatro dos cinco slices — o shell
+(`1291778`) ficou de fora, porque o merge aconteceu antes daquele push ser
+considerado. Verifiquei por conteúdo, não por mensagem de commit, já que o
+squash reescreve o histórico: `LauncherShell.qml` e seu harness não estavam em
+`main`. Recuperados por cherry-pick nesta branch, com o harness reexecutado.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta ligar a biblioteca real,
+instalar a release e capturar a primeira evidência física com jogo lançado de
+verdade.
+
+Fechamento local: **4618 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

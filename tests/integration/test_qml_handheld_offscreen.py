@@ -218,6 +218,7 @@ def _error_server() -> tuple[int, threading.Thread, HTTPServer]:
         # UI: mora em seu próprio diretório e não promove o estado dela.
         "launcher/check_launcher_home.qml",
         "launcher/check_launcher_game_page.qml",
+        "launcher/check_launcher_shell.qml",
         "check_asset_color_transform.qml",
         "check_glass_panel.qml",
         "check_scene_motion.qml",

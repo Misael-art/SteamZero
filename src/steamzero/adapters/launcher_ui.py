@@ -1,0 +1,176 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Ponte entre o processo do AURA Launcher e a cena QML.
+
+Segue o mesmo desenho já usado pela central: servidor em loopback, token por
+execução e o QML como processo separado. O token não é formalidade — sem ele,
+qualquer processo local poderia disparar jogos na máquina do usuário.
+
+Vive num adapter porque abre socket e cria processo; o domínio resolve foco e
+página, e nada aqui decide navegação.
+"""
+
+from __future__ import annotations
+
+import importlib.resources
+import json
+import os
+import secrets
+import shutil
+import subprocess
+import threading
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from typing import Any
+
+from steamzero.launcher.navigation import HomeSection, resolve_home_focus
+
+LaunchCallback = Callable[[str, str], None]
+_QT_QUICK_BACKEND = "software"
+
+
+class _Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    @property
+    def _bridge(self) -> LauncherBridge:
+        bridge = getattr(self.server, "bridge", None)
+        if not isinstance(bridge, LauncherBridge):
+            raise RuntimeError("servidor sem ponte associada")
+        return bridge
+
+    def _authorized(self) -> bool:
+        return secrets.compare_digest(self.headers.get("X-SteamZero-Token", ""), self._bridge.token)
+
+    def do_GET(self) -> None:
+        if not self._authorized():
+            self._send(403, {"error": "token inválido"})
+            return
+        if self.path == "/model":
+            self._send(200, self._bridge.model())
+            return
+        self._send(404, {"error": "rota desconhecida"})
+
+    def do_POST(self) -> None:
+        if not self._authorized():
+            self._send(403, {"error": "token inválido"})
+            return
+        if self.path != "/launch":
+            self._send(404, {"error": "rota desconhecida"})
+            return
+        length = int(self.headers.get("Content-Length", "0"))
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            self._send(400, {"error": "corpo inválido"})
+            return
+        if not isinstance(payload, dict):
+            self._send(400, {"error": "corpo inválido"})
+            return
+        game_id = str(payload.get("gameId", ""))
+        focus_id = str(payload.get("focusId", ""))
+        if not game_id:
+            self._send(400, {"error": "gameId ausente"})
+            return
+        self._bridge.launch(game_id, focus_id)
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _send(self, status: int, body: dict[str, Any]) -> None:
+        payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *_: Any) -> None:
+        """Silencia o log HTTP: ele carregaria o token na linha de requisição."""
+
+
+class _Server(HTTPServer):
+    bridge: LauncherBridge
+
+
+class LauncherBridge:
+    """Serve o modelo resolvido e recebe o pedido de lançamento."""
+
+    def __init__(
+        self,
+        *,
+        sections: Sequence[HomeSection],
+        context_path: Path,
+        on_launch: LaunchCallback,
+        titles: Mapping[str, str] | None = None,
+    ) -> None:
+        self._sections = tuple(sections)
+        self._titles = dict(titles or {})
+        self._context_path = Path(context_path)
+        self._on_launch = on_launch
+        self.token = secrets.token_urlsafe(32)
+        self._focus = resolve_home_focus(self._sections)
+
+    def model(self) -> dict[str, Any]:
+        return {
+            "focusMap": self._focus.to_qml_object(),
+            "sections": [
+                {
+                    "id": section.id,
+                    "title": section.title,
+                    "items": [
+                        {"id": item, "title": self._titles.get(item, item)}
+                        for item in section.items
+                    ],
+                }
+                for section in self._sections
+            ],
+        }
+
+    def launch(self, game_id: str, focus_id: str) -> None:
+        self._on_launch(game_id, focus_id)
+
+    @contextmanager
+    def serving(self) -> Iterator[str]:
+        server = _Server(("127.0.0.1", 0), _Handler)
+        server.bridge = self
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{server.server_port}"
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
+def launch_launcher_ui(bridge: LauncherBridge) -> int:
+    """Abre a cena do Launcher e espera o processo terminar.
+
+    Runtime Qt ausente é condição esperada num host sem sessão gráfica, e vira
+    código de saída com mensagem — não traceback.
+    """
+    executable = shutil.which("qml6") or shutil.which("qml")
+    if executable is None:
+        return 3
+    resource = importlib.resources.files("steamzero.ui").joinpath("qml/launcher/LauncherMain.qml")
+    with bridge.serving() as base, importlib.resources.as_file(resource) as scene:
+        process = subprocess.Popen(  # noqa: S603 - argv fixo, scene do próprio pacote
+            [
+                executable,
+                str(scene),
+                "--",
+                "--steamzero-api",
+                base,
+                "--steamzero-token",
+                bridge.token,
+            ],
+            stdin=subprocess.DEVNULL,
+            env={
+                **os.environ,
+                "QT_QUICK_BACKEND": _QT_QUICK_BACKEND,
+                "STEAMZERO_CLASS": "launcher",
+            },
+        )
+        return int(process.wait() or 0)
