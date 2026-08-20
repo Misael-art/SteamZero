@@ -9,7 +9,7 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "225d05d845c40d2fa5f823d4f812d6c01db6f04197443063e2e8325b1167128a",
+  "scopeDigest": "9a09b6bf987e36df495470a1eee58a58e1724aff5ffeadf68f2664d2310da5d6",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -24,7 +24,9 @@
     "tests/unit/test_launcher_navigation.py",
     "src/steamzero/ui/qml/launcher",
     "tests/qml/launcher",
-    "tests/unit/test_launcher_session.py"
+    "tests/unit/test_launcher_session.py",
+    "src/steamzero/adapters/launcher_process.py",
+    "tests/integration/test_launcher_launch.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
@@ -62,10 +64,16 @@
       "reference": "tests/unit/test_launcher_session.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_launcher_session.py -q; QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_game_page.qml (pagina de jogo com acao bloqueada e motivo; contexto de retorno atravessa processos e degrada para a mesma secao quando o item sumiu). Mutantes reprovam.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_launcher_launch.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_launch.py -q (processo real: o jogo sobrevive ao SIGKILL no grupo do launcher; contexto gravado antes do spawn e consumido uma vez). Mutante sem start_new_session reprova.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Lancar um processo real e voltar, com o shell instalado, para so entao falar em evidencia fisica do vertical.",
+  "nextAction": "Montar o shell que instancia home, pagina e retorno num processo so, e instalar para obter a primeira evidencia fisica do Launcher.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. O item permanece planned: o lancamento de processo real, o shell instalado e o consumidor fora do harness ainda nao existem. Nada aqui promove AURA UI ou Theme Engine."
+  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. Quarto slice: lancamento real e retorno. O jogo nasce em sessao propria, entao um sinal dirigido ao grupo do launcher — Ctrl+C no terminal ou o systemd encerrando o escopo — nao o leva junto; isso e o item 5 da DoD e so se prova com processo de verdade. O contexto vai para disco ANTES do spawn: gravar depois abriria uma janela em que o jogo ja roda e o lugar do usuario ainda nao foi salvo. O primeiro teste desse contrato nao provava nada: matava so o processo pai, e no Linux o filho e reparentado ao init e sobrevive de qualquer jeito. Passou a derrubar o grupo, e ai o mutante sem start_new_session reprova. A primeira versao do modulo tambem fazia I/O e subprocess a mao; o gate de fronteiras recusou com razao — a escrita atomica ja existia em core.fs e subprocess pertence aos adapters, entao o spawn virou adapters/launcher_process.py e o dominio recebe por injecao. O item permanece planned: o shell instalado e o consumidor fora do harness ainda nao existem, e nenhum jogo real foi lancado numa release instalada. Nada aqui promove AURA UI ou Theme Engine."
 }

@@ -7240,3 +7240,36 @@ instalado e consumidor fora do harness ainda não existem.
 
 Fechamento local: **4604 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: lançamento real e retorno
+
+Itens 4 e 5 da Definition of Done, com processo de verdade — um mock sempre
+diria que o jogo sobreviveu.
+
+O jogo nasce em **sessão própria**. Assim, um sinal dirigido ao grupo do
+launcher — Ctrl+C no terminal, ou o systemd encerrando o escopo — não o leva
+junto. E o contexto vai para disco **antes** do spawn: gravar depois abriria uma
+janela em que o jogo já roda e o lugar do usuário ainda não foi salvo.
+
+**O primeiro teste desse contrato não provava nada.** Ele matava só o processo
+pai e verificava que o filho seguia vivo — mas no Linux o filho é reparentado ao
+init e sobrevive de qualquer jeito, com ou sem sessão própria. O mutante que
+removia `start_new_session` passava tranquilo. Passou a derrubar o **grupo**, e
+aí o mutante reprova, como devia desde o início.
+
+**O gate de fronteiras recusou minha primeira versão, com razão.** Eu tinha
+escrito gravação atômica e `subprocess` à mão dentro do módulo de domínio. A
+gravação atômica já existia em `core.fs` — com fsync de diretório e modo 0600,
+melhor que a minha — e `subprocess` pertence aos adapters. O spawn virou
+`adapters/launcher_process.py` e o domínio passou a receber por injeção, sem
+conhecer o adapter.
+
+O argv é sequência já separada: string de shell é recusada, junto com
+metacaractere e travessia de diretório. Um caminho de jogo com aspas não vira
+execução de outra coisa.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. O shell e o consumidor fora do harness
+não existem, e nenhum jogo real foi lançado numa release instalada.
+
+Fechamento local: **4613 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
