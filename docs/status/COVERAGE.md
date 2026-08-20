@@ -23,7 +23,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-EMULATION-ENHANCEMENTS | 17 | 0 | 0 | none | sem evidencia registrada |
+| SZ-EMULATION-ENHANCEMENTS | 22 | 7 | 7 | unit |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
@@ -40,4 +40,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-STUDIO | 12 | 10 | 10 | hw |  |
 | SZ-UI-DESKTOP-AUDIT | 226 | 1 | 1 | dev |  |
 
-Arquivos em `src/`: **485**. Sob agregador apenas, sem item de capacidade: **300** (61%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **485**. Sob agregador apenas, sem item de capacidade: **295** (60%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

@@ -4,22 +4,26 @@
   "id": "SZ-EMULATION-ENHANCEMENTS",
   "title": "Melhorias por jogo agnósticas de plataforma",
   "domain": "emulation",
-  "implementation": "planned",
+  "implementation": "complete",
   "integration": "feature-branch",
-  "verification": "none",
+  "verification": "unit",
   "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/domain/emulator_config.py",
-    "src/steamzero/domain/enhancement_catalog.py",
+    "src/steamzero/domain/game_enhancements.py",
     "src/steamzero/domain/game_identity.py",
-    "src/steamzero/domain/enhancement_filter.py",
     "src/steamzero/schemas/known-good-profile-v1.schema.json",
     "src/steamzero/schemas/known-good-profile-v2.schema.json",
+    "src/steamzero/schemas/adapter-v1.schema.json",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/enhancements/renderers.py",
+    "src/steamzero/adapters/discovery/format_parsers.py",
+    "src/steamzero/core/fs.py",
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
+  "scopeDigest": "e2326c34dd75b0e41c36df5f1cd5e5dbf3b95aae31e30cb28f250a79f8a0f968",
   "dependsOn": ["SZ-EMULATION-M10"],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -30,9 +34,17 @@
     "Opt-in resolvido por precedência jogo -> global; launch_game consulta e aplica melhorias antes do argv, com degradação (jogo lança sem melhoria) e idempotência.",
     "Nenhuma segunda implementação de identidade de ROM, resolução de emulador, escrita de config, rollback ou store de preferências."
   ],
-  "evidence": [],
-  "nextAction": "Onda 1: leitores de identidade por plataforma e bump do schema known-good-profile v1->v2 com migração.",
+  "evidence": [
+    {"kind": "test", "reference": "tests/unit/test_game_identity.py", "command": "run_tests_isolated.py tests/unit/test_game_identity.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_game_identity_readers.py", "command": "run_tests_isolated.py tests/unit/test_game_identity_readers.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_known_good_catalog.py", "command": "run_tests_isolated.py tests/unit/test_known_good_catalog.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_game_enhancements.py", "command": "run_tests_isolated.py tests/unit/test_game_enhancements.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_enhancement_renderers.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_renderers.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_enhancement_coverage.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_coverage.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_emulation_controller.py", "command": "run_tests_isolated.py tests/unit/test_emulation_controller.py -q", "result": "passed"}
+  ],
+  "nextAction": "Gates finais verdes (4730 passed, 10 skipped na última suíte; status-check OK). Fechamento desta sessão: relatório item→commit→testes, WORKLOG e pendências: (a) Portão 5.1 de release com evidência composta; (b) instalação + validação física em sessão viva exige autorização explícita da thread; (c) teste físico de launch com emulador real de plataforma não-Switch; (d) manifesto SUPER ZSNES com asset verificado.",
   "activeWorkstreams": ["WS-2026-08-EMULATOR-ENHANCEMENT"],
   "updatedAt": "2026-08-20",
-  "notes": "Frente autorizada na thread de 2026-08-20 (branch codex/emulator-enhancement-platform). Objetivo: generalizar o vertical Switch existente (emulator_config/switch_mods/switch_cheats) em capacidade de melhorias por jogo agnóstica de plataforma; nenhuma promoção de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Estado máximo 'partial' até instalação e validação física na sessão viva; parte de boot/entrada de sessão fica pendente do operador por restrição da thread (§5.3)."
+  "notes": "Ondas 1-5 concluídas e commitadas na branch codex/emulator-enhancement-platform (003fbdf..200cd40). Nenhuma promoção de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Testes Switch (mods/cheats) intactos e verdes sem edição (prova da generalização). Lacunas conhecidas (registro no relatório final, não em knownGaps sem ledger): (1) manifesto físico do SUPER ZSNES pendente de asset verificável (sha256 real + smoke de argv no host; emulador proprietário, só AppImage não-oficial — nada de hash fabricado); (2) manifestos existentes ainda sem seção enhancements — capacidade vazia na tabela de cobertura até um instalador real consumir cada formato; (3) renderers ainda não conectados a um instalador transacional end-to-end (emulation.py recebeu apenas a mudança da Onda 4 nesta sessão). Estado máximo 'partial' até instalação e validação física na sessão viva; reboot/entrada de sessão continuam ação exclusiva do operador."
 }
