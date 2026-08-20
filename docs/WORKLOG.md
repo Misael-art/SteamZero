@@ -7336,3 +7336,127 @@ verdade.
 
 Fechamento local: **4618 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: a biblioteca real
+
+O acervo de referência tem **1290 arquivos em 198 pastas**. A varredura produz
+**104 jogos base em 6 sistemas**, com **191 diagnósticos** de pasta sem jogo
+reconhecido. A lacuna é de **cobertura de plataforma** — o registro do projeto
+conhece 36 —, não de varredura, e publicar o diagnóstico é o que impede o
+usuário de concluir que perdeu jogos. Registrado como
+`GAP-LAUNCHER-PLATFORM-COVERAGE`.
+
+A varredura reusa `PlatformRomScanner` e o registro de plataformas em vez de um
+filtro próprio de extensão. Num acervo real cada pasta de sistema também guarda
+`.directory`, `metadata.txt` e `systeminfo.txt`: um filtro ingênuo listaria
+`systeminfo` como jogo, e a home teria 198 "sistemas" cheios de nada.
+
+Dois enganos meus, ambos resolvidos por medição.
+
+`PlatformRomScanner` **não é recursivo** — cada raiz é uma plataforma. Apontá-lo
+para o topo do acervo devolveu 1 candidato, o que pareceria biblioteca vazia em
+vez de uso errado da ferramenta.
+
+Os ids do registro são canônicos (`master-system`, `game-gear`) enquanto as
+pastas seguem a convenção do ES-DE (`mastersystem`, `gb`, `nes`). Eu filtrava
+diretório por nome contra os ids, o que descartaria quase tudo; quem identifica
+a plataforma é a **extensão do arquivo**, e o nome da pasta serve como dica. A
+correção **não mudou o número final**, o que prova que meu diagnóstico inicial
+da causa estava errado e que o limite é mesmo a cobertura do registro.
+
+Os títulos perdem os marcadores técnicos: `Hollow Knight Silksong
+[010013C00E930000][v0].nsp` vira `Hollow Knight Silksong`. Os ids são slugs com
+sufixo de hash, estáveis entre execuções e válidos como nó de foco e argumento
+de lançamento.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta instalar a release e capturar
+home, página e retorno com um jogo lançado de verdade.
+
+Fechamento local: **4625 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: uma fonte de execução para todas as plataformas
+
+O que rodar vem do **manifesto da plataforma daquele jogo**, via
+`domain.launch_profile` — que já monta o argv por substituição posicional, com a
+ROM como argumento atômico e o core tratado como propriedade da plataforma (uma
+instalação de RetroArch atende dezenas de sistemas). O Launcher não guarda
+comando próprio: um comando fixo atenderia uma plataforma e quebraria as outras.
+
+Três erros meus, todos corrigidos por medição, e os três diziam algo plausível:
+
+**O `app.py` montava `steamzero-launch <id>`** — que é o caminho de jogos Steam
+(`--appid APPID -- %command%`) e falharia para qualquer ROM. O lançamento nunca
+teria funcionado.
+
+**A detecção de emulador por `shutil.which(adapterId)` dava falso positivo.** No
+KDE, `dolphin` no PATH é o gerenciador de arquivos; o emulador é `dolphin-emu`.
+O plano mandaria uma ROM de Wii para o navegador de arquivos. E `which` sequer
+enxerga Flatpak ou engine gerenciada, que é como esses emuladores chegam.
+
+**Um `except Exception` amplo transformou um import quebrado em "nenhum emulador
+instalado".** A resposta era plausível — e falsa. O operador havia dito que os
+emuladores de Switch funcionavam, e ele estava certo: `eden`, `citron` e
+`ryubing` estão instalados. Só a fachada `ComponentLifecycle`, a mesma que CLI e
+dashboard usam, revelou isso.
+
+Medido no host: **16 dos 104 jogos** viram plano de execução — Switch resolve
+para `eden` com `['eden', '-f', '-g', <rom>]` — e 88 são recusados com motivo,
+porque o emulador daquela plataforma não está instalado.
+
+**Provisão automática.** Quando falta emulador ou core, o pedido é montado a
+partir do manifesto daquela plataforma, com a precedência que ela declara — e
+somente com a opção habilitada pelo operador. Baixar centenas de megabytes por
+conta própria decidiria pelo usuário o uso de disco e de rede, o que num
+handheld com dados limitados não é detalhe. Desligada, a recusa continua
+explicando o que falta, para a decisão ser informada. Emulador multi-sistema
+entra junto com o core: RetroArch sem core abre e não roda o jogo.
+
+Registrado `DEBT-QML-HARNESS-FLAKE`: segunda ocorrência de harness QML que falha
+na suíte completa e passa isolado, em testes diferentes do mesmo arquivo.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta a instalação automática executar
+de fato e o ciclo físico ponta a ponta.
+
+Fechamento local: **4639 passed, 10 skipped** (uma flake de harness QML,
+reproduzida como verde isoladamente); Ruff, format, mypy, independence,
+boundaries e status-check.
+
+## 2026-08-20 — Correção de arquitetura: o Launcher volta para dentro do projeto
+
+O operador identificou o problema de fundo: eu vinha criando soluções sem
+validar a arquitetura, e isso retira a robustez de um projeto cujas garantias
+vêm justamente do acoplamento. A auditoria confirmou quatro caminhos paralelos.
+
+| Criado por mim | O que já existia e o que se perdia |
+|---|---|
+| `launcher/library.py` | `scan_library()` — descobre roots, classifica base/update/DLC, ignora auxiliares, mantém cache |
+| `launcher/execution.py` | `launch_profile` + `_build_exec_argv` — ROM atômica, core como propriedade da plataforma |
+| `adapters/launcher_process.py` | `launch_game` cria o processo **e registra a sessão** |
+| `launcher/provisioning.py` | `ComponentLifecycle` e o fluxo transacional `plan`→`apply` |
+
+O caminho paralelo teria lançado um `.nsp` de **update**, sem chaves projetadas,
+e reportado sucesso — `launch_game` recusa isso em três pontos distintos.
+
+O erro mais revelador estava no catálogo: ele decidia jogabilidade lendo
+`emulatorId` do registro do jogo. Esse campo **não é a fonte da decisão** —
+`_settings_for_game_with_global` aplica o `defaultEmulatorId` global e
+`_resolve_primary_emulator` ainda cai no primary instalado. Verificado no host:
+`defaultEmulatorId` já é `eden`. Minha camada teria reportado 15 jogos "não
+jogáveis" num sistema que sabia exatamente qual emulador usar. A decisão voltou
+para quem a tem.
+
+Os quatro módulos foram removidos e o Launcher passou a consumir
+`EmulationController` por uma camada fina de tradução, que declara a porta que
+consome e o contrato que publica. Permanecem como capacidade nova, sem
+equivalente: o modelo de foco da home, a página de jogo, o contexto de retorno
+entre processos e o shell QML com ponte em loopback.
+
+A regra virou a **seção 11 do AGENTS.md**, com o incidente registrado: nenhuma
+implementação começa sem localizar quem já resolve aquele problema, e a resposta
+— qual módulo faz isto, por que não serve, o que a peça nova acrescenta — é
+escrita antes da primeira linha. Quando a estrutura não couber, estende-se no
+mesmo padrão; nunca se contorna em paralelo.
+
+Fechamento local: **4615 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

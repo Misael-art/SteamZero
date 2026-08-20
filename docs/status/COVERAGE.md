@@ -19,7 +19,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 304 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TOOLS | 30 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AURA-LAUNCHER | 27 | 7 | 7 | none |  |
+| SZ-AURA-LAUNCHER | 27 | 6 | 6 | none |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |

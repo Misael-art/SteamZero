@@ -204,7 +204,44 @@ usa somente scene graph, bindings, componentes e effect nodes allowlisted. Toda
 afirmação de desempenho GPU, FPS, memória ou fidelidade visual exige medição no
 hardware e na release indicados, nunca inferência de teste offscreen.
 
-## 11. Ao terminar
+## 11. Estude a arquitetura antes de implementar
+
+Nenhuma implementação começa sem localizar, no código existente, quem já resolve
+aquele problema. Antes da primeira linha, o agente responde por escrito, no
+relatório ou no commit: qual módulo já faz isto, por que ele não serve, e o que
+a nova peça acrescenta que a atual não permite. Não achar equivalente é uma
+resposta válida — mas só depois de procurar.
+
+A arquitetura deste projeto centraliza decisões de propósito, e as garantias
+vêm justamente do acoplamento. Um caminho paralelo não fica "isolado": ele perde
+silenciosamente tudo o que o caminho oficial valida.
+
+> Incidente 2026-08-20: o AURA Launcher ganhou scanner de biblioteca, resolução
+> de executor, detecção de emulador instalado e provisão automática — todos
+> próprios. Cada um duplicava algo existente e perdia o que estava acoplado:
+> `scan_library` classifica base/update/DLC e ignora auxiliares; `launch_profile`
+> monta argv com ROM atômica e core como propriedade da plataforma;
+> `_settings_for_game_with_global` aplica o emulador padrão e
+> `_resolve_primary_emulator` já faz o fallback para o primary instalado;
+> `launch_game` exige chaves projetadas no Switch e registra a sessão. O caminho
+> paralelo teria lançado um `.nsp` de update, sem chaves, e reportado sucesso —
+> e chegou a marcar 15 jogos como "não jogáveis" lendo um campo que não é a
+> fonte da decisão.
+
+Regras práticas:
+
+- procure por capacidade, não por nome: `grep` pelo verbo (scan, launch, argv,
+  install) antes de criar módulo com esse verbo no nome;
+- mutação de estado usa o fluxo transacional do projeto (`plan` → `apply`), não
+  chamada direta ao executor;
+- I/O de arquivo passa por `core.fs`; processo, por adapter; nenhuma das duas
+  coisas no domínio;
+- toda peça nova declara qual porta consome e qual contrato publica, para que a
+  próxima expansão tenha onde se apoiar;
+- quando a estrutura atual não couber, a saída é **estendê-la** com o mesmo
+  padrão — nunca contorná-la em paralelo.
+
+## 12. Ao terminar
 
 Relatório final com: tabela item→commit→testes que provam; o que ficou fora de
 escopo e por quê; ações de host executadas, release ativa e rollback disponível;
