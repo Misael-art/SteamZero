@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-ENHANCEMENTS",
+  "title": "Melhorias por jogo agnósticas de plataforma",
+  "domain": "emulation",
+  "implementation": "planned",
+  "integration": "feature-branch",
+  "verification": "none",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/emulator_config.py",
+    "src/steamzero/domain/enhancement_catalog.py",
+    "src/steamzero/domain/game_identity.py",
+    "src/steamzero/domain/enhancement_filter.py",
+    "src/steamzero/schemas/known-good-profile-v1.schema.json",
+    "src/steamzero/schemas/known-good-profile-v2.schema.json",
+    "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/mods",
+    "src/steamzero/adapters/cheats"
+  ],
+  "dependsOn": ["SZ-EMULATION-M10"],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Identidade de título tipada por plataforma substitui o regex de 16 hex do schema known-good-profile (v1→v2 com migração, Switch continuando válido).",
+    "Porta única de melhorias parametrizada por plataforma, com papel do provedor declarado no manifesto (steamzero-supplied | emulator-supplied); Switch é um consumidor da porta.",
+    "Filtro anti-cheat é invariante de domínio: whitelist técnica x blacklist de gameplay, default nega, entrada sem proveniência recusada.",
+    "Renderers por formato (INI, YAML, rules.txt, pnach, GameINI, gamesettings INI) sobre o mesmo SettingsDiff/plano/rollback, com marcador de ownership e recusa de sobrescrita sem marcador.",
+    "Opt-in resolvido por precedência jogo -> global; launch_game consulta e aplica melhorias antes do argv, com degradação (jogo lança sem melhoria) e idempotência.",
+    "Nenhuma segunda implementação de identidade de ROM, resolução de emulador, escrita de config, rollback ou store de preferências."
+  ],
+  "evidence": [],
+  "nextAction": "Onda 1: leitores de identidade por plataforma e bump do schema known-good-profile v1->v2 com migração.",
+  "activeWorkstreams": ["WS-2026-08-EMULATOR-ENHANCEMENT"],
+  "updatedAt": "2026-08-20",
+  "notes": "Frente autorizada na thread de 2026-08-20 (branch codex/emulator-enhancement-platform). Objetivo: generalizar o vertical Switch existente (emulator_config/switch_mods/switch_cheats) em capacidade de melhorias por jogo agnóstica de plataforma; nenhuma promoção de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Estado máximo 'partial' até instalação e validação física na sessão viva; parte de boot/entrada de sessão fica pendente do operador por restrição da thread (§5.3)."
+}
