@@ -7131,4 +7131,145 @@ Sonda verificada por mutação nos dois sentidos: `canDrawScene` invertido e cha
 de cena inexistente — ambos reprovam.
 
 Fechamento local: **4589 passed, 10 skipped**; Ruff, format, mypy,
+## 2026-08-19 — AURA Launcher: baseline e o primeiro slice de foco
+
+Baseline registrado **antes** de escrever qualquer linha: zero artefatos.
+`src/steamzero/launcher`, `src/steamzero/ui/qml/launcher` e `tests/qml/launcher`
+não existiam — e o escopo do item declarava os três, a ponto de o `digest` nem
+poder ser calculado. Os dois que seguem sem artefato saíram do escopo; voltam
+quando existirem. Escopo descreve o que é, não o que será.
+
+O primeiro slice é o alicerce do item 3 da Definition of Done: navegação por
+controle **sem becos**. Num launcher conduzido por controle não há mouse para
+resgatar o usuário; um nó de onde nenhuma direção sai obriga a reiniciar a
+sessão no handheld.
+
+O contrato que escrevi primeiro — "todo nó tem alguma saída" — era fraco: dois
+nós apontando um para o outro passariam e ainda assim seriam um beco. O
+contrato real é **conectividade**: de qualquer nó, o direcional devolve ao foco
+inicial. É isso que o teste verifica, por busca em largura a partir de cada nó.
+
+Regras que valem registrar, porque cada uma cobre um jeito de perder o usuário:
+home vazia cai num nó de ação com `LAUNCHER-FOCUS-EMPTY-001`, em vez de ficar
+sem foco; seção sem itens não vira linha alcançável; linha de um item só recusa
+a volta horizontal, que pareceria movimento sem mover; coluna inexistente na
+seção vizinha cai na mais próxima, em vez de virar destino nulo.
+
+O teste de mutação pegou uma lacuna real: eu cobria a volta pela direita e não
+pela esquerda, então remover o wrap à esquerda passava despercebido. Fechada.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Não há shell, home renderizada,
+página de jogo, lançamento, retorno nem pacote instalado — e nada aqui promove
+AURA UI ou Theme Engine.
+
+Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: a home navega pelo mapa
+
+Segundo slice do vertical. A home renderiza as seções e move o foco **aplicando
+o mapa** resolvido no domínio: o QML não escolhe vizinho, não deduz coluna e não
+inventa destino. Se ele decidisse vizinhança, a garantia de "sem becos" provada
+no domínio não valeria para aquilo que o usuário de fato navega — seriam duas
+verdades diferentes.
+
+Direção sem destino mantém o foco onde está. Mover para um destino nulo
+apagaria o foco, e num aparelho sem mouse isso é a definição de beco.
+
+Dois erros meus, ambos corrigidos e registrados no próprio componente:
+
+O índice de itens era um array preenchido por `push` no `Component.onCompleted`
+de cada delegate. Parecia funcionar — e o harness passou na primeira execução.
+Bastou outro binding passar a ler a propriedade para o binding original
+reavaliar e zerar o array. Agora é derivado das seções: determinístico e
+independente da ordem de instanciação.
+
+O delegate interno montava a chave do nó subindo `parent.parent.parent`. Isso
+quebra em silêncio se a árvore visual mudar de forma; o id da seção passou a ser
+guardado no `Column` que a representa.
+
+O harness verifica o que interessa: o foco segue o mapa, direção sem destino não
+mexe no foco, sessenta movimentos não tiram o foco do mapa, e **exatamente um**
+item fica destacado — contar itens não provaria que a chave do item bate com a
+do mapa. Mutantes que quebram a chave e que anulam o movimento reprovam.
+
+Os diretórios `src/steamzero/ui/qml/launcher` e `tests/qml/launcher` voltaram ao
+escopo do item, como prometido quando saíram: existem agora.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Não há página de jogo, lançamento,
+retorno, shell instalado nem consumidor real fora do harness.
+
+Fechamento local: **4597 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: página de jogo e o contrato de retorno
+
+Itens 2 e 4 da Definition of Done, com a parte que separa vertical real de
+fachada.
+
+**Página de jogo.** Ação bloqueada continua visível, com o motivo ao lado.
+Esconder faria o usuário procurar o que não está lá; mostrar sem explicar faria
+ele apertar e não entender o silêncio. O foco nunca começa numa ação
+desabilitada, e o direcional não para nela — passar o foco por um botão morto
+obriga a apertar duas vezes sem saber por quê. O QML não avalia se o jogo pode
+rodar: se avaliasse, a regra viveria em dois lugares e um dia divergiria.
+
+**Retorno.** O item 5 exige reiniciar o launcher sem derrubar o jogo, logo o
+contexto atravessa processos em vez de viver em memória. A consequência é que o
+foco salvo pode não existir na volta — a biblioteca muda enquanto o jogo roda.
+Nesse caso o retorno cai no vizinho da **mesma seção**, com
+`LAUNCHER-RETURN-MISSING-001`, em vez de voltar ao topo da home e perder o lugar
+do usuário. Contexto corrompido não derruba o retorno: entre processos, o
+arquivo pode vir truncado ou vazio, e cair fora do launcher depois de fechar o
+jogo seria o pior desfecho possível.
+
+Três lacunas minhas apareceram no teste de mutação, todas em asserções que eu
+tinha escrito e considerava suficientes:
+
+- o retorno "válido" era verificado só por `restored in focus.nodes`, o que
+  `focus.initial` satisfaz — não provava a volta à mesma seção;
+- os casos de contexto corrompido eram todos dicionários, então o ramo de
+  payload não-objeto nunca era exercido;
+- a checagem de ativação usava `activate() === false || currentFocus !== "play"`
+  com a segunda condição já verdadeira. Era uma asserção que nunca falhava.
+
+As três foram fechadas e os mutantes agora reprovam.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Lançamento de processo real, shell
+instalado e consumidor fora do harness ainda não existem.
+
+Fechamento local: **4604 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: lançamento real e retorno
+
+Itens 4 e 5 da Definition of Done, com processo de verdade — um mock sempre
+diria que o jogo sobreviveu.
+
+O jogo nasce em **sessão própria**. Assim, um sinal dirigido ao grupo do
+launcher — Ctrl+C no terminal, ou o systemd encerrando o escopo — não o leva
+junto. E o contexto vai para disco **antes** do spawn: gravar depois abriria uma
+janela em que o jogo já roda e o lugar do usuário ainda não foi salvo.
+
+**O primeiro teste desse contrato não provava nada.** Ele matava só o processo
+pai e verificava que o filho seguia vivo — mas no Linux o filho é reparentado ao
+init e sobrevive de qualquer jeito, com ou sem sessão própria. O mutante que
+removia `start_new_session` passava tranquilo. Passou a derrubar o **grupo**, e
+aí o mutante reprova, como devia desde o início.
+
+**O gate de fronteiras recusou minha primeira versão, com razão.** Eu tinha
+escrito gravação atômica e `subprocess` à mão dentro do módulo de domínio. A
+gravação atômica já existia em `core.fs` — com fsync de diretório e modo 0600,
+melhor que a minha — e `subprocess` pertence aos adapters. O spawn virou
+`adapters/launcher_process.py` e o domínio passou a receber por injeção, sem
+conhecer o adapter.
+
+O argv é sequência já separada: string de shell é recusada, junto com
+metacaractere e travessia de diretório. Um caminho de jogo com aspas não vira
+execução de outra coisa.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. O shell e o consumidor fora do harness
+não existem, e nenhum jogo real foi lançado numa release instalada.
+
+Fechamento local: **4613 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.

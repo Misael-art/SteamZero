@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 SteamZero contributors
+"""Contrato de foco da home do AURA Launcher: navegação por controle sem becos."""
+
+from __future__ import annotations
+
+import pytest
+
+from steamzero.launcher.navigation import (
+    DIAG_FOCUS_EMPTY,
+    HomeSection,
+    resolve_home_focus,
+)
+
+
+def _sections() -> tuple[HomeSection, ...]:
+    return (
+        HomeSection(id="continue", title="Continuar", items=("celeste", "hades")),
+        HomeSection(id="library", title="Biblioteca", items=("tunic", "axiom", "sable")),
+        HomeSection(id="collections", title="Coleções", items=("favoritos",)),
+    )
+
+
+def test_every_focusable_node_can_be_left_in_some_direction() -> None:
+    """Beco de foco é o defeito clássico de launcher por controle.
+
+    Um nó de onde nenhuma direção sai prende o usuário sem mouse e sem toque —
+    e num handheld isso significa reiniciar a sessão.
+    """
+    focus = resolve_home_focus(_sections())
+    assert focus.nodes
+    for node in focus.nodes.values():
+        exits = [node.up, node.down, node.left, node.right]
+        assert any(target is not None for target in exits), node.id
+
+
+def test_focus_moves_between_sections_and_wraps_inside_a_row() -> None:
+    focus = resolve_home_focus(_sections())
+    first_row = focus.nodes["continue:celeste"]
+    assert first_row.right == "continue:hades"
+    # A linha dá a volta nos dois sentidos: da última coluna a direita retorna
+    # à primeira, e da primeira a esquerda vai para a última.
+    assert focus.nodes["continue:hades"].right == "continue:celeste"
+    assert first_row.left == "continue:hades"
+    assert focus.nodes["library:tunic"].left == "library:sable"
+    assert focus.nodes["library:axiom"].left == "library:tunic"
+    # Descer troca de seção, preservando a coluna quando ela existe.
+    assert first_row.down == "library:tunic"
+    assert focus.nodes["library:sable"].down == "collections:favoritos"
+    # Coluna inexistente na seção de baixo cai no item mais próximo.
+    assert focus.nodes["library:axiom"].down == "collections:favoritos"
+
+
+def test_the_first_row_does_not_dead_end_upwards() -> None:
+    focus = resolve_home_focus(_sections())
+    top = focus.nodes["continue:celeste"]
+    assert top.up is not None
+    assert focus.initial == "continue:celeste"
+
+
+def test_an_empty_home_still_has_somewhere_to_focus() -> None:
+    """Home vazia é onde o beco costuma nascer: sem itens, sem foco, sem saída."""
+    focus = resolve_home_focus(())
+    assert focus.nodes
+    assert focus.initial in focus.nodes
+    assert any(item.code == DIAG_FOCUS_EMPTY for item in focus.diagnostics)
+    node = focus.nodes[focus.initial]
+    assert node.action is not None
+
+
+def test_sections_without_items_do_not_produce_unreachable_focus() -> None:
+    focus = resolve_home_focus(
+        (
+            HomeSection(id="continue", title="Continuar", items=()),
+            HomeSection(id="library", title="Biblioteca", items=("tunic",)),
+        )
+    )
+    assert "continue:" not in "".join(focus.nodes)
+    assert focus.initial == "library:tunic"
+    for node in focus.nodes.values():
+        for target in (node.up, node.down, node.left, node.right):
+            assert target is None or target in focus.nodes, node.id
+
+
+def test_recipe_refuses_unsafe_shapes() -> None:
+    with pytest.raises(ValueError, match="id"):
+        HomeSection(id="Coleções!", title="x", items=("a",))
+    with pytest.raises(ValueError, match="itens"):
+        HomeSection(id="library", title="x", items=tuple(str(i) for i in range(600)))
+
+
+def test_every_node_can_reach_the_initial_focus() -> None:
+    """Ter saída não basta: dois nós apontando um para o outro seriam um beco.
+
+    O contrato é conectividade — de qualquer lugar da home o usuário volta ao
+    ponto de entrada apenas com o direcional.
+    """
+    focus = resolve_home_focus(_sections())
+    for start in focus.nodes:
+        seen = {start}
+        queue = [start]
+        while queue and focus.initial not in seen:
+            node = focus.nodes[queue.pop()]
+            for target in (node.up, node.down, node.left, node.right):
+                if target is not None and target not in seen:
+                    seen.add(target)
+                    queue.append(target)
+        assert focus.initial in seen, f"{start} não alcança o foco inicial"
+
+
+def test_a_single_item_row_has_no_horizontal_wrap_to_itself() -> None:
+    """Dar a volta numa linha de um item só devolveria o próprio nó.
+
+    Isso pareceria movimento e não moveria nada — pior que recusar a direção.
+    """
+    focus = resolve_home_focus((HomeSection(id="only", title="Só", items=("um",)),))
+    node = focus.nodes["only:um"]
+    assert node.left is None
+    assert node.right is None
+    assert node.up == "header:home"
