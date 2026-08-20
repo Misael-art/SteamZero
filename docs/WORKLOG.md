@@ -7374,3 +7374,50 @@ home, página e retorno com um jogo lançado de verdade.
 
 Fechamento local: **4625 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: uma fonte de execução para todas as plataformas
+
+O que rodar vem do **manifesto da plataforma daquele jogo**, via
+`domain.launch_profile` — que já monta o argv por substituição posicional, com a
+ROM como argumento atômico e o core tratado como propriedade da plataforma (uma
+instalação de RetroArch atende dezenas de sistemas). O Launcher não guarda
+comando próprio: um comando fixo atenderia uma plataforma e quebraria as outras.
+
+Três erros meus, todos corrigidos por medição, e os três diziam algo plausível:
+
+**O `app.py` montava `steamzero-launch <id>`** — que é o caminho de jogos Steam
+(`--appid APPID -- %command%`) e falharia para qualquer ROM. O lançamento nunca
+teria funcionado.
+
+**A detecção de emulador por `shutil.which(adapterId)` dava falso positivo.** No
+KDE, `dolphin` no PATH é o gerenciador de arquivos; o emulador é `dolphin-emu`.
+O plano mandaria uma ROM de Wii para o navegador de arquivos. E `which` sequer
+enxerga Flatpak ou engine gerenciada, que é como esses emuladores chegam.
+
+**Um `except Exception` amplo transformou um import quebrado em "nenhum emulador
+instalado".** A resposta era plausível — e falsa. O operador havia dito que os
+emuladores de Switch funcionavam, e ele estava certo: `eden`, `citron` e
+`ryubing` estão instalados. Só a fachada `ComponentLifecycle`, a mesma que CLI e
+dashboard usam, revelou isso.
+
+Medido no host: **16 dos 104 jogos** viram plano de execução — Switch resolve
+para `eden` com `['eden', '-f', '-g', <rom>]` — e 88 são recusados com motivo,
+porque o emulador daquela plataforma não está instalado.
+
+**Provisão automática.** Quando falta emulador ou core, o pedido é montado a
+partir do manifesto daquela plataforma, com a precedência que ela declara — e
+somente com a opção habilitada pelo operador. Baixar centenas de megabytes por
+conta própria decidiria pelo usuário o uso de disco e de rede, o que num
+handheld com dados limitados não é detalhe. Desligada, a recusa continua
+explicando o que falta, para a decisão ser informada. Emulador multi-sistema
+entra junto com o core: RetroArch sem core abre e não roda o jogo.
+
+Registrado `DEBT-QML-HARNESS-FLAKE`: segunda ocorrência de harness QML que falha
+na suíte completa e passa isolado, em testes diferentes do mesmo arquivo.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta a instalação automática executar
+de fato e o ciclo físico ponta a ponta.
+
+Fechamento local: **4639 passed, 10 skipped** (uma flake de harness QML,
+reproduzida como verde isoladamente); Ruff, format, mypy, independence,
+boundaries e status-check.
