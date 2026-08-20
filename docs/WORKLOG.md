@@ -7273,3 +7273,29 @@ não existem, e nenhum jogo real foi lançado numa release instalada.
 
 Fechamento local: **4613 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-19 — AURA Launcher: o shell costura home e página
+
+Quinto slice. O shell junta home e página de jogo no mesmo processo e guarda de
+onde o usuário saiu, devolvendo exatamente ali na volta. Cair no topo da home
+depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada
+partida — é o tipo de detalhe que separa um launcher usável de uma tela bonita.
+
+O foco de saída viaja junto no pedido de lançamento, porque é ele que o contexto
+grava em disco. Contexto apontando para item que sumiu cai no foco inicial, em
+vez de deixar o shell sem foco: a mesma defesa que o domínio já faz, repetida
+aqui porque o shell também lê o contexto na inicialização.
+
+O shell não resolve foco nem decide ações. A home aplica o mapa do domínio, a
+página recebe as ações já decididas, e aqui só existe a costura entre as duas
+mais o contexto de retorno.
+
+Três mutantes reprovam: voltar ao topo em vez do foco de saída, lançar sem levar
+o foco junto, e aceitar contexto apontando para nó inexistente.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta o entry point que abra este
+shell como processo real, alimentado por read model de verdade, e a instalação
+que permita a primeira evidência física.
+
+Fechamento local: **4614 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
