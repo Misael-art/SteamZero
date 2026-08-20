@@ -7336,3 +7336,41 @@ verdade.
 
 Fechamento local: **4618 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: a biblioteca real
+
+O acervo de referência tem **1290 arquivos em 198 pastas**. A varredura produz
+**104 jogos base em 6 sistemas**, com **191 diagnósticos** de pasta sem jogo
+reconhecido. A lacuna é de **cobertura de plataforma** — o registro do projeto
+conhece 36 —, não de varredura, e publicar o diagnóstico é o que impede o
+usuário de concluir que perdeu jogos. Registrado como
+`GAP-LAUNCHER-PLATFORM-COVERAGE`.
+
+A varredura reusa `PlatformRomScanner` e o registro de plataformas em vez de um
+filtro próprio de extensão. Num acervo real cada pasta de sistema também guarda
+`.directory`, `metadata.txt` e `systeminfo.txt`: um filtro ingênuo listaria
+`systeminfo` como jogo, e a home teria 198 "sistemas" cheios de nada.
+
+Dois enganos meus, ambos resolvidos por medição.
+
+`PlatformRomScanner` **não é recursivo** — cada raiz é uma plataforma. Apontá-lo
+para o topo do acervo devolveu 1 candidato, o que pareceria biblioteca vazia em
+vez de uso errado da ferramenta.
+
+Os ids do registro são canônicos (`master-system`, `game-gear`) enquanto as
+pastas seguem a convenção do ES-DE (`mastersystem`, `gb`, `nes`). Eu filtrava
+diretório por nome contra os ids, o que descartaria quase tudo; quem identifica
+a plataforma é a **extensão do arquivo**, e o nome da pasta serve como dica. A
+correção **não mudou o número final**, o que prova que meu diagnóstico inicial
+da causa estava errado e que o limite é mesmo a cobertura do registro.
+
+Os títulos perdem os marcadores técnicos: `Hollow Knight Silksong
+[010013C00E930000][v0].nsp` vira `Hollow Knight Silksong`. Os ids são slugs com
+sufixo de hash, estáveis entre execuções e válidos como nó de foco e argumento
+de lançamento.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta instalar a release e capturar
+home, página e retorno com um jogo lançado de verdade.
+
+Fechamento local: **4625 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

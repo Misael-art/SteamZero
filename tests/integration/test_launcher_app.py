@@ -87,3 +87,22 @@ def test_main_reports_the_missing_runtime_instead_of_crashing(
     monkeypatch.setattr("steamzero.adapters.launcher_ui.shutil.which", lambda _name: None)
     code = main(["--library", str(tmp_path / "ausente.json")])
     assert code != 0
+
+
+def test_roms_on_disk_become_the_home_library(tmp_path: Path) -> None:
+    """O caminho que o usuário realmente usa: apontar para o acervo."""
+    roms = tmp_path / "roms"
+    (roms / "switch").mkdir(parents=True)
+    (roms / "switch" / "Hollow Knight Silksong [010013C00E930000][v0].nsp").write_bytes(b"x")
+    (roms / "switch" / "systeminfo.txt").write_text("x", encoding="utf-8")
+
+    from steamzero.launcher.library import scan_library
+
+    scan = scan_library(roms)
+    titles = {game.title for game in scan.games}
+    assert "Hollow Knight Silksong" in titles
+    assert not any(title.startswith("systeminfo") for title in titles)
+
+    sections = build_sections([game.to_dict() for game in scan.games])
+    assert sections
+    assert sections[0].id == "library"

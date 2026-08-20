@@ -21,6 +21,7 @@ from typing import Any
 
 from steamzero.core import paths
 from steamzero.launcher.launch import LaunchPlan, consume_context, launch_detached
+from steamzero.launcher.library import scan_library
 from steamzero.launcher.navigation import HomeSection
 
 _DEFAULT_SECTION = "library"
@@ -89,6 +90,7 @@ def _context_path() -> Path:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=None)
+    parser.add_argument("--roms", type=Path, default=None)
     parser.add_argument("--context", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -101,6 +103,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     consume_context(context_path)
 
     library = _read_library(args.library)
+    if not library and args.roms is not None:
+        scan = scan_library(args.roms)
+        library = [game.to_dict() for game in scan.games]
     sections = build_sections(library)
     titles = build_titles(library)
 
