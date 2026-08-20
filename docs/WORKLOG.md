@@ -7299,3 +7299,40 @@ que permita a primeira evidência física.
 
 Fechamento local: **4614 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-20 — AURA Launcher: o entry point
+
+Sexto slice: `steamzero-launcher` existe como processo. Segue o desenho que a
+central já usa — servidor em loopback, token por execução e o QML como processo
+separado. O token não é formalidade: sem ele, qualquer processo local dispararia
+jogos na máquina do usuário, e o teste cobre o 403.
+
+A fonte da biblioteca é injetada por `--library`. A varredura real do acervo
+roda por jobs assíncronos, e ligá-la aqui seria integração de fachada — então
+ficou declarado como próximo passo em vez de simulado. Sem biblioteca o Launcher
+**abre assim mesmo**, com a home vazia acionável que o domínio já resolve:
+primeira execução sem acervo é o caso comum, não erro. Runtime Qt ausente vira
+código de saída, não traceback.
+
+Um detalhe que o teste pegou: `build_sections` guardava só ids, então a home
+mostraria `celeste` onde o usuário espera `Celeste`. O domínio de foco trabalha
+com ids de propósito, então o título passou a viajar à parte, num mapa que a
+ponte aplica.
+
+O gate de status acusou `pyproject.toml` **alterado sem item responsável**.
+Ninguém o declarava, apesar de ele definir entry points, dependências e
+empacotamento. Passou para `SZ-GOVERNANCE-STATUS`, que já governa `ci.yml`,
+`AGENTS.md` e `Makefile`.
+
+Sobre o merge do PR #90: ele entrou com quatro dos cinco slices — o shell
+(`1291778`) ficou de fora, porque o merge aconteceu antes daquele push ser
+considerado. Verifiquei por conteúdo, não por mensagem de commit, já que o
+squash reescreve o histórico: `LauncherShell.qml` e seu harness não estavam em
+`main`. Recuperados por cherry-pick nesta branch, com o harness reexecutado.
+
+`SZ-AURA-LAUNCHER` permanece **planned**. Falta ligar a biblioteca real,
+instalar a release e capturar a primeira evidência física com jogo lançado de
+verdade.
+
+Fechamento local: **4618 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.

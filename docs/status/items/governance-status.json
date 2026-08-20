@@ -28,9 +28,10 @@
     "tests/integration/test_release_convergence.py",
     "tests/unit/test_doctor.py",
     "tests/unit/test_project_status.py",
-    "tools/project_status.py"
+    "tools/project_status.py",
+    "pyproject.toml"
   ],
-  "scopeDigest": "df67cc14e146ec7e6dbc31874b2e118e0389152737d03f6a26dfe6a0044dc723",
+  "scopeDigest": "1d9085a042dd64dd7bf4143dbde9e6d99f9e52c2bc9e03b5b8df6fa8b66f5770",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
@@ -72,5 +73,5 @@
     "WS-2026-08-HARMONIZE-A45"
   ],
   "updatedAt": "2026-08-17",
-  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo."
+  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile."
 }
