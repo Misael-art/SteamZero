@@ -7380,3 +7380,22 @@ manifestos existentes ganham a seção `enhancements` quando cada instalador
 real consumir o formato; (3) costura renderers→instalador transacional em
 frente posterior; (4) instalação/validação física e release dependem de
 autorização explícita da thread (Portão 5.1 com evidência composta).
+
+## 2026-08-20 (retificação) — SZ-EMULATION-ENHANCEMENTS
+
+Revisão do operador: **(1)** `implementation` corrigido de `complete` para
+`partial` — nenhum código de produção consome os renderers e `launch_game` não
+aplica melhorias; o critério "melhoria não consumida por launch_game não é
+entrega" permanece pendente (costura renderers→instalador→launch_game é o
+`nextAction`). **(2)** A Onda 4 entregou a precedência jogo→global
+generalizada (substrato do opt-in), não a aplicação de melhorias antes do argv
+— o relato foi ajustado para o estado real. **(3)** Defeito real corrigido:
+a whitelist técnica não tinha `compatibility` nem `audio` (duas das quatro
+categorias da diretiva; fix de crash/timing/sample-rate era negado
+silenciosamente) — adicionadas à whitelist, mapeadas no duckstation-ini
+(`[EmuCore]`, `[Audio]`) e cobertas por teste cada. Correção de contagem:
+`test_known_good_catalog.py` tem 12 testes (14 na mensagem do commit
+`9f5402e` estava errado; run_tests_isolated confirma 12).
+
+Fechamento local pós-revisão: **4731 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check (`partial`, digest regerado).

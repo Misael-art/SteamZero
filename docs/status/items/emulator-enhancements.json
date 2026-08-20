@@ -4,7 +4,7 @@
   "id": "SZ-EMULATION-ENHANCEMENTS",
   "title": "Melhorias por jogo agnósticas de plataforma",
   "domain": "emulation",
-  "implementation": "complete",
+  "implementation": "partial",
   "integration": "feature-branch",
   "verification": "unit",
   "operation": "unknown",
@@ -23,7 +23,7 @@
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
-  "scopeDigest": "e2326c34dd75b0e41c36df5f1cd5e5dbf3b95aae31e30cb28f250a79f8a0f968",
+  "scopeDigest": "8fe8a1febb252e930d1b5f3eb0ba83e70409d63c0cb11b5bf78ac1bb17d3cf37",
   "dependsOn": ["SZ-EMULATION-M10"],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -43,8 +43,8 @@
     {"kind": "test", "reference": "tests/unit/test_enhancement_coverage.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_coverage.py -q", "result": "passed"},
     {"kind": "test", "reference": "tests/unit/test_emulation_controller.py", "command": "run_tests_isolated.py tests/unit/test_emulation_controller.py -q", "result": "passed"}
   ],
-  "nextAction": "Gates finais verdes (4730 passed, 10 skipped na última suíte; status-check OK). Fechamento desta sessão: relatório item→commit→testes, WORKLOG e pendências: (a) Portão 5.1 de release com evidência composta; (b) instalação + validação física em sessão viva exige autorização explícita da thread; (c) teste físico de launch com emulador real de plataforma não-Switch; (d) manifesto SUPER ZSNES com asset verificado.",
+  "nextAction": "Costura end-to-end pendente (por isso implementation=partial): conectar renderers a um instalador transacional (plan_write_files/apply) e fazer launch_game aplicar melhorias aprovadas antes do argv, com degradação e idempotência. Depois: declarar secao enhancements em manifestos reais por formato consumido, e manifesto fisico do SUPER ZSNES com asset verificado (sha256 real + smoke de argv; emulador proprietario, recusa hash fabricado). Release e validacao fisica dependem de autorizacao explicita da thread (Portao 5.1 com evidencia composta).",
   "activeWorkstreams": ["WS-2026-08-EMULATOR-ENHANCEMENT"],
   "updatedAt": "2026-08-20",
-  "notes": "Ondas 1-5 concluídas e commitadas na branch codex/emulator-enhancement-platform (003fbdf..200cd40). Nenhuma promoção de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Testes Switch (mods/cheats) intactos e verdes sem edição (prova da generalização). Lacunas conhecidas (registro no relatório final, não em knownGaps sem ledger): (1) manifesto físico do SUPER ZSNES pendente de asset verificável (sha256 real + smoke de argv no host; emulador proprietário, só AppImage não-oficial — nada de hash fabricado); (2) manifestos existentes ainda sem seção enhancements — capacidade vazia na tabela de cobertura até um instalador real consumir cada formato; (3) renderers ainda não conectados a um instalador transacional end-to-end (emulation.py recebeu apenas a mudança da Onda 4 nesta sessão). Estado máximo 'partial' até instalação e validação física na sessão viva; reboot/entrada de sessão continuam ação exclusiva do operador."
+  "notes": "Ondas 1-5 commitadas em codex/emulator-enhancement-platform (003fbdf..3f96b98). Revisao do operador em 2026-08-20: implementation remain = partial porque nenhum codigo de producao consome os renderers e launch_game nao aplica melhorias (criterio 'melhoria nao consumida por launch_game nao e entrega'); a Onda 4 entregou precedencia jogo->global generalizada (substrato do opt-in), nao a aplicacao no lancamento — que fica pendente nesta costura; whitelist tecnica corrigida com compatibility e audio (as quatro categorias da diretiva). Testes Switch (mods/cheats) intactos, verdes sem edicao. Lacunas registradas: manifestos existentes ainda sem secao enhancements (capacidade vazia na tabela de cobertura ate instalador real consumir o formato). Nenhuma promocao de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Estado maximo 'partial' ate instalacao e validacao fisica na sessao viva; reboot/entrada de sessao continuam acao exclusiva do operador."
 }
