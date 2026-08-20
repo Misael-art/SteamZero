@@ -481,6 +481,23 @@ def hash_file(path: Path, *, algo: str = "blake2b") -> str:
     return crypto.digest_file(path, algorithm=algo).hexdigest
 
 
+def read_at(path: Path, offset: int, length: int) -> bytes:
+    """Lê ``length`` bytes a partir de ``offset`` (leitura defensiva de header).
+
+    Devolve menos bytes no EOF; ``OSError`` (permissão, symlink, arquivo
+    somem) propaga para o chamador tratar como diagnóstico. Não abre symlink
+    (FM-13): um symlink é recusado antes da leitura.
+    """
+    if offset < 0 or length < 0:
+        raise ValueError("offset e length precisam ser não negativos")
+    if path.is_symlink():
+        raise OSError(f"leitura recusada: {path} é symlink")
+    with path.open("rb") as handle:
+        if offset:
+            handle.seek(offset)
+        return handle.read(length)
+
+
 def free_space(path: Path) -> int:
     """Bytes livres no filesystem que contém ``path`` (ou o ancestral existente)."""
     probe = path
