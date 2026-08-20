@@ -36,6 +36,16 @@ from steamzero.adapters.converters import (
 )
 from steamzero.adapters.discovery.format_parsers import read_game_identity
 from steamzero.adapters.engine import AdapterEngine, HttpsArtifactPort, PreparedComponent
+from steamzero.adapters.enhancements.installer import (
+    EnhancementDefinition,
+    EnhancementTarget,
+    filter_managed,
+    installation_files,
+    render_definitions,
+    resolve_enhancement_target,
+    role_for_kind,
+    validate_policy,
+)
 from steamzero.adapters.flatpak import FlatpakCLI, FlatpakExecutor
 from steamzero.adapters.lifecycle import ComponentLifecycle
 from steamzero.adapters.mods.build_id_scanner import BuildIdScanner
@@ -71,6 +81,7 @@ from steamzero.domain.emulation_workspace import (
     build_switch_workspace,
     compute_readiness,
 )
+from steamzero.domain.game_enhancements import ProviderRole
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
 from steamzero.domain.library import PlatformDirectoryInventory, PlatformRomScanner
@@ -1135,6 +1146,7 @@ class EmulationController:
             rom=rom,
             core_path=core_path,
         )
+        enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
 
         session_id: str | None = None
         started_monotonic = self._monotonic()
@@ -1196,7 +1208,139 @@ class EmulationController:
             "pid": pid,
             "sessionId": session_id,
             "argv": argv,
+            "enhancementsApplied": enhancement_outcome["applied"],
+            "enhancementsTried": enhancement_outcome["tried"],
+            "enhancementsSkipped": enhancement_outcome["skipped"],
         }
+
+    @staticmethod
+    def _game_identity_context(
+        game: Mapping[str, Any],
+    ) -> tuple[str | None, str | None]:
+        """(scheme, value) da identidade do jogo; Switch legado sem scheme.
+
+        O scan de plataforma grava ``identityScheme``; jogos Switch do cache
+        legado carregam apenas ``titleId`` (Title ID real de 16 hex). Sem o
+        scheme explícito, o Title ID hex é tratado como scheme
+        ``switch-title-id`` — nenhuma outra plataforma usa 16 hex.
+        """
+        scheme = game.get("identityScheme")
+        value = game.get("titleId") if isinstance(game.get("titleId"), str) else None
+        if (
+            not isinstance(scheme, str)
+            and isinstance(value, str)
+            and _TITLE_ID.fullmatch(value) is not None
+        ):
+            scheme = "switch-title-id"
+        return scheme, value
+
+    def _enhancements_target_for(self, emulator_id: str) -> EnhancementTarget | None:
+        """Capacidade de melhorias do emulador (manifesto = fonte da verdade)."""
+        if not self._known_emulator(emulator_id):
+            return None
+        manifest = self._registry_factory().get(emulator_id)
+        return resolve_enhancement_target(
+            manifest.raw,
+            config_home=paths.config_home(),
+            data_home=paths.data_home(),
+            state_home=paths.state_home(),
+        )
+
+    def _apply_launch_enhancements(
+        self,
+        game: Mapping[str, Any],
+        game_settings: Mapping[str, Any],
+        emulator_id: str,
+    ) -> dict[str, Any]:
+        """Aplica melhorias aprovadas antes do argv; qualquer falha degrada.
+
+        Fallha nunca impede o lançamento: o jogo inicia sem a melhoria e o
+        motivo fica no resultado (``enhancementsSkipped``). A escrita é
+        transacional (plan_write_files/apply) e idempotente (mesmo conteúdo já
+        aplicado não gera ação; arquivo de terceiros nunca é substituído).
+        """
+        outcome: dict[str, Any] = {"tried": 0, "applied": 0, "skipped": []}
+        definitions_raw = game_settings.get("enhancements") or ()
+        if not definitions_raw:
+            return outcome
+        try:
+            definitions = tuple(
+                EnhancementDefinition.from_mapping(entry) for entry in definitions_raw
+            )
+            outcome["tried"] = len(definitions)
+            scheme, value = self._game_identity_context(game)
+            target = self._enhancements_target_for(emulator_id)
+            if target is None:
+                outcome["skipped"].append(
+                    {
+                        "title": "*",
+                        "reason": f"{emulator_id} não declara suporte a melhorias gerenciadas",
+                    }
+                )
+                return outcome
+            applicable: list[EnhancementDefinition] = []
+            skipped: list[dict[str, str]] = []
+            for definition in definitions:
+                role = role_for_kind(target, definition.kind)
+                if role is ProviderRole.EMULATOR_SUPPLIED:
+                    skipped.append(
+                        {
+                            "title": definition.title,
+                            "reason": "arquivo gerido pelo emulador; nada a escrever",
+                        }
+                    )
+                    continue
+                try:
+                    validate_policy(
+                        definition.kind,
+                        definition.category,
+                        role=role,
+                        source=definition.source,
+                    )
+                except SteamZeroError as exc:
+                    skipped.append({"title": definition.title, "reason": str(exc)})
+                    continue
+                applicable.append(definition)
+            rendered, render_skips = render_definitions(
+                tuple(applicable),
+                target=target,
+                scheme=scheme,
+                value=value,
+            )
+            skipped.extend(render_skips)
+            writes = installation_files(rendered, target_dir=target.target_dir)
+            existing: dict[Path, bytes] = {}
+            for path in writes:
+                try:
+                    if path.is_file() and not path.is_symlink():
+                        existing[path] = path.read_bytes()
+                except OSError:
+                    continue
+            to_do, managed_skips = filter_managed(writes, existing=existing)
+            skipped.extend(managed_skips)
+            outcome["skipped"].extend(skipped)
+            outcome["applied"] = len(writes) - len(to_do) - len(managed_skips)
+            if to_do:
+                root = self._compatible_root(to_do)
+                if any(not path.is_relative_to(root) for path in to_do):
+                    outcome["skipped"].append(
+                        {
+                            "title": "*",
+                            "reason": "melhorias fora da raiz transacional (XDG redirecionado)",
+                        }
+                    )
+                    return outcome
+                plan = transaction.plan_write_files(
+                    to_do,
+                    root=root,
+                    kind=f"emulation.enhancements:{game.get('id')}",
+                    skip_unchanged=True,
+                )
+                transaction.apply(plan.plan_id, plan.confirm_token)
+                outcome["applied"] += len(to_do)
+        except Exception as exc:  # degradação é o contrato
+            outcome["skipped"].append({"title": "*", "reason": str(exc)})
+        return outcome
 
     def cloud_platforms(self) -> list[dict[str, Any]]:
         return self._cloud.platforms()
@@ -1983,6 +2127,109 @@ class EmulationController:
             if not isinstance(selected, bool):
                 raise SteamZeroError("E-API-SCHEMA", detail="campo booleano obrigatório: selected")
             plan = self._plan_game_setting(game_id, "steamSelected", selected)
+        elif action.startswith("game.enhancements.set:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            emulator_id = self._required_string(payload, "emulatorId")
+            self._require_known_emulator(emulator_id)
+            definition = EnhancementDefinition.from_mapping(
+                {
+                    key: payload[key]
+                    for key in (
+                        "kind",
+                        "category",
+                        "title",
+                        "source",
+                        "description",
+                        "version",
+                        "codes",
+                        "settingLines",
+                    )
+                    if key in payload
+                }
+            )
+            target = self._enhancements_target_for(emulator_id)
+            if target is None:
+                raise SteamZeroError(
+                    "E-ENHANCEMENT-DENIED",
+                    detail=f"{emulator_id} não declara suporte a melhorias gerenciadas",
+                )
+            role = role_for_kind(target, definition.kind)
+            if role is ProviderRole.EMULATOR_SUPPLIED:
+                raise SteamZeroError(
+                    "E-ENHANCEMENT-DENIED",
+                    detail=f"{emulator_id} é dono do arquivo; ative a melhoria nele",
+                )
+            validate_policy(
+                definition.kind,
+                definition.category,
+                role=role,
+                source=definition.source,
+            )
+            scheme, value = self._game_identity_context(game)
+            if not isinstance(scheme, str) or not value:
+                raise SteamZeroError(
+                    "E-ENHANCEMENT-DENIED",
+                    detail="jogo sem identidade verificada; preflight de melhoria recusado",
+                )
+            _rendered, skipped = render_definitions(
+                (definition,), target=target, scheme=scheme, value=value
+            )
+            if skipped:
+                raise SteamZeroError(
+                    "E-ENHANCEMENT-DENIED",
+                    detail=f"definição rejeitada: {skipped[0]['reason']}",
+                )
+            settings = self._load_game_settings(strict=False)
+            current = self._resolve_settings(game, settings)
+            definitions = [
+                *(
+                    EnhancementDefinition.from_mapping(entry)
+                    for entry in current.get("enhancements") or ()
+                ),
+                definition,
+            ]
+            deduped: list[EnhancementDefinition] = []
+            for entry in definitions:
+                if any(prev.kind is entry.kind and prev.title == entry.title for prev in deduped):
+                    continue
+                deduped.append(entry)
+            plan = self._plan_game_setting(
+                game_id,
+                "enhancements",
+                [entry.to_mapping() for entry in deduped],
+            )
+            plan_extra["preview"] = (
+                f"Melhoria '{definition.title}' ({definition.category}) será aplicada "
+                "na próxima inicialização do jogo."
+            )
+        elif action.startswith("game.enhancements.clear:"):
+            game_id = action.split(":", 1)[1]
+            game = self._current_game(game_id)
+            title = self._optional_string(payload, "title")
+            settings = self._load_game_settings(strict=False)
+            current = self._resolve_settings(game, settings)
+            definitions = [
+                EnhancementDefinition.from_mapping(entry)
+                for entry in current.get("enhancements") or ()
+            ]
+            remaining = [entry for entry in definitions if entry.title != title] if title else []
+            if remaining == definitions:
+                plan = transaction.plan_write_files(
+                    {},
+                    root=paths.data_home(),
+                    kind=f"emulation.game-settings:{game_id}",
+                )
+                plan_extra["preview"] = "Nenhuma melhoria para remover neste jogo."
+            else:
+                plan = self._plan_game_setting(
+                    game_id,
+                    "enhancements",
+                    [entry.to_mapping() for entry in remaining],
+                )
+                plan_extra["preview"] = (
+                    f"Melhoria '{title}' deixará de ser aplicada na próxima inicialização do jogo."
+                )
         elif action.startswith("extras.catalog.search:"):
             game_id = action.split(":", 1)[1]
             game = self._catalog_game_context(game_id, payload)
@@ -6489,7 +6736,7 @@ class EmulationController:
             for game_id, raw in games.items():
                 if not isinstance(game_id, str) or not isinstance(raw, dict):
                     raise ValueError("entrada inválida")
-                allowed = {"emulatorId", "steamSelected"}
+                allowed = {"emulatorId", "steamSelected", "enhancements"}
                 if set(raw).difference(allowed):
                     raise ValueError("campo desconhecido")
                 emulator_id = raw.get("emulatorId")
@@ -6498,6 +6745,20 @@ class EmulationController:
                     raise ValueError("emulador inválido")
                 if selected is not None and not isinstance(selected, bool):
                     raise ValueError("seleção Steam inválida")
+                enhancements = raw.get("enhancements")
+                if enhancements is not None:
+                    parsed_enhancements: list[dict[str, Any]] = []
+                    if not isinstance(enhancements, list):
+                        raise ValueError("melhorias inválidas")
+                    for entry in enhancements:
+                        try:
+                            parsed_enhancements.append(
+                                EnhancementDefinition.from_mapping(entry).to_mapping()
+                            )
+                        except SteamZeroError as exc:
+                            raise ValueError(f"melhoria inválida: {exc}") from exc
+                    raw = dict(raw)
+                    raw["enhancements"] = parsed_enhancements
                 parsed[game_id] = dict(raw)
             return parsed
         except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
@@ -6511,7 +6772,7 @@ class EmulationController:
         self,
         game_id: str,
         key: str,
-        value: str | bool,
+        value: str | bool | list[dict[str, Any]],
         *,
         key_emulator_id: str | None = None,
     ) -> transaction.Plan:

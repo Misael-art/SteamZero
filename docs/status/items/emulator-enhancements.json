@@ -4,7 +4,7 @@
   "id": "SZ-EMULATION-ENHANCEMENTS",
   "title": "Melhorias por jogo agnósticas de plataforma",
   "domain": "emulation",
-  "implementation": "partial",
+  "implementation": "complete",
   "integration": "feature-branch",
   "verification": "unit",
   "operation": "unknown",
@@ -17,13 +17,14 @@
     "src/steamzero/schemas/known-good-profile-v2.schema.json",
     "src/steamzero/schemas/adapter-v1.schema.json",
     "src/steamzero/adapters/emulation.py",
+    "src/steamzero/adapters/enhancements/installer.py",
     "src/steamzero/adapters/enhancements/renderers.py",
     "src/steamzero/adapters/discovery/format_parsers.py",
     "src/steamzero/core/fs.py",
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
-  "scopeDigest": "8fe8a1febb252e930d1b5f3eb0ba83e70409d63c0cb11b5bf78ac1bb17d3cf37",
+  "scopeDigest": "3518e06fc1c1b3a61acf64ce468a47ca521e878face0ea7a55550aeaa3590302",
   "dependsOn": ["SZ-EMULATION-M10"],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -41,10 +42,12 @@
     {"kind": "test", "reference": "tests/unit/test_game_enhancements.py", "command": "run_tests_isolated.py tests/unit/test_game_enhancements.py -q", "result": "passed"},
     {"kind": "test", "reference": "tests/unit/test_enhancement_renderers.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_renderers.py -q", "result": "passed"},
     {"kind": "test", "reference": "tests/unit/test_enhancement_coverage.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_coverage.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_enhancement_installer.py", "command": "run_tests_isolated.py tests/unit/test_enhancement_installer.py -q", "result": "passed"},
+    {"kind": "test", "reference": "tests/unit/test_emulation_enhancements.py", "command": "run_tests_isolated.py tests/unit/test_emulation_enhancements.py -q", "result": "passed"},
     {"kind": "test", "reference": "tests/unit/test_emulation_controller.py", "command": "run_tests_isolated.py tests/unit/test_emulation_controller.py -q", "result": "passed"}
   ],
-  "nextAction": "Costura end-to-end pendente (por isso implementation=partial): conectar renderers a um instalador transacional (plan_write_files/apply) e fazer launch_game aplicar melhorias aprovadas antes do argv, com degradação e idempotência. Depois: declarar secao enhancements em manifestos reais por formato consumido, e manifesto fisico do SUPER ZSNES com asset verificado (sha256 real + smoke de argv; emulador proprietario, recusa hash fabricado). Release e validacao fisica dependem de autorizacao explicita da thread (Portao 5.1 com evidencia composta).",
+  "nextAction": "Onda 6 (costura) entregue e consumida por launch_game com testabilidade: renderers -> plan_enhancement_writes -> plan_write_files/apply antes do argv, com degradacao (skip com razao, jogo lanca) e idempotencia (mesmo conteudo aplicado = no-op; arquivo de terceiros nunca tocado). Falta: declarar secao enhancements em manifestos reais por formato consumido (cobertura hoje vazia), manifesto fisico do SUPER ZSNES com sha256 real + smoke de argv (emulador proprietario, recusa hash fabricado), e instalacao/validacao fisica no host sob autorizacao explicita da thread (Portao 5.1 com evidencia composta, inclui capturas PNG).",
   "activeWorkstreams": ["WS-2026-08-EMULATOR-ENHANCEMENT"],
   "updatedAt": "2026-08-20",
-  "notes": "Ondas 1-5 commitadas em codex/emulator-enhancement-platform (003fbdf..3f96b98). Revisao do operador em 2026-08-20: implementation remain = partial porque nenhum codigo de producao consome os renderers e launch_game nao aplica melhorias (criterio 'melhoria nao consumida por launch_game nao e entrega'); a Onda 4 entregou precedencia jogo->global generalizada (substrato do opt-in), nao a aplicacao no lancamento — que fica pendente nesta costura; whitelist tecnica corrigida com compatibility e audio (as quatro categorias da diretiva). Testes Switch (mods/cheats) intactos, verdes sem edicao. Lacunas registradas: manifestos existentes ainda sem secao enhancements (capacidade vazia na tabela de cobertura ate instalador real consumir o formato). Nenhuma promocao de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Estado maximo 'partial' ate instalacao e validacao fisica na sessao viva; reboot/entrada de sessao continuam acao exclusiva do operador."
+  "notes": "Ondas 1-6 commitadas em codex/emulator-enhancement-platform (003fbdf.. onwards); Onda 6 fecha a costura com base na revisao de 2026-08-20: instalador transacional (adapters/enhancements/installer.py) monta writes por formato (render def -> alvo -> filtragem de ownership: cria, substitui so com marcador, nunca toca arquivo de terceiros; idempotente por conteudo identico), acoes game.enhancements.set/clear persistindo definicoes no settings do jogo (precedencia jogo->global intacta), e launch_game aplica antes do argv com degradacao (falha nunca impede o jogo de lancar; motivo em enhancementsSkipped) e re-checagem de politica anti-cheat no ponto de uso. Correcao de defeito: render_pcsx2_pnach rejeitava seriais PS1/PS2 com '_' e '.' (ex.: SLUS_005.55), agora aceita o alfabeto do esquema. Fix estrutural de base: jogos de plataforma (PSX etc.) ainda nao chegam a launch_game porque _load_library_cache filtra por Title ID 0100... (pipeline de plataforma 'planned' no manifesto); a costura usa a identidade do cache switch (scheme derivado switch-title-id) e ficara valida quando o pipeline de plataforma entregar games com identityScheme. Lacunas registradas: manifestos existentes ainda sem secao enhancements (capacidade vazia na cobertura ate instalador real consumir o formato). Nenhuma promocao de SZ-AURA-UI/LAUNCHER/THEME-ENGINE/STUDIO. Instalacao e validacao fisica na sessao viva exigem Portao 5.1 e autorizacao da thread; reboot/entrada de sessao continuam acao exclusiva do operador."
 }

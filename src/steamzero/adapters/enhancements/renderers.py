@@ -162,7 +162,7 @@ def render_cemu_rules(
 
 def render_pcsx2_pnach(recipe: EnhancementRecipe, serial: str) -> RenderedEnhancementFile:
     """Cheat .pnach do PCSX2/DuckStation: gametitle + pares hexadecimais."""
-    if not serial or not serial.replace("-", "").isalnum():
+    if not serial or not all(char.isalnum() or char in "_.-" for char in serial):
         raise SteamZeroError(
             "E-ENHANCEMENT-DENIED", detail=f"serial inválido para pnach: {serial!r}"
         )
