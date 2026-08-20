@@ -129,6 +129,16 @@ def test_duckstation_ini_section_mapping_and_technical_only() -> None:
     rendered = render_duckstation_ini(_recipe(category="quality-of-life"), ("AspectRatio = 16:9",))
     assert rendered.relative_path == "gamesettings.ini"
     assert "[Display]" in rendered.data.decode()
+    assert (
+        "[Audio]"
+        in render_duckstation_ini(_recipe(category="audio"), ("BitDepth = 16",)).data.decode()
+    )
+    assert (
+        "[EmuCore]"
+        in render_duckstation_ini(
+            _recipe(category="compatibility"), ("SynchronizeTightness = 0",)
+        ).data.decode()
+    )
     with pytest.raises(SteamZeroError):
         render_duckstation_ini(_recipe(category="unlock"), ("AspectRatio = 16:9",))
     with pytest.raises(SteamZeroError):

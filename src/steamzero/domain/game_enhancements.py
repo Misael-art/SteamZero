@@ -51,7 +51,16 @@ class ProviderNotDeclaredError(SteamZeroError):
     """O papel do provedor não foi declarado no manifesto do adapter."""
 
 
-TECHNICAL_WHITELIST = frozenset({"quality-of-life", "display-only", "performance", "graphics"})
+TECHNICAL_WHITELIST = frozenset(
+    {
+        "quality-of-life",
+        "display-only",
+        "performance",
+        "compatibility",
+        "graphics",
+        "audio",
+    }
+)
 GAMEPLAY_BLACKLIST = frozenset({"gameplay", "unlock", "speedhack", "invincibility", "currency"})
 MANIFEST_FORM_KINDS = frozenset({"mod", "cheat"})
 _KIND_VALUES = frozenset(kind.value for kind in EnhancementKind)

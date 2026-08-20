@@ -207,6 +207,8 @@ def render_duckstation_ini(
         "display-only": "Display",
         "performance": "GPU",
         "graphics": "GPU",
+        "compatibility": "EmuCore",
+        "audio": "Audio",
     }.get(recipe.category, "Display")
     lines = [
         ENHANCEMENT_MARKER,
