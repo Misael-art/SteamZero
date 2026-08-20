@@ -20,7 +20,7 @@ Contratos imutáveis desta camada:
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol
@@ -54,6 +54,7 @@ class ProviderNotDeclaredError(SteamZeroError):
 TECHNICAL_WHITELIST = frozenset({"quality-of-life", "display-only", "performance", "graphics"})
 GAMEPLAY_BLACKLIST = frozenset({"gameplay", "unlock", "speedhack", "invincibility", "currency"})
 MANIFEST_FORM_KINDS = frozenset({"mod", "cheat"})
+_KIND_VALUES = frozenset(kind.value for kind in EnhancementKind)
 
 
 def resolve_provider_role(manifest: Any, kind: EnhancementKind) -> ProviderRole:
@@ -81,6 +82,59 @@ def resolve_provider_role(manifest: Any, kind: EnhancementKind) -> ProviderRole:
 class EnhancementDecision:
     allowed: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class EnhancementCoverage:
+    """Linha da tabela de cobertura por emulador, derivada dos manifests.
+
+    Emulador sem seção ``enhancements`` aparece com capacidade vazia: o
+    SteamZero não escreve nem alterna melhorias nele até o manifesto declará-las.
+    """
+
+    emulator_id: str
+    platforms: tuple[str, ...]
+    supplied_kinds: frozenset[EnhancementKind]
+    formats: tuple[str, ...]
+
+
+def enhancement_coverage(
+    manifests: Iterable[Any],
+) -> list[EnhancementCoverage]:
+    """Tabela de cobertura manifesto→capacidade de melhorias (fonte de
+    verdade = manifestos; nada é inferido de nome, path ou convenção)."""
+    rows: list[EnhancementCoverage] = []
+    for manifest in manifests:
+        if not isinstance(manifest, dict):
+            continue
+        emulator_id = manifest.get("id")
+        if not isinstance(emulator_id, str):
+            continue
+        platforms = tuple(
+            str(entry) for entry in manifest.get("platforms") or () if isinstance(entry, str)
+        )
+        enhancements = manifest.get("enhancements")
+        supplied: frozenset[EnhancementKind] = frozenset()
+        formats: tuple[str, ...] = ()
+        if isinstance(enhancements, dict):
+            supplied = frozenset(
+                EnhancementKind(entry)
+                for entry in enhancements.get("supplied") or ()
+                if isinstance(entry, str) and entry in _KIND_VALUES
+            )
+            formats = tuple(
+                str(entry) for entry in enhancements.get("formats") or () if isinstance(entry, str)
+            )
+        rows.append(
+            EnhancementCoverage(
+                emulator_id=emulator_id,
+                platforms=platforms,
+                supplied_kinds=supplied,
+                formats=formats,
+            )
+        )
+    rows.sort(key=lambda row: row.emulator_id)
+    return rows
 
 
 def policy_decision(
