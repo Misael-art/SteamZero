@@ -226,7 +226,7 @@ def _iso_root_record(pvd: bytes) -> tuple[int, int] | None:
     return extent, size
 
 
-def _iter_directory_records(data: bytes) -> Iterator:
+def _iter_directory_records(data: bytes) -> Iterator[tuple[bytes, int, int, int]]:
     """Itera registros de diretório ISO9660; retorna (nome, flags, extent, size)."""
     pos = 0
     while pos < len(data):
