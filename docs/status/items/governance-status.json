@@ -31,7 +31,7 @@
     "tools/project_status.py",
     "pyproject.toml"
   ],
-  "scopeDigest": "1d9085a042dd64dd7bf4143dbde9e6d99f9e52c2bc9e03b5b8df6fa8b66f5770",
+  "scopeDigest": "2cc566b55472863d145c0d887aad990ac5d149485f197ead2fd7226eabe1c269",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"

@@ -9,7 +9,7 @@
   "verification": "none",
   "operation": "unknown",
   "distribution": "not-packaged",
-  "scopeDigest": "128196f724af0542181d82649caf43c7745592a3ff6e3e70113d647f0fb0afe8",
+  "scopeDigest": "5314ab4f4aa4919c95d64d7047b0373c19721696b540a056bb58bd177a3ba347",
   "scopePaths": [
     "docs/00-vision/PROJECT-VISION.md",
     "docs/00-vision/NON-GOALS.md",
@@ -25,24 +25,17 @@
     "src/steamzero/ui/qml/launcher",
     "tests/qml/launcher",
     "tests/unit/test_launcher_session.py",
-    "src/steamzero/adapters/launcher_process.py",
-    "tests/integration/test_launcher_launch.py",
     "src/steamzero/adapters/launcher_ui.py",
-    "tests/integration/test_launcher_app.py",
-    "src/steamzero/launcher/library.py",
-    "tests/unit/test_launcher_library.py",
-    "src/steamzero/launcher/execution.py",
-    "src/steamzero/launcher/provisioning.py",
-    "tests/unit/test_launcher_execution.py",
-    "tests/unit/test_launcher_provisioning.py"
+    "src/steamzero/adapters/launcher_catalog.py",
+    "tests/unit/test_launcher_catalog.py",
+    "tests/unit/test_launcher_return_context.py"
   ],
   "dependsOn": [
     "SZ-AURA-UI",
     "SZ-THEME-ENGINE"
   ],
   "knownGaps": [
-    "DEBT-QML-HARNESS-FLAKE",
-    "GAP-LAUNCHER-PLATFORM-COVERAGE"
+    "DEBT-QML-HARNESS-FLAKE"
   ],
   "acceptanceCriteria": [
     "Home fullscreen, biblioteca, busca, colecoes e pagina de jogo funcionam por controle.",
@@ -78,37 +71,19 @@
     },
     {
       "kind": "test",
-      "reference": "tests/integration/test_launcher_launch.py",
-      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_launch.py -q (processo real: o jogo sobrevive ao SIGKILL no grupo do launcher; contexto gravado antes do spawn e consumido uma vez). Mutante sem start_new_session reprova.",
-      "result": "passed"
-    },
-    {
-      "kind": "test",
       "reference": "tests/qml/launcher/check_launcher_shell.qml",
       "command": "QT_QPA_PLATFORM=offscreen qml6 tests/qml/launcher/check_launcher_shell.qml (home e pagina no mesmo processo; a volta cai no foco de saida; contexto de retorno posiciona o foco e contexto invalido cai no inicial). Tres mutantes reprovam.",
       "result": "passed"
     },
     {
-      "kind": "test",
-      "reference": "tests/integration/test_launcher_app.py",
-      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_launcher_app.py -q (a ponte serve o modelo resolvido, recusa requisicao sem token com 403, abre com home vazia acionavel e devolve codigo quando falta runtime Qt)",
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/launcher_catalog.py",
+      "command": "auditoria de arquitetura: quatro modulos paralelos removidos (scanner, executor, spawn, provisao) e o Launcher religado ao EmulationController; verificado no host que defaultEmulatorId ja e 'eden' e que a varredura do projeto entrega 15 jogos base",
       "result": "passed"
-    },
-    {
-      "kind": "diagnostic",
-      "reference": "src/steamzero/launcher/library.py",
-      "command": "varredura do acervo real em /home/misael/emulation/roms: 1290 arquivos em 198 pastas produzem 104 jogos base em 6 sistemas (nes-famicom 33, nintendo-handheld 30, nintendo-3ds 19, switch 16, dreamcast 5, nintendo-console 1) e 191 diagnosticos de sistema sem jogo reconhecido",
-      "result": "partial"
-    },
-    {
-      "kind": "diagnostic",
-      "reference": "src/steamzero/launcher/execution.py",
-      "command": "no host: eden, citron e ryubing instalados; 16 dos 104 jogos do acervo viram plano de execucao (switch -> eden com argv ['eden','-f','-g',<rom>]), 88 recusados com motivo por emulador ausente",
-      "result": "partial"
     }
   ],
-  "nextAction": "Executar a instalacao automatica pelo lifecycle e rodar o ciclo fisico: tela cheia, lancamento, execucao, save, fechamento, troca de sistema e retorno.",
+  "nextAction": "Executar o ciclo fisico pelo caminho corrigido: home, pagina, launch_game com validacao real, retorno ao foco de saida e troca de plataforma.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-17",
-  "notes": "Baseline registrado antes de comecar: zero artefatos. src/steamzero/launcher, src/steamzero/ui/qml/launcher e tests/qml/launcher nao existiam, e o escopo do item declarava os tres — o digest nem podia ser calculado. Os dois que seguem sem artefato sairam do escopo e voltam quando existirem. Primeiro slice do vertical: o modelo de foco da home, no dominio. Num launcher por controle nao ha mouse para resgatar o usuario, entao o contrato nao e 'todo no tem saida' e sim conectividade: de qualquer no o direcional devolve ao foco inicial. Home vazia cai num no de acao com LAUNCHER-FOCUS-EMPTY-001 em vez de ficar sem foco; secao sem itens nao vira linha alcancavel; linha de um item so recusa a volta horizontal, que pareceria movimento sem mover. Um teste de mutacao mostrou que a volta a esquerda nao estava coberta, e a lacuna foi fechada. Segundo slice: a home renderiza as secoes e move o foco aplicando o mapa — o QML nao escolhe vizinho, nao deduz coluna e nao inventa destino, senao a garantia de 'sem becos' provada no dominio nao valeria para o que o usuario navega. Direcao sem destino mantem o foco onde esta, porque mover para destino nulo apagaria o foco. Um erro proprio ficou registrado no componente: o indice de itens era um array preenchido por push no Component.onCompleted e zerava quando outro binding passava a le-lo; agora e derivado das secoes. Terceiro slice: pagina de jogo e o contrato de retorno. Acao bloqueada continua visivel com o motivo — esconder faria procurar o que nao existe, e mostrar sem explicar faria apertar sem entender o silencio; o foco nunca comeca nem para numa acao desabilitada. O contexto de lancamento atravessa processos, porque o item 5 da DoD exige reiniciar o launcher sem derrubar o jogo. Como a biblioteca muda enquanto o jogo roda, o foco salvo pode nao existir na volta: cai no vizinho da mesma secao com LAUNCHER-RETURN-MISSING-001, em vez de voltar ao topo da home e perder o lugar do usuario. Contexto corrompido nao derruba o retorno. Quarto slice: lancamento real e retorno. O jogo nasce em sessao propria, entao um sinal dirigido ao grupo do launcher — Ctrl+C no terminal ou o systemd encerrando o escopo — nao o leva junto; isso e o item 5 da DoD e so se prova com processo de verdade. O contexto vai para disco ANTES do spawn: gravar depois abriria uma janela em que o jogo ja roda e o lugar do usuario ainda nao foi salvo. O primeiro teste desse contrato nao provava nada: matava so o processo pai, e no Linux o filho e reparentado ao init e sobrevive de qualquer jeito. Passou a derrubar o grupo, e ai o mutante sem start_new_session reprova. A primeira versao do modulo tambem fazia I/O e subprocess a mao; o gate de fronteiras recusou com razao — a escrita atomica ja existia em core.fs e subprocess pertence aos adapters, entao o spawn virou adapters/launcher_process.py e o dominio recebe por injecao. Quinto slice: o shell costura home e pagina de jogo no mesmo processo. Ele guarda de onde o usuario saiu e devolve exatamente ali na volta — cair no topo da home depois de fechar um jogo obrigaria a percorrer a biblioteca de novo a cada partida. O foco de saida viaja junto no pedido de lancamento, porque e ele que o contexto grava. Contexto apontando para item que sumiu cai no foco inicial em vez de deixar o shell sem foco. O shell nao resolve foco nem decide acoes: a home aplica o mapa do dominio e a pagina recebe as acoes ja decididas; aqui so ha a costura e o contexto. Sexto slice: o entry point steamzero-launcher. Segue o desenho ja usado pela central — servidor em loopback, token por execucao e o QML como processo separado. O token nao e formalidade: sem ele qualquer processo local dispararia jogos na maquina do usuario. A fonte da biblioteca e injetada por --library. A varredura real do acervo roda por jobs assincronos e liga-la aqui seria integracao de fachada; sem biblioteca o Launcher abre assim mesmo, com a home vazia acionavel que o dominio resolve, porque primeira execucao sem acervo e o caso comum e nao erro. Runtime Qt ausente vira codigo de saida, nao traceback. Setimo slice: a biblioteca real. A varredura reusa PlatformRomScanner e o registro de plataformas do projeto, em vez de um filtro proprio de extensao — num acervo real cada pasta guarda .directory, metadata.txt e systeminfo.txt, e filtro ingenuo listaria 'systeminfo' como jogo. Medicao no acervo de referencia: 1290 arquivos em 198 pastas produzem 104 jogos base em 6 sistemas, com 191 diagnosticos de pasta sem jogo reconhecido. A lacuna e de cobertura de plataforma (o registro tem 36) e nao de varredura; publicar o diagnostico e o que impede o usuario de concluir que perdeu jogos. Registrado como GAP-LAUNCHER-PLATFORM-COVERAGE. Dois enganos meus no caminho: PlatformRomScanner nao e recursivo, entao apontar para o topo do acervo devolvia quase nada e parecia biblioteca vazia; e os ids do registro sao canonicos (master-system) enquanto as pastas seguem o ES-DE (mastersystem, gb, nes), de modo que casar nome de pasta com id descartaria quase tudo — quem identifica a plataforma e a extensao do arquivo. Oitavo slice: uma fonte de execucao so. O que rodar vem do manifesto da plataforma daquele jogo, via domain.launch_profile, que ja monta argv por substituicao posicional com a ROM como argumento atomico e trata core como propriedade da plataforma. O Launcher nao guarda comando proprio: um comando fixo atenderia uma plataforma e quebraria as outras. A versao anterior do app montava 'steamzero-launch <id>', que e o caminho de jogos Steam e falharia para qualquer ROM. Corrigido. A deteccao de emulador instalado tambem estava errada duas vezes: which(adapterId) da falso positivo (dolphin no PATH e o gerenciador de arquivos do KDE, nao o emulador) e nao ve Flatpak nem engine gerenciada; e um except Exception amplo mascarou um import quebrado como 'nenhum emulador instalado', resposta plausivel e falsa. Agora consulta ComponentLifecycle, a mesma fachada de CLI e dashboard. Medido no host: eden, citron e ryubing instalados; 16 dos 104 jogos viram plano de execucao e 88 sao recusados com motivo. Provisao automatica: quando falta emulador ou core, o pedido e montado a partir do manifesto daquela plataforma — mas so com a opcao habilitada pelo operador. Baixar centenas de megabytes por conta propria decidiria pelo usuario o uso de disco e rede; desligada, a recusa continua explicando o que falta. O item permanece planned: falta a instalacao automatica executar de fato, a release instalada e o ciclo fisico ponta a ponta. Nada aqui promove AURA UI ou Theme Engine."
+  "notes": "Baseline registrado antes de comecar: zero artefatos. Correcao de arquitetura em 2026-08-20: a frente havia criado caminho proprio de execucao — scanner de biblioteca, resolucao de executor, spawn e provisao automatica. Cada peca duplicava algo existente e perdia o que estava acoplado. scan_library ja descobre os roots, classifica base/update/DLC e ignora auxiliares; launch_profile monta argv com ROM atomica e core como propriedade da plataforma; _settings_for_game_with_global aplica defaultEmulatorId e _resolve_primary_emulator cai no primary instalado; launch_game exige chaves projetadas no Switch, recusa update e DLC e registra a sessao. O caminho paralelo teria lancado um .nsp de update sem chaves e reportado sucesso. Os quatro modulos foram removidos e o Launcher passou a consumir EmulationController por uma camada fina de traducao. O catalogo tambem decidia jogabilidade lendo emulatorId do registro, e marcava 15 jogos como nao jogaveis num host onde defaultEmulatorId ja e 'eden' — decisao devolvida a quem a tem. O que permanece como capacidade nova, sem equivalente no projeto: modelo de foco da home, pagina de jogo, contexto de retorno entre processos e o shell QML com a ponte em loopback. O item permanece planned: o ciclo fisico ponta a ponta ainda nao foi executado pelo caminho corrigido. Nada aqui promove AURA UI ou Theme Engine."
 }

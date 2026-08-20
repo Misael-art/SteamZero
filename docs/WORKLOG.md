@@ -7421,3 +7421,42 @@ de fato e o ciclo físico ponta a ponta.
 Fechamento local: **4639 passed, 10 skipped** (uma flake de harness QML,
 reproduzida como verde isoladamente); Ruff, format, mypy, independence,
 boundaries e status-check.
+
+## 2026-08-20 — Correção de arquitetura: o Launcher volta para dentro do projeto
+
+O operador identificou o problema de fundo: eu vinha criando soluções sem
+validar a arquitetura, e isso retira a robustez de um projeto cujas garantias
+vêm justamente do acoplamento. A auditoria confirmou quatro caminhos paralelos.
+
+| Criado por mim | O que já existia e o que se perdia |
+|---|---|
+| `launcher/library.py` | `scan_library()` — descobre roots, classifica base/update/DLC, ignora auxiliares, mantém cache |
+| `launcher/execution.py` | `launch_profile` + `_build_exec_argv` — ROM atômica, core como propriedade da plataforma |
+| `adapters/launcher_process.py` | `launch_game` cria o processo **e registra a sessão** |
+| `launcher/provisioning.py` | `ComponentLifecycle` e o fluxo transacional `plan`→`apply` |
+
+O caminho paralelo teria lançado um `.nsp` de **update**, sem chaves projetadas,
+e reportado sucesso — `launch_game` recusa isso em três pontos distintos.
+
+O erro mais revelador estava no catálogo: ele decidia jogabilidade lendo
+`emulatorId` do registro do jogo. Esse campo **não é a fonte da decisão** —
+`_settings_for_game_with_global` aplica o `defaultEmulatorId` global e
+`_resolve_primary_emulator` ainda cai no primary instalado. Verificado no host:
+`defaultEmulatorId` já é `eden`. Minha camada teria reportado 15 jogos "não
+jogáveis" num sistema que sabia exatamente qual emulador usar. A decisão voltou
+para quem a tem.
+
+Os quatro módulos foram removidos e o Launcher passou a consumir
+`EmulationController` por uma camada fina de tradução, que declara a porta que
+consome e o contrato que publica. Permanecem como capacidade nova, sem
+equivalente: o modelo de foco da home, a página de jogo, o contexto de retorno
+entre processos e o shell QML com ponte em loopback.
+
+A regra virou a **seção 11 do AGENTS.md**, com o incidente registrado: nenhuma
+implementação começa sem localizar quem já resolve aquele problema, e a resposta
+— qual módulo faz isto, por que não serve, o que a peça nova acrescenta — é
+escrita antes da primeira linha. Quando a estrutura não couber, estende-se no
+mesmo padrão; nunca se contorna em paralelo.
+
+Fechamento local: **4615 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check.
