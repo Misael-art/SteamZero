@@ -1401,6 +1401,7 @@ class EmulationController:
             ensure_ascii=False,
             separators=(",", ":"),
         )
+        self._reap_dead_game_sessions()
         try:
             with self._store_factory() as store:
                 store.migrate()
@@ -1455,6 +1456,39 @@ class EmulationController:
             self._running_pids.pop(emulator_id, None)
             if title_id is not None:
                 self._session_save_checkpoint(game_id, title_id, emulator_id)
+
+    def _reap_dead_game_sessions(self) -> int:
+        """Encerra sessões cujo processo já não existe.
+
+        Um jogo que termina anormalmente (crash, kill -9, OOM) não passa pelo
+        watcher e a linha fica em ``running`` para sempre. Como o índice único
+        ``idx_game_session_one_active_owner`` só admite uma sessão ativa por
+        dono, o lançamento seguinte falha com ``E-TX-LOCKED`` e a biblioteca
+        inteira fica intravável — sem caminho de recuperação exposto pelo CLI
+        (``session recover`` espera AppID de Steam, não o id da biblioteca).
+        Trava permanente onde a regra é degradar (AGENTS.md secao 8).
+
+        ``start_ticks`` protege contra reuso de PID: processo vivo com ticks
+        diferentes é outro processo, e a sessão antiga está morta.
+        """
+        reaped = 0
+        with suppress(Exception), self._store_factory() as store:
+            store.migrate()
+            for row in store.active_game_sessions(SESSION_OWNER):
+                pid = row.get("pid")
+                if isinstance(pid, int) and pid > 1 and _process_alive(pid):
+                    recorded = row.get("start_ticks")
+                    if recorded is None or self._read_start_ticks(pid) == recorded:
+                        continue
+                store.transition_game_session(
+                    str(row["id"]),
+                    "failed",
+                    pid=None,
+                    finished_at=datetime.now(UTC).isoformat(),
+                    failure_code="E-SESSION-ORPHANED",
+                )
+                reaped += 1
+        return reaped
 
     def _finish_tracked_game_session(
         self,

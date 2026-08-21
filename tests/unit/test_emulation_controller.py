@@ -2877,3 +2877,62 @@ def test_game_scope_controls_profile_blocked_while_session_runs(
         }
     )
     assert plan["planId"]
+
+
+def test_orphaned_session_with_dead_pid_never_blocks_the_next_launch(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:  # type: ignore[no-untyped-def]
+    """Jogo morto anormalmente não pode travar a biblioteca inteira.
+
+    Sem a colheita, a linha fica em `running` para sempre e o índice único de
+    sessão ativa faz TODO lançamento seguinte falhar com E-TX-LOCKED — sem
+    caminho de recuperação no CLI. Defeito observado no host real: `kill` no
+    emulador deixou a sessão viva e nenhum jogo lançava mais.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    controller._spawn = lambda _argv: 4242  # type: ignore[attr-defined]
+    controller._process_waiter = lambda _pid: 0  # type: ignore[attr-defined]
+    controller._read_start_ticks = lambda _pid: 777  # type: ignore[attr-defined]
+    roms = tmp_path / "owned-roms"
+    roms.mkdir()
+    (roms / "Example [0100ABCDEF123000].nsp").write_bytes(b"owned-game")
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(roms)}),
+    )
+    game = controller.snapshot({"context": {}})["platforms"][0]["games"][0]
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.set", "gameId": game["id"], "emulatorId": "ryubing"}
+        ),
+    )
+    monkeypatch.setattr(
+        "steamzero.adapters.emulation.AdapterEngine.payload_path",
+        lambda _self, _emulator_id: tmp_path / f"{_emulator_id}.AppImage",
+    )
+    monkeypatch.setattr(controller, "_require_key_projection", lambda _emulator_id: None)
+
+    # Sessão órfã: processo já não existe (PID impossível de estar vivo).
+    with StateStore(tmp_path / "state.db") as store:
+        store.migrate()
+        store.create_game_session(
+            {
+                "id": "01ORPHANORPHANORPHANORPHAN",
+                "game_id": str(game["id"]),
+                "state": "launching",
+                "owner": "steamzero-game-session",
+                "metadata_json": "{}",
+            }
+        )
+        store.transition_game_session("01ORPHANORPHANORPHANORPHAN", "running", pid=2**22)
+
+    result = controller.launch_game(game["id"])
+    assert result["status"] == "started"
+
+    with StateStore(tmp_path / "state.db") as store:
+        store.migrate()
+        rows = {r["id"]: r for r in store.active_game_sessions("steamzero-game-session")}
+    assert "01ORPHANORPHANORPHANORPHAN" not in rows, "sessão órfã continuou ativa"
+    assert [r["pid"] for r in rows.values()] == [4242]
