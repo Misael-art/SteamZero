@@ -24,7 +24,7 @@
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
-  "scopeDigest": "379c40809902267ba14362e628d6754390e7c850d2fc6c69792eb19def9ebfce",
+  "scopeDigest": "0354792437939864d3801b7ce440964e975d95910772ed7dcd8b8cd89f50ddd4",
   "dependsOn": [
     "SZ-EMULATION-M10"
   ],
@@ -93,7 +93,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Validacao fisica pendente por bloqueio de ambiente: os 4 emuladores Flatpak (PCSX2, Dolphin, RPCS3, Cemu) nao instalam porque o engine nao resolve dl.flathub.org (2 tentativas, rollback limpo nas duas). DuckStation ESTA instalado (v0.1-11580, verify ok). Falta: release nova a partir de main instalada no host (a a46 ativa nao contem a costura) e uma imagem de disco com serial verificavel no PVD para o teste de lancamento real.",
+  "nextAction": "Teste real no host (2026-08-21) achou dois defeitos: (1) sessao orfa com PID morto travava TODO lancamento seguinte com E-TX-LOCKED, sem recuperacao no CLI — corrigido com colheita antes de criar sessao; (2) o fluxo governado de install NUNCA baixa, porque component apply roda no daemon e a unit fixa RestrictAddressFamilies=AF_UNIX (provado por E-API-GENERATION-MISMATCH). Pendente: corrigir (2) em tools/install_host.py, publicar release e instalar no host para retomar o teste de producao dos demais emuladores.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATOR-ENHANCEMENT"
   ],

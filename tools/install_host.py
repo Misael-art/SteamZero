@@ -648,7 +648,14 @@ ProtectSystem=strict
 ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
-RestrictAddressFamilies=AF_UNIX
+# AF_UNIX é o socket de controle. AF_INET/AF_INET6 são obrigatórios porque o
+# ciclo de componentes roda NO DAEMON: `component apply` delega a mutação para
+# cá, e os adapters declaram fontes de rede (remoto Flatpak, URL de AppImage).
+# Só com AF_UNIX todo install que precise baixar falha com
+# "[6] Could not resolve hostname" — o executor era proibido de alcançar as
+# fontes que ele mesmo declara. O endurecimento restante (NoNewPrivileges,
+# ProtectSystem=strict, MemoryDenyWriteExecute) permanece intacto.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 LockPersonality=true
 MemoryDenyWriteExecute=true
 """

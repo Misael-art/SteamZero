@@ -878,3 +878,28 @@ def test_activation_refuses_unmanaged_gamemode_command(tmp_path: Path) -> None:
         install_host._activate(layout, "release-modern")
 
     assert not layout.current.exists()
+
+
+def test_daemon_unit_allows_egress_because_installs_run_in_the_daemon(tmp_path: Path) -> None:
+    """O daemon precisa de AF_INET/AF_INET6 para cumprir o que os adapters declaram.
+
+    ``component apply`` delega a mutação ao daemon (provado no host por
+    ``E-API-GENERATION-MISMATCH``), e os adapters declaram fontes de rede —
+    remoto Flatpak, URL de AppImage. Com apenas ``AF_UNIX``, todo install que
+    precise baixar falhava com "[6] Could not resolve hostname": o executor era
+    proibido de alcançar as fontes que ele mesmo declara.
+
+    O restante do endurecimento é exigido aqui para que afrouxar a rede não vire
+    porta de entrada para afrouxar o resto.
+    """
+    unit = install_host._service_unit(_layout(tmp_path))
+    families = [ln for ln in unit.splitlines() if ln.startswith("RestrictAddressFamilies=")]
+    assert families == ["RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6"]
+    for directive in (
+        "NoNewPrivileges=true",
+        "ProtectSystem=strict",
+        "MemoryDenyWriteExecute=true",
+        "ProtectKernelModules=true",
+        "LockPersonality=true",
+    ):
+        assert directive in unit, f"endurecimento perdido: {directive}"
