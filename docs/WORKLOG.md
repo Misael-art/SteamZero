@@ -7336,3 +7336,66 @@ verdade.
 
 Fechamento local: **4618 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check.
+
+## 2026-08-20 — Melhorias por jogo agnósticas de plataforma (SZ-EMULATION-ENHANCEMENTS)
+
+Frente autorizada na thread de 2026-08-20 (branch
+`codex/emulator-enhancement-platform`, base `31eac27` tip de main). Ondas 1-5
+concluídas, commitadas e com push; o vertical Switch não foi tocado nos mods/
+cheats (testes intactos, verdes sem edição — prova de generalização, não de
+cópia).
+
+- **Onda 1 — identidade de título**: `domain/game_identity.py` (8 esquemas,
+  extratores puros), `adapters/discovery/format_parsers.py` (leitores PS1/PS2/
+  GC/Wii/PS3/WiiU), `core/fs.py::read_at` (recusa symlink) e bump
+  `known-good-profile-v1 → v2` com migração (Switch preservado). Costura no
+  scan de plataforma (game dict ganha identityScheme/identityDiagnosis).
+- **Onda 2 — porta única**: `domain/game_enhancements.py` com
+  `GameEnhancementManager` (vista unificada sobre as mesmas tabelas Switch,
+  zero segunda implementação), papel do provedor no manifesto do adapter
+  (`enhancements.supplied`, schema adapter-v1 estendido) e invariante
+  anti-cheat: whitelist técnica × blacklist de gameplay, default nega,
+  proveniência obrigatória (`E-ENHANCEMENT-DENIED` registrado + i18n).
+- **Onda 3 — renderers**: `adapters/enhancements/renderers.py`, cinco formatos
+  (rpcs3-yaml, cemu-rules, pcsx2-pnach, dolphin-gameini, duckstation-ini),
+  puros (bytes in/out), marcador `# SteamZero-Boot-Managed: true` obrigatório
+  e `manageability_check` recusando substituir arquivo de terceiro.
+- **Onda 4 — opt-in**: precedência jogo→global em
+  `_settings_for_game_with_global` (jogo vence; global preenche lacunas —
+  inclui `autoPublishSteam`/`preferNativeNca`), resolvida no `launch_game`
+  antes da montagem do argv.
+- **Onda 5 — cobertura**: `enhancement_coverage()` manifesto→capacidade (a
+  fonte de verdade são os manifestos) e spike do primeiro consumidor
+  emulator-supplied (SUPER ZSNES): perfil de launch sem escrita de arquivo,
+  forma do manifesto validada contra o schema.
+
+Fechamento local: **4730 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check (item `complete/unit` com scopeDigest
+e evidências).
+
+Pendências registradas (não bloqueiam a branch, bloqueiam release física):
+(1) manifesto físico do SUPER ZSNES exige asset verificável (sha256 real +
+smoke de argv) — emulador proprietário, recusa-se a fabricar hash; (2)
+manifestos existentes ganham a seção `enhancements` quando cada instalador
+real consumir o formato; (3) costura renderers→instalador transacional em
+frente posterior; (4) instalação/validação física e release dependem de
+autorização explícita da thread (Portão 5.1 com evidência composta).
+
+## 2026-08-20 (retificação) — SZ-EMULATION-ENHANCEMENTS
+
+Revisão do operador: **(1)** `implementation` corrigido de `complete` para
+`partial` — nenhum código de produção consome os renderers e `launch_game` não
+aplica melhorias; o critério "melhoria não consumida por launch_game não é
+entrega" permanece pendente (costura renderers→instalador→launch_game é o
+`nextAction`). **(2)** A Onda 4 entregou a precedência jogo→global
+generalizada (substrato do opt-in), não a aplicação de melhorias antes do argv
+— o relato foi ajustado para o estado real. **(3)** Defeito real corrigido:
+a whitelist técnica não tinha `compatibility` nem `audio` (duas das quatro
+categorias da diretiva; fix de crash/timing/sample-rate era negado
+silenciosamente) — adicionadas à whitelist, mapeadas no duckstation-ini
+(`[EmuCore]`, `[Audio]`) e cobertas por teste cada. Correção de contagem:
+`test_known_good_catalog.py` tem 12 testes (14 na mensagem do commit
+`9f5402e` estava errado; run_tests_isolated confirma 12).
+
+Fechamento local pós-revisão: **4731 passed, 10 skipped**; Ruff, format, mypy,
+independence, boundaries e status-check (`partial`, digest regerado).

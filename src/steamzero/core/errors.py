@@ -127,6 +127,8 @@ ERROR_CATALOG: dict[str, str] = {
     "E-MOD-BUILD-ID-MISSING": "MOD",
     "E-MOD-EMULATOR-NOT-FOUND": "MOD",
     "E-MOD-CATALOG-STALE": "MOD",
+    # --- Melhorias por jogo (plataforma agnóstica)
+    "E-ENHANCEMENT-DENIED": "ENHANCEMENT",
     # --- Cheats (Switch emulators)
     "E-CHEAT-NOT-FOUND": "CHEAT",
     "E-CHEAT-DOWNLOAD-FAILED": "CHEAT",

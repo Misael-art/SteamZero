@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "known-good-profile-v2.schema.json",
+  "title": "Catálogo de perfis de configuração conhecidos bons por identidade de título",
+  "description": "v2: a entrada é indexada por identidade de título tipada por plataforma (Onda 1). O campo legado titleId (16 hex, só Switch) foi substituído por identity com scheme + value; produtores devem migrar (ver KnownGoodProfileCatalog.migrate_v1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "platform", "entries"],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "platform": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "settings"],
+        "properties": {
+          "identity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scheme", "value"],
+            "properties": {
+              "scheme": {
+                "type": "string",
+                "enum": [
+                  "switch-title-id",
+                  "psx-serial",
+                  "ps2-serial",
+                  "gc-game-id",
+                  "wii-game-id",
+                  "ps3-title-id",
+                  "wiiu-product-id",
+                  "ps2-elf-crc32"
+                ]
+              },
+              "value": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_.\\-]{1,64}$"}
+            }
+          },
+          "emulator": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 120},
+          "settings": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^[^\\[\\]=\\r\\n\\u0000]+$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "pattern": "^[^\\[\\]=\\r\\n\\u0000]+$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "pattern": "^[^\\[\\]=\\r\\n\\u0000]*$"
+                  },
+                  {"type": "number"},
+                  {"type": "boolean"}
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

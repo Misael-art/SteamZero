@@ -478,6 +478,40 @@ def test_legacy_game_setting_survives_rescan_and_keys_gate_is_per_emulator(
     assert enriched[0]["playAction"]["enabled"] is True
 
 
+def test_game_settings_win_over_global_defaults_and_global_fills_gaps(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Onda 4: precedência jogo→global no launcher — o jogo que opta por
+    valor próprio vence; o jogo sem opt-in herda a preferência global."""
+    controller = _controller(monkeypatch, tmp_path)
+    global_path = controller._global_settings_path  # type: ignore[attr-defined]
+    global_path.parent.mkdir(parents=True, exist_ok=True)
+    global_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "settings": {
+                    "defaultEmulatorId": "citron",
+                    "autoPublishSteam": True,
+                    "preferNativeNca": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    game = {"id": "0fd1b7954e6eaf474f5e8c8c", "fingerprint": "f" * 64}
+    settings = {"0fd1b7954e6eaf474f5e8c8c": {"autoPublishSteam": False, "emulatorId": "eden"}}
+    merged = controller._settings_for_game_with_global(game, settings)  # type: ignore[attr-defined]
+    assert merged["emulatorId"] == "eden"
+    assert merged["autoPublishSteam"] is False
+    assert merged["preferNativeNca"] is True
+
+    inherited = controller._settings_for_game_with_global(game, {})  # type: ignore[attr-defined]
+    assert inherited["emulatorId"] == "citron"
+    assert inherited["autoPublishSteam"] is True
+    assert inherited["preferNativeNca"] is True
+
+
 def test_global_emulator_and_media_preferences_are_persisted(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
     controller = _controller(monkeypatch, tmp_path)
 
@@ -1331,6 +1365,41 @@ def test_library_scan_indexes_known_platform_directories_without_scanning_bios(
     assert report[str(psx)]["gameCount"] == 12
     assert report[str(psx)]["selectedCount"] == 10
     assert report[str(bios)]["disposition"] == "excluded"
+
+
+def test_library_scan_enriches_platform_games_with_identity_seam(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Onda 1 parte 3: costura mínima do domínio na varredura de plataforma —
+    identity do disco preenche o game dict sem tocar no caminho Switch."""
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "platform-roms"
+    psx = root / "PSX"
+    psx.mkdir(parents=True)
+
+    pvd = bytearray(2048)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[0x20:0x2B] = b"SLUS_005.55"
+    image = bytearray(0x8000)
+    image[0x8000:0x8800] = pvd
+    (psx / "Ridge Racer Revolution.iso").write_bytes(bytes(image))
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    assert result["games"] == 1
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    game = cached["games"][0]
+    assert game["platform"] == "playstation"
+    assert game["titleId"] == "SLUS_005.55"
+    assert game["identityScheme"] == "psx-serial"
+    assert game["identityDiagnosis"] == "pvd-serial"
+    assert game["identityVerified"] is True
+    assert game["state"] == "ready"
 
 
 def test_missing_registered_root_remains_visible_and_arbitrary_id_is_refused(

@@ -462,6 +462,12 @@ MESSAGES: dict[str, str] = {
     "error.E-MOD-CATALOG-STALE.impact": "Mods recentes podem não estar disponíveis para instalação.",
     "error.E-MOD-CATALOG-STALE.cause": "O catálogo não foi atualizado nas últimas 24 horas.",
     "error.E-MOD-CATALOG-STALE.action": "Atualize o catálogo com o comando de sincronização.",
+    # ---- MELHORIAS POR JOGO (plataforma agnóstica) ---------------------------
+    "error.E-ENHANCEMENT-DENIED.title": "Melhoria negada pela política anticheat",
+    "error.E-ENHANCEMENT-DENIED.what": "A melhoria solicitada foi recusada pelo invariante anticheat (categoria de gameplay, categoria desconhecida ou proveniência ausente).",
+    "error.E-ENHANCEMENT-DENIED.impact": "Nenhum arquivo foi escrito; o jogo continua sendo lançado sem a melhoria.",
+    "error.E-ENHANCEMENT-DENIED.cause": "Categoria na lista negra de gameplay ou fora da whitelist técnica; fonte sem proveniência.",
+    "error.E-ENHANCEMENT-DENIED.action": "Use apenas melhorias de categoria técnica com fonte declarada no catálogo.",
     # ---- CHEATS (Switch emulador) --------------------------------------------
     "error.E-CHEAT-NOT-FOUND.title": "Cheat não encontrado",
     "error.E-CHEAT-NOT-FOUND.what": "O cheat solicitado não existe no catálogo ou não está instalado.",
