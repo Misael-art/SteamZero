@@ -313,3 +313,64 @@ def test_settings_reject_unknown_enhancement_fields_with_integrity_error(
     )
     with pytest.raises(SteamZeroError, match="E-STATE-INTEGRITY"):
         controller.launch_game(game_id)
+
+    # XDG_CONFIG_HOME é de escopo session no conftest, então este arquivo é
+    # compartilhado por toda a suíte: sem a limpeza, qualquer teste posterior
+    # que leia as preferências herda o payload corrompido acima.
+    controller._game_settings_path.unlink()  # type: ignore[attr-defined]
+
+
+def test_enhancement_file_exists_on_disk_before_argv_is_built(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """A melhoria precisa estar no disco QUANDO o argv é montado.
+
+    Aplicar só antes do spawn não basta: uma melhoria que precise influenciar o
+    próprio comando (core override, flag de shader) constaria como aplicada sem
+    efeito no lançamento. Este teste observa o disco no instante da montagem do
+    argv, em vez de espionar a ordem das chamadas — o que provaria apenas que os
+    stubs foram chamados em sequência.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    _stub_duckstation_target(monkeypatch, tmp_path)
+    game = _seed_switch_game(controller, tmp_path)
+    game_id = str(game["id"])
+    _apply(
+        controller,
+        controller.plan_action(
+            {"actionId": "game.emulator.set", "gameId": game_id, "emulatorId": "duckstation"}
+        ),
+    )
+    _apply(
+        controller,
+        controller.plan_action(
+            {
+                "actionId": f"game.enhancements.set:{game_id}",
+                "emulatorId": "duckstation",
+                "kind": "cheat",
+                "category": "performance",
+                "title": "60 FPS",
+                "source": "forum",
+                "codes": ["0x12345678 00000000"],
+            }
+        ),
+    )
+
+    _launch_ready(monkeypatch, controller, tmp_path)
+    controller._spawn = lambda argv: None  # type: ignore[attr-defined]
+    rules = tmp_path / "home" / ".config" / "duckstation" / "rules.txt"
+    assert not rules.exists()
+
+    seen_at_argv_time: list[bool] = []
+    original = controller._build_exec_argv  # type: ignore[attr-defined]
+
+    def _recording(*args, **kwargs):  # type: ignore[no-untyped-def]
+        seen_at_argv_time.append(rules.exists())
+        return original(*args, **kwargs)
+
+    controller._build_exec_argv = _recording  # type: ignore[attr-defined]
+    result = controller.launch_game(game_id)
+
+    assert result["enhancementsApplied"] == 1
+    assert seen_at_argv_time == [True], (
+        "a melhoria não estava no disco quando o argv foi montado: "
+        "aplicação ocorreu depois de _build_exec_argv"
+    )

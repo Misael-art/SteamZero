@@ -1138,6 +1138,12 @@ class EmulationController:
                     detail=f"o core {profile.core} não está instalado no RetroArch; "
                     "instale/verifique o core antes de jogar",
                 )
+        # Melhorias são aplicadas ANTES de montar o argv, não apenas antes do
+        # spawn: uma melhoria pode precisar influenciar o próprio comando (core
+        # override, flag de shader, parâmetro de executor). Aplicar depois do
+        # argv faria a melhoria constar como aplicada sem efeito no lançamento
+        # — falha silenciosa que nenhum teste de aplicação pegaria.
+        enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
         argv = self._build_exec_argv(
             profile,
             source_type=source_type,
@@ -1146,7 +1152,6 @@ class EmulationController:
             rom=rom,
             core_path=core_path,
         )
-        enhancement_outcome = self._apply_launch_enhancements(game, game_settings, emulator_id)
 
         session_id: str | None = None
         started_monotonic = self._monotonic()
