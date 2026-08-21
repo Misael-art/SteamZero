@@ -24,7 +24,7 @@
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
-  "scopeDigest": "c2c520885cbf2c00ff3597a997a5dc4fb233d1d63673b385368e5443530beb9c",
+  "scopeDigest": "379c40809902267ba14362e628d6754390e7c850d2fc6c69792eb19def9ebfce",
   "dependsOn": [
     "SZ-EMULATION-M10"
   ],
@@ -93,7 +93,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Onda 6 (costura) entregue e consumida por launch_game com testabilidade: renderers -> plan_enhancement_writes -> plan_write_files/apply antes do argv, com degradacao (skip com razao, jogo lanca) e idempotencia (mesmo conteudo aplicado = no-op; arquivo de terceiros nunca tocado). Falta: declarar secao enhancements em manifestos reais por formato consumido (cobertura hoje vazia), manifesto fisico do SUPER ZSNES com sha256 real + smoke de argv (emulador proprietario, recusa hash fabricado), e instalacao/validacao fisica no host sob autorizacao explicita da thread (Portao 5.1 com evidencia composta, inclui capturas PNG).",
+  "nextAction": "Validacao fisica pendente por bloqueio de ambiente: os 4 emuladores Flatpak (PCSX2, Dolphin, RPCS3, Cemu) nao instalam porque o engine nao resolve dl.flathub.org (2 tentativas, rollback limpo nas duas). DuckStation ESTA instalado (v0.1-11580, verify ok). Falta: release nova a partir de main instalada no host (a a46 ativa nao contem a costura) e uma imagem de disco com serial verificavel no PVD para o teste de lancamento real.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATOR-ENHANCEMENT"
   ],

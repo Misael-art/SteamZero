@@ -14,7 +14,7 @@
     },
     {
       "id": "cemu",
-      "manifestHash": "730549afde41a38af8cb154a37ee21cbb8b7c4ed7af985d39938283b8dd18359",
+      "manifestHash": "e264cc56e95a20731ded46dbd73d9a6c461e53b521cb45d812e4576ce33a39bc",
       "source": {
         "type": "flatpak",
         "version": "cbadbabac58e89f72a9dbd18b93ed19dbadf678f44412ffc8edb98e630ddec1f",
@@ -36,7 +36,7 @@
     },
     {
       "id": "dolphin",
-      "manifestHash": "1c36eedccfdfeecb8f6babd4590f33b0b746ffa1cc0928d42d9f4e89ee2b1469",
+      "manifestHash": "67a9dfe158e136ecf670e9418163e2487101ba8d4a0805d399eccabdfc3cf5ea",
       "source": {
         "type": "flatpak",
         "version": "377c3e63506ebc51c6eb8ae717f216514f3fdbdd634d69c00c4c0173fb0629e5",
@@ -47,7 +47,7 @@
     },
     {
       "id": "duckstation",
-      "manifestHash": "d97858b2287fd41ec95d03c67e4c473a4610d852cf4ca0b2886d951e8bc463bc",
+      "manifestHash": "153daae33225140a5e05736427b7be2baae51b09db8cc7bbed803c01c3e81d5b",
       "source": {
         "type": "appimage",
         "version": "v0.1-11580",
@@ -278,7 +278,7 @@
     },
     {
       "id": "pcsx2",
-      "manifestHash": "ef2fe19b99f30cc702987d22ffd84e316cd9fac6f9877434e005019956b7f72f",
+      "manifestHash": "dce64dfc1ac77a5e3f43c24b7030fd31672f131ae50130193c7cd89859cfcbb0",
       "source": {
         "type": "flatpak",
         "version": "31307c3e9fa0fda4275433c053169dd231a7f921bb80bb51dd67b2ef95638f28",
@@ -311,7 +311,7 @@
     },
     {
       "id": "rpcs3",
-      "manifestHash": "34223a61d701f355978c136da4ed68fffa5b16fb1b3555bd08f57481238641a7",
+      "manifestHash": "ba4f30b5e5c6d31a0a35f28eed751dc433f2c6e92890e0aee4e079b8ba163986",
       "source": {
         "type": "flatpak",
         "version": "27d554ca9d260afe9a702ed8a2d0029505bf82e2201b28b6a797096e8463c4d4",

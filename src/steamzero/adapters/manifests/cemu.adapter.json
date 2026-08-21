@@ -31,7 +31,8 @@
     }
   ],
   "paths": {
-    "config": "{XDG_CONFIG_HOME}/Cemu/settings.xml"
+    "config": "{XDG_CONFIG_HOME}/Cemu/settings.xml",
+    "enhancementsDir": "{FLATPAK_CONFIG_HOME}/Cemu/graphicPacks"
   },
   "configFormat": "xml",
   "verify": {
@@ -46,5 +47,11 @@
   ],
   "license": "MPL-2.0",
   "upstream": "https://github.com/cemu-project/Cemu",
-  "notes": "Fonte Flathub fixada no commit correspondente à versão 2.6."
+  "notes": "Fonte Flathub fixada no commit correspondente à versão 2.6.",
+  "enhancements": {
+    "supplied": [],
+    "formats": [
+      "cemu-rules"
+    ]
+  }
 }

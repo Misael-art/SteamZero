@@ -31,7 +31,8 @@
     }
   ],
   "paths": {
-    "config": "{XDG_CONFIG_HOME}/dolphin-emu/Dolphin.ini"
+    "config": "{XDG_CONFIG_HOME}/dolphin-emu/Dolphin.ini",
+    "enhancementsDir": "{FLATPAK_CONFIG_HOME}/dolphin-emu/GameSettings"
   },
   "configFormat": "ini",
   "verify": {
@@ -45,5 +46,11 @@
     "linux"
   ],
   "license": "GPL-2.0-or-later",
-  "upstream": "https://github.com/dolphin-emu/dolphin"
+  "upstream": "https://github.com/dolphin-emu/dolphin",
+  "enhancements": {
+    "supplied": [],
+    "formats": [
+      "dolphin-gameini"
+    ]
+  }
 }

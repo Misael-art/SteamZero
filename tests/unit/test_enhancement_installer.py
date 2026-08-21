@@ -105,11 +105,23 @@ def test_first_compatible_format_follows_precedence_by_kind() -> None:
 
 
 def test_identity_parts_derives_serial_and_title_ids() -> None:
+    """Contrato ampliado: GameCube, Wii, PS3 e Wii U passam a produzir identidade.
+
+    Antes, só PSX/PS2 (serial) e Switch (titleId) produziam valor; GC, Wii, PS3 e
+    Wii U caíam em ``(None, ())``. Com isso nenhum renderer conseguia nomear o
+    arquivo por jogo nessas plataformas, e a melhoria virava arquivo único
+    compartilhado por toda a biblioteca. O caso ``gc-game-id`` abaixo afirmava
+    justamente o comportamento defeituoso.
+    """
     assert identity_parts("switch-title-id", "0100abcd1234e000") == (None, ("0100ABCD1234E000",))
+    assert identity_parts("wiiu-product-id", "wup-p-abcd") == (None, ("WUP-P-ABCD",))
     assert identity_parts("psx-serial", "slus_005.55") == ("slus_005.55", ())
     assert identity_parts("ps2-elf-crc32", "A1B2C3D4") == ("A1B2C3D4", ())
-    assert identity_parts("gc-game-id", "GM8E01") == (None, ())
+    assert identity_parts("gc-game-id", "GM8E01") == ("GM8E01", ())
+    assert identity_parts("wii-game-id", "RMGE01") == ("RMGE01", ())
+    assert identity_parts("ps3-title-id", "BLUS30443") == ("BLUS30443", ())
     assert identity_parts(None, None) == (None, ())
+    assert identity_parts("esquema-inexistente", "X") == (None, ())
 
 
 def test_definition_from_mapping_validates_shape() -> None:
@@ -172,7 +184,7 @@ def test_render_definitions_picks_compatible_format_and_skips_rest(tmp_path: Pat
     )
     assert [file.relative_path for file in rendered] == [
         "SLUS_005.55.pnach",
-        "gamesettings.ini",
+        "SLUS_005.55.ini",
     ]
     assert skipped == []
     rendered_only_cheat, skipped_none = render_definitions(
@@ -205,10 +217,10 @@ def test_installation_files_dedupes_and_enforces_containment(tmp_path: Path) -> 
         _manifest(), config_home=config, data_home=data, state_home=state
     )
     assert target is not None
-    first = RenderedEnhancementFile("gamesettings.ini", b"aaa", "duckstation-ini")
-    second = RenderedEnhancementFile("gamesettings.ini", b"bbb", "duckstation-ini")
+    first = RenderedEnhancementFile("SLUS_005.55.ini", b"aaa", "duckstation-ini")
+    second = RenderedEnhancementFile("SLUS_005.55.ini", b"bbb", "duckstation-ini")
     writes = installation_files([first, second], target_dir=target.target_dir)
-    assert writes == {target.target_dir / "gamesettings.ini": b"bbb"}
+    assert writes == {target.target_dir / "SLUS_005.55.ini": b"bbb"}
     with pytest.raises(SteamZeroError, match="caminho relativo inválido"):
         installation_files(
             [RenderedEnhancementFile("../escape", b"x", "duckstation-ini")],
@@ -222,7 +234,7 @@ def test_filter_managed_ownership_and_idempotency(tmp_path: Path) -> None:
         _manifest(), config_home=config, data_home=data, state_home=state
     )
     assert target is not None
-    path = target.target_dir / "gamesettings.ini"
+    path = target.target_dir / "SLUS_005.55.ini"
     ours = (ENHANCEMENT_MARKER + "\n[Audio]\n").encode("ascii")
     new_ours = (ENHANCEMENT_MARKER + "\n[Audio]\nEmulationSpeed=200.0000\n").encode("ascii")
     foreign = b"[Audio]\n# feito a mao\n"

@@ -43,11 +43,11 @@ def _recipe(
 
 def test_every_rendered_file_carries_ownership_marker() -> None:
     files = [
-        render_rpcs3_yaml(_recipe()),
+        render_rpcs3_yaml(_recipe(), "BLUS30443"),
         render_cemu_rules(_recipe(), ("0005000012345678",)),
         render_pcsx2_pnach(_recipe(kind=EnhancementKind.CHEAT), "SLUS-20152"),
-        render_dolphin_gameini(_recipe(kind=EnhancementKind.CHEAT)),
-        render_duckstation_ini(_recipe(), ("AspectRatio = 16:9",)),
+        render_dolphin_gameini(_recipe(kind=EnhancementKind.CHEAT), "GM8E01"),
+        render_duckstation_ini(_recipe(), ("AspectRatio = 16:9",), "SLUS_005.55"),
     ]
     for rendered in files:
         assert rendered.data.startswith(ENHANCEMENT_MARKER.encode())
@@ -62,9 +62,9 @@ def test_manageability_allows_create_and_marked_replace_but_refuses_third_party(
 
 
 def test_rpcs3_yaml_structure_and_be32_ops() -> None:
-    rendered = render_rpcs3_yaml(_recipe(category="performance"))
+    rendered = render_rpcs3_yaml(_recipe(category="performance"), "BLUS30443")
     text = rendered.data.decode()
-    assert rendered.relative_path == "patch.yml"
+    assert rendered.relative_path == "steamzero-BLUS30443.yml"
     assert rendered.format is EnhancementFileFormat.RPCS3_YAML
     assert "Version: 1.0" in text
     assert "Metadata:" in text
@@ -74,7 +74,7 @@ def test_rpcs3_yaml_structure_and_be32_ops() -> None:
 
 def test_rpcs3_yaml_refuses_gameplay_category() -> None:
     with pytest.raises(SteamZeroError) as exc:
-        render_rpcs3_yaml(_recipe(category="gameplay"))
+        render_rpcs3_yaml(_recipe(category="gameplay"), "BLUS30443")
     assert exc.value.code == "E-ENHANCEMENT-DENIED"
 
 
@@ -83,7 +83,7 @@ def test_cemu_rules_definition_and_cheat_section() -> None:
         _recipe(kind=EnhancementKind.CHEAT), ("0005000012345678", "0005000C12345678")
     )
     text = rendered.data.decode()
-    assert rendered.relative_path == "rules.txt"
+    assert rendered.relative_path == "steamzero-0005000012345678/rules.txt"
     assert "[Definition]" in text
     assert "titleIds = 0005000012345678, 0005000C12345678" in text
     assert "[Ridge Racer Revolution]" in text
@@ -117,32 +117,36 @@ def test_pnach_rejects_bad_serial_and_bad_codes() -> None:
 
 
 def test_dolphin_gameini_gecko_section() -> None:
-    rendered = render_dolphin_gameini(_recipe(kind=EnhancementKind.CHEAT))
+    rendered = render_dolphin_gameini(_recipe(kind=EnhancementKind.CHEAT), "GM8E01")
     text = rendered.data.decode()
-    assert rendered.relative_path == "game.ini"
+    assert rendered.relative_path == "GM8E01.ini"
     assert "[Gecko]" in text
     assert "$SteamZero-" in text
     assert all(code in text for code in _CODE)
 
 
 def test_duckstation_ini_section_mapping_and_technical_only() -> None:
-    rendered = render_duckstation_ini(_recipe(category="quality-of-life"), ("AspectRatio = 16:9",))
-    assert rendered.relative_path == "gamesettings.ini"
+    rendered = render_duckstation_ini(
+        _recipe(category="quality-of-life"), ("AspectRatio = 16:9",), "SLUS_005.55"
+    )
+    assert rendered.relative_path == "SLUS_005.55.ini"
     assert "[Display]" in rendered.data.decode()
     assert (
         "[Audio]"
-        in render_duckstation_ini(_recipe(category="audio"), ("BitDepth = 16",)).data.decode()
+        in render_duckstation_ini(
+            _recipe(category="audio"), ("BitDepth = 16",), "SLUS_005.55"
+        ).data.decode()
     )
     assert (
         "[EmuCore]"
         in render_duckstation_ini(
-            _recipe(category="compatibility"), ("SynchronizeTightness = 0",)
+            _recipe(category="compatibility"), ("SynchronizeTightness = 0",), "SLUS_005.55"
         ).data.decode()
     )
     with pytest.raises(SteamZeroError):
-        render_duckstation_ini(_recipe(category="unlock"), ("AspectRatio = 16:9",))
+        render_duckstation_ini(_recipe(category="unlock"), ("AspectRatio = 16:9",), "SLUS_005.55")
     with pytest.raises(SteamZeroError):
-        render_duckstation_ini(_recipe(), ())
+        render_duckstation_ini(_recipe(), (), "SLUS_005.55")
 
 
 def test_dispatch_unknown_format_and_required_args() -> None:

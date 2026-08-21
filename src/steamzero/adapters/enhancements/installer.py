@@ -11,6 +11,7 @@ re-checada por definição a cada render.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -42,24 +43,45 @@ _ALLOWED_FIELDS = frozenset(
 )
 
 
+def flatpak_config_home(raw_manifest: Mapping[str, Any], *, home: Path) -> Path | None:
+    """Config real de um app Flatpak: ``~/.var/app/<ref>/config``.
+
+    O diretório XDG do host NÃO é lido por um app sandboxed: declarar
+    ``{XDG_CONFIG_HOME}`` para um emulador Flatpak grava num caminho que o
+    emulador nunca abre — melhoria "aplicada" sem efeito nenhum.
+    """
+    sources = raw_manifest.get("sources")
+    if not isinstance(sources, list):
+        return None
+    for source in sources:
+        if not isinstance(source, dict) or source.get("type") != "flatpak":
+            continue
+        ref = source.get("ref")
+        if isinstance(ref, str) and ref.strip():
+            return home / ".var" / "app" / ref.strip() / "config"
+    return None
+
+
 def expand_path_template(
     raw: str,
     *,
     config_home: Path,
     data_home: Path,
     state_home: Path,
+    flatpak_config: Path | None = None,
 ) -> Path:
     """Expande tokens XDG em caminho absoluto do manifesto do adapter."""
     if not isinstance(raw, str) or not raw.strip():
         raise SteamZeroError("E-API-SCHEMA", detail="template de caminho ausente")
+    tokens: dict[str, str] = {
+        "XDG_CONFIG_HOME": str(config_home),
+        "XDG_DATA_HOME": str(data_home),
+        "XDG_STATE_HOME": str(state_home),
+    }
+    if flatpak_config is not None:
+        tokens["FLATPAK_CONFIG_HOME"] = str(flatpak_config)
     try:
-        expanded = raw.strip().format_map(
-            {
-                "XDG_CONFIG_HOME": str(config_home),
-                "XDG_DATA_HOME": str(data_home),
-                "XDG_STATE_HOME": str(state_home),
-            }
-        )
+        expanded = raw.strip().format_map(tokens)
     except (KeyError, ValueError) as exc:
         raise SteamZeroError(
             "E-API-SCHEMA", detail=f"token desconhecido no template: {raw!r}"
@@ -114,11 +136,22 @@ def resolve_enhancement_target(
             supplied.add(EnhancementKind(entry))
         except ValueError:
             continue
+    try:
+        target_dir = expand_path_template(
+            template,
+            config_home=config_home,
+            data_home=data_home,
+            state_home=state_home,
+            flatpak_config=flatpak_config_home(raw_manifest, home=Path.home()),
+        )
+    except SteamZeroError:
+        # Manifesto mal declarado (ex.: token Flatpak sem fonte flatpak) degrada
+        # para "sem melhoria gerenciada" em vez de impedir o lançamento. A
+        # declaração errada é pega em test_enhancement_coverage, não no campo.
+        return None
     return EnhancementTarget(
         emulator_id=str(raw_manifest.get("id", "")),
-        target_dir=expand_path_template(
-            template, config_home=config_home, data_home=data_home, state_home=state_home
-        ),
+        target_dir=target_dir,
         formats=formats,
         supplied=frozenset(supplied),
     )
@@ -223,13 +256,34 @@ def first_compatible_format(kind: EnhancementKind, declared: tuple[str, ...]) ->
     return None
 
 
+#: Esquemas cujo valor identifica o jogo no NOME do arquivo de melhoria
+#: (serial PSX/PS2, GameID do GameCube/Wii, TITLE_ID do PS3).
+_SERIAL_SCHEMES = frozenset(
+    {
+        "psx-serial",
+        "ps2-serial",
+        "ps2-elf-crc32",
+        "gc-game-id",
+        "wii-game-id",
+        "ps3-title-id",
+    }
+)
+
+#: Esquemas cujo valor entra no CONTEÚDO como lista de títulos (Cemu, Switch).
+_TITLE_ID_SCHEMES = frozenset({"switch-title-id", "wiiu-product-id"})
+
+
 def identity_parts(scheme: str | None, value: str | None) -> tuple[str | None, tuple[str, ...]]:
-    """Deriva (serial, title_ids) da identidade verificada do jogo."""
+    """Deriva (serial, title_ids) da identidade verificada do jogo.
+
+    Sem isto, GameCube, Wii, PS3 e Wii U caem no caso vazio e nenhum renderer
+    consegue nomear o arquivo por jogo — a melhoria vira arquivo compartilhado.
+    """
     if not isinstance(scheme, str) or not isinstance(value, str) or not value:
         return None, ()
-    if scheme == "switch-title-id":
+    if scheme in _TITLE_ID_SCHEMES:
         return None, (value.upper(),)
-    if scheme in {"psx-serial", "ps2-serial", "ps2-elf-crc32"}:
+    if scheme in _SERIAL_SCHEMES:
         return value, ()
     return None, ()
 
