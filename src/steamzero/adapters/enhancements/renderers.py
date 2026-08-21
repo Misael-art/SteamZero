@@ -194,9 +194,14 @@ def render_dolphin_gameini(recipe: EnhancementRecipe) -> RenderedEnhancementFile
 
 
 def render_duckstation_ini(
-    recipe: EnhancementRecipe, settings: tuple[str, ...]
+    recipe: EnhancementRecipe, settings: tuple[str, ...], serial: str
 ) -> RenderedEnhancementFile:
-    """gamesettings.ini do DuckStation (overrides por jogo; técnico)."""
+    """Override por jogo do DuckStation: ``gamesettings/<serial>.ini``.
+
+    O nome carrega a identidade porque o DuckStation resolve o override pelo
+    serial do disco. Um nome fixo faria todo jogo escrever no mesmo arquivo —
+    a última melhoria aplicada valeria para a biblioteca inteira.
+    """
     _guard_technical_only(recipe, EnhancementFileFormat.DUCKSTATION_INI)
     if not settings:
         raise SteamZeroError(
@@ -217,7 +222,7 @@ def render_duckstation_ini(
     ]
     lines.extend(settings)
     data = ("\n".join(lines) + "\n").encode("ascii")
-    return RenderedEnhancementFile("gamesettings.ini", data, EnhancementFileFormat.DUCKSTATION_INI)
+    return RenderedEnhancementFile(f"{serial}.ini", data, EnhancementFileFormat.DUCKSTATION_INI)
 
 
 _RENDERERS: dict[str, Callable[..., RenderedEnhancementFile]] = {
@@ -249,5 +254,7 @@ def render_file(
     if key == "cemu-rules":
         return renderer(recipe, title_ids)
     if key == "duckstation-ini":
-        return renderer(recipe, settings)
+        if not serial:
+            raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="duckstation-ini exige serial")
+        return renderer(recipe, settings, serial)
     return renderer(recipe)

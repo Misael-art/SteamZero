@@ -172,7 +172,7 @@ def test_render_definitions_picks_compatible_format_and_skips_rest(tmp_path: Pat
     )
     assert [file.relative_path for file in rendered] == [
         "SLUS_005.55.pnach",
-        "gamesettings.ini",
+        "SLUS_005.55.ini",
     ]
     assert skipped == []
     rendered_only_cheat, skipped_none = render_definitions(
@@ -205,10 +205,10 @@ def test_installation_files_dedupes_and_enforces_containment(tmp_path: Path) -> 
         _manifest(), config_home=config, data_home=data, state_home=state
     )
     assert target is not None
-    first = RenderedEnhancementFile("gamesettings.ini", b"aaa", "duckstation-ini")
-    second = RenderedEnhancementFile("gamesettings.ini", b"bbb", "duckstation-ini")
+    first = RenderedEnhancementFile("SLUS_005.55.ini", b"aaa", "duckstation-ini")
+    second = RenderedEnhancementFile("SLUS_005.55.ini", b"bbb", "duckstation-ini")
     writes = installation_files([first, second], target_dir=target.target_dir)
-    assert writes == {target.target_dir / "gamesettings.ini": b"bbb"}
+    assert writes == {target.target_dir / "SLUS_005.55.ini": b"bbb"}
     with pytest.raises(SteamZeroError, match="caminho relativo inválido"):
         installation_files(
             [RenderedEnhancementFile("../escape", b"x", "duckstation-ini")],
@@ -222,7 +222,7 @@ def test_filter_managed_ownership_and_idempotency(tmp_path: Path) -> None:
         _manifest(), config_home=config, data_home=data, state_home=state
     )
     assert target is not None
-    path = target.target_dir / "gamesettings.ini"
+    path = target.target_dir / "SLUS_005.55.ini"
     ours = (ENHANCEMENT_MARKER + "\n[Audio]\n").encode("ascii")
     new_ours = (ENHANCEMENT_MARKER + "\n[Audio]\nEmulationSpeed=200.0000\n").encode("ascii")
     foreign = b"[Audio]\n# feito a mao\n"

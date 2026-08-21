@@ -31,7 +31,8 @@
     }
   ],
   "paths": {
-    "config": "{XDG_CONFIG_HOME}/PCSX2/inis/PCSX2.ini"
+    "config": "{XDG_CONFIG_HOME}/PCSX2/inis/PCSX2.ini",
+    "enhancementsDir": "{FLATPAK_CONFIG_HOME}/PCSX2/cheats"
   },
   "configFormat": "ini",
   "verify": {
@@ -54,5 +55,11 @@
   ],
   "license": "GPL-3.0-or-later",
   "upstream": "https://github.com/PCSX2/pcsx2",
-  "notes": "Fonte Flathub fixada no commit correspondente à versão v2.6.3."
+  "notes": "Fonte Flathub fixada no commit correspondente à versão v2.6.3.",
+  "enhancements": {
+    "supplied": [],
+    "formats": [
+      "pcsx2-pnach"
+    ]
+  }
 }

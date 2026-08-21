@@ -99,6 +99,30 @@ def config_home() -> Path:
     return (Path(base) if base else _home() / ".config") / APP
 
 
+def xdg_config_root() -> Path:
+    """Raiz XDG de config do usuário, SEM o sufixo ``steamzero``.
+
+    ``config_home()`` é o diretório do SteamZero. Um arquivo destinado a um
+    emulador de terceiros (ex.: ``~/.config/duckstation``) precisa da raiz: se
+    for escrito sob ``~/.config/steamzero/...`` o emulador nunca o lê e a
+    melhoria fica "aplicada" sem efeito.
+    """
+    base = os.environ.get("XDG_CONFIG_HOME")
+    return Path(base) if base else _home() / ".config"
+
+
+def xdg_data_root() -> Path:
+    """Raiz XDG de dados do usuário, sem o sufixo ``steamzero``."""
+    base = os.environ.get("XDG_DATA_HOME")
+    return Path(base) if base else _home() / ".local" / "share"
+
+
+def xdg_state_root() -> Path:
+    """Raiz XDG de estado do usuário, sem o sufixo ``steamzero``."""
+    base = os.environ.get("XDG_STATE_HOME")
+    return Path(base) if base else _home() / ".local" / "state"
+
+
 def collection_config_path() -> Path:
     return config_home() / "collections-v1.json"
 

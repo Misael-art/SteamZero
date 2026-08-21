@@ -47,7 +47,7 @@ def test_every_rendered_file_carries_ownership_marker() -> None:
         render_cemu_rules(_recipe(), ("0005000012345678",)),
         render_pcsx2_pnach(_recipe(kind=EnhancementKind.CHEAT), "SLUS-20152"),
         render_dolphin_gameini(_recipe(kind=EnhancementKind.CHEAT)),
-        render_duckstation_ini(_recipe(), ("AspectRatio = 16:9",)),
+        render_duckstation_ini(_recipe(), ("AspectRatio = 16:9",), "SLUS_005.55"),
     ]
     for rendered in files:
         assert rendered.data.startswith(ENHANCEMENT_MARKER.encode())
@@ -126,23 +126,27 @@ def test_dolphin_gameini_gecko_section() -> None:
 
 
 def test_duckstation_ini_section_mapping_and_technical_only() -> None:
-    rendered = render_duckstation_ini(_recipe(category="quality-of-life"), ("AspectRatio = 16:9",))
-    assert rendered.relative_path == "gamesettings.ini"
+    rendered = render_duckstation_ini(
+        _recipe(category="quality-of-life"), ("AspectRatio = 16:9",), "SLUS_005.55"
+    )
+    assert rendered.relative_path == "SLUS_005.55.ini"
     assert "[Display]" in rendered.data.decode()
     assert (
         "[Audio]"
-        in render_duckstation_ini(_recipe(category="audio"), ("BitDepth = 16",)).data.decode()
+        in render_duckstation_ini(
+            _recipe(category="audio"), ("BitDepth = 16",), "SLUS_005.55"
+        ).data.decode()
     )
     assert (
         "[EmuCore]"
         in render_duckstation_ini(
-            _recipe(category="compatibility"), ("SynchronizeTightness = 0",)
+            _recipe(category="compatibility"), ("SynchronizeTightness = 0",), "SLUS_005.55"
         ).data.decode()
     )
     with pytest.raises(SteamZeroError):
-        render_duckstation_ini(_recipe(category="unlock"), ("AspectRatio = 16:9",))
+        render_duckstation_ini(_recipe(category="unlock"), ("AspectRatio = 16:9",), "SLUS_005.55")
     with pytest.raises(SteamZeroError):
-        render_duckstation_ini(_recipe(), ())
+        render_duckstation_ini(_recipe(), (), "SLUS_005.55")
 
 
 def test_dispatch_unknown_format_and_required_args() -> None:

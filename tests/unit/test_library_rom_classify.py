@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -440,3 +441,63 @@ class TestInventoryReadsHeader:
             target.chmod(0o600)
         assert results[0].platform == "nintendo-console"
         assert results[0].evidence == "exclusive-ext"
+
+
+class TestSyntheticRomFixtures:
+    """Validates synthetic test ROMs in tests/fixtures/roms/ are scannable."""
+
+    EXCLUSIVE_PLATFORMS: ClassVar[dict[str, str]] = {
+        "amiga": ".adf",
+        "atari-classics": ".a26",
+        "intellivision": ".int",
+        "neo-geo-pocket": ".ngc",
+        "nes-famicom": ".nes",
+        "nintendo-3ds": ".3dsx",
+        "nintendo-64": ".n64",
+        "nintendo-console": ".gcm",
+        "nintendo-ds": ".nds",
+        "nintendo-handheld": ".gb",
+        "pc-engine-turbografx": ".pce",
+        "snes": ".sfc",
+        "virtual-boy": ".vb",
+        "wonderswan": ".ws",
+    }
+
+    def test_exclusive_ext_fixtures_auto_detect(
+        self, ext_map: dict[str, list[str]], tmp_path: Path
+    ) -> None:
+        """Fixtures with exclusive extensions are detected without root_platform."""
+        fixtures = Path(__file__).resolve().parent.parent / "fixtures" / "roms"
+        scanner = PlatformRomScanner(ext_map)
+        for platform_id, ext in self.EXCLUSIVE_PLATFORMS.items():
+            rom = fixtures / platform_id / f"test-rom{ext}"
+            if not rom.exists():
+                continue
+            # Use a clean subdirectory for each fixture
+            plat_dir = tmp_path / platform_id
+            plat_dir.mkdir()
+            (plat_dir / f"test-rom{ext}").write_bytes(rom.read_bytes())
+            results = scanner.inventory(plat_dir)
+            assert len(results) == 1
+            assert results[0].platform == platform_id
+            assert results[0].evidence == "exclusive-ext"
+
+    def test_root_platform_hint_classifies_non_archived_fixtures(
+        self, ext_map: dict[str, list[str]]
+    ) -> None:
+        """Non-archive fixtures are classified when root_platform is provided."""
+        fixtures = Path(__file__).resolve().parent.parent / "fixtures" / "roms"
+        scanner = PlatformRomScanner(ext_map)
+        for sys_dir in sorted(fixtures.iterdir()):
+            if not sys_dir.is_dir():
+                continue
+            for rom_file in sys_dir.iterdir():
+                if not rom_file.is_file():
+                    continue
+                # .zip is always "archived" (unknown) by design
+                if rom_file.suffix.lower() == ".zip":
+                    continue
+                result = scanner.inventory(sys_dir, root_platform=sys_dir.name)
+                assert len(result) == 1
+                assert result[0].platform == sys_dir.name
+                assert result[0].evidence == "root-wins"

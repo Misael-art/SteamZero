@@ -31,7 +31,8 @@
     }
   ],
   "paths": {
-    "config": "{XDG_CONFIG_HOME}/duckstation/settings.ini"
+    "config": "{XDG_CONFIG_HOME}/duckstation/settings.ini",
+    "enhancementsDir": "{XDG_CONFIG_HOME}/duckstation/gamesettings"
   },
   "configFormat": "ini",
   "verify": {
@@ -46,5 +47,11 @@
   ],
   "license": "CC-BY-NC-ND-4.0",
   "upstream": "https://github.com/stenzek/duckstation",
-  "notes": "Fonte migrada do Flatpak EOL para o AppImage oficial. O upstream descontinuou o ref Flathub em 2025-07-26 e a aplicação saiu do Flathub; manter aquela fonte deixava o adapter permanentemente em executor=none. A licença é CC-BY-NC-ND-4.0 desde 2024, e a LICENSE-MATRIX do projeto é explícita: instalar do upstream é permitido, redistribuir o binário no lockfile não — o engine baixa da URL oficial no install e nunca reempacota. A tag é versionada de propósito: o upstream também publica um 'latest' rolante, que serviria bytes diferentes sob a mesma URL e quebraria a fixação por SHA-256."
+  "notes": "Fonte migrada do Flatpak EOL para o AppImage oficial. O upstream descontinuou o ref Flathub em 2025-07-26 e a aplicação saiu do Flathub; manter aquela fonte deixava o adapter permanentemente em executor=none. A licença é CC-BY-NC-ND-4.0 desde 2024, e a LICENSE-MATRIX do projeto é explícita: instalar do upstream é permitido, redistribuir o binário no lockfile não — o engine baixa da URL oficial no install e nunca reempacota. A tag é versionada de propósito: o upstream também publica um 'latest' rolante, que serviria bytes diferentes sob a mesma URL e quebraria a fixação por SHA-256.",
+  "enhancements": {
+    "supplied": [],
+    "formats": [
+      "duckstation-ini"
+    ]
+  }
 }

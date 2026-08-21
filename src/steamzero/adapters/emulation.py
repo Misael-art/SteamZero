@@ -82,6 +82,7 @@ from steamzero.domain.emulation_workspace import (
     compute_readiness,
 )
 from steamzero.domain.game_enhancements import ProviderRole
+from steamzero.domain.game_identity import IdentityScheme, validate_identity_value
 from steamzero.domain.input_profiles import InputProfileManager
 from steamzero.domain.launch_profile import LaunchProfile, build_argv, find_core, parse_launch
 from steamzero.domain.library import PlatformDirectoryInventory, PlatformRomScanner
@@ -285,6 +286,34 @@ def _resolve_primary_emulator(
 
 
 _TITLE_ID = re.compile(r"^[0-9A-F]{16}$")
+
+
+def _valid_cached_title_id(title_id: str, scheme: Any) -> bool:
+    """Valida ``titleId`` do cache CONTRA O ESQUEMA declarado pelo jogo.
+
+    ``_TITLE_ID`` é o formato do Switch (16 hex). A Onda 1 passou a gravar em
+    ``titleId`` a identidade de qualquer plataforma (``SLUS_005.55``,
+    ``GM8E01``, ``BLUS30443``), e validar todas contra o padrão do Switch
+    descartava silenciosamente todo jogo não-Switch identificado: a varredura
+    achava e gravava, o carregamento jogava fora, e o jogo nunca aparecia na
+    biblioteca nem podia ser lançado.
+
+    A validação por esquema pertence ao domínio (``validate_identity_value``);
+    aqui só se escolhe o esquema. ``UNKNOWN`` é recusado de propósito — seu
+    padrão aceita qualquer coisa, e este valor vira nome de arquivo de melhoria.
+    """
+    if not isinstance(scheme, str) or not scheme:
+        # Cache legado, sem esquema: mantém o contrato antigo (Switch).
+        return _TITLE_ID.fullmatch(title_id) is not None
+    try:
+        parsed = IdentityScheme(scheme)
+    except ValueError:
+        return False
+    if parsed is IdentityScheme.UNKNOWN:
+        return False
+    return validate_identity_value(parsed, title_id)
+
+
 _FIRMWARE_VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+){0,3}$")
 _KEY_LINE = re.compile(r"^\s*([a-z0-9_]+)\s*=\s*([0-9a-fA-F]{32,})\s*$")
 _MASTER_KEY = re.compile(r"^master_key_([0-9a-f]{2})$")
@@ -1244,11 +1273,14 @@ class EmulationController:
         if not self._known_emulator(emulator_id):
             return None
         manifest = self._registry_factory().get(emulator_id)
+        # Raízes XDG do usuário, não os diretórios do SteamZero: o destino é o
+        # diretório do emulador de terceiros (~/.config/duckstation), e escrever
+        # sob ~/.config/steamzero/... produziria melhoria sem efeito nenhum.
         return resolve_enhancement_target(
             manifest.raw,
-            config_home=paths.config_home(),
-            data_home=paths.data_home(),
-            state_home=paths.state_home(),
+            config_home=paths.xdg_config_root(),
+            data_home=paths.xdg_data_root(),
+            state_home=paths.xdg_state_root(),
         )
 
     def _apply_launch_enhancements(
@@ -7389,7 +7421,9 @@ class EmulationController:
                 if not isinstance(game, dict):
                     continue
                 title_id = game.get("titleId")
-                if title_id is not None and _TITLE_ID.fullmatch(str(title_id)) is None:
+                if title_id is not None and not _valid_cached_title_id(
+                    str(title_id), game.get("identityScheme")
+                ):
                     continue
                 if not all(isinstance(game.get(field), str) for field in ("id", "name", "state")):
                     continue
