@@ -24,7 +24,7 @@
     "src/steamzero/adapters/mods",
     "src/steamzero/adapters/cheats"
   ],
-  "scopeDigest": "71e4508e940ee0af4fc0d8489af9857b8d7693dd9aed179f33f5e769c6996a7a",
+  "scopeDigest": "379c40809902267ba14362e628d6754390e7c850d2fc6c69792eb19def9ebfce",
   "dependsOn": [
     "SZ-EMULATION-M10"
   ],
@@ -93,7 +93,7 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Validacao fisica pendente: nenhum dos 5 emuladores alvo (DuckStation, PCSX2, Dolphin, RPCS3, Cemu) esta instalado no host, e a biblioteca real tem apenas jogos de Switch. Instalar um emulador alvo + ROM correspondente e lancar pela release instalada. Pendente tambem: nomes por identidade em dolphin-gameini e cemu-rules (hoje fixos), por isso esses dois manifestos nao declaram enhancements.",
+  "nextAction": "Validacao fisica pendente por bloqueio de ambiente: os 4 emuladores Flatpak (PCSX2, Dolphin, RPCS3, Cemu) nao instalam porque o engine nao resolve dl.flathub.org (2 tentativas, rollback limpo nas duas). DuckStation ESTA instalado (v0.1-11580, verify ok). Falta: release nova a partir de main instalada no host (a a46 ativa nao contem a costura) e uma imagem de disco com serial verificavel no PVD para o teste de lancamento real.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATOR-ENHANCEMENT"
   ],

@@ -112,8 +112,12 @@ def _codes_to_lines(codes: tuple[str, ...]) -> list[str]:
     return [line.strip() for line in codes]
 
 
-def render_rpcs3_yaml(recipe: EnhancementRecipe) -> RenderedEnhancementFile:
-    """Patch YAML do RPCS3 (categoria técnica; opcode be32 por linha)."""
+def render_rpcs3_yaml(recipe: EnhancementRecipe, serial: str) -> RenderedEnhancementFile:
+    """Patch YAML do RPCS3 em ``patches/steamzero-<serial>.yml``.
+
+    O RPCS3 carrega todo ``.yml`` do diretório, então o nome carrega o serial:
+    um ``patch.yml`` fixo faria o segundo jogo apagar o patch do primeiro.
+    """
     _guard_technical_only(recipe, EnhancementFileFormat.RPCS3_YAML)
     name = recipe.title.replace('"', "'")
     lines = [
@@ -137,13 +141,19 @@ def render_rpcs3_yaml(recipe: EnhancementRecipe) -> RenderedEnhancementFile:
         value = int(parts[1].replace("0x", ""), 16)
         lines.append(f"      - [be32, 0x{offset:08X}, 0x{value:08X}, 0x00000000]")
     data = ("\n".join(lines) + "\n").encode("utf-8")
-    return RenderedEnhancementFile("patch.yml", data, EnhancementFileFormat.RPCS3_YAML)
+    return RenderedEnhancementFile(
+        f"steamzero-{serial}.yml", data, EnhancementFileFormat.RPCS3_YAML
+    )
 
 
 def render_cemu_rules(
     recipe: EnhancementRecipe, title_ids: tuple[str, ...]
 ) -> RenderedEnhancementFile:
-    """rules.txt do Cemu: [Definition] + seção por cheat."""
+    """Graphic pack do Cemu: ``<pacote>/rules.txt``.
+
+    O Cemu descobre pacotes por subdiretório; um ``rules.txt`` na raiz seria
+    um pacote único compartilhado por toda a biblioteca.
+    """
     if not isinstance(title_ids, tuple) or not title_ids:
         raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="cemu-rules exige ao menos um titleId")
     lines = [
@@ -157,7 +167,9 @@ def render_cemu_rules(
     lines.append(f"[{recipe.title[:40]}]")
     lines.extend(_codes_to_lines(recipe.codes))
     data = ("\n".join(lines) + "\n").encode("utf-8")
-    return RenderedEnhancementFile("rules.txt", data, EnhancementFileFormat.CEMU_RULES)
+    return RenderedEnhancementFile(
+        f"steamzero-{title_ids[0]}/rules.txt", data, EnhancementFileFormat.CEMU_RULES
+    )
 
 
 def render_pcsx2_pnach(recipe: EnhancementRecipe, serial: str) -> RenderedEnhancementFile:
@@ -179,8 +191,12 @@ def render_pcsx2_pnach(recipe: EnhancementRecipe, serial: str) -> RenderedEnhanc
     return RenderedEnhancementFile(f"{serial}.pnach", data, EnhancementFileFormat.PCSX2_PNACH)
 
 
-def render_dolphin_gameini(recipe: EnhancementRecipe) -> RenderedEnhancementFile:
-    """GameINI do Dolphin: seção [Gecko] com códigos Gecko."""
+def render_dolphin_gameini(recipe: EnhancementRecipe, game_id: str) -> RenderedEnhancementFile:
+    """GameINI do Dolphin em ``GameSettings/<GameID>.ini``.
+
+    O Dolphin resolve o override pelo GameID de 6 caracteres do disco; um
+    ``game.ini`` fixo valeria para todos os jogos de uma vez.
+    """
     lines = [
         ENHANCEMENT_MARKER,
         f"# {recipe.title} (SteamZero, {recipe.source})",
@@ -190,7 +206,7 @@ def render_dolphin_gameini(recipe: EnhancementRecipe) -> RenderedEnhancementFile
     ]
     lines.extend(_codes_to_lines(recipe.codes))
     data = ("\n".join(lines) + "\n").encode("ascii")
-    return RenderedEnhancementFile("game.ini", data, EnhancementFileFormat.DOLPHIN_GAMEINI)
+    return RenderedEnhancementFile(f"{game_id}.ini", data, EnhancementFileFormat.DOLPHIN_GAMEINI)
 
 
 def render_duckstation_ini(
@@ -252,7 +268,17 @@ def render_file(
             raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="pcsx2-pnach exige serial")
         return renderer(recipe, serial)
     if key == "cemu-rules":
+        if not title_ids:
+            raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="cemu-rules exige titleId")
         return renderer(recipe, title_ids)
+    if key == "rpcs3-yaml":
+        if not serial:
+            raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="rpcs3-yaml exige serial")
+        return renderer(recipe, serial)
+    if key == "dolphin-gameini":
+        if not serial:
+            raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="dolphin-gameini exige GameID")
+        return renderer(recipe, serial)
     if key == "duckstation-ini":
         if not serial:
             raise SteamZeroError("E-ENHANCEMENT-DENIED", detail="duckstation-ini exige serial")

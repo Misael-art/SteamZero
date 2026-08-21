@@ -256,13 +256,34 @@ def first_compatible_format(kind: EnhancementKind, declared: tuple[str, ...]) ->
     return None
 
 
+#: Esquemas cujo valor identifica o jogo no NOME do arquivo de melhoria
+#: (serial PSX/PS2, GameID do GameCube/Wii, TITLE_ID do PS3).
+_SERIAL_SCHEMES = frozenset(
+    {
+        "psx-serial",
+        "ps2-serial",
+        "ps2-elf-crc32",
+        "gc-game-id",
+        "wii-game-id",
+        "ps3-title-id",
+    }
+)
+
+#: Esquemas cujo valor entra no CONTEÚDO como lista de títulos (Cemu, Switch).
+_TITLE_ID_SCHEMES = frozenset({"switch-title-id", "wiiu-product-id"})
+
+
 def identity_parts(scheme: str | None, value: str | None) -> tuple[str | None, tuple[str, ...]]:
-    """Deriva (serial, title_ids) da identidade verificada do jogo."""
+    """Deriva (serial, title_ids) da identidade verificada do jogo.
+
+    Sem isto, GameCube, Wii, PS3 e Wii U caem no caso vazio e nenhum renderer
+    consegue nomear o arquivo por jogo — a melhoria vira arquivo compartilhado.
+    """
     if not isinstance(scheme, str) or not isinstance(value, str) or not value:
         return None, ()
-    if scheme == "switch-title-id":
+    if scheme in _TITLE_ID_SCHEMES:
         return None, (value.upper(),)
-    if scheme in {"psx-serial", "ps2-serial", "ps2-elf-crc32"}:
+    if scheme in _SERIAL_SCHEMES:
         return value, ()
     return None, ()
 

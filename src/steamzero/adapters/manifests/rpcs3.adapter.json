@@ -42,5 +42,14 @@
   ],
   "license": "GPL-2.0-only",
   "upstream": "https://github.com/RPCS3/rpcs3",
-  "notes": "Fonte Flathub fixada no commit da série 0.0.41."
+  "notes": "Fonte Flathub fixada no commit da série 0.0.41.",
+  "paths": {
+    "enhancementsDir": "{FLATPAK_CONFIG_HOME}/rpcs3/patches"
+  },
+  "enhancements": {
+    "supplied": [],
+    "formats": [
+      "rpcs3-yaml"
+    ]
+  }
 }
