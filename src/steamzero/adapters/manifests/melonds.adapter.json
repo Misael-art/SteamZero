@@ -35,9 +35,11 @@
   },
   "configFormat": "ini",
   "verify": {
+    "smokeMode": "flatpak-info",
     "smokeTest": [
-      "--version"
-    ]
+      "--show-commit"
+    ],
+    "smokeMatch": "^66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7$"
   },
   "compat": [
     "steamos",

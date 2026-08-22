@@ -217,6 +217,13 @@ def test_bundled_pcsx2_smoke_uses_single_dash_version() -> None:
     assert item.verify_smoke_match == "^PCSX2 v"
 
 
+def test_bundled_melonds_smoke_checks_the_pinned_flatpak_commit() -> None:
+    item = AdapterRegistry.bundled().get("melonds")
+    assert item.verify_smoke_mode == "flatpak-info"
+    assert item.verify_smoke_test == ("--show-commit",)
+    assert item.verify_smoke_match == f"^{item.sources[0].version}$"
+
+
 def test_manifest_rejects_invalid_smoke_match_regex() -> None:
     data = portable_manifest("1.0.0", b"v1")
     data["verify"]["smokeMatch"] = "([unclosed"

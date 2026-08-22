@@ -3,10 +3,10 @@
   "kind": "workstream",
   "id": "WS-2026-08-EMULATION-LONG-OPERATIONS",
   "item": "SZ-EMULATION-LONG-OPERATIONS",
-  "branch": "codex/flycast-metadata-smoke",
-  "baseRef": "54f2fc4da9b7c4a243eda40c11905c7ffbd4920d",
-  "owner": "codex-flycast-metadata-smoke",
-  "state": "blocked",
+  "branch": "codex/melonds-metadata-smoke",
+  "baseRef": "bd598c516bce2e326da02740539f03897f1434a4",
+  "owner": "codex-melonds-metadata-smoke",
+  "state": "active",
   "exclusivePaths": [
     "src/steamzero/service/client.py",
     "src/steamzero/service/core.py",
@@ -16,6 +16,7 @@
     "src/steamzero/adapters/registry.py",
     "src/steamzero/adapters/component-lock.json",
     "src/steamzero/adapters/manifests/flycast.adapter.json",
+    "src/steamzero/adapters/manifests/melonds.adapter.json",
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/schemas/adapter-v1.schema.json",
     "tools/install_host.py",
@@ -26,16 +27,16 @@
     "tests/integration/test_emulator_conformance.py",
     "tests/integration/test_flatpak_executor.py",
     "tests/integration/test_host_installer.py",
-    "tests/unit/test_desktop_dashboard.py",
-    "docs/status/items/emulation-long-operations.json",
-    "docs/status/workstreams/emulation-long-operations.json"
+    "tests/unit/test_desktop_dashboard.py"
   ],
   "sharedPaths": [
     "docs/WORKLOG.md",
     "docs/STATUS.md",
     "docs/ACTIVE-WORK.md",
-    "docs/status/COVERAGE.md"
+    "docs/status/COVERAGE.md",
+    "docs/status/items/emulation-long-operations.json",
+    "docs/status/workstreams/emulation-long-operations.json"
   ],
-  "nextAction": "Promover o smoke flatpak-info do Flycast e repetir seu install físico; Cemu e RPCS3 já foram validados no host pelo runner transitório. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
+  "nextAction": "Promover o smoke flatpak-info do melonDS e repetir seu install físico; Cemu, RPCS3 e Flycast já foram validados no host pelo runner transitório. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
   "updatedAt": "2026-08-22"
 }
