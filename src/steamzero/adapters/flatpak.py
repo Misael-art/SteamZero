@@ -11,6 +11,7 @@ o deployment anterior. Dados da aplicação nunca são apagados no rollback.
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 import shutil
@@ -59,15 +60,38 @@ Runner = Callable[[Sequence[str], float], CommandResult]
 
 
 def run_flatpak_command(argv: Sequence[str], timeout: float) -> CommandResult:
-    """Executa somente o binário Flatpak resolvido, com argv e timeout explícitos."""
+    """Executa Flatpak pinado, fora do mount namespace endurecido do daemon.
+
+    Flatpak cria um sandbox Bubblewrap que monta uma ``procfs`` própria. A unit
+    do core deliberadamente protege subárvores de ``/proc``; o kernel então
+    recusa a procfs aninhada. Quando chamado pelo daemon, ``systemd-run`` pede
+    ao user manager um serviço transitório limpo, mantendo o daemon endurecido
+    e sem aceitar comando ou propriedade arbitrários.
+    """
     if not argv or argv[0] != "flatpak":
         return CommandResult(127, "", "comando Flatpak inválido")
     executable = shutil.which("flatpak")
     if executable is None:
         return CommandResult(127, "", "flatpak não encontrado")
+    command: list[str] = [executable, *argv[1:]]
+    if os.environ.get("STEAMZERO_CLASS") == "daemon":
+        systemd_run = shutil.which("systemd-run")
+        if systemd_run is None:
+            return CommandResult(127, "", "systemd-run não encontrado para Flatpak do daemon")
+        command = [
+            systemd_run,
+            "--user",
+            "--wait",
+            "--pipe",
+            "--collect",
+            "--quiet",
+            "--service-type=exec",
+            "--",
+            *command,
+        ]
     try:
         completed = subprocess.run(  # noqa: S603
-            [executable, *argv[1:]],
+            command,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,

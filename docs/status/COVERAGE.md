@@ -24,7 +24,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 10 | 3 | 3 | dev |  |
+| SZ-EMULATION-LONG-OPERATIONS | 13 | 3 | 3 | dev |  |
 | SZ-EMULATION-M10 | 6 | 2 | 1 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |

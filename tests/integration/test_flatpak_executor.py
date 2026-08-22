@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from types import TracebackType
@@ -155,6 +156,71 @@ def test_cli_smoke_sets_manifest_environment_before_the_flatpak_ref() -> None:
             flatpak_module._SMOKE_TIMEOUT,
         )
     ]
+
+
+def test_daemon_runs_flatpak_in_a_clean_user_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bubblewrap monta procfs própria sem afrouxar a unit do core."""
+    monkeypatch.setenv("STEAMZERO_CLASS", "daemon")
+    monkeypatch.setattr(
+        flatpak_module.shutil,
+        "which",
+        lambda command: {"flatpak": "/usr/bin/flatpak", "systemd-run": "/usr/bin/systemd-run"}.get(
+            command
+        ),
+    )
+    calls: list[tuple[object, ...]] = []
+
+    def run(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((tuple(argv), kwargs))
+        return subprocess.CompletedProcess(argv, 0, "ok", "")
+
+    monkeypatch.setattr(flatpak_module.subprocess, "run", run)
+
+    result = flatpak_module.run_flatpak_command(("flatpak", "run", "--user", REF), 90.0)
+
+    assert result == CommandResult(0, "ok", "")
+    assert calls == [
+        (
+            (
+                "/usr/bin/systemd-run",
+                "--user",
+                "--wait",
+                "--pipe",
+                "--collect",
+                "--quiet",
+                "--service-type=exec",
+                "--",
+                "/usr/bin/flatpak",
+                "run",
+                "--user",
+                REF,
+            ),
+            {
+                "stdin": subprocess.DEVNULL,
+                "capture_output": True,
+                "text": True,
+                "timeout": 90.0,
+                "check": False,
+            },
+        )
+    ]
+
+
+def test_daemon_refuses_flatpak_when_clean_user_service_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("STEAMZERO_CLASS", "daemon")
+    monkeypatch.setattr(
+        flatpak_module.shutil,
+        "which",
+        lambda command: "/usr/bin/flatpak" if command == "flatpak" else None,
+    )
+
+    result = flatpak_module.run_flatpak_command(("flatpak", "list", "--user"), 60.0)
+
+    assert result == CommandResult(127, "", "systemd-run não encontrado para Flatpak do daemon")
 
 
 def test_cli_status_uses_roomy_timeout_for_list_and_info() -> None:
