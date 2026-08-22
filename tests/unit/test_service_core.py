@@ -425,6 +425,80 @@ def test_try_daemon_uses_method_timeout_for_slow_workspace(
     assert elapsed >= 2.5, "resposta só chega depois do antigo timeout de 2,0 s"
 
 
+def test_component_apply_waits_beyond_legacy_timeout_with_explicit_bound(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Install Flatpak pode levar minutos; dois segundos tornam-no ambíguo.
+
+    A chamada ainda tem uma única resposta final do daemon. O limite é explícito
+    e permite acompanhar o operationId persistido se o transporte expirar.
+    """
+    import time
+
+    from steamzero.service import client as mod
+
+    runtime = tmp_path / "run"
+    runtime.mkdir(mode=0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    socket_path = safe_socket_path()
+    response = b'{"jsonrpc":"2.0","id":1,"result":{"envelope":{"ok":true},"exitCode":0}}\n'
+    thread, server = _slow_daemon_response(socket_path, delay=3.0, response=response)
+    monkeypatch.setattr(mod, "verify_generation", lambda **kw: {"sourceCommit": "x"})
+    monkeypatch.delenv("STEAMZERO_NO_DAEMON", raising=False)
+    try:
+        started = time.monotonic()
+        result = cli._try_daemon(
+            "component", "apply", ["--plan-id", "plan", "--confirm", "token"], "corr-apply"
+        )
+        elapsed = time.monotonic() - started
+    finally:
+        thread.join(timeout=10)
+        server.close()
+    assert result is not None, "apply não pode virar resultado ambíguo após 2 s"
+    envelope, code = result
+    assert code == 0
+    assert envelope["ok"] is True
+    assert elapsed >= 2.5, "a resposta só chega depois do antigo prazo de 2 s"
+
+
+def test_component_apply_timeout_names_the_operation_to_follow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Timeout de mutação não permite retry, mas deixa o trabalho observável."""
+    from steamzero.service import client as mod
+
+    monkeypatch.setattr(mod, "verify_generation", lambda **_kw: {"sourceCommit": "x"})
+    monkeypatch.setattr(
+        mod,
+        "invoke",
+        lambda *_args, **_kw: (_ for _ in ()).throw(CoreAmbiguousResult("resultado ambíguo")),
+    )
+    result = cli._try_daemon(
+        "component", "apply", ["--plan-id", "PLAN-42", "--confirm", "token"], "corr-timeout"
+    )
+    assert result is not None
+    envelope, code = result
+    assert code == cli.EXIT_FAILURE
+    error = envelope["error"]
+    assert error["operationId"] == "PLAN-42"
+    assert "operations list --follow --operation-id PLAN-42" in error["detail"]
+
+
+def test_handler_ignores_late_write_after_client_disconnect() -> None:
+    """O cliente pode desistir; o daemon permanece saudável e não propaga erro."""
+
+    class BrokenWriter:
+        def write(self, _payload: bytes) -> int:
+            raise BrokenPipeError()
+
+        def flush(self) -> None:
+            raise BrokenPipeError()
+
+    handler = object.__new__(core.CoreRequestHandler)
+    handler.wfile = BrokenWriter()  # type: ignore[assignment]
+    assert handler._write({"jsonrpc": "2.0", "id": 1, "result": {}}) is False
+
+
 def test_subscription_client_reconnects_from_confirmed_cursor_without_duplicates(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

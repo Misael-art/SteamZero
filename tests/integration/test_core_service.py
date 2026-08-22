@@ -182,6 +182,38 @@ def test_daemon_rejects_unknown_method_and_unknown_parameters(core_service: Path
     assert invalid["error"]["code"] == -32602  # type: ignore[index]
 
 
+def test_daemon_finishes_component_apply_after_client_disconnect(
+    inprocess_core: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A execução pertence ao daemon, não à conexão que a iniciou."""
+    started = threading.Event()
+    release = threading.Event()
+    finished = threading.Event()
+
+    def apply(_args: list[str], correlation_id: str) -> tuple[dict[str, object], int]:
+        started.set()
+        assert release.wait(timeout=5), "o teste precisa liberar o apply"
+        finished.set()
+        return ({"ok": True, "correlationId": correlation_id}, cli.EXIT_OK)
+
+    monkeypatch.setitem(cli.HANDLERS, ("component", "apply"), apply)
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.connect(str(inprocess_core))
+    client.sendall(
+        b'{"jsonrpc":"2.0","id":1,"method":"component.apply",'
+        b'"params":{"planId":"plan","confirmToken":"token"}}\n'
+    )
+    client.close()
+    assert started.wait(timeout=5)
+    release.set()
+    assert finished.wait(timeout=5)
+    hello = _rpc(
+        inprocess_core,
+        {"jsonrpc": "2.0", "id": 2, "method": "system.hello", "params": {}},
+    )
+    assert hello["result"]["transport"] == "unix-peercred"  # type: ignore[index]
+
+
 def test_daemon_exposes_playtime_without_process_or_command_data(
     inprocess_core: Path,
 ) -> None:

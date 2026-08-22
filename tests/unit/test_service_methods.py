@@ -113,6 +113,13 @@ def test_method_specs_carry_per_method_transport_timeout() -> None:
         assert spec.timeout > 0.0
 
 
+def test_component_apply_has_an_explicit_bounded_transport_timeout() -> None:
+    """Install governado não pode esperar para sempre se o daemon travar."""
+    by_method = {spec.method: spec for spec in METHOD_SPECS}
+    assert by_method["component.apply"].mutation is True
+    assert by_method["component.apply"].timeout == 1900.0
+
+
 def test_frontends_specs_are_closed_and_spec_file_stays_local() -> None:
     """O transporte do daemon nunca recebe paths: só a spec JSON fechada."""
     plan = next(spec for spec in METHOD_SPECS if spec.method == "frontends.plan")

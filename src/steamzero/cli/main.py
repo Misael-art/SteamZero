@@ -2327,13 +2327,24 @@ def _try_daemon(
             return None
         # Mutação NUNCA é repetida localmente quando o resultado é ambíguo —
         # repetir é como se produz efeito duplicado.
+        operation_id = params.get("planId") if (domain, action) == ("component", "apply") else None
+        tracking = (
+            "; a operação pode continuar no daemon: acompanhe com "
+            f"`steamzero operations list --follow --operation-id {operation_id}`"
+            if operation_id is not None
+            else ""
+        )
         return (
             build_envelope(
                 domain,
                 action or "",
                 status="failed",
                 ok=False,
-                error=build_error("E-API-CONTRACT", detail="resultado da chamada é ambíguo"),
+                error=build_error(
+                    "E-API-CONTRACT",
+                    detail="resultado da chamada é ambíguo" + tracking,
+                    operation_id=operation_id,
+                ),
                 correlation_id=correlation_id,
             ),
             EXIT_FAILURE,

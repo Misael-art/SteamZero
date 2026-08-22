@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-EMULATION-LONG-OPERATIONS",
+  "title": "Operações longas de emulação com acompanhamento",
+  "domain": "emulation",
+  "implementation": "complete",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/service/client.py",
+    "src/steamzero/service/core.py",
+    "src/steamzero/service/methods.py",
+    "src/steamzero/cli/main.py",
+    "src/steamzero/adapters/flatpak.py",
+    "src/steamzero/adapters/lifecycle.py",
+    "tests/unit/test_service_core.py",
+    "tests/unit/test_service_methods.py",
+    "tests/integration/test_component_lifecycle.py",
+    "tests/integration/test_core_service.py"
+  ],
+  "scopeDigest": "8758852808202d9968b7330007166f211fda1096f518332f2e527489b74c3ded",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "component.apply ultrapassa o antigo prazo de dois segundos, mas conserva um limite de transporte explícito.",
+    "A desconexão do cliente não interrompe a execução no daemon nem produz traceback.",
+    "O planId externo identifica a operação Flatpak persistida e seus eventos applying e terminais podem ser seguidos.",
+    "Mutação com resultado ambíguo nunca é repetida localmente.",
+    "Teste determinístico reproduz uma operação acima de dois segundos e prova a conclusão observável."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_service_core.py",
+      "command": "run_tests_isolated.py tests/unit/test_service_core.py tests/unit/test_service_methods.py -q",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests",
+      "command": "run_tests_isolated.py tests -q; ruff check src tools tests; ruff format --check src tools tests; mypy src; make independence boundaries; make status-check",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Promover a release governada e validar no host um component apply Flatpak com desconexão controlada e acompanhamento por operations list --follow.",
+  "activeWorkstreams": [
+    "WS-2026-08-EMULATION-LONG-OPERATIONS"
+  ],
+  "updatedAt": "2026-08-21",
+  "notes": "Aberto a partir da validação física da release 0.1.0a46: o apply é executado pelo daemon e o timeout fixo do cliente torna installs Flatpak ambíguos. A correção preserva uma janela explícita de 1 900 s e transforma o planId externo em operationId Flatpak, de modo que a queda do cliente não perde a observação de applying e do terminal persistidos."
+}

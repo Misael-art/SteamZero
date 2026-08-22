@@ -787,6 +787,9 @@ class ComponentLifecycle:
                 confirm_token = prepared.plan.confirm_token
         now = self._utc_now()
         envelope = ComponentPlan(
+            # O ComponentPlan guarda seu próprio identificador; o Flatpak
+            # delegado mantém outro, no diretório transacional compartilhado.
+            # No apply, o primeiro é passado como operationId observável.
             plan_id=ids.new_ulid(),
             confirm_token=confirm_token,
             adapter_id=manifest.id,
@@ -864,7 +867,11 @@ class ComponentLifecycle:
                 repair_op_id = self._mark_repairing(manifest, repair_observed, envelope.plan_id)
             delegated_id = str(envelope.delegated["flatpakPlanId"])
             try:
-                result = self._flatpak().apply(delegated_id, confirm_token)
+                result = self._flatpak().apply(
+                    delegated_id,
+                    confirm_token,
+                    operation_id=envelope.plan_id,
+                )
             except Exception:
                 if repair_op_id is not None:
                     self._finish_failed_repair(repair_op_id, manifest, repair_observed)
