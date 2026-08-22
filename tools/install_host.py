@@ -651,11 +651,13 @@ ProtectKernelTunables=true
 # AF_UNIX é o socket de controle. AF_INET/AF_INET6 são obrigatórios porque o
 # ciclo de componentes roda NO DAEMON: `component apply` delega a mutação para
 # cá, e os adapters declaram fontes de rede (remoto Flatpak, URL de AppImage).
+# AF_NETLINK é estritamente necessário ao Bubblewrap do Flatpak para configurar
+# a loopback do sandbox antes do smoke test; sem ele o deployment é revertido.
 # Só com AF_UNIX todo install que precise baixar falha com
 # "[6] Could not resolve hostname" — o executor era proibido de alcançar as
 # fontes que ele mesmo declara. O endurecimento restante (NoNewPrivileges,
 # ProtectSystem=strict, MemoryDenyWriteExecute) permanece intacto.
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 LockPersonality=true
 MemoryDenyWriteExecute=true
 """
