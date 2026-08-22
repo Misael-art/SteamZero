@@ -267,7 +267,7 @@
     },
     {
       "id": "melonds",
-      "manifestHash": "8c6f94b55d7ce9fa87d74e21a55cb5197aae490546865a0bab339e917479daa9",
+      "manifestHash": "1329d3075f4fe1298546f47bc38245cbddd650ca10893ed26c51d2b6a9dd402e",
       "source": {
         "type": "flatpak",
         "version": "66752a190012baa6d929936577818db9f70ab178a3651f4bc86a5b02d2d350d7",
