@@ -554,7 +554,9 @@ class FlatpakExecutor:
         self._save_plan(plan)
         return plan
 
-    def apply(self, plan_id: str, confirm_token: str) -> FlatpakApplyResult:
+    def apply(
+        self, plan_id: str, confirm_token: str, *, operation_id: str | None = None
+    ) -> FlatpakApplyResult:
         # A leitura externa ao lock serve apenas para resolver o recurso. Toda
         # precondição que autoriza efeito é recarregada e revalidada sob o lock.
         plan = self._load_plan(plan_id)
@@ -562,7 +564,10 @@ class FlatpakExecutor:
         manifest, source = self._flatpak_source(plan.adapter_id)
         if self._source_fingerprint(source) != (plan.ref, plan.remote, plan.target_commit):
             raise SteamZeroError("E-TX-STALE-PLAN", detail="manifesto mudou após o plano")
-        lock_owner = ids.new_ulid()
+        # O lifecycle pode reservar um operationId conhecido pelo cliente antes
+        # de iniciar o trabalho. O plano Flatpak segue em seu namespace próprio,
+        # portanto não há colisão entre os dois arquivos de plano.
+        lock_owner = operation_id or ids.new_ulid()
         with ResourceLock(f"flatpak:user:{plan.ref}", job_id=lock_owner, lease_seconds=3600):
             plan = self._load_plan(plan_id)
             self._validate_pending(plan, confirm_token)

@@ -432,11 +432,24 @@ class TestPlanSurvivesProcess:
         envelope = first.plan("retroarch", "install")
         assert envelope.executor == "flatpak"
         assert envelope.delegated["flatpakPlanId"]
+        assert envelope.plan_id != envelope.delegated["flatpakPlanId"]
 
         second = bundled_with_fake(fake, store)
         result = second.apply(envelope.plan_id, envelope.confirm_token)
         assert result["status"] == "ok"
         assert result["executor"] == "flatpak"
+        assert result["operationId"] == envelope.plan_id
+        assert store.get_operation(envelope.plan_id)["state"] == "committed"  # type: ignore[index]
+        events, _more = store.events_page(
+            after_seq=0,
+            limit=10,
+            kinds=["operation.state"],
+            entities=[f"operation:{envelope.plan_id}"],
+        )
+        assert [json.loads(event["payload_json"]) for event in events] == [
+            {"state": "applying"},
+            {"state": "committed"},
+        ]
         assert second.status("retroarch")["state"] == "installed"
 
     def test_legacy_flatpak_v1_plan_still_applies(self, store: state.StateStore) -> None:

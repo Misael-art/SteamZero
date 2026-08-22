@@ -14,7 +14,7 @@
     "tests/integration/test_vm_harness.py",
     "tools/vm_harness"
   ],
-  "scopeDigest": "24d023c2f79f366c86715f3bab9eacd3f4439fb1cf5f9eab16c7e8ae83c75c19",
+  "scopeDigest": "7a5fb5de02c66e87e2080f5f809531561e81d70d96c05d9b0ce9c5ef15d166a5",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-A7",

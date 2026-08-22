@@ -12,6 +12,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+# A UI já reserva 1 900 000 ms para instalação governada. O transporte do CLI
+# usa o mesmo limite explícito: é suficiente para download + verificação, mas
+# não deixa uma thread do daemon travada virar espera infinita para o usuário.
+_COMPONENT_APPLY_TIMEOUT = 1900.0
+
 
 class InvalidParams(ValueError):
     """Parâmetros RPC não correspondem ao schema fechado do método."""
@@ -159,7 +164,17 @@ METHOD_SPECS: tuple[MethodSpec, ...] = (
     MethodSpec("component.list", "component", "list"),
     MethodSpec("component.status", "component", "status", (_ID,)),
     MethodSpec("component.plan", "component", "plan", (_ID,), mutation=True),
-    MethodSpec("component.apply", "component", "apply", (_PLAN_ID, _CONFIRM), mutation=True),
+    # Uma operação Flatpak pode baixar e verificar artefatos por minutos. O
+    # limite é deliberado, e o planId também identifica a operação persistida:
+    # em timeout/desconexão, ``operations list --follow`` mostra o terminal.
+    MethodSpec(
+        "component.apply",
+        "component",
+        "apply",
+        (_PLAN_ID, _CONFIRM),
+        mutation=True,
+        timeout=_COMPONENT_APPLY_TIMEOUT,
+    ),
     MethodSpec("component.rollback", "component", "rollback", (_OPERATION_ID,), mutation=True),
     MethodSpec("component.recover", "component", "recover", mutation=True),
     MethodSpec("session.environment", "session", "environment"),

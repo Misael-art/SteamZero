@@ -92,10 +92,15 @@ class CoreRequestHandler(socketserver.StreamRequestHandler):
                     return
             self._write(response)
 
-    def _write(self, response: dict[str, Any]) -> None:
+    def _write(self, response: dict[str, Any]) -> bool:
+        """Escreve uma resposta sem deixar cliente desconectado derrubar a thread."""
         payload = json.dumps(response, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        self.wfile.write(payload + b"\n")
-        self.wfile.flush()
+        try:
+            self.wfile.write(payload + b"\n")
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError, OSError):
+            return False
+        return True
 
     def _handle_subscription(self, raw: bytes) -> None:
         parsed = _parse_subscription(raw)
