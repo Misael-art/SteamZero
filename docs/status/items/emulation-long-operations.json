@@ -15,16 +15,22 @@
     "src/steamzero/service/methods.py",
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/flatpak.py",
+    "src/steamzero/adapters/registry.py",
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/adapters/manifests/flycast.adapter.json",
     "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/schemas/adapter-v1.schema.json",
     "tools/install_host.py",
     "tests/unit/test_service_core.py",
     "tests/unit/test_service_methods.py",
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_core_service.py",
+    "tests/integration/test_emulator_conformance.py",
     "tests/integration/test_flatpak_executor.py",
-    "tests/integration/test_host_installer.py"
+    "tests/integration/test_host_installer.py",
+    "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "a59b213b6c63e50729bcb4a9d3ff550ac864f28dd59aa193d97caa20e960b42d",
+  "scopeDigest": "00158c7b6837fb3588832802c8d0cd92f8e6016f688aed678ff31f01ce3f40c8",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -54,10 +60,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Executar os comandos Flatpak validados em um serviço transitório do user manager, preservando o hardening do daemon, e validar no host Cemu após a release governada.",
+  "nextAction": "Promover o smoke de metadados do Flycast, que não aceita --version, e repetir seu install físico; Cemu e RPCS3 já foram concluídos pelo runner transitório sem afrouxar o daemon.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
   "updatedAt": "2026-08-22",
-  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. O próximo passo mantém o daemon endurecido e reencaminha somente argv Flatpak validados a um serviço transitório do user manager."
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast iniciou GPU e controle, mas não aceita --version; o timeout o reverteu sem deployment parcial. O próximo patch substitui somente esse smoke por leitura de commit Flatpak fixado."
 }

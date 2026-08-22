@@ -69,7 +69,7 @@
     },
     {
       "id": "flycast",
-      "manifestHash": "89e4a4ea6c8cec02f512bd98d24d46e0fe6fb81f3c8d932886cbbef97dd9d3c2",
+      "manifestHash": "42adb15ef896b8e71a34ae98609860ea1c44acd34643777dd4209776126eca3c",
       "source": {
         "type": "flatpak",
         "version": "5bb79aad0d2f5e28c44c6a66c320f5a2609abe349755913a286da3b9ff1949dc",

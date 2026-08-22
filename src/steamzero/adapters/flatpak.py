@@ -164,6 +164,7 @@ class FlatpakPort(Protocol):
         environment: Sequence[tuple[str, str]] = (),
         exit_codes: Sequence[int] = (0,),
         match: str | None = None,
+        mode: str = "application",
     ) -> None: ...
 
 
@@ -310,6 +311,7 @@ class FlatpakCLI:
         environment: Sequence[tuple[str, str]] = (),
         exit_codes: Sequence[int] = (0,),
         match: str | None = None,
+        mode: str = "application",
     ) -> None:
         _require_ref(ref)
         if not arguments or any("\x00" in item or len(item) > 256 for item in arguments):
@@ -318,15 +320,26 @@ class FlatpakCLI:
             raise SteamZeroError("E-API-SCHEMA", detail="ambiente de smoke Flatpak inválido")
         if not exit_codes:
             raise SteamZeroError("E-API-SCHEMA", detail="smoke Flatpak sem códigos de saída")
-        argv = (
-            "flatpak",
-            "run",
-            "--user",
-            "--die-with-parent",
-            *(f"--env={key}={value}" for key, value in environment),
-            ref,
-            *arguments,
-        )
+        argv: tuple[str, ...]
+        if mode == "flatpak-info":
+            if tuple(arguments) != ("--show-commit",) or environment:
+                raise SteamZeroError(
+                    "E-API-SCHEMA",
+                    detail="smoke flatpak-info exige somente --show-commit e sem ambiente",
+                )
+            argv = ("flatpak", "info", "--user", "--show-commit", ref)
+        elif mode == "application":
+            argv = (
+                "flatpak",
+                "run",
+                "--user",
+                "--die-with-parent",
+                *(f"--env={key}={value}" for key, value in environment),
+                ref,
+                *arguments,
+            )
+        else:
+            raise SteamZeroError("E-API-SCHEMA", detail=f"modo de smoke Flatpak inválido: {mode}")
         result = self._runner(argv, _SMOKE_TIMEOUT)
         codes_ok = result.returncode in exit_codes
         match_ok = match is None or re.search(match, f"{result.stdout}\n{result.stderr}", re.M)
@@ -641,6 +654,7 @@ class FlatpakExecutor:
                     manifest.verify_environment,
                     manifest.verify_smoke_exit_codes,
                     manifest.verify_smoke_match,
+                    manifest.verify_smoke_mode,
                 )
                 final = self._flatpak.status(plan.ref)
                 self._persist(manifest, final)

@@ -101,6 +101,7 @@ class AdapterManifest:
     license: str
     upstream: str
     verify_smoke_test: tuple[str, ...]
+    verify_smoke_mode: str
     verify_environment: tuple[tuple[str, str], ...]
     verify_smoke_exit_codes: tuple[int, ...]
     verify_smoke_match: str | None
@@ -147,6 +148,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
             "E-API-SCHEMA", detail=f"adapter {data['id']} sem capacidades: {sorted(missing)}"
         )
     smoke = tuple(str(value) for value in data.get("verify", {}).get("smokeTest", ()))
+    smoke_mode = str(data.get("verify", {}).get("smokeMode", "application"))
     environment = tuple(
         sorted(
             (str(key), str(value))
@@ -244,6 +246,7 @@ def load_manifest(data: dict[str, Any]) -> AdapterManifest:
         license=data["license"],
         upstream=data["upstream"],
         verify_smoke_test=smoke,
+        verify_smoke_mode=smoke_mode,
         verify_environment=environment,
         verify_smoke_exit_codes=smoke_codes,
         verify_smoke_match=smoke_match,
