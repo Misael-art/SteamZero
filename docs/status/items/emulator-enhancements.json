@@ -22,9 +22,10 @@
     "src/steamzero/adapters/discovery/format_parsers.py",
     "src/steamzero/core/fs.py",
     "src/steamzero/adapters/mods",
-    "src/steamzero/adapters/cheats"
+    "src/steamzero/adapters/cheats",
+    "docs/diagnostics/evidence/SZ-EMULATION-ENHANCEMENTS"
   ],
-  "scopeDigest": "0354792437939864d3801b7ce440964e975d95910772ed7dcd8b8cd89f50ddd4",
+  "scopeDigest": "4b6370abf76fcebfb0baf7d454d8057aff4815a6c9e195a8add701e5eaec24c3",
   "dependsOn": [
     "SZ-EMULATION-M10"
   ],
