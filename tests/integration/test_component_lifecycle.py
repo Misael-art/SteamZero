@@ -77,6 +77,7 @@ class FakeFlatpak:
         environment: Sequence[tuple[str, str]] = (),
         exit_codes: Sequence[int] = (0,),
         match: str | None = None,
+        mode: str = "application",
     ) -> None:
         self.calls.append(("smoke", ref, arguments, environment, exit_codes, match))
         if self.smoke_error is not None:

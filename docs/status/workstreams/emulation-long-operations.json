@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-EMULATION-LONG-OPERATIONS",
   "item": "SZ-EMULATION-LONG-OPERATIONS",
-  "branch": "codex/flatpak-sandbox-runner",
-  "baseRef": "2bfa55f050074bdbf7743ad6b185baaf122291ed",
-  "owner": "codex-flatpak-sandbox-runner",
+  "branch": "codex/flycast-metadata-smoke",
+  "baseRef": "54f2fc4da9b7c4a243eda40c11905c7ffbd4920d",
+  "owner": "codex-flycast-metadata-smoke",
   "state": "blocked",
   "exclusivePaths": [
     "src/steamzero/service/client.py",
@@ -13,14 +13,20 @@
     "src/steamzero/service/methods.py",
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/flatpak.py",
+    "src/steamzero/adapters/registry.py",
+    "src/steamzero/adapters/component-lock.json",
+    "src/steamzero/adapters/manifests/flycast.adapter.json",
     "src/steamzero/adapters/lifecycle.py",
+    "src/steamzero/schemas/adapter-v1.schema.json",
     "tools/install_host.py",
     "tests/unit/test_service_core.py",
     "tests/unit/test_service_methods.py",
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_core_service.py",
+    "tests/integration/test_emulator_conformance.py",
     "tests/integration/test_flatpak_executor.py",
     "tests/integration/test_host_installer.py",
+    "tests/unit/test_desktop_dashboard.py",
     "docs/status/items/emulation-long-operations.json",
     "docs/status/workstreams/emulation-long-operations.json"
   ],
@@ -30,6 +36,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Fechar o runner transitório para Flatpak sem afrouxar o daemon; promover e validar Cemu no host. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
+  "nextAction": "Promover o smoke flatpak-info do Flycast e repetir seu install físico; Cemu e RPCS3 já foram validados no host pelo runner transitório. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
   "updatedAt": "2026-08-22"
 }

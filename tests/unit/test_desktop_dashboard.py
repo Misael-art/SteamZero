@@ -61,7 +61,15 @@ class FakeFlatpak:
     def uninstall(self, ref: str) -> None:
         self.states[ref] = FlatpakState(False, ref)
 
-    def smoke(self, ref: str, arguments: Sequence[str]) -> None:
+    def smoke(
+        self,
+        ref: str,
+        arguments: Sequence[str],
+        environment: Sequence[tuple[str, str]] = (),
+        exit_codes: Sequence[int] = (0,),
+        match: str | None = None,
+        mode: str = "application",
+    ) -> None:
         return
 
 

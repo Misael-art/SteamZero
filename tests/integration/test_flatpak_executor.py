@@ -73,8 +73,9 @@ class FakeFlatpak:
         environment: Sequence[tuple[str, str]] = (),
         exit_codes: Sequence[int] = (0,),
         match: str | None = None,
+        mode: str = "application",
     ) -> None:
-        self.calls.append(("smoke", ref, arguments, environment, exit_codes, match))
+        self.calls.append(("smoke", ref, arguments, environment, exit_codes, match, mode))
         if self.smoke_error is not None:
             raise self.smoke_error
 
@@ -291,6 +292,30 @@ def test_cli_smoke_accepts_allowlisted_exit_code_with_output_match() -> None:
     FlatpakCLI(runner=runner).smoke(REF, ("-version",), (), (1,), "^PCSX2 v")
 
 
+def test_cli_flatpak_info_smoke_checks_the_pinned_deployment_metadata() -> None:
+    calls: list[tuple[tuple[str, ...], float]] = []
+
+    def runner(argv: Sequence[str], timeout: float) -> CommandResult:
+        calls.append((tuple(argv), timeout))
+        return CommandResult(0, TARGET, "")
+
+    FlatpakCLI(runner=runner).smoke(
+        REF,
+        ("--show-commit",),
+        (),
+        (0,),
+        f"^{TARGET}$",
+        "flatpak-info",
+    )
+
+    assert calls == [(("flatpak", "info", "--user", "--show-commit", REF), 90.0)]
+
+
+def test_cli_flatpak_info_smoke_refuses_arbitrary_arguments() -> None:
+    with pytest.raises(SteamZeroError, match="exige somente --show-commit"):
+        FlatpakCLI().smoke(REF, ("--files",), (), mode="flatpak-info")
+
+
 def test_cli_smoke_rejects_allowed_exit_code_when_output_misses_pattern() -> None:
     def runner(argv: Sequence[str], timeout: float) -> CommandResult:
         return CommandResult(1, "", "boot falhou\n")
@@ -328,7 +353,7 @@ def test_executor_forwards_smoke_allowlist_and_pattern(store: state.StateStore) 
     applied = service.apply(plan.plan_id, plan.confirm_token)
 
     assert applied.status == "ok"
-    assert ("smoke", REF, ("--version",), (), (1,), "^PCSX2 v") in flatpak.calls
+    assert ("smoke", REF, ("--version",), (), (1,), "^PCSX2 v", "application") in flatpak.calls
 
 
 def test_plan_is_pinned_schema_valid_and_read_only(store: state.StateStore, tmp_path: Path) -> None:
@@ -436,7 +461,7 @@ def test_install_apply_and_manual_rollback_preserve_app_data_scope(
     assert applied.status == "ok"
     assert flatpak.current == FlatpakState(True, REF, "flathub", TARGET)
     assert store.get_component("demo-flatpak")["version"] == TARGET  # type: ignore[index]
-    assert ("smoke", REF, ("--version",), (), (0,), None) in flatpak.calls
+    assert ("smoke", REF, ("--version",), (), (0,), None, "application") in flatpak.calls
 
     rolled_back = service.rollback(applied.operation_id)
     assert rolled_back.status == "rolled-back"
