@@ -3,9 +3,9 @@
   "kind": "workstream",
   "id": "WS-2026-08-EMULATION-LONG-OPERATIONS",
   "item": "SZ-EMULATION-LONG-OPERATIONS",
-  "branch": "codex/qt-gamepad-projection",
-  "baseRef": "657b361",
-  "owner": "codex-qt-gamepad-projection",
+  "branch": "codex/flatpak-sandbox-runner",
+  "baseRef": "2bfa55f050074bdbf7743ad6b185baaf122291ed",
+  "owner": "codex-flatpak-sandbox-runner",
   "state": "blocked",
   "exclusivePaths": [
     "src/steamzero/service/client.py",
@@ -14,10 +14,13 @@
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/flatpak.py",
     "src/steamzero/adapters/lifecycle.py",
+    "tools/install_host.py",
     "tests/unit/test_service_core.py",
     "tests/unit/test_service_methods.py",
     "tests/integration/test_component_lifecycle.py",
     "tests/integration/test_core_service.py",
+    "tests/integration/test_flatpak_executor.py",
+    "tests/integration/test_host_installer.py",
     "docs/status/items/emulation-long-operations.json",
     "docs/status/workstreams/emulation-long-operations.json"
   ],
@@ -27,6 +30,6 @@
     "docs/ACTIVE-WORK.md",
     "docs/status/COVERAGE.md"
   ],
-  "nextAction": "Fechar os gates e preparar a promoção governada; a integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
-  "updatedAt": "2026-08-21"
+  "nextAction": "Fechar o runner transitório para Flatpak sem afrouxar o daemon; promover e validar Cemu no host. A integração documental final permanece coordenada com WS-2026-08-HARMONIZE-A45.",
+  "updatedAt": "2026-08-22"
 }

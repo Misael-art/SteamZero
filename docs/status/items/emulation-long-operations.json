@@ -4,11 +4,11 @@
   "id": "SZ-EMULATION-LONG-OPERATIONS",
   "title": "Operações longas de emulação com acompanhamento",
   "domain": "emulation",
-  "implementation": "complete",
+  "implementation": "partial",
   "integration": "feature-branch",
   "verification": "dev",
-  "operation": "unknown",
-  "distribution": "not-packaged",
+  "operation": "blocked",
+  "distribution": "installed",
   "scopePaths": [
     "src/steamzero/service/client.py",
     "src/steamzero/service/core.py",
@@ -16,12 +16,15 @@
     "src/steamzero/cli/main.py",
     "src/steamzero/adapters/flatpak.py",
     "src/steamzero/adapters/lifecycle.py",
+    "tools/install_host.py",
     "tests/unit/test_service_core.py",
     "tests/unit/test_service_methods.py",
     "tests/integration/test_component_lifecycle.py",
-    "tests/integration/test_core_service.py"
+    "tests/integration/test_core_service.py",
+    "tests/integration/test_flatpak_executor.py",
+    "tests/integration/test_host_installer.py"
   ],
-  "scopeDigest": "8758852808202d9968b7330007166f211fda1096f518332f2e527489b74c3ded",
+  "scopeDigest": "a59b213b6c63e50729bcb4a9d3ff550ac864f28dd59aa193d97caa20e960b42d",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -51,10 +54,10 @@
       "result": "passed"
     }
   ],
-  "nextAction": "Promover a release governada e validar no host um component apply Flatpak com desconexão controlada e acompanhamento por operations list --follow.",
+  "nextAction": "Executar os comandos Flatpak validados em um serviço transitório do user manager, preservando o hardening do daemon, e validar no host Cemu após a release governada.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-21",
-  "notes": "Aberto a partir da validação física da release 0.1.0a46: o apply é executado pelo daemon e o timeout fixo do cliente torna installs Flatpak ambíguos. A correção preserva uma janela explícita de 1 900 s e transforma o planId externo em operationId Flatpak, de modo que a queda do cliente não perde a observação de applying e do terminal persistidos."
+  "updatedAt": "2026-08-22",
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. O próximo passo mantém o daemon endurecido e reencaminha somente argv Flatpak validados a um serviço transitório do user manager."
 }
