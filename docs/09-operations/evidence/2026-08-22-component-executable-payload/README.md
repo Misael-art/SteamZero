@@ -63,6 +63,35 @@ nunca trava.
 
 ## Prova física no host
 
-Pendente no fechamento funcional; registrada na sequência com o ciclo:
-detecção do estado degradado no deployment real, repair governado por job,
-bit restaurado, launch/stop e preservação byte a byte dos dados do aplicativo.
+Concluída em 2026-08-23 contra o artefato instalado `0.1.0a46-5b41f2edbf78`
+(daemon convergido, `doctor` com `service.generation` verde):
+
+1. Injeção controlada da falha: `payload` do deployment real
+   `2026.04.27-0237a9b88` reduzido a `0o600` (mesma assinatura do replay de
+   recovery observado em 2026-08-22).
+2. `component status --id citron` ⇒ `degraded`,
+   detalhe `payload sem permissão de execução`.
+3. `component verify --id citron` ⇒ `verified=false`, `repairable=true`
+   (o falso verde anterior desapareceu).
+4. `component launch --id citron` ⇒ recusa estruturada `E-COMPONENT-DEGRADED`
+   com ação de recuperação sugerida — sem `PermissionError` cru.
+5. `component plan --action repair` ⇒ plano v3 metadata-only (~0,56 s),
+   aquisição adiada para o apply.
+6. `component apply` ⇒ job assíncrono `01M0R265JJ00VHW73TPV3ZH8TN`
+   `queued → completed` com estágio final `verified`.
+7. Pós-condições: payload `0o700`, estado `installed`,
+   `verify` ⇒ `verified=true`, `repairable=false`; segundo plano de repair é
+   recusado com erro acionável (`repair exige ['degraded','outdated']`).
+8. `launch` abriu o emulador real (pid 952236), captura em
+   `02-citron-launch-reparado.png`; `stop` encerrou os grupos de processo.
+9. Preservação: snapshot SHA-256 de `~/.config/citron` e
+   `~/.local/share/citron*` antes/depois — 259 arquivos; única diferença é a
+   rotação própria de log do emulador (`citron_log.txt` ⇄ `.old.txt`) gerada
+   pela execução; nand/saves/config byte a byte idênticos.
+
+Nota diagnóstica (ambiente do agente, não defeito do produto): o shell desta
+sessão exporta `XDG_STATE_HOME` próprio enquanto o daemon do systemd usa a raiz
+canônica; comandos CLI que caem no fallback local gravam planos na raiz do
+agente e o apply roteado ao daemon não os encontra (`E-TX-STALE-PLAN`). Interagir
+com `env -u XDG_STATE_HOME` alinha as duas pontas. Um job criado pelo caminho
+local com worker morto foi reconciliado como `cancelled/recovered`.
