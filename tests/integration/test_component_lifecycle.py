@@ -1090,6 +1090,74 @@ class TestVerifyAndRepair:
         assert lifecycle.status("demo-emulator")["state"] == "installed"
 
 
+class TestExecutablePayloadInvariant:
+    """Payload engine commitado precisa ser executável; checksum certo não basta.
+
+    Incidente físico 2026-08-17: o deployment do Citron no host terminou com
+    payload ``0o600`` (replay de recovery re-copia o artefato sem o smoke que
+    aplicaria o bit de execução). ``verify`` reportava ``verified=true`` e o
+    ``launch`` morria com ``PermissionError`` cru — falso verde na verificação,
+    erro indizível no uso.
+    """
+
+    URL = "https://fixtures.invalid/demo-1.0.0.AppImage"
+
+    @staticmethod
+    def _payload_path() -> Path:
+        return paths.data_home() / "components" / "demo-emulator" / "releases" / "1.0.0" / "payload"
+
+    def _installed(self, store: state.StateStore) -> ComponentLifecycle:
+        payload = executable_payload()
+        lifecycle = ComponentLifecycle(
+            store,
+            portable_registry("1.0.0", payload),
+            artifacts=FakeArtifacts({self.URL: payload}),
+        )
+        envelope = lifecycle.plan("demo-emulator", "install")
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        return lifecycle
+
+    def test_non_executable_payload_is_degraded_and_repairable(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = self._installed(store)
+        payload = self._payload_path()
+        payload.chmod(0o600)
+
+        status = lifecycle.status("demo-emulator")
+        assert status["state"] == "degraded"
+        assert "execução" in str(status["detail"])
+        assert status["version"] == "1.0.0"
+
+        verified = lifecycle.verify("demo-emulator")
+        assert verified["verified"] is False
+        assert verified["repairable"] is True
+
+    def test_launch_refuses_non_executable_payload_with_structured_error(
+        self, store: state.StateStore
+    ) -> None:
+        lifecycle = self._installed(store)
+        self._payload_path().chmod(0o600)
+
+        with pytest.raises(SteamZeroError) as error:
+            lifecycle.launch("demo-emulator")
+        assert error.value.code == "E-COMPONENT-DEGRADED"
+        assert "execução" in str(error.value.detail)
+
+    def test_repair_restores_executable_payload(self, store: state.StateStore) -> None:
+        lifecycle = self._installed(store)
+        payload = self._payload_path()
+        payload.chmod(0o600)
+        assert lifecycle.status("demo-emulator")["state"] == "degraded"
+
+        envelope = lifecycle.plan("demo-emulator", "repair")
+        assert envelope.action == "repair"
+        lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+
+        assert lifecycle.status("demo-emulator")["state"] == "installed"
+        assert payload.stat().st_mode & 0o111, "payload reparado precisa ser executável"
+
+
 class TestRepairTransactionality:
     """Commit 1: `repairing` durável, reversível e recuperável após crash.
 

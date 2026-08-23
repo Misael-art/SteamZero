@@ -238,6 +238,19 @@ class AdapterEngine:
         smoke: Callable[[], None] | None = None,
     ) -> transaction.ApplyResult:
         def verify_component() -> None:
+            # O bit de execução é pós-condição do próprio deploy: aplica antes
+            # de observar, porque a observação (status/payload_path) recusa
+            # payload não executável — e a cópia recém-commitada ainda está no
+            # modo do cache (0o600).
+            if prepared.source.type == "appimage" and prepared.plan.kind != "component.uninstall":
+                deployed = (
+                    self._root
+                    / prepared.manifest.id
+                    / "releases"
+                    / prepared.source.version
+                    / "payload"
+                )
+                fs.set_mode(deployed, 0o700)
             status = self.status(prepared.manifest.id)
             if prepared.plan.kind == "component.uninstall":
                 if status["state"] != "missing":
@@ -245,8 +258,6 @@ class AdapterEngine:
                 return
             if status["state"] != "installed" or status.get("version") != prepared.source.version:
                 raise RuntimeError("componente ativado não corresponde ao plano")
-            if prepared.source.type == "appimage":
-                fs.set_mode(self.payload_path(prepared.manifest.id), 0o700)
             if smoke is not None:
                 smoke()
 
@@ -260,10 +271,22 @@ class AdapterEngine:
 
     def rollback(self, adapter_id: str, operation_id: str) -> transaction.RollbackResult:
         result = transaction.rollback(operation_id, reason="component-manual")
-        if self.status(adapter_id)["state"] == "installed":
-            source = self._registry.get(adapter_id).preferred_source(allow_eol=True)
-            if source.type == "appimage":
-                fs.set_mode(self.payload_path(adapter_id), 0o700)
+        # O restore da transação publica o payload no modo padrão do fs
+        # (0o600). O bit de execução é parte do contrato de deployment do
+        # engine: reconciliar aqui é devolver o rollback ao estado anterior
+        # utilizável, não editar arquivo de terceiros. Checa-se pela presença
+        # do payload restaurado, não pelo estado observado, porque o payload
+        # recém-restaurado ainda sem bit de execução observa como degradado.
+        status = self.status(adapter_id)
+        version = status.get("version")
+        if (
+            status.get("origin") == "appimage"
+            and isinstance(version, str)
+            and _SAFE_VERSION.fullmatch(version)
+        ):
+            payload = self._root / adapter_id / "releases" / version / "payload"
+            if payload.is_file():
+                fs.set_mode(payload, 0o700)
         self.persist_status(adapter_id)
         return result
 
@@ -308,6 +331,20 @@ class AdapterEngine:
                 "origin": origin,
                 "sha256": expected,
                 "detail": "payload ausente ou checksum divergente",
+            }
+        if not payload.stat().st_mode & 0o111:
+            # Replay de recovery e restaurações re-copiam o artefato sem o
+            # smoke do apply, que é quem aplica o bit de execução. Checksum
+            # intacto + payload não executável é um deployment que o launch
+            # não consegue iniciar: isso é degradação com causa dizível, não
+            # um "installed" que o verify atestaria por engano.
+            return {
+                "id": adapter_id,
+                "state": "degraded",
+                "version": version,
+                "origin": origin,
+                "sha256": expected,
+                "detail": "payload sem permissão de execução",
             }
         if manifest_drift:
             # Divergência de manifesto tem duas causas opostas, e colapsá-las em
