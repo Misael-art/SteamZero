@@ -10,6 +10,7 @@
   "exclusivePaths": [
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/engine.py",
     "src/steamzero/adapters/flatpak.py",
     "src/steamzero/jobs",
     "src/steamzero/core/net.py",
@@ -34,7 +35,8 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar",
     "docs/09-operations/evidence/2026-08-17-component-physical-flatpak-cemu",
-    "docs/09-operations/evidence/2026-08-17-component-physical-citron"
+    "docs/09-operations/evidence/2026-08-17-component-physical-citron",
+    "docs/09-operations/evidence/2026-08-22-component-executable-payload"
   ],
   "sharedPaths": [
     "docs/status",
@@ -50,6 +52,6 @@
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tools/audit_desktop_bridge.py"
   ],
-  "nextAction": "Cemu está bloqueado por DNS externo após duas tentativas terminalizadas; Citron confirmou lançamento, verify e noop na release 0.1.0a46-fe360b3731d5. Prosseguir por outro adapter independente, sem repetir Cemu até a rede mudar.",
-  "updatedAt": "2026-08-17"
+  "nextAction": "Provar fisicamente o invariante de payload executável no Citron real (degraded/repairable, repair por job, launch/stop, dados preservados) e prosseguir a matriz física por adapter independente; Cemu permanece bloqueado por DNS externo.",
+  "updatedAt": "2026-08-22"
 }

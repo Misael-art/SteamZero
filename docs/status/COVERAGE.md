@@ -21,7 +21,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-TOOLS | 35 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 41 | 17 | 15 | dev |  |
+| SZ-COMPONENT-LIFECYCLE | 43 | 19 | 16 | dev |  |
 | SZ-EMULATION-M10 | 9 | 9 | 7 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
@@ -39,4 +39,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-THEME-EDITOR | 8 | 4 | 4 | unit |  |
 | SZ-UI-DESKTOP-AUDIT | 233 | 16 | 16 | dev |  |
 
-Arquivos em `src/`: **449**. Sob agregador apenas, sem item de capacidade: **312** (69%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **449**. Sob agregador apenas, sem item de capacidade: **311** (69%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

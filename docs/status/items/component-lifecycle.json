@@ -12,6 +12,7 @@
   "scopePaths": [
     "src/steamzero/adapters/lifecycle.py",
     "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/adapters/engine.py",
     "src/steamzero/adapters/flatpak.py",
     "src/steamzero/jobs",
     "src/steamzero/core/net.py",
@@ -47,9 +48,10 @@
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization",
     "docs/09-operations/evidence/2026-08-16-component-physical-flatpak-azahar",
     "docs/09-operations/evidence/2026-08-17-component-physical-flatpak-cemu",
-    "docs/09-operations/evidence/2026-08-17-component-physical-citron"
+    "docs/09-operations/evidence/2026-08-17-component-physical-citron",
+    "docs/09-operations/evidence/2026-08-22-component-executable-payload"
   ],
-  "scopeDigest": "dd8a0825bd01dec1c7908390aa96eb48091a1095e56b175fb1c76b3d2f876784",
+  "scopeDigest": "ff145b496a25599539821e120c11000bda41cc71f51f30f6fcafce75ff173904",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -162,12 +164,24 @@
       "reference": "docs/09-operations/evidence/2026-08-17-component-physical-citron/README.md",
       "command": "Citron: status, verify, launch e segunda instalação v3 noop no host real",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-22-component-executable-payload/README.md",
+      "command": "sondas read-only no host real: payload do Citron 0o600, verify falso verde e launch com PermissionError",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "docs/09-operations/evidence/2026-08-22-component-executable-payload/README.md",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests -q && .venv/bin/ruff check src tools tests && .venv/bin/ruff format --check src tools tests && .venv/bin/mypy src && make independence boundaries status-check && git diff --check",
+      "result": "passed"
     }
   ],
-  "nextAction": "Não repetir Cemu enquanto a resolução de dl.flathub.org permanecer indisponível. Selecionar outro adapter independente; Citron tem apenas a observação inicial concluída, não o ciclo completo.",
+  "nextAction": "Provar no host a correção do invariante de payload executável (Citron 0o600: degraded/repairable, repair por job, launch/stop, dados preservados) e retomar a matriz física por adapter independente; Cemu segue bloqueado por DNS enquanto dl.flathub.org não resolver.",
   "activeWorkstreams": [
     "WS-2026-08-PHYSICAL-COMPONENTS"
   ],
-  "updatedAt": "2026-08-17",
-  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O envelope v3 metadata-only mantém compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. component.apply cria job persistente, retorna jobId pela bridge, é observável pela gaveta de tarefas, deduplica confirmação e suporta retry auditável. Downloads internos publicam bytes reais e honram cancelamento por chunk. Recovery seletivo terminaliza órfãos e retoma somente queued. Flatpak publica etapas, cancela o processo cooperativamente, restaura deployment e preserva dados. Telemetria local registra DNS, proxy, nomes de ambiente e executor sem persistir valores sensíveis; jobs novos não duplicam o token e jobs legados permanecem recuperáveis. Planos confirmados agora terminam em applied/aborted em sucesso, falha, cancelamento, expiração e recovery; crashes ficam pending somente até recovery e retry cria novos planId/jobId com linhagem. Commit Flatpak cruzando crash faz roll-forward, reaplicação transacional interrompida é recusada até recovery e o job owner usa o fato durável do plano para não registrar cancelamento falso. A suíte completa passou com 4729 testes e guardião integral código zero. No host real, plan_recovery/apply_recovery abortou 28 planos Flatpak e 22 envelopes expirados, incluindo cinco transações delegadas, preservou 1877 transações genéricas independentes, três operações rolled-back, 17 deployments Flatpak e os dados ausentes do Azahar. O ciclo físico do Azahar passou ponta a ponta: metadata-only, install/verify, noop idempotente, drift governado, repair, falha no smoke com rollback e uninstall; nove arquivos/2196717 bytes foram preservados byte a byte no rollback e uninstall. Azahar está missing, sem recovery ativo; o runtime compartilhável KDE 6.9 ficou no inventário e não foi limpo manualmente. Matriz física: 1/33."
+  "updatedAt": "2026-08-22",
+  "notes": "Item criado para a certificação funcional física a partir do candidato 99fba64e7b39ee943eb00885fbe07920dff4e9e6. O envelope v3 metadata-only mantém compatibilidade v1/v2 e prova os 33 manifests sem I/O remoto no plan. component.apply cria job persistente, retorna jobId pela bridge, é observável pela gaveta de tarefas, deduplica confirmação e suporta retry auditável. Downloads internos publicam bytes reais e honram cancelamento por chunk. Recovery seletivo terminaliza órfãos e retoma somente queued. Flatpak publica etapas, cancela o processo cooperativamente, restaura deployment e preserva dados. Telemetria local registra DNS, proxy, nomes de ambiente e executor sem persistir valores sensíveis; jobs novos não duplicam o token e jobs legados permanecem recuperáveis. Planos confirmados agora terminam em applied/aborted em sucesso, falha, cancelamento, expiração e recovery; crashes ficam pending somente até recovery e retry cria novos planId/jobId com linhagem. Commit Flatpak cruzando crash faz roll-forward, reaplicação transacional interrompida é recusada até recovery e o job owner usa o fato durável do plano para não registrar cancelamento falso. A suíte completa passou com 4729 testes e guardião integral código zero. No host real, plan_recovery/apply_recovery abortou 28 planos Flatpak e 22 envelopes expirados, incluindo cinco transações delegadas, preservou 1877 transações genéricas independentes, três operações rolled-back, 17 deployments Flatpak e os dados ausentes do Azahar. O ciclo físico do Azahar passou ponta a ponta: metadata-only, install/verify, noop idempotente, drift governado, repair, falha no smoke com rollback e uninstall; nove arquivos/2196717 bytes foram preservados byte a byte no rollback e uninstall. Azahar está missing, sem recovery ativo; o runtime compartilhável KDE 6.9 ficou no inventário e não foi limpo manualmente. Matriz física: 1/33. Em 2026-08-22, o deployment real do Citron expôs payload 0o600 (replay de recovery sem smoke) com verify falso verde e launch em PermissionError; engine.status passou a degradar payload não executável com motivo dizível e verify_component aplica o bit de execução como pós-condição antes de observar, com teste vermelho-nasceu provando os três contratos."
 }
