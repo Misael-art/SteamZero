@@ -174,40 +174,51 @@ def test_daemon_runs_flatpak_in_a_clean_user_service(
     )
     calls: list[tuple[object, ...]] = []
 
-    def run(argv: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append((tuple(argv), kwargs))
-        return subprocess.CompletedProcess(argv, 0, "ok", "")
+    class _DaemonProcess:
+        returncode = 0
 
-    monkeypatch.setattr(flatpak_module.subprocess, "run", run)
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            calls.append(("communicate", timeout))
+            return "ok", ""
+
+        def terminate(self) -> None:
+            return None
+
+        def kill(self) -> None:
+            return None
+
+    def popen(argv: Sequence[str], **kwargs: object) -> _DaemonProcess:
+        calls.append((tuple(argv), kwargs))
+        return _DaemonProcess()
+
+    monkeypatch.setattr(flatpak_module.subprocess, "Popen", popen)
 
     result = flatpak_module.run_flatpak_command(("flatpak", "run", "--user", REF), 90.0)
 
     assert result == CommandResult(0, "ok", "")
-    assert calls == [
+    assert calls[0] == (
         (
-            (
-                "/usr/bin/systemd-run",
-                "--user",
-                "--wait",
-                "--pipe",
-                "--collect",
-                "--quiet",
-                "--service-type=exec",
-                "--",
-                "/usr/bin/flatpak",
-                "run",
-                "--user",
-                REF,
-            ),
-            {
-                "stdin": subprocess.DEVNULL,
-                "capture_output": True,
-                "text": True,
-                "timeout": 90.0,
-                "check": False,
-            },
-        )
-    ]
+            "/usr/bin/systemd-run",
+            "--user",
+            "--wait",
+            "--pipe",
+            "--collect",
+            "--quiet",
+            "--service-type=exec",
+            "--",
+            "/usr/bin/flatpak",
+            "run",
+            "--user",
+            REF,
+        ),
+        {
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "text": True,
+            "start_new_session": True,
+        },
+    )
 
 
 def test_daemon_refuses_flatpak_when_clean_user_service_is_unavailable(
