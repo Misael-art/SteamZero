@@ -141,6 +141,7 @@ ApplicationWindow {
     property alias lsfgDialogControl: lsfgDialog
     property alias collectionPlanDialogControl: collectionPlanDialog
     property alias castPinDialogControl: castPinDialog
+    property alias esdeImportDialogControl: esdeImportDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
     property alias credentialCloseControl: credentialCloseButton
@@ -383,6 +384,13 @@ ApplicationWindow {
         return code && typeof code === "string" && code.startsWith("E-")
     }
 
+    //: Jornada de importação ES-DE: o `inspect` devolve os esquemas, o `apply`
+    //: recebe o escolhido. Estado vive aqui para o modal poder ser fechado sem
+    //: deixar nada pendurado.
+    property var esdeImportSchemes: []
+    property int esdeImportSchemeIndex: -1
+    property bool esdeImportBusy: false
+    property string esdeImportNotice: ""
     property bool recoveryPromptShown: false
     property bool keyboardVisible: false
 
@@ -2499,6 +2507,157 @@ ApplicationWindow {
                         libraryHealthPlanDialog.close()
                         root.refreshStatus(qsTr("Verificação anti-bitrot concluída"))
                     })
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: esdeImportDialog
+        onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(esdeImportDialog)
+        onClosed: {
+            // Fechar por Escape, por Cancelar ou pelo botão B tem de deixar o
+            // estado igualmente limpo: nada de esquema escolhido sobrando.
+            root.esdeImportSchemes = []
+            root.esdeImportSchemeIndex = -1
+            root.esdeImportBusy = false
+            root.esdeImportNotice = ""
+            root.restoreDialogFocus()
+        }
+        title: qsTr("Importar tema ES-DE")
+        modal: true
+        width: Math.min(root.width - 48, 640)
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        standardButtons: Dialog.NoButton
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 10
+
+            Label {
+                text: qsTr("Examine o tema antes de importar. Nada é gravado até você confirmar.")
+                color: root.mutedColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            TextField {
+                id: esdeImportSourceField
+                objectName: "theme-import-esde-source"
+                placeholderText: qsTr("Caminho do tema ES-DE")
+                Accessible.name: qsTr("Caminho do tema ES-DE")
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+            }
+            Button {
+                id: esdeInspectButton
+                objectName: "theme-import-esde-inspect"
+                text: qsTr("Examinar")
+                icon.name: "search"
+                enabled: !root.esdeImportBusy && esdeImportSourceField.text.length > 0
+                Accessible.name: text
+                Accessible.description: enabled
+                    ? qsTr("Lê o tema e lista os esquemas disponíveis")
+                    : qsTr("Informe o caminho do tema para examinar")
+                Layout.minimumHeight: 48
+                onClicked: {
+                    root.esdeImportBusy = true
+                    root.esdeImportNotice = ""
+                    root.requestAction("theme.import.esde.inspect",
+                                       {"source": esdeImportSourceField.text},
+                        function(response) {
+                            root.esdeImportBusy = false
+                            const found = response && response.schemes
+                                ? response.schemes : []
+                            root.esdeImportSchemes = found
+                            root.esdeImportSchemeIndex = found.length > 0 ? 0 : -1
+                            if (found.length === 0)
+                                root.esdeImportNotice =
+                                    qsTr("O tema não declarou nenhum esquema importável.")
+                        },
+                        function(message) {
+                            root.esdeImportBusy = false
+                            root.esdeImportSchemes = []
+                            root.esdeImportSchemeIndex = -1
+                            root.esdeImportNotice = message
+                        })
+                }
+            }
+            Label {
+                text: root.esdeImportNotice
+                visible: root.esdeImportNotice !== ""
+                color: root.amberColor
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Esquemas encontrados")
+                color: root.textColor
+                font.bold: true
+                visible: root.esdeImportSchemes.length > 0
+            }
+            Repeater {
+                model: root.esdeImportSchemes
+                delegate: RadioButton {
+                    required property int index
+                    required property var modelData
+                    text: modelData && modelData.name ? modelData.name : String(modelData)
+                    checked: root.esdeImportSchemeIndex === index
+                    Accessible.name: text
+                    Layout.minimumHeight: 48
+                    onClicked: root.esdeImportSchemeIndex = index
+                }
+            }
+            TextField {
+                id: esdeImportNameField
+                objectName: "theme-import-esde-name"
+                placeholderText: qsTr("Nome do tema importado")
+                Accessible.name: qsTr("Nome do tema importado")
+                visible: root.esdeImportSchemes.length > 0
+                Layout.fillWidth: true
+                Layout.minimumHeight: 48
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: qsTr("Cancelar")
+                    Accessible.name: text
+                    Layout.minimumHeight: 48
+                    onClicked: esdeImportDialog.close()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: esdeApplyButton
+                    objectName: "theme-import-esde-apply"
+                    text: qsTr("Importar")
+                    icon.name: "document-import"
+                    enabled: !root.esdeImportBusy
+                        && root.esdeImportSchemeIndex >= 0
+                        && esdeImportNameField.text.length > 0
+                    Accessible.name: text
+                    Accessible.description: enabled
+                        ? qsTr("Importa o esquema escolhido com o nome informado")
+                        : qsTr("Examine o tema e escolha um esquema antes de importar")
+                    Layout.minimumHeight: 48
+                    onClicked: {
+                        const chosen = root.esdeImportSchemes[root.esdeImportSchemeIndex]
+                        root.esdeImportBusy = true
+                        root.requestAction("theme.import.esde.apply", {
+                                "source": esdeImportSourceField.text,
+                                "scheme": chosen && chosen.id ? chosen.id : String(chosen),
+                                "name": esdeImportNameField.text
+                            },
+                            function(response) {
+                                root.esdeImportBusy = false
+                                root.notify(qsTr("Tema ES-DE importado."), false)
+                                esdeImportDialog.close()
+                            },
+                            function(message) {
+                                root.esdeImportBusy = false
+                                root.esdeImportNotice = message
+                            })
+                    }
                 }
             }
         }
@@ -5680,6 +5839,13 @@ ApplicationWindow {
                                             Accessible.name: text
                                             Layout.minimumHeight: 48
                                             onClicked: root.beginDiagnosticsExport("support")
+                                        }
+                                        Button {
+                                            text: qsTr("Importar tema ES-DE")
+                                            icon.name: "document-import"
+                                            Accessible.name: text
+                                            Layout.minimumHeight: 48
+                                            onClicked: esdeImportDialog.open()
                                         }
                                         Button {
                                             text: qsTr("Saúde administrativa")

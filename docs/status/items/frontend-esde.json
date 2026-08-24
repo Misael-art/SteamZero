@@ -18,7 +18,8 @@
   "knownGaps": [],
   "acceptanceCriteria": [
     "Importador converte o contrato de tema ES-DE sem depender do runtime externo.",
-    "Casos invalidos e valores ausentes possuem teste unitario."
+    "Casos invalidos e valores ausentes possuem teste unitario.",
+    "A importacao ES-DE e alcancavel pela tela system, com inspect antes de apply e nada gravado ate a confirmacao."
   ],
   "evidence": [
     {
@@ -44,10 +45,16 @@
       "reference": "src/steamzero/ui/qml/Main.qml",
       "command": "caminho de implementacao tracado em 2026-08-24: o dispatch e root.requestAction(actionId, payload, callback, errorCallback) em Main.qml:862, que JA valida contrato publicado/aplicavel/habilitado, deduplica mutacao pendente e notifica falha — o controle nao precisa reimplementar nada disso. O ponto de insercao e o bloco de cards da tela system, ~Main.qml:5667, seguindo o padrao do botao 'Saude administrativa': Button { text; icon.name; Accessible.name: text; Layout.minimumHeight: 48; onClicked: root.requestAction(...) }. Falta a jornada com dialogo: campo source, inspect para listar schemes, escolha, apply com {source, scheme, name}, progresso, resultado, erro e rollback.",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_journeys.py",
+      "command": "jornada ES-DE implementada na tela system e registrada na sonda: test_ui_dialog_coverage + test_ui_dialog_journeys 8 passed; check_dialog_keys 7 passed; test_qml_handheld_offscreen + test_ui_dialog_keys + test_ui_action_inventory 50 passed; qmllint 0 erros em Main.qml e ui_dialog_probe.qml. O gate de denominador reprovou sozinho antes da jornada ser registrada ('1 de 16 modais nao tem jornada'), que e a prova de que ele funciona.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Implementar a jornada ES-DE na tela system com dialogo proprio: campo source -> inspect (lista schemes) -> escolha -> apply {source, scheme, name}, com progresso, resultado, erro e rollback. Dispatch por root.requestAction (Main.qml:862); padrao de card em ~5667; modal precisa entrar no denominador de test_ui_dialog_coverage e ter jornada em ui_dialog_probe.qml, com prova negativa antes da correcao.",
+  "nextAction": "Exercitar a jornada contra uma instalacao real do ES-DE no host: a tela existe e o contrato e percorrido, mas selecao, preview e apply so foram provados offscreen e sem bridge. Falta tambem o rollback da importacao, que hoje depende do que o apply devolve.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42."
+  "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42. 2026-08-24: jornada implementada. O botao vive na tela SYSTEM (nao em temas), abre um modal com campo source, Examinar (inspect), lista de esquemas, nome e Importar (apply). O apply so habilita com esquema escolhido E nome preenchido; fechar por Escape, Cancelar ou botao B limpa os esquemas, entao cancelar nao deixa estado pendurado. Erro do inspect ou do apply aparece no proprio modal em vez de sumir."
 }

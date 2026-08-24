@@ -233,6 +233,13 @@ Main {
                 "dirty": function() { return false }
             },
             {
+                "id": "dialog.esde-import",
+                "label": "Importar tema ES-DE",
+                "dialog": esdeImportDialogControl,
+                "arm": function() { window.esdeImportSchemes = [{"id": "auditoria", "name": "Auditoria"}] },
+                "dirty": function() { return window.esdeImportSchemes.length > 0 }
+            },
+            {
                 "id": "dialog.cast-pin",
                 "label": "PIN de transmissão",
                 "dialog": castPinDialogControl,
