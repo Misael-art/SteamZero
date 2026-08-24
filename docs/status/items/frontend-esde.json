@@ -38,9 +38,15 @@
       "reference": "src/steamzero/adapters/desktop_contracts.py",
       "command": "mapa do contrato levantado em 2026-08-24, para a jornada nao ser redescoberta: theme.import.esde.inspect -> /theme/import/esde/inspect, screen=system, control=theme-import-esde-inspect, schema {source: string}; theme.import.esde.apply -> /theme/import/esde/apply, screen=system, control=theme-import-esde-apply, schema {source, scheme, name}. A tela e SYSTEM, nao themes. O inspect devolve os schemes para escolha antes do apply, entao selecao->preview->confirmacao ja esta desenhado no contrato; falta o controle que percorra. desktop_ui.py ja serve as duas rotas.",
       "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "src/steamzero/ui/qml/Main.qml",
+      "command": "caminho de implementacao tracado em 2026-08-24: o dispatch e root.requestAction(actionId, payload, callback, errorCallback) em Main.qml:862, que JA valida contrato publicado/aplicavel/habilitado, deduplica mutacao pendente e notifica falha — o controle nao precisa reimplementar nada disso. O ponto de insercao e o bloco de cards da tela system, ~Main.qml:5667, seguindo o padrao do botao 'Saude administrativa': Button { text; icon.name; Accessible.name: text; Layout.minimumHeight: 48; onClicked: root.requestAction(...) }. Falta a jornada com dialogo: campo source, inspect para listar schemes, escolha, apply com {source, scheme, name}, progresso, resultado, erro e rollback.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Adicionar na tela SYSTEM os controles theme-import-esde-inspect e theme-import-esde-apply, percorrendo inspect (escolha de scheme) antes de apply, com progresso, resultado, erro e rollback. Contrato e ponte HTTP ja existem; falta so o caminho de usuario. Prova pelo padrao ja usado: harness QML com prova negativa antes da correcao, como em check_credentials.qml.",
+  "nextAction": "Implementar a jornada ES-DE na tela system com dialogo proprio: campo source -> inspect (lista schemes) -> escolha -> apply {source, scheme, name}, com progresso, resultado, erro e rollback. Dispatch por root.requestAction (Main.qml:862); padrao de card em ~5667; modal precisa entrar no denominador de test_ui_dialog_coverage e ter jornada em ui_dialog_probe.qml, com prova negativa antes da correcao.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
   "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42."
