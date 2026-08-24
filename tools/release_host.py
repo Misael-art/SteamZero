@@ -83,6 +83,16 @@ class AutomationError(RuntimeError):
     """Falha pública e acionável da automação."""
 
 
+class ConvergenceError(AutomationError):
+    """Falha estruturada devolvida pelo convergidor estável do host."""
+
+    def __init__(self, report: dict[str, object]) -> None:
+        self.state = str(report.get("state") or "unknown")
+        self.code = str(report.get("code") or "E-HOST-CONVERGENCE")
+        self.detail = str(report.get("detail") or "convergência sem detalhe")[:400]
+        super().__init__(f"{self.code}: {self.detail}")
+
+
 @dataclass(frozen=True)
 class Bundle:
     root: Path
