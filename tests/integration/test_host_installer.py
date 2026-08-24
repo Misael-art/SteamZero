@@ -220,7 +220,6 @@ def test_release_verification_uses_disk_backed_tmp_for_the_smoke(
     assert captured["dir"] == install_host._SMOKE_TMPDIR
 
 
-<<<<<<< HEAD
 def test_verify_release_smoke_accepts_live_daemon_still_on_previous_generation(
     tmp_path: Path,
 ) -> None:
@@ -305,7 +304,8 @@ def test_verify_release_smoke_fails_when_doctor_produces_no_json(tmp_path: Path)
 
     with pytest.raises(RuntimeError, match="não devolveu JSON"):
         install_host._verify_release(release)
-=======
+
+
 def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) -> None:
     layout = _layout(tmp_path)
     release = _release(layout, "release-a")
@@ -313,7 +313,6 @@ def test_release_verification_can_require_root_safe_ownership(tmp_path: Path) ->
 
     with pytest.raises(RuntimeError, match="permissões inseguras"):
         install_host._verify_release(release, require_root_ownership=True)
->>>>>>> 71c026b (feat(host): adiciona update transacional recuperavel)
 
 
 def test_activation_and_rollback_switch_current_atomically(tmp_path: Path) -> None:
