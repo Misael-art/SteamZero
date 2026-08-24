@@ -14,6 +14,7 @@
     "src/steamzero/ui",
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_ui_action_inventory.py",
+    "tests/integration/test_ui_combobox_gestures.py",
     "tests/integration/test_ui_confirm_job_recovery_e2e.py",
     "tests/integration/test_ui_control_identity.py",
     "tests/integration/test_ui_control_matrix.py",
@@ -21,6 +22,7 @@
     "tests/integration/test_ui_dialog_coverage.py",
     "tests/integration/test_ui_dialog_journeys.py",
     "tests/integration/test_ui_dialog_keys.py",
+    "tests/qml/check_combobox_gestures.qml",
     "tests/qml/check_confirm_job_recovery_e2e.qml",
     "tests/qml/check_credential_journey_e2e.qml",
     "tests/qml/check_dialog_keys.qml",
@@ -38,7 +40,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "15c49c739ce89a22ff0305a23715406168ff45f22d41d6aeba1ea809b7e778fc",
+  "scopeDigest": "37249038b4030f2fdaf6c6a5b44a8811bb685c79250c8f4beafab7bf1d3a678e",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -56,7 +58,9 @@
     "Modal recebe o foco ao abrir (verificado com abertura programatica).",
     "Escape e Tab reais provados por evento de teclado do Qt 6 (fechado).",
     "Provas que exigem runtime QML rodam no gate visual, que reprova quando o Qt falta, nunca puladas.",
-    "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio."
+    "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio.",
+    "ComboBox e exercitado por tecla real e observa activated; bloqueado explica o motivo.",
+    "Enfeite e provado por ativacao, nao presumido pela forma; controle que age sem se anunciar reprova como unnamed-actionable."
   ],
   "evidence": [
     {
@@ -130,10 +134,34 @@
       "reference": "tools/ui_control_inventory.py",
       "command": "matriz de controles medida em 2026-08-24: 250 controles em 12 superficies, 0 falhas (silent-no-op/unrouted/blocked-silent), 38 not-probed = 31 icones decorativos + 5 comboboxes + 2 aberturas de FileDialog nativo; 6 superficies sem pendencia (handheld-drawer, library, overview, sync, task-drawer, themes); identidade 45 explicitas / 205 fallback / 0 colisoes",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_combobox_gestures.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qmltestrunner Qt 6.11.1 -input tests/qml/check_combobox_gestures.qml (5 passed; denominador fechado: 10 ComboBox visiveis = 4 exercitados por tecla real + 6 bloqueados com motivo, distribuidos em steam/performance 4, steam/controls 2, steam/library 2, steam/desktop 0, profiles 1, cast 1)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_combobox_gestures.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_combobox_gestures.py -q (2 passed; roteamento conferido: -m 'not visual' 1 passed 1 deselected, -m visual 1 passed 1 deselected)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "matriz apos a prova comportamental de decoracao: 250 controles em 12 superficies, 0 falhas, not-probed caiu de 38 para 7, decorative=31 (todos provaram inercia; ZERO unnamed-actionable), 8 superficies sem pendencia (emulators, handheld-drawer, library, overview, sidebar, sync, task-drawer, themes)",
+      "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_control_matrix.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_control_matrix.py -q (21 passed, incluindo os dois gates novos: nenhum controle age sem se anunciar, e decoracao e medida e nao presumida)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar os 5 comboboxes habilitados que a sonda nao exercita (ela so clica; ComboBox exige gesto) com um harness QuickTest de eventos reais, como foi feito para Escape/Tab; e provar comportamentalmente que os 31 icones decorativos nao tem handler, em vez de classifica-los pela forma. Os 2 FileDialog nativos ficam fora por serem janela do portal, nao da arvore QML.",
+  "nextAction": "Os 7 not-probed restantes da matriz sao 5 ComboBox — cobertos por prova propria em tests/qml/check_combobox_gestures.qml, com tecla real e denominador de 10 — e 2 aberturas de FileDialog nativo, que sao janela do portal e nao da arvore QML. Faltam contraste, escalas e resolucoes, movimento reduzido, e a prova na release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho."
 }

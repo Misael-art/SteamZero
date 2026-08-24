@@ -34,7 +34,10 @@ ROOT = Path(__file__).resolve().parent.parent
 QML = shutil.which("qml6") or shutil.which("qml")
 
 #: Vereditos que reprovam a matriz. Ver ``ui_action_inventory`` para a semântica.
-FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent")
+#: `unnamed-actionable` entra aqui porque e defeito de verdade: o controle
+#: PRODUZIU efeito e nao tem rotulo nem nome acessivel, entao existe para
+#: quem enxerga e nao existe para quem usa leitor de tela ou controle.
+FAILING_VERDICTS = ("silent-no-op", "unrouted", "blocked-silent", "unnamed-actionable")
 
 
 #: As fixtures sao DERIVADAS: `ui_scenario_fixtures` as gera deterministicamente
@@ -46,12 +49,17 @@ SCENARIO_DIR = ROOT / "build" / "ui-scenarios"
 #: Ordem de precedencia do veredito ao fundir cenarios. O pior resultado vence:
 #: um botao que funciona num cenario e morre em outro continua sendo defeito.
 _VERDICT_RANK = {
+    "unnamed-actionable": -1,
     "silent-no-op": 0,
     "unrouted": 1,
     "blocked-silent": 2,
     "blocked-explained": 3,
     "handled-locally": 4,
     "routed": 5,
+    # Inercia PROVADA por ativacao, nao presumida pela forma. Nao e pendencia de
+    # sondagem: o item foi exercitado e nao fez nada, que e o contrato de um
+    # enfeite.
+    "decorative": 5,
     # Invisível num cenário não desfaz a prova obtida em outro. Este veredito
     # só permanece quando o controle nunca foi exercitado em cenário algum.
     "not-probed": 6,

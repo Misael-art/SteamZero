@@ -244,3 +244,43 @@ def test_decorative_icons_are_not_announced_as_actionable(inventory: dict) -> No
     assert offenders == [], (
         "controles apagados anunciados por nome mas sem dizer o porquê:\n" + "\n".join(offenders)
     )
+
+
+def test_no_control_acts_without_announcing_itself(inventory: dict) -> None:
+    """Enfeite é provado, não presumido.
+
+    A sonda classificava como "ícone decorativo" todo item sem rótulo, sem nome
+    acessível e desabilitado. Isso é hipótese sobre a FORMA, e classificar ação
+    por forma já produziu falso positivo neste projeto. Agora o candidato é
+    ATIVADO: se nada muda, nada é despachado e nenhum contrato é tentado, o
+    veredito é ``decorative`` — inércia medida. Se qualquer coisa acontece, o
+    veredito é ``unnamed-actionable``, e isso reprova: o controle produz efeito
+    e não tem rótulo nem nome acessível, então existe para quem enxerga e não
+    existe para quem usa leitor de tela ou controle.
+    """
+    offenders = [
+        _diagnose(control)
+        for control in inventory["failures"]
+        if control["verdict"] == "unnamed-actionable"
+    ]
+    assert offenders == [], "controles que agem sem se anunciar:\n" + "\n".join(offenders)
+
+
+def test_decoration_is_measured_and_not_assumed(inventory: dict) -> None:
+    """Guarda contra a volta da classificação por forma.
+
+    Se alguém reintroduzir o atalho — rotular de enfeite sem ativar —, o
+    veredito ``decorative`` sumiria do inventário e os mesmos itens voltariam a
+    inflar ``not-probed`` sem que ninguém tivesse medido nada.
+    """
+    counts = inventory["verdictCounts"]
+    assert counts.get("decorative", 0) > 0, (
+        "nenhum controle foi provado inerte; a sonda voltou a presumir pela forma?"
+    )
+    for control in inventory["controls"]:
+        if control.get("verdict") != "decorative":
+            continue
+        assert not control.get("label"), f"enfeite com rótulo: {_diagnose(control)}"
+        assert not control.get("accessibleName"), (
+            f"enfeite com nome acessível: {_diagnose(control)}"
+        )

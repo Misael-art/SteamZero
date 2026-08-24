@@ -404,6 +404,14 @@ Main {
     }
 
     function verdictFor(record, changed, message) {
+        if (record.decorativeCandidate === true) {
+            // Inércia provada: ativado, nada mudou e nada foi despachado.
+            if (!changed && message === "" && record.attemptedContract === "")
+                return "decorative"
+            // Mexeu em alguma coisa sem ter rótulo nem nome acessível: quem usa
+            // leitor de tela ou controle não tem como saber que isto existe.
+            return "unnamed-actionable"
+        }
         if (!record.enabled)
             return message === "" ? "blocked-silent" : "blocked-explained"
         if (record.attemptedContract !== "")
@@ -645,8 +653,13 @@ Main {
             const before = fullState(record.sectionIndex)
             const fired = activate(record)
             if (!fired) {
-                record.verdict = "not-probed"
-                record.probeNote = "sem sinal de ativação conhecido"
+                // Candidato a decoração que nem sinal de ativação tem é enfeite
+                // com folga: não há como o usuário acioná-lo por caminho algum.
+                record.verdict = record.decorativeCandidate === true
+                    ? "decorative" : "not-probed"
+                record.probeNote = record.decorativeCandidate === true
+                    ? "sem sinal de ativação e sem efeito: enfeite"
+                    : "sem sinal de ativação conhecido"
                 activationCursor += 1
                 Qt.callLater(probeNextControl)
                 return
@@ -683,6 +696,14 @@ Main {
             record.changedState = false
             if (isActivatable(record)) {
                 activationQueue.push(record)
+            } else if (record.visible && !record.enabled && !isPromise(record)) {
+                // Candidato a decoração. NÃO se declara decoração pela forma:
+                // "sem rótulo, sem nome acessível e desabilitado" é a hipótese,
+                // não a prova. O item entra na fila de ativação para que a
+                // inércia seja MEDIDA — se algo mudar, é controle real que não
+                // se anuncia, e isso é defeito, não enfeite.
+                record.decorativeCandidate = true
+                activationQueue.push(record)
             } else if (record.visible && !record.enabled && isPromise(record)) {
                 // Desabilitado é decisão de produto, não pendência de sondagem.
                 // Classificar como `not-probed` tornava o gate blocked-silent
@@ -695,7 +716,6 @@ Main {
             } else {
                 record.verdict = "not-probed"
                 record.probeNote = !record.visible ? "invisível neste estado"
-                    : !record.enabled ? "ícone decorativo (sem rótulo nem nome acessível)"
                     : "tipo " + record.kind + " exige gesto, não clique"
             }
         }
