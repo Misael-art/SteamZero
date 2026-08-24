@@ -364,6 +364,35 @@ def _load_unfinished_journal(state_dir: Path | None = None) -> UpdateJournal | N
     return unfinished[0] if unfinished else None
 
 
+def _record_pre_activation_failure(
+    journal: UpdateJournal,
+    *,
+    current_release: str | None,
+    error: Exception,
+) -> None:
+    """Terminaliza uma falha comprovadamente anterior à instalação.
+
+    Sem isto, uma exceção durante o preparo deixa o journal ABERTO, e a execução
+    seguinte volta a encontrá-lo como inacabado: o `update` seguinte é forçado
+    de volta ao commit antigo por :func:`_require_recovery_checkout`, sem
+    caminho para frente. Isso é travar, e o AGENTS.md seção 8 exige degradar.
+
+    Se nem o registro da falha for possível, a automação falha alto em vez de
+    seguir com um journal em estado indefinido.
+    """
+    failed_phase = journal.phase
+    try:
+        journal.event(
+            "failed-before-activation",
+            current_release=current_release,
+            data={"failedPhase": failed_phase, "errorType": type(error).__name__},
+        )
+    except Exception as evidence_error:
+        raise AutomationError(
+            "a preparação falhou antes da ativação e o journal não pôde ser terminalizado"
+        ) from evidence_error
+
+
 def _default_runner(
     argv: Sequence[str],
     cwd: Path,
@@ -2058,11 +2087,22 @@ def update(
                     runner=runner,
                 )
                 current = _read_host_truth(host_root).get("release")
-                _bind_journal_bundle(
-                    unfinished,
-                    bundle,
-                    current_release=str(current) if current else None,
-                )
+                current_release = str(current) if current else None
+                try:
+                    _bind_journal_bundle(
+                        unfinished,
+                        bundle,
+                        current_release=current_release,
+                    )
+                except Exception as exc:
+                    # Falhar aqui e ainda antes da instalacao: terminaliza em vez
+                    # de deixar o journal aberto prendendo o proximo update.
+                    _record_pre_activation_failure(
+                        unfinished,
+                        current_release=current_release,
+                        error=exc,
+                    )
+                    raise
             else:
                 bundle = load_bundle(bundle_root, expected_ref=source_ref)
             _require_checkout(bundle, runner)
@@ -2119,20 +2159,32 @@ def update(
             source_ref=source_ref,
             runner=runner,
         )
-        _bind_journal_bundle(
-            journal,
-            bundle,
-            current_release=str(current) if current else None,
-        )
-        _require_checkout(bundle, runner)
-        _require_not_quarantined(bundle.release, state_dir)
-        preflight = _host_preflight(
-            runner=runner,
-            host_root=host_root,
-            check_ownership=check_ownership,
-        )
-        plan = _plan_update(bundle, preflight)
-        _bind_journal_preflight(journal, plan)
+        current_release = str(current) if current else None
+        # Todo este trecho acontece ANTES de qualquer instalacao. Falhar aqui e
+        # legitimo; deixar o journal aberto ao falhar nao e — a execucao seguinte
+        # o encontraria inacabado e prenderia o operador no commit antigo.
+        try:
+            _bind_journal_bundle(
+                journal,
+                bundle,
+                current_release=current_release,
+            )
+            _require_checkout(bundle, runner)
+            _require_not_quarantined(bundle.release, state_dir)
+            preflight = _host_preflight(
+                runner=runner,
+                host_root=host_root,
+                check_ownership=check_ownership,
+            )
+            plan = _plan_update(bundle, preflight)
+            _bind_journal_preflight(journal, plan)
+        except Exception as exc:
+            _record_pre_activation_failure(
+                journal,
+                current_release=current_release,
+                error=exc,
+            )
+            raise
         if plan_only:
             journal.event("planned", current_release=plan.current_release)
             return {

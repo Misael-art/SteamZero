@@ -1588,3 +1588,41 @@ def test_convergence_failure_keeps_the_structured_report() -> None:
     assert raised.value.state == "diverged"
     assert raised.value.code == "E-HOST-DAEMON-PENDING"
     assert "geração anterior" in raised.value.detail
+
+
+def test_failure_before_activation_terminalizes_the_journal(tmp_path: Path) -> None:
+    """Falha antes da ativação não pode deixar o operador preso.
+
+    O porte perdeu `_record_pre_activation_failure`. Sem ela, uma exceção
+    durante o preparo deixa o journal ABERTO, e a execução seguinte volta a
+    encontrá-lo como inacabado — o `update` seguinte é forçado de volta ao
+    commit antigo por `_require_recovery_checkout`, sem caminho para frente.
+    Isso é travar, e o AGENTS.md seção 8 exige degradar.
+
+    A prova é o estado observável: depois de registrar a falha, o journal
+    deixa de ser inacabado.
+    """
+    state_dir = tmp_path / "state"
+    root, _version, _commit = _bundle(tmp_path)
+    bundle = release_host.load_bundle(root)
+    journal = release_host._new_update_journal(_update_plan(bundle), state_dir=state_dir)
+
+    assert release_host._load_unfinished_journal(state_dir) is not None, (
+        "o journal recém-criado deveria contar como inacabado"
+    )
+
+    release_host._record_pre_activation_failure(
+        journal,
+        current_release="0.1.0a46-aaaaaaaaaaaa",
+        error=RuntimeError("preparo falhou"),
+    )
+
+    assert release_host._load_unfinished_journal(state_dir) is None, (
+        "journal continuou inacabado depois da falha: o próximo update ficaria "
+        "preso no commit antigo"
+    )
+    events = journal.document.get("events")
+    assert isinstance(events, list)
+    terminal = [item for item in events if item.get("phase") == "failed-before-activation"]
+    assert terminal, "a falha anterior à ativação não foi registrada no journal"
+    assert terminal[-1]["data"]["errorType"] == "RuntimeError"
