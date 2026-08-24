@@ -1200,23 +1200,36 @@ def _converge(
     *,
     runner: CommandRunner,
 ) -> dict[str, object]:
-    first = _run(
-        [str(HOST_MANAGER), "converge", "--expect-release", release],
-        timeout=120,
-        runner=runner,
-        purpose=f"convergência {release}",
-    )
-    second = _run(
-        [str(HOST_MANAGER), "converge", "--expect-release", release],
-        timeout=120,
-        runner=runner,
-        purpose=f"idempotência {release}",
-    )
-    try:
-        first_data = json.loads(first.stdout)
-        second_data = json.loads(second.stdout)
-    except json.JSONDecodeError as exc:
-        raise AutomationError("steamzero-host converge devolveu JSON inválido") from exc
+    def execute(purpose: str) -> object:
+        """Executa o convergidor preservando o relatório quando ele falha.
+
+        Não usa :func:`_run` de propósito. `_run` reprova pelo returncode ANTES
+        de o stdout ser lido, e o convergidor emite relatório estruturado
+        JUSTAMENTE quando falha — estado, código e detalhe. Passar por `_run`
+        virava uma ``AutomationError`` genérica com o JSON cru na mensagem, e
+        quem grava ``rollback-required`` inspeciona
+        ``isinstance(erro, ConvergenceError)`` para preservar ``failureState``,
+        ``failureCode`` e ``failureDetail``. Sem o disparo aquele ramo é código
+        morto, e o operador perde exatamente os campos que dizem POR QUE falhou.
+        """
+        argv = [str(HOST_MANAGER), "converge", "--expect-release", release]
+        try:
+            completed = runner(argv, ROOT, 120)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise AutomationError(f"{purpose}: {exc}") from exc
+        try:
+            payload = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            detail = (completed.stderr or completed.stdout).strip()[-1200:]
+            raise AutomationError(
+                f"{purpose} devolveu JSON inválido (exit {completed.returncode}): {detail}"
+            ) from exc
+        if completed.returncode != 0:
+            raise ConvergenceError(_convergence_report(payload))
+        return payload
+
+    first_data = execute(f"convergência {release}")
+    second_data = execute(f"idempotência {release}")
     first_report = _convergence_report(first_data)
     second_report = _convergence_report(second_data)
     if first_report.get("state") != "converged":

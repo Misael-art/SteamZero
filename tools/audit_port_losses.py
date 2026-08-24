@@ -6,6 +6,7 @@ Perder um `raise X` ou uma funcao no auto-merge e silencioso; isto torna visivel
 
 import ast
 import subprocess
+from pathlib import Path
 
 SRC = "23b120b"
 FILES = [
@@ -74,7 +75,12 @@ def symbols(source):
 
 total = 0
 for path in FILES:
-    old, new = blob(SRC, path), blob("HEAD", path)
+    # Le a ARVORE DE TRABALHO, nao HEAD: comparar contra o ultimo commit
+    # esconderia justamente a correcao que se acabou de escrever, e o docstring
+    # promete "arvore atual".
+    working = Path(path)
+    old = blob(SRC, path)
+    new = working.read_text(encoding="utf-8") if working.is_file() else None
     if old is None:
         print(f"— {path}: nao existe na origem")
         continue

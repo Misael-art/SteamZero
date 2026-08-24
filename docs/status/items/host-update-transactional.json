@@ -25,7 +25,7 @@
     "tools/audit_port_losses.py",
     "tools/release_host.py"
   ],
-  "scopeDigest": "5bbc1ab1b6f6106808ad4d9ee993450bf610d360787486ab1890f363c37d6f0e",
+  "scopeDigest": "4fa7350710b5558f1daf8142ecba9ed8320dc6bd14e309e1b43695dc4777f936",
   "dependsOn": [],
   "knownGaps": [
     "GAP-RELEASE-PORT-LOSSES"
@@ -53,9 +53,15 @@
       "reference": "tools/release_host.py",
       "command": "auditoria de perdas do auto-merge por comparacao de AST entre a origem do porte (23b120b, PR #82) e a arvore atual, em 11 arquivos de updater/lifecycle. Um arquivo perdeu simbolos: tools/release_host.py. (1) O `raise ConvergenceError(report)` do caminho de convergencia sumiu — o commit fef3678 restaurou a CLASSE e o isinstance, nao o disparo, entao a excecao nunca e levantada e o ramo isinstance da linha 1730 e codigo morto; consequencia: o registro `rollback-required` perde failureState, failureCode e failureDetail, que sao exatamente os campos que dizem POR QUE falhou. (2) A versao atual de _converge nao confere o returncode do `steamzero-host converge`, so o relatorio: exit nao-zero com relatorio dizendo converged passaria. (3) Sumiram _discovery_can_be_superseded e _record_pre_activation_failure, usadas em tres pontos do caminho de pre-ativacao na origem (linhas 2090, 2129, 2216). Os outros 10 arquivos nao perderam simbolo algum.",
       "result": "failed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_release_host.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py -q (65 passed). Prova negativa registrada: sem a correcao o teste recebe AutomationError com o JSON cru na mensagem, em vez de ConvergenceError com state/code/detail. Auditoria de perdas: 4 -> 2 simbolos.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Recuperar as tres perdas do porte em tools/release_host.py, uma por vez e com teste que reprove sem a correcao: o raise ConvergenceError com o report estruturado, a conferencia do returncode do converge, e as duas funcoes do caminho de pre-ativacao. E fluxo governado de release, entao cada uma entra isolada e provada, nunca em bloco.",
+  "nextAction": "Recuperar as duas perdas restantes do caminho de pre-ativacao (_discovery_can_be_superseded e _record_pre_activation_failure), uma por vez e com prova negativa, como foi feito com o ConvergenceError.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
   "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro. 2026-08-24: a auditoria de perdas do auto-merge que o item 6.7 pede foi FEITA, por comparacao de AST contra a origem do porte. Achou tres perdas reais, todas em release_host.py e todas no caminho de falha — que e o caminho que menos se exercita e mais importa. Os outros dez arquivos de updater/lifecycle estao integros."

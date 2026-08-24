@@ -1539,3 +1539,52 @@ def test_source_has_no_privileged_escape_hatch() -> None:
     assert source.count('"tools" / "install_host.py"') == 2
     assert source.count('"tools/install_host.py"') == 0
     assert '"sudo"' not in source
+
+
+class _ConvergeRunner:
+    """Runner que faz o convergidor FALHAR devolvendo relatório estruturado.
+
+    É o caso real: `steamzero-host converge` sai com exit não-zero e ainda assim
+    emite no stdout um relatório dizendo o estado, o código e o detalhe da falha.
+    """
+
+    def __init__(self, report: dict[str, object], returncode: int = 1) -> None:
+        self.report = report
+        self.returncode = returncode
+        self.calls: list[tuple[str, ...]] = []
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        cwd: Path,
+        _timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        call = tuple(argv)
+        self.calls.append(call)
+        payload = json.dumps({"ok": False, "data": self.report})
+        return subprocess.CompletedProcess(call, self.returncode, payload, "")
+
+
+def test_convergence_failure_keeps_the_structured_report() -> None:
+    """Falha de convergência precisa chegar como ConvergenceError, não genérica.
+
+    O porte perdeu o `raise ConvergenceError(report)`: `_converge` passou a
+    chamar `_run`, que reprova pelo returncode ANTES de o stdout ser lido. O
+    relatório morria ali. Quem registra `rollback-required` inspeciona
+    `isinstance(erro, ConvergenceError)` para gravar `failureState`,
+    `failureCode` e `failureDetail` — e sem o disparo esse ramo é código morto,
+    então o operador perde exatamente os campos que dizem POR QUE falhou.
+    """
+    report = {
+        "state": "diverged",
+        "code": "E-HOST-DAEMON-PENDING",
+        "detail": "daemon ficou na geração anterior",
+    }
+    runner = _ConvergeRunner(report)
+
+    with pytest.raises(release_host.ConvergenceError) as raised:
+        release_host._converge("0.1.0a46-deadbeefcafe", runner=runner)
+
+    assert raised.value.state == "diverged"
+    assert raised.value.code == "E-HOST-DAEMON-PENDING"
+    assert "geração anterior" in raised.value.detail
