@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-HOST-UPDATE-TRANSACTIONAL",
+  "title": "Update e rollback transacionais do host",
+  "domain": "distribution",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/core/transaction.py",
+    "src/steamzero/core/journal.py",
+    "src/steamzero/core/net.py",
+    "tools/release_host.py",
+    "tests/unit/test_release_host.py",
+    "tests/integration/test_transaction.py",
+    "tests/integration/test_host_installer.py",
+    "tests/failure_injection/test_fi05_hostile_target.py",
+    "tests/failure_injection/test_fi06_custody_recovery.py",
+    "tests/failure_injection/test_fi06_rename_window.py",
+    "tests/failure_injection/test_fi06_symlink_move_safety.py",
+    "docs/09-operations/UPDATE-AND-ROLLBACK.md",
+    "docs/09-operations/RELEASE-HOST-AUTOMATION.md"
+  ],
+  "scopeDigest": "0be8e6d57dbc5676f4be7090c2e7e2587c654a5dafea6565d00445091ec505b1",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Um lock global impede dois updates concorrentes sobre o mesmo host.",
+    "O journal write-ahead permite retomar ou reverter um update interrompido.",
+    "A confirmacao exige o token exato apresentado pela automacao.",
+    "O preflight recusa release sem proveniencia, hash, CI verde ou espaco livre.",
+    "Banco e dados do usuario sao preservados atraves do update e do rollback.",
+    "Candidata invalida vai para quarentena e o rollback governado permanece disponivel.",
+    "A publicacao e o rollback so tocam artefatos com marcador de ownership do SteamZero.",
+    "A convergencia exige identidade do daemon e falha com ConvergenceError em vez de falso verde.",
+    "O download de componentes usa HTTPS controlado e observacoes volateis de ambiente nao reprovam a convergencia."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_transaction.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py tests/integration/test_host_installer.py tests/integration/test_transaction.py tests/failure_injection/test_fi06_custody_recovery.py tests/failure_injection/test_fi06_rename_window.py tests/failure_injection/test_fi06_symlink_move_safety.py tests/failure_injection/test_fi05_hostile_target.py -q (147 passed)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Exercitar o update transacional contra o host real pelo fluxo governado (tools/release_host.py) e registrar preservacao de banco, quarentena de candidata invalida e rollback disponivel antes da ativacao.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-24",
+  "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro."
+}

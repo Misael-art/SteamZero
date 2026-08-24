@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "31769981c88a8ba59400be00d2ae5e1ec6a1d61732e9d4bbc3bc9585d48e76e3",
+  "scopeDigest": "d3bd65cae274bc25a22092ec3a85993e2f8330ecbec2936e86824eddd7967fbd",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -52,19 +52,19 @@
       "kind": "test",
       "reference": "tests",
       "command": "run_tests_isolated.py tests -q; ruff check src tools tests; ruff format --check src tools tests; mypy src; make independence boundaries; make status-check",
-      "result": "passed"
+      "result": "partial"
     },
     {
       "kind": "test",
       "reference": "tests/integration/test_component_lifecycle.py",
-      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q",
-      "result": "passed"
+      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (2026-08-24: 1 failed, 142 passed — TestPlanSurvivesProcess::test_flatpak_plan_applies_from_a_new_instance)",
+      "result": "failed"
     }
   ],
-  "nextAction": "Promover o smoke de metadados do melonDS, que também não aceita --version, repetir seu install físico e só então avançar na matriz restante; Cemu, RPCS3 e Flycast já foram concluídos pelo runner transitório sem afrouxar o daemon.",
+  "nextAction": "Fechar a contradicao do plano Flatpak v3 registrada em SZ-COMPONENT-LIFECYCLE antes de promover o smoke de metadados do melonDS: enquanto TestPlanSurvivesProcess reprovar, a suite integral deste escopo nao pode ser declarada verde.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
-  "updatedAt": "2026-08-22",
-  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial."
+  "updatedAt": "2026-08-24",
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate."
 }

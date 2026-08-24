@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-COMPONENT-LIFECYCLE",
+  "title": "Ciclo funcional assincrono de componentes",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "dev",
+  "operation": "degraded",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/adapters/component_jobs.py",
+    "src/steamzero/jobs",
+    "src/steamzero/schemas/component-plan-v3.schema.json",
+    "tests/unit/test_component_jobs.py",
+    "tests/integration/test_jobs.py",
+    "tests/integration/test_component_lifecycle.py",
+    "docs/09-operations/evidence/2026-08-16-component-plan-metadata",
+    "docs/09-operations/evidence/2026-08-16-component-apply-async",
+    "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
+  ],
+  "scopeDigest": "2001e5d1f540c105f9ccb4f07a9d994e3cd3b291660500113a6b0699c2572afa",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "plan() e metadata-only: nao resolve commit remoto, nao adquire artefato e devolve delegated vazio.",
+    "A aquisicao e o plano Flatpak delegado nascem somente no apply/job confirmado.",
+    "Planos legados v1 e v2 continuam legiveis e aplicaveis.",
+    "Confirmacao repetida da mesma requisicao produz uma unica operacao e um unico job.",
+    "Plano expirado, obsoleto ou com fingerprint divergente e recusado com diagnostico.",
+    "Job interrompido por queda de processo e retomado ou terminalizado, nunca deixado pendurado.",
+    "Cancelamento e falha publicam estado terminal e preservam dados do usuario."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_component_jobs.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_component_jobs.py tests/integration/test_jobs.py -q (31 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (1 failed, 142 passed)",
+      "result": "failed"
+    }
+  ],
+  "nextAction": "Fechar TestPlanSurvivesProcess::test_flatpak_plan_applies_from_a_new_instance pelo contrato v3: a assercao antiga exige envelope.delegated['flatpakPlanId'] no plano, o que contradiz plan() metadata-only. Fortalecer o teste para provar schemaVersion 3, delegated vazio e zero rede antes da confirmacao, e provar a materializacao do plano Flatpak em nova instancia apos a confirmacao.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-24",
+  "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore."
+}

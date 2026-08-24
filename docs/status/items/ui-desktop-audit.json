@@ -11,41 +11,36 @@
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/ui",
-<<<<<<< HEAD
-=======
-    "src/steamzero/ui/qml/EditorialHome.qml",
+    "tests/integration/test_qml_handheld_offscreen.py",
+    "tests/integration/test_ui_action_inventory.py",
     "tests/integration/test_ui_control_identity.py",
     "tests/integration/test_ui_control_matrix.py",
     "tests/integration/test_ui_dialog_journeys.py",
     "tests/integration/test_ui_dialog_keys.py",
+    "tests/unit/test_ui_audit_runner.py",
     "tests/qml/check_dialog_keys.qml",
     "tests/qml/check_editorial_library.qml",
     "tests/qml/check_emulation.qml",
     "tests/qml/check_main_emulation.qml",
     "tests/qml/check_theme_editor_aura.qml",
->>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
+    "tools/ui_action_inventory.py",
+    "tools/ui_action_probe.qml",
     "tools/ui_audit_capture.qml",
     "tools/ui_audit_runner.py",
-    "docs/09-operations/evidence/2026-08-11-ui-audit",
-    "tests/qml/check_main_emulation.qml",
-    "tests/qml/check_emulation.qml",
-    "tests/qml/check_editorial_library.qml",
-    "tests/qml/check_theme_editor_aura.qml"
+    "tools/ui_control_inventory.py",
+    "tools/ui_control_probe.qml",
+    "tools/ui_dialog_probe.qml",
+    "tools/ui_scenario_fixtures.py",
+    "docs/09-operations/evidence/2026-08-11-ui-audit"
   ],
-<<<<<<< HEAD
-  "scopeDigest": "25577faeb6d44a73a614c2b62445ecf063867ab480dc8faccf4a9d6d10e25e7f",
-=======
-  "scopeDigest": "8f685d739f307b3d42207c888372dc56ba5b60343f767b424d188681442f255f",
->>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
+  "scopeDigest": "71e463d94eb652c5a672bd277ba33bf57198bcc65f3045c9c4c5ded481f43d9c",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
     "Instalar emulador nao e no-op silencioso.",
     "DarkButton legivel no tema claro.",
     "Tema aplica via plan+confirm na UI.",
-<<<<<<< HEAD
-    "Harnesses QML de dispatch/tema/biblioteca verdes."
-=======
+    "Harnesses QML de dispatch/tema/biblioteca verdes.",
     "Todo controle acionavel visivel anuncia Accessible.name.",
     "Todo alvo acionavel tem ao menos 48x48.",
     "A matriz roda todos os cenarios declarados e funde por identidade estavel.",
@@ -54,8 +49,7 @@
     "Fechar modal por Escape nao deixa plano pendurado.",
     "Fechar modal devolve o foco ao originador.",
     "Modal recebe o foco ao abrir (verificado com abertura programatica).",
-    "Escape e Tab reais provados por evento de teclado (PENDENTE)."
->>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
+    "Escape e Tab reais provados por evento de teclado do Qt 6 (fechado)."
   ],
   "evidence": [
     {
@@ -63,14 +57,6 @@
       "reference": "tests/integration/test_qml_handheld_offscreen.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_qml_handheld_offscreen.py -q",
       "result": "passed"
-<<<<<<< HEAD
-    }
-  ],
-  "nextAction": "Integrar em main e validar fisicamente no Deck.",
-  "activeWorkstreams": [],
-  "updatedAt": "2026-08-17",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. O digest compartilhado da UI foi renovado apos o harness QML permanecer verde com o preview de receitas e do grid materializado; nenhum estado operacional foi promovido."
-=======
     },
     {
       "kind": "test",
@@ -105,15 +91,18 @@
     {
       "kind": "test",
       "reference": "tests/integration/test_ui_dialog_keys.py",
-      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -q",
-      "result": "recorded"
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_keys.py -v -rs -q (2 passed, 0 skipped; qmltestrunner Qt 6.11.1: 7 passed, 0 failed, 0 skipped)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_editorial_library.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 -I src/steamzero/ui/qml tests/qml/{check_editorial_library,check_emulation,check_main_emulation,check_theme_editor_aura}.qml (rc=0 nos quatro)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Dialogos: abertura e cancelamento PROGRAMATICOS de 6 modais provados, com 2 defeitos corrigidos na passagem anterior (foco nao entrava; Escape deixava plano pendurado). NAO e jornada completa: confirmar nao foi exercido e o 'Escape' provado era dialog.close(). Escape/Tab reais bloqueados por QML-KEY-INJECTION-001. Baseline de 14 cenarios inalterada: 574 controles, 378 not-probed, 80 identidades explicitas, 494 fallback, 0 colisoes.",
-  "activeWorkstreams": [
-    "WS-2026-08-UI-FUNCTIONAL-CLOSURE"
-  ],
-  "updatedAt": "2026-08-14",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45. Caminho compartilhado com WS-2026-08-HARMONIZE-A45, que reserva docs/status: este item so teve escopo, criterios, evidencia e proxima acao atualizados."
->>>>>>> f92734b (test(ui): a prova de Escape era close(), e agora esta registrada como pendente)
+  "nextAction": "Ampliar a matriz de cenarios ate not-probed = 0 nas superficies que serao certificadas (Home, Biblioteca, Emulacao, Steam, perfis, cast, sistema, temas, sync, sidebar, handheld drawer, task drawer, dialogs, jobs, recovery, credenciais, launcher), publicando denominador e justificativa de cada exclusao; a baseline anterior de 14 cenarios registrava 574 controles, 378 not-probed, 80 identidades explicitas, 494 fallback e 0 colisoes.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-24",
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada."
 }

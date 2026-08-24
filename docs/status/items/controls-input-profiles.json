@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-CONTROLS-INPUT-PROFILES",
+  "title": "Perfis de controle e autoconfig gerenciado",
+  "domain": "emulation",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/input_profiles.py",
+    "src/steamzero/domain/retroarch_autoconfig.py",
+    "src/steamzero/domain/retropad.py",
+    "src/steamzero/adapters/input_devices.py",
+    "src/steamzero/ui/qml/ControlsProfileCard.qml",
+    "tests/unit/test_input_profiles.py",
+    "tests/unit/test_input_devices.py",
+    "tests/unit/test_retroarch_autoconfig.py",
+    "tests/qml/check_controls_profile_card.qml"
+  ],
+  "scopeDigest": "3e231fec8fe3a6f0003a8d670ff190b8a4a390636682b81c90d6f61fc5a70f10",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "O autoconfig gerenciado nasce da traducao RetroPad, com indice fisico resolvido contra o dispositivo real.",
+    "O arquivo publicado carrega marcador de ownership e nunca edita o retroarch.cfg do usuario.",
+    "Somente a ausencia comprovada do autoconfig autoriza grava-lo.",
+    "O perfil chega ao lancamento real do emulador por --appendconfig.",
+    "A UI separa perfil salvo de perfil valendo e oferece aplicar onde o estado diz que falta."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_input_profiles.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_input_profiles.py tests/unit/test_input_devices.py tests/unit/test_retroarch_autoconfig.py -q (109 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/qml/check_controls_profile_card.qml",
+      "command": "QT_QPA_PLATFORM=offscreen qml6 -I src/steamzero/ui/qml tests/qml/check_controls_profile_card.qml (rc=0)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Provar no host real, com um controle fisico conectado, que a descoberta resolve o indice, que o autoconfig gerenciado e escrito apenas quando ausente e que o perfil chega ao RetroArch pelo lancamento governado.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-24",
+  "notes": "Item criado em 2026-08-24 porque a capacidade chegou pelo porte (72d4553, ec93214, 6024639, 972b8f1, bcda98c, a0f153c, f8d2fe2, 94db78f, 47fc0a8, 2114389, bf9e620, f47ce42) e os arquivos estavam apenas sob os agregadores SZ-AGG-DOMAIN, SZ-AGG-ADAPTERS e SZ-AGG-INPUT-PROFILES, contra a regra do AGENTS.md secao 2 de que toda capacidade tem item proprio. O eixo operacional e 'unknown': as provas existentes sao de unidade e de harness QML, nenhuma contra um controle fisico."
+}
