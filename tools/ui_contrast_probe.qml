@@ -51,14 +51,37 @@ Main {
             && item.width > 1 && item.height > 1
     }
 
-    // Captura um Item DECLARADO, nunca `window.contentItem`: o contentItem de
-    // uma Window raiz não pertence ao engine e o Qt recusa com "item has no QML
-    // engine". As caixas saem relativas a esse mesmo item, que é o que o PNG
-    // contém.
+    // Estar dentro dos limites da superfície não basta: um texto rolado para
+    // fora de um ScrollView continua posicionado, e simplesmente não é
+    // desenhado. Medir a caixa dele mediria fundo vazio e acusaria contraste
+    // 1,0 contra um texto que a tela nem mostrou.
+    function isClippedAway(item) {
+        let child = item
+        let ancestor = item.parent
+        let guard = 0
+        while (ancestor && guard < 60) {
+            if (ancestor.clip === true) {
+                const topLeft = child.mapToItem(ancestor, 0, 0)
+                if (topLeft.x + child.width <= 0 || topLeft.y + child.height <= 0
+                        || topLeft.x >= ancestor.width || topLeft.y >= ancestor.height)
+                    return true
+            }
+            child = ancestor
+            ancestor = ancestor.parent
+            guard += 1
+        }
+        return false
+    }
+
+    // Captura a SUPERFÍCIE do shell: um Item que pinta o próprio fundo opaco e
+    // contém o conteúdo. Duas coisas que não funcionam e já custaram tentativa:
+    // `window.contentItem` é recusado ("item has no QML engine"), e capturar a
+    // página da seção devolve conteúdo sem fundo, achatado sobre preto de forma
+    // não determinística. As caixas saem relativas à mesma superfície do PNG.
     function walk(item, section, out, depth, page) {
         if (!item || depth > 40 || item.visible === false || item.opacity <= 0.05)
             return out
-        if (isLegibleCandidate(item)) {
+        if (isLegibleCandidate(item) && !isClippedAway(item)) {
             const p = item.mapToItem(page, 0, 0)
             // Descarta o que caiu fora da janela: medir pixel que não existe
             // produziria acusação inventada.
@@ -146,9 +169,10 @@ Main {
             return
         busy = true
         const section = navigationSections[cursor]
+        const surface = shellSurfaceControl
         const page = responsiveContent.children[cursor]
-        const found = walk(page, section.id, [], 0, page)
-        const ok = page.grabToImage(function(result) {
+        const found = walk(page, section.id, [], 0, surface)
+        const ok = surface.grabToImage(function(result) {
             if (result === null || result.image.width === 0) {
                 console.error("CONTRAST-FAIL imagem vazia em " + section.id)
                 window.requestExit(1)
