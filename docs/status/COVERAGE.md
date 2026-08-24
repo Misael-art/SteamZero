@@ -18,7 +18,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AGG-SCHEMAS | 49 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-SERVICE-API | 11 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AGG-TESTS | 361 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
-| SZ-AGG-TOOLS | 36 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
+| SZ-AGG-TOOLS | 38 | 0 | 0 | none | custodia declarada; nenhuma capacidade provada |
 | SZ-AURA-LAUNCHER | 27 | 7 | 7 | none |  |
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
@@ -43,7 +43,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 77 | 34 | 32 | hw |  |
 | SZ-THEME-STUDIO | 12 | 10 | 10 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 249 | 17 | 14 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 251 | 18 | 14 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
 Arquivos em `src/`: **493**. Sob agregador apenas, sem item de capacidade: **278** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
