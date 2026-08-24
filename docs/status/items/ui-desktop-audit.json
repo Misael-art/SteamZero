@@ -12,6 +12,7 @@
   "scopePaths": [
     "docs/09-operations/evidence/2026-08-11-ui-audit",
     "src/steamzero/ui",
+    "src/steamzero/ui/qml/SteamGameplay.qml",
     "tests/integration/test_qml_handheld_offscreen.py",
     "tests/integration/test_ui_action_inventory.py",
     "tests/integration/test_ui_combobox_gestures.py",
@@ -31,6 +32,7 @@
     "tests/qml/check_main_emulation.qml",
     "tests/qml/check_theme_editor_aura.qml",
     "tests/unit/test_ui_audit_runner.py",
+    "tests/unit/test_ui_selected_label_contrast.py",
     "tools/ui_action_inventory.py",
     "tools/ui_action_probe.qml",
     "tools/ui_audit_capture.qml",
@@ -42,10 +44,9 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "66ad8723840fabe114ee958fe86b1fcdf382725b5979dfeccdf49c9016eecc74",
+  "scopeDigest": "b263be52a087cf637b7aa049004c953871408138a48e3a520eca627687ec2f51",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-UI-CHECKED-TAB-CONTRAST",
     "GAP-UI-CONTRAST-MEASUREMENT"
   ],
   "acceptanceCriteria": [
@@ -66,7 +67,8 @@
     "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio.",
     "ComboBox e exercitado por tecla real e observa activated; bloqueado explica o motivo.",
     "Enfeite e provado por ativacao, nao presumido pela forma; controle que age sem se anunciar reprova como unnamed-actionable.",
-    "O shell pinta o proprio fundo num Item capturavel, em vez de depender da cor da janela."
+    "O shell pinta o proprio fundo num Item capturavel, em vez de depender da cor da janela.",
+    "O rotulo do item selecionado e legivel em todo tema empacotado, com a cor escolhida por contraste."
   ],
   "evidence": [
     {
@@ -191,19 +193,25 @@
     },
     {
       "kind": "diagnostic",
-      "reference": "src/steamzero/ui/qml/SteamGameplay.qml",
-      "command": "defeito VERIFICADO por medicao e por inspecao da fonte: os delegates de seletor trocam o FUNDO para cyanDarkColor quando checked (linhas 872 e 910) e nunca trocam a cor do rotulo, que segue escuro. Medido #16212a sobre #005471 = 1,95:1 contra 4,5 exigido, em 'Por jogo', 'Controles' e 'Desempenho e LSFG'; recorte conferido a olho mostra 'Global' escuro sobre teal. NAO corrigido nesta passagem: a paleta nao expoe uma cor 'sobre escuro' e usar backgroundColor inverteria o problema no tema escuro, o que eu nao consigo validar agora.",
-      "result": "failed"
-    },
-    {
-      "kind": "diagnostic",
       "reference": "tools/ui_contrast_probe.qml",
       "command": "correcao do proprio check de clipping: a versao anterior mapeava o ancestral INTERMEDIARIO para o Flickable, e o contentItem de um Flickable comeca em (0,0) e cabe sempre — o texto la dentro podia estar rolado muito abaixo do viewport e passava. 'Clock da GPU', em y=709 dentro de um Flickable de 456 de altura, era medido contra area vazia. Passou a mapear o ITEM ORIGINAL: 143 -> 127 textos, 30 -> 24 candidatos.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_ui_selected_label_contrast.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_ui_selected_label_contrast.py -q (5 passed: os 4 temas empacotados mais a guarda de que nenhuma cor fixa serviria)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_contrast_inventory.py",
+      "command": "GAP-UI-CHECKED-TAB-CONTRAST FECHADO e provado por medicao antes/depois: 'Por jogo' e 'Controles' saltaram de 1,95:1 para 7,02:1; recorte conferido a olho mostra 'Global' em texto claro legivel sobre o teal, onde antes era navy escuro. Candidatos abaixo do limite caíram de 24 para 21.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Corrigir GAP-UI-CHECKED-TAB-CONTRAST decidindo uma cor de rotulo sobre fundo escuro que funcione nos temas claro E escuro, com prova nos dois. Depois, fechar os artefatos residuais da sonda — caixa que cai em area vazia sem estar clipada — e so entao o contraste vira gate. Em seguida: escalas e resolucoes, movimento reduzido e a prova na release instalada.",
+  "nextAction": "Fechar os artefatos residuais da sonda — caixa que cai em area vazia sem estar clipada, vistos em 'Restaurar perfil seguro', 'Desejado' e 'Parar transmissao' — e so entao o contraste vira gate. Depois: escalas e resolucoes, movimento reduzido e a prova na release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo. 2026-08-24, ComboBox: a sonda de controles so clica, e clicar num ComboBox nao seleciona nada — por isso todos ficavam not-probed. A prova foi para um harness QuickTest com tecla REAL, nao para uma emissao de activated() na mao, que seria a mesma troca ja rejeitada quando close() fazia as vezes de Escape. O harness exige as duas coisas: que o indice mude E que activated seja emitido com o indice novo, porque currentIndex tambem muda por atribuicao. Percorrer as quatro areas da tela Steam revelou 10 ComboBox visiveis, nao os 5 que a matriz via, e DOIS deles estavam desabilitados SEM motivo (controllerLayoutPicker e mediaAccountPicker): cinzas e mudos, indistinguiveis de defeito para leitor de tela. Ambos ganharam Accessible.description condicional. 2026-08-24, decoracao: a sonda declarava 'icone decorativo' pela FORMA — sem rotulo, sem nome acessivel e desabilitado. Isso e hipotese, e classificar acao por forma ja produziu falso positivo neste projeto. O candidato passou a ser ATIVADO: inercia medida vira 'decorative', e qualquer efeito vira 'unnamed-actionable', que entra em FAILING_VERDICTS porque o controle existiria para quem enxerga e nao para quem usa leitor de tela. Resultado: os 31 provaram inercia, ZERO unnamed-actionable, e not-probed caiu de 38 para 7. Dois gates novos impedem a volta do atalho. 2026-08-24, contraste: medi e NAO entreguei. A sonda de tentativa acusaria varios textos abaixo de 4,5:1, mas o mesmo rotulo aparecia duas vezes — uma com 13,69 e outra com exatamente 1,0 — o que denuncia erro do heuristico, nao defeito do produto. Publicar essa contagem repetiria o padrao de falso positivo que esta sonda ja teve. Fica como GAP-UI-CONTRAST-MEASUREMENT com o caminho certo escrito: medir pixel renderizado. 2026-08-24, contraste (segunda tentativa): a sonda por PIXEL foi construida e captura as 9 secoes, com alinhamento de caixa conferido a olho. Tres vieses meus foram encontrados e corrigidos no caminho — adivinhar fundo pelo ancestral opaco, cortar candidatos por FRACAO de pixels (vies de largura em Label com fillWidth) e compor alpha sobre preto. O bloqueio que sobrou nao e vies e sim nao-determinismo da captura, e por isso a ferramenta fica registrada como medicao, NAO como gate: nenhuma contagem foi publicada como acusacao. 2026-08-24, superficie do shell: nenhum Item do Main pintava o fundo — quem pintava era a `color` da ApplicationWindow, que grabToImage de Item nenhum captura. O appShell passou a ficar dentro de um Rectangle que pinta root.backgroundColor, exposto como shellSurfaceControl. Isso torna o conteudo do shell capturavel e embutivel e serve a qualquer auditoria visual futura, nao so ao contraste. 2026-08-24, contraste do item selecionado CORRIGIDO: medi os dois temas com o resolvedor real e nenhuma cor fixa servia — no claro `text` da 1,95 e `background` da 7,02; no escuro e o inverso (4,53 contra 3,53). O QML passou a escolher entre as duas a que contrasta mais com o fundo selecionado, em seis delegates. Um teste prova a regra contra os tokens reais de cada tema empacotado, e um segundo reprova se algum dia UMA cor fixa passar em todos, para que simplificar nao reintroduza o defeito."
 }

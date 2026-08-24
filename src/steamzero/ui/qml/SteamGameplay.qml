@@ -22,6 +22,36 @@ Item {
     required property color amberColor
     required property color redColor
 
+    // Rotulo sobre o fundo do item SELECIONADO.
+    //
+    // O delegate trocava o fundo para `cyanDarkColor` quando checked e deixava
+    // o rotulo em `textColor`. No tema claro isso da 1,95:1 contra 4,5 exigido
+    // — da para adivinhar "Global", nao para ler. Medido na captura e conferido
+    // a olho.
+    //
+    // Nenhuma cor FIXA resolve, e por isso a escolha e calculada: no tema claro
+    // `textColor` e escuro (1,95) e `backgroundColor` e claro (7,02); no escuro
+    // e o inverso (4,53 contra 3,53). A regra pega a que contrasta mais com o
+    // fundo selecionado, e passa nos dois.
+    function _channelLuminance(value) {
+        return value <= 0.03928 ? value / 12.92
+                                : Math.pow((value + 0.055) / 1.055, 2.4)
+    }
+    function _relativeLuminance(color) {
+        return 0.2126 * _channelLuminance(color.r)
+             + 0.7152 * _channelLuminance(color.g)
+             + 0.0722 * _channelLuminance(color.b)
+    }
+    function contrastRatio(first, second) {
+        const a = _relativeLuminance(first)
+        const b = _relativeLuminance(second)
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+    }
+    readonly property color selectedLabelColor:
+        contrastRatio(textColor, cyanDarkColor)
+            >= contrastRatio(backgroundColor, cyanDarkColor)
+        ? textColor : backgroundColor
+
     signal planRequested(var payload)
     signal applyRequested(string planId, string confirmToken)
     signal profileRollbackRequested(string operationId)
@@ -868,6 +898,7 @@ Item {
                         Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: text
                         onClicked: page.scopeIndex = index
+                        palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.surfaceColor
                             border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor
@@ -906,6 +937,7 @@ Item {
                         Layout.minimumHeight: page.minimumTouchTarget
                         Accessible.name: qsTr("Abrir área %1").arg(text)
                         onClicked: page.workspaceIndex = index
+                        palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                         background: Rectangle {
                             color: parent.checked ? page.cyanDarkColor : page.surfaceColor
                             border.color: parent.checked || parent.activeFocus
@@ -1231,6 +1263,7 @@ Item {
                                     Layout.minimumHeight: page.compactLayout ? 56 : 68
                                     Accessible.name: text.replace("\n", " ")
                                     onClicked: page.choosePerformance(index)
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 6 }
                                 }
                             }
@@ -1252,6 +1285,7 @@ Item {
                                     Layout.minimumHeight: 48
                                     Accessible.name: qsTr("%1 FPS").arg(text)
                                     onClicked: page.fpsIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
@@ -1295,6 +1329,7 @@ Item {
                                     ToolTip.visible: hovered && !enabled
                                     ToolTip.text: Accessible.description
                                     onClicked: page.gpuModeIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
@@ -1358,6 +1393,7 @@ Item {
                                     Layout.minimumHeight: 48
                                     Accessible.name: text
                                     onClicked: page.mangoIndex = index
+                                    palette.buttonText: checked ? page.selectedLabelColor : page.textColor
                                     background: Rectangle { color: parent.checked ? page.cyanDarkColor : page.raisedColor; border.color: parent.checked || parent.activeFocus ? page.cyanColor : page.borderColor; border.width: parent.checked || parent.activeFocus ? 2 : 1; radius: 5 }
                                 }
                             }
