@@ -132,6 +132,13 @@ ApplicationWindow {
     property alias safeResetDialogControl: resetDialog
     property alias conflictDialogControl: conflictDialog
     property alias recoveryDialogControl: recoveryDialog
+    // Os quatro que faltavam para a auditoria alcancar TODOS os modais do shell.
+    // Sem alias, um harness que estende Main nao enxerga o id e o modal ficava
+    // fora do denominador sem ninguem perceber.
+    property alias gamemodeDialogControl: gamemodeDialog
+    property alias lsfgDialogControl: lsfgDialog
+    property alias collectionPlanDialogControl: collectionPlanDialog
+    property alias castPinDialogControl: castPinDialog
     property alias credentialScrollControl: credentialScroll
     property alias credentialProviderRepeaterControl: credentialProviderRepeater
     property alias credentialCloseControl: credentialCloseButton
@@ -1642,6 +1649,7 @@ ApplicationWindow {
     Dialog {
         id: gamemodeDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(gamemodeDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Voltar ao Game Mode")
         modal: true
@@ -1751,6 +1759,7 @@ ApplicationWindow {
     Dialog {
         id: lsfgDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(lsfgDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Preparar LSFG-VK")
         modal: true
@@ -2103,6 +2112,7 @@ ApplicationWindow {
     Dialog {
         id: diagnosticsPreviewDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(diagnosticsPreviewDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Revisar conteúdo antes de exportar")
         modal: true
@@ -2168,6 +2178,7 @@ ApplicationWindow {
     Dialog {
         id: operationRollbackDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(operationRollbackDialog)
         onClosed: {
             root.operationDetail = null
             root.operationRollbackPlan = null
@@ -2254,6 +2265,7 @@ ApplicationWindow {
     Dialog {
         id: collectionManageDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(collectionManageDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Gerenciar tags e coleções")
         modal: true
@@ -2371,6 +2383,7 @@ ApplicationWindow {
     Dialog {
         id: collectionPlanDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(collectionPlanDialog)
         onClosed: {
             root.collectionPlan = null
             root.restoreDialogFocus()
@@ -2434,6 +2447,7 @@ ApplicationWindow {
     Dialog {
         id: libraryHealthPlanDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(libraryHealthPlanDialog)
         onClosed: {
             root.libraryHealthPlan = null
             root.restoreDialogFocus()
@@ -2491,6 +2505,7 @@ ApplicationWindow {
     Dialog {
         id: castPinDialog
         onAboutToShow: root.rememberDialogInvoker()
+        onOpened: root.focusDialogContent(castPinDialog)
         onClosed: root.restoreDialogFocus()
         title: qsTr("Parear com %1").arg(root.selectedReceiverName)
         modal: true

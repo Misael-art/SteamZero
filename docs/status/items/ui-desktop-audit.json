@@ -18,6 +18,7 @@
     "tests/integration/test_ui_control_identity.py",
     "tests/integration/test_ui_control_matrix.py",
     "tests/integration/test_ui_credential_journey_e2e.py",
+    "tests/integration/test_ui_dialog_coverage.py",
     "tests/integration/test_ui_dialog_journeys.py",
     "tests/integration/test_ui_dialog_keys.py",
     "tests/qml/check_confirm_job_recovery_e2e.qml",
@@ -37,7 +38,7 @@
     "tools/ui_dialog_probe.qml",
     "tools/ui_scenario_fixtures.py"
   ],
-  "scopeDigest": "116468a5283e8f0354526fcb500a93fc5db30e825c37bb5d582b58b4599fe689",
+  "scopeDigest": "15c49c739ce89a22ff0305a23715406168ff45f22d41d6aeba1ea809b7e778fc",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -54,7 +55,8 @@
     "Fechar modal devolve o foco ao originador.",
     "Modal recebe o foco ao abrir (verificado com abertura programatica).",
     "Escape e Tab reais provados por evento de teclado do Qt 6 (fechado).",
-    "Provas que exigem runtime QML rodam no gate visual, que reprova quando o Qt falta, nunca puladas."
+    "Provas que exigem runtime QML rodam no gate visual, que reprova quando o Qt falta, nunca puladas.",
+    "Todo modal do shell tem jornada na sonda ou exclusao registrada com motivo; o denominador dos modais nao encolhe em silencio."
   ],
   "evidence": [
     {
@@ -110,10 +112,28 @@
       "reference": "tests/integration/test_ui_dialog_keys.py",
       "command": "roteamento do gate visual: -m 'not visual' -> 1 passed, 3 deselected (a guarda de codigo roda onde o Qt NAO esta); -m visual -> 3 passed (as provas Qt 6 rodam onde o runtime esta)",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_coverage.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_coverage.py -q (2 passed; 14 de 15 modais com jornada, 1 excluido com motivo)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_ui_dialog_journeys.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_ui_dialog_journeys.py -q (6 passed com 14 modais sondados; antes da correcao os 8 novos reprovavam em test_opening_a_dialog_moves_focus_into_it)",
+      "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_control_inventory.py",
+      "command": "matriz de controles medida em 2026-08-24: 250 controles em 12 superficies, 0 falhas (silent-no-op/unrouted/blocked-silent), 38 not-probed = 31 icones decorativos + 5 comboboxes + 2 aberturas de FileDialog nativo; 6 superficies sem pendencia (handheld-drawer, library, overview, sync, task-drawer, themes); identidade 45 explicitas / 205 fallback / 0 colisoes",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Ampliar a matriz de cenarios ate not-probed = 0 nas superficies que serao certificadas (Home, Biblioteca, Emulacao, Steam, perfis, cast, sistema, temas, sync, sidebar, handheld drawer, task drawer, dialogs, jobs, recovery, credenciais, launcher), publicando denominador e justificativa de cada exclusao; a baseline anterior de 14 cenarios registrava 574 controles, 378 not-probed, 80 identidades explicitas, 494 fallback e 0 colisoes.",
+  "nextAction": "Fechar os 5 comboboxes habilitados que a sonda nao exercita (ela so clica; ComboBox exige gesto) com um harness QuickTest de eventos reais, como foi feito para Escape/Tab; e provar comportamentalmente que os 31 icones decorativos nao tem handler, em vez de classifica-los pela forma. Os 2 FileDialog nativos ficam fora por serem janela do portal, nao da arvore QML.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta."
+  "notes": "Auditoria 2026-08-11 preservada via cherry-pick em codex/harmonize-main-a45 e reconciliada em codex/v2-harmonized-functional-release: a limpeza automatica dos marcadores de conflito havia descartado escopo, criterios e seis evidencias do lado f92734b, todos restaurados aqui. QML-KEY-INJECTION-001 esta FECHADO: o commit ff0b80e trocou o qmltestrunner do qt5-declarative pelo executor Qt 6 (/usr/lib/qt6/bin/qmltestrunner) com raiz Item, e tests/integration/test_ui_dialog_keys.py exige o runner (sem skip), returncode 0 e ausencia de FAIL. Por isso o criterio de Escape/Tab deixou de ser PENDENTE — a troca foi verificada re-executando o harness em 2026-08-24 (Qt 6.11.1, 7 passed / 0 skipped). Continua fora de prova: confirmacao com bridge alem da abertura, clique repetido, drawers e P0 visuais na release instalada. 2026-08-24: o CI (run 32726720427) reprovou em 3.11/3.12/3.14 porque tres provas portadas que exigem qmltestrunner Qt 6 estavam no job 'Testes e cobertura', que nao provisiona Qt. Elas foram marcadas 'visual', que ROTEIA para o job qml-visual-linux e nao dispensa — o gate visual reprova quando o Qt falta. A guarda de codigo de test_ui_dialog_keys.py ficou SEM marcador de proposito: ela existe para rodar justamente onde o runtime nao esta. 2026-08-24, ampliacao do denominador: a sonda de jornadas percorria 6 dos 15 modais do shell e NADA apontava a diferenca. Ao registrar os 8 restantes (o 15o e um FileDialog nativo, excluido com motivo), a auditoria encontrou um defeito real de acessibilidade: os OITO abriam sem receber o foco, deixando quem navega por teclado ou controle do lado de fora. Faltava a linha onOpened: root.focusDialogContent(...) que os seis ja sondados tinham desde 1bcb564 — a correcao anterior so alcancou o que estava no denominador. Um gate estatico novo impede o denominador de encolher de novo."
 }

@@ -178,6 +178,66 @@ Main {
                 "dialog": credentialDialogControl,
                 "arm": function() {},
                 "dirty": function() { return false }
+            },
+            // Os oito abaixo estavam fora do denominador: a sonda percorria seis
+            // dos quinze modais do shell e nada apontava a diferença. Os que
+            // seguram plano armam e conferem que cancelar não deixa plano
+            // pendurado; os demais provam foco inicial, trap e retorno de foco.
+            {
+                "id": "dialog.operation-rollback",
+                "label": "Rollback de operação",
+                "dialog": operationRollbackControl,
+                "arm": function() { window.operationRollbackPlan = samplePlan("operation.rollback") },
+                "dirty": function() { return window.operationRollbackPlan !== null }
+            },
+            {
+                "id": "dialog.collection-plan",
+                "label": "Plano de coleção",
+                "dialog": collectionPlanDialogControl,
+                "arm": function() { window.collectionPlan = samplePlan("collection.apply") },
+                "dirty": function() { return window.collectionPlan !== null }
+            },
+            {
+                "id": "dialog.library-health-plan",
+                "label": "Plano de saúde da biblioteca",
+                "dialog": libraryHealthPlanControl,
+                "arm": function() { window.libraryHealthPlan = samplePlan("library.health") },
+                "dirty": function() { return window.libraryHealthPlan !== null }
+            },
+            {
+                "id": "dialog.collection-manage",
+                "label": "Gerenciar coleções",
+                "dialog": collectionManagerControl,
+                "arm": function() {},
+                "dirty": function() { return false }
+            },
+            {
+                "id": "dialog.gamemode",
+                "label": "Game Mode",
+                "dialog": gamemodeDialogControl,
+                "arm": function() {},
+                "dirty": function() { return false }
+            },
+            {
+                "id": "dialog.lsfg",
+                "label": "Lossless Scaling",
+                "dialog": lsfgDialogControl,
+                "arm": function() {},
+                "dirty": function() { return false }
+            },
+            {
+                "id": "dialog.diagnostics-preview",
+                "label": "Prévia de diagnóstico",
+                "dialog": diagnosticsPreviewControl,
+                "arm": function() {},
+                "dirty": function() { return false }
+            },
+            {
+                "id": "dialog.cast-pin",
+                "label": "PIN de transmissão",
+                "dialog": castPinDialogControl,
+                "arm": function() {},
+                "dirty": function() { return false }
             }
         ]
     }
