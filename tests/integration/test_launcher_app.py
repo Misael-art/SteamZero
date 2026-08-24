@@ -87,3 +87,42 @@ def test_main_reports_the_missing_runtime_instead_of_crashing(
     monkeypatch.setattr("steamzero.adapters.launcher_ui.shutil.which", lambda _name: None)
     code = main(["--library", str(tmp_path / "ausente.json")])
     assert code != 0
+
+
+def test_launcher_reads_the_canonical_library_without_being_told_where(
+    monkeypatch, tmp_path
+) -> None:
+    """O Launcher precisa achar o acervo sozinho.
+
+    Ele lia só o arquivo passado por ``--library``. Sem o argumento, a home
+    abria vazia mesmo com a biblioteca canônica cheia — e quem abre o Launcher
+    pelo entry point não passa argumento nenhum.
+
+    Havia um segundo defeito escondido atrás do primeiro: a biblioteca canônica
+    é ``{"games": [...]}``, e ``_read_library`` só aceitava lista crua. Apontar
+    ``--library`` para ela devolveria vazio do mesmo jeito.
+    """
+    from steamzero.core import paths
+    from steamzero.launcher import app
+
+    data_home = tmp_path / "data"
+    data_home.mkdir(parents=True)
+    monkeypatch.setattr(paths, "data_home", lambda: data_home)
+    (data_home / "emulation-library-cache-v1.json").write_text(
+        json.dumps(
+            {
+                "games": [
+                    {"id": "a1", "name": "Chrono Trigger", "platform": "snes"},
+                    {"id": "b2", "name": "Ridge Racer", "platform": "playstation"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    library = app._read_library(None)
+
+    names = sorted(str(item.get("name")) for item in library)
+    assert names == ["Chrono Trigger", "Ridge Racer"], (
+        f"o Launcher não achou a biblioteca canônica sozinho: {library}"
+    )

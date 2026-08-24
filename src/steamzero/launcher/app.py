@@ -70,13 +70,32 @@ def build_sections(games: Sequence[Mapping[str, Any]]) -> tuple[HomeSection, ...
     )
 
 
+def canonical_library_path() -> Path:
+    """Onde a varredura publica a biblioteca canônica."""
+    return paths.data_home() / "emulation-library-cache-v1.json"
+
+
 def _read_library(path: Path | None) -> list[Mapping[str, Any]]:
-    if path is None or not path.is_file():
+    """Lê o acervo, achando-o sozinho quando ninguém disse onde está.
+
+    Quem abre o Launcher pelo entry point não passa ``--library``, e sem isso a
+    home abria vazia mesmo com a biblioteca canônica cheia. O argumento continua
+    valendo para apontar outro arquivo; a ausência dele deixou de significar
+    "sem acervo".
+
+    Aceita as duas formas: a lista crua que o argumento sempre aceitou, e o
+    envelope ``{"games": [...]}`` que a varredura publica. Sem isso, apontar
+    ``--library`` para a propria biblioteca canônica devolvia vazio.
+    """
+    source = path if path is not None else canonical_library_path()
+    if not source.is_file():
         return []
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
+    if isinstance(payload, Mapping):
+        payload = payload.get("games")
     if not isinstance(payload, list):
         return []
     return [item for item in payload if isinstance(item, Mapping)]
