@@ -37,7 +37,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 20 | 4 | 2 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 13 | 1 | 1 | dev |  |
-| SZ-LIBRARY-CANONICAL | 6 | 1 | 1 | unit |  |
+| SZ-LIBRARY-CANONICAL | 7 | 2 | 1 | unit |  |
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
