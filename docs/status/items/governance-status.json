@@ -31,7 +31,7 @@
     "tools/project_status.py",
     "pyproject.toml"
   ],
-  "scopeDigest": "3db0cb88d103b65f585654835dc8946a2a4e200978f7b8fa52d76bc9e491719d",
+  "scopeDigest": "60fcf867c74d4e37f61998b9b51c41186df90a7cb33ffb2e760699400386be27",
   "dependsOn": [],
   "knownGaps": [
     "DEBT-CI-VISUAL-IMAGE-SEM-SVG"
@@ -73,5 +73,5 @@
     "WS-2026-08-HARMONIZE-A45"
   ],
   "updatedAt": "2026-08-24",
-  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito."
+  "notes": "WORKLOG e historico append-only e nao entra no digest funcional; check_worklog_append_only reprova reescrita de sessoes anteriores. G38 doctor service.generation usa observe(). Digest renovado apos tornar execucao autonoma, evidencia fisica e taxonomia AURA/Theme Engine/Theme Studio regras normativas do AGENTS.md; teste focado de project_status preserva a consistencia do catalogo. Em 2026-08-20 o gate acusou pyproject.toml alterado sem item responsavel: ninguem o declarava, embora ele defina entry points, dependencias e empacotamento. Passou para este item, que ja governa ci.yml, AGENTS.md e Makefile. 2026-08-24: KNOWN-GAPS.md corrigido na linha G40, que afirmava que a tabela platform_slug->systemeid 'nao existe no repositorio' quando ela existe como _PLATFORM_MAP. Documento de lacunas que envelhece sem ser conferido vira o oposto do que promete: manda reimplementar o que ja esta feito. G42 REABERTA em 2026-08-24: fora marcada fechada por 'quatro rotas na ponte HTTP', mas o enunciado dela e 'o motor existe, o caminho de usuario nao' — rota na ponte ainda e motor. Zero QML alcanca os 12 contratos theme.import."
 }
