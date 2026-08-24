@@ -13,6 +13,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -71,6 +73,12 @@ def test_the_real_key_harness_has_a_qquickview_root_and_real_keys() -> None:
     assert "wait(" not in source, "a jornada deve esperar eventos, não atrasos arbitrários"
 
 
+# `visual` ROTEIA, não dispensa: esta prova exige o runtime QML e pertence ao
+# job `qml-visual-linux`, que reprova quando o Qt falta. Deixá-la no job de
+# testes e cobertura, que não provisiona Qt, faria a suíte reprovar por ambiente
+# em vez de por código. A guarda de código acima continua sem marcador, porque
+# ela existe justamente para rodar onde o runtime NÃO está.
+@pytest.mark.visual
 def test_real_escape_and_focus_trap() -> None:
     """Prova de Escape/Tab reais pelo executor Qt 6 disponível no ambiente."""
     assert RUNNER is not None, "qmltestrunner Qt 6 é obrigatório para esta prova"

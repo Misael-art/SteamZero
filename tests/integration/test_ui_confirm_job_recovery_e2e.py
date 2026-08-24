@@ -25,6 +25,11 @@ from steamzero.adapters.desktop_ui import DesktopControlServer
 from steamzero.core.state import StateStore
 from steamzero.domain.desktop import DesktopContext, DisplayState, ExperienceCoordinator
 
+# `visual` ROTEIA, não dispensa: a jornada exige o runtime QML e pertence ao job
+# `qml-visual-linux`, que reprova quando o Qt falta. No job de testes e cobertura,
+# que não provisiona Qt, ela reprovaria por ambiente em vez de por código.
+pytestmark = pytest.mark.visual
+
 ROOT = Path(__file__).resolve().parents[2]
 HARNESS = ROOT / "tests" / "qml" / "check_confirm_job_recovery_e2e.qml"
 CONFIG = ROOT / "build" / "ui-confirm-job-e2e.json"
