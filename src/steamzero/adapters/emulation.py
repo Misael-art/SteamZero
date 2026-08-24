@@ -1674,75 +1674,87 @@ class EmulationController:
                 counts["errors"] += 1
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
-            switch_base_count = sum(1 for m in matches if m.content_kind == "base")
-            if switch_base_count == 0:
-                plat_matches = platform_scanner.inventory(root)
-                if not any(match.content_kind == "base" for match in plat_matches):
-                    directory_rows = directory_inventory.inventory(root)
-                    directory_report.extend(
-                        {
-                            "root": str(row.path),
-                            "disposition": row.disposition,
-                            "platformId": row.platform_id,
-                            "gameCount": row.game_count,
-                            "selectedCount": len(row.selected_games),
-                            "skippedSymlinks": row.skipped_symlinks,
-                        }
-                        for row in directory_rows
-                    )
-                    plat_matches = [
-                        game
-                        for row in directory_rows
-                        if row.disposition == "matched"
-                        for game in row.selected_games
-                    ]
-                for pm in plat_matches:
-                    if pm.content_kind != "base":
-                        continue
-                    counts["base"] += 1
-                    try:
-                        stat = pm.path.stat()
-                    except OSError as exc:
-                        errors.append(f"{pm.path}: {exc}")
-                        counts["errors"] += 1
-                        continue
-                    fingerprint = hashlib.sha256(
-                        f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
-                    ).hexdigest()
-                    stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
-                    game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
-                    discovered[str(pm.path)] = {
-                        "id": stable_id,
-                        "titleId": game_identity.value if game_identity is not None else None,
-                        "identityScheme": (
-                            game_identity.scheme.value if game_identity is not None else None
-                        ),
-                        "identityDiagnosis": identity_diag,
-                        "name": pm.path.stem,
-                        "state": "ready" if game_identity is not None else "unverified",
-                        "statusLabel": (
-                            f"{pm.format.upper()} · Platform: {pm.platform}"
-                            if pm.platform
-                            else pm.format.upper()
-                        ),
-                        "emulatorId": None,
-                        "path": str(pm.path),
-                        "fingerprint": fingerprint,
-                        "size": stat.st_size,
-                        "format": pm.format,
-                        "identityVerified": game_identity is not None,
-                        "contentKind": "base",
-                        "metadataSource": None,
-                        "version": None,
-                        "updateCount": 0,
-                        "updateVersion": None,
-                        "dlcCount": 0,
-                        "bannerAsset": None,
-                        "coverUrl": None,
-                        "mediaSource": None,
-                        "platform": pm.platform,
-                        "evidence": pm.evidence,
+            # A varredura de plataformas roda SEMPRE, não só quando o Switch não
+            # achou nada. Antes a decisão era pela raiz inteira: bastava um base
+            # do Switch para todos os demais diretórios de plataforma ficarem
+            # invisíveis para a fonte canônica — era assim que um jogo aparecia
+            # em Switch e não aparecia na Biblioteca. O acervo real do operador
+            # tem 198 diretórios sob UMA raiz, e só um deles é Switch.
+            # O passe do Switch é dono de TUDO que reconheceu — base, update e
+            # DLC. Deduplicar só pelos base faria um `[v131072].nsp` de update
+            # entrar de novo como se fosse jogo pelo scanner genérico.
+            switch_claimed_paths = {str(match.path) for match in matches}
+            switch_base_count = sum(1 for match in matches if match.content_kind == "base")
+            plat_matches = platform_scanner.inventory(root)
+            if not any(match.content_kind == "base" for match in plat_matches):
+                directory_rows = directory_inventory.inventory(root)
+                directory_report.extend(
+                    {
+                        "root": str(row.path),
+                        "disposition": row.disposition,
+                        "platformId": row.platform_id,
+                        "gameCount": row.game_count,
+                        "selectedCount": len(row.selected_games),
+                        "skippedSymlinks": row.skipped_symlinks,
                     }
+                    for row in directory_rows
+                )
+                plat_matches = [
+                    game
+                    for row in directory_rows
+                    if row.disposition == "matched"
+                    for game in row.selected_games
+                ]
+            for pm in plat_matches:
+                if pm.content_kind != "base":
+                    continue
+                if str(pm.path) in switch_claimed_paths:
+                    continue
+                counts["base"] += 1
+                try:
+                    stat = pm.path.stat()
+                except OSError as exc:
+                    errors.append(f"{pm.path}: {exc}")
+                    counts["errors"] += 1
+                    continue
+                fingerprint = hashlib.sha256(
+                    f"{pm.path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode()
+                ).hexdigest()
+                stable_id = hashlib.sha256(str(pm.path).encode()).hexdigest()[:24]
+                game_identity, identity_diag = read_game_identity(pm.path, platform=pm.platform)
+                discovered[str(pm.path)] = {
+                    "id": stable_id,
+                    "titleId": game_identity.value if game_identity is not None else None,
+                    "identityScheme": (
+                        game_identity.scheme.value if game_identity is not None else None
+                    ),
+                    "identityDiagnosis": identity_diag,
+                    "name": pm.path.stem,
+                    "state": "ready" if game_identity is not None else "unverified",
+                    "statusLabel": (
+                        f"{pm.format.upper()} · Platform: {pm.platform}"
+                        if pm.platform
+                        else pm.format.upper()
+                    ),
+                    "emulatorId": None,
+                    "path": str(pm.path),
+                    "fingerprint": fingerprint,
+                    "size": stat.st_size,
+                    "format": pm.format,
+                    "identityVerified": game_identity is not None,
+                    "contentKind": "base",
+                    "metadataSource": None,
+                    "version": None,
+                    "updateCount": 0,
+                    "updateVersion": None,
+                    "dlcCount": 0,
+                    "bannerAsset": None,
+                    "coverUrl": None,
+                    "mediaSource": None,
+                    "platform": pm.platform,
+                    "evidence": pm.evidence,
+                }
+            if switch_base_count == 0:
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
@@ -1799,6 +1811,11 @@ class EmulationController:
                     "bannerAsset": banner_asset,
                     "coverUrl": banner_asset,
                     "mediaSource": media_source,
+                    # A entrada canônica declara plataforma venha ela de onde
+                    # vier. Sem isto, Home, Biblioteca, busca e launcher não
+                    # conseguiam agrupar por plataforma justamente os jogos que
+                    # o scanner do Switch já sabia serem de Switch.
+                    "platform": "switch",
                 }
             try:
                 for candidate in root.rglob("*"):

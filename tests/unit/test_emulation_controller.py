@@ -811,6 +811,9 @@ def test_library_keeps_games_without_title_id_as_unverified(monkeypatch, tmp_pat
             "updateVersion": None,
             "dlcCount": 0,
             "bannerAsset": "",
+            # A entrada canônica passou a declarar a própria plataforma, em vez
+            # de deixar isso implícito no caminho de varredura que a produziu.
+            "platform": "switch",
             "platformId": "switch",
             "fallbackArtworkUrl": "../assets/switch.svg",
             "steamSelected": False,
@@ -3295,3 +3298,180 @@ def test_orphaned_session_with_dead_pid_never_blocks_the_next_launch(
         rows = {r["id"]: r for r in store.active_game_sessions("steamzero-game-session")}
     assert "01ORPHANORPHANORPHANORPHAN" not in rows, "sessão órfã continuou ativa"
     assert [r["pid"] for r in rows.values()] == [4242]
+
+
+def test_library_scan_covers_every_platform_directory_even_with_switch_present(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Uma raiz mista não pode virar uma biblioteca só de Switch.
+
+    Sintoma relatado: o jogo aparece em Switch e não aparece na Biblioteca. A
+    causa é estrutural: a varredura decidia PELA RAIZ INTEIRA — se houvesse ao
+    menos um base do Switch, o inventário de plataformas nunca rodava e todos os
+    outros diretórios ficavam invisíveis para a fonte canônica.
+
+    O acervo real do operador tem 198 diretórios de plataforma sob uma única
+    raiz, um deles Switch. Este caso reproduz a mesma forma em miniatura.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "mixed-roms"
+
+    switch = root / "switch"
+    switch.mkdir(parents=True)
+    (switch / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"switch-base")
+
+    psx = root / "psx"
+    psx.mkdir(parents=True)
+    pvd = bytearray(2048)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[0x20:0x2B] = b"SLUS_005.55"
+    image = bytearray(0x8000)
+    image[0x8000:0x8800] = pvd
+    (psx / "Ridge Racer Revolution.iso").write_bytes(bytes(image))
+
+    megadrive = root / "megadrive"
+    megadrive.mkdir(parents=True)
+    (megadrive / "Sonic.md").write_bytes(b"\x00" * 4096)
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    controller.scan_library()
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    games = cached["games"]
+
+    # Faceta 1: a entrada canônica declara plataforma, venha ela de onde vier.
+    # Sem isso, Home, Biblioteca, busca e launcher não conseguem agrupar por
+    # plataforma aquilo que o próprio scanner já sabia.
+    sem_plataforma = [game["path"] for game in games if not game.get("platform")]
+    assert sem_plataforma == [], f"entradas canônicas sem plataforma: {sem_plataforma}"
+
+    # Faceta 2: uma raiz mista não colapsa numa biblioteca só de Switch.
+    platforms = {game["platform"] for game in games}
+    assert "switch" in platforms, "o Switch continua tendo de aparecer"
+    assert platforms != {"switch"}, (
+        "a raiz mista virou uma biblioteca só de Switch: os demais diretórios "
+        f"de plataforma sumiram da fonte canônica (encontrado: {platforms})"
+    )
+    assert "playstation" in platforms
+
+
+def _mixed_root(tmp_path: Path) -> Path:
+    """Raiz mista mínima: Switch, PSX e Mega Drive sob o mesmo pai."""
+    root = tmp_path / "mixed-roms"
+    switch = root / "switch"
+    switch.mkdir(parents=True)
+    (switch / "Example [0100ABCDEF123000][v0].nsp").write_bytes(b"switch-base")
+    psx = root / "psx"
+    psx.mkdir(parents=True)
+    pvd = bytearray(2048)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[0x20:0x2B] = b"SLUS_005.55"
+    image = bytearray(0x8000)
+    image[0x8000:0x8800] = pvd
+    (psx / "Ridge Racer Revolution.iso").write_bytes(bytes(image))
+    megadrive = root / "megadrive"
+    megadrive.mkdir(parents=True)
+    (megadrive / "Sonic.md").write_bytes(b"\x00" * 4096)
+    return root
+
+
+def _scan_paths(controller: EmulationController) -> set[str]:
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    return {game["path"] for game in cached["games"]}
+
+
+def test_library_scan_is_read_only_over_the_user_roms(monkeypatch, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+    """A varredura nunca move, renomeia nem apaga ROM do usuário.
+
+    O acervo é do operador: descobrir não pode ser uma mutação. Compara a árvore
+    inteira — caminhos, tamanhos e mtime — antes e depois de duas varreduras.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    root = _mixed_root(tmp_path)
+
+    def snapshot() -> dict[str, tuple[int, int]]:
+        return {
+            str(path.relative_to(root)): (path.stat().st_size, path.stat().st_mtime_ns)
+            for path in sorted(root.rglob("*"))
+            if path.is_file()
+        }
+
+    before = snapshot()
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    controller.scan_library()
+    controller.scan_library()
+
+    assert snapshot() == before, "a varredura alterou o acervo do usuário"
+
+
+def test_library_scan_is_idempotent_and_follows_removal_and_return(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Rever o mesmo acervo dá o mesmo resultado; sumiço e volta são seguidos."""
+    controller = _controller(monkeypatch, tmp_path)
+    root = _mixed_root(tmp_path)
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+
+    controller.scan_library()
+    first = _scan_paths(controller)
+    controller.scan_library()
+    assert _scan_paths(controller) == first, "varredura repetida mudou a biblioteca"
+
+    sonic = root / "megadrive" / "Sonic.md"
+    payload = sonic.read_bytes()
+    sonic.unlink()
+    controller.scan_library()
+    assert str(sonic) not in _scan_paths(controller), "jogo removido continuou na biblioteca"
+
+    sonic.write_bytes(payload)
+    controller.scan_library()
+    assert str(sonic) in _scan_paths(controller), "jogo que voltou não reapareceu"
+
+
+def test_library_scan_skips_symlinks_and_survives_an_unreadable_directory(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Symlink não vira jogo, e um diretório ilegível não derruba a varredura.
+
+    Falha degrada: o erro é contado e registrado, e as demais plataformas
+    continuam entrando na fonte canônica.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    root = _mixed_root(tmp_path)
+
+    linked = root / "megadrive" / "Sonic (cópia).md"
+    linked.symlink_to(root / "megadrive" / "Sonic.md")
+
+    blocked = root / "saturn"
+    blocked.mkdir()
+    (blocked / "Game.cue").write_bytes(b"\x00" * 2048)
+    blocked.chmod(0o000)
+    try:
+        _apply(
+            controller,
+            controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+        )
+        result = controller.scan_library()
+        paths_found = _scan_paths(controller)
+    finally:
+        blocked.chmod(0o755)
+
+    assert str(linked) not in paths_found, "symlink entrou como jogo"
+    assert isinstance(result, dict)
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    platforms = {game["platform"] for game in cached["games"]}
+    assert {"switch", "playstation"} <= platforms, (
+        f"um diretório ilegível derrubou o resto da varredura (restou: {platforms})"
+    )

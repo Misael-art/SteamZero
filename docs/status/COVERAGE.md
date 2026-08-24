@@ -37,6 +37,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 20 | 4 | 2 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 13 | 1 | 1 | dev |  |
+| SZ-LIBRARY-CANONICAL | 6 | 1 | 1 | unit |  |
 | SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
@@ -45,4 +46,4 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-UI-DESKTOP-AUDIT | 246 | 9 | 9 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
-Arquivos em `src/`: **493**. Sob agregador apenas, sem item de capacidade: **280** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.
+Arquivos em `src/`: **493**. Sob agregador apenas, sem item de capacidade: **278** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

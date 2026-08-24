@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "project-item",
+  "id": "SZ-LIBRARY-CANONICAL",
+  "title": "Biblioteca canonica unica",
+  "domain": "platform",
+  "implementation": "partial",
+  "integration": "feature-branch",
+  "verification": "unit",
+  "operation": "unknown",
+  "distribution": "not-packaged",
+  "scopePaths": [
+    "src/steamzero/domain/library.py",
+    "src/steamzero/domain/switch_library.py",
+    "src/steamzero/domain/switch_roots.py",
+    "tests/unit/test_library_rom_classify.py",
+    "tests/unit/test_switch_library.py",
+    "tests/integration/test_library.py"
+  ],
+  "scopeDigest": "96609c1545b4261fed6275afa097feace2e5cb652fb762f8b73b35d630355e8a",
+  "dependsOn": [],
+  "knownGaps": [],
+  "acceptanceCriteria": [
+    "Uma raiz mista nao colapsa na plataforma de um unico scanner.",
+    "Toda entrada canonica declara a propria plataforma, venha ela de qual varredura vier.",
+    "O mesmo arquivo nunca entra duas vezes na fonte canonica.",
+    "Update e DLC do Switch nao viram jogo pelo scanner generico.",
+    "A varredura e somente leitura em relacao as ROMs: nunca move, renomeia nem apaga.",
+    "Varredura repetida sobre o mesmo acervo produz o mesmo resultado.",
+    "Remocao e reaparecimento de um arquivo sao seguidos pela biblioteca.",
+    "Symlink nao vira jogo e diretorio ilegivel degrada sem derrubar a varredura."
+  ],
+  "evidence": [
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py tests/integration/test_library.py tests/integration/test_library_organize.py tests/unit/test_switch_library.py -q (150 passed)",
+      "result": "passed"
+    }
+  ],
+  "nextAction": "Cobrir os 198 diretorios do acervo real e publicar contagem por diretorio, plataforma, aceitos, ignorados, duplicados e erros controlados; depois ligar Home, Biblioteca, Emulacao, busca, launcher e scraping a esta unica fonte e provar a jornada na release instalada.",
+  "activeWorkstreams": [],
+  "updatedAt": "2026-08-24",
+  "notes": "Item criado em 2026-08-24 com o defeito ja reproduzido e corrigido. A varredura decidia PELA RAIZ INTEIRA: bastava um base do Switch para o inventario de plataformas nunca rodar, e todos os demais diretorios ficavam invisiveis para a fonte canonica. Era assim que um jogo aparecia em Switch e nao aparecia na Biblioteca. O acervo real do operador tem 198 diretorios de plataforma sob UMA raiz, e so um deles e Switch — conferido por leitura do disco em 2026-08-24. Corrigido rodando as duas varreduras e deduplicando por caminho reivindicado, e fazendo a entrada canonica declarar a propria plataforma. NAO esta provado ainda: cobertura dos 198 diretorios reais, unificacao das superficies e qualquer prova contra o host. A varredura por diretorio ainda usa amostragem (max_games_per_platform) no caminho de fallback, que nao serve a uma biblioteca completa."
+}
