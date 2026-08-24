@@ -7,7 +7,7 @@
   "implementation": "partial",
   "integration": "feature-branch",
   "verification": "dev",
-  "operation": "degraded",
+  "operation": "unknown",
   "distribution": "not-packaged",
   "scopePaths": [
     "docs/09-operations/RELEASE-HOST-AUTOMATION.md",
@@ -25,11 +25,9 @@
     "tools/audit_port_losses.py",
     "tools/release_host.py"
   ],
-  "scopeDigest": "51afc7c18b472fe981cda1d333cc6fe39b958f3b1d0272daff9751cbaebcaa64",
+  "scopeDigest": "ab8b2d0a25dd8bba35d8f6f7a1b43d77428f99ca8347989e7adacc62bc089b11",
   "dependsOn": [],
-  "knownGaps": [
-    "GAP-RELEASE-PORT-LOSSES"
-  ],
+  "knownGaps": [],
   "acceptanceCriteria": [
     "Um lock global impede dois updates concorrentes sobre o mesmo host.",
     "O journal write-ahead permite retomar ou reverter um update interrompido.",
@@ -39,7 +37,8 @@
     "Candidata invalida vai para quarentena e o rollback governado permanece disponivel.",
     "A publicacao e o rollback so tocam artefatos com marcador de ownership do SteamZero.",
     "A convergencia exige identidade do daemon e falha com ConvergenceError em vez de falso verde.",
-    "O download de componentes usa HTTPS controlado e observacoes volateis de ambiente nao reprovam a convergencia."
+    "O download de componentes usa HTTPS controlado e observacoes volateis de ambiente nao reprovam a convergencia.",
+    "Journal parado em descoberta pura nao prende update futuro; cada guarda da supersessao recusa journal que ja avancou."
   ],
   "evidence": [
     {
@@ -65,10 +64,16 @@
       "reference": "tests/unit/test_release_host.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_release_host.py tests/integration/test_host_installer.py -q (103 passed). Prova negativa: sem _record_pre_activation_failure o teste falha com AttributeError e o journal permanece inacabado. Auditoria de perdas: 2 -> 1 simbolo.",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tools/audit_port_losses.py",
+      "command": ".venv/bin/python tools/audit_port_losses.py -> TOTAL de simbolos presentes na origem e ausentes aqui: 0. As tres perdas do auto-merge foram recuperadas, uma por commit, cada uma com prova negativa. tests/unit/test_release_host.py + tests/integration/test_host_installer.py: 105 passed.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Recuperar a ultima perda, _discovery_can_be_superseded: sem ela um journal parado em 'discovered' prende todo update futuro no commit antigo, porque _require_recovery_checkout forca a volta e nao ha caminho para frente.",
+  "nextAction": "Exercitar o update transacional contra o host real pelo fluxo governado e registrar preservacao de banco, quarentena de candidata invalida e rollback disponivel antes da ativacao. As perdas do porte estao fechadas; falta a prova fisica.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro. 2026-08-24: a auditoria de perdas do auto-merge que o item 6.7 pede foi FEITA, por comparacao de AST contra a origem do porte. Achou tres perdas reais, todas em release_host.py e todas no caminho de falha — que e o caminho que menos se exercita e mais importa. Os outros dez arquivos de updater/lifecycle estao integros."
+  "notes": "Item recriado em 2026-08-24. A capacidade veio no porte (d681f34 update transacional recuperavel, 1df693e candidata falha segura, d1f8048 publicacao/rollback por identidade do alvo, 7b02e39/9291d43/b75db77/98215d8 custodia durave da FI-06, f876f27 identidade do daemon na convergencia, e65bd66 HTTPS do daemon, 63341ae observacoes volateis, a9116da falhas de preservacao de estado, fef3678 restauracao da ConvergenceError perdida no auto-merge). O item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob SZ-AGG-CORE e SZ-AGG-TOOLS. O eixo operacional e 'unknown' de proposito: nada aqui foi exercido contra o host nesta frente ainda, e o commit d67ae16 existe justamente porque o auto-merge do porte havia removido smokes do doctor e a exigencia de ownership seguro. 2026-08-24: a auditoria de perdas do auto-merge que o item 6.7 pede foi FEITA, por comparacao de AST contra a origem do porte. Achou tres perdas reais, todas em release_host.py e todas no caminho de falha — que e o caminho que menos se exercita e mais importa. Os outros dez arquivos de updater/lifecycle estao integros. 2026-08-24: as TRES perdas do auto-merge foram recuperadas e a auditoria por AST fecha em zero. Cada uma entrou isolada, com prova negativa sobre estado observavel, e ligada aos pontos de chamada — definir sem chamar nao corrigiria nada."
 }

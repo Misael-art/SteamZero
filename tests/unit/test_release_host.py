@@ -1626,3 +1626,97 @@ def test_failure_before_activation_terminalizes_the_journal(tmp_path: Path) -> N
     terminal = [item for item in events if item.get("phase") == "failed-before-activation"]
     assert terminal, "a falha anterior à ativação não foi registrada no journal"
     assert terminal[-1]["data"]["errorType"] == "RuntimeError"
+
+
+def _pure_discovery(state_dir: Path, commit: str, current_release: str | None):
+    """Journal parado em descoberta pura: nada além do primeiro evento."""
+    return release_host._start_update_journal(
+        commit,
+        current_release=current_release,
+        state_dir=state_dir,
+    )
+
+
+class _HeadRunner:
+    """Runner de git com HEAD e sujeira controlados."""
+
+    def __init__(self, head: str, dirty: bool = False) -> None:
+        self.head = head
+        self.dirty = dirty
+
+    def __call__(
+        self,
+        argv: Sequence[str],
+        _cwd: Path,
+        _timeout: int,
+    ) -> subprocess.CompletedProcess[str]:
+        call = tuple(argv)
+        if call[:2] == ("git", "rev-parse"):
+            return subprocess.CompletedProcess(call, 0, self.head + "\n", "")
+        if call[:2] == ("git", "status"):
+            return subprocess.CompletedProcess(call, 0, " M x\n" if self.dirty else "", "")
+        return subprocess.CompletedProcess(call, 0, "", "")
+
+
+_OLD = "a" * 40
+_NEW = "b" * 40
+_CURRENT = "0.1.0a46-aaaaaaaaaaaa"
+
+
+def test_pure_discovery_can_be_superseded_when_the_source_advanced(tmp_path: Path) -> None:
+    """Descoberta pura não pode prender o operador no commit antigo.
+
+    Um `update` abortado logo depois da descoberta deixa um journal em
+    `discovered`. Sem a supersessão, toda atualização futura bate em
+    `_require_recovery_checkout`, que exige voltar ao commit antigo — e não há
+    caminho para frente sem cirurgia manual no journal.
+    """
+    journal = _pure_discovery(tmp_path / "state", _OLD, _CURRENT)
+    assert release_host._discovery_can_be_superseded(
+        journal,
+        next_commit=_NEW,
+        current_release=_CURRENT,
+        runner=_HeadRunner(_NEW),
+    )
+
+
+def test_supersession_refuses_anything_that_advanced_past_discovery(tmp_path: Path) -> None:
+    """Cada guarda existe para impedir descartar um journal que JÁ avançou.
+
+    Afrouxar qualquer uma faria o sistema abandonar uma transação que chegou a
+    preparar ou ativar, perdendo o rastro de um update parcialmente aplicado.
+    Por isso cada condição é exercitada isolada.
+    """
+    state = tmp_path / "state"
+
+    mesmo_commit = _pure_discovery(state / "a", _OLD, _CURRENT)
+    assert not release_host._discovery_can_be_superseded(
+        mesmo_commit, next_commit=_OLD, current_release=_CURRENT, runner=_HeadRunner(_OLD)
+    ), "commit igual não é avanço da fonte"
+
+    avancou = _pure_discovery(state / "b", _OLD, _CURRENT)
+    avancou.document["targetRelease"] = "0.1.0a47-cccccccccccc"
+    assert not release_host._discovery_can_be_superseded(
+        avancou, next_commit=_NEW, current_release=_CURRENT, runner=_HeadRunner(_NEW)
+    ), "journal com targetRelease já passou da descoberta"
+
+    dois_eventos = _pure_discovery(state / "c", _OLD, _CURRENT)
+    dois_eventos.event("bundle-verified", current_release=_CURRENT)
+    assert not release_host._discovery_can_be_superseded(
+        dois_eventos, next_commit=_NEW, current_release=_CURRENT, runner=_HeadRunner(_NEW)
+    ), "journal com segundo evento já passou da descoberta"
+
+    outro_release = _pure_discovery(state / "d", _OLD, "0.1.0a45-dddddddddddd")
+    assert not release_host._discovery_can_be_superseded(
+        outro_release, next_commit=_NEW, current_release=_CURRENT, runner=_HeadRunner(_NEW)
+    ), "release corrente divergente significa que o host mudou desde a descoberta"
+
+    head_errado = _pure_discovery(state / "e", _OLD, _CURRENT)
+    assert not release_host._discovery_can_be_superseded(
+        head_errado, next_commit=_NEW, current_release=_CURRENT, runner=_HeadRunner(_OLD)
+    ), "HEAD precisa estar no commit novo para supersessão"
+
+    sujo = _pure_discovery(state / "f", _OLD, _CURRENT)
+    assert not release_host._discovery_can_be_superseded(
+        sujo, next_commit=_NEW, current_release=_CURRENT, runner=_HeadRunner(_NEW, dirty=True)
+    ), "árvore suja não autoriza descartar transação"

@@ -364,6 +364,45 @@ def _load_unfinished_journal(state_dir: Path | None = None) -> UpdateJournal | N
     return unfinished[0] if unfinished else None
 
 
+def _discovery_can_be_superseded(
+    journal: UpdateJournal,
+    *,
+    next_commit: str,
+    current_release: str | None,
+    runner: CommandRunner,
+) -> bool:
+    """Confirma que um journal antigo nunca alcançou preparação ou ativação.
+
+    Um ``update`` abortado logo depois da descoberta deixa um journal em
+    ``discovered``. Sem esta checagem, toda atualização futura bate em
+    :func:`_require_recovery_checkout`, que exige voltar ao commit antigo — e
+    não há caminho para frente sem cirurgia manual no journal.
+
+    Cada condição abaixo existe para NÃO descartar uma transação que já avançou:
+    afrouxar qualquer uma faria o sistema abandonar um update parcialmente
+    aplicado, perdendo o rastro dele. Só é descartável o que é comprovadamente
+    descoberta pura, com a árvore limpa já no commit novo.
+    """
+    if journal.phase != "discovered" or journal.document.get("sourceCommit") == next_commit:
+        return False
+    if any(
+        journal.document.get(key) is not None
+        for key in ("targetRelease", "rollbackRelease", "wheelSha256", "runId")
+    ):
+        return False
+    events = journal.document.get("events")
+    if not isinstance(events, list) or len(events) != 1:
+        return False
+    discovery = events[0]
+    if not isinstance(discovery, dict) or discovery.get("phase") != "discovered":
+        return False
+    if discovery.get("currentRelease") != current_release:
+        return False
+    if _git(["rev-parse", "HEAD"], runner) != next_commit:
+        return False
+    return not _git(["status", "--porcelain"], runner)
+
+
 def _record_pre_activation_failure(
     journal: UpdateJournal,
     *,
@@ -2071,6 +2110,28 @@ def update(
     """Executa ou recupera uma atualização inteira sob um único lock global."""
     with _update_lock(state_dir):
         unfinished = _load_unfinished_journal(state_dir)
+        if unfinished is not None and unfinished.phase == "discovered":
+            # Descoberta pura que ficou para trás não pode prender o operador no
+            # commit antigo: `_require_recovery_checkout` abaixo exigiria voltar
+            # a ele, sem caminho para frente. Terminaliza e segue com o novo.
+            resolved_commit = _resolve_update_target(to_ref, runner=runner)
+            current = _read_host_truth(host_root).get("release")
+            discovery_release = str(current) if current else None
+            if _discovery_can_be_superseded(
+                unfinished,
+                next_commit=resolved_commit,
+                current_release=discovery_release,
+                runner=runner,
+            ):
+                unfinished.event(
+                    "failed-before-activation",
+                    current_release=discovery_release,
+                    data={
+                        "failedPhase": "discovered",
+                        "reason": "source-advanced-before-bundle-verification",
+                    },
+                )
+                unfinished = None
         if unfinished is not None:
             commit = str(unfinished.document.get("sourceCommit") or "")
             source_ref = str(unfinished.document.get("sourceRef") or "refs/heads/main")
