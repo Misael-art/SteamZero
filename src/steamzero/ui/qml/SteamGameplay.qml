@@ -1609,6 +1609,12 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: qsTr("Escolher layout de controles para o jogo")
+                            // Bloqueado tem de dizer por quê. Sem isto, com a
+                            // biblioteca vazia o controle ficava cinza e mudo, e
+                            // o usuário não sabia se era falta de jogo ou defeito.
+                            Accessible.description: page.games.length > 0
+                                ? qsTr("Layout aplicado ao jogo selecionado")
+                                : qsTr("Nenhum jogo na biblioteca; adicione um jogo para escolher o layout")
                             onActivated: page.controllerLayoutIndex = currentIndex
                         }
                         Label {
@@ -1801,6 +1807,12 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: 48
                             Accessible.name: qsTr("Selecionar conta Steam para a mídia")
+                            // Bloqueado tem de dizer por quê: sem conta detectada
+                            // o controle ficava cinza e mudo, indistinguível de
+                            // defeito para quem usa leitor de tela.
+                            Accessible.description: count > 0
+                                ? qsTr("Conta usada para localizar a mídia do Steam")
+                                : qsTr("Nenhuma conta Steam detectada neste host")
                         }
                         Label { text: qsTr("Pasta do pacote"); color: page.mutedColor }
                         RowLayout {
