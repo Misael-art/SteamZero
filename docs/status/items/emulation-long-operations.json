@@ -59,9 +59,15 @@
       "reference": "tests/integration/test_component_lifecycle.py",
       "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (2026-08-24: 126 passed com jobs)",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "denominador da matriz de conformidade medido em 2026-08-24: 180 testes = 15 adapters x 12 dimensoes. Mas o registry tem 33 componentes (15 emulator, 17 core, 1 tool), e emulator_ids() filtra por kind=='emulator'. Os 18 restantes — 17 cores libretro e o sunshine — estao FORA do denominador: zero cobertura de conformidade. O docstring diz 'sem lista fixa, de proposito', e a intencao era boa, mas o filtro por kind reproduziu o mesmo efeito de uma lista fixa: exclui 55% dos componentes em silencio. A entrega 6.3 pede prova para CADA UM dos 33.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Promover o smoke de metadados do melonDS e repetir seu install fisico; a contradicao do plano Flatpak v3 que bloqueava este escopo foi fechada em SZ-COMPONENT-LIFECYCLE.",
+  "nextAction": "Ampliar a matriz de conformidade dos 15 emuladores para os 33 componentes. Os 17 cores libretro e o sunshine usam executores diferentes (libretro e engine), entao trocar o filtro sem adaptar as dimensoes produziria falha em massa em vez de cobertura — cada executor precisa da sua variante das 12 provas. Depois disso, a matriz FISICA no host, que hoje depende de uma release com as correcoes desta branch.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
