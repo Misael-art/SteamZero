@@ -209,6 +209,22 @@ Window {
                   "steamgriddb:createAccount,steamgriddb:credentials,"
                   + "steamgriddb:documentation,steamgriddb:terms",
                   "cada botão deve enviar somente seu provider e link lógico")
+            // O cofre perdeu o valor, e isso NAO e campo em branco. O dominio
+            // distingue os dois estados; se a UI cair no rotulo de "nao
+            // configurado", ela manda a pessoa reconfigurar o que ela ja
+            // configurou — queixa real do operador, com chaveiro efemero.
+            remoteCard.credentialState = "vaultVolatile"
+            const volatileLabel = remoteCard.stateLabel()
+            remoteCard.credentialState = "notConfigured"
+            const blankLabel = remoteCard.stateLabel()
+            remoteCard.credentialState = "vaultVolatile"
+            check(volatileLabel !== blankLabel,
+                  "cofre volatil nao pode se passar por campo em branco")
+            check(volatileLabel.indexOf("cofre") >= 0
+                  || volatileLabel.indexOf("Cofre") >= 0,
+                  "o rotulo precisa dizer que o problema foi o cofre")
+            check(remoteCard.stateColor() === remoteCard.amberColor,
+                  "cofre volatil e atencao, nao estado neutro")
             Qt.callLater(harness.verifyCompletion)
         }
     }

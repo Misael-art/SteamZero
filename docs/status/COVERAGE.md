@@ -38,7 +38,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-GOVERNANCE-STATUS | 20 | 4 | 2 | dev |  |
 | SZ-HOST-UPDATE-TRANSACTIONAL | 14 | 5 | 4 | dev |  |
 | SZ-LIBRARY-CANONICAL | 7 | 3 | 2 | unit |  |
-| SZ-MEDIA-SCRAPING | 19 | 3 | 3 | unit |  |
+| SZ-MEDIA-SCRAPING | 19 | 4 | 4 | unit |  |
 | SZ-ONLINE-P2P | 37 | 2 | 1 | none |  |
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 77 | 34 | 32 | hw |  |

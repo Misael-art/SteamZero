@@ -162,6 +162,11 @@ Rectangle {
             "validated": qsTr("Validado"),
             "rejected": qsTr("Rejeitado"),
             "vaultUnavailable": qsTr("Cofre indisponível"),
+            // O usuário JÁ preencheu e o cofre não devolve mais. Cair no rótulo
+            // de "não configurado" manda a pessoa reconfigurar o que ela
+            // configurou — e o domínio distingue os dois estados justamente
+            // para isso. O texto diz de quem foi a falha.
+            "vaultVolatile": qsTr("O cofre perdeu o valor salvo — não foi você"),
             "local": qsTr("Integração local — nenhuma credencial necessária"),
             "unavailable": qsTr("Indisponível")
         }
@@ -173,6 +178,9 @@ Rectangle {
             return greenColor
         if (credentialState === "rejected" || credentialState === "vaultUnavailable")
             return redColor
+        // Atenção, não erro: o valor sumiu do cofre e basta salvar de novo.
+        if (credentialState === "vaultVolatile")
+            return amberColor
         if (credentialState === "stored")
             return cyanColor
         return amberColor
