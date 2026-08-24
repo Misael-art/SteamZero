@@ -56,17 +56,21 @@ Main {
     // desenhado. Medir a caixa dele mediria fundo vazio e acusaria contraste
     // 1,0 contra um texto que a tela nem mostrou.
     function isClippedAway(item) {
-        let child = item
+        // Mapeia sempre o ITEM ORIGINAL para o ancestral que recorta. A primeira
+        // versao mapeava o ancestral intermediario, e por isso nunca via o caso
+        // real: o contentItem de um Flickable comeca em (0,0) e cabe sempre,
+        // enquanto o texto la dentro pode estar rolado muito abaixo do viewport.
+        // Foi assim que "Clock da GPU", em y=709 dentro de um Flickable de 456
+        // de altura, passou pela checagem e foi medido contra area vazia.
         let ancestor = item.parent
         let guard = 0
         while (ancestor && guard < 60) {
             if (ancestor.clip === true) {
-                const topLeft = child.mapToItem(ancestor, 0, 0)
-                if (topLeft.x + child.width <= 0 || topLeft.y + child.height <= 0
+                const topLeft = item.mapToItem(ancestor, 0, 0)
+                if (topLeft.x + item.width <= 0 || topLeft.y + item.height <= 0
                         || topLeft.x >= ancestor.width || topLeft.y >= ancestor.height)
                     return true
             }
-            child = ancestor
             ancestor = ancestor.parent
             guard += 1
         }
