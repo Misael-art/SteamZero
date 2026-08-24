@@ -3475,3 +3475,38 @@ def test_library_scan_skips_symlinks_and_survives_an_unreadable_directory(
     assert {"switch", "playstation"} <= platforms, (
         f"um diretório ilegível derrubou o resto da varredura (restou: {platforms})"
     )
+
+
+def test_game_in_a_directory_without_platform_manifest_is_not_silently_lost(
+    monkeypatch, tmp_path: Path
+) -> None:  # type: ignore[no-untyped-def]
+    """Diretório sem manifesto não pode engolir o jogo em silêncio.
+
+    A medição do acervo real (evidência 2026-08-24) achou 138 dos 198 diretórios
+    sem manifesto de plataforma: o projeto empacota 37 e o acervo segue a
+    nomenclatura do ES-DE. Hoje nenhum deles tem jogo, mas um jogo colocado ali
+    precisa aparecer na Biblioteca — com plataforma desconhecida, se for o caso —
+    em vez de desaparecer sem diagnóstico.
+    """
+    controller = _controller(monkeypatch, tmp_path)
+    root = tmp_path / "esde-roms"
+
+    # `amstradcpc` é um dos 138 diretórios sem manifesto no acervo real.
+    exotic = root / "amstradcpc"
+    exotic.mkdir(parents=True)
+    known_ext = exotic / "Chase HQ.zip"
+    known_ext.write_bytes(b"PK\x03\x04" + b"\x00" * 512)
+
+    _apply(
+        controller,
+        controller.plan_action({"actionId": "library.root.add", "path": str(root)}),
+    )
+    result = controller.scan_library()
+    cached = json.loads(controller._library_cache_path.read_text(encoding="utf-8"))  # type: ignore[attr-defined]
+    found = {game["path"] for game in cached["games"]}
+
+    assert isinstance(result, dict)
+    assert str(known_ext) in found or result.get("incompatible", 0) > 0, (
+        "o jogo sumiu sem deixar rastro: não entrou na biblioteca nem foi "
+        f"contado como incompatível (resultado: {result})"
+    )

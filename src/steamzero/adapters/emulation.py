@@ -1638,6 +1638,39 @@ class EmulationController:
     def plan_library_health(self) -> dict[str, Any]:
         return self.plan_action({"actionId": "library.health.scan"})
 
+    _ARCHIVE_SUFFIXES = frozenset({".7z", ".rar", ".zip"})
+
+    def _count_unclaimed(
+        self,
+        root: Path,
+        counts: dict[str, int],
+        discovered: dict[str, dict[str, Any]],
+        errors: list[str],
+    ) -> None:
+        """Contabiliza o que nenhuma varredura reivindicou nesta raiz.
+
+        Roda para TODA raiz, com ou sem Switch. Antes só rodava no caminho do
+        Switch, e por isso uma raiz sem Switch devolvia ``scanned, 0 jogos, 0
+        erros`` mesmo tendo arquivos dentro: o conteúdo sumia sem diagnóstico.
+
+        Symlink conta como erro (não seguimos link para dentro do acervo) e
+        arquivo comprimido conta como incompatível. Um arquivo que não é nem
+        jogo reconhecido, nem symlink, nem comprimido é registrado como
+        ignorado, para que o relatório da varredura tenha denominador.
+        """
+        try:
+            for candidate in root.rglob("*"):
+                if candidate.is_symlink():
+                    counts["errors"] += 1
+                elif candidate.is_file():
+                    if candidate.suffix.casefold() in self._ARCHIVE_SUFFIXES:
+                        counts["incompatible"] += 1
+                    elif str(candidate) not in discovered:
+                        counts["ignored"] = counts.get("ignored", 0) + 1
+        except OSError as exc:
+            errors.append(f"{root}: {exc}")
+            counts["errors"] += 1
+
     def _scan_library_now(self, ctx: JobContext | None = None) -> dict[str, Any]:
         scanner = SwitchLibraryScanner()
         registry = PlatformRegistry.bundled()
@@ -1755,6 +1788,13 @@ class EmulationController:
                     "evidence": pm.evidence,
                 }
             if switch_base_count == 0:
+                # A contabilidade de arquivos que NENHUM scanner reivindicou
+                # rodava só no caminho do Switch. Numa raiz sem Switch — o caso
+                # dos 138 diretórios do acervo real que não têm manifesto de
+                # plataforma — a varredura devolvia "scanned, 0 jogos, 0 erros":
+                # o arquivo sumia sem nenhum diagnóstico. Falha degrada, nunca
+                # some calada (AGENTS.md secão 8).
+                self._count_unclaimed(root, counts, discovered, errors)
                 root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
                 continue
             for match in matches:
@@ -1817,18 +1857,7 @@ class EmulationController:
                     # o scanner do Switch já sabia serem de Switch.
                     "platform": "switch",
                 }
-            try:
-                for candidate in root.rglob("*"):
-                    if candidate.is_symlink():
-                        counts["errors"] += 1
-                    elif candidate.is_file() and candidate.suffix.casefold() in {
-                        ".7z",
-                        ".rar",
-                        ".zip",
-                    }:
-                        counts["incompatible"] += 1
-            except OSError:
-                counts["errors"] += 1
+            self._count_unclaimed(root, counts, discovered, errors)
             root_stats[root_id(root)] = {"counts": counts, "lastScan": scanned_at}
             if ctx is not None:
                 ctx.set_progress(
@@ -1890,12 +1919,23 @@ class EmulationController:
         )
         if ctx is not None:
             ctx.set_progress("done", current=len(roots), total=len(roots), unit="roots")
+        # O resultado da varredura publica o denominador, não só o numerador.
+        # Sem isto, uma raiz cujo conteúdo nenhum scanner reivindicou devolvia
+        # "scanned, 0 jogos, 0 erros" e o usuário não tinha como distinguir
+        # "não há jogos aqui" de "seus jogos não foram reconhecidos".
+        incompatible = sum(
+            int(stat["counts"].get("incompatible", 0)) for stat in root_stats.values()
+        )
+        ignored = sum(int(stat["counts"].get("ignored", 0)) for stat in root_stats.values())
         return {
             "status": "scanned",
             "games": len(game_rows),
             "unidentified": unidentified,
             "errors": errors[:20],
             "ignoredAuxiliary": len(auxiliary),
+            "incompatible": incompatible,
+            "ignored": ignored,
+            "roots": len(roots),
         }
 
     def plan_action(self, payload: Mapping[str, Any]) -> dict[str, Any]:

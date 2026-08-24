@@ -29,7 +29,8 @@
     "A varredura e somente leitura em relacao as ROMs: nunca move, renomeia nem apaga.",
     "Varredura repetida sobre o mesmo acervo produz o mesmo resultado.",
     "Remocao e reaparecimento de um arquivo sao seguidos pela biblioteca.",
-    "Symlink nao vira jogo e diretorio ilegivel degrada sem derrubar a varredura."
+    "Symlink nao vira jogo e diretorio ilegivel degrada sem derrubar a varredura.",
+    "Arquivo que nenhuma varredura reivindica e contabilizado como incompativel ou ignorado, nunca sumindo sem diagnostico."
   ],
   "evidence": [
     {
@@ -43,10 +44,16 @@
       "reference": "docs/09-operations/evidence/2026-08-24-library-198-directories/README.md",
       "command": "medicao somente leitura do acervo real em /home/misael/emulation/roms com PlatformDirectoryInventory: 198 diretorios, 59 matched, 138 unmatched, 1 excluido, 375 jogos detectados, 75 selecionados pela amostragem, 61 symlinks pulados, 11 diretorios com jogos",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_emulation_controller.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_emulation_controller.py -q (103 passed)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar as duas lacunas medidas: (1) 138 diretorios do acervo nao tem manifesto de plataforma, entao um jogo colocado neles fica invisivel — cada um precisa de manifesto ou de decisao explicita de nao-suporte; (2) o caminho de fallback por diretorio amostra max_games_per_platform=10 e reduziria os 375 jogos reais a 75, o que serve a relatorio de inventario e nao a biblioteca. Depois ligar Home, Biblioteca, Emulacao, busca, launcher e scraping a esta unica fonte e provar na release instalada.",
+  "nextAction": "Dar manifesto de plataforma aos 138 diretorios do acervo que nao tem, ou decidir explicitamente pelo nao-suporte de cada um; trocar a amostragem do fallback por varredura completa; e so entao ligar Home, Biblioteca, Emulacao, busca, launcher e scraping a esta unica fonte e provar na release instalada.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Item criado em 2026-08-24 com o defeito ja reproduzido e corrigido. A varredura decidia PELA RAIZ INTEIRA: bastava um base do Switch para o inventario de plataformas nunca rodar, e todos os demais diretorios ficavam invisiveis para a fonte canonica. Era assim que um jogo aparecia em Switch e nao aparecia na Biblioteca. O acervo real do operador tem 198 diretorios de plataforma sob UMA raiz, e so um deles e Switch — conferido por leitura do disco em 2026-08-24. Corrigido rodando as duas varreduras e deduplicando por caminho reivindicado, e fazendo a entrada canonica declarar a propria plataforma. NAO esta provado ainda: cobertura dos 198 diretorios reais, unificacao das superficies e qualquer prova contra o host. A varredura por diretorio ainda usa amostragem (max_games_per_platform) no caminho de fallback, que nao serve a uma biblioteca completa. Medicao do acervo real em 2026-08-24 (somente leitura): 375 jogos concentrados em 11 dos 198 diretorios; 138 diretorios sem manifesto de plataforma; 61 symlinks corretamente pulados. Cobrir 198 diretorios nao significa 198 bibliotecas — significa varrer os 198 sem perder nenhum dos 375 jogos."
+  "notes": "Item criado em 2026-08-24 com o defeito ja reproduzido e corrigido. A varredura decidia PELA RAIZ INTEIRA: bastava um base do Switch para o inventario de plataformas nunca rodar, e todos os demais diretorios ficavam invisiveis para a fonte canonica. Era assim que um jogo aparecia em Switch e nao aparecia na Biblioteca. O acervo real do operador tem 198 diretorios de plataforma sob UMA raiz, e so um deles e Switch — conferido por leitura do disco em 2026-08-24. Corrigido rodando as duas varreduras e deduplicando por caminho reivindicado, e fazendo a entrada canonica declarar a propria plataforma. NAO esta provado ainda: cobertura dos 198 diretorios reais, unificacao das superficies e qualquer prova contra o host. A varredura por diretorio ainda usa amostragem (max_games_per_platform) no caminho de fallback, que nao serve a uma biblioteca completa. Medicao do acervo real em 2026-08-24 (somente leitura): 375 jogos concentrados em 11 dos 198 diretorios; 138 diretorios sem manifesto de plataforma; 61 symlinks corretamente pulados. Cobrir 198 diretorios nao significa 198 bibliotecas — significa varrer os 198 sem perder nenhum dos 375 jogos. Segundo defeito encontrado e corrigido em 2026-08-24: numa raiz SEM Switch, a contabilidade do que nenhum scanner reivindicou nao rodava, e a varredura devolvia 'scanned, 0 jogos, 0 erros' com arquivos dentro — o conteudo sumia sem diagnostico, contra o AGENTS.md secao 8. A contagem passou a rodar para toda raiz e o resultado publica incompatible, ignored e roots, dando denominador ao usuario."
 }
