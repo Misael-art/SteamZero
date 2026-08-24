@@ -7399,3 +7399,67 @@ silenciosamente) — adicionadas à whitelist, mapeadas no duckstation-ini
 
 Fechamento local pós-revisão: **4731 passed, 10 skipped**; Ruff, format, mypy,
 independence, boundaries e status-check (`partial`, digest regerado).
+
+## 2026-08-24 — SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE (retomada da frente v2)
+
+Retomada da integração interrompida em `codex/v2-harmonized-functional-release`
+(base `origin/main` `c2a1ff1`). Branch publicada pela primeira vez; PR **draft**
+#101 aberta para preservação e revisão. **Não houve merge em `main`, instalação
+no host, reboot, logout nem encerramento de sessão.** A release ativa continua
+`0.1.0a46-5b41f2edbf78`, com rollback `0.1.0a46-bd598c516bce`.
+
+**1. Recuperação semântica da integração documental** (`f5376b5`). O HEAD trazia
+marcadores de conflito em seis documentos e havia uma limpeza automática em curso
+que resolvia pelo lado mais curto — em `ui-desktop-audit.json` isso descartava
+~76 linhas de escopo, critérios e seis evidências. Reconciliado por semântica. O
+critério "Escape e Tab reais (PENDENTE)" só foi fechado depois de vincular a
+prova que o fecha (`ff0b80e`, executor Qt 6), re-executada aqui: Qt 6.11.1,
+7 passed / 0 skipped, sem skip mascarado. Os oito `scopeDigest` obsoletos tiveram
+a prova de cada item RE-EXECUTADA antes da renovação; nenhum foi recalculado para
+calar o gate. Itens normativos recriados por existirem no código e estarem apenas
+sob agregadores: `SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE`, `SZ-COMPONENT-LIFECYCLE`,
+`SZ-HOST-UPDATE-TRANSACTIONAL` e `SZ-CONTROLS-INPUT-PROFILES`. A disputa de QML
+com `WS-2026-08-THEME-ASSET-RECIPES` foi resolvida sem tocar no workstream
+alheio: a posse não foi transferida nem havia como comprovar transferência, então
+`src/steamzero/ui/qml/` saiu do escopo exclusivo da V2, que passou a reservar os
+oito QML que de fato alterou.
+
+**2. Contrato do plano Flatpak v3** (`a176c7f`). Duas causas. O teste ainda
+cobrava o contrato v2 (`delegated["flatpakPlanId"]` em `plan()`); e o ramo flatpak
+de `_apply_deferred` não passava `operation_id=envelope.plan_id`, publicando a
+operação sob o id do plano delegado e deixando órfã a cadeia plano→job→operação.
+Prova negativa registrada: removida a correção, três testes reprovam.
+
+**3. Roteamento das provas Qt 6 no CI** (`3234250`). Três provas portadas rodavam
+no job que não provisiona Qt e reprovavam por ambiente. Marcadas `visual`, que
+roteia para o gate que reprova quando o Qt falta. A guarda de código de
+`test_ui_dialog_keys.py` ficou sem marcador de propósito: ela existe para rodar
+onde o runtime NÃO está.
+
+**4. Biblioteca: raiz mista** (`8ae953d`). `_scan_library_now` decidia pela raiz
+inteira — um base do Switch e os outros 197 diretórios ficavam invisíveis para a
+fonte canônica. Também não havia registro canônico único: o caminho do Switch não
+declarava `platform`. Durante a correção introduzi um defeito de dedupe que os
+testes existentes pegaram (updates e DLC viravam jogos) e corrigi.
+
+**5. Medição do acervo real** (`ecfb1fa`, somente leitura). 198 diretórios, 59 com
+plataforma reconhecida, 138 sem manifesto, 1 excluído, 375 jogos concentrados em
+11 diretórios, 61 symlinks pulados. "Cobrir 198 diretórios" não é 198 bibliotecas.
+
+**6. Perda silenciosa** (`5b470f5`). Numa raiz sem Switch a varredura devolvia
+`scanned, 0 jogos, 0 erros` com arquivos dentro. A contabilidade passou a rodar
+para toda raiz e o resultado publica `incompatible`, `ignored` e `roots`.
+
+**Não entregue nesta sessão**: mídias ponta a ponta, matriz física dos 33
+componentes, AURA Launcher (o #92 não foi portado e os diretórios do launcher não
+existem nesta árvore), ES-DE/RetroFE, auditoria até `not-probed = 0`, updater
+contra o host, release 2.0.0 e instalação.
+
+**Ancestralidade proibida** conferida a cada commit: `38bc1b7` (#78), `2235ce9`
+(#79), `66d7ac1` (#80), `99fba64` (#81), `23b120b` (#82) e `69d283e` (#92) —
+nenhum é ancestral de HEAD.
+
+**Gates**: suíte isolada integral verde ao fim de cada item (última: 5058 passed,
+10 skipped), com o state home real preservado byte a byte em todas as execuções;
+Ruff, format, mypy, independence, boundaries e status-check verdes; CI remoto
+verde nos oito jobs, incluindo o gate visual QML.
