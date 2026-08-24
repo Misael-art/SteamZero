@@ -23,10 +23,10 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-AURA-UI | 14 | 3 | 3 | unit |  |
 | SZ-CAST-INTERNET | 44 | 2 | 1 | none |  |
 | SZ-CAST-LAN | 6 | 2 | 2 | unit |  |
-| SZ-COMPONENT-LIFECYCLE | 11 | 2 | 1 | dev |  |
+| SZ-COMPONENT-LIFECYCLE | 11 | 3 | 3 | dev |  |
 | SZ-CONTROLS-INPUT-PROFILES | 9 | 2 | 2 | unit |  |
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
-| SZ-EMULATION-LONG-OPERATIONS | 20 | 3 | 1 | dev |  |
+| SZ-EMULATION-LONG-OPERATIONS | 20 | 3 | 2 | dev |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
 | SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |

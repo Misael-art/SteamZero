@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "d3bd65cae274bc25a22092ec3a85993e2f8330ecbec2936e86824eddd7967fbd",
+  "scopeDigest": "2ab170c24af493fbf5f62941974a7cb060d8af62099aacfe181de5d9cf1caae0",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -57,11 +57,11 @@
     {
       "kind": "test",
       "reference": "tests/integration/test_component_lifecycle.py",
-      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (2026-08-24: 1 failed, 142 passed — TestPlanSurvivesProcess::test_flatpak_plan_applies_from_a_new_instance)",
-      "result": "failed"
+      "command": "run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (2026-08-24: 126 passed com jobs)",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar a contradicao do plano Flatpak v3 registrada em SZ-COMPONENT-LIFECYCLE antes de promover o smoke de metadados do melonDS: enquanto TestPlanSurvivesProcess reprovar, a suite integral deste escopo nao pode ser declarada verde.",
+  "nextAction": "Promover o smoke de metadados do melonDS e repetir seu install fisico; a contradicao do plano Flatpak v3 que bloqueava este escopo foi fechada em SZ-COMPONENT-LIFECYCLE.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],

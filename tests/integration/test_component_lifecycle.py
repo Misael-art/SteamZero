@@ -645,19 +645,46 @@ class TestPlanSurvivesProcess:
         assert worker.status("demo-emulator")["state"] == "installed"
 
     def test_flatpak_plan_applies_from_a_new_instance(self, store: state.StateStore) -> None:
+        """Contrato v3: planejar é metadata-only; o delegado nasce no apply.
+
+        A versão anterior deste teste exigia ``delegated["flatpakPlanId"]`` já em
+        ``plan()``, que é o contrato v2. No v3 ``plan()`` congela apenas intenção
+        e metadados confiáveis do manifesto, e ``delegated`` num envelope pendente
+        significa outra coisa: tentativa interrompida esperando recovery.
+
+        O ``planId`` externo continua sendo a identidade observável da operação —
+        é por ele que UI e CLI seguem o job. Se o apply publicasse a operação sob
+        o id do plano Flatpak delegado, o acompanhamento ficaria órfão.
+        """
         fake = FakeFlatpak()
         first = bundled_with_fake(fake, store)
         envelope = first.plan("retroarch", "install")
         assert envelope.executor == "flatpak"
         assert envelope.schema_version == 3
-        assert envelope.delegated["flatpakPlanId"]
-        assert envelope.plan_id != envelope.delegated["flatpakPlanId"]
+        assert envelope.delegated == {}, "v3 não delega nada antes da confirmação"
+
+        # Metadata-only vale também no que foi PERSISTIDO, não só no objeto.
+        persisted = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        assert persisted["schemaVersion"] == 3
+        assert persisted["delegated"] == {}
+        assert persisted["status"] == "pending"
+
+        # Nenhuma resolução, instalação ou deploy antes da confirmação.
+        assert fake.calls == [], f"plan() tocou a porta Flatpak: {fake.calls}"
 
         second = bundled_with_fake(fake, store)
         result = second.apply(envelope.plan_id, envelope.confirm_token)
         assert result["status"] == "ok"
         assert result["executor"] == "flatpak"
+        assert result["planVersion"] == 3
         assert result["operationId"] == envelope.plan_id
+
+        # O plano Flatpak delegado só existe depois da confirmação, e é outro id.
+        applied = json.loads(paths.plan_path(envelope.plan_id).read_text(encoding="utf-8"))
+        delegated_id = applied["delegated"]["flatpakPlanId"]
+        assert delegated_id
+        assert delegated_id != envelope.plan_id
+
         assert store.get_operation(envelope.plan_id)["state"] == "committed"  # type: ignore[index]
         events, _more = store.events_page(
             after_seq=0,
@@ -670,6 +697,78 @@ class TestPlanSurvivesProcess:
             {"state": "committed"},
         ]
         assert second.status("retroarch")["state"] == "installed"
+
+    def test_repeated_confirmation_yields_one_operation(self, store: state.StateStore) -> None:
+        """Uma requisição, uma operação: reconfirmar o mesmo envelope não repete efeito."""
+        fake = FakeFlatpak()
+        lifecycle = bundled_with_fake(fake, store)
+        envelope = lifecycle.plan("retroarch", "install")
+
+        first = lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert first["operationId"] == envelope.plan_id
+        installs_after_first = [call for call in fake.calls if call[0] in {"install", "deploy"}]
+
+        with pytest.raises(SteamZeroError) as raised:
+            lifecycle.apply(envelope.plan_id, envelope.confirm_token)
+        assert raised.value.code in {"E-TX-STALE-PLAN", "E-API-SCHEMA", "E-STATE-INTEGRITY"}
+
+        # Nem efeito repetido no executor, nem segunda operação publicada.
+        assert [call for call in fake.calls if call[0] in {"install", "deploy"}] == (
+            installs_after_first
+        )
+        events, _more = store.events_page(
+            after_seq=0,
+            limit=20,
+            kinds=["operation.state"],
+            entities=[f"operation:{envelope.plan_id}"],
+        )
+        assert [json.loads(event["payload_json"]) for event in events] == [
+            {"state": "applying"},
+            {"state": "committed"},
+        ]
+
+    def test_confirmed_job_publishes_the_operation_under_the_external_plan_id(
+        self, store: state.StateStore
+    ) -> None:
+        """Cadeia plano -> job -> operação fecha pelo mesmo id.
+
+        Este é o caminho que o usuário percorre: a UI confirma um envelope e
+        acompanha o job. O job guarda ``params["planId"]`` e adota como
+        ``operationId`` o que o lifecycle devolve. Se o apply publicasse a
+        operação sob o id do plano Flatpak delegado, o job apontaria para uma
+        operação que a UI não sabe procurar.
+        """
+        from steamzero.adapters.component_jobs import ComponentJobService
+        from steamzero.jobs.manager import JobManager
+
+        fake = FakeFlatpak()
+        envelope = bundled_with_fake(fake, store).plan("retroarch", "install")
+        service = ComponentJobService(
+            lifecycle_factory=lambda opened: ComponentLifecycle(
+                opened,
+                AdapterRegistry.bundled(),
+                flatpak_factory=lambda: fake,  # type: ignore[arg-type]
+            )
+        )
+
+        started = service.start(envelope.plan_id, envelope.confirm_token)
+        deadline = time.monotonic() + 15
+        observed: dict[str, object] | None = None
+        while time.monotonic() < deadline:
+            observed = service.get(str(started["jobId"]))
+            assert observed is not None
+            if observed["rawState"] in {"completed", "cancelled", "rolled-back", "rollback-failed"}:
+                break
+            time.sleep(0.01)
+        assert observed is not None
+        assert observed["rawState"] == "completed", observed
+        assert observed["result"]["operationId"] == envelope.plan_id  # type: ignore[index]
+
+        persisted = JobManager(store).get(str(started["jobId"]))
+        assert persisted is not None
+        assert persisted.params["planId"] == envelope.plan_id
+        assert persisted.operation_id == envelope.plan_id
+        assert store.get_operation(envelope.plan_id)["state"] == "committed"  # type: ignore[index]
 
     def test_legacy_flatpak_v1_plan_still_applies(self, store: state.StateStore) -> None:
         fake = FakeFlatpak()

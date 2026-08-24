@@ -7,7 +7,7 @@
   "implementation": "partial",
   "integration": "feature-branch",
   "verification": "dev",
-  "operation": "degraded",
+  "operation": "ready",
   "distribution": "not-packaged",
   "scopePaths": [
     "src/steamzero/adapters/component_jobs.py",
@@ -20,7 +20,7 @@
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
   ],
-  "scopeDigest": "2001e5d1f540c105f9ccb4f07a9d994e3cd3b291660500113a6b0699c2572afa",
+  "scopeDigest": "ffa9415df882d52b8d99d6a9f6769f5028e14f097d34dd91cdfeff2a32ae4ccd",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -42,12 +42,18 @@
     {
       "kind": "test",
       "reference": "tests/integration/test_component_lifecycle.py",
-      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py -q (1 failed, 142 passed)",
-      "result": "failed"
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_component_lifecycle.py tests/integration/test_core_service.py tests/unit/test_component_jobs.py tests/integration/test_jobs.py -q (126 passed)",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_component_lifecycle.py",
+      "command": "prova negativa: removida a passagem de operation_id em _apply_deferred, TestPlanSurvivesProcess reprova em 3 testes (contrato v3, dedupe e cadeia plano->job->operacao); restaurada, 18 passed",
+      "result": "passed"
     }
   ],
-  "nextAction": "Fechar TestPlanSurvivesProcess::test_flatpak_plan_applies_from_a_new_instance pelo contrato v3: a assercao antiga exige envelope.delegated['flatpakPlanId'] no plano, o que contradiz plan() metadata-only. Fortalecer o teste para provar schemaVersion 3, delegated vazio e zero rede antes da confirmacao, e provar a materializacao do plano Flatpak em nova instancia apos a confirmacao.",
+  "nextAction": "Instrumentar progresso por bytes e cancelamento cooperativo na aquisicao, e exercitar a matriz dos 33 componentes contra o host pelo fluxo governado, preservando rollback e terminalizacao.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
-  "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore."
+  "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore. 2026-08-24, item fechado em dev: o defeito tinha DUAS causas. (1) o teste ainda exigia envelope.delegated['flatpakPlanId'] em plan(), que e o contrato v2; no v3 delegated num envelope pendente significa tentativa interrompida esperando recovery. (2) causa de codigo, que corrigir so o teste teria escondido: o ramo flatpak de _apply_deferred nao passava operation_id=envelope.plan_id ao executor, enquanto o caminho v2 passa. A operacao nascia sob o id do plano delegado e a cadeia plano->job->operacao ficava orfa, porque o job adota como operationId o que o lifecycle devolve. Corrigido restaurando a paridade com o v2."
 }

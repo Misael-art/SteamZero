@@ -1101,7 +1101,16 @@ class ComponentLifecycle:
                     manifest, repair_observed or {}, envelope.plan_id
                 )
             try:
-                flatpak_result = executor.apply(delegated.plan_id, delegated.confirm_token)
+                # A operação publicada sai com o planId EXTERNO, não com o id do
+                # plano delegado: é pelo planId que a UI, a CLI e o job seguem a
+                # mutação depois de confirmá-la, e publicar sob o id do delegado
+                # deixaria o acompanhamento órfão. Mesmo contrato já honrado pelo
+                # caminho v2 em :meth:`_apply_unterminalized`.
+                flatpak_result = executor.apply(
+                    delegated.plan_id,
+                    delegated.confirm_token,
+                    operation_id=envelope.plan_id,
+                )
             except Exception:
                 if repair_op_id is not None:
                     self._finish_failed_repair(repair_op_id, manifest, repair_observed)
