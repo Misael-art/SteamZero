@@ -29,10 +29,16 @@
       "reference": "tests/integration/test_retrofe_vertical_slice.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/integration/test_retrofe_vertical_slice.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/desktop_contracts.py",
+      "command": "levantamento de 2026-08-24: ZERO rotas de RetroFE em desktop_contracts.py. Nao e jornada de UI incompleta — e jornada sem tela. O codigo vive em domain/retrofe_declarations.py e domain/retrofe_text_slice.py e e alcancavel por CLI.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Conectar o RetroFE aos adapters M11 (SZ-FRONTEND-SRM, SZ-FRONTEND-ESDE-SYSTEMS, SZ-FRONTEND-STEAM-SHORTCUTS) sem alegar suporte a LaunchBox antes de um adapter proprio.",
+  "nextAction": "Publicar contratos de UI para o RetroFE antes de falar em jornada: hoje nao existe rota nenhuma em desktop_contracts.py. Depois, importacao, aplicacao e lancamento pelas superficies corretas, sem confundir com ES-DE nem com RetroArch.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-11",
+  "updatedAt": "2026-08-24",
   "notes": "O slice esta integrado no repositorio; a camada de frontend M11 permanece em branch separada. Os adapters M11 que este item precisa consumir existem e tem itens proprios desde a harmonizacao a45; a ligacao entre eles ainda nao foi feita."
 }

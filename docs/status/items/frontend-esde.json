@@ -26,10 +26,16 @@
       "reference": "tests/unit/test_theme_import_esde.py",
       "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_theme_import_esde.py -q",
       "result": "passed"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "src/steamzero/adapters/desktop_contracts.py",
+      "command": "gap G42 CONFIRMADO em 2026-08-24: os contratos de UI existem (theme.import.esde.inspect e theme.import.esde.apply, com `control` declarado em desktop_contracts.py), mas NENHUM controle QML os referencia — busca em src/steamzero/ui/qml/*.qml nao acha uma ocorrencia. O importador segue alcancavel so por linha de comando. A ferramenta do projeto que detectaria isso (orphanContracts do ui_action_inventory) nao pode prova-lo: ver a nota em SZ-UI-DESKTOP-AUDIT.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Ligar o importador a uma rota de UI (G42): hoje ele so e alcancavel por linha de comando, o que nao serve ao usuario que quer trazer um tema ES-DE.",
+  "nextAction": "Ligar o importador ES-DE a uma rota de UI com a jornada completa que a entrega 6.5 pede: selecao, preview, confirmacao, progresso, resultado, erro e rollback. Os contratos ja existem; falta o controle que os alcance e a prova de que ele os alcanca.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-12",
+  "updatedAt": "2026-08-24",
   "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42."
 }

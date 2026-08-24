@@ -28,11 +28,11 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-EMULATION-ENHANCEMENTS | 24 | 9 | 9 | unit |  |
 | SZ-EMULATION-LONG-OPERATIONS | 20 | 3 | 2 | dev |  |
 | SZ-EMULATION-M10 | 6 | 3 | 2 | vm |  |
-| SZ-FRONTEND-ESDE | 2 | 1 | 1 | unit |  |
+| SZ-FRONTEND-ESDE | 2 | 2 | 1 | unit |  |
 | SZ-FRONTEND-ESDE-SYSTEMS | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-LAUNCHBOX | 1 | 0 | 0 | none | sem evidencia registrada |
 | SZ-FRONTEND-M11-SURFACE | 5 | 2 | 2 | unit |  |
-| SZ-FRONTEND-RETROFE | 5 | 1 | 1 | dev |  |
+| SZ-FRONTEND-RETROFE | 5 | 2 | 1 | dev |  |
 | SZ-FRONTEND-SRM | 3 | 1 | 1 | unit |  |
 | SZ-FRONTEND-STEAM-SHORTCUTS | 2 | 1 | 1 | unit |  |
 | SZ-GOVERNANCE-STATUS | 20 | 4 | 2 | dev |  |
@@ -43,7 +43,7 @@ onde uma alegacao nao tem evidencia que a sustente.
 | SZ-RETROACHIEVEMENTS | 41 | 2 | 1 | none |  |
 | SZ-THEME-ENGINE | 77 | 34 | 32 | hw |  |
 | SZ-THEME-STUDIO | 12 | 10 | 10 | hw |  |
-| SZ-UI-DESKTOP-AUDIT | 253 | 24 | 18 | dev |  |
+| SZ-UI-DESKTOP-AUDIT | 253 | 25 | 18 | dev |  |
 | SZ-V2-HARMONIZED-FUNCTIONAL-RELEASE | 2 | 1 | 0 | none |  |
 
 Arquivos em `src/`: **493**. Sob agregador apenas, sem item de capacidade: **278** (56%). Esse numero e o tamanho real do runtime que tem dono declarado e nenhuma capacidade provada; ele deve cair conforme recortes viram itens proprios, e subir e sinal de codigo novo entrando sem capacidade declarada.

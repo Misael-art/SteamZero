@@ -47,7 +47,8 @@
   "scopeDigest": "a58f4636d1c3bb4c43fac7d89ce56edc5b1aaf723481c675f4a461441641c83c",
   "dependsOn": [],
   "knownGaps": [
-    "GAP-UI-CONTRAST-MEASUREMENT"
+    "GAP-UI-CONTRAST-MEASUREMENT",
+    "GAP-UI-ORPHAN-GATE-INERTE"
   ],
   "acceptanceCriteria": [
     "Instalar emulador nao e no-op silencioso.",
@@ -213,6 +214,12 @@
       "kind": "diagnostic",
       "reference": "tools/ui_contrast_probe.qml",
       "command": "sonda passou a INTERSECTAR a caixa com o viewport de cada ancestral que recorta, e a descartar revelacao parcial abaixo de 60% da area. Diagnosticado no concreto: 'Parar transmissao' tem 48px de altura e a borda do ScrollView deixava 12 visiveis, acima dos glifos — media 1,19 contra branco vazio. Candidatos: 24 -> 21 -> 18 -> 17. Ainda restam artefatos conhecidos ('Restaurar perfil seguro' x2), entao a contagem continua NAO publicada como acusacao.",
+      "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tools/ui_action_inventory.py",
+      "command": "o gate de contrato orfao NUNCA dispara. ui_action_inventory publica orphanContracts so quando a cobertura de superficies e completa — decisao certa, porque auditoria parcial acusaria 117 contratos de telas que nem abriu. Mas a ferramenta nao tem suporte a cenario NENHUM, ao contrario do ui_control_inventory que ganhou 15, entao a cobertura fica presa em 1/17 e o ramo e inerte na pratica. Medido em 2026-08-24: 1/17 superficies, 117 contratos publicados como notCoveredContracts.",
       "result": "recorded"
     }
   ],
