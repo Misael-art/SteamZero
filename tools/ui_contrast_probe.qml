@@ -51,54 +51,59 @@ Main {
             && item.width > 1 && item.height > 1
     }
 
-    // Estar dentro dos limites da superfície não basta: um texto rolado para
-    // fora de um ScrollView continua posicionado, e simplesmente não é
-    // desenhado. Medir a caixa dele mediria fundo vazio e acusaria contraste
-    // 1,0 contra um texto que a tela nem mostrou.
-    function isClippedAway(item) {
-        // Mapeia sempre o ITEM ORIGINAL para o ancestral que recorta. A primeira
-        // versao mapeava o ancestral intermediario, e por isso nunca via o caso
-        // real: o contentItem de um Flickable comeca em (0,0) e cabe sempre,
-        // enquanto o texto la dentro pode estar rolado muito abaixo do viewport.
-        // Foi assim que "Clock da GPU", em y=709 dentro de um Flickable de 456
-        // de altura, passou pela checagem e foi medido contra area vazia.
+    // Estar dentro dos limites da superfície não basta, e estar PARCIALMENTE
+    // dentro tambem nao: um texto cortado pela borda de um ScrollView so mostra
+    // a fatia visivel, e medir a caixa inteira mede o vazio junto. Foi assim que
+    // "Parar transmissao" — em y=502 dentro de um Flickable de 518 de altura,
+    // com 48 de altura — saiu como contraste 1,19 contra area quase toda cortada.
+    //
+    // Em vez de aceitar ou rejeitar, esta funcao INTERSECTA a caixa com o
+    // viewport de cada ancestral que recorta, e devolve so o pedaco que a tela
+    // realmente desenha. Caixa que sobra degenerada e descartada.
+    function visibleRect(item, surface) {
+        const origin = item.mapToItem(surface, 0, 0)
+        let left = origin.x
+        let top = origin.y
+        let right = origin.x + item.width
+        let bottom = origin.y + item.height
         let ancestor = item.parent
         let guard = 0
         while (ancestor && guard < 60) {
             if (ancestor.clip === true) {
-                const topLeft = item.mapToItem(ancestor, 0, 0)
-                if (topLeft.x + item.width <= 0 || topLeft.y + item.height <= 0
-                        || topLeft.x >= ancestor.width || topLeft.y >= ancestor.height)
-                    return true
+                const corner = ancestor.mapToItem(surface, 0, 0)
+                left = Math.max(left, corner.x)
+                top = Math.max(top, corner.y)
+                right = Math.min(right, corner.x + ancestor.width)
+                bottom = Math.min(bottom, corner.y + ancestor.height)
             }
             ancestor = ancestor.parent
             guard += 1
         }
-        return false
+        return {"x": left, "y": top, "w": right - left, "h": bottom - top}
     }
 
-    // Captura a SUPERFÍCIE do shell: um Item que pinta o próprio fundo opaco e
-    // contém o conteúdo. Duas coisas que não funcionam e já custaram tentativa:
-    // `window.contentItem` é recusado ("item has no QML engine"), e capturar a
-    // página da seção devolve conteúdo sem fundo, achatado sobre preto de forma
-    // não determinística. As caixas saem relativas à mesma superfície do PNG.
     function walk(item, section, out, depth, page) {
         if (!item || depth > 40 || item.visible === false || item.opacity <= 0.05)
             return out
-        if (isLegibleCandidate(item) && !isClippedAway(item)) {
-            const p = item.mapToItem(page, 0, 0)
-            // Descarta o que caiu fora da janela: medir pixel que não existe
-            // produziria acusação inventada.
-            if (p.x >= 0 && p.y >= 0
-                    && p.x + item.width <= page.width
-                    && p.y + item.height <= page.height) {
+        if (isLegibleCandidate(item)) {
+            const p = visibleRect(item, page)
+            // Revelação PARCIAL não é promessa de legibilidade. "Parar
+            // transmissão" tem 48 px de altura e a borda do ScrollView deixava
+            // 12 visíveis — a fatia que sobra fica acima dos glifos, e medi-la
+            // acusava 1,01 contra um branco vazio. Ou o controle aparece
+            // inteiro o bastante para ser lido, ou não entra na conta.
+            const revealed = (p.w * p.h) / Math.max(1, item.width * item.height)
+            // Descarta o que caiu fora da janela ou sobrou degenerado: medir
+            // pixel que não existe produziria acusação inventada.
+            if (revealed >= 0.6 && p.w > 2 && p.h > 2 && p.x >= 0 && p.y >= 0
+                    && p.x + p.w <= page.width && p.y + p.h <= page.height) {
                 out.push({
                     "section": section,
                     "text": String(item.text).substring(0, 40),
                     "pixelSize": item.font.pixelSize || 0,
                     "bold": item.font.bold === true,
                     "x": Math.round(p.x), "y": Math.round(p.y),
-                    "w": Math.round(item.width), "h": Math.round(item.height),
+                    "w": Math.round(p.w), "h": Math.round(p.h),
                     "image": section + ".png"
                 })
             }
