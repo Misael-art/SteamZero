@@ -32,9 +32,15 @@
       "reference": "src/steamzero/adapters/desktop_contracts.py",
       "command": "gap G42 CONFIRMADO em 2026-08-24: os contratos de UI existem (theme.import.esde.inspect e theme.import.esde.apply, com `control` declarado em desktop_contracts.py), mas NENHUM controle QML os referencia — busca em src/steamzero/ui/qml/*.qml nao acha uma ocorrencia. O importador segue alcancavel so por linha de comando. A ferramenta do projeto que detectaria isso (orphanContracts do ui_action_inventory) nao pode prova-lo: ver a nota em SZ-UI-DESKTOP-AUDIT.",
       "result": "recorded"
+    },
+    {
+      "kind": "design",
+      "reference": "src/steamzero/adapters/desktop_contracts.py",
+      "command": "mapa do contrato levantado em 2026-08-24, para a jornada nao ser redescoberta: theme.import.esde.inspect -> /theme/import/esde/inspect, screen=system, control=theme-import-esde-inspect, schema {source: string}; theme.import.esde.apply -> /theme/import/esde/apply, screen=system, control=theme-import-esde-apply, schema {source, scheme, name}. A tela e SYSTEM, nao themes. O inspect devolve os schemes para escolha antes do apply, entao selecao->preview->confirmacao ja esta desenhado no contrato; falta o controle que percorra. desktop_ui.py ja serve as duas rotas.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Ligar o importador ES-DE a uma rota de UI com a jornada completa que a entrega 6.5 pede: selecao, preview, confirmacao, progresso, resultado, erro e rollback. Os contratos ja existem; falta o controle que os alcance e a prova de que ele os alcanca.",
+  "nextAction": "Adicionar na tela SYSTEM os controles theme-import-esde-inspect e theme-import-esde-apply, percorrendo inspect (escolha de scheme) antes de apply, com progresso, resultado, erro e rollback. Contrato e ponte HTTP ja existem; falta so o caminho de usuario. Prova pelo padrao ja usado: harness QML com prova negativa antes da correcao, como em check_credentials.qml.",
   "activeWorkstreams": [],
   "updatedAt": "2026-08-24",
   "notes": "O suporte e de importacao de tema; nao certifica toda a experiencia ES-DE no host. O importador existe no dominio (theme_import_esde.py: resolve_assets, unsupported_slots) e nao tem caminho de interface. Registrado como G42."
