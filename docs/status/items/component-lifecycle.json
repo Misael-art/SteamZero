@@ -20,7 +20,7 @@
     "docs/09-operations/evidence/2026-08-16-component-apply-async",
     "docs/09-operations/evidence/2026-08-16-component-plan-terminalization"
   ],
-  "scopeDigest": "ffa9415df882d52b8d99d6a9f6769f5028e14f097d34dd91cdfeff2a32ae4ccd",
+  "scopeDigest": "f73c1ecbe50ad17be4f3e7bfb17452bb9de7bb14088140fdacbbb9948eb0dbfb",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -50,10 +50,16 @@
       "reference": "tests/integration/test_component_lifecycle.py",
       "command": "prova negativa: removida a passagem de operation_id em _apply_deferred, TestPlanSurvivesProcess reprova em 3 testes (contrato v3, dedupe e cadeia plano->job->operacao); restaurada, 18 passed",
       "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_component_jobs.py",
+      "command": ".venv/bin/python -m pytest tests/unit/test_component_jobs.py -q (9 passed). O run 32864082837 em main reprovou no Python 3.12 com assert 0.20597 < 0.2 em test_start_returns_immediately_and_deduplicates_repeated_confirmation. O limiar media o agendamento do runner, nao o produto: BlockingLifecycle.apply bloqueia 5 s, entao a folga era de 25x e ainda assim flakeou. Substituido por prova causal sem relogio — apply sinaliza started ao entrar e so retorna quando release for sinalizado, logo start ter retornado com started ligado e release desligado prova que nao esperou o lifecycle. Prova negativa: trocando _start_background por _run_background em start(), o despacho vira sincrono, apply estoura o timeout de 5 s e o job termina failed; o teste reprova em state in {queued, running} apos 6,28 s. Ou seja, o discriminador entre sincrono e assincrono nunca foi o relogio, e remover o limiar nao enfraqueceu o teste.",
+      "result": "passed"
     }
   ],
   "nextAction": "Instrumentar progresso por bytes e cancelamento cooperativo na aquisicao, e exercitar a matriz dos 33 componentes contra o host pelo fluxo governado, preservando rollback e terminalizacao.",
   "activeWorkstreams": [],
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-08-25",
   "notes": "Item recriado em 2026-08-24: a capacidade veio no porte de codex/physical-functional-closure (commits f6b6e93, 5241d0f, 2f6d7d3, 20bcddf, 17d80df, e57aadf, d538201, ddf2e6d), mas o item normativo se perdeu na integracao interrompida e os arquivos ficaram apenas sob os agregadores SZ-AGG-ADAPTERS e SZ-AGG-JOBS — ou seja, com custodia declarada e nenhuma capacidade provada. O eixo operacional e 'degraded' e nao 'ready' porque existe uma contradicao de contrato REPRODUZIDA na suite focada, registrada acima como evidencia 'failed'. Nenhuma alegacao de estado aqui foi promovida a partir do historico dos 65 commits: as duas evidencias foram re-executadas nesta arvore. 2026-08-24, item fechado em dev: o defeito tinha DUAS causas. (1) o teste ainda exigia envelope.delegated['flatpakPlanId'] em plan(), que e o contrato v2; no v3 delegated num envelope pendente significa tentativa interrompida esperando recovery. (2) causa de codigo, que corrigir so o teste teria escondido: o ramo flatpak de _apply_deferred nao passava operation_id=envelope.plan_id ao executor, enquanto o caminho v2 passa. A operacao nascia sob o id do plano delegado e a cadeia plano->job->operacao ficava orfa, porque o job adota como operationId o que o lifecycle devolve. Corrigido restaurando a paridade com o v2."
 }
