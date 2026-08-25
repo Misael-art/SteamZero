@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "7f9890082d7377f0585fbb4dc5bee281bdcfc772bbfa353e72023e24a8bd4b62",
+  "scopeDigest": "0a058097962319a51153dcfcb04f3f3964408f9d6c65f4d75c9db7478642943b",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -89,9 +89,21 @@
       "reference": "tests/integration/test_emulator_conformance.py",
       "command": "progressao 213 -> 145 -> 111 -> 60 -> 43 com CINCO causas reais removidas: dependencia ausente, payload nao-arquivo, segundo digest do core, raiz de cores no RetroArch real, e fixture de drift assumindo layout do engine. Restam 43: 17 de launch (unica dimensao genuinamente inaplicavel a kind=core, o proprio produto diz que core e carregado pelo RetroArch), 17 de update com E-CONTENT-INCOMPLETE — que o operador confirmou ser caso REAL, entao nao e dimensao inaplicavel e precisa de investigacao — e 9 do sunshine (kind=tool).",
       "result": "recorded"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "matriz de conformidade ampliada de 15 para 32 dos 33 componentes: 357 passed, 27 skipped, ZERO falhas. Progressao completa 213 -> 145 -> 111 -> 60 -> 43 -> 26 -> 0, com SEIS causas reais removidas e uma exclusao por dimensao declarada com motivo. Fora: apenas o sunshine (kind=tool), pendente de decisao sobre matriz propria.",
+      "result": "passed"
+    },
+    {
+      "kind": "test",
+      "reference": "tests/unit/test_libretro_cores.py",
+      "command": ".venv/bin/python tools/run_tests_isolated.py tests/unit/test_libretro_cores.py -q (6 passed). Defeito de PRODUTO encontrado pela ampliacao: _owned_target perguntava se o core instalado batia com o digest NOVO, entao um core nosso no pin anterior era indistinguivel de core de terceiro e QUALQUER update era recusado com E-CONTENT-INCOMPLETE. Corrigido para comparar com o digest que nos mesmos registramos ao instalar. A protecao continua provada: core sem metadado, metadado divergente e symlink seguem recusados.",
+      "result": "passed"
     }
   ],
-  "nextAction": "Investigar o update de core antes de declarar qualquer dimensao: _owned_target compara o arquivo instalado com o digest NOVO e o instalado carrega o antigo, entao ou a fixture nao serve o artefato novo ou o guard impede update de core no produto — sao consequencias muito diferentes. Depois decidir se sunshine (kind=tool) pertence a esta matriz ou a uma propria. Launch para kind=core ja pode ser declarada inaplicavel com o motivo do produto.",
+  "nextAction": "Decidir se o sunshine (kind=tool) pertence a esta matriz ou a uma propria — ele falha ate em clean_install, entao nao e questao de dimensao e sim de o caminho da matriz assumir componente lancavel. Depois, a matriz FISICA no host, que exige release com as correcoes desta branch.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],

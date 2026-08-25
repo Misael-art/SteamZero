@@ -151,3 +151,71 @@ def test_component_lifecycle_refuses_a_substituted_core_delegate(
 
     with pytest.raises(SteamZeroError, match="plano não pertence a um core Libretro"):
         lifecycle.apply(planned.plan_id, prepared.plan.confirm_token)
+
+
+def test_our_own_core_at_the_previous_pin_can_be_updated(tmp_path, monkeypatch) -> None:
+    """Atualizar um core nosso não pode ser confundido com sobrescrever alheio.
+
+    `_owned_target` perguntava "o arquivo instalado bate com o digest NOVO?".
+    Um core nosso, no pin anterior, responde NÃO — exatamente como um core que
+    outra ferramenta instalou. As duas situações ficavam indistinguíveis, e a
+    recusa `E-CONTENT-INCOMPLETE` impedia qualquer update de core.
+
+    A pergunta certa é outra: o arquivo bate com o digest que NÓS registramos ao
+    instalar? Isso separa "nosso, desatualizado" de "de outra pessoa".
+    """
+    import json as _json
+
+    from steamzero.adapters.libretro_cores import LibretroCoreExecutor
+
+    root = tmp_path / "cores"
+    (root / ".steamzero").mkdir(parents=True)
+    antigo = b"core-antigo"
+    alvo = root / "demo_libretro.so"
+    alvo.write_bytes(antigo)
+    digest_antigo = hashlib.sha256(antigo).hexdigest()
+    (root / ".steamzero" / "libretro-demo.json").write_text(
+        _json.dumps({"schemaVersion": 1, "coreSha256": digest_antigo}), encoding="utf-8"
+    )
+
+    owned = LibretroCoreExecutor._target_is_ours(alvo, root / ".steamzero" / "libretro-demo.json")
+
+    assert owned is True, (
+        "um core nosso no pin anterior foi tratado como arquivo de terceiro; "
+        "nenhum update de core seria possível"
+    )
+
+
+def test_a_core_from_someone_else_is_still_refused(tmp_path) -> None:
+    """A protecao que o guard existe para dar continua de pe.
+
+    Afrouxar a pergunta do ownership nao pode virar licenca para sobrescrever o
+    core de outra ferramenta. Tres formas de "nao e nosso" precisam continuar
+    reprovando: sem metadado, metadado que nao corresponde ao arquivo, e
+    symlink no lugar do alvo.
+    """
+    import json as _json
+
+    from steamzero.adapters.libretro_cores import LibretroCoreExecutor
+
+    root = tmp_path / "cores"
+    meta_dir = root / ".steamzero"
+    meta_dir.mkdir(parents=True)
+    alvo = root / "demo_libretro.so"
+    alvo.write_bytes(b"core-de-outra-ferramenta")
+    meta = meta_dir / "libretro-demo.json"
+
+    assert LibretroCoreExecutor._target_is_ours(alvo, meta) is False, (
+        "core sem metadado nosso foi tratado como nosso"
+    )
+
+    meta.write_text(_json.dumps({"schemaVersion": 1, "coreSha256": "0" * 64}), encoding="utf-8")
+    assert LibretroCoreExecutor._target_is_ours(alvo, meta) is False, (
+        "arquivo que nao corresponde ao digest registrado foi tratado como nosso"
+    )
+
+    link = root / "link_libretro.so"
+    link.symlink_to(alvo)
+    assert LibretroCoreExecutor._target_is_ours(link, meta) is False, (
+        "symlink no lugar do alvo foi tratado como nosso"
+    )

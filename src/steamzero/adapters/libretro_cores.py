@@ -114,7 +114,7 @@ class LibretroCoreExecutor:
             or metadata_path.exists()
             or metadata_path.is_symlink()
         )
-        if present and not self._owned_target(manifest, source, core_id, digest):
+        if present and not self._target_is_ours(target, metadata_path):
             raise SteamZeroError(
                 "E-CONTENT-INCOMPLETE",
                 detail="core existente não é gerenciado pelo SteamZero; recusa sobrescrever",
@@ -240,6 +240,37 @@ class LibretroCoreExecutor:
         except (OSError, ValueError) as exc:
             raise SteamZeroError("E-SUPPLY-CHECKSUM", detail=str(exc)) from exc
         return extracted
+
+    @staticmethod
+    def _target_is_ours(target: Path, metadata: Path) -> bool:
+        """O core instalado e NOSSO, esteja ele no pin atual ou no anterior.
+
+        A pergunta anterior era "o arquivo bate com o digest NOVO?", e um core
+        nosso no pin anterior respondia NAO — indistinguivel de um core que
+        outra ferramenta instalou. A recusa `E-CONTENT-INCOMPLETE` entao
+        impedia QUALQUER update de core, que e caso legitimo.
+
+        A pergunta certa compara o arquivo com o digest que NOS registramos ao
+        instalar. Isso separa "nosso, desatualizado" de "de outra pessoa", que e
+        o que o guard sempre quis proteger.
+        """
+        if target.is_symlink() or metadata.is_symlink():
+            return False
+        if not target.is_file() or not metadata.is_file():
+            return False
+        try:
+            recorded = json.loads(metadata.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            return False
+        if not isinstance(recorded, dict):
+            return False
+        registrado = recorded.get("coreSha256")
+        if not isinstance(registrado, str) or not registrado:
+            return False
+        try:
+            return fs.hash_file(target, algo="sha256") == registrado
+        except OSError:
+            return False
 
     def _owned_target(
         self, manifest: AdapterManifest, source: AdapterSource, core_id: str, digest: str

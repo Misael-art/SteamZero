@@ -57,7 +57,7 @@ def emulator_ids() -> list[str]:
       12 dimensoes exigem: 8 falhas com `E-COMPONENT-DEGRADED`. Precisa de
       exclusao por dimensao, com motivo, nao de exclusao do componente.
     """
-    return [m.id for m in AdapterRegistry.bundled().list() if m.kind == "emulator"]
+    return [m.id for m in AdapterRegistry.bundled().list() if m.kind in {"emulator", "core"}]
 
 
 def registry_for(raw: dict[str, Any]) -> AdapterRegistry:
@@ -393,7 +393,15 @@ class TestEmulatorLifecycleConformance:
     def test_launch_builds_an_atomic_argv_without_shell(
         self, adapter_id: str, store: state.StateStore
     ) -> None:
-        """Cada argumento é um item da lista — nada que um shell fatiaria."""
+        """Cada argumento é um item da lista — nada que um shell fatiaria.
+
+        DIMENSÃO NÃO APLICÁVEL a `kind=core`, e o motivo vem do próprio produto:
+        "core Libretro é carregado por" um frontend — quem lança é o RetroArch,
+        não o core. Exclusão POR DIMENSÃO com motivo escrito, nunca exclusão do
+        componente: o core segue na matriz para as outras onze provas.
+        """
+        if AdapterRegistry.bundled().get(adapter_id).kind == "core":
+            pytest.skip("core não lança sozinho; quem lança é o RetroArch")
         spy = SpawnSpy()
         lifecycle, _ = _lifecycle(store, derived(adapter_id), spawn=spy)
         _install(lifecycle, adapter_id)
