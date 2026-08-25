@@ -93,6 +93,14 @@ def derived(
         source["url"] = URL
         source["sha256"] = sha
     raw["sources"] = [source]
+    # Cores libretro carregam DOIS digests: o do arquivo baixado, em `sources`,
+    # e o do `.so` extraido de dentro dele, em `core.sha256`. Trocar so o
+    # primeiro deixava a extracao reprovar com E-SUPPLY-CHECKSUM — o segundo
+    # ainda apontava para o binario real.
+    if isinstance(raw.get("core"), dict):
+        core = dict(raw["core"])
+        core["sha256"] = sha
+        raw["core"] = core
     raw.pop("requiresKeys", None)
     raw.pop("requiresFirmware", None)
     return raw
@@ -187,7 +195,21 @@ def _lifecycle(
         fake = FakeFlatpak(source["ref"])
         return ComponentLifecycle(store, registry, flatpak_factory=lambda: fake, **extra), fake
     port = FakeArtifacts(artifacts or {URL: PAYLOAD})
-    return ComponentLifecycle(store, registry, artifacts=port, **extra), None
+    # Cores libretro chegam num arquivo 7z e o lifecycle extrai um membro
+    # `<prefixo><core>_libretro.so`. Fabricar um 7z valido na fixture provaria a
+    # biblioteca de arquivo, nao a dimensao sob teste — e a extracao ja tem
+    # cobertura propria. O leitor injetavel isola a dimensao: aqui interessa
+    # install/verify/rollback do core, nao o parsing do container.
+    return (
+        ComponentLifecycle(
+            store,
+            registry,
+            artifacts=port,
+            libretro_archive_reader=lambda _artifact, _member: PAYLOAD,
+            **extra,
+        ),
+        None,
+    )
 
 
 def _is_flatpak(adapter_id: str) -> bool:
