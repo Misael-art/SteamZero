@@ -6,8 +6,8 @@
   "domain": "emulation",
   "implementation": "partial",
   "integration": "feature-branch",
-  "verification": "dev",
-  "operation": "blocked",
+  "verification": "hw",
+  "operation": "degraded",
   "distribution": "installed",
   "scopePaths": [
     "src/steamzero/service/client.py",
@@ -114,12 +114,18 @@
       "reference": "tests/unit/test_flatpak.py",
       "command": ".venv/bin/python -m pytest tests/unit/test_flatpak.py tests/unit/test_lifecycle_routing.py tests/integration/test_component_lifecycle.py -q (102 passed). Defeito observado no host com a 2.0.0rc1-2a1b0fb90105 instalada: dolphin e retroarch apareciam degraded com detail None, enquanto duckstation (executor engine) explicava a divergencia. Nao faltava regra: faltava o executor Flatpak cumprir a que o engine ja cumpria. flatpak.status passa a nomear os dois commits. Verificado no componente real da arvore corrigida: dolphin devolve 'commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e', antes None. Prova negativa: sem a atribuicao de detail o teste novo falha com KeyError: 'detail'.",
       "result": "passed"
+    },
+    {
+      "kind": "hardware",
+      "reference": "docs/09-operations/evidence/2026-08-25-degraded-detail",
+      "command": "matriz FISICA na release 2.0.0rc1-92d91d631b80 instalada no host Valve Jupiter: steamzero component list = 33 componentes, {missing 23, installed 8, degraded 2}, e ZERO degradados sem detail. dolphin devolve 'commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e' e retroarch 'commit instalado 1f766799d9ff difere da fonte fixada d8644a97df3d' — textualmente igual ao que o commit 2a4e6ae afirmou ter verificado na arvore, agora observado no artefato instalado. doctor: degraded, exit 0, com service.generation provando daemon na geracao nova (sem isso o component status teria respondido pelo codigo antigo e a evidencia seria invalida). Os dois warn (backup.orphan, boot.direct unknown por permissao) sao anteriores a esta entrega. Erro controlado e recuperacao capturados: E-API-SCHEMA por --id ausente sai 1 com acao acionavel, e a mesma chamada com --id sai 0. Rollback 2.0.0rc1-2a1b0fb90105 preservado, nao executado. Sem captura de GUI porque o campo detail nao e renderizado em nenhuma superficie QML: a unica superficie observavel desta correcao e o CLI.",
+      "result": "passed"
     }
   ],
-  "nextAction": "A matriz LOCAL cobre os 33. Falta a matriz FISICA no host, que exige uma release com as correcoes desta branch — a instalada e anterior a elas, inclusive ao operation_id e ao ownership de core.",
+  "nextAction": "A matriz LOCAL e a FISICA cobrem os 33 e a causa registrada em componente degradado esta provada no host. Proximo: promover o smoke flatpak-info do melonDS e repetir seu install fisico nesta release.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
   "updatedAt": "2026-08-25",
-  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter."
+  "notes": "A release 0.1.0a46-73dd7f5ad3c1 confirmou limite explícito de 1 900 s, execução persistida e rollback sem deployment parcial. A validação do Cemu revelou primeiro AF_NETLINK bloqueado pela unit; a release 0.1.0a46-2bfa55f05007 corrigiu essa allowlist e expôs a segunda fronteira: submontagens protegidas em /proc impedem Bubblewrap de montar a procfs do Flatpak. A release 0.1.0a46-54f2fc4da9b7 executa somente argv Flatpak validados num serviço transitório do user manager, mantendo o daemon endurecido: Cemu e RPCS3 chegaram a committed com rollback disponível. Flycast não aceita --version, mas a release 0.1.0a46-bd598c516bce substituiu esse smoke por leitura do commit Flatpak fixado e o instalou com sucesso. melonDS revelou o mesmo contrato inválido; a transação foi revertida sem deployment parcial. Reconciliacao 2026-08-24: o porte v2 alterou flatpak.py, lifecycle.py, cli/main.py e install_host.py dentro deste escopo, e a re-execucao das evidencias mostrou UMA reprovacao real (contrato do plano v3). O digest foi renovado com esse resultado registrado como 'failed', nao para silenciar o gate. 2026-08-24: matriz local fechada nos 33. Seis causas reais removidas e DUAS retificacoes minhas: o update de core era defeito de produto e nao de fixture, e o sunshine nao era anomalia e sim componente de streaming cobrado por capacidades que declara nao ter. 2026-08-25: matriz FISICA fechada na release 2.0.0rc1-92d91d631b80, o que promoveu verification de dev para hw e operation de blocked para degraded. Degradado e nao pronto porque o smoke flatpak-info do melonDS continua pendente de install fisico; a promocao cobre a causa registrada em componente degradado, nao o item inteiro. Nao ha captura de GUI: o campo detail nao e renderizado em superficie QML alguma, entao a unica superficie observavel desta correcao e o CLI, e os PNGs sao renderizacoes de stdout real, nao capturas de tela."
 }

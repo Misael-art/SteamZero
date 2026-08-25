@@ -7463,3 +7463,39 @@ nenhum é ancestral de HEAD.
 10 skipped), com o state home real preservado byte a byte em todas as execuções;
 Ruff, format, mypy, independence, boundaries e status-check verdes; CI remoto
 verde nos oito jobs, incluindo o gate visual QML.
+
+## 2026-08-25 — Matriz física da causa registrada em componente degradado
+
+Branch `codex/degraded-detail-evidencia-fisica`, sobre `92d91d6`. Item
+`SZ-EMULATION-LONG-OPERATIONS`. Nenhuma alteração de código: a correção já estava
+na `main` pelo commit `2a4e6ae`; o que faltava era a prova no artefato instalado.
+
+**Release instalada no host** (autorizada nesta thread, executada pelo operador
+porque o classificador do harness negou as quatro tentativas do agente):
+`2.0.0rc1-92d91d631b80`, `--source-commit 92d91d631b80…`, `refs/heads/main`.
+Rollback `2.0.0rc1-2a1b0fb90105` preservado e não executado.
+
+**O que a evidência física provou.** `dolphin` e `retroarch` — os dois únicos
+degradados dos 33 — devolvem `detail` preenchido, e o texto do `dolphin` no host
+(`commit instalado 1b150924d321 difere da fonte fixada 377c3e63506e`) é idêntico
+ao que `2a4e6ae` afirmou ter verificado na árvore. Zero degradados sem causa
+registrada. `service.generation` passou com o daemon na geração nova, sem o que o
+`component status` teria respondido pelo código antigo e a evidência seria nula.
+
+**Duas coisas que NÃO foram entregues, contra a aparência de completude.** Não há
+captura de GUI: o campo `detail` não é renderizado em superfície QML alguma, então
+a única superfície observável desta correção é o CLI, e os três PNGs são
+renderizações de stdout real — não capturas de tela, e o README diz isso. E o item
+foi para `operation: degraded`, não `ready`, porque o smoke flatpak-info do melonDS
+segue pendente de install físico.
+
+**Doctor**: `degraded` com exit 0 — o contrato é sair 1 só em `failed`. Os dois
+`warn` (`backup.orphan`, `boot.direct: unknown` por falta de permissão) são
+anteriores a esta entrega e não foram introduzidos por ela.
+
+**Gates**: suíte isolada integral 5254 passed, 44 skipped, exit 0 (29m27s); Ruff
+check, `ruff format --check` (525 arquivos), mypy (243 arquivos), independence,
+boundaries e status-check verdes. Ressalva honesta do próprio guard: o daemon
+estava ativo durante a suíte, então a atribuição de escrita ao state home real
+ficou degradada — o gate não reprova por isso, mas rigor total exigiria o daemon
+parado.
