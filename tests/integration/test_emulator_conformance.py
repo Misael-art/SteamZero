@@ -205,6 +205,12 @@ def _lifecycle(
             store,
             registry,
             artifacts=port,
+            # Sem raiz explicita, `_default_core_root()` aponta para
+            # `~/.var/app/org.libretro.RetroArch/.../cores` — o RetroArch REAL do
+            # operador, fora de XDG_DATA_HOME e fora do alcance do guard de
+            # estado. Nao e so vazamento entre casos parametrizados: e teste
+            # escrevendo na instalacao de quem roda a suite.
+            libretro_core_root=Path(store.path).parent / "libretro-cores",
             libretro_archive_reader=lambda _artifact, _member: PAYLOAD,
             **extra,
         ),

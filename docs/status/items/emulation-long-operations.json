@@ -31,7 +31,7 @@
     "tests/integration/test_host_installer.py",
     "tests/unit/test_desktop_dashboard.py"
   ],
-  "scopeDigest": "ff0b0122f5f9383d5b566728f7740a05f112920b3695236f1d1422de501601d3",
+  "scopeDigest": "293157a2e1d809d395fbe7236d4a15a527ae2bc4c48b27f45d98718db38de7bc",
   "dependsOn": [],
   "knownGaps": [],
   "acceptanceCriteria": [
@@ -77,9 +77,15 @@
       "reference": "tests/integration/test_emulator_conformance.py",
       "command": "ampliacao para os 33 avancou de 213 para 111 falhas, com tres causas reais removidas: dependencia ausente no registry (registry_for), payload que nao era 7z (libretro_archive_reader injetado) e o SEGUNDO digest dos cores, o do .so extraido em core.sha256, que derived() nao trocava. Restam 34 casos de estado de core vazando entre casos parametrizados e 25 do sunshine, que e kind=tool. Filtro restaurado em kind==emulator para a suite ficar verde; as tres correcoes de fixture ficam, porque sao pre-requisito da ampliacao.",
       "result": "recorded"
+    },
+    {
+      "kind": "diagnostic",
+      "reference": "tests/integration/test_emulator_conformance.py",
+      "command": "raiz de cores isolada: 111 -> 60 falhas. Sem libretro_core_root explicito, _default_core_root() aponta para ~/.var/app/org.libretro.RetroArch/.../cores — o RetroArch REAL de quem roda a suite, fora de XDG_DATA_HOME e fora do alcance do guard de estado. Conferido no host: diretorio vazio, nenhum arquivo recente, entao nenhuma execucao desta sessao o poluiu. As 60 restantes sao SEMANTICAS, nao de encanamento: dimensoes que nao se aplicam a kind=core (core nao lanca sozinho) e a kind=tool.",
+      "result": "recorded"
     }
   ],
-  "nextAction": "Fechar as duas causas restantes medidas: (1) isolar a raiz de cores entre casos parametrizados — XDG_DATA_HOME sozinho nao cobre, e 34 casos veem 'installed' onde esperam 'missing'; (2) exclusao POR DIMENSAO para o sunshine (kind=tool, 25 falhas), com motivo escrito, nunca exclusao do componente. So entao abrir o filtro e, depois, a matriz fisica no host.",
+  "nextAction": "Declarar, para cada uma das 12 dimensoes, a quais `kind` ela se aplica e POR QUE — exclusao por dimensao com motivo escrito, nunca exclusao do componente, que reproduziria o filtro por kind que criou o problema. Isso fecha as 60 restantes e abre o filtro para os 33. So entao a matriz fisica no host.",
   "activeWorkstreams": [
     "WS-2026-08-EMULATION-LONG-OPERATIONS"
   ],
